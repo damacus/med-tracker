@@ -1771,6 +1771,10 @@ en:
       left: "%{count} left"
       order_refills: Order Refills
     stats:
+      next_due: Next Due
+      due_now: Due Now
+      tasks_left: Tasks Left
+      now: Now
       people: People
       active_schedules: Active Schedules
       next_dose: Next Dose

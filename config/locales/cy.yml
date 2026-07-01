@@ -1581,6 +1581,10 @@ cy:
         one: 1 dasg reolaidd ar ôl heddiw
         other: "%{count} tasg reolaidd ar ôl heddiw"
     stats:
+      next_due: Nesaf i'w roi
+      due_now: I'w roi nawr
+      tasks_left: Tasgau ar ôl
+      now: Nawr
       people: Pobl
       active_schedules: Presgripsiynau Gweithredol
       next_dose: Dos nesaf

@@ -1674,6 +1674,10 @@ ga:
       left: "%{count} fágtha"
       order_refills: Ordú Athliontaí
     stats:
+      next_due: An chéad dáileog eile
+      due_now: Le déanamh anois
+      tasks_left: Tascanna fágtha
+      now: Anois
       people: Daoine
       active_schedules: Oideas Leigheasanna Gníomhacha
       next_dose: An Chéad Dháileog Eile

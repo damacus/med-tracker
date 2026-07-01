@@ -38,17 +38,9 @@ module Components
       private
 
       delegate :people, :active_schedules, :upcoming_schedules,
-               :current_user, :doses, :next_dose_time, :routine_tasks_due?,
-               :routine_tasks_by_person, :as_needed_by_person,
+               :current_user, :doses, :next_due_value, :due_now_count, :tasks_left_count,
+               :routine_tasks_by_person, :as_needed_by_person, :today_takes_by_person,
                :dashboard_person_options, to: :presenter
-
-      def next_dose_value
-        time = next_dose_time
-        return time.strftime('%H:%M') if time
-        return t('dashboard.stats.due_today') if routine_tasks_due?
-
-        t('dashboard.stats.no_upcoming_doses')
-      end
 
       def render_header
         div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8') do
@@ -252,23 +244,21 @@ module Components
       def render_stats_section
         div(class: 'grid grid-cols-1 sm:grid-cols-3 auto-rows-fr gap-3 mb-8') do
           render Components::Shared::MetricCard.new(
-            title: t('dashboard.stats.people'),
-            value: people.size,
-            icon_type: 'users',
-            href: people_path,
-            layout: :compact
-          )
-          render Components::Shared::MetricCard.new(
-            title: t('dashboard.stats.active_schedules'),
-            value: active_schedules.size,
-            icon_type: 'active_schedules',
-            href: schedules_path,
-            layout: :compact
-          )
-          render Components::Shared::MetricCard.new(
-            title: t('dashboard.stats.next_dose'),
-            value: next_dose_value,
+            title: t('dashboard.stats.next_due'),
+            value: next_due_value,
             icon_type: 'clock',
+            layout: :compact
+          )
+          render Components::Shared::MetricCard.new(
+            title: t('dashboard.stats.due_now'),
+            value: due_now_count,
+            icon_type: 'active_schedules',
+            layout: :compact
+          )
+          render Components::Shared::MetricCard.new(
+            title: t('dashboard.stats.tasks_left'),
+            value: tasks_left_count,
+            icon_type: 'check',
             layout: :compact
           )
         end
@@ -384,16 +374,7 @@ module Components
       end
 
       def today_takes_for_person(person)
-        rows = routine_tasks_by_person.fetch(person, []) + as_needed_by_person.fetch(person, [])
-        rows.flat_map { |row| row[:today_takes].to_a }
-            .uniq { |take| dose_history_key(take) }
-            .sort_by(&:taken_at)
-      end
-
-      def dose_history_key(take)
-        return [take.class.name, take.id] if take.is_a?(ApplicationRecord) && take.id.present?
-
-        take.object_id
+        today_takes_by_person.fetch(person, [])
       end
 
       def render_dashboard_insight_content

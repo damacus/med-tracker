@@ -10,16 +10,6 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     described_class.new(presenter: presenter)
   end
 
-  def active_schedules_icon_path
-    [
-      'M200-640h560v-80H200v80Zm0 0v-80 80Zm0 560q-33 0-56.5-23.5T120-160v-560q0-33 ',
-      '23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v227q-19-9-39-15t-41-9v-43H200v400h252q7 ',
-      '22 16.5 42T491-80H200Zm378.5-18.5Q520-157 520-240t58.5-141.5Q637-440 ',
-      '720-440t141.5 58.5Q920-323 920-240T861.5-98.5Q803-40 ',
-      '720-40T578.5-98.5ZM787-145l28-28-75-75v-112h-40v128l87 87Z'
-    ].join
-  end
-
   let(:admin_user) { users(:admin) }
   let(:presenter) { dashboard_presenter(admin_user, people_scope: Person.all) }
 
@@ -58,53 +48,22 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
   end
 
   describe 'stats display' do
-    it 'renders people count' do
+    it 'renders action metrics in priority order' do
       rendered = render_inline(dashboard_view)
-      expect(rendered.text).to include(presenter.people.count.to_s)
-    end
-
-    it 'renders active schedules count' do
-      rendered = render_inline(dashboard_view)
-      expect(rendered.text).to include(presenter.active_schedules.count.to_s)
-    end
-
-    it 'renders all-family people count including self' do
-      parent_presenter = parent_dashboard_presenter(selected_person_id: 'all')
-      parent_view = described_class.new(presenter: parent_presenter)
-      expected_count = users(:parent).person.patients.where(person_type: :minor).count + 1
-
-      rendered = render_inline(parent_view)
-
-      expect(rendered.text).to include(expected_count.to_s)
-    end
-
-    it 'links People stat card to people page' do
-      rendered = render_inline(dashboard_view)
-
-      expect(rendered.css("a[href='#{people_path}']")).to be_present
-    end
-
-    it 'links Active Schedules stat card to schedules page' do
-      rendered = render_inline(dashboard_view)
-
-      expect(rendered.css("a[href='#{schedules_path}']")).to be_present
-    end
-
-    it 'renders the dashboard summary row with operational metric cards' do
-      rendered = render_inline(dashboard_view)
-
+      html = rendered.to_html
       labels = rendered.css('p').map { |label| label.text.strip }
 
-      expect(labels).to include('People', 'Active Schedules', 'Next Dose')
-      expect(rendered.css("a[href='#{people_path}']")).to be_present
-      expect(rendered.css("a[href='#{schedules_path}']")).to be_present
+      expect(labels).to include('Next Due', 'Due Now', 'Tasks Left')
+      expect(labels).not_to include('People', 'Active Schedules', 'Next Dose')
+      expect(html.index('Next Due')).to be < html.index('Due Now')
+      expect(html.index('Due Now')).to be < html.index('Tasks Left')
     end
 
-    it 'renders the active schedules icon on the active schedules stat card' do
+    it 'keeps dashboard action metrics on the current page' do
       rendered = render_inline(dashboard_view)
-      card = rendered.at_css("a[href='#{schedules_path}']")
 
-      expect(card.at_css("path[d='#{active_schedules_icon_path}']")).to be_present
+      expect(rendered.css("a[href='#{people_path}']")).not_to be_present
+      expect(rendered.css("a[href='#{schedules_path}']")).not_to be_present
     end
   end
 
@@ -119,7 +78,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(selector).to be_present
       expect(selector.text).to include('Parent Person')
       expect(overflow.text).to include('All Family')
-      expect(rendered.to_html.index('dashboard-person-selector')).to be < rendered.to_html.index('Active Schedules')
+      expect(rendered.to_html.index('dashboard-person-selector')).to be < rendered.to_html.index('Next Due')
     end
 
     it 'marks the selected person with aria-current and initials fallback' do
@@ -447,14 +406,22 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       people: [person],
       active_schedules: [],
       current_user: admin_user,
-      next_dose_time: nil,
+      **dashboard_action_metrics,
       smart_insights: insight_result || learning_insight_result,
       can_view_reports?: can_view_reports,
       dashboard_person_options: [],
-      routine_tasks_due?: true,
       routine_tasks_by_person: { person => [routine_dashboard_row(person, status: routine_status)] },
-      as_needed_by_person: { person => [as_needed_dashboard_row(person)] }
+      as_needed_by_person: { person => [as_needed_dashboard_row(person)] },
+      today_takes_by_person: { person => [dashboard_today_take] }
     )
+  end
+
+  def dashboard_action_metrics
+    {
+      next_due_value: 'Now',
+      due_now_count: 1,
+      tasks_left_count: 2
+    }
   end
 
   def learning_insight_result
