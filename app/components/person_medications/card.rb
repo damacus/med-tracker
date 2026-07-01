@@ -161,7 +161,8 @@ module Components
             button: {
               variant: :outlined,
               size: :lg,
-              class: 'w-full min-w-0 overflow-hidden rounded-shape-full px-3 py-6 font-bold ' \
+              trigger_class: 'block w-full',
+              class: 'w-full min-w-0 overflow-hidden rounded-shape-full font-bold ' \
                      'border-outline text-on-surface-variant hover:bg-tertiary-container transition-colors'
             }
           )
@@ -169,22 +170,25 @@ module Components
       end
 
       def render_actions_menu
-        render RubyUI::DropdownMenu.new(options: { placement: 'bottom-end' }, class: 'shrink-0') do
-          render RubyUI::DropdownMenuTrigger.new do
+        render RubyUI::DropdownMenu.new(options: { placement: 'bottom-end', strategy: 'fixed' }, class: 'shrink-0') do
+          render RubyUI::DropdownMenuTrigger.new(class: 'shrink-0') do
             m3_button(
               variant: :outlined,
+              size: :lg,
+              icon: true,
               type: :button,
-              class: 'shrink-0 rounded-shape-full border-outline px-3 text-on-surface-variant ' \
+              class: 'shrink-0 rounded-shape-full border-outline text-on-surface-variant ' \
                      'hover:bg-tertiary-container hover:text-foreground transition-colors',
               data: { testid: "person-medication-actions-#{person_medication.id}" },
               aria_label: t('person_medications.card.actions')
             ) do
-              render Icons::MoreHorizontal.new(size: 18, aria_hidden: 'true', class: 'mr-2 shrink-0')
-              plain t('person_medications.card.actions')
+              render Icons::MoreHorizontal.new(size: 18, aria_hidden: 'true', class: 'shrink-0')
+              span(class: 'sr-only') { t('person_medications.card.actions') }
             end
           end
           render RubyUI::DropdownMenuContent.new(
-            class: 'w-56 rounded-shape-xl border border-border/70 bg-popover p-1 shadow-elevation-3',
+            class: 'w-56 max-w-[calc(100vw-2rem)] rounded-shape-xl border border-border/70 bg-popover p-1 ' \
+                   'shadow-elevation-3',
             data: { testid: "person-medication-actions-menu-#{person_medication.id}" }
           ) do
             if view_context.policy(person_medication).update?

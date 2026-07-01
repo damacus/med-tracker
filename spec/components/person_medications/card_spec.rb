@@ -44,11 +44,14 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     rendered = render_person_medication_card(update: true)
 
     trigger = rendered.at_css("button[data-testid='person-medication-actions-#{person_medication.id}']")
+    trigger_classes = trigger['class'].split
     link = rendered.at_css("a[data-testid='edit-person-medication-#{person_medication.id}']")
     pause_button = rendered.at_css("button[data-testid='pause-person-medication-#{person_medication.id}']")
 
     expect(trigger).not_to be_nil
-    expect(trigger.text).to include('Actions')
+    expect(trigger_classes).to include('h-11')
+    expect(trigger_classes).to include('w-11')
+    expect(trigger.at_css('.sr-only').text).to eq('Actions')
     expect(link).not_to be_nil
     expect(link['role']).to eq('menuitem')
     expect(link.text).to include('Edit')
@@ -72,6 +75,20 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     expect(action_classes).to include('min-w-0')
     expect(menu).not_to be_nil
     expect(rendered.at_css("button[data-testid='delete-person-medication-#{person_medication.id}']")).to be_present
+  end
+
+  it 'uses design-system sizing for compact action controls', :aggregate_failures do
+    rendered = render_person_medication_card(update: true, destroy: true)
+    past_dose_button_classes = rendered.at_css(
+      "button[data-testid='log-past-dose-person-medication-#{person_medication.id}']"
+    )['class'].split
+    dropdown = rendered.at_css('[data-ruby-ui--dropdown-menu-options-value]')
+
+    expect(past_dose_button_classes).to include('min-h-[44px]')
+    expect(past_dose_button_classes).not_to include('h-14')
+    expect(past_dose_button_classes).not_to include('min-h-[56px]')
+    expect(past_dose_button_classes).not_to include('py-6')
+    expect(dropdown['data-ruby-ui--dropdown-menu-options-value']).to include('"strategy":"fixed"')
   end
 
   it 'renders paused state without dose actions' do
