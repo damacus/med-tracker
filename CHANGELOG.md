@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.4](https://github.com/damacus/med-tracker/compare/v0.5.3...v0.5.4) (2026-07-01)
+
+
+### Bug Fixes
+
+* **dashboard:** focus metrics on actionable doses ([#1417](https://github.com/damacus/med-tracker/issues/1417)) ([8ae4f91](https://github.com/damacus/med-tracker/commit/8ae4f91ec7cf36f7a7555a9a1baefde06a5cf0f9))
+* **dev:** seed household memberships for fixture users ([#1415](https://github.com/damacus/med-tracker/issues/1415)) ([eb3101e](https://github.com/damacus/med-tracker/commit/eb3101e14a4aa7197808f05a58b03fb20e9dbc2a))
+* **ui:** align actions dropdown trigger with RubyUI docs ([#1414](https://github.com/damacus/med-tracker/issues/1414)) ([f687a26](https://github.com/damacus/med-tracker/commit/f687a26aa8a20f82c4a7b571c3a1c69e6089c32d))
+* **ui:** align medication action controls ([#1409](https://github.com/damacus/med-tracker/issues/1409)) ([05c57aa](https://github.com/damacus/med-tracker/commit/05c57aa42dfb50c6b4b636b86e2590fa7981a29a))
+* **ui:** align medication actions menu sizing ([#1412](https://github.com/damacus/med-tracker/issues/1412)) ([aaef449](https://github.com/damacus/med-tracker/commit/aaef4490380694a1a036bd28b069f4852d412d65))
+* **ui:** align profile and insight controls ([#1416](https://github.com/damacus/med-tracker/issues/1416)) ([e2b3288](https://github.com/damacus/med-tracker/commit/e2b3288f168c9b24f4539160ae1106c3fdb8b97f))
+* **ui:** move medication card actions into menu ([#1411](https://github.com/damacus/med-tracker/issues/1411)) ([7e0b8e3](https://github.com/damacus/med-tracker/commit/7e0b8e3e82e0897fdb575ea3825b661ec77b6a0b))
+* **ui:** use RubyUI dropdown menu items ([#1413](https://github.com/damacus/med-tracker/issues/1413)) ([d97f066](https://github.com/damacus/med-tracker/commit/d97f0660213b4c6d6fd8c367854a02317452cf64))
+
 ## [0.5.3](https://github.com/damacus/med-tracker/compare/v0.5.2...v0.5.3) (2026-06-30)
 
 
