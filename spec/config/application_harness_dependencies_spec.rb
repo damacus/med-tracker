@@ -56,12 +56,59 @@ RSpec.describe ApplicationHarnessDependencies do
     expect(dockerfile).to include('BUNDLE_WITH')
   end
 
-  it 'keeps development database headers out of the production image stage' do
-    app_stage = dockerfile.split('FROM ruby:4.0.4-slim-trixie AS app').fetch(1)
+  it 'keeps Debian package installs out of the shared Docker base stage' do
+    base_stage = docker_stage('base')
 
-    expect(app_stage).to include('libpq5')
-    expect(app_stage).not_to include('libpq-dev')
-    expect(app_stage).not_to match(/apt-get install[^\n]+curl/)
+    expect(base_stage).not_to include('apt-get install')
+    expect(base_stage).not_to include('apt-get upgrade')
+  end
+
+  it 'installs native gem build packages only in the Docker gem builder stage' do
+    gem_builder_stage = docker_stage('gem_builder')
+
+    expect(gem_builder_stage).to include(expected_gem_builder_package_install)
+    expect(gem_builder_stage).not_to include('curl')
+    expect(gem_builder_stage).not_to include('git')
+    expect(gem_builder_stage).not_to include('unzip')
+    expect(gem_builder_stage).not_to include('apt-get upgrade')
+  end
+
+  it 'copies only required Rails paths into the development Docker image' do
+    development_stage = docker_stage('development')
+
+    expected_development_copy_lines.each do |copy_line|
+      expect(development_stage).to include(copy_line)
+    end
+
+    expect(development_stage).not_to include('COPY --chown=ruby:ruby . .')
+  end
+
+  it 'copies only required Rails and test paths into the test Docker image' do
+    test_stage = docker_stage('test')
+
+    expected_test_copy_lines.each do |copy_line|
+      expect(test_stage).to include(copy_line)
+    end
+
+    expect(test_stage).not_to include('COPY --chown=ruby:ruby . .')
+  end
+
+  it 'installs only required runtime packages in the production Docker image' do
+    app_stage = docker_stage('app')
+
+    expect(app_stage).to include('apt-get install -y --no-install-recommends ca-certificates curl libpq5 unzip')
+    expect(forbidden_production_dependencies.select { |dependency| app_stage.include?(dependency) }).to be_empty
+  end
+
+  it 'copies only required runtime paths into the production Docker image' do
+    app_stage = docker_stage('app')
+
+    expected_production_copy_lines.each do |copy_line|
+      expect(app_stage).to include(copy_line)
+    end
+
+    expect(app_stage).not_to include('COPY --chown=ruby:ruby . .')
+    expect(app_stage).not_to include('RUN chmod 0755 bin/*')
   end
 
   def gemfile
@@ -70,6 +117,19 @@ RSpec.describe ApplicationHarnessDependencies do
 
   def dockerfile
     Rails.root.join('Dockerfile').read
+  end
+
+  def docker_stage(name)
+    lines = dockerfile.lines
+    start_index = lines.find_index { |line| line.match?(/^FROM .+ AS #{Regexp.escape(name)}$/) }
+    raise KeyError, "Docker stage not found: #{name}" unless start_index
+
+    end_index = lines[(start_index + 1)..].find_index { |line| line.start_with?('FROM ') }
+    if end_index
+      lines[start_index, end_index + 1].join
+    else
+      lines[start_index..].join
+    end
   end
 
   def compose_yaml
@@ -90,5 +150,46 @@ RSpec.describe ApplicationHarnessDependencies do
 
   def ci_workflow
     Rails.root.join('.github/workflows/ci.yml').read
+  end
+
+  def expected_development_copy_lines
+    [
+      'COPY --chown=ruby:ruby app/ ./app/',
+      'COPY --chown=ruby:ruby bin/ ./bin/',
+      'COPY --chown=ruby:ruby config/ ./config/',
+      'COPY --chown=ruby:ruby db/ ./db/',
+      'COPY --chown=ruby:ruby lib/ ./lib/',
+      'COPY --chown=ruby:ruby public/ ./public/',
+      'COPY --chown=ruby:ruby config.ru Rakefile ./'
+    ]
+  end
+
+  def expected_test_copy_lines
+    expected_development_copy_lines + [
+      'COPY --chown=ruby:ruby spec/ ./spec/',
+      'COPY --chown=ruby:ruby .rspec .simplecov ./'
+    ]
+  end
+
+  def expected_gem_builder_package_install
+    'apt-get install -y --no-install-recommends build-essential libpq-dev libyaml-dev'
+  end
+
+  def forbidden_production_dependencies
+    %w[build-essential git libpq-dev libyaml-dev] + ['apt-get upgrade']
+  end
+
+  def expected_production_copy_lines
+    [
+      'COPY --chown=ruby:ruby --from=assets /usr/local/bundle /usr/local/bundle',
+      'COPY --chown=ruby:ruby --from=assets /app/app /app/app',
+      'COPY --chown=ruby:ruby --from=assets /app/bin /app/bin',
+      'COPY --chown=ruby:ruby --from=assets /app/config /app/config',
+      'COPY --chown=ruby:ruby --from=assets /app/db /app/db',
+      'COPY --chown=ruby:ruby --from=assets /app/lib /app/lib',
+      'COPY --chown=ruby:ruby --from=assets /app/public /app/public',
+      'COPY --chown=ruby:ruby --from=assets /app/config.ru /app/Rakefile /app/',
+      'COPY --chown=ruby:ruby --from=assets /app/Gemfile /app/Gemfile.lock /app/'
+    ]
   end
 end

@@ -1,16 +1,12 @@
-FROM ruby:4.0.4-slim-trixie AS base
+FROM ruby:4.0.5-slim-trixie AS base
 WORKDIR /app
 
 ARG UID=1000
 ARG GID=1000
 
-RUN bash -c "set -o pipefail && apt-get update \
-  && apt-get install -y --no-install-recommends build-essential curl git libpq-dev libyaml-dev unzip \
-  && rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man \
-  && apt-get clean \
-  && groupadd -g \"${GID}\" ruby \
-  && useradd --create-home --no-log-init -u \"${UID}\" -g \"${GID}\" ruby \
-  && chown ruby:ruby -R /app /usr/local/bundle"
+RUN groupadd -g "${GID}" ruby \
+  && useradd --create-home --no-log-init -u "${UID}" -g "${GID}" ruby \
+  && chown ruby:ruby -R /app /usr/local/bundle
 
 USER ruby
 
@@ -19,7 +15,20 @@ ENV PATH="${PATH}:/home/ruby/.local/bin" \
 
 ###############################################################################
 
-FROM base AS development
+FROM base AS gem_builder
+
+USER root
+
+RUN bash -c "set -o pipefail && apt-get update \
+  && apt-get install -y --no-install-recommends build-essential libpq-dev libyaml-dev \
+  && rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man \
+  && apt-get clean"
+
+USER ruby
+
+###############################################################################
+
+FROM gem_builder AS development
 
 ENV RAILS_ENV=development \
   NODE_ENV=development \
@@ -29,14 +38,20 @@ ENV RAILS_ENV=development \
 COPY --chown=ruby:ruby Gemfile* ./
 RUN bundle install
 
-COPY --chown=ruby:ruby . .
+COPY --chown=ruby:ruby app/ ./app/
+COPY --chown=ruby:ruby bin/ ./bin/
+COPY --chown=ruby:ruby config/ ./config/
+COPY --chown=ruby:ruby db/ ./db/
+COPY --chown=ruby:ruby lib/ ./lib/
+COPY --chown=ruby:ruby public/ ./public/
+COPY --chown=ruby:ruby config.ru Rakefile ./
 
 ENTRYPOINT ["/app/bin/docker-entrypoint-web"]
 CMD ["rails", "server", "-b", "0.0.0.0"]
 
 ###############################################################################
 
-FROM base AS assets
+FROM gem_builder AS assets
 
 ENV RAILS_ENV=production \
   NODE_ENV=production \
@@ -55,12 +70,12 @@ CMD ["rails", "server", "-b", "0.0.0.0"]
 
 ###############################################################################
 
-FROM base AS test
+FROM gem_builder AS test
 
 USER root
 
 RUN bash -c "set -o pipefail && apt-get update \
-  && apt-get install -y --no-install-recommends postgresql-client ca-certificates curl \
+  && apt-get install -y --no-install-recommends postgresql-client ca-certificates curl git unzip \
     libnss3 libatk-bridge2.0-0 libdrm2 libxkbcommon0 \
     libxcomposite1 libxdamage1 libxrandr2 libgbm1 libxss1 libasound2 \
   && mkdir -p /etc/apt/keyrings \
@@ -97,14 +112,22 @@ RUN bash -c 'for browser in chromium chromium_headless_shell; do for revision in
 
 USER ruby
 
-COPY --chown=ruby:ruby . .
+COPY --chown=ruby:ruby app/ ./app/
+COPY --chown=ruby:ruby bin/ ./bin/
+COPY --chown=ruby:ruby config/ ./config/
+COPY --chown=ruby:ruby db/ ./db/
+COPY --chown=ruby:ruby lib/ ./lib/
+COPY --chown=ruby:ruby public/ ./public/
+COPY --chown=ruby:ruby spec/ ./spec/
+COPY --chown=ruby:ruby .rspec .simplecov ./
+COPY --chown=ruby:ruby config.ru Rakefile ./
 
 ENTRYPOINT ["/app/bin/docker-entrypoint-web"]
 CMD ["bundle", "exec", "rspec"]
 
 ###############################################################################
 
-FROM base AS tools
+FROM gem_builder AS tools
 
 ENV RAILS_ENV=test \
   NODE_ENV=test \
@@ -121,24 +144,17 @@ CMD ["bundle", "exec", "rubocop"]
 
 ###############################################################################
 
-FROM ruby:4.0.4-slim-trixie AS app
-WORKDIR /app
+FROM base AS app
 
-ARG UID=1000
-ARG GID=1000
+USER root
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends libpq5 unzip \
+  && apt-get install -y --no-install-recommends ca-certificates curl libpq5 unzip \
   && rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man \
   && apt-get clean \
-  && groupadd -g "${GID}" ruby \
-  && useradd --create-home --no-log-init -u "${UID}" -g "${GID}" ruby \
   && chown ruby:ruby -R /app
 
 USER ruby
-
-COPY --chown=ruby:ruby bin/ ./bin
-RUN chmod 0755 bin/*
 
 ENV RAILS_ENV=production \
   NODE_ENV=production \
@@ -148,8 +164,14 @@ ENV RAILS_ENV=production \
   USER="ruby"
 
 COPY --chown=ruby:ruby --from=assets /usr/local/bundle /usr/local/bundle
+COPY --chown=ruby:ruby --from=assets /app/app /app/app
+COPY --chown=ruby:ruby --from=assets /app/bin /app/bin
+COPY --chown=ruby:ruby --from=assets /app/config /app/config
+COPY --chown=ruby:ruby --from=assets /app/db /app/db
+COPY --chown=ruby:ruby --from=assets /app/lib /app/lib
 COPY --chown=ruby:ruby --from=assets /app/public /app/public
-COPY --chown=ruby:ruby . .
+COPY --chown=ruby:ruby --from=assets /app/config.ru /app/Rakefile /app/
+COPY --chown=ruby:ruby --from=assets /app/Gemfile /app/Gemfile.lock /app/
 RUN test -f /app/public/assets/.manifest.json && ls /app/public/assets/tailwind-*.css >/dev/null 2>&1
 
 EXPOSE 80
