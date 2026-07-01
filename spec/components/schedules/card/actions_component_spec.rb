@@ -53,11 +53,14 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
     rendered = render_as_owner
 
     trigger = rendered.at_css("button[data-testid='schedule-actions-#{schedule.id}']")
+    trigger_classes = trigger['class'].split
     edit_link = rendered.at_css("[data-testid='edit-schedule-#{schedule.id}']")
     pause_button = rendered.at_css("[data-testid='pause-schedule-#{schedule.id}']")
 
     expect(trigger).to be_present
-    expect(trigger.text).to include('Actions')
+    expect(trigger_classes).to include('h-11')
+    expect(trigger_classes).to include('w-11')
+    expect(trigger.at_css('.sr-only').text).to eq('Actions')
     expect(rendered.css("[data-testid='edit-schedule-#{schedule.id}']")).to be_present
     expect(rendered.css("[data-testid='delete-schedule-#{schedule.id}']")).to be_present
     expect(edit_link['role']).to eq('menuitem')
@@ -75,6 +78,20 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
     expect(action_row['class'].split).to include('min-w-0')
     expect(trigger['class'].split).to include('rounded-shape-full')
     expect(trigger['class'].split).to include('shrink-0')
+  end
+
+  it 'uses design-system sizing for compact action controls', :aggregate_failures do
+    rendered = render_as_owner
+    past_dose_button_classes = rendered.at_css("button[data-testid='log-past-dose-schedule-#{schedule.id}']")[
+      'class'
+    ].split
+    dropdown = rendered.at_css('[data-ruby-ui--dropdown-menu-options-value]')
+
+    expect(past_dose_button_classes).to include('min-h-[44px]')
+    expect(past_dose_button_classes).not_to include('h-14')
+    expect(past_dose_button_classes).not_to include('min-h-[56px]')
+    expect(past_dose_button_classes).not_to include('py-6')
+    expect(dropdown['data-ruby-ui--dropdown-menu-options-value']).to include('"strategy":"fixed"')
   end
 
   def render_as_owner

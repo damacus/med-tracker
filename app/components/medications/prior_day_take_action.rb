@@ -19,8 +19,8 @@ module Components
       end
 
       def view_template
-        Dialog(class: button_options ? nil : 'block w-full') do
-          DialogTrigger(class: button_options ? nil : 'block w-full') { render_trigger }
+        Dialog(class: dialog_class) do
+          DialogTrigger(class: trigger_class) { render_trigger }
           DialogContent(size: :md) do
             DialogHeader do
               DialogTitle do
@@ -60,6 +60,18 @@ module Components
       end
 
       private
+
+      def dialog_class
+        return 'block w-full' unless button_options
+
+        button_options[:dialog_class]
+      end
+
+      def trigger_class
+        return 'block w-full' unless button_options
+
+        button_options[:trigger_class]
+      end
 
       def render_trigger
         if button_options

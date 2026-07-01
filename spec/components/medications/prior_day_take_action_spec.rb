@@ -44,6 +44,17 @@ RSpec.describe Components::Medications::PriorDayTakeAction, type: :component do
     expect(trigger.at_css('svg.lucide-calendar')).not_to be_nil
   end
 
+  it 'applies a custom dialog trigger wrapper class for full-width action buttons' do
+    build_alternate_medication
+    rendered = render_button_component
+
+    button = rendered.at_css("button[data-testid='log-past-dose-schedule-#{source.id}']")
+    trigger_wrapper = button.ancestors.find { |node| node['data-action'] == 'click->ruby-ui--dialog#open' }
+
+    expect(button).not_to be_nil
+    expect(trigger_wrapper['class'].split).to include('block', 'w-full')
+  end
+
   def render_component
     html = view_context.render(
       described_class.new(
@@ -51,6 +62,24 @@ RSpec.describe Components::Medications::PriorDayTakeAction, type: :component do
         context: { person: person, current_user: user },
         amount: source.dose_amount,
         testid: "log-past-dose-schedule-#{source.id}"
+      )
+    )
+    Nokogiri::HTML::DocumentFragment.parse(html)
+  end
+
+  def render_button_component
+    html = view_context.render(
+      described_class.new(
+        source: source,
+        context: { person: person, current_user: user },
+        amount: source.dose_amount,
+        testid: "log-past-dose-schedule-#{source.id}",
+        button: {
+          variant: :outlined,
+          size: :lg,
+          trigger_class: 'block w-full',
+          class: 'w-full'
+        }
       )
     )
     Nokogiri::HTML::DocumentFragment.parse(html)
