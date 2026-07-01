@@ -77,6 +77,13 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     expect(rendered.at_css("button[data-testid='delete-person-medication-#{person_medication.id}']")).to be_present
   end
 
+  it 'keeps the delete dialog trigger full-width inside the actions menu', :aggregate_failures do
+    rendered = render_person_medication_card(update: true, destroy: true)
+
+    expect(delete_dialog_classes(rendered)).to include('block', 'w-full')
+    expect(delete_trigger_classes(rendered)).to include('block', 'w-full')
+  end
+
   it 'uses design-system sizing for compact action controls', :aggregate_failures do
     rendered = render_person_medication_card(update: true, destroy: true)
     past_dose_button_classes = rendered.at_css(
@@ -108,5 +115,15 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     vc.singleton_class.define_method(:policy) { |_record| policy_stub }
     html = vc.render(described_class.new(person_medication: person_medication, person: person))
     Nokogiri::HTML::DocumentFragment.parse(html)
+  end
+
+  def delete_trigger_classes(rendered)
+    button = rendered.at_css("button[data-testid='delete-person-medication-#{person_medication.id}']")
+    button.ancestors.find { |node| node['data-action'] == 'click->ruby-ui--alert-dialog#open' }['class'].split
+  end
+
+  def delete_dialog_classes(rendered)
+    button = rendered.at_css("button[data-testid='delete-person-medication-#{person_medication.id}']")
+    button.ancestors.find { |node| node['data-controller'] == 'ruby-ui--alert-dialog' }['class'].split
   end
 end
