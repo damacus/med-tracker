@@ -49,18 +49,26 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
     expect(rendered.css("[data-testid='log-past-dose-schedule-#{schedule.id}']")).to be_present
   end
 
-  it 'renders secondary actions in an actions menu', :aggregate_failures do
+  it 'renders the actions menu trigger as a RubyUI outline button', :aggregate_failures do
     rendered = render_as_owner
 
     trigger = rendered.at_css("button[data-testid='schedule-actions-#{schedule.id}']")
     trigger_classes = trigger['class'].split
+
+    expect(trigger).to be_present
+    expect(trigger_classes).to include('bg-background')
+    expect(trigger_classes).to include('min-h-[44px]')
+    expect(trigger_classes).to include('px-4')
+    expect(trigger_classes).not_to include('px-1.5')
+    expect(trigger_classes).not_to include('state-layer')
+    expect(trigger.text).to include('Actions')
+  end
+
+  it 'renders secondary actions in an actions menu', :aggregate_failures do
+    rendered = render_as_owner
     edit_link = rendered.at_css("[data-testid='edit-schedule-#{schedule.id}']")
     pause_button = rendered.at_css("[data-testid='pause-schedule-#{schedule.id}']")
 
-    expect(trigger).to be_present
-    expect(trigger_classes).to include('h-11')
-    expect(trigger_classes).to include('w-11')
-    expect(trigger.at_css('.sr-only').text).to eq('Actions')
     expect(rendered.css("[data-testid='edit-schedule-#{schedule.id}']")).to be_present
     expect(rendered.css("[data-testid='delete-schedule-#{schedule.id}']")).to be_present
     expect(edit_link['role']).to eq('menuitem')
@@ -72,11 +80,12 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
   it 'keeps action controls on one line with a labelled actions trigger', :aggregate_failures do
     rendered = render_as_owner
     action_row = rendered.at_css('[data-testid="schedule-card-actions"]')
+    footer_classes = action_row.ancestors.find { |node| node['class']&.include?('pb-8') }['class'].split
     trigger = rendered.at_css("button[data-testid='schedule-actions-#{schedule.id}']")
 
+    expect(footer_classes).to include('px-6')
     expect(action_row['class'].split).not_to include('flex-wrap')
     expect(action_row['class'].split).to include('min-w-0')
-    expect(trigger['class'].split).to include('rounded-shape-full')
     expect(trigger['class'].split).to include('shrink-0')
     expect(delete_dialog_classes(rendered)).to include('block', 'w-full')
     expect(delete_trigger_classes(rendered)).to include('block', 'w-full')
@@ -90,6 +99,8 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
     dropdown = rendered.at_css('[data-ruby-ui--dropdown-menu-options-value]')
 
     expect(past_dose_button_classes).to include('min-h-[44px]')
+    expect(past_dose_button_classes).to include('state-layer-overflow-visible')
+    expect(past_dose_button_classes).not_to include('overflow-hidden')
     expect(past_dose_button_classes).not_to include('h-14')
     expect(past_dose_button_classes).not_to include('min-h-[56px]')
     expect(past_dose_button_classes).not_to include('py-6')

@@ -1093,3 +1093,7 @@
 	&:active::after { opacity: 0.12; }
 	&:focus-visible::after { opacity: 0.12; }
 }
+
+@utility state-layer-overflow-visible {
+	overflow: visible !important;
+}

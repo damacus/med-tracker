@@ -40,18 +40,27 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     expect(button.text).to include('Log a past dose')
   end
 
-  it 'keeps secondary actions in an actions menu', :aggregate_failures do
+  it 'renders the actions menu trigger as a RubyUI outline button', :aggregate_failures do
     rendered = render_person_medication_card(update: true)
 
     trigger = rendered.at_css("button[data-testid='person-medication-actions-#{person_medication.id}']")
     trigger_classes = trigger['class'].split
+
+    expect(trigger).not_to be_nil
+    expect(trigger_classes).to include('bg-background')
+    expect(trigger_classes).to include('min-h-[44px]')
+    expect(trigger_classes).to include('px-4')
+    expect(trigger_classes).not_to include('px-1.5')
+    expect(trigger_classes).not_to include('state-layer')
+    expect(trigger.text).to include('Actions')
+  end
+
+  it 'keeps secondary actions in an actions menu', :aggregate_failures do
+    rendered = render_person_medication_card(update: true)
+
     link = rendered.at_css("a[data-testid='edit-person-medication-#{person_medication.id}']")
     pause_button = rendered.at_css("button[data-testid='pause-person-medication-#{person_medication.id}']")
 
-    expect(trigger).not_to be_nil
-    expect(trigger_classes).to include('h-11')
-    expect(trigger_classes).to include('w-11')
-    expect(trigger.at_css('.sr-only').text).to eq('Actions')
     expect(link).not_to be_nil
     expect(link['role']).to eq('menuitem')
     expect(link.text).to include('Edit')
@@ -69,8 +78,10 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     rendered = render_person_medication_card(update: true, destroy: true)
     actions = rendered.at_css('[data-testid="person-medication-card-actions"]')
     action_classes = actions['class'].split
+    footer_classes = actions.ancestors.find { |node| node['class']&.include?('pb-8') }['class'].split
     menu = rendered.at_css("[data-testid='person-medication-actions-menu-#{person_medication.id}']")
 
+    expect(footer_classes).to include('px-6')
     expect(action_classes).not_to include('flex-wrap')
     expect(action_classes).to include('min-w-0')
     expect(menu).not_to be_nil
@@ -92,6 +103,8 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     dropdown = rendered.at_css('[data-ruby-ui--dropdown-menu-options-value]')
 
     expect(past_dose_button_classes).to include('min-h-[44px]')
+    expect(past_dose_button_classes).to include('state-layer-overflow-visible')
+    expect(past_dose_button_classes).not_to include('overflow-hidden')
     expect(past_dose_button_classes).not_to include('h-14')
     expect(past_dose_button_classes).not_to include('min-h-[56px]')
     expect(past_dose_button_classes).not_to include('py-6')
