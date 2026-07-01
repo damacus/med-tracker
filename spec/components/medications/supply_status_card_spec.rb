@@ -11,6 +11,19 @@ RSpec.describe Components::Medications::SupplyStatusCard, type: :component do
     expect(rendered.text).to include('Inventory Status')
   end
 
+  it 'renders the supply level with the stable supply meter', :aggregate_failures do
+    rendered = render_inline(described_class.new(medication: medication))
+    meter = rendered.at_css('[data-testid="medication-show-stock-meter"]')
+
+    expect(meter).to be_present
+    expect(meter['role']).to eq('progressbar')
+    fill = rendered.at_css('[data-testid="medication-show-stock-meter-fill"]')
+
+    expect(fill['class']).to include('bg-primary')
+    expect(fill['style']).to start_with('transform: translateX(')
+    expect(rendered.css('progress.supply-progress')).to be_empty
+  end
+
   context 'when forecast is available' do
     it 'renders the out-of-stock forecast' do
       medication_with_schedule = create(:medication, name: 'Paracetamol', current_supply: 50)

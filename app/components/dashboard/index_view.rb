@@ -562,14 +562,13 @@ module Components
               t('dashboard.inventory.left', count: current)
             end
           end
-          div(class: 'h-3 w-full bg-surface-container rounded-full overflow-hidden shadow-inner') do
-            progress(
-              class: "supply-progress #{medication.low_stock? ? 'text-error' : 'text-primary'}",
-              value: percentage,
-              max: 100,
-              aria: { label: t('dashboard.inventory.left', count: current) }
-            )
-          end
+          render Components::Shared::SupplyMeter.new(
+            percentage: percentage,
+            label: t('dashboard.inventory.left', count: current),
+            fill_class: medication.low_stock? ? 'text-error' : 'text-primary',
+            track_class: 'h-3 bg-surface-container shadow-inner',
+            testid: 'dashboard-stock-meter'
+          )
         end
       end
 
