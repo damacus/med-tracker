@@ -74,7 +74,7 @@ module Components
       end
 
       def render_card_footer
-        CardFooter(class: 'px-8 pb-8 pt-2') do
+        CardFooter(class: 'px-6 pb-8 pt-2') do
           render_person_medication_actions
         end
       end
@@ -140,7 +140,7 @@ module Components
       end
 
       def render_person_medication_actions
-        div(class: 'flex min-w-0 items-center gap-2 w-full',
+        div(class: 'flex min-w-0 items-center gap-0.5 w-full',
             data: { testid: 'person-medication-card-actions' }) do
           render_past_dose_button unless person_medication.paused?
           render_actions_menu if secondary_actions?
@@ -162,7 +162,7 @@ module Components
               variant: :outlined,
               size: :lg,
               trigger_class: 'block w-full',
-              class: 'w-full min-w-0 overflow-hidden rounded-shape-full font-bold ' \
+              class: 'w-full min-w-0 state-layer-overflow-visible rounded-shape-full font-bold ' \
                      'border-outline text-on-surface-variant hover:bg-tertiary-container transition-colors'
             }
           )
@@ -172,18 +172,14 @@ module Components
       def render_actions_menu
         render RubyUI::DropdownMenu.new(options: { placement: 'bottom-end', strategy: 'fixed' }, class: 'shrink-0') do
           render RubyUI::DropdownMenuTrigger.new(class: 'shrink-0') do
-            m3_button(
-              variant: :outlined,
-              size: :lg,
-              icon: true,
+            render RubyUI::Button.new(
+              variant: :outline,
               type: :button,
-              class: 'shrink-0 rounded-shape-full border-outline text-on-surface-variant ' \
-                     'hover:bg-tertiary-container hover:text-foreground transition-colors',
+              class: 'shrink-0',
               data: { testid: "person-medication-actions-#{person_medication.id}" },
               aria_label: t('person_medications.card.actions')
             ) do
-              render Icons::MoreHorizontal.new(size: 18, aria_hidden: 'true', class: 'shrink-0')
-              span(class: 'sr-only') { t('person_medications.card.actions') }
+              t('person_medications.card.actions')
             end
           end
           render RubyUI::DropdownMenuContent.new(

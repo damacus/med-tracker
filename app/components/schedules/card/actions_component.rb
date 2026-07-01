@@ -15,8 +15,8 @@ module Components
         end
 
         def view_template
-          CardFooter(class: 'px-8 pb-8 pt-2') do
-            div(class: 'flex min-w-0 items-center gap-2 w-full',
+          CardFooter(class: 'px-6 pb-8 pt-2') do
+            div(class: 'flex min-w-0 items-center gap-0.5 w-full',
                 data: { testid: 'schedule-card-actions' }) do
               render_past_dose_button unless schedule.paused?
               render_actions_menu if administrator?
@@ -37,7 +37,7 @@ module Components
                 variant: :outlined,
                 size: :lg,
                 trigger_class: 'block w-full',
-                class: 'w-full min-w-0 overflow-hidden rounded-shape-full font-bold ' \
+                class: 'w-full min-w-0 state-layer-overflow-visible rounded-shape-full font-bold ' \
                        'border-outline text-on-surface-variant hover:bg-surface-container-high transition-all'
               }
             )
@@ -47,18 +47,14 @@ module Components
         def render_actions_menu
           render RubyUI::DropdownMenu.new(options: { placement: 'bottom-end', strategy: 'fixed' }, class: 'shrink-0') do
             render RubyUI::DropdownMenuTrigger.new(class: 'shrink-0') do
-              m3_button(
-                variant: :outlined,
-                size: :lg,
-                icon: true,
+              render RubyUI::Button.new(
+                variant: :outline,
                 type: :button,
-                class: 'shrink-0 rounded-shape-full border-outline text-on-surface-variant ' \
-                       'hover:bg-tertiary-container hover:text-foreground transition-colors',
+                class: 'shrink-0',
                 data: { testid: "schedule-actions-#{schedule.id}" },
                 aria_label: t('schedules.card.actions')
               ) do
-                render Icons::MoreHorizontal.new(size: 18, aria_hidden: 'true', class: 'shrink-0')
-                span(class: 'sr-only') { t('schedules.card.actions') }
+                t('schedules.card.actions')
               end
             end
             render RubyUI::DropdownMenuContent.new(
