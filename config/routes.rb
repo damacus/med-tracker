@@ -114,6 +114,7 @@ Rails.application.routes.draw do
 
   namespace :platform do
     resource :settings, only: %i[show update]
+    resources :users, only: %i[index update]
     resources :support_access_sessions, only: %i[create destroy]
   end
 
@@ -196,6 +197,7 @@ Rails.application.routes.draw do
 
     namespace :admin do
       root to: 'dashboard#index'
+      resource :household, only: %i[edit update]
       resource :nhs_dmd_import, only: %i[new create]
       resources :users, only: %i[index new create edit update destroy] do
         member do

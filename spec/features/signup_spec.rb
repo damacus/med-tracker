@@ -6,7 +6,7 @@ RSpec.describe 'User Signup', type: :system do
   describe 'creating a new account' do
     before do
       driven_by(:rack_test)
-      HouseholdMembership.owner.delete_all
+      HouseholdMembership.owner.find_each(&:destroy!)
     end
 
     it 'creates both an Account and a Person with valid details' do

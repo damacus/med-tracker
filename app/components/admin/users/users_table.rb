@@ -55,6 +55,7 @@ module Components
 
                   dl(class: 'grid grid-cols-2 gap-3 border-t border-outline-variant/30 pt-4 text-sm') do
                     render_mobile_detail(t('admin.users.form.role'), membership_role_for(user))
+                    render_mobile_detail(t('admin.users.table.system_access'), system_access_label_for(user))
                     div do
                       dt(class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant') do
                         t('admin.users.table.verification')
@@ -92,6 +93,7 @@ module Components
               render(RubyUI::TableHead.new { render_sortable_header(t('admin.users.form.name'), 'name') })
               render(RubyUI::TableHead.new { render_sortable_header(t('admin.users.form.email_address'), 'email') })
               render(RubyUI::TableHead.new { render_sortable_header(t('admin.users.form.role'), 'membership_role') })
+              render(RubyUI::TableHead.new { t('admin.users.table.system_access') })
               render(RubyUI::TableHead.new { t('admin.users.table.activation') })
               render(RubyUI::TableHead.new { t('admin.users.table.verification') })
               render RubyUI::TableHead.new(class: 'text-center') { t('admin.users.table.actions') }
@@ -168,6 +170,23 @@ module Components
 
         def no_membership_label
           t('admin.users.form.no_membership', default: 'No membership')
+        end
+
+        def system_access_label_for(user)
+          if platform_admin_account_ids.include?(user.person&.account_id)
+            t('admin.users.table.system_administrator')
+          else
+            t('admin.users.table.household_user')
+          end
+        end
+
+        def platform_admin_account_ids
+          return @platform_admin_account_ids if defined?(@platform_admin_account_ids)
+
+          @platform_admin_account_ids = PlatformAdmin.active
+                                                     .where(account_id: memberships_by_account_id.keys)
+                                                     .pluck(:account_id)
+                                                     .to_set
         end
 
         def render_status_badge(user)

@@ -133,6 +133,13 @@ en:
         title: Controlled by environment variable
         body: The %{var} environment variable is set to "%{value}". Remove it to manage
           this setting here.
+    households:
+      updated: Household saved
+      title: Household Settings
+      subtitle: Rename the current household and keep the household label recognizable
+        for everyone with access.
+      name: Household name
+      save: Save household
     membership_roles:
       invalid_role: Select a valid household role.
       owner_rejected: Owner promotion requires platform admin support.
@@ -196,6 +203,9 @@ en:
         all: All
         clear: Clear
       table:
+        system_access: System access
+        system_administrator: System Administrator
+        household_user: Household User
         activation: Activation
         verification: Verification
         actions: Actions
@@ -359,6 +369,8 @@ en:
         manage_users_description: View and manage user accounts
         invitations_title: Invitations
         invitations_description: Invite new users to join
+        household_settings_title: Household Settings
+        household_settings_description: Rename this household
         manage_people_title: Manage People
         manage_people_description: View and manage people records
         audit_trail_title: Audit Trail
@@ -413,6 +425,17 @@ en:
         no_log: No progress has been recorded yet.
         awaiting_count: Waiting for record count
   platform:
+    users:
+      title: System Administrators
+      subtitle: Review household roles and grant platform-wide administration access.
+      settings: Platform Settings
+      household_role: Household role
+      system_access: System access
+      system_administrator: System Administrator
+      household_user: Household User
+      grant_system_access: Grant system access
+      remove_system_access: Remove system access
+      updated: System access updated
     settings:
       title: Platform Settings
       subtitle: Configure hosted application-wide settings.
