@@ -1272,8 +1272,8 @@ ga:
         fógraí ó aon seomra rialaithe socair amháin.
       not_set: Gan socrú
       stats:
-        profile_name: Ainm próifíle
-        sign_in_email: Ríomhphost logála isteach
+        profile_name: Ainm
+        sign_in_email: Ríomhphost
       personal_information:
         title: Faisnéis Phearsanta
         description: Eolas bunúsach do phróifíle
