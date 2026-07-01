@@ -27,7 +27,7 @@ module Admin
             carers: options.carers,
             patients: options.patients,
             modal: is_modal
-          ), layout: false
+          ), layout: !is_modal
         end
         format.turbo_stream do
           render turbo_stream: turbo_stream.replace(

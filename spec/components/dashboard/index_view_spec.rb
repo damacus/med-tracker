@@ -254,6 +254,21 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(rendered.text).to include('Stock Inventory')
     end
 
+    it 'renders stock inventory with stable mobile-safe supply meters', :aggregate_failures do
+      presenter = person_task_presenter(active_schedules: [schedules(:john_paracetamol)])
+      rendered = render_inline(described_class.new(presenter: presenter))
+      meter = rendered.at_css('[data-testid="dashboard-stock-meter"]')
+      fill = rendered.at_css('[data-testid="dashboard-stock-meter-fill"]')
+
+      expect(meter).to be_present
+      expect(meter['role']).to eq('progressbar')
+      expect(meter['class']).to include('bg-surface-container')
+      expect(fill.name).to eq('div')
+      expect(fill['class']).to include('bg-primary')
+      expect(fill['style']).to start_with('transform: translateX(')
+      expect(rendered.css('progress.supply-progress')).to be_empty
+    end
+
     it 'does not render a duplicate Next Dose card in the right rail' do
       rendered = render_inline(dashboard_view)
 
@@ -399,12 +414,17 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     end
   end
 
-  def person_task_presenter(routine_status: :upcoming, insight_result: nil, can_view_reports: true)
+  def person_task_presenter(
+    routine_status: :upcoming,
+    insight_result: nil,
+    can_view_reports: true,
+    active_schedules: []
+  )
     person = people(:john)
     instance_double(
       DashboardPresenter,
       people: [person],
-      active_schedules: [],
+      active_schedules: active_schedules,
       current_user: admin_user,
       **dashboard_action_metrics,
       smart_insights: insight_result || learning_insight_result,

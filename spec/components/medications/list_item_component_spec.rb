@@ -79,4 +79,19 @@ RSpec.describe Components::Medications::ListItemComponent, type: :component do
 
     expect(rendered.text).not_to include('In Stock')
   end
+
+  it 'renders the inventory level with the stable supply meter', :aggregate_failures do
+    medication = medications(:paracetamol)
+
+    rendered = render_inline(described_class.new(medication: medication))
+    meter = rendered.at_css('[data-testid="medication-list-stock-meter"]')
+
+    expect(meter).to be_present
+    expect(meter['role']).to eq('progressbar')
+    fill = rendered.at_css('[data-testid="medication-list-stock-meter-fill"]')
+
+    expect(fill['class']).to include('bg-')
+    expect(fill['style']).to start_with('transform: translateX(')
+    expect(rendered.css('progress.supply-progress')).to be_empty
+  end
 end

@@ -34,7 +34,7 @@ module Components
               end
             end
           else
-            div(class: 'max-w-2xl mx-auto') do
+            div(class: 'container mx-auto max-w-2xl px-4 py-12') do
               render_header
               render_form
             end
@@ -44,11 +44,13 @@ module Components
         private
 
         def render_header
-          header(class: 'mb-8') do
-            m3_heading(level: 1) do
+          header(class: 'mb-8 space-y-2 text-center md:text-left') do
+            m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight text-foreground') do
               relationship.new_record? ? 'New Carer Relationship' : 'Edit Carer Relationship'
             end
-            m3_text(weight: 'muted', class: 'mt-2') { 'Assign a carer to a patient.' }
+            m3_text(variant: :body_large, class: 'text-on-surface-variant font-medium') do
+              'Assign a carer to a patient.'
+            end
           end
         end
 
@@ -81,7 +83,10 @@ module Components
         def render_carer_field(_form)
           div do
             FormField do
-              FormFieldLabel(for: 'carer_relationship_carer_id') { 'Carer' }
+              FormFieldLabel(
+                for: 'carer_relationship_carer_id',
+                class: label_class
+              ) { 'Carer' }
               m3_select(
                 name: 'carer_relationship[carer_id]',
                 id: 'carer_relationship_carer_id',
@@ -99,7 +104,10 @@ module Components
         def render_patient_field(_form)
           div do
             FormField do
-              FormFieldLabel(for: 'carer_relationship_patient_id') { 'Patient' }
+              FormFieldLabel(
+                for: 'carer_relationship_patient_id',
+                class: label_class
+              ) { 'Patient' }
               m3_select(
                 name: 'carer_relationship[patient_id]',
                 id: 'carer_relationship_patient_id',
@@ -117,7 +125,10 @@ module Components
         def render_relationship_type_field(_form)
           div do
             FormField do
-              FormFieldLabel(for: 'carer_relationship_relationship_type') { 'Relationship type' }
+              FormFieldLabel(
+                for: 'carer_relationship_relationship_type',
+                class: label_class
+              ) { 'Relationship type' }
               m3_select(
                 name: 'carer_relationship[relationship_type]',
                 id: 'carer_relationship_relationship_type',
@@ -130,6 +141,10 @@ module Components
               end
             end
           end
+        end
+
+        def label_class
+          'ml-1 text-[10px] font-black uppercase tracking-widest text-on-surface-variant'
         end
 
         def render_submit_button(_form)

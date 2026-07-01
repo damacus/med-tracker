@@ -11,6 +11,16 @@ RSpec.describe Components::PersonMedications::FormView, type: :component do
     JSON.parse(form['data-person-medication-form-dose-options-value'])
   end
 
+  def rendered_form_view(person_medication: PersonMedication.new, medications: [])
+    render_inline(
+      described_class.new(
+        person_medication: person_medication,
+        person: instance_double(Person, name: 'John Doe', person_type: 'adult'),
+        medications: medications
+      )
+    )
+  end
+
   describe 'i18n translations' do
     it 'renders form with default locale translations' do
       person_medication = PersonMedication.new
@@ -66,5 +76,25 @@ RSpec.describe Components::PersonMedications::FormView, type: :component do
     expect(payload).to eq(
       medication.id.to_s => [{ 'amount' => '1' }]
     )
+  end
+
+  it 'keeps the form shell constrained for mobile viewports' do
+    rendered = rendered_form_view
+    action_row = rendered.at_css('[data-testid="person-medication-form-actions"]')
+    container = rendered.at_css('.container')
+    form = rendered.at_css('form[data-controller="person-medication-form"]')
+
+    expect(container['class']).to include('overflow-x-clip')
+    expect(form['class']).to include('overflow-x-clip')
+    expect(action_row['class']).to include('flex-wrap')
+    expect(action_row['class']).to include('max-w-full')
+  end
+
+  it 'keeps combobox controls shrinkable on mobile' do
+    rendered = rendered_form_view
+    comboboxes = rendered.css('[role="combobox"]')
+
+    expect(comboboxes).not_to be_empty
+    expect(comboboxes).to all(satisfy { |combobox| combobox['class'].split.include?('min-w-0') })
   end
 end

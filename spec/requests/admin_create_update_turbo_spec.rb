@@ -437,6 +437,16 @@ RSpec.describe 'Admin create and update turbo flows' do
   end
 
   describe 'GET /admin/carer_relationships/new' do
+    it 'renders the standalone HTML page with the application layout' do
+      get new_admin_carer_relationship_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('text/html')
+      expect(response.body).to include('<html')
+      expect(response.body).to include('stylesheet')
+      expect(response.body).to include('New Carer Relationship')
+    end
+
     it 'returns turbo_stream and replaces modal frame' do
       get new_admin_carer_relationship_path,
           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
