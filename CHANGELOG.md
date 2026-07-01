@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.5](https://github.com/damacus/med-tracker/compare/v0.5.4...v0.5.5) (2026-07-01)
+
+
+### Features
+
+* **admin:** manage system access and household names ([#1419](https://github.com/damacus/med-tracker/issues/1419)) ([dad4c51](https://github.com/damacus/med-tracker/commit/dad4c51629d9aef24d5835c3d1353796fcc43371))
+
 ## [0.5.4](https://github.com/damacus/med-tracker/compare/v0.5.3...v0.5.4) (2026-07-01)
 
 
