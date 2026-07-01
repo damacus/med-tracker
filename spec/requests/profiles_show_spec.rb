@@ -26,6 +26,23 @@ RSpec.describe 'Profiles' do
       expect(response.body.scan('data-turbo-frame="modal"').size).to be >= 2
     end
 
+    it 'renders readable stacked identity details in the profile hero', :aggregate_failures do
+      get profile_path
+
+      hero = response.parsed_body.at_css('[data-testid="profile-hero"]')
+      identity = hero.at_css('[data-testid="profile-identity-details"]')
+      labels = identity.css('p').map { |node| node.text.squish }
+      values = identity.css('[data-testid^="profile-identity-value"]').map { |node| node.text.squish }
+
+      expect(labels).to include('Name', 'Email')
+      expect(labels).not_to include('Profile name')
+      expect(labels).not_to include('Sign-in email')
+      expect(values).to include(user.name, account.email)
+      expect(identity['class']).to include('space-y-3')
+      expect(identity['class']).not_to include('grid')
+      expect(identity.to_html).not_to include('truncate')
+    end
+
     it 'renders the two-factor card and empty-state setup actions' do
       AccountOtpKey.where(id: account.id).delete_all
       AccountRecoveryCode.where(id: account.id).delete_all

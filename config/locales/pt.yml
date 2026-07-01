@@ -1400,8 +1400,8 @@ pt:
         a partir de uma única consola calma.
       not_set: Não definido
       stats:
-        profile_name: Nome do perfil
-        sign_in_email: Email de início de sessão
+        profile_name: Nome
+        sign_in_email: Email
       personal_information:
         title: Informação Pessoal
         description: As informações básicas do seu perfil

@@ -1290,8 +1290,8 @@ es:
         notificaciones desde un solo panel.
       not_set: No configurado
       stats:
-        profile_name: Nombre del perfil
-        sign_in_email: Correo de inicio de sesión
+        profile_name: Nombre
+        sign_in_email: Email
       personal_information:
         title: Información personal
         description: Tu información básica de perfil

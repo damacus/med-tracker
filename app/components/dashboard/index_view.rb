@@ -444,14 +444,22 @@ module Components
         end
         m3_text(variant: :body_large, class: dashboard_insight_body_text_classes) { content.fetch(:summary) }
         m3_text(variant: :body_medium, class: dashboard_insight_detail_text_classes) { content.fetch(:detail) }
-        render_dashboard_insight_metric(content)
-        render_dashboard_insight_link
+        render_dashboard_insight_actions(content)
+      end
+
+      def render_dashboard_insight_actions(content)
+        return if content[:metric_label].blank? && !presenter.can_view_reports?
+
+        div(class: 'flex flex-wrap items-center gap-3 pt-6', data: { testid: 'dashboard-insight-actions' }) do
+          render_dashboard_insight_metric(content)
+          render_dashboard_insight_link
+        end
       end
 
       def render_dashboard_insight_metric(content)
         return if content[:metric_label].blank? || content[:metric_value].blank?
 
-        div(class: dashboard_insight_metric_tile_classes) do
+        div(class: dashboard_insight_metric_tile_classes, data: { testid: 'dashboard-insight-metric' }) do
           span(class: 'text-xs font-bold uppercase tracking-widest') { content.fetch(:metric_label) }
           span(class: 'text-sm font-black') { content.fetch(:metric_value) }
         end
@@ -463,7 +471,7 @@ module Components
         m3_link(
           href: reports_path(anchor: 'insights'),
           variant: :tonal,
-          class: 'mt-8 inline-flex max-w-full items-center justify-center rounded-shape-full px-5 py-2.5 ' \
+          class: 'inline-flex max-w-full items-center justify-center rounded-shape-full px-4 py-2 ' \
                  'min-h-[44px] h-auto text-center text-sm font-bold uppercase tracking-wide leading-snug ' \
                  "#{dashboard_insight_link_classes} shadow-elevation-1 transition-all"
         ) do
@@ -515,7 +523,8 @@ module Components
       end
 
       def dashboard_insight_metric_tile_classes
-        "mt-6 inline-flex items-center gap-2 rounded-full px-3 py-1.5 #{dashboard_insight_metric_classes}"
+        'inline-flex max-w-full items-center gap-2 rounded-shape-full px-4 py-2 min-h-[44px] ' \
+          "#{dashboard_insight_metric_classes}"
       end
 
       def dashboard_insight_link_classes

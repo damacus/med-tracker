@@ -1418,8 +1418,8 @@ en:
         from one calm control room.
       not_set: Not set
       stats:
-        profile_name: Profile name
-        sign_in_email: Sign-in email
+        profile_name: Name
+        sign_in_email: Email
       personal_information:
         title: Personal Information
         description: Your basic profile information

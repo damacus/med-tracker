@@ -34,7 +34,7 @@ module Views
               render Components::Shared::PersonAvatar.new(person: person, size: :xl)
               render_header_copy
             end
-            div(class: 'grid gap-3 sm:grid-cols-2 lg:w-[25rem]') do
+            div(class: 'w-full max-w-md space-y-3 lg:w-[25rem]', data: { testid: 'profile-identity-details' }) do
               render_header_stat(t('profiles.show.stats.profile_name'), person.name)
               render_header_stat(t('profiles.show.stats.sign_in_email'), account.email)
             end
@@ -112,7 +112,10 @@ module Views
       def render_header_stat(label, value)
         div(class: 'rounded-shape-xl border border-outline-variant/70 bg-surface-container px-4 py-4 shadow-elevation-1') do
           p(class: 'text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-on-surface-variant') { label }
-          p(class: 'mt-2 truncate text-sm font-semibold text-foreground sm:text-base') { value.presence || t('profiles.show.not_set') }
+          p(class: 'mt-2 text-sm font-semibold leading-6 text-foreground break-all sm:text-base',
+            data: { testid: "profile-identity-value-#{label.parameterize}" }) do
+            value.presence || t('profiles.show.not_set')
+          end
         end
       end
 

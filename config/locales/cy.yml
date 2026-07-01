@@ -1295,8 +1295,8 @@ cy:
         hysbysiadau o un ystafell reoli dawel.
       not_set: Heb ei osod
       stats:
-        profile_name: Enw proffil
-        sign_in_email: E-bost mewngofnodi
+        profile_name: Enw
+        sign_in_email: E-bost
       personal_information:
         title: Gwybodaeth Bersonol
         description: Eich gwybodaeth broffil sylfaenol

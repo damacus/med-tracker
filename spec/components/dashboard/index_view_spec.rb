@@ -256,10 +256,30 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(link.text).to include('View Full Report')
       expect(link['class']).to include('bg-surface-container-low')
       expect(link['class']).to include('text-on-surface')
-      expect(link['class']).to include('px-5')
+      expect(link['class']).to include('px-4')
+      expect(link['class']).to include('py-2')
       expect(link['class']).to include('min-h-[44px]')
       expect(link['class']).to include('max-w-full')
       expect(link['class']).not_to include('p-0')
+    end
+
+    it 'groups insight metric and report action with matching sizing and normal padding', :aggregate_failures do
+      presenter = person_task_presenter(insight_result: detected_insight_result, can_view_reports: true)
+
+      rendered = render_inline(described_class.new(presenter: presenter))
+      action_row = rendered.at_css('[data-testid="dashboard-insight-actions"]')
+      metric = action_row.at_css('[data-testid="dashboard-insight-metric"]')
+      link = action_row.at_css("a[href='#{reports_insights_path}']")
+
+      expect(action_row['class']).to include('flex')
+      expect(action_row['class']).to include('gap-3')
+      expect(action_row['class']).to include('pt-6')
+      expect(metric['class']).to include('min-h-[44px]')
+      expect(metric['class']).to include('px-4')
+      expect(metric['class']).to include('py-2')
+      expect(link['class']).to include('min-h-[44px]')
+      expect(link['class']).to include('px-4')
+      expect(link['class']).to include('py-2')
     end
 
     it 'omits the reports link when the user cannot view reports' do
