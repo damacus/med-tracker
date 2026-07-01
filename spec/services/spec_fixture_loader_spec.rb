@@ -6,6 +6,11 @@ RSpec.describe SpecFixtureLoader do
   self.use_transactional_tests = false
 
   describe '.load' do
+    before do
+      PersonAccessGrant.delete_all
+      HouseholdMembership.delete_all
+    end
+
     # This test needs to run outside of transactional fixtures because
     # SpecFixtureLoader is designed for seeding, not for use within tests.
     # We test it by checking that it can load fixtures successfully.

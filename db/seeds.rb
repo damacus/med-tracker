@@ -38,6 +38,7 @@ if Rails.env.local?
     :carer_relationships,
     :medication_takes
   )
+  FixtureHouseholdSetup.apply!
 
   Rails.logger.debug 'Fixtures loaded successfully!'
   Rails.logger.debug "\nYou can now login with:"
