@@ -40,6 +40,16 @@ RSpec.describe 'Admin users index' do
     expect(response.body).to include('Soft deleted')
   end
 
+  it 'shows system administrator access separately from household role' do
+    PlatformAdmin.create!(account: users(:jane).person.account)
+
+    get admin_users_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('System access')
+    expect(response.body).to include('System Administrator')
+  end
+
   it 'filters the list to soft deleted users' do
     get admin_users_path, params: { status: 'soft_deleted' }
 

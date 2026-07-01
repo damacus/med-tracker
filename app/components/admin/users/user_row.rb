@@ -23,6 +23,7 @@ module Components
             render RubyUI::TableCell.new(class: 'font-medium') { user.name }
             render(RubyUI::TableCell.new { user.email_address })
             render RubyUI::TableCell.new(class: 'capitalize') { membership_role }
+            render(RubyUI::TableCell.new { render_system_access_badge })
             render(RubyUI::TableCell.new { render_status_badge })
             render(RubyUI::TableCell.new { render_verification_button })
             render RubyUI::TableCell.new(class: 'text-center') do
@@ -57,6 +58,16 @@ module Components
 
         def no_membership_label
           t('admin.users.form.no_membership', default: 'No membership')
+        end
+
+        def render_system_access_badge
+          account = user.person&.account
+
+          if account&.platform_admin&.active?
+            render RubyUI::Badge.new(variant: :destructive) { t('admin.users.table.system_administrator') }
+          else
+            render RubyUI::Badge.new(variant: :tonal) { t('admin.users.table.household_user') }
+          end
         end
 
         def render_status_badge

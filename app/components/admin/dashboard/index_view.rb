@@ -186,7 +186,8 @@ module Components
               t('admin.dashboard.sections.user_access'),
               [
                 ['manage_users', admin_users_path, Icons::Users],
-                ['invitations', admin_invitations_path, Icons::User]
+                ['invitations', admin_invitations_path, Icons::User],
+                ['household_settings', edit_admin_household_path, Icons::Settings]
               ]
             )
             render_action_group(

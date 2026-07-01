@@ -34,7 +34,7 @@ RSpec.describe 'Invite-only sign-up', type: :system do
   describe 'when no household owner exists' do
     before do
       AppSettings.instance.update!(invite_only: false)
-      HouseholdMembership.owner.delete_all
+      HouseholdMembership.owner.find_each(&:destroy!)
     end
 
     it 'allows visiting create-account without an invitation token' do

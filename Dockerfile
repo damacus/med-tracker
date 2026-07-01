@@ -129,6 +129,16 @@ CMD ["bundle", "exec", "rspec"]
 
 FROM gem_builder AS tools
 
+USER root
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends git \
+  && rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man \
+  && apt-get clean \
+  && chown ruby:ruby -R /app
+
+USER ruby
+
 ENV RAILS_ENV=test \
   NODE_ENV=test \
   BUNDLE_WITHOUT="development:production" \

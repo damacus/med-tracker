@@ -13,7 +13,7 @@ RSpec.describe AppSettings do
     end
 
     it 'defaults invite-only mode off when no household owner exists' do
-      HouseholdMembership.owner.delete_all
+      HouseholdMembership.owner.find_each(&:destroy!)
 
       expect(described_class.instance).not_to be_invite_only
     end

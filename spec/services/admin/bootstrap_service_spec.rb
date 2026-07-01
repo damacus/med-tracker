@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Admin::BootstrapService do
   describe '.call' do
     before do
-      HouseholdMembership.owner.delete_all
+      HouseholdMembership.owner.find_each(&:destroy!)
     end
 
     let(:params) do
