@@ -3,17 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe 'Taskfiles' do
-  let(:dev_taskfile) do
-    YAML.safe_load(Rails.root.join('Taskfiles/dev.yml').read, aliases: true, permitted_classes: [Symbol])
-  end
-  let(:test_taskfile) do
-    YAML.safe_load(Rails.root.join('Taskfiles/test.yml').read, aliases: true, permitted_classes: [Symbol])
-  end
-  let(:internal_taskfile) do
-    YAML.safe_load(Rails.root.join('Taskfiles/internal.yml').read, aliases: true, permitted_classes: [Symbol])
-  end
-  let(:portless_script) { Rails.root.join('scripts/portless_oidc.fish').read }
-
   it 'defines opt-in Portless tasks for dev and test' do
     expect(dev_taskfile.dig('tasks', 'portless', 'cmds')).to include('./scripts/portless_oidc.fish dev med-tracker')
     expect(test_taskfile.dig('tasks', 'portless', 'cmds')).to include(
@@ -49,5 +38,59 @@ RSpec.describe 'Taskfiles' do
 
     expect(compose_project).to include('git rev-parse --path-format=absolute --git-common-dir')
     expect(compose_project).to include('git hash-object --stdin')
+  end
+
+  it 'defines a Vernier dashboard profiling task' do
+    task = root_taskfile.dig('tasks', 'profile:dashboard')
+    commands = task.fetch('cmds')
+
+    expect(gemfile).to include("gem 'vernier', '~> 1.10', require: false")
+    expect(commands.dig(0, 'task')).to eq('internal:run')
+    expect(commands.dig(0, 'vars', 'ENVIRONMENT')).to eq('dev')
+    expect(commands.dig(0, 'vars', 'COMMAND')).to include(
+      'bundle exec vernier run',
+      '--output {{ .output }}',
+      '--hooks rails,memory_usage',
+      'bin/rails runner scripts/profile_dashboard_request.rb'
+    )
+  end
+
+  it 'profiles a representative dashboard request pipeline' do
+    expect(dashboard_profile_script).to include(
+      'Account.find_by!(email: profile_email)',
+      'DashboardPresenter.new(',
+      'presenter.routine_tasks_by_person',
+      'presenter.as_needed_by_person',
+      'presenter.today_takes_by_person',
+      'File.write(summary_path, summary)'
+    )
+  end
+
+  def dev_taskfile
+    YAML.safe_load(Rails.root.join('Taskfiles/dev.yml').read, aliases: true, permitted_classes: [Symbol])
+  end
+
+  def test_taskfile
+    YAML.safe_load(Rails.root.join('Taskfiles/test.yml').read, aliases: true, permitted_classes: [Symbol])
+  end
+
+  def internal_taskfile
+    YAML.safe_load(Rails.root.join('Taskfiles/internal.yml').read, aliases: true, permitted_classes: [Symbol])
+  end
+
+  def root_taskfile
+    YAML.safe_load(Rails.root.join('Taskfile.yml').read, aliases: true, permitted_classes: [Symbol])
+  end
+
+  def gemfile
+    Rails.root.join('Gemfile').read
+  end
+
+  def portless_script
+    Rails.root.join('scripts/portless_oidc.fish').read
+  end
+
+  def dashboard_profile_script
+    Rails.root.join('scripts/profile_dashboard_request.rb').read
   end
 end
