@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_02_170000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_02_172000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -425,7 +425,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_170000) do
     t.bigint "household_id", null: false
     t.bigint "location_id", null: false
     t.string "name"
+    t.date "expected_arrival_on"
     t.datetime "ordered_at"
+    t.decimal "order_quantity", precision: 10, scale: 2
+    t.string "order_supplier"
     t.integer "reorder_status"
     t.decimal "reorder_threshold", precision: 10, scale: 2, default: "10.0", null: false
     t.datetime "reordered_at"

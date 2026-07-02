@@ -20,7 +20,14 @@ RSpec.describe 'Medication reorder workflow' do
     expect(page).to have_text('Low Stock Alert')
     expect(page).to have_text('Order')
 
-    click_on 'Order'
+    within "form[action$='/mark_as_ordered']" do
+      fill_in 'Supplier', with: 'Boots'
+      fill_in 'Quantity', with: '2'
+      click_on 'Order'
+    end
+
+    expect(page).to have_text('Refill marked as ordered')
+    expect(page).to have_text('Order details')
 
     # The 'Order' action link should be gone after clicking it
     within "[data-testid='medication-content']" do

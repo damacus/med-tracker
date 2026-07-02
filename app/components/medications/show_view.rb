@@ -155,25 +155,98 @@ module Components
       end
 
       def render_reorder_actions
-        config = if medication.reorder_status.nil?
-                   { path: mark_as_ordered_medication_path(medication), label: t('medications.show.mark_as_ordered'),
-                     icon: Icons::Clock }
-                 elsif medication.reorder_ordered?
-                   { path: mark_as_received_medication_path(medication), label: t('medications.show.mark_as_received'),
-                     icon: Icons::Check }
-                 end
+        return render_order_form if medication.reorder_status.nil?
 
-        return unless config
+        render_order_details if medication.reorder_ordered?
+      end
 
-        m3_link(
-          href: config[:path],
-          variant: :filled,
-          size: :lg,
-          class: 'w-full justify-center',
-          data: { turbo_method: :patch }
+      def render_order_form
+        form(
+          action: mark_as_ordered_medication_path(medication),
+          method: :post,
+          class: 'col-span-2 space-y-3 rounded-shape-xl border border-border/60 bg-card p-4',
+          data_turbo: 'false'
         ) do
-          render config[:icon].new(size: 18, class: 'mr-2')
-          span { config[:label] }
+          input(type: :hidden, name: '_method', value: :patch)
+          input(type: :hidden, name: 'authenticity_token', value: view_context.form_authenticity_token)
+          render_order_field(:supplier, t('medications.show.order_supplier'), type: :text)
+          render_order_field(:quantity, t('medications.show.order_quantity'), type: :number, step: '0.01', min: '0')
+          render_order_field(:expected_arrival_on, t('medications.show.expected_arrival'), type: :date)
+          button(
+            type: :submit,
+            class: 'w-full justify-center whitespace-nowrap inline-flex items-center rounded-shape-full ' \
+                   'font-medium transition-all state-layer bg-primary text-on-primary shadow-elevation-1 ' \
+                   'hover:shadow-elevation-2 h-12 px-6 text-base'
+          ) do
+            render Icons::Clock.new(size: 18, class: 'mr-2')
+            span { t('medications.show.mark_as_ordered') }
+          end
+        end
+      end
+
+      def render_order_field(name, label, **input_options)
+        field_id = "order_#{name}"
+        div(class: 'space-y-1') do
+          label(for: field_id, class: 'text-sm font-medium text-on-surface') { label }
+          m3_input(
+            id: field_id,
+            name: "order[#{name}]",
+            value: order_field_value(name),
+            class: 'w-full',
+            **input_options
+          )
+        end
+      end
+
+      def order_field_value(name)
+        attribute = name == :expected_arrival_on ? name : :"order_#{name}"
+        return unless medication.respond_to?(attribute)
+
+        format_order_value(name, medication.public_send(attribute))
+      end
+
+      def render_order_details
+        div(class: 'col-span-2 space-y-3 rounded-shape-xl border border-border/60 bg-card p-4') do
+          m3_heading(variant: :title_small, level: 3) { t('medications.show.order_details') }
+          render_order_detail(t('medications.show.order_supplier'), medication.order_supplier)
+          render_order_detail(
+            t('medications.show.order_quantity'),
+            format_order_value(:quantity, medication.order_quantity)
+          )
+          render_order_detail(t('medications.show.expected_arrival'), formatted_expected_arrival)
+          m3_link(
+            href: mark_as_received_medication_path(medication),
+            variant: :filled,
+            size: :lg,
+            class: 'w-full justify-center',
+            data: { turbo_method: :patch }
+          ) do
+            render Icons::Check.new(size: 18, class: 'mr-2')
+            span { t('medications.show.mark_as_received') }
+          end
+        end
+      end
+
+      def render_order_detail(label, value)
+        return if value.blank?
+
+        div(class: 'flex items-center justify-between gap-3 text-sm') do
+          span(class: 'text-on-surface-variant') { label }
+          span(class: 'font-semibold text-on-surface text-right') { value.to_s }
+        end
+      end
+
+      def formatted_expected_arrival
+        I18n.l(medication.expected_arrival_on, format: :long) if medication.expected_arrival_on
+      end
+
+      def format_order_value(name, value)
+        return if value.blank?
+
+        case name
+        when :quantity then MedicationStockQuantityFormatter.format(value)
+        when :expected_arrival_on then value.respond_to?(:iso8601) ? value.iso8601 : value
+        else value
         end
       end
 

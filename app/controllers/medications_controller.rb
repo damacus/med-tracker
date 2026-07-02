@@ -102,7 +102,7 @@ class MedicationsController < ApplicationController
 
   def mark_as_ordered
     authorize @medication
-    update_reorder_status(:ordered, notice: t('medications.ordered'))
+    update_reorder_status(:ordered, notice: t('medications.ordered'), order_details: order_details_params)
   end
 
   def mark_as_received
@@ -251,8 +251,8 @@ class MedicationsController < ApplicationController
     ), status: :unprocessable_content
   end
 
-  def update_reorder_status(status, notice:)
-    MedicationReorderStatusService.new.call(medication: @medication, status: status)
+  def update_reorder_status(status, notice:, order_details: {})
+    MedicationReorderStatusService.new.call(medication: @medication, status: status, order_details: order_details)
     respond_to do |format|
       format.html { redirect_back_or_to @medication, notice: notice }
       format.turbo_stream do
@@ -260,6 +260,14 @@ class MedicationsController < ApplicationController
         render turbo_stream: medication_streams
       end
     end
+  end
+
+  def order_details_params
+    params.fetch(:order, ActionController::Parameters.new).permit(
+      :supplier,
+      :quantity,
+      :expected_arrival_on
+    ).to_h.symbolize_keys
   end
 
   def restock_medication

@@ -901,6 +901,10 @@ en:
       edit_dosage: Edit
       mark_as_ordered: Order
       mark_as_received: Received
+      order_details: Order details
+      order_supplier: Supplier
+      order_quantity: Quantity
+      expected_arrival: Expected arrival
       refill_inventory: Restock
       complete_refill: Restock
       adjust_inventory: Adjust Inventory
