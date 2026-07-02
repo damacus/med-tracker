@@ -248,10 +248,20 @@ RSpec.describe 'Medication Lookup', type: :system do
     expect(page).to have_no_field('medication[barcode]', type: :hidden)
   end
 
-  it 'User views drug interactions (not yet implemented)' do
-    pending 'MLKP-015: drug interaction lookup not yet implemented'
+  it 'User views drug interactions from lookup results' do
+    stub_nhs_dmd_search(
+      query: 'Warfarin',
+      results: [
+        {
+          code: '3183411000001109',
+          display: 'Warfarin 1mg tablets',
+          system: 'https://dmd.nhs.uk',
+          concept_class: 'VMP'
+        }
+      ]
+    )
 
-    sign_in(doctor)
+    sign_in(admin)
     visit medication_finder_path
 
     fill_in 'medication-search-input', with: 'Warfarin'
@@ -261,6 +271,8 @@ RSpec.describe 'Medication Lookup', type: :system do
 
     expect(page).to have_text('Interaction Details')
     expect(page).to have_text('Severity')
-    expect(page).to have_text('Description')
+    expect(page).to have_text('High')
+    expect(page).to have_text('Ibuprofen')
+    expect(page).to have_text('bleeding')
   end
 end

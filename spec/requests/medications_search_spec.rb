@@ -91,6 +91,35 @@ RSpec.describe 'GET /medication-finder/search' do
           'can_restock' => true
         )
       end
+
+      it 'includes interaction warnings for matching accessible medication stock' do
+        search = instance_double(
+          NhsDmd::Search,
+          call: NhsDmd::Search::Result.new(
+            results: [
+              NhsDmd::SearchResult.new(
+                code: '3183411000001109',
+                display: 'Warfarin 1mg tablets',
+                system: 'https://dmd.nhs.uk',
+                concept_class: 'VMP'
+              )
+            ],
+            error: nil
+          )
+        )
+        allow(NhsDmd::Search).to receive(:new).and_return(search)
+
+        get medication_finder_search_path(format: :json), params: { q: 'warfarin' }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body.dig('results', 0, 'interactions')).to include(
+          a_hash_including(
+            'severity' => 'high',
+            'severity_label' => 'High',
+            'interacting_medication_name' => 'Ibuprofen'
+          )
+        )
+      end
     end
 
     context 'when a result only matches inaccessible stock' do
