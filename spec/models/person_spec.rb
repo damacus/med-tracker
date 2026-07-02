@@ -490,6 +490,56 @@ RSpec.describe Person do
       expect(relationship.relationship_type).to eq('parent')
     end
 
+    describe '#assign_carer!' do
+      it 'creates an active carer relationship' do
+        new_patient = described_class.create!(
+          name: 'Adult Patient',
+          date_of_birth: 30.years.ago,
+          person_type: :adult
+        )
+
+        relationship = new_patient.assign_carer!(carer, relationship_type: 'professional_carer')
+
+        expect(relationship).to be_persisted
+        expect(relationship).to have_attributes(carer: carer, relationship_type: 'professional_carer', active: true)
+        expect(new_patient.reload.carers).to include(carer)
+      end
+
+      it 'reactivates an existing inactive relationship' do
+        relationship = patient.carer_relationships.find_by!(carer: carer)
+        relationship.deactivate!
+
+        patient.assign_carer!(carer)
+
+        expect(relationship.reload).to be_active
+      end
+    end
+
+    describe '#remove_carer!' do
+      it 'deactivates the matching active carer relationship' do
+        second_carer = described_class.create!(
+          name: 'Second Carer',
+          date_of_birth: 40.years.ago,
+          person_type: :adult
+        )
+        patient.assign_carer!(second_carer)
+
+        relationship = patient.remove_carer!(second_carer)
+
+        expect(relationship.reload).not_to be_active
+        expect(patient.reload.carers).not_to include(second_carer)
+      end
+
+      it 'rolls back when removing the last active carer would leave a no-capacity person invalid' do
+        relationship = patient.carer_relationships.find_by!(carer: carer)
+
+        expect { patient.remove_carer!(carer) }
+          .to raise_error(ActiveRecord::RecordInvalid)
+
+        expect(relationship.reload).to be_active
+      end
+    end
+
     context 'with active and inactive relationships' do
       let(:active_carer) do
         described_class.create!(
