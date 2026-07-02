@@ -34,5 +34,15 @@ RSpec.describe InvitationMailer do
     it 'is a multipart email with HTML and plain text parts' do
       expect(mail.content_type).to include('multipart/alternative')
     end
+
+    it 'renders branded HTML without ERB templates' do
+      html = mail.html_part.body.encoded
+
+      expect(html).to include('MedTracker')
+      expect(html).to include('style=')
+      expect(html).to include('invitations/accept?token=test-token-123')
+      expect(Rails.root.glob('app/views/invitation_mailer/*.erb')).to be_empty
+      expect(Rails.root.glob('app/views/layouts/mailer*.erb')).to be_empty
+    end
   end
 end
