@@ -98,4 +98,30 @@ RSpec.describe 'Reports' do
       end
     end
   end
+
+  describe 'GET /reports/health-history' do
+    before { sign_in(user) }
+
+    it 'downloads a no-store PDF with the active filters' do
+      get health_history_report_path,
+          params: { start_date: '2026-02-01', end_date: '2026-02-28', person_id: people(:john).id }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('application/pdf')
+      expect(response.headers['Cache-Control']).to include('no-store')
+      expect(response.headers['Content-Disposition'])
+        .to include('medtracker-health-history-2026-02-01-to-2026-02-28.pdf')
+      expect(response.body).to start_with('%PDF')
+    end
+
+    it 'does not export an inaccessible person filter' do
+      post '/logout'
+      sign_in(users(:parent))
+
+      get health_history_report_path, params: { person_id: people(:john).id }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to start_with('%PDF')
+    end
+  end
 end

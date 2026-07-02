@@ -143,6 +143,12 @@ module Components
                   class: 'w-full font-bold shadow-elevation-1 transition-all'
                 ) { t('people.show.manage_parents') }
               end
+              m3_link(
+                href: person_health_events_path(person),
+                variant: :tonal,
+                size: :lg,
+                class: 'w-full font-bold shadow-elevation-1 transition-all'
+              ) { t('people.show.health_events') }
             end
           end
         end

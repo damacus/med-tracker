@@ -48,9 +48,7 @@ module Views
         end
       end
 
-      def render_today_section
-        render Components::Reports::TodaySection.new(today_taken_medications: @today_taken_medications)
-      end
+      def render_today_section = render Components::Reports::TodaySection.new(today_taken_medications: @today_taken_medications)
 
       # rubocop:disable Metrics/AbcSize
       def render_summary_card
@@ -94,14 +92,16 @@ module Views
         div(class: 'space-y-8') do
           div(class: 'flex items-center justify-between px-2') do
             m3_heading(level: 2, size: '5', class: 'font-bold') { t('reports.index.timeline_title') }
-            m3_button(variant: :outlined, size: :sm) { t('reports.index.download_pdf') }
+            m3_link(
+              href: health_history_report_path(start_date: @start_date, end_date: @end_date,
+                                               person_id: @selected_person_id.presence),
+              variant: :outlined, size: :sm
+            ) { t('reports.index.download_pdf') }
           end
 
           m3_card(class: 'border border-border/70 bg-card p-8 shadow-elevation-2 sm:p-10') do
             div(class: 'flex items-end justify-between h-64 gap-4 px-2') do
-              @daily_data.each do |day|
-                render_bar(day)
-              end
+              @daily_data.each { |day| render_bar(day) }
             end
           end
         end

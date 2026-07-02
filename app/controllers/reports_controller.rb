@@ -29,9 +29,7 @@ class ReportsController < ApplicationController
       selected_person_id: @selected_person_id
     )
   rescue ArgumentError
-    # rubocop:disable Rails/I18nLocaleTexts
-    redirect_to reports_path, alert: 'Invalid date format provided.'
-    # rubocop:enable Rails/I18nLocaleTexts
+    redirect_to reports_path, alert: t('reports.invalid_date')
   end
 
   private

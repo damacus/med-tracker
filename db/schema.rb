@@ -258,6 +258,40 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_154500) do
     t.index ["medication_id"], name: "index_dosages_one_child_default", unique: true, where: "(default_for_children = true)"
   end
 
+  create_table "health_events", force: :cascade do |t|
+    t.text "action_taken"
+    t.datetime "created_at", null: false
+    t.date "ended_on"
+    t.integer "event_kind", null: false
+    t.bigint "household_id", null: false
+    t.boolean "medical_help_sought", default: false, null: false
+    t.text "notes"
+    t.bigint "person_id", null: false
+    t.integer "severity"
+    t.date "started_on", null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["household_id"], name: "index_health_events_on_household_id"
+    t.index ["id", "household_id"], name: "index_health_events_on_id_and_household_id", unique: true
+    t.index ["person_id", "event_kind", "started_on"], name: "index_health_events_on_person_id_and_event_kind_and_started_on"
+    t.index ["person_id", "started_on", "ended_on"], name: "index_health_events_on_person_id_and_started_on_and_ended_on"
+    t.index ["person_id"], name: "index_health_events_on_person_id"
+  end
+
+  create_table "health_event_medications", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "health_event_id", null: false
+    t.bigint "household_id", null: false
+    t.bigint "medication_id"
+    t.string "medication_name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["health_event_id", "medication_id"], name: "index_health_event_medications_on_health_event_id_and_med_id", unique: true, where: "(medication_id IS NOT NULL)"
+    t.index ["health_event_id"], name: "index_health_event_medications_on_health_event_id"
+    t.index ["household_id"], name: "index_health_event_medications_on_household_id"
+    t.index ["id", "household_id"], name: "index_health_event_medications_on_id_and_household_id", unique: true
+    t.index ["medication_id"], name: "index_health_event_medications_on_medication_id"
+  end
+
   create_table "household_invitation_grants", force: :cascade do |t|
     t.string "access_level", null: false
     t.datetime "created_at", null: false
@@ -679,6 +713,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_154500) do
   add_foreign_key "dosages", "households"
   add_foreign_key "dosages", "medications", column: ["medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dosages_medication_id_household"
   add_foreign_key "dosages", "medications", deferrable: :deferred
+  add_foreign_key "health_event_medications", "health_events"
+  add_foreign_key "health_event_medications", "health_events", column: ["health_event_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_health_event_medications_health_event_id_household"
+  add_foreign_key "health_event_medications", "households"
+  add_foreign_key "health_event_medications", "medications"
+  add_foreign_key "health_event_medications", "medications", column: ["medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_health_event_medications_medication_id_household"
+  add_foreign_key "health_events", "households"
+  add_foreign_key "health_events", "people"
+  add_foreign_key "health_events", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_health_events_person_id_household"
   add_foreign_key "household_invitation_grants", "household_invitations"
   add_foreign_key "household_invitation_grants", "household_invitations", column: ["household_invitation_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_household_invitation_grants_invitation_household"
   add_foreign_key "household_invitation_grants", "households"
@@ -785,6 +827,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_154500) do
     person_medications
     medication_takes
     notification_preferences
+    health_events
+    health_event_medications
     household_memberships
     person_access_grants
     household_invitations

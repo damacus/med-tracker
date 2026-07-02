@@ -34,6 +34,8 @@ gem 'pundit'
 gem 'paper_trail'
 # Pagination [https://github.com/ddnexus/pagy]
 gem 'pagy'
+gem 'prawn'
+gem 'prawn-table'
 # Rate limiting and throttling [https://github.com/rack/rack-attack]
 gem 'rack-attack'
 # TOTP for two-factor authentication [https://github.com/mdp/rotp]
