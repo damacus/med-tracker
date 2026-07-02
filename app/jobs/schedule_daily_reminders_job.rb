@@ -75,7 +75,7 @@ class ScheduleDailyRemindersJob < ApplicationJob
   def active_schedule_times_for(person)
     person.schedules
           .active
-          .where.not(schedule_type: Schedule.schedule_types.fetch(:prn))
+          .where.not(schedule_type: Schedule.schedule_types.fetch('prn'))
           .to_a
           .select { |schedule| schedule.applies_on?(Time.zone.today) }
           .flat_map { |schedule| configured_times_for_schedule(schedule) }
