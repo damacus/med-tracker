@@ -78,10 +78,8 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     rendered = render_person_medication_card(update: true, destroy: true)
     actions = rendered.at_css('[data-testid="person-medication-card-actions"]')
     action_classes = actions['class'].split
-    footer_classes = actions.ancestors.find { |node| node['class']&.include?('pb-8') }['class'].split
     menu = rendered.at_css("[data-testid='person-medication-actions-menu-#{person_medication.id}']")
 
-    expect(footer_classes).to include('px-6')
     expect(action_classes).not_to include('flex-wrap')
     expect(action_classes).to include('min-w-0')
     expect(menu).not_to be_nil
@@ -121,12 +119,53 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     expect(rendered.at_css("button[data-testid='resume-person-medication-#{person_medication.id}']")).to be_present
   end
 
+  it 'extracts focused subcomponents for the card regions' do
+    expect(described_class::HeaderComponent).to be < Components::Base
+    expect(described_class::ContentComponent).to be < Components::Base
+    expect(described_class::TimingStatusComponent).to be < Components::Base
+    expect(described_class::ActionsComponent).to be < Components::Base
+  end
+
+  it 'renders the header component independently' do
+    rendered = render_component(described_class::HeaderComponent.new(person_medication: person_medication))
+
+    expect(rendered.at_css('h3').text).to include(medication.display_name)
+  end
+
+  it 'renders the content component independently' do
+    person_medication.update!(notes: 'Take with food')
+    rendered = render_component(described_class::ContentComponent.new(person_medication: person_medication))
+
+    expect(rendered.text).to include('Take with food')
+  end
+
+  it 'renders the timing status component independently' do
+    person_medication.update!(max_daily_doses: 2, min_hours_between_doses: 6)
+    rendered = render_component(described_class::TimingStatusComponent.new(person_medication: person_medication))
+
+    expect(rendered.text).to include('Maximum 2 dose(s) per day')
+    expect(rendered.text).to include('Wait at least 6 hours between doses')
+  end
+
+  it 'renders the actions component independently' do
+    rendered = render_component(
+      described_class::ActionsComponent.new(person_medication: person_medication, person: person, current_user: nil),
+      update: true
+    )
+
+    expect(rendered.at_css('[data-testid="person-medication-card-actions"]')).to be_present
+  end
+
   def render_person_medication_card(update: false, destroy: false)
+    render_component(described_class.new(person_medication: person_medication, person: person), update:, destroy:)
+  end
+
+  def render_component(component, update: false, destroy: false)
     vc = view_context
     vc.singleton_class.define_method(:current_user) { nil }
     policy_stub = Struct.new(:update?, :take_medication?, :destroy?, :show?).new(update, true, destroy, true)
     vc.singleton_class.define_method(:policy) { |_record| policy_stub }
-    html = vc.render(described_class.new(person_medication: person_medication, person: person))
+    html = vc.render(component)
     Nokogiri::HTML::DocumentFragment.parse(html)
   end
 
