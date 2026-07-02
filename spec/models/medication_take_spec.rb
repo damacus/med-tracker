@@ -353,6 +353,21 @@ RSpec.describe MedicationTake do
       )
     end
 
+    it 'does not publish when low-stock notifications are disabled for the person' do
+      person.create_notification_preference!(enabled: true, low_stock_enabled: false)
+      medication.update!(current_supply: 11, reorder_threshold: 10)
+
+      payloads = capture_low_stock_payloads do
+        create_taken_from_schedule(
+          schedule: schedule,
+          taken_from_medication: medication,
+          taken_from_location: medication.location
+        )
+      end
+
+      expect(payloads).to be_empty
+    end
+
     it 'does not publish when stock remains above the threshold' do
       medication.update!(current_supply: 12, reorder_threshold: 10)
 
