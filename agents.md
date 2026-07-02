@@ -139,7 +139,10 @@ Never push if either command fails.
 - Use Conventional Commits with scopes when useful, for example `fix(medicines): handle missing reorder threshold`.
 - Keep changes atomic and focused.
 - For PR titles and squash messages, use the same Conventional Commit style.
-- PR descriptions should summarize behavior changes, tests run, and screenshots for visible UI changes.
+- PR summaries should be human-readable first: explain what problem the change solves, why the change exists, and what future bugs or confusion it prevents. Write for someone passing by the PR who does not already know the implementation details.
+- For refactors or infrastructure work, describe the before/after contract in plain language, for example: "this used to be handled differently in several places; now one shared rule handles it consistently."
+- Do not include routine test sections in PR descriptions; CI is the source of truth. Mention verification only when it is manual, unusual, blocked, or not covered by CI.
+- Include screenshots for visible UI changes.
 
 ## Session close (mandatory)
 

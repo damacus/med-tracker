@@ -105,25 +105,11 @@ class PersonMedicationsController < ApplicationController
   end
 
   def render_person_medication_form(title:, editing: false, back_path: nil, status: :ok)
-    is_modal = request.headers['Turbo-Frame'] == 'modal'
-
-    respond_to do |format|
-      format.html { render_person_medication_html_form(title:, editing:, back_path:, status:, is_modal:) }
-      format.turbo_stream do
-        render turbo_stream: turbo_stream.replace(
-          'modal',
-          person_medication_modal(title: title, editing: editing, back_path: back_path)
-        ), status: status
-      end
-    end
-  end
-
-  def render_person_medication_html_form(title:, editing:, back_path:, status:, is_modal:)
-    if is_modal
-      render person_medication_modal(title: title, editing: editing, back_path: back_path), layout: false, status: status
-    else
-      render person_medication_form_view(editing: editing), status: status
-    end
+    render_modal_or_page(
+      modal: -> { person_medication_modal(title: title, editing: editing, back_path: back_path) },
+      page: -> { person_medication_form_view(editing: editing) },
+      status: status
+    )
   end
 
   def person_medication_modal(title:, editing: false, back_path: nil)

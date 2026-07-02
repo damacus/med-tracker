@@ -93,37 +93,25 @@ class MedicationAssignmentsController < ApplicationController
 
   def render_assignment_form(status: :ok)
     back_path = params[:source] == 'workflow' ? add_medication_path(medication_id: params[:medication_id]) : nil
-    is_modal = request.headers['Turbo-Frame'] == 'modal'
 
-    respond_to do |format|
-      format.html do
-        if is_modal
-          render Components::MedicationAssignments::Modal.new(
-            assignment: @assignment,
-            person: @person,
-            medications: @medications,
-            back_path: back_path
-          ), layout: false, status: status
-        else
-          render Components::MedicationAssignments::FormView.new(
-            assignment: @assignment,
-            person: @person,
-            medications: @medications
-          ), status: status
-        end
-      end
-      format.turbo_stream do
-        render turbo_stream: turbo_stream.replace(
-          'modal',
-          Components::MedicationAssignments::Modal.new(
-            assignment: @assignment,
-            person: @person,
-            medications: @medications,
-            back_path: back_path
-          )
-        ), status: status
-      end
-    end
+    render_modal_or_page(
+      modal: lambda {
+        Components::MedicationAssignments::Modal.new(
+          assignment: @assignment,
+          person: @person,
+          medications: @medications,
+          back_path: back_path
+        )
+      },
+      page: lambda {
+        Components::MedicationAssignments::FormView.new(
+          assignment: @assignment,
+          person: @person,
+          medications: @medications
+        )
+      },
+      status: status
+    )
   end
 
   def assignment_success_message(result)
