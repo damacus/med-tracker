@@ -12,6 +12,7 @@ RSpec.describe 'Medication stock sources' do
 
   before do
     sign_in(admin)
+    MedicationTake.delete_all
   end
 
   describe 'POST /people/:person_id/schedules/:id/take_medication' do
@@ -171,6 +172,7 @@ RSpec.describe 'Medication stock sources' do
 
   def build_alternate_medication
     Medication.create!(
+      household: person.household,
       name: source_medication.name,
       location: school_location,
       category: source_medication.category,
@@ -183,6 +185,7 @@ RSpec.describe 'Medication stock sources' do
 
   def build_incompatible_medication
     Medication.create!(
+      household: person.household,
       name: source_medication.name,
       location: school_location,
       category: source_medication.category,
