@@ -71,6 +71,57 @@ RSpec.describe Components::Admin::AuditLogs::IndexView, type: :component do
     end
   end
 
+  describe 'filter controls' do
+    it 'renders searchable RubyUI combobox filters instead of native selects' do
+      rendered = render_filter_controls
+
+      expect(rendered.css('select#item_type')).to be_empty
+      expect(rendered.css('select#event')).to be_empty
+      expect(rendered.css('[role="combobox"]').size).to eq(2)
+      expect(rendered.css('input[type="search"][role="searchbox"]').pluck('placeholder'))
+        .to contain_exactly('Record Type', 'Event Type')
+    end
+
+    it 'keeps filter params on combobox radios' do
+      rendered = render_filter_controls(filter_params: { item_type: 'User', event: 'update' })
+
+      record_type_radios = rendered.css('input[type="radio"][name="item_type"]')
+      event_radios = rendered.css('input[type="radio"][name="event"]')
+
+      expect(record_type_radios.pluck('value')).to contain_exactly(
+        '',
+        'AuthenticationToken',
+        'Medication',
+        'Person',
+        'User'
+      )
+      expect(event_radios.pluck('value')).to contain_exactly('', 'create', 'update', 'destroy')
+      expect(record_type_radios.find { |input| input['value'] == 'User' }['checked']).to eq('checked')
+      expect(event_radios.find { |input| input['value'] == 'update' }['checked']).to eq('checked')
+    end
+
+    it 'keeps auto-submit wiring on combobox radios' do
+      rendered = render_filter_controls
+
+      record_type_actions = rendered.css('input[type="radio"][name="item_type"]').pluck('data-action')
+      event_actions = rendered.css('input[type="radio"][name="event"]').pluck('data-action')
+
+      expect(record_type_actions).to all(include('filter-form#submit'))
+      expect(event_actions).to all(include('filter-form#submit'))
+    end
+
+    def render_filter_controls(filter_params: {})
+      render_inline(
+        described_class.new(
+          versions: versions,
+          filter_params: filter_params,
+          item_types: %w[AuthenticationToken Medication Person User],
+          events: %w[create update destroy]
+        )
+      )
+    end
+  end
+
   describe '#filters_active?' do
     subject(:view) { described_class.new(versions: versions, filter_params: filter_params) }
 
