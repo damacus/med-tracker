@@ -27,14 +27,13 @@ module Components
             end
 
             div(class: 'space-y-2') do
-              div(class: 'h-2 w-full bg-secondary-container rounded-full overflow-hidden shadow-inner') do
-                progress(
-                  class: "supply-progress #{supply_progress_text_class}",
-                  value: presenter.supply_level.percentage,
-                  max: 100,
-                  aria: { label: t('medications.show.supply_level') }
-                )
-              end
+              render Components::Shared::SupplyMeter.new(
+                percentage: presenter.supply_level.percentage,
+                label: t('medications.show.supply_level'),
+                fill_class: supply_progress_text_class,
+                track_class: 'h-2 bg-secondary-container shadow-inner',
+                testid: 'medication-show-stock-meter'
+              )
               div(
                 class: 'flex justify-between items-center text-[10px] font-black uppercase ' \
                        'tracking-widest text-on-surface-variant'

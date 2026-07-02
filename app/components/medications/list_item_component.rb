@@ -68,14 +68,13 @@ module Components
             span { t('medications.index.inventory_level') }
             span { presenter.inventory_units_label }
           end
-          div(class: 'h-1.5 w-full bg-card rounded-full overflow-hidden') do
-            progress(
-              class: "supply-progress #{presenter.list_inventory_text_class}",
-              value: presenter.supply_level.percentage,
-              max: 100,
-              aria: { label: t('medications.index.inventory_level') }
-            )
-          end
+          render Components::Shared::SupplyMeter.new(
+            percentage: presenter.supply_level.percentage,
+            label: t('medications.index.inventory_level'),
+            fill_class: presenter.list_inventory_text_class,
+            track_class: 'h-1.5 bg-card',
+            testid: 'medication-list-stock-meter'
+          )
         end
       end
 

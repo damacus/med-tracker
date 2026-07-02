@@ -19,7 +19,7 @@ module Components
         if workflow
           render_workflow
         else
-          div(class: 'space-y-4') do
+          div(class: 'max-w-full space-y-4 overflow-x-clip') do
             render_medication_field
             render_dose_field
             render_administration_kind_field
@@ -111,7 +111,7 @@ module Components
       def render_medication_field
         FormField do
           FormFieldLabel(for: 'person_medication_medication_id_trigger') { t('person_medications.form.medication') }
-          render RubyUI::Combobox.new(class: 'w-full') do
+          render RubyUI::Combobox.new(class: 'w-full min-w-0') do
             render RubyUI::ComboboxTrigger.new(
               placeholder: selected_medication_name || t('person_medications.form.select_medication'),
               disabled: editing
@@ -215,7 +215,7 @@ module Components
           legend(class: 'text-sm font-semibold text-foreground') do
             t('person_medications.form.administration_kind')
           end
-          div(class: 'grid grid-cols-1 gap-3 md:grid-cols-2') do
+          div(class: 'grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2') do
             PersonMedication.administration_kinds.each_key do |kind|
               render_administration_kind_option(kind)
             end
@@ -250,7 +250,7 @@ module Components
       end
 
       def render_timing_fields
-        div(class: 'grid grid-cols-1 md:grid-cols-3 gap-4') do
+        div(class: 'grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3') do
           render_max_daily_doses_field
           render_min_hours_field
           render_dose_cycle_field
@@ -357,7 +357,7 @@ module Components
 
       def administration_kind_option_classes(kind)
         classes = [
-          'flex flex-col gap-1 rounded-shape-xl border bg-surface-container-low p-4',
+          'flex min-w-0 flex-col gap-1 rounded-shape-xl border bg-surface-container-low p-4',
           'has-[:checked]:border-primary has-[:checked]:bg-primary-container/40'
         ]
         classes << (administration_kind_value == kind ? 'border-primary' : 'border-border')
@@ -367,7 +367,7 @@ module Components
       def render_dose_cycle_field
         FormField do
           FormFieldLabel(for: 'person_medication_dose_cycle_trigger') { t('person_medications.form.dose_cycle') }
-          render RubyUI::Combobox.new(class: 'w-full') do
+          render RubyUI::Combobox.new(class: 'w-full min-w-0') do
             render RubyUI::ComboboxTrigger.new(
               placeholder: person_medication.dose_cycle&.titleize || t('person_medications.form.default_dose_cycle')
             )

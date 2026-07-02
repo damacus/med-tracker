@@ -9,7 +9,7 @@ module RubyUI
 
     def view_template
       button(**attrs) do
-        span(class: 'truncate', data: { ruby_ui__combobox_target: 'triggerContent' }) do
+        span(class: 'min-w-0 truncate', data: { ruby_ui__combobox_target: 'triggerContent' }) do
           @placeholder
         end
         icon

@@ -19,7 +19,7 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-8 max-w-2xl') do
+        div(class: 'container mx-auto w-full max-w-2xl overflow-x-clip px-4 py-8') do
           render_header
           render_form
         end
@@ -52,7 +52,7 @@ module Components
                  person_person_medications_path(person)
                end,
           method: editing ? :patch : :post,
-          class: 'space-y-6',
+          class: 'max-w-full space-y-6 overflow-x-clip',
           data: {
             controller: 'person-medication-form',
             person_type: person.person_type,
@@ -87,9 +87,12 @@ module Components
       end
 
       def render_actions
-        div(class: 'flex justify-end gap-3 pt-4') do
-          Link(href: person_path(person), variant: :outlined) { t('person_medications.form.cancel') }
-          m3_button(type: :submit, variant: :filled) do
+        div(class: 'flex max-w-full flex-wrap justify-end gap-3 pt-4',
+            data: { testid: 'person-medication-form-actions' }) do
+          Link(href: person_path(person), variant: :outlined, class: 'max-w-full whitespace-normal text-center') do
+            t('person_medications.form.cancel')
+          end
+          m3_button(type: :submit, variant: :filled, class: 'max-w-full whitespace-normal text-center') do
             if editing
               t('person_medications.form.save_changes_button')
             else
