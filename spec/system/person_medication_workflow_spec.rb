@@ -46,7 +46,7 @@ RSpec.describe 'Person medication workflow' do
     select '250 mg - Standard child dose (6-12 years)', from: 'Dose'
     click_button 'Next'
 
-    expect(page).to have_text('Additional guidance')
+    expect(page).to have_text('Add optional guidance')
     expect(page).to have_text(/dose/i)
     expect(page).to have_text('250 mg')
     expect(page).to have_text('Medication type')
@@ -108,6 +108,7 @@ RSpec.describe 'Person medication workflow' do
       const options = controller.doseOptionsValue
       options[String(arguments[0])][0].default_min_hours_between_doses = 0
       controller.doseOptionsValue = options
+      controller.minHoursInputTarget.value = ""
       controller.updateDefaults()
     JS
 

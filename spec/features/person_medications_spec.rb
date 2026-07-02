@@ -34,7 +34,7 @@ RSpec.describe 'Person Medications', type: :system do
       select '500 mg', from: 'Dose'
       click_button 'Next'
 
-      expect(page).to have_text('Additional guidance')
+      expect(page).to have_text('Add optional guidance')
 
       click_button 'Add Medication'
 

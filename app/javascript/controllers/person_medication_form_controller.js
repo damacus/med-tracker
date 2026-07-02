@@ -73,20 +73,8 @@ export default class extends Controller {
           this.doseOptionInputTarget.value = this.#optionValue(defaultDosage)
         }
         this.#applyDose(defaultDosage)
-        if (this.hasMaxDosesInputTarget && !this.maxDosesInputTarget.value) {
-          this.maxDosesInputTarget.value = defaultDosage.default_max_daily_doses ?? ''
-        }
-        if (this.hasMinHoursInputTarget && !this.minHoursInputTarget.value && !this.#routineSelected()) {
-          this.minHoursInputTarget.value = defaultDosage.default_min_hours_between_doses ?? ''
-        }
+        this.#applyDoseDefaults(defaultDosage)
         this.#clearRoutineDefaultInterval()
-        if (this.hasDoseCycleInputTarget && !this.doseCycleInputTarget.value && defaultDosage.default_dose_cycle !== null) {
-          const cycleMap = { 0: 'daily', 1: 'weekly', 2: 'monthly' }
-          const cycleValue = typeof defaultDosage.default_dose_cycle === 'number'
-            ? cycleMap[defaultDosage.default_dose_cycle]
-            : defaultDosage.default_dose_cycle
-          if (cycleValue) this.doseCycleInputTarget.value = cycleValue
-        }
       }
       this.#syncDoseSummary()
       this.#refreshWorkflow()
@@ -105,11 +93,16 @@ export default class extends Controller {
     const selected = this.doseOptionInputTarget.selectedOptions[0]
     if (!selected || !selected.value) return
 
-    this.#applyDose({
+    const dose = {
       id: selected.dataset.id,
       amount: selected.dataset.amount,
-      unit: selected.dataset.unit
-    })
+      unit: selected.dataset.unit,
+      default_max_daily_doses: selected.dataset.defaultMaxDailyDoses,
+      default_min_hours_between_doses: selected.dataset.defaultMinHoursBetweenDoses,
+      default_dose_cycle: selected.dataset.defaultDoseCycle
+    }
+    this.#applyDose(dose)
+    this.#applyDoseDefaults(dose, { overwrite: true })
     this.#syncDoseSummary()
     this.#refreshWorkflow()
   }
@@ -162,6 +155,15 @@ export default class extends Controller {
       if (dose.id) option.dataset.id = dose.id
       option.dataset.amount = dose.amount
       option.dataset.unit = dose.unit
+      if (dose.default_max_daily_doses !== undefined && dose.default_max_daily_doses !== null) {
+        option.dataset.defaultMaxDailyDoses = dose.default_max_daily_doses
+      }
+      if (dose.default_min_hours_between_doses !== undefined && dose.default_min_hours_between_doses !== null) {
+        option.dataset.defaultMinHoursBetweenDoses = dose.default_min_hours_between_doses
+      }
+      if (dose.default_dose_cycle !== undefined && dose.default_dose_cycle !== null) {
+        option.dataset.defaultDoseCycle = dose.default_dose_cycle
+      }
       this.doseOptionInputTarget.appendChild(option)
     })
   }
@@ -177,6 +179,25 @@ export default class extends Controller {
       this.sourceDosageOptionIdInputTarget.value = dose.id || ''
     }
     this.#syncDoseSummary()
+  }
+
+  #applyDoseDefaults(dose, { overwrite = false } = {}) {
+    if (this.hasMaxDosesInputTarget && (overwrite || !this.maxDosesInputTarget.value) &&
+      dose.default_max_daily_doses !== undefined) {
+      this.maxDosesInputTarget.value = dose.default_max_daily_doses ?? ''
+    }
+    if (this.hasMinHoursInputTarget && (overwrite || !this.minHoursInputTarget.value) && !this.#routineSelected() &&
+      dose.default_min_hours_between_doses !== undefined) {
+      this.minHoursInputTarget.value = dose.default_min_hours_between_doses ?? ''
+    }
+    if (this.hasDoseCycleInputTarget && (overwrite || !this.doseCycleInputTarget.value) &&
+      dose.default_dose_cycle !== undefined && dose.default_dose_cycle !== null) {
+      const cycleMap = { 0: 'daily', 1: 'weekly', 2: 'monthly' }
+      const cycleValue = typeof dose.default_dose_cycle === 'number'
+        ? cycleMap[dose.default_dose_cycle]
+        : dose.default_dose_cycle
+      if (cycleValue) this.doseCycleInputTarget.value = cycleValue
+    }
   }
 
   #clearDose() {
