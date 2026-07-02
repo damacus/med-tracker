@@ -73,7 +73,10 @@ class ScheduleDailyRemindersJob < ApplicationJob
   end
 
   def active_schedule_times_for(person)
-    active_schedules_for(person).reject(&:schedule_type_prn?).flat_map(&:configured_times).uniq
+    active_schedules_for(person)
+      .reject(&:schedule_type_prn?)
+      .flat_map { |schedule| configured_times_for_schedule(schedule) }
+      .uniq
   end
 
   def active_schedules_for(person)
@@ -82,6 +85,11 @@ class ScheduleDailyRemindersJob < ApplicationJob
     else
       person.schedules.active.to_a
     end
+  end
+
+  def configured_times_for_schedule(schedule)
+    config = schedule.schedule_config.to_h
+    Array(config['times'] || config[:times]).compact_blank
   end
 
   def build_send_time(time)
