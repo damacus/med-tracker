@@ -16,18 +16,45 @@ class PushNotificationService
   end
   private_class_method :send_web_push_to_account
 
-  def self.send_native_push_to_account(account, path: '/', **_notification_content)
+  def self.send_native_push_to_account(account, title:, body:, path: '/')
     tokens = account.native_device_tokens
     return if tokens.none?
 
     tokens.each do |token|
-      Rails.logger.info(
-        "[PushNotificationService] Native push queued: platform=#{token.platform} " \
-        "token_id=#{token.id} path=#{path.inspect}"
-      )
+      deliver_native(token, title: title, body: body, path: path)
     end
   end
   private_class_method :send_native_push_to_account
+
+  def self.deliver_native(token, title:, body:, path:)
+    result = native_client_for(token)&.deliver(token, title: title, body: body, path: path)
+    return log_native_skip(token) unless result
+    return token.destroy if result.unregistered?
+    return if result.status == :delivered
+
+    Rails.logger.error(
+      "[PushNotificationService] Native push failed: platform=#{token.platform} " \
+      "token_id=#{token.id} status=#{result.provider_status.inspect} error=#{result.provider_error.inspect}"
+    )
+  end
+  private_class_method :deliver_native
+
+  def self.native_client_for(token)
+    case token.platform
+    when 'ios'
+      NativePush::ApnsClient.new if NativePush::ApnsClient.configured?
+    when 'android'
+      NativePush::FcmClient.new if NativePush::FcmClient.configured?
+    end
+  end
+  private_class_method :native_client_for
+
+  def self.log_native_skip(token)
+    Rails.logger.info(
+      "[PushNotificationService] Native push skipped: platform=#{token.platform} token_id=#{token.id}"
+    )
+  end
+  private_class_method :log_native_skip
 
   def self.build_vapid_config
     subject = ENV.fetch('VAPID_SUBJECT',
