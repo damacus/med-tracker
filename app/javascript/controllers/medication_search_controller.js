@@ -138,6 +138,7 @@ export default class extends Controller {
 
     const identifier = this.renderIdentifier(result)
     const pilLink = this.renderPilLink(result)
+    const interactions = this.renderInteractions(result)
     const title = result.name || result.display
     const packageSize = result.package_size
       ? `<p class="text-xs text-on-surface-variant mt-0.5">Pack size: ${this.escapeHtml(result.package_size)}</p>`
@@ -151,6 +152,7 @@ export default class extends Controller {
             ${packageSize}
             ${identifier}
             ${pilLink}
+            ${interactions}
           </div>
           <div class="flex flex-col items-end gap-1 shrink-0">
             ${matchReasonBadge}
@@ -162,6 +164,58 @@ export default class extends Controller {
         ${action}
       </div>
     `
+  }
+
+  renderInteractions(result) {
+    const interactions = Array.isArray(result.interactions) ? result.interactions : []
+    if (interactions.length === 0) return ''
+
+    const detailsId = `interaction-details-${Math.random().toString(36).slice(2)}`
+    const highestSeverity = interactions[0]?.severity_label || ''
+    const summary = this.t("interactionSummary")
+      .replace("%{count}", interactions.length)
+      .replace("%{severity}", highestSeverity)
+
+    const items = interactions.map((interaction) => `
+      <li class="rounded-md border border-warning/40 bg-warning-container/10 p-3">
+        <p class="text-xs font-bold text-on-warning-container">
+          ${this.escapeHtml(this.t("interactionSeverity"))}: ${this.escapeHtml(interaction.severity_label || interaction.severity)}
+        </p>
+        <p class="mt-1 text-xs text-on-warning-container">
+          ${this.escapeHtml(interaction.interacting_medication_name || '')}
+        </p>
+        <p class="mt-2 text-xs text-on-warning-container">
+          <span class="font-bold">${this.escapeHtml(this.t("interactionDescription"))}:</span>
+          ${this.escapeHtml(interaction.description || '')}
+        </p>
+      </li>
+    `).join('')
+
+    return `
+      <div class="mt-3 rounded-lg border border-warning/50 bg-warning-container/20 p-3" data-testid="interaction-warning">
+        <p class="text-xs font-bold text-on-warning-container">${this.escapeHtml(summary)}</p>
+        <button
+          type="button"
+          class="mt-2 text-xs font-bold text-on-warning-container underline underline-offset-2"
+          aria-expanded="false"
+          aria-controls="${this.escapeHtml(detailsId)}"
+          data-action="medication-search#toggleInteractionDetails"
+          data-details-id="${this.escapeHtml(detailsId)}"
+        >${this.escapeHtml(this.t("interactionDetails"))}</button>
+        <div id="${this.escapeHtml(detailsId)}" class="hidden pt-3">
+          <h3 class="text-sm font-bold text-on-warning-container">${this.escapeHtml(this.t("interactionDetails"))}</h3>
+          <ul class="mt-2 space-y-2">${items}</ul>
+        </div>
+      </div>
+    `
+  }
+
+  toggleInteractionDetails(event) {
+    const details = document.getElementById(event.currentTarget.dataset.detailsId)
+    if (!details) return
+
+    const expanded = details.classList.toggle("hidden") === false
+    event.currentTarget.setAttribute("aria-expanded", String(expanded))
   }
 
   renderResultAction(result, barcode, permissions = {}) {

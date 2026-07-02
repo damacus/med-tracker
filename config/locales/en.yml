@@ -742,6 +742,10 @@ en:
       barcode: Barcode
       dmd_code: dm+d code
       pil_link: Patient information leaflet
+      interaction_summary: "%{count} interaction warning (%{severity})"
+      interaction_details: Interaction Details
+      interaction_severity: Severity
+      interaction_description: Description
       update_stock: Update stock
       confirm_restock: Confirm you wish to add %{quantity} units to %{medication}.
       confirm_restock_without_quantity: Confirm how many units you wish to add to

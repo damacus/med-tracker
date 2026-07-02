@@ -3,9 +3,11 @@
 class MedicationFinderSearchResponder
   Result = Data.define(:body, :status)
 
-  def initialize(search: NhsDmd::Search.new, medication_scope: Medication.none, stock_match_resolver: nil)
+  def initialize(search: NhsDmd::Search.new, medication_scope: Medication.none, stock_match_resolver: nil,
+                 interaction_lookup: nil)
     @search = search
     @stock_match_resolver = stock_match_resolver || MedicationStockMatchResolver.new(scope: medication_scope)
+    @interaction_lookup = interaction_lookup || MedicationInteractionLookup.new(medication_scope: medication_scope)
   end
 
   def call(query:, permissions: {})
@@ -46,6 +48,7 @@ class MedicationFinderSearchResponder
     search_result.to_h.tap do |payload|
       medication = existing_medication_for(search_result, barcode)
       payload[:existing_medication] = existing_medication_payload(medication) if medication
+      payload[:interactions] = @interaction_lookup.call(search_result)
     end
   end
 
