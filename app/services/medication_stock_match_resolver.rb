@@ -54,7 +54,7 @@ class MedicationStockMatchResolver
       dmd_code: attributes[:code],
       dmd_system: attributes[:system],
       dmd_concept_class: attributes[:concept_class],
-      dosage_unit: attributes[:package_unit]
+      dose_unit: attributes[:package_unit]
     )
   end
 end

@@ -181,7 +181,7 @@ RSpec.describe Medications::SupplyStatusPresenter do
     end
 
     it 'returns ml label for volume stock' do
-      medication = create(:medication, dosage_unit: 'ml', current_supply: 97.5, reorder_threshold: 10)
+      medication = create(:medication, dose_unit: 'ml', current_supply: 97.5, reorder_threshold: 10)
       presenter = described_class.new(medication:)
 
       expect(presenter.remaining_units_label).to eq('ml remaining')
@@ -204,7 +204,7 @@ RSpec.describe Medications::SupplyStatusPresenter do
     end
 
     it 'returns decimal ml label for volume stock' do
-      medication = create(:medication, dosage_unit: 'ml', current_supply: 97.5, reorder_threshold: 10)
+      medication = create(:medication, dose_unit: 'ml', current_supply: 97.5, reorder_threshold: 10)
       presenter = described_class.new(medication:)
 
       expect(presenter.inventory_units_label).to eq('97.5 ml')

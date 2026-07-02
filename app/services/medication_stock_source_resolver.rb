@@ -47,8 +47,8 @@ class MedicationStockSourceResolver
         .includes(:location)
         .where(
           name: medication.name,
-          dosage_amount: medication.dosage_amount,
-          dosage_unit: medication.dosage_unit
+          dose_amount: medication.dose_amount,
+          dose_unit: medication.dose_unit
         )
         .order('locations.name ASC, medications.id ASC')
         .to_a

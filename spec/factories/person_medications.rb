@@ -22,8 +22,8 @@ FactoryBot.define do
     source_dosage_option do
       dosage if dosage.is_a?(MedicationDosageOption)
     end
-    dose_amount { dosage&.amount || medication.dosage_amount }
-    dose_unit { dosage&.unit || medication.dosage_unit }
+    dose_amount { dosage&.amount || medication.dose_amount }
+    dose_unit { dosage&.unit || medication.dose_unit }
     notes { nil }
     administration_kind { :as_needed }
     max_daily_doses { nil }

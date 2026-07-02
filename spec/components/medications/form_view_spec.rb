@@ -88,12 +88,12 @@ RSpec.describe Components::Medications::FormView, type: :component do
     end
 
     it 'does not render top-level dose and unit inputs' do
-      medication = build(:medication, dosage_amount: 1, dosage_unit: 'mg')
+      medication = build(:medication, dose_amount: 1, dose_unit: 'mg')
       rendered = render_inline(described_class.new(medication: medication, title: 'Edit Medication'))
 
-      expect(rendered.at_css("input#medication_dosage_amount[name='medication[dosage_amount]']")).to be_nil
-      expect(rendered.at_css("input[type='radio'][name='medication[dosage_unit]']")).to be_nil
-      expect(rendered.css("label[for='medication_dosage_unit_trigger']")).to be_empty
+      expect(rendered.at_css("input#medication_dose_amount[name='medication[dose_amount]']")).to be_nil
+      expect(rendered.at_css("input[type='radio'][name='medication[dose_unit]']")).to be_nil
+      expect(rendered.css("label[for='medication_dose_unit_trigger']")).to be_empty
     end
   end
 
@@ -185,7 +185,7 @@ RSpec.describe Components::Medications::FormView, type: :component do
     end
 
     it 'does not append a blank dose option after persisted options' do
-      medication = create(:medication, dosage_unit: 'ml')
+      medication = create(:medication, dose_unit: 'ml')
       build_dose_option(medication, persisted: true, amount: 2.5, frequency: 'Every morning')
 
       rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
@@ -224,7 +224,7 @@ RSpec.describe Components::Medications::FormView, type: :component do
     end
 
     it 'renders editable dose option units independent from the main medication unit' do
-      medication = build(:medication, dosage_unit: 'ml')
+      medication = build(:medication, dose_unit: 'ml')
       build_dose_option(medication, amount: 2.5, unit: 'capsule', frequency: 'Every morning')
 
       rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
@@ -239,7 +239,7 @@ RSpec.describe Components::Medications::FormView, type: :component do
     end
 
     it 'renders per-dose inventory fields' do
-      medication = build(:medication, dosage_unit: 'tablet')
+      medication = build(:medication, dose_unit: 'tablet')
       build_dose_option(medication, amount: 1, unit: 'tablet', current_supply: 56, reorder_threshold: 14)
 
       rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))

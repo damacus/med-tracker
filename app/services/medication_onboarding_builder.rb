@@ -143,8 +143,8 @@ class MedicationOnboardingBuilder
 
   def default_primary_dosage_attributes(medication)
     MedicationOnboardingPrefill::DEFAULT_TIMING.merge(
-      amount: medication.dosage_amount,
-      unit: medication.dosage_unit
+      amount: medication.dose_amount,
+      unit: medication.dose_unit
     ).compact
   end
 end

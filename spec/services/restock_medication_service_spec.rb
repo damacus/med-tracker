@@ -33,7 +33,7 @@ RSpec.describe RestockMedicationService do
     end
 
     it 'restocks with a decimal quantity' do
-      medication.update!(dosage_unit: 'ml', current_supply: 100, supply_at_last_restock: 100)
+      medication.update!(dose_unit: 'ml', current_supply: 100, supply_at_last_restock: 100)
       restock_date = Date.current
 
       result = described_class.new.call(medication: medication, quantity: '12.5', restock_date: restock_date)

@@ -10,8 +10,8 @@ RSpec.describe 'Medications category filter' do
       name: 'School Only Medicine',
       location: locations(:school),
       category: 'Analgesic',
-      dosage_amount: 500,
-      dosage_unit: 'mg',
+      dose_amount: 500,
+      dose_unit: 'mg',
       current_supply: 10,
       reorder_threshold: 1
     )

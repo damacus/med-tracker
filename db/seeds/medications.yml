@@ -1,8 +1,8 @@
 ---
 - name: Paracetamol
   category: Analgesic
-  dosage_amount: 500
-  dosage_unit: mg
+  dose_amount: 500
+  dose_unit: mg
   default_schedule_type: prn
   current_supply: 80
   reorder_threshold: 20
@@ -14,8 +14,8 @@
 
 - name: Ibuprofen
   category: Anti-Inflammatory
-  dosage_amount: 200
-  dosage_unit: mg
+  dose_amount: 200
+  dose_unit: mg
   default_schedule_type: prn
   current_supply: 60
   reorder_threshold: 15
@@ -28,8 +28,8 @@
 
 - name: Aspirin
   category: Analgesic
-  dosage_amount: 300
-  dosage_unit: mg
+  dose_amount: 300
+  dose_unit: mg
   current_supply: 40
   reorder_threshold: 10
   description: >-
@@ -40,8 +40,8 @@
 
 - name: Codeine
   category: Opioid
-  dosage_amount: 30
-  dosage_unit: mg
+  dose_amount: 30
+  dose_unit: mg
   current_supply: 30
   reorder_threshold: 10
   description: >-
@@ -51,8 +51,8 @@
 
 - name: Calpol Six Plus 250mg/5ml oral suspension (McNeil Products Ltd)
   category: Analgesic
-  dosage_amount: 5
-  dosage_unit: ml
+  dose_amount: 5
+  dose_unit: ml
   current_supply: 35
   reorder_threshold: 10
   description: >-
@@ -64,8 +64,8 @@
 
 - name: Amoxicillin
   category: Antibiotic
-  dosage_amount: 500
-  dosage_unit: mg
+  dose_amount: 500
+  dose_unit: mg
   current_supply: 42
   reorder_threshold: 14
   description: >-
@@ -75,8 +75,8 @@
 
 - name: Doxycycline
   category: Antibiotic
-  dosage_amount: 100
-  dosage_unit: mg
+  dose_amount: 100
+  dose_unit: mg
   current_supply: 28
   reorder_threshold: 10
   description: >-
@@ -86,8 +86,8 @@
 
 - name: Nitrofurantoin
   category: Antibiotic
-  dosage_amount: 100
-  dosage_unit: mg
+  dose_amount: 100
+  dose_unit: mg
   current_supply: 20
   reorder_threshold: 8
   description: >-
@@ -97,8 +97,8 @@
 
 - name: Fluconazole
   category: Antifungal
-  dosage_amount: 150
-  dosage_unit: mg
+  dose_amount: 150
+  dose_unit: mg
   current_supply: 12
   reorder_threshold: 4
   description: >-
@@ -108,8 +108,8 @@
 
 - name: Aciclovir
   category: Antiviral
-  dosage_amount: 400
-  dosage_unit: mg
+  dose_amount: 400
+  dose_unit: mg
   current_supply: 30
   reorder_threshold: 10
   description: >-
@@ -119,8 +119,8 @@
 
 - name: Cetirizine
   category: Antihistamine
-  dosage_amount: 10
-  dosage_unit: mg
+  dose_amount: 10
+  dose_unit: mg
   current_supply: 60
   reorder_threshold: 20
   description: >-
@@ -130,8 +130,8 @@
 
 - name: Loratadine
   category: Antihistamine
-  dosage_amount: 10
-  dosage_unit: mg
+  dose_amount: 10
+  dose_unit: mg
   current_supply: 60
   reorder_threshold: 20
   description: >-
@@ -141,8 +141,8 @@
 
 - name: Omeprazole
   category: Gastrointestinal
-  dosage_amount: 20
-  dosage_unit: mg
+  dose_amount: 20
+  dose_unit: mg
   current_supply: 30
   reorder_threshold: 10
   description: >-
@@ -152,8 +152,8 @@
 
 - name: Senna
   category: Gastrointestinal
-  dosage_amount: 7.5
-  dosage_unit: mg
+  dose_amount: 7.5
+  dose_unit: mg
   current_supply: 40
   reorder_threshold: 12
   description: >-
@@ -163,8 +163,8 @@
 
 - name: Lactulose
   category: Osmotic Laxative
-  dosage_amount: 15
-  dosage_unit: ml
+  dose_amount: 15
+  dose_unit: ml
   current_supply: 120
   reorder_threshold: 30
   description: >-
@@ -174,8 +174,8 @@
 
 - name: Bisacodyl
   category: Gastrointestinal
-  dosage_amount: 5
-  dosage_unit: mg
+  dose_amount: 5
+  dose_unit: mg
   current_supply: 40
   reorder_threshold: 12
   description: >-
@@ -185,8 +185,8 @@
 
 - name: Loperamide
   category: Gastrointestinal
-  dosage_amount: 2
-  dosage_unit: mg
+  dose_amount: 2
+  dose_unit: mg
   current_supply: 30
   reorder_threshold: 10
   description: >-
@@ -196,8 +196,8 @@
 
 - name: Mebeverine
   category: Gastrointestinal
-  dosage_amount: 135
-  dosage_unit: mg
+  dose_amount: 135
+  dose_unit: mg
   current_supply: 60
   reorder_threshold: 14
   description: >-
@@ -207,8 +207,8 @@
 
 - name: Metformin
   category: Antidiabetic
-  dosage_amount: 500
-  dosage_unit: mg
+  dose_amount: 500
+  dose_unit: mg
   current_supply: 90
   reorder_threshold: 21
   description: >-
@@ -218,8 +218,8 @@
 
 - name: Sitagliptin
   category: Antidiabetic
-  dosage_amount: 100
-  dosage_unit: mg
+  dose_amount: 100
+  dose_unit: mg
   current_supply: 30
   reorder_threshold: 10
   description: >-
@@ -229,8 +229,8 @@
 
 - name: Dapagliflozin
   category: Antidiabetic
-  dosage_amount: 10
-  dosage_unit: mg
+  dose_amount: 10
+  dose_unit: mg
   current_supply: 30
   reorder_threshold: 10
   description: >-
@@ -240,8 +240,8 @@
 
 - name: Simvastatin
   category: Cholesterol
-  dosage_amount: 40
-  dosage_unit: mg
+  dose_amount: 40
+  dose_unit: mg
   current_supply: 60
   reorder_threshold: 14
   description: >-
@@ -251,8 +251,8 @@
 
 - name: Amlodipine
   category: Antihypertensive
-  dosage_amount: 5
-  dosage_unit: mg
+  dose_amount: 5
+  dose_unit: mg
   current_supply: 60
   reorder_threshold: 14
   description: >-
@@ -262,8 +262,8 @@
 
 - name: Ramipril
   category: Antihypertensive
-  dosage_amount: 5
-  dosage_unit: mg
+  dose_amount: 5
+  dose_unit: mg
   current_supply: 60
   reorder_threshold: 14
   description: >-
@@ -273,8 +273,8 @@
 
 - name: Warfarin
   category: Anticoagulant
-  dosage_amount: 3
-  dosage_unit: mg
+  dose_amount: 3
+  dose_unit: mg
   current_supply: 35
   reorder_threshold: 10
   description: >-
@@ -284,8 +284,8 @@
 
 - name: Apixaban
   category: Anticoagulant
-  dosage_amount: 5
-  dosage_unit: mg
+  dose_amount: 5
+  dose_unit: mg
   current_supply: 56
   reorder_threshold: 14
   description: >-
@@ -295,8 +295,8 @@
 
 - name: Sertraline
   category: Antidepressant
-  dosage_amount: 50
-  dosage_unit: mg
+  dose_amount: 50
+  dose_unit: mg
   current_supply: 56
   reorder_threshold: 14
   description: >-
@@ -306,8 +306,8 @@
 
 - name: Duloxetine
   category: Antidepressant
-  dosage_amount: 30
-  dosage_unit: mg
+  dose_amount: 30
+  dose_unit: mg
   current_supply: 56
   reorder_threshold: 14
   description: >-
@@ -317,8 +317,8 @@
 
 - name: Gabapentin
   category: Anticonvulsant
-  dosage_amount: 300
-  dosage_unit: mg
+  dose_amount: 300
+  dose_unit: mg
   current_supply: 90
   reorder_threshold: 21
   description: >-
@@ -328,8 +328,8 @@
 
 - name: Quetiapine
   category: Antipsychotic
-  dosage_amount: 100
-  dosage_unit: mg
+  dose_amount: 100
+  dose_unit: mg
   current_supply: 56
   reorder_threshold: 14
   description: >-
@@ -339,8 +339,8 @@
 
 - name: Diazepam
   category: Anxiolytic
-  dosage_amount: 5
-  dosage_unit: mg
+  dose_amount: 5
+  dose_unit: mg
   current_supply: 20
   reorder_threshold: 6
   description: >-
@@ -350,8 +350,8 @@
 
 - name: Ondansetron
   category: Antiemetic
-  dosage_amount: 4
-  dosage_unit: mg
+  dose_amount: 4
+  dose_unit: mg
   current_supply: 24
   reorder_threshold: 8
   description: >-
@@ -361,8 +361,8 @@
 
 - name: Salbutamol Inhaler
   category: Respiratory
-  dosage_amount: 100
-  dosage_unit: mcg
+  dose_amount: 100
+  dose_unit: mcg
   current_supply: 20
   reorder_threshold: 6
   description: >-
@@ -372,8 +372,8 @@
 
 - name: Beclometasone Inhaler
   category: Respiratory
-  dosage_amount: 100
-  dosage_unit: mcg
+  dose_amount: 100
+  dose_unit: mcg
   current_supply: 20
   reorder_threshold: 6
   description: >-
@@ -383,8 +383,8 @@
 
 - name: Sumatriptan
   category: Migraine
-  dosage_amount: 50
-  dosage_unit: mg
+  dose_amount: 50
+  dose_unit: mg
   current_supply: 18
   reorder_threshold: 6
   description: >-
@@ -394,8 +394,8 @@
 
 - name: Levothyroxine
   category: Thyroid
-  dosage_amount: 100
-  dosage_unit: mcg
+  dose_amount: 100
+  dose_unit: mcg
   current_supply: 56
   reorder_threshold: 14
   description: >-
@@ -405,8 +405,8 @@
 
 - name: Ferrous Sulfate
   category: Mineral
-  dosage_amount: 200
-  dosage_unit: mg
+  dose_amount: 200
+  dose_unit: mg
   current_supply: 60
   reorder_threshold: 20
   description: >-
@@ -416,8 +416,8 @@
 
 - name: Calcium Carbonate
   category: Mineral
-  dosage_amount: 500
-  dosage_unit: mg
+  dose_amount: 500
+  dose_unit: mg
   current_supply: 60
   reorder_threshold: 20
   description: >-
@@ -427,8 +427,8 @@
 
 - name: Vitamin D
   category: Vitamin
-  dosage_amount: 1000
-  dosage_unit: IU
+  dose_amount: 1000
+  dose_unit: IU
   current_supply: 60
   reorder_threshold: 20
   description: >-
@@ -438,8 +438,8 @@
 
 - name: Vitamin C
   category: Vitamin
-  dosage_amount: 500
-  dosage_unit: mg
+  dose_amount: 500
+  dose_unit: mg
   current_supply: 60
   reorder_threshold: 20
   description: >-
@@ -449,8 +449,8 @@
 
 - name: Folic Acid
   category: Vitamin
-  dosage_amount: 400
-  dosage_unit: mcg
+  dose_amount: 400
+  dose_unit: mcg
   current_supply: 56
   reorder_threshold: 14
   description: >-
@@ -460,8 +460,8 @@
 
 - name: Nicotine Gum
   category: Smoking Cessation
-  dosage_amount: 2
-  dosage_unit: mg
+  dose_amount: 2
+  dose_unit: mg
   current_supply: 120
   reorder_threshold: 30
   description: >-
@@ -471,8 +471,8 @@
 
 - name: Orlistat
   category: Weight Management
-  dosage_amount: 120
-  dosage_unit: mg
+  dose_amount: 120
+  dose_unit: mg
   current_supply: 84
   reorder_threshold: 21
   description: >-
@@ -482,8 +482,8 @@
 
 - name: Solifenacin
   category: Urological
-  dosage_amount: 5
-  dosage_unit: mg
+  dose_amount: 5
+  dose_unit: mg
   current_supply: 56
   reorder_threshold: 14
   description: >-
@@ -493,8 +493,8 @@
 
 - name: Timolol Eye Drops
   category: Ophthalmic
-  dosage_amount: 1
-  dosage_unit: drop
+  dose_amount: 1
+  dose_unit: drop
   current_supply: 60
   reorder_threshold: 20
   description: >-
@@ -504,8 +504,8 @@
 
 - name: Hydrocortisone Cream
   category: Dermatological
-  dosage_amount: 1
-  dosage_unit: g
+  dose_amount: 1
+  dose_unit: g
   current_supply: 30
   reorder_threshold: 10
   description: >-
@@ -515,8 +515,8 @@
 
 - name: Prednisolone
   category: Hormonal
-  dosage_amount: 5
-  dosage_unit: mg
+  dose_amount: 5
+  dose_unit: mg
   current_supply: 30
   reorder_threshold: 10
   description: >-
@@ -526,8 +526,8 @@
 
 - name: Tacrolimus
   category: Immunosuppressant
-  dosage_amount: 1
-  dosage_unit: mg
+  dose_amount: 1
+  dose_unit: mg
   current_supply: 56
   reorder_threshold: 14
   description: >-
@@ -537,8 +537,8 @@
 
 - name: Alendronic Acid
   category: Osteoporosis
-  dosage_amount: 70
-  dosage_unit: mg
+  dose_amount: 70
+  dose_unit: mg
   current_supply: 12
   reorder_threshold: 4
   description: >-

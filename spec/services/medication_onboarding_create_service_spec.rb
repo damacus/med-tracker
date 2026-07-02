@@ -311,8 +311,8 @@ RSpec.describe MedicationOnboardingCreateService do
       create_medication(
         name: 'Paracetamol 500mg tablets',
         current_supply: 10,
-        dosage_amount: 500,
-        dosage_unit: 'mg'
+        dose_amount: 500,
+        dose_unit: 'mg'
       )
     end
     let(:medication_scope) { Medication.where(location: location) }

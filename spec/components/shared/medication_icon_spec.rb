@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Components::Shared::MedicationIcon, type: :component do
   it 'renders the pill icon for tablet medications' do
-    medication = instance_double(Medication, dosage_unit: 'tablet')
+    medication = instance_double(Medication, dose_unit: 'tablet')
 
     rendered = render_inline(described_class.new(medication: medication))
 

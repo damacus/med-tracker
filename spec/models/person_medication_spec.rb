@@ -104,7 +104,7 @@ RSpec.describe PersonMedication do
 
   describe 'dose validations' do
     it 'does not assign a mismatched default dosage option for an explicit custom dose' do
-      medication = create(:medication, dosage_amount: nil, dosage_unit: nil)
+      medication = create(:medication, dose_amount: nil, dose_unit: nil)
       create(:dosage, medication: medication, amount: 500, unit: 'mg', default_for_adults: true)
       person_medication = build(
         :person_medication,
@@ -119,7 +119,7 @@ RSpec.describe PersonMedication do
     end
 
     it 'assigns the matching dosage option for an explicit dose snapshot' do
-      medication = create(:medication, dosage_amount: nil, dosage_unit: nil)
+      medication = create(:medication, dose_amount: nil, dose_unit: nil)
       create(:dosage, medication: medication, amount: 500, unit: 'mg', default_for_adults: true)
       matching_dosage = create(:dosage, medication: medication, amount: 750, unit: 'mg')
       person_medication = build(
@@ -135,7 +135,7 @@ RSpec.describe PersonMedication do
     end
 
     it 'requires a resolvable dose for new records' do
-      medication = create(:medication, dosage_amount: nil, dosage_unit: nil)
+      medication = create(:medication, dose_amount: nil, dose_unit: nil)
       person_medication = build(:person_medication, medication: medication, dose_amount: nil, dose_unit: nil)
 
       expect(person_medication).not_to be_valid
@@ -144,7 +144,7 @@ RSpec.describe PersonMedication do
     end
 
     it 'allows legacy persisted records without a resolvable dose to update non-dose fields' do
-      medication = create(:medication, dosage_amount: nil, dosage_unit: nil)
+      medication = create(:medication, dose_amount: nil, dose_unit: nil)
       person_medication = build(:person_medication, medication: medication, dose_amount: nil, dose_unit: nil,
                                                     notes: 'Original notes', position: 0)
       person_medication.save!(validate: false)

@@ -26,8 +26,8 @@ module Api
           display_name: medication.display_name,
           category: medication.category,
           description: medication.description,
-          dosage_amount: medication.dosage_amount,
-          dosage_unit: medication.dosage_unit
+          dose_amount: medication.dose_amount,
+          dose_unit: medication.dose_unit
         }
       end
 

@@ -31,7 +31,7 @@ module Components
       private
 
       def icon_class
-        u = @unit || medication&.try(:dosage_unit) || medication&.try(:unit)
+        u = @unit || medication&.try(:dose_unit) || medication&.try(:unit)
         ICONS_BY_UNIT.fetch(u&.downcase, Icons::Medication)
       end
     end

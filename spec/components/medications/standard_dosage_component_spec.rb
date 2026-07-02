@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Components::Medications::StandardDosageComponent, type: :component do
   it 'renders the medication standard dosage and reorder threshold' do
-    medication = create(:medication, dosage_amount: 500, dosage_unit: 'mg', reorder_threshold: 10)
+    medication = create(:medication, dose_amount: 500, dose_unit: 'mg', reorder_threshold: 10)
 
     rendered = render_inline(described_class.new(medication: medication))
 
@@ -16,7 +16,7 @@ RSpec.describe Components::Medications::StandardDosageComponent, type: :componen
   end
 
   it 'renders the empty dosage copy when dosage is not specified' do
-    medication = create(:medication, dosage_amount: nil, dosage_unit: nil)
+    medication = create(:medication, dose_amount: nil, dose_unit: nil)
 
     rendered = render_inline(described_class.new(medication: medication))
 

@@ -207,8 +207,8 @@ RSpec.describe Reports::IndexQuery do
     create(
       :medication,
       name: 'Calpol',
-      dosage_amount: 2.5,
-      dosage_unit: 'ml',
+      dose_amount: 2.5,
+      dose_unit: 'ml',
       current_supply: 10,
       supply_at_last_restock: 10,
       reorder_threshold: 2

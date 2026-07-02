@@ -8,8 +8,8 @@ RSpec.describe MedicationTake do
     create(
       :medication,
       name: 'Lisinopril',
-      dosage_amount: 10,
-      dosage_unit: 'mg',
+      dose_amount: 10,
+      dose_unit: 'mg',
       current_supply: 10,
       reorder_threshold: 2
     )
@@ -145,8 +145,8 @@ RSpec.describe MedicationTake do
       {
         name: medication.name,
         location: location,
-        dosage_amount: medication.dosage_amount,
-        dosage_unit: medication.dosage_unit,
+        dose_amount: medication.dose_amount,
+        dose_unit: medication.dose_unit,
         current_supply: 12,
         reorder_threshold: 2
       }.merge(overrides)

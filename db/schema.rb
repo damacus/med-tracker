@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_02_154500) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_02_160600) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -381,8 +381,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_154500) do
     t.string "dmd_code"
     t.string "dmd_concept_class"
     t.string "dmd_system"
-    t.float "dosage_amount"
-    t.string "dosage_unit"
+    t.float "dose_amount"
+    t.string "dose_unit"
     t.date "expiry_date"
     t.string "friendly_name"
     t.bigint "household_id", null: false

@@ -7,10 +7,10 @@ RSpec.describe Components::Shared::StockBadge, type: :component do
 
   let(:supply_level) { instance_double(SupplyLevel, status: status) }
   let(:medication) do
-    instance_double(Medication, current_supply: current_supply, dosage_unit: dosage_unit, supply_level: supply_level)
+    instance_double(Medication, current_supply: current_supply, dose_unit: dose_unit, supply_level: supply_level)
   end
   let(:current_supply) { 100 }
-  let(:dosage_unit) { 'mg' }
+  let(:dose_unit) { 'mg' }
   let(:status) { :in_stock }
 
   describe '#view_template' do
@@ -42,7 +42,7 @@ RSpec.describe Components::Shared::StockBadge, type: :component do
 
     context 'when medication is volume tracked' do
       let(:current_supply) { BigDecimal('97.5') }
-      let(:dosage_unit) { 'ml' }
+      let(:dose_unit) { 'ml' }
 
       it 'renders the decimal volume count' do
         result = render_inline(component)

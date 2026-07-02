@@ -14,7 +14,7 @@ RSpec.describe 'Form inline validation feedback' do
   describe 'MedicationsController with validation errors' do
     it 'displays inline error messages next to invalid fields' do
       post medications_path,
-           params: { medication: { name: '', description: 'A test', dosage_amount: 10, dosage_unit: 'mg' } }
+           params: { medication: { name: '', description: 'A test', dose_amount: 10, dose_unit: 'mg' } }
 
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include('can&#39;t be blank')
@@ -22,7 +22,7 @@ RSpec.describe 'Form inline validation feedback' do
 
     it 'displays error summary at the top of the form' do
       post medications_path,
-           params: { medication: { name: '', description: 'A test', dosage_amount: 10, dosage_unit: 'mg' } }
+           params: { medication: { name: '', description: 'A test', dose_amount: 10, dose_unit: 'mg' } }
 
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include('role="alert"')
@@ -31,7 +31,7 @@ RSpec.describe 'Form inline validation feedback' do
 
     it 'adds error styling to fields with errors' do
       post medications_path,
-           params: { medication: { name: '', description: 'A test', dosage_amount: 10, dosage_unit: 'mg' } }
+           params: { medication: { name: '', description: 'A test', dose_amount: 10, dose_unit: 'mg' } }
 
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include('border-destructive')
@@ -39,7 +39,7 @@ RSpec.describe 'Form inline validation feedback' do
 
     it 'associates field errors with invalid inputs' do
       post medications_path,
-           params: { medication: { name: '', description: 'A test', dosage_amount: 10, dosage_unit: 'mg' } }
+           params: { medication: { name: '', description: 'A test', dose_amount: 10, dose_unit: 'mg' } }
 
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include('id="medication_name_error"')
@@ -49,8 +49,8 @@ RSpec.describe 'Form inline validation feedback' do
 
     it 'rejects zero dosage amount' do
       post medications_path,
-           params: { medication: { name: 'Bad Dosage', description: 'A test', dosage_amount: 0,
-                                   dosage_unit: 'tablet' } }
+           params: { medication: { name: 'Bad Dosage', description: 'A test', dose_amount: 0,
+                                   dose_unit: 'tablet' } }
 
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include('must be greater than 0')

@@ -291,8 +291,8 @@ RSpec.describe 'Medication creation scope' do
           medication: {
             name: 'Scoped Parent Medication',
             category: 'Vitamin',
-            dosage_amount: 5,
-            dosage_unit: 'ml',
+            dose_amount: 5,
+            dose_unit: 'ml',
             current_supply: 10,
             reorder_threshold: 1,
             location_id: home_location.id
@@ -314,8 +314,8 @@ RSpec.describe 'Medication creation scope' do
             dmd_system: 'https://dmd.nhs.uk',
             dmd_concept_class: 'AMPP',
             category: 'Osmotic Laxative',
-            dosage_amount: 1,
-            dosage_unit: 'sachet',
+            dose_amount: 1,
+            dose_unit: 'sachet',
             current_supply: 30,
             reorder_threshold: 5,
             location_id: home_location.id
@@ -335,8 +335,8 @@ RSpec.describe 'Medication creation scope' do
           medication: {
             name: 'Scheduled Drops',
             category: 'Vitamin',
-            dosage_amount: 2,
-            dosage_unit: 'drop',
+            dose_amount: 2,
+            dose_unit: 'drop',
             current_supply: 30,
             reorder_threshold: 5,
             location_id: home_location.id,
@@ -369,8 +369,8 @@ RSpec.describe 'Medication creation scope' do
             dmd_code: '3366911000001108',
             dmd_system: 'https://dmd.nhs.uk',
             dmd_concept_class: 'AMPP',
-            dosage_amount: 1,
-            dosage_unit: 'sachet',
+            dose_amount: 1,
+            dose_unit: 'sachet',
             current_supply: 0,
             reorder_threshold: 5,
             location_id: home_location.id
@@ -395,8 +395,8 @@ RSpec.describe 'Medication creation scope' do
             dmd_system: 'https://dmd.nhs.uk',
             dmd_concept_class: 'AMPP',
             category: 'Analgesic',
-            dosage_amount: 1,
-            dosage_unit: 'tablet',
+            dose_amount: 1,
+            dose_unit: 'tablet',
             current_supply: 16,
             reorder_threshold: 4,
             location_id: home_location.id
@@ -425,8 +425,8 @@ RSpec.describe 'Medication creation scope' do
             dmd_system: 'https://dmd.nhs.uk',
             dmd_concept_class: 'AMPP',
             category: 'Analgesic',
-            dosage_amount: 1,
-            dosage_unit: 'tablet',
+            dose_amount: 1,
+            dose_unit: 'tablet',
             current_supply: 16,
             reorder_threshold: 4,
             location_id: home_location.id
@@ -487,8 +487,8 @@ RSpec.describe 'Medication creation scope' do
         current_supply: 3,
         reorder_threshold: 0,
         barcode: '3574661646435',
-        dosage_amount: nil,
-        dosage_unit: 'pad',
+        dose_amount: nil,
+        dose_unit: 'pad',
         dmd_code: nil
       )
       expect(medication.dosage_records.order(:id).pluck(:amount, :unit, :current_supply, :reorder_threshold)).to eq(
@@ -518,7 +518,7 @@ RSpec.describe 'Medication creation scope' do
         description: a_string_including('mild to moderate pain'),
         warnings: a_string_including('Contains paracetamol'),
         dmd_code: '316811000001106',
-        dosage_unit: 'ml',
+        dose_unit: 'ml',
         current_supply: nil,
         reorder_threshold: 0
       )
@@ -569,8 +569,8 @@ RSpec.describe 'Medication creation scope' do
             name: 'Laxido Orange oral powder sachets (Galen Ltd)',
             barcode: '5016298210989',
             category: 'Osmotic Laxative',
-            dosage_amount: 1,
-            dosage_unit: 'sachet',
+            dose_amount: 1,
+            dose_unit: 'sachet',
             current_supply: 30,
             reorder_threshold: 5,
             location_id: home_location.id
@@ -634,8 +634,8 @@ RSpec.describe 'Medication creation scope' do
           medication: {
             name: 'Foreign Location Medication',
             category: 'Vitamin',
-            dosage_amount: 5,
-            dosage_unit: 'ml',
+            dose_amount: 5,
+            dose_unit: 'ml',
             current_supply: 10,
             reorder_threshold: 1,
             location_id: foreign_location.id
@@ -687,8 +687,8 @@ RSpec.describe 'Medication creation scope' do
     {
       name: medication_name,
       category: 'Analgesic',
-      dosage_amount: 5,
-      dosage_unit: 'ml',
+      dose_amount: 5,
+      dose_unit: 'ml',
       current_supply: 10,
       reorder_threshold: 1,
       location_id: home_location.id,

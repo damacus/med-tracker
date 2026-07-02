@@ -103,8 +103,8 @@ class MedicationTake < ApplicationRecord
   def taken_from_medication_matches_source
     return if taken_from_medication.blank? || medication.blank?
     return if taken_from_medication.name == medication.name &&
-              taken_from_medication.dosage_amount.to_s == medication.dosage_amount.to_s &&
-              taken_from_medication.dosage_unit == medication.dosage_unit
+              taken_from_medication.dose_amount.to_s == medication.dose_amount.to_s &&
+              taken_from_medication.dose_unit == medication.dose_unit
 
     errors.add(:taken_from_medication, 'must match the assigned medication')
   end

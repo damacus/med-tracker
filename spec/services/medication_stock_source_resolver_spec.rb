@@ -10,8 +10,8 @@ RSpec.describe MedicationStockSourceResolver do
   let(:medication) do
     create(:medication,
            name: 'Paracetamol',
-           dosage_amount: 500,
-           dosage_unit: 'mg',
+           dose_amount: 500,
+           dose_unit: 'mg',
            location: location,
            household: fixture_household,
            current_supply: 20,
@@ -163,8 +163,8 @@ RSpec.describe MedicationStockSourceResolver do
       let!(:second_medication) do
         create(:medication,
                name: medication.name,
-               dosage_amount: medication.dosage_amount,
-               dosage_unit: medication.dosage_unit,
+               dose_amount: medication.dose_amount,
+               dose_unit: medication.dose_unit,
                location: location2,
                household: fixture_household,
                current_supply: 10,

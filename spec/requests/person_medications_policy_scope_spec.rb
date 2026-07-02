@@ -20,8 +20,8 @@ RSpec.describe 'PersonMedicationsController medication options' do
       name: 'Foreign Household Medication',
       location: location,
       category: 'Analgesic',
-      dosage_amount: 250,
-      dosage_unit: 'mg',
+      dose_amount: 250,
+      dose_unit: 'mg',
       current_supply: 10,
       reorder_threshold: 1
     )
