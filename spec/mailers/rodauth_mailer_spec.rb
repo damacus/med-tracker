@@ -29,6 +29,15 @@ RSpec.describe RodauthMailer do
     it 'is a multipart email with HTML and plain text parts' do
       expect(mail.content_type).to include('multipart/alternative')
     end
+
+    it 'renders branded HTML without ERB templates' do
+      html = mail.html_part.body.encoded
+
+      expect(html).to include('MedTracker')
+      expect(html).to include('style=')
+      expect(html).to include('verify-account')
+      expect(Rails.root.glob('app/views/rodauth_mailer/*.erb')).to be_empty
+    end
   end
 
   describe '#reset_password' do

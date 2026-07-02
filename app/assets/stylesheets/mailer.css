@@ -1,0 +1,83 @@
+.mailer-body {
+  margin: 0;
+  padding: 0;
+  background-color: #f4f6f8;
+  color: #1f2937;
+  font-family: system-ui, -apple-system, Arial, Helvetica, sans-serif;
+}
+
+.mailer-wrapper {
+  width: 100%;
+  background-color: #f4f6f8;
+  padding: 40px 0;
+}
+
+.mailer-card {
+  max-width: 600px;
+  margin: 0 auto;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 40px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 8%);
+}
+
+.mailer-header {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.mailer-brand {
+  margin: 0;
+  color: #007bff;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.mailer-content {
+  color: #1f2937;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.mailer-title {
+  margin-top: 0;
+  color: #111827;
+  font-size: 24px;
+  line-height: 1.25;
+}
+
+.mailer-copy {
+  margin: 0 0 16px;
+}
+
+.mailer-action-wrap {
+  margin: 32px 0;
+  text-align: center;
+}
+
+.mailer-button {
+  display: inline-block;
+  padding: 12px 24px;
+  border-radius: 6px;
+  background-color: #007bff;
+  color: #ffffff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.mailer-note {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.mailer-footer {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+  color: #6b7280;
+  font-size: 13px;
+  text-align: center;
+}
