@@ -24,11 +24,12 @@ module Components
             DialogContent(size: :md) do
               DialogHeader do
                 if back_path
-                  a(
+                  m3_link(
                     href: back_path,
+                    variant: :text,
+                    size: :sm,
                     data: { turbo_frame: 'modal' },
-                    class: 'inline-flex items-center text-sm text-on-surface-variant hover:text-foreground ' \
-                           'transition-colors mb-2 no-underline'
+                    class: 'mb-2 h-auto min-h-0 justify-start p-0 text-sm text-on-surface-variant hover:text-foreground'
                   ) do
                     plain t('medication_workflow.back')
                   end
@@ -64,12 +65,13 @@ module Components
       private
 
       def render_option(href:, title:, description:, icon:)
-        a(
+        m3_link(
           href: href,
+          variant: :outlined,
+          size: :lg,
           data: { turbo_frame: 'modal' },
-          class: 'flex items-start gap-4 w-full rounded-2xl border-2 border-outline p-6 ' \
-                 'hover:border-primary hover:bg-primary/5 active:bg-primary/10 ' \
-                 'transition-all cursor-pointer no-underline'
+          class: 'w-full items-start justify-start gap-4 rounded-2xl border-2 border-outline p-6 ' \
+                 'hover:border-primary hover:bg-primary/5 active:bg-primary/10'
         ) do
           div(class: 'w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center ' \
                      'text-primary flex-none mt-0.5') do

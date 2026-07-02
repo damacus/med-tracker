@@ -112,9 +112,11 @@ module Components
                        'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
                      end
 
-        a(
+        m3_link(
           href: dashboard_path(dashboard_person_id: option.fetch(:id)),
-          class: "inline-flex min-h-12 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold #{link_class}",
+          variant: selected ? :filled : :text,
+          size: :md,
+          class: "min-h-12 gap-2 rounded-xl px-3 py-2 text-sm font-bold #{link_class}",
           aria: selected ? { current: 'true' } : {},
           data: { testid: 'dashboard-person-option' }
         ) do
@@ -178,12 +180,13 @@ module Components
           data: { testid: testid }
         ) do
           render RubyUI::DropdownMenuTrigger.new(class: 'w-full') do
-            button(
+            m3_button(
               type: 'button',
-              class: 'inline-flex min-h-12 w-full items-center justify-between gap-2 rounded-xl border ' \
-                     'border-outline-variant bg-surface-container-low px-3 py-2 text-sm font-bold ' \
-                     'text-on-surface-variant shadow-sm hover:bg-surface-container-high ' \
-                     'focus:outline-none focus:ring-2 focus:ring-primary/20',
+              variant: :outlined,
+              size: :md,
+              class: 'min-h-12 w-full justify-between gap-2 rounded-xl border-outline-variant ' \
+                     'bg-surface-container-low px-3 py-2 text-sm font-bold text-on-surface-variant ' \
+                     'shadow-sm hover:bg-surface-container-high',
               aria: { label: t('dashboard.person_selector.more_people') }
             ) do
               span(class: 'truncate') { overflow_selector_label }

@@ -28,11 +28,12 @@ module Components
             DialogContent(size: dialog_size) do
               DialogHeader do
                 if back_path
-                  a(
+                  m3_link(
                     href: back_path,
+                    variant: :text,
+                    size: :sm,
                     data: { turbo_frame: 'modal' },
-                    class: 'inline-flex items-center text-sm text-on-surface-variant hover:text-foreground ' \
-                           'transition-colors mb-2 no-underline'
+                    class: 'mb-2 h-auto min-h-0 justify-start p-0 text-sm text-on-surface-variant hover:text-foreground'
                   ) do
                     plain t('medication_workflow.back')
                   end
