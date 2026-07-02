@@ -39,6 +39,7 @@ class TakeMedicationService
   end
 
   def call(source:, amount_override:, taken_from_medication_id:, user:, **options)
+    publish_take_metric('take_attempted.med_tracker', source:, user:, options:)
     prepared_take = prepare_take(
       source: source,
       amount_override: amount_override,
@@ -46,12 +47,12 @@ class TakeMedicationService
       user: user,
       options: options
     )
-    return failure(prepared_take.error) if prepared_take.error
+    return rule_blocked_failure(prepared_take, source:, user:, options:) if prepared_take.error
 
     take = prepared_take.record
-    return failure(:create_failed) unless take.persisted?
+    return persistence_failure(source:, user:, options:) unless take.persisted?
 
-    success(take)
+    success(take, source:, user:, options:)
   end
 
   private
@@ -60,8 +61,19 @@ class TakeMedicationService
     Result.new(success: false, take: nil, error: error)
   end
 
-  def success(take)
+  def rule_blocked_failure(prepared_take, source:, user:, options:)
+    publish_take_metric('take_blocked_by_rules.med_tracker', source:, user:, options:, error: prepared_take.error)
+    failure(prepared_take.error)
+  end
+
+  def persistence_failure(source:, user:, options:)
+    publish_take_metric('take_errors.med_tracker', source:, user:, options:, error: :create_failed)
+    failure(:create_failed)
+  end
+
+  def success(take, source:, user:, options:)
     publish_dose_taken(take)
+    publish_take_metric('take_recorded.med_tracker', source:, user:, options:)
     Result.new(success: true, take: take, error: nil)
   end
 
@@ -139,6 +151,29 @@ class TakeMedicationService
 
   def publish_dose_taken(take)
     ActiveSupport::Notifications.instrument('dose_taken.med_tracker', dose_taken_payload(take))
+  end
+
+  def publish_take_metric(event_name, source:, user:, options:, error: nil)
+    ActiveSupport::Notifications.instrument(event_name, take_metric_payload(source:, user:, options:, error:))
+  end
+
+  def take_metric_payload(source:, user:, options:, error:)
+    {
+      environment: Rails.env.to_s,
+      role: metric_role(user),
+      route: options[:route],
+      medicine_context_class: source.class.name,
+      source_type: source.class.model_name.singular,
+      error: error&.to_s
+    }
+  end
+
+  def metric_role(user)
+    return user.membership&.role if user.is_a?(AuthorizationContext)
+    return unless user.respond_to?(:person)
+
+    account = user.person&.account
+    account&.first_active_household_membership&.role
   end
 
   def dose_taken_payload(take)

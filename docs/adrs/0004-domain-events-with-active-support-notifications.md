@@ -24,6 +24,10 @@ Event names for the initial tranche:
 
 - `dose_taken.med_tracker`
 - `low_stock_threshold_reached.med_tracker`
+- `take_attempted.med_tracker`
+- `take_recorded.med_tracker`
+- `take_blocked_by_rules.med_tracker`
+- `take_errors.med_tracker`
 
 Publishers will emit raw notification payloads directly at the domain/service boundary. We are not introducing a custom event bus, wrapper object, or subscriber framework in this tranche.
 
