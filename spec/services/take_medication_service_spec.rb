@@ -10,7 +10,10 @@ RSpec.describe TakeMedicationService do
 
   let(:user) { users(:john) }
 
-  before { FixtureHouseholdSetup.apply! }
+  before do
+    FixtureHouseholdSetup.apply!
+    MedicationTake.delete_all
+  end
 
   # Shared helper to invoke the service
   def call_service(source:, amount_override: nil, taken_from_medication_id: nil, **)
