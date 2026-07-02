@@ -108,6 +108,30 @@ class ApplicationController < ActionController::Base
     AuthorizationContext.new(account: Current.account, household: Current.household, membership: nil)
   end
 
+  def modal_frame_request?
+    request.headers['Turbo-Frame'] == 'modal'
+  end
+
+  def render_modal_or_page(modal:, page:, status: :ok)
+    respond_to do |format|
+      format.html do
+        if modal_frame_request?
+          render modal_renderable(modal), layout: false, status: status
+        else
+          render modal_renderable(page), status: status
+        end
+      end
+
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace('modal', modal_renderable(modal)), status: status
+      end
+    end
+  end
+
+  def modal_renderable(renderable)
+    renderable.is_a?(Proc) ? renderable.call : renderable
+  end
+
   def safe_redirect_path(path)
     url_from(path)
   end

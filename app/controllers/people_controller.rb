@@ -26,27 +26,23 @@ class PeopleController < ApplicationController
   def new
     @person = Person.new
     authorize @person
-    is_modal = request.headers['Turbo-Frame'] == 'modal'
     assigned_location = primary_location
 
-    if is_modal
-      render Components::People::Modal.new(person: @person, assigned_location: assigned_location), layout: false
-    else
-      render Components::People::FormView.new(person: @person, assigned_location: assigned_location)
-    end
+    render_modal_or_page(
+      modal: -> { Components::People::Modal.new(person: @person, assigned_location: assigned_location) },
+      page: -> { Components::People::FormView.new(person: @person, assigned_location: assigned_location) }
+    )
   end
 
   def edit
     @person = policy_scope(Person).find(params.expect(:id))
     authorize @person
     @return_to = url_from(params[:return_to])
-    is_modal = request.headers['Turbo-Frame'] == 'modal'
 
-    if is_modal
-      render Components::People::Modal.new(person: @person, return_to: @return_to), layout: false
-    else
-      render Components::People::FormView.new(person: @person, return_to: @return_to)
-    end
+    render_modal_or_page(
+      modal: -> { Components::People::Modal.new(person: @person, return_to: @return_to) },
+      page: -> { Components::People::FormView.new(person: @person, return_to: @return_to) }
+    )
   end
 
   def create
