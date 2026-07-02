@@ -136,6 +136,63 @@ RSpec.describe 'API v1 write resources' do
     expect(response).to have_http_status(:not_found)
   end
 
+  it 'returns specific medication take failure messages from dose rules' do
+    person = people(:john)
+    medication = create(:medication, household: person.household, location: locations(:home),
+                                     name: "API Branch Medicine #{SecureRandom.hex(4)}",
+                                     current_supply: 0)
+    schedule = create(:schedule, person: person, medication: medication, dosage: nil,
+                                 dose_amount: medication.dose_amount, dose_unit: medication.dose_unit)
+
+    post api_v1_household_medication_takes_path(household_id),
+         params: {
+           medication_take: {
+             source_type: 'schedule',
+             source_id: schedule.id,
+             taken_at: '2026-02-25T08:30:00Z'
+           }
+         },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body.dig('error', 'message')).to eq('Cannot take medication: out of stock')
+
+    medication.update!(current_supply: 20)
+    create(:medication, household: person.household, location: locations(:home),
+                        name: medication.name, dose_amount: medication.dose_amount, dose_unit: medication.dose_unit,
+                        current_supply: 20)
+
+    post api_v1_household_medication_takes_path(household_id),
+         params: {
+           medication_take: {
+             source_type: 'schedule',
+             source_id: schedule.id,
+             taken_at: '2026-02-25T08:30:00Z'
+           }
+         },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body.dig('error', 'message')).to eq('Choose a location to record this dose.')
+
+    post api_v1_household_medication_takes_path(household_id),
+         params: {
+           medication_take: {
+             source_type: 'schedule',
+             source_id: schedule.id,
+             taken_at: '2026-02-25T08:30:00Z',
+             taken_from_medication_id: medications(:aspirin).id
+           }
+         },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body.dig('error', 'message')).to eq('Selected location is unavailable for this medication.')
+  end
+
   it 'creates and updates people' do
     post api_v1_household_people_path(household_id),
          params: { person: { name: 'API Child', date_of_birth: '2020-01-01', person_type: 'minor' } },
