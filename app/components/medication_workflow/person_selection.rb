@@ -40,12 +40,13 @@ module Components
       def render_person_buttons
         div(class: 'grid grid-cols-1 gap-3 py-2') do
           people.each do |person|
-            a(
+            m3_link(
               href: new_person_medication_assignment_path(person, source: :workflow, medication_id: medication_id),
+              variant: :outlined,
+              size: :lg,
               data: { turbo_frame: 'modal' },
-              class: 'flex items-center gap-4 w-full rounded-2xl border-2 border-outline p-4 ' \
-                     'hover:border-primary hover:bg-primary/5 active:bg-primary/10 ' \
-                     'transition-all cursor-pointer no-underline'
+              class: 'w-full justify-start gap-4 rounded-2xl border-2 border-outline p-4 ' \
+                     'hover:border-primary hover:bg-primary/5 active:bg-primary/10'
             ) do
               render Components::Shared::PersonAvatar.new(person: person, size: :md)
               div do

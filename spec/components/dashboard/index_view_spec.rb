@@ -92,6 +92,17 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(selected.at_css('[data-testid="person-avatar"]')).to be_present
     end
 
+    it 'renders selected person options with the shared M3 link contract' do
+      presenter = parent_dashboard_presenter
+
+      rendered = render_inline(described_class.new(presenter: presenter))
+      selected = rendered.at_css('[data-testid="dashboard-person-option"][aria-current="true"]')
+      selected_classes = selected['class'].split
+
+      expect(selected_classes).to include('state-layer', 'rounded-xl')
+      expect(selected_classes).to include_person_pill_size_class
+    end
+
     it 'wraps selector controls instead of requiring horizontal scrolling' do
       presenter = parent_dashboard_presenter
 
@@ -114,6 +125,15 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(overflow['data-controller']).to include('ruby-ui--dropdown-menu')
       expect(overflow.at_css('select')).not_to be_present
       expect(overflow.text).to include('All Family')
+    end
+
+    it 'renders overflow selector triggers with the shared M3 button contract' do
+      presenter = dashboard_presenter(admin_user, people_scope: Person.all)
+
+      rendered = render_inline(described_class.new(presenter: presenter))
+      overflow = rendered.at_css('[data-testid="dashboard-person-overflow"]')
+
+      expect(overflow.at_css('button')['class'].split).to include('state-layer', 'rounded-xl')
     end
 
     it 'renders only the current selection plus a dropdown for other people on mobile' do
@@ -535,6 +555,13 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
 
   def include_touch_target_class
     satisfy { |classes| classes.include?('min-h-11') || classes.include?('min-h-[44px]') }
+  end
+
+  def include_person_pill_size_class
+    satisfy do |classes|
+      classes.include?('min-h-10') || classes.include?('min-h-11') || classes.include?('min-h-12') ||
+        classes.include?('min-h-[44px]')
+    end
   end
 
   def dashboard_presenter(user, people_scope:, selected_person_id: nil)
