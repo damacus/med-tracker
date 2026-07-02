@@ -66,7 +66,7 @@ RSpec.describe ScheduleDailyRemindersJob do
 
   it 'enqueues missed-dose checks after active schedule times when missed-dose preferences are enabled' do
     eligibility_query = instance_double(MedicationReminderEligibilityQuery, configured_times: ['07:15'])
-    allow(MedicationReminderEligibilityQuery).to receive(:new).with(person: person).and_return(eligibility_query)
+    allow(MedicationReminderEligibilityQuery).to receive(:new).and_return(eligibility_query)
     create(:notification_preference, person: person, morning_time: nil, afternoon_time: nil,
                                      evening_time: nil, night_time: nil, dose_due_enabled: false,
                                      missed_dose_enabled: true)
