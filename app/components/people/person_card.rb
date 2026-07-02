@@ -129,7 +129,7 @@ module Components
 
       def render_add_medication_link
         m3_link(
-          href: new_person_medication_assignment_path(person),
+          href: add_medication_person_path(person),
           variant: :filled,
           size: :lg,
           class: 'w-full font-black shadow-elevation-2'

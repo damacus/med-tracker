@@ -30,13 +30,14 @@ RSpec.describe 'Person Medications Authorization' do
         expect(page).to have_link('Add Medication')
         click_link 'Add Medication'
       end
+      click_link 'As needed'
       click_button 'Select a medication'
       find('label', text: medication.name).click
       expect(page).to have_text('Choose the dose')
       expect(page).to have_select('Dose', with_options: ['1000 IU - Daily Vitamin D supplement'])
       select '1000 IU - Daily Vitamin D supplement', from: 'Dose'
       click_button 'Next'
-      expect(page).to have_text('Review')
+      expect(page).to have_text('Add optional guidance')
       click_button 'Add Medication'
 
       expect(page).to have_text('Medication added successfully.')
@@ -53,9 +54,9 @@ RSpec.describe 'Person Medications Authorization' do
         click_link 'Add Medication'
       end
 
-      expect(page).to have_text('Choose a medication')
-      expect(page).to have_no_text('Prescribed / Scheduled')
-      expect(page).to have_no_text('How is this medication taken?')
+      expect(page).to have_text('Prescribed / Scheduled')
+      expect(page).to have_text('How is this medication taken?')
+      expect(page).to have_link('As needed')
     end
 
     it 'denies nurses ability to add medications' do
@@ -93,13 +94,14 @@ RSpec.describe 'Person Medications Authorization' do
         expect(page).to have_link('Add Medication')
         click_link 'Add Medication'
       end
+      click_link 'As needed'
       click_button 'Select a medication'
       find('label', text: medication.name).click
       expect(page).to have_text('Choose the dose')
       expect(page).to have_select('Dose', with_options: ['1000 IU - Daily Vitamin D supplement'])
       select '1000 IU - Daily Vitamin D supplement', from: 'Dose'
       click_button 'Next'
-      expect(page).to have_text('Review')
+      expect(page).to have_text('Add optional guidance')
       click_button 'Add Medication'
 
       expect(page).to have_text('Medication added successfully.')

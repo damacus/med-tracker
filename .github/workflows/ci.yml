@@ -192,6 +192,17 @@ jobs:
             echo "No files for this shard"
           fi
 
+      - name: Upload Capybara failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: capybara-failures-shard-${{ matrix.shard }}
+          path: |
+            tmp/capybara/**/*.png
+            tmp/capybara/**/*.html
+          if-no-files-found: ignore
+          retention-days: 7
+
   mutation:
     runs-on: [ubuntu-latest]
     name: Mutation Testing (advisory, changed subjects)

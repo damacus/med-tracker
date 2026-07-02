@@ -45,6 +45,9 @@ RSpec.describe 'Add schedule modal flow' do
       click_on 'Add Medication'
     end
 
+    expect(page).to have_text('How is this medication taken?')
+    click_on 'As needed'
+
     expect(page).to have_text("Add Medication for #{person.name}")
 
     click_on 'Cancel'

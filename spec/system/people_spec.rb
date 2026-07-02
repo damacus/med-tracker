@@ -62,7 +62,7 @@ RSpec.describe 'People' do
       visit people_path
 
       within "##{tenant_dom_id(person)}" do
-        expect(page).to have_link('Add Medication', href: new_person_medication_assignment_path(person))
+        expect(page).to have_link('Add Medication', href: add_medication_person_path(person))
       end
     end
 

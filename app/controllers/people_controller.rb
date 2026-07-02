@@ -132,10 +132,13 @@ class PeopleController < ApplicationController
   end
 
   def add_medication
-    authorize @person, :show?
-    redirect_to new_person_medication_assignment_path(
-      @person,
-      source: params[:source],
+    authorize @person, :add_medication?
+
+    render Components::People::AddMedicationLanding.new(
+      person: @person,
+      can_schedule: policy(add_medication_schedule).new?,
+      can_person_medication: policy(add_medication_person_medication).new?,
+      back_path: add_medication_back_path,
       medication_id: params[:medication_id]
     )
   end
@@ -152,6 +155,20 @@ class PeopleController < ApplicationController
 
   def primary_location
     PrimaryLocationQuery.new(person: current_user&.person).call
+  end
+
+  def add_medication_schedule
+    @add_medication_schedule ||= @person.schedules.build(medication_id: params[:medication_id])
+  end
+
+  def add_medication_person_medication
+    @add_medication_person_medication ||= @person.person_medications.build(medication_id: params[:medication_id])
+  end
+
+  def add_medication_back_path
+    return add_medication_path(medication_id: params[:medication_id]) if params[:source] == 'workflow'
+
+    person_path(@person)
   end
 
   def grant_created_person_access
