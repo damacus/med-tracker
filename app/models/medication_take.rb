@@ -149,6 +149,7 @@ class MedicationTake < ApplicationRecord
 
   def publish_low_stock_threshold_reached
     return unless @low_stock_threshold_payload
+    return unless low_stock_notifications_enabled?
 
     ActiveSupport::Notifications.instrument(
       'low_stock_threshold_reached.med_tracker',
@@ -156,6 +157,13 @@ class MedicationTake < ApplicationRecord
     )
   ensure
     @low_stock_threshold_payload = nil
+  end
+
+  def low_stock_notifications_enabled?
+    preference = person&.notification_preference
+    return true unless preference
+
+    preference.enabled? && preference.low_stock_enabled?
   end
 
   def low_stock_threshold_crossed?(inventory:, stock_row:)
