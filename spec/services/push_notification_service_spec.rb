@@ -68,18 +68,56 @@ RSpec.describe PushNotificationService do
       described_class.send_to_account(account, title: 'Medication Reminder', body: 'Take aspirin at 07:15')
 
       expect(Rails.logger).to have_received(:info) do |message|
-        expect(message).to include('Native push queued')
+        expect(message).to include('Native push skipped')
         expect(message).not_to include('Medication Reminder')
         expect(message).not_to include('Take aspirin')
       end
     end
+
+    it 'delivers native notifications through the platform adapters' do
+      ios = create_native_device_token(platform: 'ios', device_token: 'ios-token')
+      android = create_native_device_token(platform: 'android', device_token: 'android-token')
+      allow(WebPush).to receive(:payload_send)
+      apns_client = stub_native_client(NativePush::ApnsClient)
+      fcm_client = stub_native_client(NativePush::FcmClient)
+
+      described_class.send_to_account(account, title: 'Medication Reminder', body: 'Take aspirin', path: '/today')
+
+      expect_native_delivery(apns_client, ios)
+      expect_native_delivery(fcm_client, android)
+    end
+
+    it 'removes native device tokens rejected by providers as unregistered' do
+      token = create_native_device_token(platform: 'ios', device_token: 'stale-ios-token')
+      allow(WebPush).to receive(:payload_send)
+      stub_native_client(NativePush::ApnsClient, result: NativePush::DeliveryResult.unregistered)
+
+      expect do
+        described_class.send_to_account(account, title: 'Medication Reminder', body: 'Take aspirin')
+      end.to change { NativeDeviceToken.exists?(token.id) }.from(true).to(false)
+    end
   end
 
-  def create_native_device_token
+  def create_native_device_token(platform: 'ios', device_token: 'native-token-for-privacy-test')
     NativeDeviceToken.create!(
       account: account,
-      platform: 'ios',
-      device_token: 'native-token-for-privacy-test'
+      platform: platform,
+      device_token: device_token
+    )
+  end
+
+  def stub_native_client(client_class, result: NativePush::DeliveryResult.delivered)
+    client = instance_double(client_class, deliver: result)
+    allow(client_class).to receive_messages(configured?: true, new: client)
+    client
+  end
+
+  def expect_native_delivery(client, token)
+    expect(client).to have_received(:deliver).with(
+      token,
+      title: 'Medication Reminder',
+      body: 'Take aspirin',
+      path: '/today'
     )
   end
 end
