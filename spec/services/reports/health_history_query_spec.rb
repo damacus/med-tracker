@@ -57,6 +57,16 @@ RSpec.describe Reports::HealthHistoryQuery do
     )
   end
 
+  it 'reports duration days for ended health events and omits them for ongoing events' do
+    create_suspected_side_effect
+    create_illness_episode(Date.new(2026, 2, 1), Date.new(2026, 2, 3), 'Cold')
+
+    result = described_class.new(people: [person], start_date: start_date, end_date: end_date).call
+
+    expect(result.suspected_side_effects.sole.duration_days).to be_nil
+    expect(result.notable_illnesses.sole.duration_days).to eq(3)
+  end
+
   def create_illness_episode(started_on, ended_on, title)
     HealthEvent.create!(
       person: person,
