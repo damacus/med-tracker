@@ -14,15 +14,12 @@ if Rails.env.production?
     config.lograge.keep_appenders = false
 
     # Add custom data to Lograge entries, including OpenTelemetry correlation
-    config.lograge.custom_options = lambda do |event|
+    config.lograge.custom_options = lambda do |_event|
       options = {}
 
       # OpenTelemetry correlation
       current_span = OpenTelemetry::Trace.current_span
-      if current_span.context.valid?
-        options['trace.id'] = current_span.context.hex_trace_id
-        options['span.id'] = current_span.context.hex_span_id
-      end
+      options.merge!(Otel::LogCorrelation.options(span: current_span))
 
       options
     end
