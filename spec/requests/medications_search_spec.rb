@@ -92,6 +92,13 @@ RSpec.describe 'GET /medication-finder/search' do
         )
       end
 
+      it 'passes the selected dosage form filter to the responder' do
+        get medication_finder_search_path(format: :json), params: { q: 'aspirin', form: 'tablet' }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body['form']).to eq('tablet')
+      end
+
       it 'includes interaction warnings for matching accessible medication stock' do
         search = instance_double(
           NhsDmd::Search,

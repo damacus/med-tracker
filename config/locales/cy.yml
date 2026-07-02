@@ -724,6 +724,19 @@ cy:
       barcode: Cod bar
       dmd_code: Cod dm+d
       pil_link: Taflen wybodaeth i gleifion
+      form_filter_label: Ffurf dos
+      all_forms: Pob ffurf
+      forms:
+        tablet: Tabledi
+        capsule: Capsiwlau
+        liquid: Hylifau
+        cream: Hufenau ac eli
+        inhaler: Anadlyddion
+        injection: Pigiadau
+        patch: Clytiau
+        drops: Diferion
+        spray: Chwistrellau
+        powder: Powdrau a sachau
       update_stock: Diweddaru stoc
       confirm_restock: Cadarnhewch eich bod am ychwanegu %{quantity} uned at %{medication}.
       confirm_restock_without_quantity: Cadarnhewch faint o unedau rydych am eu hychwanegu

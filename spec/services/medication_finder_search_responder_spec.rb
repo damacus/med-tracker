@@ -127,6 +127,19 @@ RSpec.describe MedicationFinderSearchResponder do
         result = responder.call(query: 'paracetamol', permissions: { admin: true })
         expect(result.body[:permissions]).to eq({ admin: true })
       end
+
+      it 'filters results by dosage form when requested' do
+        tablet = make_search_result(display: 'Paracetamol 500mg tablets', package_unit: 'tablet')
+        liquid = make_search_result(display: 'Paracetamol 250mg/5ml oral suspension', package_unit: 'ml')
+        allow(search).to receive(:call).and_return(successful_nhs_result(results: [tablet, liquid]))
+
+        result = responder.call(query: 'paracetamol', form: 'liquid')
+
+        expect(result.body[:results]).to contain_exactly(
+          a_hash_including(display: 'Paracetamol 250mg/5ml oral suspension')
+        )
+        expect(result.body[:form]).to eq('liquid')
+      end
     end
 
     context 'when search raises an error' do

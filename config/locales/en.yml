@@ -754,6 +754,19 @@ en:
       barcode: Barcode
       dmd_code: dm+d code
       pil_link: Patient information leaflet
+      form_filter_label: Dosage form
+      all_forms: All forms
+      forms:
+        tablet: Tablets
+        capsule: Capsules
+        liquid: Liquids
+        cream: Creams and ointments
+        inhaler: Inhalers
+        injection: Injections
+        patch: Patches
+        drops: Drops
+        spray: Sprays
+        powder: Powders and sachets
       interaction_summary: "%{count} interaction warning (%{severity})"
       interaction_details_button: View Interaction Details
       interaction_details: Interaction Details
