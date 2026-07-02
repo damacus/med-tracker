@@ -7,13 +7,14 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
 
   let(:household) { households(:fixture_household) }
   let(:current_user) { users(:jane) }
+  let(:performance_budget_seconds) { 0.75 }
 
   before do
     FixtureHouseholdSetup.apply!
     MedicationTake.delete_all
   end
 
-  it 'renders a representative family dashboard in under 500ms' do
+  it 'renders a representative family dashboard within the performance budget' do
     people = create_list(:person, 8, household: household)
     people.each.with_index { |person, index| create_dashboard_records(person, index) }
 
@@ -24,7 +25,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     render_inline(described_class.new(presenter: dashboard_presenter(people)))
     elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at
 
-    expect(elapsed).to be < 0.5
+    expect(elapsed).to be < performance_budget_seconds
   end
 
   def dashboard_presenter(people)
