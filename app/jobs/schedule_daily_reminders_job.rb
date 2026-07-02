@@ -66,31 +66,9 @@ class ScheduleDailyRemindersJob < ApplicationJob
   end
 
   def configured_times_for(pref)
-    times = []
-    times.concat(MedicationReminderEligibilityQuery.new(person: pref.person).configured_times) if pref.dose_due_enabled
-    times.concat(active_schedule_times_for(pref.person)) if pref.missed_dose_enabled
-    times.uniq
-  end
+    return [] unless pref.dose_due_enabled || pref.missed_dose_enabled
 
-  def active_schedule_times_for(person)
-    active_schedules_for(person)
-      .reject(&:schedule_type_prn?)
-      .select { |schedule| schedule.applies_on?(Time.zone.today) }
-      .flat_map { |schedule| configured_times_for_schedule(schedule) }
-      .uniq
-  end
-
-  def active_schedules_for(person)
-    if person.schedules.loaded?
-      person.schedules.select(&:active?)
-    else
-      person.schedules.active.to_a
-    end
-  end
-
-  def configured_times_for_schedule(schedule)
-    config = schedule.schedule_config.to_h
-    Array(config['times'] || config[:times]).compact_blank
+    MedicationReminderEligibilityQuery.new(person: pref.person).configured_times
   end
 
   def build_send_time(time)
