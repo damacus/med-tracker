@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_02_160600) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_02_170000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -206,6 +206,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_160600) do
   create_table "app_settings", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.boolean "invite_only", default: false, null: false
+    t.string "medicine_lookup_base_url", default: "https://ontology.nhs.uk/production1/fhir", null: false
+    t.jsonb "medicine_lookup_source_priority", default: ["imported_catalog", "local_nhs_dmd", "cached_open_products_facts", "open_products_facts", "curated_catalog", "nhs_dmd", "supplements"], null: false
+    t.string "medicine_lookup_token_url", default: "https://ontology.nhs.uk/authorisation/auth/realms/nhs-digital-terminology/protocol/openid-connect/token", null: false
     t.datetime "updated_at", null: false
   end
 
