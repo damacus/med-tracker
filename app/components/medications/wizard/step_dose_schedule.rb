@@ -163,11 +163,8 @@ module Components
                 t('forms.medications.wizard.dose.person_description')
               end
             end
-            select(
+            m3_select(
               id: 'wizard_schedule_person',
-              class: 'flex h-14 min-h-[56px] w-full rounded-shape-sm border border-outline bg-transparent ' \
-                     'px-4 py-4 text-base transition-all focus-visible:outline-none focus-visible:ring-2 ' \
-                     'focus-visible:ring-primary',
               data: {
                 action: 'change->medication-schedule-wizard#selectPerson',
                 'medication-schedule-wizard-target': 'personSelect'
@@ -213,11 +210,8 @@ module Components
               render RubyUI::FormFieldLabel.new(for: 'wizard_dose_unit') do
                 t('forms.medications.wizard.dose.unit')
               end
-              select(
+              m3_select(
                 id: 'wizard_dose_unit',
-                class: 'flex h-14 min-h-[56px] w-full rounded-shape-sm border border-outline bg-transparent ' \
-                       'px-4 py-4 text-base transition-all focus-visible:outline-none focus-visible:ring-2 ' \
-                       'focus-visible:ring-primary',
                 required: true,
                 data: {
                   action: 'change->medication-schedule-wizard#update',
@@ -321,10 +315,8 @@ module Components
                 render RubyUI::FormFieldLabel.new(for: 'weekly_day') do
                   t('forms.medications.wizard.dose.weekly_day')
                 end
-                select(
+                m3_select(
                   id: 'weekly_day',
-                  class: 'flex h-14 min-h-[56px] w-full rounded-shape-sm border border-outline ' \
-                         'bg-transparent px-4 py-4',
                   data: {
                     action: 'change->medication-schedule-wizard#update',
                     'medication-schedule-wizard-target': 'weeklyDayInput'

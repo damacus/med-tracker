@@ -71,7 +71,7 @@ module Components
             render RubyUI::FormFieldLabel.new(for: 'carer_relationship_carer_id') do
               t('people.carer_relationships.carer')
             end
-            select(name: 'carer_relationship[carer_id]', id: 'carer_relationship_carer_id', class: select_classes) do
+            m3_select(name: 'carer_relationship[carer_id]', id: 'carer_relationship_carer_id', size: :sm) do
               option(value: '') { t('people.carer_relationships.select_carer') }
               carers.each do |carer|
                 option(value: carer.id) { carer.name }
@@ -85,10 +85,10 @@ module Components
             render RubyUI::FormFieldLabel.new(for: 'carer_relationship_relationship_type') do
               t('people.carer_relationships.relationship_type')
             end
-            select(
+            m3_select(
               name: 'carer_relationship[relationship_type]',
               id: 'carer_relationship_relationship_type',
-              class: select_classes
+              size: :sm
             ) do
               CarerRelationship::RELATIONSHIP_TYPES.each do |label, value|
                 option(value: value) { label }

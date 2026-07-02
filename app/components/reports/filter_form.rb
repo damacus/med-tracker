@@ -36,7 +36,7 @@ module Components
       def render_person_field
         div(class: 'flex flex-col gap-1') do
           label(for: 'person_id', class: label_classes) { translate('person_filter_label') }
-          select(name: 'person_id', id: 'person_id', class: input_classes(:select)) do
+          m3_select(name: 'person_id', id: 'person_id', size: :sm) do
             option(value: '', selected: @selected_person_id.blank?) { translate('all_people') }
             @people.each { |person| render_person_option(person) }
           end
