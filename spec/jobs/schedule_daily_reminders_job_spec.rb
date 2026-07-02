@@ -69,7 +69,7 @@ RSpec.describe ScheduleDailyRemindersJob do
                                      evening_time: nil, night_time: nil, dose_due_enabled: false,
                                      missed_dose_enabled: true)
     create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
-                      frequency: 'Once daily', schedule_type: :multiple_daily,
+                      frequency: 'Once daily', schedule_type: :daily,
                       schedule_config: { 'times' => ['07:15'] })
 
     expect do
