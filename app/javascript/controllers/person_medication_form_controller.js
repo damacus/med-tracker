@@ -74,10 +74,10 @@ export default class extends Controller {
         }
         this.#applyDose(defaultDosage)
         if (this.hasMaxDosesInputTarget && !this.maxDosesInputTarget.value) {
-          this.maxDosesInputTarget.value = defaultDosage.default_max_daily_doses || ''
+          this.maxDosesInputTarget.value = defaultDosage.default_max_daily_doses ?? ''
         }
         if (this.hasMinHoursInputTarget && !this.minHoursInputTarget.value && !this.#routineSelected()) {
-          this.minHoursInputTarget.value = defaultDosage.default_min_hours_between_doses || ''
+          this.minHoursInputTarget.value = defaultDosage.default_min_hours_between_doses ?? ''
         }
         this.#clearRoutineDefaultInterval()
         if (this.hasDoseCycleInputTarget && !this.doseCycleInputTarget.value && defaultDosage.default_dose_cycle !== null) {

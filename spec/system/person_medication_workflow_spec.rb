@@ -14,16 +14,19 @@ RSpec.describe 'Person medication workflow' do
     login_as(parent)
   end
 
-  it 'lets a parent add a medication from predefined doses without choosing a medication type' do
+  it 'lets a parent add a medication from predefined doses after choosing as-needed medication' do
     visit person_path(person)
 
     within '[data-testid="quick-actions"]' do
       click_link 'Add Medication'
     end
 
-    expect(page).to have_no_text('Prescribed / Scheduled')
-    expect(page).to have_no_text('How is this medication taken?')
-    expect(page).to have_link('Cancel')
+    expect(page).to have_text('Prescribed / Scheduled')
+    expect(page).to have_text('How is this medication taken?')
+    click_link 'As needed'
+
+    expect(page).to have_text("Add Medication for #{person.name}")
+    expect(page).to have_button('Cancel')
     expect(page).to have_button('Next', disabled: true)
     expect(page).to have_no_button('Back')
     expect(page).to have_no_button('Add Medication')
@@ -32,9 +35,9 @@ RSpec.describe 'Person medication workflow' do
     find('label', text: 'Paracetamol').click
 
     expect(page).to have_text('Choose the dose')
-    expect(page).to have_link('Cancel')
+    expect(page).to have_button('Cancel')
     expect(page).to have_button('Back')
-    expect(page).to have_button('Next', disabled: true)
+    expect(page).to have_button('Next')
     expect(page).to have_css('div.max-w-md')
     expect(page).to have_text('Medication')
     expect(page).to have_text('Paracetamol')
@@ -53,7 +56,7 @@ RSpec.describe 'Person medication workflow' do
     expect(page).to have_no_text('Active dates')
     expect(page).to have_no_button('Next')
     expect(page).to have_button('Back')
-    expect(page).to have_link('Cancel')
+    expect(page).to have_button('Cancel')
     expect(page).to have_button('Add Medication')
 
     click_button 'Add Medication'
@@ -75,6 +78,9 @@ RSpec.describe 'Person medication workflow' do
       click_link 'Add Medication'
     end
 
+    expect(page).to have_text('How is this medication taken?')
+    click_link 'As needed'
+
     expect(page).to have_text("Add Medication for #{person.name}")
     click_on 'Cancel'
 
@@ -92,22 +98,23 @@ RSpec.describe 'Person medication workflow' do
       click_link 'Add Medication'
     end
 
+    click_link 'As needed'
+    expect(page).to have_css("[data-controller~='person-medication-form']")
     click_button 'Select a medication'
     find('label', text: medication.name).click
 
     page.execute_script(<<~JS, medication.id)
-      const form = document.querySelector("[data-controller~='medication-assignment-form']")
-      const controller = window.Stimulus.getControllerForElementAndIdentifier(form, "medication-assignment-form")
-      const options = controller.optionsValue
-      options[String(arguments[0])].dose_options[0].default_min_hours_between_doses = 0
-      controller.optionsValue = options
-      controller.updateMedication()
+      const form = document.querySelector("[data-controller~='person-medication-form']")
+      const controller = window.Stimulus.getControllerForElementAndIdentifier(form, "person-medication-form")
+      const options = controller.doseOptionsValue
+      options[String(arguments[0])][0].default_min_hours_between_doses = 0
+      controller.doseOptionsValue = options
+      controller.updateDefaults()
     JS
 
     select '200 mg - Light adult dose', from: 'Dose'
     click_button 'Next'
 
-    expect(page).to have_css('[data-medication-assignment-form-target="reviewMinHours"]', text: /\A0\z/)
-    expect(page).to have_no_css('[data-medication-assignment-form-target="reviewMinHours"]', text: 'Not set')
+    expect(page).to have_field('person_medication[min_hours_between_doses]', with: '0')
   end
 end

@@ -128,7 +128,7 @@ module Components
             div(class: 'space-y-3') do
               if can_add_medication?
                 m3_link(
-                  href: new_person_medication_assignment_path(person),
+                  href: add_medication_person_path(person),
                   variant: :tonal,
                   size: :lg,
                   class: 'w-full font-bold shadow-elevation-1 transition-all',
@@ -201,7 +201,7 @@ module Components
             end
             if can_add_medication?
               m3_link(
-                href: new_person_medication_assignment_path(person),
+                href: add_medication_person_path(person),
                 variant: :filled,
                 size: :lg,
                 data: { turbo_frame: 'modal' }

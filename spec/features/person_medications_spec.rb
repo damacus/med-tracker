@@ -25,15 +25,16 @@ RSpec.describe 'Person Medications', type: :system do
         click_link 'Add Medication'
       end
 
+      click_link 'As needed'
       click_button 'Select a medication'
       find('label', text: new_medication.name).click
 
       expect(page).to have_text('Choose the dose')
-      expect(page).to have_css('#medication_assignment_dose_option option', text: '500 mg', visible: :all)
+      expect(page).to have_css('#person_medication_dose_option option', text: '500 mg', visible: :all)
       select '500 mg', from: 'Dose'
       click_button 'Next'
 
-      expect(page).to have_text('Review')
+      expect(page).to have_text('Additional guidance')
 
       click_button 'Add Medication'
 

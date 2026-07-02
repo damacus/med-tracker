@@ -285,7 +285,7 @@ module Components
             name: 'person_medication[min_hours_between_doses]',
             id: 'person_medication_min_hours_between_doses',
             value: person_medication.min_hours_between_doses,
-            min: 1,
+            min: 0,
             step: 0.5,
             placeholder: t('person_medications.form.optional'),
             data: { person_medication_form_target: 'minHoursInput' }
