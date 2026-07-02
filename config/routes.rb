@@ -131,6 +131,7 @@ Rails.application.routes.draw do
     delete 'profile/avatar', to: 'profiles#avatar', as: :profile_avatar
 
     resources :reports, only: %i[index]
+    get 'reports/health-history', to: 'health_history_reports#show', as: :health_history_report
 
     get 'offline', to: 'offline#show'
     get 'offline/snapshot', to: 'offline#snapshot'
@@ -187,6 +188,7 @@ Rails.application.routes.draw do
       end
       resources :carer_relationships, only: %i[new create], controller: 'people/carer_relationships'
       resources :medication_assignments, only: %i[new create]
+      resources :health_events, except: [:show]
     end
 
     resource :push_subscription, only: %i[create destroy] do
@@ -231,7 +233,6 @@ Rails.application.routes.draw do
   # Profile
 
   # Reports
-
 
   # Location management
 

@@ -16,6 +16,7 @@ class Household < ApplicationRecord
   has_many :schedules, dependent: :restrict_with_error
   has_many :person_medications, dependent: :restrict_with_error
   has_many :medication_takes, dependent: :restrict_with_error
+  has_many :health_events, dependent: :restrict_with_error
   has_many :notification_preferences, dependent: :restrict_with_error
   has_many :person_access_grants, dependent: :destroy
   has_many :household_invitations, dependent: :destroy

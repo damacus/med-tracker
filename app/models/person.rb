@@ -17,6 +17,7 @@ class Person < ApplicationRecord
   has_one :household_membership, dependent: :nullify
   has_many :person_access_grants, dependent: :destroy
   has_many :schedules, dependent: :destroy
+  has_many :health_events, dependent: :destroy
   has_many :medications, through: :schedules
   has_many :person_medications, dependent: :destroy
   has_many :non_schedule_medications, through: :person_medications, source: :medication

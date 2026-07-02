@@ -13,6 +13,8 @@ RSpec.describe SchemaInventory do
       person_medications
       medication_takes
       notification_preferences
+      health_events
+      health_event_medications
       household_memberships
       person_access_grants
       household_invitations

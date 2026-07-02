@@ -66,6 +66,21 @@ en:
       previous_month: Go to previous month
       next_month: Go to next month
   activerecord:
+    errors:
+      models:
+        health_event:
+          attributes:
+            ended_on:
+              on_or_after_start_date: must be on or after the start date
+        health_event_medication:
+          attributes:
+            medication_id:
+              linked_to_health_event: has already been linked to this health event
+        medication:
+          attributes:
+            barcode:
+              invalid: must be a 13 or 14 digit GTIN
+              taken: is already linked to another medication in inventory
     attributes:
       invitation:
         roles:
@@ -81,13 +96,10 @@ en:
           carer: Carer
           parent: Parent
           self: Self
-    errors:
-      models:
-        medication:
-          attributes:
-            barcode:
-              invalid: must be a 13 or 14 digit GTIN
-              taken: is already linked to another medication in inventory
+  errors:
+    messages:
+      linked_to_health_event: has already been linked to this health event
+      on_or_after_start_date: must be on or after the start date
   admin:
     invitations:
       created: Invitation sent
@@ -907,6 +919,7 @@ en:
       edit_person: Edit Person
       add_medication: Add Medication
       manage_parents: Manage parents
+      health_events: Health events
       back: Back
       born: 'Born:'
       age: 'Age:'
@@ -1297,7 +1310,47 @@ en:
   notification_preferences:
     updated: Notification settings saved.
     update_failed: Failed to save notification settings.
+  health_events:
+    created: Health event recorded.
+    updated: Health event updated.
+    deleted: Health event deleted.
+    invalid_medication_link: Select only medications assigned to this person.
+    kinds:
+      illness: Notable illness
+      suspected_side_effect: Suspected side effect
+    severities:
+      mild: Mild
+      moderate: Moderate
+      severe: Severe
+    actions:
+      record_illness: Record notable illness
+      record_suspected_side_effect: Record suspected side effect
+      edit: Edit
+      delete: Delete
+      cancel: Cancel
+      save: Save
+    index:
+      title: "%{person}'s health events"
+      subtitle: Record notable illnesses and suspected side effects without making clinical claims.
+      empty: No health events recorded yet.
+      ongoing_from: "Ongoing since %{started_on}"
+      date_range: "%{started_on} to %{ended_on}"
+    form:
+      new_title: "Record %{kind}"
+      edit_title: "Edit %{kind}"
+      subtitle: Capture facts entered by the family or carer.
+      title: Title
+      started_on: Start date
+      ended_on: End date
+      ongoing: Ongoing
+      severity: Severity
+      no_severity: Not specified
+      suspected_medications: Suspected medications
+      notes: Notes
+      action_taken: Action taken
+      medical_help_sought: Medical help was sought
   reports:
+    invalid_date: Invalid date format provided.
     index:
       eyebrow: Wellness Analytics
       title: Health Report
@@ -1334,6 +1387,45 @@ en:
           other: Your %{medication_name} supply will be exhausted in %{count} days.
             We recommend ordering a refill this afternoon.
       actionable_insight: Actionable insight
+    health_history:
+      title: MedTracker health history report
+      people: "People: %{people}"
+      no_people: No authorised people
+      date_range: "Date range: %{start_date} to %{end_date}"
+      generated_at: "Generated: %{timestamp}"
+      empty_section: No records in this section.
+      ongoing_from: "Ongoing since %{started_on}"
+      event_date_range: "%{started_on} to %{ended_on}"
+      sources:
+        scheduled: Scheduled
+        as_needed: As-needed/direct
+      medication_takes:
+        title: Medication administrations
+        time: Time
+        person: Person
+        medication: Medication
+        dose: Dose
+        source: Source
+        location: Location
+      suspected_side_effects:
+        title: Suspected side effects
+      notable_illnesses:
+        title: Notable illnesses
+      events:
+        title: Title
+        dates: Dates
+        severity: Severity
+        medications: Suspected medications
+        notes: Notes
+        action: Action taken
+      illness_patterns:
+        title: Recorded illness patterns
+        summary: "%{count} \"%{title}\" episodes were recorded between %{first} and %{last}. The average interval between episode starts was %{interval} days."
+      disclaimer:
+        title: Disclaimer
+        entered_information: This report reflects information entered into MedTracker.
+        causation: Suspected side-effect links do not establish causation.
+        medical_advice: This report is not a diagnosis or a substitute for professional medical advice.
   smart_insights:
     title: Smart Insights
     evidence_summary:
