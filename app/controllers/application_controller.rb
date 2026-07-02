@@ -42,9 +42,15 @@ class ApplicationController < ActionController::Base
     !request.get? && !request.head?
   end
 
-  def with_current_context
+  def with_current_context(&)
     Current.account = current_account
     Current.request_id = request.request_id
+    Time.use_zone(current_account_time_zone) { with_current_tenant_context(&) }
+  ensure
+    Current.reset
+  end
+
+  def with_current_tenant_context
     household_slug = request.path_parameters[:household_slug]
     return yield if household_slug.blank?
 
@@ -65,8 +71,10 @@ class ApplicationController < ActionController::Base
         user_not_authorized
       end
     end
-  ensure
-    Current.reset
+  end
+
+  def current_account_time_zone
+    current_account&.preferred_time_zone || Rails.application.config.time_zone
   end
 
   def active_household_membership

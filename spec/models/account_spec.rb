@@ -17,6 +17,31 @@ RSpec.describe Account do
     end
   end
 
+  describe 'time zone preference' do
+    it 'allows Rails time zone names' do
+      account = described_class.new(email: 'time-zone@example.test', status: :verified, time_zone: 'London')
+
+      account.validate
+
+      expect(account.errors[:time_zone]).to be_empty
+    end
+
+    it 'rejects unknown time zones' do
+      account = described_class.new(email: 'time-zone@example.test', status: :verified, time_zone: 'Atlantis/Nowhere')
+
+      account.validate
+
+      expect(account.errors[:time_zone]).to be_present
+    end
+
+    it 'falls back to the app time zone when no preference is set' do
+      account = accounts(:jane_doe)
+      account.time_zone = nil
+
+      expect(account.preferred_time_zone).to eq(Rails.application.config.time_zone)
+    end
+  end
+
   describe 'versioning' do
     it 'creates a version when account status changes' do
       account = accounts(:jane_doe)

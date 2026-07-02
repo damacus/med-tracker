@@ -156,6 +156,6 @@ class ProfilesController < ApplicationController
   end
 
   def account_params
-    params.expect(account: %i[email gravatar_enabled]) if params[:account]
+    params.expect(account: %i[email gravatar_enabled time_zone]) if params[:account]
   end
 end

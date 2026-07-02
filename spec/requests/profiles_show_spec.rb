@@ -22,8 +22,18 @@ RSpec.describe 'Profiles' do
       expect(response.body).to include(user.name)
       expect(response.body).to include(account.email)
       expect(response.body).to include('Account Security')
+      expect(response.body).to include('Time Zone')
       expect(response.body).to include('System Information')
       expect(response.body.scan('data-turbo-frame="modal"').size).to be >= 2
+    end
+
+    it 'uses the account time zone around the request' do
+      account.update!(time_zone: 'Pacific Time (US & Canada)')
+      allow(Time).to receive(:use_zone).and_call_original
+
+      get profile_path
+
+      expect(Time).to have_received(:use_zone).with('Pacific Time (US & Canada)')
     end
 
     it 'renders readable stacked identity details in the profile hero', :aggregate_failures do
@@ -163,6 +173,21 @@ RSpec.describe 'Profiles' do
 
       expect(response).to redirect_to(profile_path)
       expect(account.reload.gravatar_enabled?).to be(false)
+    end
+
+    it 'updates the account time zone preference' do
+      patch profile_path, params: { account: { time_zone: 'London' } }
+
+      expect(response).to redirect_to(profile_path)
+      expect(account.reload.time_zone).to eq('London')
+    end
+
+    it 'rejects an invalid account time zone preference' do
+      patch profile_path, params: { account: { time_zone: 'Atlantis/Nowhere' } }
+
+      expect(response).to redirect_to(profile_path)
+      expect(flash[:alert]).to include('Time zone')
+      expect(account.reload.time_zone).not_to eq('Atlantis/Nowhere')
     end
 
     it 'rejects a blank account email' do

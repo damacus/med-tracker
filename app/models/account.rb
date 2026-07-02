@@ -7,7 +7,9 @@ class Account < ApplicationRecord
 
   WIZARD_VARIANTS = %w[fullpage modal slideover].freeze
 
-  store_accessor :preferences, :wizard_variant, :gravatar_enabled
+  TIME_ZONE_NAMES = ActiveSupport::TimeZone.all.map(&:name).freeze
+
+  store_accessor :preferences, :wizard_variant, :gravatar_enabled, :time_zone
 
   enum :status, { unverified: 1, verified: 2, closed: 3 }
 
@@ -23,6 +25,7 @@ class Account < ApplicationRecord
   has_one :platform_admin, dependent: :destroy
 
   validates :email, presence: true, uniqueness: true
+  validates :time_zone, inclusion: { in: TIME_ZONE_NAMES }, allow_blank: true
 
   def first_active_household_membership
     household_memberships.active.includes(:household).order(:id).first
@@ -45,5 +48,9 @@ class Account < ApplicationRecord
 
   def gravatar_enabled?
     !!ActiveModel::Type::Boolean.new.cast(gravatar_enabled)
+  end
+
+  def preferred_time_zone
+    time_zone.presence || Rails.application.config.time_zone
   end
 end
