@@ -553,6 +553,57 @@ RSpec.describe NhsDmd::Search do
       end
     end
 
+    context 'when the primary API fails and secondary supplement lookup succeeds' do
+      before do
+        off_result = {
+          display: 'Wellman Original (Vitabiotics) 30 tablets',
+          barcode: '5021265221301',
+          system: 'https://world.openfoodfacts.org',
+          concept_class: 'Supplement',
+          source: 'open_food_facts'
+        }
+
+        allow(client).to receive(:configured?).and_return(true)
+        allow(client).to receive(:search).and_raise(NhsDmd::Client::ApiError, 'Service unavailable')
+        allow(open_food_facts_search).to receive(:search).with('vitamin').and_return([off_result])
+      end
+
+      it 'returns secondary source results without an error' do
+        result = search.call('vitamin')
+
+        expect(result).to be_success
+        expect(result.error).to be_nil
+        expect(result.results.map(&:to_h)).to contain_exactly(
+          a_hash_including(display: 'Wellman Original (Vitabiotics) 30 tablets', source_label: 'Open Food Facts')
+        )
+      end
+    end
+
+    context 'when the primary API fails and secondary barcode lookup succeeds' do
+      before do
+        allow(client).to receive(:configured?).and_return(true)
+        allow(client).to receive(:search).and_raise(NhsDmd::Client::ApiError, 'Service unavailable')
+        allow(open_food_facts_lookup).to receive(:lookup).with('5021265221301').and_return(
+          {
+            display: 'Wellman Original (Vitabiotics) 30 tablets',
+            barcode: '5021265221301',
+            system: 'https://world.openfoodfacts.org',
+            concept_class: 'Supplement',
+            source: 'open_food_facts'
+          }
+        )
+      end
+
+      it 'returns the secondary barcode result without an error' do
+        result = search.call('5021265221301')
+
+        expect(result).to be_success
+        expect(result.error).to be_nil
+        expect(result.barcode).to eq('5021265221301')
+        expect(result.resolved_query).to eq('Wellman Original (Vitabiotics) 30 tablets')
+      end
+    end
+
     context 'when the client raises an unexpected error' do
       subject(:search) do
         described_class.new(

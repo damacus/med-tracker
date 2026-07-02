@@ -62,6 +62,8 @@ module NhsDmd
       return unconfigured_result(query) unless @client.configured?
 
       configured_result(query)
+    rescue Client::ApiError => e
+      fallback_result_after_primary_failure(query, e)
     end
 
     def unconfigured_result(query)
@@ -78,6 +80,18 @@ module NhsDmd
       return Result.new(results: build_results(results), error: nil) if results.any?
 
       empty_result
+    end
+
+    def fallback_result_after_primary_failure(query, exception)
+      log_failure(exception.message, exception)
+
+      off_match = open_food_facts_result_for(query)
+      return barcode_result(query, off_match) if off_match
+
+      supplement_results = likely_supplement_text_query?(query) ? text_supplement_items(query) : []
+      return Result.new(results: build_results(supplement_results), error: nil) if supplement_results.any?
+
+      Result.new(results: [], error: exception.message)
     end
 
     def nhs_items(query)
