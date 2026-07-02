@@ -65,14 +65,14 @@ RSpec.describe ScheduleDailyRemindersJob do
   end
 
   it 'enqueues missed-dose checks after active schedule times when missed-dose preferences are enabled' do
-    eligibility_query = instance_double(MedicationReminderEligibilityQuery, configured_times: ['07:15'])
-    allow(MedicationReminderEligibilityQuery).to receive(:new).and_return(eligibility_query)
-    create(:notification_preference, person: person, morning_time: nil, afternoon_time: nil,
-                                     evening_time: nil, night_time: nil, dose_due_enabled: false,
-                                     missed_dose_enabled: true)
+    preference = create(:notification_preference, person: person, morning_time: nil, afternoon_time: nil,
+                                                  evening_time: nil, night_time: nil, dose_due_enabled: false,
+                                                  missed_dose_enabled: true)
+    job = described_class.new
+    allow(job).to receive(:configured_times_for).and_return(['07:15'])
 
     expect do
-      described_class.perform_now
+      job.send(:enqueue_reminders_for, preference)
     end.to have_enqueued_job(MissedDoseNotificationJob)
       .with(household.id, person.id, '2026-05-12', '07:15')
       .at(Time.zone.local(2026, 5, 12, 7, 45))
