@@ -13,12 +13,13 @@ RSpec.describe TakeMedicationService do
   before { FixtureHouseholdSetup.apply! }
 
   # Shared helper to invoke the service
-  def call_service(source:, amount_override: nil, taken_from_medication_id: nil)
+  def call_service(source:, amount_override: nil, taken_from_medication_id: nil, **)
     service.call(
       source: source,
       amount_override: amount_override,
       taken_from_medication_id: taken_from_medication_id,
-      user: user
+      user: user,
+      **
     )
   end
 
@@ -413,7 +414,7 @@ RSpec.describe TakeMedicationService do
     end
   end
 
-  describe 'dose_taken.med_tracker' do
+  describe 'medication take events' do
     def captured_event_payloads(event_name, &)
       payloads = []
       subscriber = lambda do |*args|
@@ -423,6 +424,19 @@ RSpec.describe TakeMedicationService do
       ActiveSupport::Notifications.subscribed(subscriber, event_name, &)
 
       payloads
+    end
+
+    def expect_metric_payload(payloads, source:, error: nil)
+      expect(payloads).to contain_exactly(
+        include(
+          environment: Rails.env.to_s,
+          role: user.person.account.first_active_household_membership.role,
+          route: nil,
+          medicine_context_class: source.class.name,
+          source_type: source.class.model_name.singular,
+          error: error
+        )
+      )
     end
 
     def expect_dose_taken_payload(payloads, result:, source:, dose_amount:, source_type:)
@@ -440,6 +454,56 @@ RSpec.describe TakeMedicationService do
           taken_at: result.take.taken_at
         )
       )
+    end
+
+    it 'publishes attempted and recorded metric events for a successful dose' do
+      schedule = schedules(:john_paracetamol)
+      result = nil
+
+      travel_to Time.current.end_of_day - 1.minute do
+        attempted_payloads = captured_event_payloads('take_attempted.med_tracker') do
+          recorded_payloads = captured_event_payloads('take_recorded.med_tracker') do
+            result = call_service(source: schedule)
+          end
+
+          expect_metric_payload(recorded_payloads, source: schedule)
+        end
+
+        expect(result.success).to be true
+        expect_metric_payload(attempted_payloads, source: schedule)
+      end
+    end
+
+    it 'publishes attempted and blocked metric events when rules prevent a dose' do
+      schedule = schedules(:john_paracetamol)
+      schedule.medication.update!(current_supply: 0)
+      result = nil
+
+      attempted_payloads = captured_event_payloads('take_attempted.med_tracker') do
+        blocked_payloads = captured_event_payloads('take_blocked_by_rules.med_tracker') do
+          result = call_service(source: schedule)
+        end
+
+        expect_metric_payload(blocked_payloads, source: schedule, error: 'out_of_stock')
+      end
+
+      expect(result.error).to eq(:out_of_stock)
+      expect_metric_payload(attempted_payloads, source: schedule)
+    end
+
+    it 'publishes an error metric when take persistence fails' do
+      schedule = schedules(:john_paracetamol)
+      allow(schedule).to receive(:effective_dose_unit).and_return(nil)
+      result = nil
+
+      travel_to Time.current.end_of_day - 1.minute do
+        payloads = captured_event_payloads('take_errors.med_tracker') do
+          result = call_service(source: schedule)
+        end
+
+        expect(result.error).to eq(:create_failed)
+        expect_metric_payload(payloads, source: schedule, error: 'create_failed')
+      end
     end
 
     it 'publishes one event for a successful scheduled dose' do
