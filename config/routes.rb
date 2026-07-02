@@ -11,13 +11,13 @@ Rails.application.routes.draw do
 
       scope 'households/:household_id', as: :household do
         resource :me, only: [:show], controller: 'me'
-        resources :people, only: %i[index show]
+        resources :people, only: %i[index show create update]
         resources :locations, only: %i[index show]
-        resources :medications, only: %i[index show]
-        resources :schedules, only: %i[index show]
-        resources :person_medications, only: %i[index show]
-        resources :medication_takes, only: [:index]
-        resource :notification_preference, only: [:show]
+        resources :medications, only: %i[index show create update]
+        resources :schedules, only: %i[index show create update]
+        resources :person_medications, only: %i[index show create update]
+        resources :medication_takes, only: %i[index create]
+        resource :notification_preference, only: %i[show update]
       end
     end
   end
