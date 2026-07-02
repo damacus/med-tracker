@@ -66,7 +66,7 @@ class RodauthMailer < ApplicationMailer
   end
 
   def rodauth_mailer_translation(action, key)
-    I18n.t!("rodauth_mailer.#{action}.#{key}")
+    I18n.t!("rodauth.#{action}.#{key}")
   end
 
   def rodauth(name, account_id, &block)
