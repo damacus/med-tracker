@@ -143,6 +143,7 @@ export default class extends Controller {
 
     const identifier = this.renderIdentifier(result)
     const pilLink = this.renderPilLink(result)
+    const spcLink = this.renderSpcLink(result)
     const medicineDetails = this.renderMedicineDetails(result)
     const interactions = this.renderInteractions(result)
     const title = result.name || result.display
@@ -158,6 +159,7 @@ export default class extends Controller {
             ${packageSize}
             ${identifier}
             ${pilLink}
+            ${spcLink}
             ${medicineDetails}
             ${interactions}
           </div>
@@ -460,6 +462,21 @@ export default class extends Controller {
         class="mt-2 inline-flex text-xs font-medium text-primary underline-offset-2 hover:underline"
         data-testid="pil-link"
       >${this.escapeHtml(this.t("pilLink"))}</a>
+    `
+  }
+
+  renderSpcLink(result) {
+    const url = this.safeExternalUrl(result.spc_url)
+    if (!url) return ''
+
+    return `
+      <a
+        href="${this.hrefAttribute(url)}"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="ml-3 mt-2 inline-flex text-xs font-medium text-primary underline-offset-2 hover:underline"
+        data-testid="spc-link"
+      >${this.escapeHtml(this.t("spcLink"))}</a>
     `
   }
 

@@ -15,7 +15,8 @@ RSpec.describe 'Medication Lookup', type: :system do
         display: 'Aspirin 300mg tablets',
         system: 'https://dmd.nhs.uk',
         concept_class: 'VMP',
-        pil_url: 'https://www.medicines.org.uk/emc/product/13866/pil'
+        pil_url: 'https://www.medicines.org.uk/emc/product/13866/pil',
+        spc_url: 'https://www.medicines.org.uk/emc/product/13866/smpc'
       },
       {
         code: '39720411000001102',
@@ -89,12 +90,14 @@ RSpec.describe 'Medication Lookup', type: :system do
     expect(page).to have_text('Aspirin 300mg tablets')
     expect(page).to have_text('Aspirin 75mg tablets')
     expect(page).to have_text('VMP')
-    expect(page).to have_link('Patient information leaflet', href: 'https://www.medicines.org.uk/emc/product/13866/pil')
-
-    pil_link = find_link('Patient information leaflet')
-    expect(pil_link[:target]).to eq('_blank')
-    expect(pil_link[:rel]).to include('noopener')
-    expect(pil_link[:rel]).to include('noreferrer')
+    expect_external_guidance_link(
+      'pil-link',
+      'https://www.medicines.org.uk/emc/product/13866/pil'
+    )
+    expect_external_guidance_link(
+      'spc-link',
+      'https://www.medicines.org.uk/emc/product/13866/smpc'
+    )
   end
 
   it 'Search returns no results' do
@@ -274,5 +277,11 @@ RSpec.describe 'Medication Lookup', type: :system do
     expect(page).to have_text('High')
     expect(page).to have_text('Ibuprofen')
     expect(page).to have_text('bleeding')
+  end
+
+  def expect_external_guidance_link(test_id, href)
+    expect(page).to have_css(
+      "a[data-testid=\"#{test_id}\"][href=\"#{href}\"][target=\"_blank\"][rel~=\"noopener\"][rel~=\"noreferrer\"]"
+    )
   end
 end

@@ -150,6 +150,7 @@ module NhsDmd
         directions: item[:directions],
         warnings: item[:warnings],
         pil_url: item[:pil_url],
+        spc_url: item[:spc_url],
         match_reason: item[:match_reason]
       }
     end

@@ -39,7 +39,8 @@ RSpec.describe NhsDmd::Client do
                     'valueString' => 'VMP'
                   }
                 ],
-                'patientInformationLeafletUrl' => 'https://www.medicines.org.uk/emc/product/13866/pil'
+                'patientInformationLeafletUrl' => 'https://www.medicines.org.uk/emc/product/13866/pil',
+                'summaryOfProductCharacteristicsUrl' => 'https://www.medicines.org.uk/emc/product/13866/smpc'
               },
               {
                 'system' => 'https://dmd.nhs.uk',
@@ -53,6 +54,10 @@ RSpec.describe NhsDmd::Client do
                   {
                     'url' => 'https://medtracker.test/fhir/StructureDefinition/patient-information-leaflet',
                     'valueUrl' => 'https://www.medicines.org.uk/emc/product/397205/pil'
+                  },
+                  {
+                    'url' => 'https://medtracker.test/fhir/StructureDefinition/summary-of-product-characteristics',
+                    'valueUrl' => 'https://www.medicines.org.uk/emc/product/397205/smpc'
                   }
                 ]
               },
@@ -111,6 +116,24 @@ RSpec.describe NhsDmd::Client do
         results = client.search('aspirin')
 
         expect(results.last[:pil_url]).to be_nil
+      end
+
+      it 'maps an SPC URL from direct provider payload fields' do
+        results = client.search('aspirin')
+
+        expect(results.first[:spc_url]).to eq('https://www.medicines.org.uk/emc/product/13866/smpc')
+      end
+
+      it 'maps an SPC URL from provider payload extensions' do
+        results = client.search('aspirin')
+
+        expect(results.second[:spc_url]).to eq('https://www.medicines.org.uk/emc/product/397205/smpc')
+      end
+
+      it 'sets the SPC URL to nil when provider payload has no SPC data' do
+        results = client.search('aspirin')
+
+        expect(results.last[:spc_url]).to be_nil
       end
     end
 

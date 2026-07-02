@@ -5,7 +5,7 @@ require 'uri'
 module NhsDmd
   class SearchResult
     attr_reader :barcode, :code, :display, :system, :concept_class, :match_reason, :name, :category, :package_size,
-                :package_quantity, :package_unit, :description, :directions, :warnings, :pil_url
+                :package_quantity, :package_unit, :description, :directions, :warnings, :pil_url, :spc_url
 
     def initialize(code:, display:, system:, **attributes)
       @code = code
@@ -41,6 +41,7 @@ module NhsDmd
       @directions = attributes[:directions]
       @warnings = attributes[:warnings]
       @pil_url = safe_https_url(attributes[:pil_url])
+      @spc_url = safe_https_url(attributes[:spc_url])
     end
 
     private :assign_source_attributes, :assign_package_attributes, :assign_guidance_attributes
@@ -104,7 +105,8 @@ module NhsDmd
       {
         directions: directions,
         warnings: warnings,
-        pil_url: pil_url
+        pil_url: pil_url,
+        spc_url: spc_url
       }
     end
 

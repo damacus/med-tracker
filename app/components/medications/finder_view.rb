@@ -24,6 +24,7 @@ module Components
               barcode: t('medications.finder.barcode'),
               dmdCode: t('medications.finder.dmd_code'),
               pilLink: t('medications.finder.pil_link'),
+              spcLink: t('medications.finder.spc_link'),
               formFilterLabel: t('medications.finder.form_filter_label'),
               allForms: t('medications.finder.all_forms'),
               medicineDetailsButton: t('medications.finder.medicine_details_button'),

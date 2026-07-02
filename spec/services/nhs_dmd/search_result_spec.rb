@@ -20,29 +20,22 @@ RSpec.describe NhsDmd::SearchResult do
         code: '39720311000001101',
         display: 'Aspirin 300mg tablets',
         system: 'https://dmd.nhs.uk',
-        pil_url: 'https://www.medicines.org.uk/emc/product/13866/pil'
+        pil_url: 'https://www.medicines.org.uk/emc/product/13866/pil',
+        spc_url: 'https://www.medicines.org.uk/emc/product/13866/smpc'
       )
 
       expect(result.to_h[:pil_url]).to eq('https://www.medicines.org.uk/emc/product/13866/pil')
+      expect(result.to_h[:spc_url]).to eq('https://www.medicines.org.uk/emc/product/13866/smpc')
     end
 
-    it 'filters unsafe and malformed PIL URLs' do
+    it 'filters unsafe and malformed guidance URLs' do
       urls = [
         'javascript:alert(1)',
         'http://www.medicines.org.uk/emc/product/13866/pil',
         'not a url'
       ]
 
-      expect(
-        urls.map do |url|
-          described_class.new(
-            code: '39720311000001101',
-            display: 'Aspirin 300mg tablets',
-            system: 'https://dmd.nhs.uk',
-            pil_url: url
-          ).to_h[:pil_url]
-        end
-      ).to all(be_nil)
+      expect(urls.flat_map { |url| guidance_url_values(url) }).to all(be_nil)
     end
   end
 
@@ -55,5 +48,15 @@ RSpec.describe NhsDmd::SearchResult do
       category: 'Analgesic',
       package_size: '32 tablets'
     }
+  end
+
+  def guidance_url_values(url)
+    described_class.new(
+      code: '39720311000001101',
+      display: 'Aspirin 300mg tablets',
+      system: 'https://dmd.nhs.uk',
+      pil_url: url,
+      spc_url: url
+    ).to_h.slice(:pil_url, :spc_url).values
   end
 end

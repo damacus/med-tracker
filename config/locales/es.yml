@@ -732,6 +732,7 @@ es:
       barcode: Código de barras
       dmd_code: código dm+d
       pil_link: Prospecto para el paciente
+      spc_link: Resumen de las Características del Producto
       form_filter_label: Forma farmacéutica
       all_forms: Todas las formas
       forms:
