@@ -10,7 +10,10 @@ RSpec.describe TakeMedicationService do
 
   let(:user) { users(:john) }
 
-  before { FixtureHouseholdSetup.apply! }
+  before do
+    FixtureHouseholdSetup.apply!
+    MedicationTake.delete_all
+  end
 
   # Shared helper to invoke the service
   def call_service(source:, amount_override: nil, taken_from_medication_id: nil, **)
@@ -21,6 +24,17 @@ RSpec.describe TakeMedicationService do
       user: user,
       **
     )
+  end
+
+  def captured_event_payloads(event_name, &)
+    payloads = []
+    subscriber = lambda do |*args|
+      payloads << ActiveSupport::Notifications::Event.new(*args).payload
+    end
+
+    ActiveSupport::Notifications.subscribed(subscriber, event_name, &)
+
+    payloads
   end
 
   shared_examples 'a successful dose' do |expected_amount|
@@ -125,6 +139,70 @@ RSpec.describe TakeMedicationService do
 
       it 'does not create a MedicationTake' do
         expect { call_service(source: schedule) }.not_to change(MedicationTake, :count)
+      end
+    end
+
+    context 'when another active prescription for the same medication reaches its limit' do
+      let(:person) { user.person }
+      let(:medication) do
+        create(:medication, household: person.household, location: locations(:home), name: 'Overlap Test Medicine')
+      end
+      let(:schedule) do
+        create(
+          :schedule,
+          person: person,
+          medication: medication,
+          dosage: nil,
+          dose_amount: 500,
+          dose_unit: 'mg',
+          max_daily_doses: 4,
+          min_hours_between_doses: nil
+        )
+      end
+      let(:other_schedule) do
+        create(
+          :schedule,
+          person: person,
+          medication: medication,
+          dosage: nil,
+          dose_amount: 500,
+          dose_unit: 'mg',
+          max_daily_doses: 1,
+          min_hours_between_doses: nil
+        )
+      end
+
+      before do
+        other_schedule.medication_takes.create!(
+          taken_at: 1.hour.ago,
+          dose_amount: 500,
+          dose_unit: 'mg',
+          taken_from_medication: medication,
+          taken_from_location: medication.location
+        )
+      end
+
+      it 'does not create a MedicationTake' do
+        expect { call_service(source: schedule) }.not_to change(MedicationTake, :count)
+      end
+
+      it 'returns an overlapping prescription restriction error' do
+        expect(call_service(source: schedule).error).to eq(:overlapping_prescription_restriction)
+      end
+
+      it 'publishes the related prescription context with the blocked metric' do
+        payloads = captured_event_payloads('take_blocked_by_rules.med_tracker') do
+          call_service(source: schedule)
+        end
+
+        expect(payloads).to contain_exactly(
+          include(
+            error: 'overlapping_prescription_restriction',
+            decision_source_count: 2,
+            decision_blocking_source_type: 'schedule',
+            decision_blocking_source_id: other_schedule.id
+          )
+        )
       end
     end
 
@@ -415,17 +493,6 @@ RSpec.describe TakeMedicationService do
   end
 
   describe 'medication take events' do
-    def captured_event_payloads(event_name, &)
-      payloads = []
-      subscriber = lambda do |*args|
-        payloads << ActiveSupport::Notifications::Event.new(*args).payload
-      end
-
-      ActiveSupport::Notifications.subscribed(subscriber, event_name, &)
-
-      payloads
-    end
-
     def expect_metric_payload(payloads, source:, error: nil)
       expect(payloads).to contain_exactly(
         include(

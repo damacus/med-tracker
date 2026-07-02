@@ -10,7 +10,7 @@ module TakeMedicationGuardable
   # Maps a TakeMedicationService error symbol to the appropriate HTTP response.
   def handle_take_medication_failure(error, scope:)
     case error
-    when :out_of_stock, :cooldown, :paused
+    when :out_of_stock, :cooldown, :paused, :overlapping_prescription_restriction
       default_message = take_medication_default_message(error)
       respond_take_medication_error(message: t("#{scope}.cannot_take_medication", default: default_message))
     when :invalid_amount, :create_failed
@@ -24,6 +24,7 @@ module TakeMedicationGuardable
     case error
     when :out_of_stock then 'Cannot take medication: out of stock'
     when :paused then 'Cannot take medication: paused'
+    when :overlapping_prescription_restriction then t('take_medications.overlapping_prescription_restriction')
     else 'Cannot take medication: timing restrictions not met'
     end
   end

@@ -119,8 +119,8 @@ class OfflineController < ApplicationController
     case error
     when :out_of_stock
       t('take_medications.out_of_stock', default: 'Cannot take medication: out of stock')
-    when :cooldown
-      t('take_medications.cooldown', default: 'Cannot take medication: timing restrictions not met')
+    when :cooldown, :overlapping_prescription_restriction
+      timing_failure_message(error)
     when :paused
       t('take_medications.paused', default: 'Cannot take medication: paused')
     when :selection_required
@@ -132,6 +132,12 @@ class OfflineController < ApplicationController
     else
       t('take_medications.failure')
     end
+  end
+
+  def timing_failure_message(error)
+    return t('take_medications.overlapping_prescription_restriction') if error == :overlapping_prescription_restriction
+
+    t('take_medications.cooldown', default: 'Cannot take medication: timing restrictions not met')
   end
 
   def render_unprocessable(message)
