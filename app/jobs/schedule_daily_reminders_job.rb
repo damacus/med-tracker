@@ -75,6 +75,7 @@ class ScheduleDailyRemindersJob < ApplicationJob
   def active_schedule_times_for(person)
     active_schedules_for(person)
       .reject(&:schedule_type_prn?)
+      .select { |schedule| schedule.applies_on?(Time.zone.today) }
       .flat_map { |schedule| configured_times_for_schedule(schedule) }
       .uniq
   end
