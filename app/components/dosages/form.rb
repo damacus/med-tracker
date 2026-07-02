@@ -153,10 +153,10 @@ module Components
 
           FormField do
             FormFieldLabel(for: 'dosage_default_dose_cycle') { 'Dose cycle' }
-            select(
+            m3_select(
               name: 'dosage[default_dose_cycle]',
               id: 'dosage_default_dose_cycle',
-              class: 'flex h-9 w-full rounded-shape-sm border border-outline bg-transparent px-3 py-1 text-sm shadow-sm'
+              size: :sm
             ) do
               option(value: '') { '— none —' }
               Dosage::DOSE_CYCLE_OPTIONS.each do |label, value|

@@ -82,10 +82,10 @@ module Components
           div do
             FormField do
               FormFieldLabel(for: 'carer_relationship_carer_id') { 'Carer' }
-              select(
+              m3_select(
                 name: 'carer_relationship[carer_id]',
                 id: 'carer_relationship_carer_id',
-                class: select_classes
+                size: :sm
               ) do
                 option(value: '', selected: relationship.carer_id.blank?) { 'Select a carer...' }
                 carers.each do |carer|
@@ -100,10 +100,10 @@ module Components
           div do
             FormField do
               FormFieldLabel(for: 'carer_relationship_patient_id') { 'Patient' }
-              select(
+              m3_select(
                 name: 'carer_relationship[patient_id]',
                 id: 'carer_relationship_patient_id',
-                class: select_classes
+                size: :sm
               ) do
                 option(value: '', selected: relationship.patient_id.blank?) { 'Select a patient...' }
                 patients.each do |patient|
@@ -118,10 +118,10 @@ module Components
           div do
             FormField do
               FormFieldLabel(for: 'carer_relationship_relationship_type') { 'Relationship type' }
-              select(
+              m3_select(
                 name: 'carer_relationship[relationship_type]',
                 id: 'carer_relationship_relationship_type',
-                class: select_classes
+                size: :sm
               ) do
                 option(value: '', selected: relationship.relationship_type.blank?) { 'Select relationship type...' }
                 CarerRelationship::RELATIONSHIP_TYPES.each do |label, value|

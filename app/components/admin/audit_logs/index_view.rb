@@ -62,10 +62,10 @@ module Components
           div(class: 'min-w-0 md:w-48') do
             render RubyUI::FormField.new do
               render RubyUI::FormFieldLabel.new(for: 'item_type') { t('admin.audit_logs.index.filter.record_type') }
-              select(
+              m3_select(
                 name: 'item_type',
                 id: 'item_type',
-                class: select_classes,
+                size: :sm,
                 data: { action: 'change->filter-form#submit' }
               ) do
                 option(value: '', selected: filter_params[:item_type].blank?) do
@@ -83,10 +83,10 @@ module Components
           div(class: 'min-w-0 md:w-48') do
             render RubyUI::FormField.new do
               render RubyUI::FormFieldLabel.new(for: 'event') { t('admin.audit_logs.index.filter.event_type') }
-              select(
+              m3_select(
                 name: 'event',
                 id: 'event',
-                class: select_classes,
+                size: :sm,
                 data: { action: 'change->filter-form#submit' }
               ) do
                 option(value: '', selected: filter_params[:event].blank?) do

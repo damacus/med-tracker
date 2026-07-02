@@ -173,12 +173,12 @@ module Components
             value: person_medication.source_dosage_option_id,
             data: { person_medication_form_target: 'sourceDosageOptionIdInput' }
           )
-          select(
+          m3_select(
             id: 'person_medication_dose_option',
             name: 'dose_option',
             required: true,
             disabled: person_medication.medication_id.blank?,
-            class: 'w-full rounded-shape-sm border border-outline bg-background px-3 py-2 text-sm',
+            size: :sm,
             data: { person_medication_form_target: 'doseOptionInput',
                     action: 'change->person-medication-form#selectDose' }
           ) do

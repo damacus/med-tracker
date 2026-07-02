@@ -101,8 +101,8 @@ module Components
                            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
               t('admin.invitations.index.form.role')
             end
-            select(name: 'invitation[membership_role]', id: 'invitation_membership_role', class: select_classes,
-                   required: true) do
+            m3_select(name: 'invitation[membership_role]', id: 'invitation_membership_role', size: :sm,
+                      required: true) do
               HouseholdInvitation.membership_roles.each_key do |role|
                 option(value: role, selected: selected_membership_role == role) { role.titleize }
               end
@@ -116,7 +116,7 @@ module Components
                            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
               t('admin.invitations.index.form.relationship_type', default: 'Dependent relationship')
             end
-            select(name: 'invitation[relationship_type]', id: 'invitation_relationship_type', class: select_classes) do
+            m3_select(name: 'invitation[relationship_type]', id: 'invitation_relationship_type', size: :sm) do
               option(value: '', selected: selected_relationship_type.blank?) do
                 t('admin.invitations.index.form.select_relationship_type', default: 'Select relationship')
               end
@@ -135,7 +135,7 @@ module Components
                            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
               t('admin.invitations.index.form.access_level', default: 'Dependent access')
             end
-            select(name: 'invitation[access_level]', id: 'invitation_access_level', class: select_classes) do
+            m3_select(name: 'invitation[access_level]', id: 'invitation_access_level', size: :sm) do
               HouseholdInvitationGrant.access_levels.each_key do |access_level|
                 option(value: access_level, selected: selected_access_level == access_level) { access_level.titleize }
               end

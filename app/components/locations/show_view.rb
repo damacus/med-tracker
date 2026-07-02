@@ -258,10 +258,10 @@ module Components
                     label(for: 'location_membership_person_id', class: 'text-sm font-medium') do
                       t('locations.show.add_member.select_person')
                     end
-                    select(
+                    m3_select(
                       name: 'location_membership[person_id]',
                       id: 'location_membership_person_id',
-                      class: select_classes,
+                      size: :sm,
                       required: true
                     ) do
                       option(value: '') { t('locations.show.add_member.placeholder') }

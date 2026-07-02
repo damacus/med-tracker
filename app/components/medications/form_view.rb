@@ -579,10 +579,10 @@ module Components
           render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_unit") do
             'Unit'
           end
-          select(
+          m3_select(
             name: dosage_field_name(index, 'unit'),
             id: "medication_dosage_records_attributes_#{index}_unit",
-            class: 'flex h-9 w-full rounded-shape-sm border border-outline bg-transparent px-3 py-1 text-sm shadow-sm'
+            size: :sm
           ) do
             option(value: '', selected: dosage.unit.blank?) { 'Select unit' }
             dosage_units.each do |unit|
@@ -641,10 +641,10 @@ module Components
           render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_default_dose_cycle") do
             'Dose cycle'
           end
-          select(
+          m3_select(
             name: dosage_field_name(index, 'default_dose_cycle'),
             id: "medication_dosage_records_attributes_#{index}_default_dose_cycle",
-            class: 'flex h-9 w-full rounded-shape-sm border border-outline bg-transparent px-3 py-1 text-sm shadow-sm',
+            size: :sm,
             required: dosage_row_requires_input?(dosage),
             data: { 'frequency-suggestions-target': 'doseCycle' }
           ) do

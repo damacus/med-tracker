@@ -56,10 +56,10 @@ module Components
       def render_schedule_type_field
         FormField do
           render RubyUI::FormFieldLabel.new(for: 'schedule_type', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') { t('schedules.workflow.schedule_type_label') }
-          select(
+          m3_select(
             name: 'schedule_type',
             id: 'schedule_type',
-            class: 'w-full rounded-shape-sm border border-outline bg-surface-container-lowest px-3 py-4 text-sm'
+            size: :sm
           ) do
             option(value: '', selected: schedule_type.blank?) { t('schedules.workflow.schedule_type_placeholder') }
             option(value: 'otc', selected: schedule_type == 'otc') { t('schedules.workflow.schedule_type_options.otc') }
@@ -73,11 +73,11 @@ module Components
       def render_person_field
         FormField do
           render RubyUI::FormFieldLabel.new(for: 'person_id', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') { t('schedules.workflow.person_label') }
-          select(
+          m3_select(
             name: 'person_id',
             id: 'person_id',
             required: true,
-            class: 'w-full rounded-shape-sm border border-outline bg-surface-container-lowest px-3 py-4 text-sm'
+            size: :sm
           ) do
             option(value: '') { t('schedules.workflow.person_placeholder') }
             people.each do |person|
@@ -90,11 +90,11 @@ module Components
       def render_medication_field
         FormField do
           render RubyUI::FormFieldLabel.new(for: 'medication_id', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') { t('schedules.workflow.medication_label') }
-          select(
+          m3_select(
             name: 'medication_id',
             id: 'medication_id',
             required: true,
-            class: 'w-full rounded-shape-sm border border-outline bg-surface-container-lowest px-3 py-4 text-sm'
+            size: :sm
           ) do
             option(value: '') { t('schedules.workflow.medication_placeholder') }
             medications.each do |medication|
