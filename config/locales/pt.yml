@@ -730,6 +730,19 @@ pt:
       barcode: Código de barras
       dmd_code: Código dm+d
       pil_link: Folheto informativo do doente
+      form_filter_label: Forma farmacêutica
+      all_forms: Todas as formas
+      forms:
+        tablet: Comprimidos
+        capsule: Cápsulas
+        liquid: Líquidos
+        cream: Cremes e pomadas
+        inhaler: Inaladores
+        injection: Injeções
+        patch: Adesivos
+        drops: Gotas
+        spray: Sprays
+        powder: Pós e saquetas
       update_stock: Atualizar stock
       confirm_restock: Confirme que pretende adicionar %{quantity} unidades a %{medication}.
       confirm_restock_without_quantity: Confirme quantas unidades pretende adicionar

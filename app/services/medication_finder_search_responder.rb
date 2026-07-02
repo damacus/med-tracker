@@ -10,14 +10,14 @@ class MedicationFinderSearchResponder
     @interaction_lookup = interaction_lookup || MedicationInteractionLookup.new(medication_scope: medication_scope)
   end
 
-  def call(query:, permissions: {})
+  def call(query:, form: nil, permissions: {})
     normalized_query = query.to_s.strip
     return Result.new(body: { results: [], permissions: permissions }, status: :ok) if normalized_query.blank?
 
     result = @search.call(normalized_query)
     return unavailable_response unless result&.success?
 
-    successful_response(query: normalized_query, result: result, permissions: permissions)
+    successful_response(query: normalized_query, result: result, form: form, permissions: permissions)
   rescue StandardError => e
     Rails.logger.error("Medication finder search failed: #{e.class}: #{e.message}")
     unavailable_response
@@ -25,12 +25,16 @@ class MedicationFinderSearchResponder
 
   private
 
-  def successful_response(query:, result:, permissions:)
+  def successful_response(query:, result:, form:, permissions:)
+    normalized_form = NhsDmd::DosageFormFilter.normalize(form)
+    results = NhsDmd::DosageFormFilter.filter(result.results, form)
+
     Result.new(
       body: {
-        results: result.results.map { |search_result| result_payload(search_result, result.barcode) },
+        results: results.map { |search_result| result_payload(search_result, result.barcode) },
         query: result.resolved_query.presence || query,
         barcode: result.barcode,
+        form: normalized_form,
         permissions: permissions
       },
       status: :ok

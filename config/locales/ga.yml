@@ -727,6 +727,19 @@ ga:
       barcode: Barrachód
       dmd_code: cód dm+d
       pil_link: Bileog eolais don othar
+      form_filter_label: Foirm dáileoige
+      all_forms: Gach foirm
+      forms:
+        tablet: Táibléid
+        capsule: Capsúil
+        liquid: Leachtanna
+        cream: Uachtair agus ointments
+        inhaler: Análóirí
+        injection: Instealltaí
+        patch: Paistí
+        drops: Braonta
+        spray: Spraeanna
+        powder: Púdair agus saicíní
       update_stock: Nuashonraigh stoc
       confirm_restock: Deimhnigh gur mian leat %{quantity} aonad a chur le %{medication}.
       confirm_restock_without_quantity: Deimhnigh cé mhéad aonad is mian leat a chur

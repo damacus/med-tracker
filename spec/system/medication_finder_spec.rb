@@ -19,6 +19,7 @@ RSpec.describe 'MedicationFinder' do
       aggregate_failures 'medication finder content' do
         expect(page).to have_text('Medication Finder')
         expect(page).to have_field('medication-search-input')
+        expect(page).to have_select('medication-form-filter')
         expect(page).to have_button('Search')
         expected_text = 'Search NHS dm+d and supported product sources to add medication or restock existing inventory.'
         expect(page).to have_text(expected_text)

@@ -24,6 +24,8 @@ module Components
               barcode: t('medications.finder.barcode'),
               dmdCode: t('medications.finder.dmd_code'),
               pilLink: t('medications.finder.pil_link'),
+              formFilterLabel: t('medications.finder.form_filter_label'),
+              allForms: t('medications.finder.all_forms'),
               interactionSummary: t('medications.finder.interaction_summary'),
               interactionDetailsButton: t('medications.finder.interaction_details_button'),
               interactionDetails: t('medications.finder.interaction_details'),
@@ -95,6 +97,27 @@ module Components
                 class: 'h-full rounded-shape-xl px-8 font-bold text-sm shadow-lg shadow-primary/20',
                 data: { medication_search_target: 'submitButton' }
               ) { t('medications.finder.search_button') }
+            end
+          end
+          render_form_filter
+        end
+      end
+
+      def render_form_filter
+        div(class: 'mt-4 max-w-xs') do
+          label(
+            for: 'medication-form-filter',
+            class: 'mb-2 block text-sm font-medium text-on-surface-variant'
+          ) { t('medications.finder.form_filter_label') }
+          select(
+            id: 'medication-form-filter',
+            name: 'form',
+            data: { medication_search_target: 'formFilter' },
+            class: 'block w-full rounded-shape-sm border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/5'
+          ) do
+            option(value: '') { t('medications.finder.all_forms') }
+            NhsDmd::DosageFormFilter.options.each_key do |value|
+              option(value: value) { t("medications.finder.forms.#{value}") }
             end
           end
         end

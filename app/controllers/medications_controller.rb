@@ -160,7 +160,11 @@ class MedicationsController < ApplicationController
 
   def search
     authorize Medication, :finder?
-    response = medication_finder_search_responder.call(query: params[:q], permissions: medication_finder_permissions)
+    response = medication_finder_search_responder.call(
+      query: params[:q],
+      form: params[:form],
+      permissions: medication_finder_permissions
+    )
 
     render json: response.body, status: response.status
   end
