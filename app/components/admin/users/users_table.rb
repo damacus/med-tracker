@@ -183,10 +183,28 @@ module Components
         def platform_admin_account_ids
           return @platform_admin_account_ids if defined?(@platform_admin_account_ids)
 
-          @platform_admin_account_ids = PlatformAdmin.active
-                                                     .where(account_id: memberships_by_account_id.keys)
-                                                     .pluck(:account_id)
-                                                     .to_set
+          @platform_admin_account_ids = if platform_admin_accounts_loaded?
+                                          preloaded_platform_admin_account_ids
+                                        else
+                                          PlatformAdmin.active
+                                                       .where(account_id: memberships_by_account_id.keys)
+                                                       .pluck(:account_id)
+                                                       .to_set
+                                        end
+        end
+
+        def platform_admin_accounts_loaded?
+          loaded_accounts.all? { |account| account.association(:platform_admin).loaded? }
+        end
+
+        def preloaded_platform_admin_account_ids
+          loaded_accounts.filter_map do |account|
+            account.id if account.platform_admin&.active?
+          end.to_set
+        end
+
+        def loaded_accounts
+          @loaded_accounts ||= users.filter_map { |user| user.person&.account }
         end
 
         def render_status_badge(user)

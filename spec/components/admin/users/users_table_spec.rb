@@ -90,6 +90,18 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
         render_inline(described_class.new(users: users, current_user: current_user, household: household))
       end).to eq(1)
     end
+
+    it 'does not query row associations for users loaded by the index query' do
+      users = Admin::UsersIndexQuery.new(
+        scope: User.where(id: [current_user.id, target_user.id]),
+        filters: {},
+        household: household
+      ).call.to_a
+
+      expect(count_row_association_queries do
+        render_inline(described_class.new(users: users, current_user: current_user, household: household))
+      end).to eq(0)
+    end
   end
 
   describe 'sortable headers' do
@@ -150,6 +162,19 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
 
       sql = payload[:sql]
       count += 1 if sql.include?('FROM "household_memberships"')
+    end
+
+    ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
+    count
+  end
+
+  def count_row_association_queries(&)
+    count = 0
+    subscriber = lambda do |_name, _started, _finished, _unique_id, payload|
+      next if payload[:cached] || payload[:name] == 'SCHEMA'
+
+      sql = payload[:sql]
+      count += 1 if sql.match?(/FROM "(people|accounts|platform_admins)"/)
     end
 
     ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)

@@ -30,7 +30,7 @@ module Admin
     end
 
     def filtered_scope
-      relation = scope.includes(:person)
+      relation = scope.includes(person: { account: :platform_admin })
       relation = apply_search(relation) if search.present?
       relation = apply_membership_role_filter(relation) if membership_role.present?
       relation = apply_status_filter(relation) if status.present?
