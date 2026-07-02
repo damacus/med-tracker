@@ -272,7 +272,7 @@ RSpec.describe 'Medication Lookup', type: :system do
     expect(page).to have_text('Interaction Details')
     expect(page).to have_text('Severity')
     expect(page).to have_text('High')
-    expect(page).to have_text('Aspirin')
+    expect(page).to have_text('Ibuprofen')
     expect(page).to have_text('bleeding')
   end
 end

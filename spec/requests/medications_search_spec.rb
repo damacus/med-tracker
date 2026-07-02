@@ -116,7 +116,7 @@ RSpec.describe 'GET /medication-finder/search' do
           a_hash_including(
             'severity' => 'high',
             'severity_label' => 'High',
-            'interacting_medication_name' => 'Aspirin'
+            'interacting_medication_name' => 'Ibuprofen'
           )
         )
       end
