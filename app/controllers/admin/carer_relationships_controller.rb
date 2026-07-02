@@ -17,30 +17,25 @@ module Admin
     def new
       @relationship = CarerRelationship.new(patient_id: params[:patient_id])
       authorize @relationship
-      is_modal = request.headers['Turbo-Frame'] == 'modal'
       options = carer_relationship_options
 
-      respond_to do |format|
-        format.html do
-          render Components::Admin::CarerRelationships::FormView.new(
+      render_modal_or_page(
+        modal: lambda {
+          Components::Admin::CarerRelationships::FormView.new(
             relationship: @relationship,
             carers: options.carers,
             patients: options.patients,
-            modal: is_modal
-          ), layout: !is_modal
-        end
-        format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            'modal',
-            Components::Admin::CarerRelationships::FormView.new(
-              relationship: @relationship,
-              carers: options.carers,
-              patients: options.patients,
-              modal: true
-            )
+            modal: true
           )
-        end
-      end
+        },
+        page: lambda {
+          Components::Admin::CarerRelationships::FormView.new(
+            relationship: @relationship,
+            carers: options.carers,
+            patients: options.patients
+          )
+        }
+      )
     end
 
     def create
