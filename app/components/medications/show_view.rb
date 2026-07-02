@@ -165,7 +165,7 @@ module Components
           action: mark_as_ordered_medication_path(medication),
           method: :post,
           class: 'col-span-2 space-y-3 rounded-shape-xl border border-border/60 bg-card p-4',
-          data: { turbo: false }
+          data_turbo: 'false'
         ) do
           input(type: :hidden, name: :_method, value: :patch)
           input(type: :hidden, name: :authenticity_token, value: view_context.form_authenticity_token)
