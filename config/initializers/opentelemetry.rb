@@ -3,6 +3,7 @@
 require 'opentelemetry-api'
 require 'otel/allowlisted_span_exporter'
 require 'otel/critical_path_sampler'
+require 'otel/exception_recorder'
 
 OpenTelemetry.logger = Logger.new($stdout, level: Rails.env.test? ? Logger::WARN : Logger::ERROR)
 

@@ -40,7 +40,11 @@ RSpec.describe Otel::AllowlistedSpanExporter do
         'medication_take.taken_at' => '2026-06-22T10:00:00Z',
         'account.id' => '99',
         'db.system' => 'postgresql',
-        'db.statement' => 'SELECT * FROM people'
+        'db.statement' => 'SELECT * FROM people',
+        'error.type' => 'RuntimeError',
+        'exception.escaped' => true,
+        'exception.source' => 'request',
+        'exception.message' => 'person name leaked'
       }
     )
   end
@@ -54,7 +58,10 @@ RSpec.describe Otel::AllowlistedSpanExporter do
       'model.name' => 'MedicationTake',
       'model.operation' => 'create',
       'model.id_hash' => '169e81c4d785338b1599a3af36a71fd7c21bbfb3ab7c8df5b74d9f678d5355e8',
-      'db.system' => 'postgresql'
+      'db.system' => 'postgresql',
+      'error.type' => 'RuntimeError',
+      'exception.escaped' => true,
+      'exception.source' => 'request'
     )
     expect(span.attributes).to include('model.id' => '123')
   end
