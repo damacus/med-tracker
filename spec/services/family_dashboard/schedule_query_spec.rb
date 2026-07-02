@@ -34,6 +34,25 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       expect(counts[:person_medications]).to eq(1)
     end
 
+    it 'keeps dashboard source query counts stable as rows grow' do
+      baseline_counts = count_dashboard_source_queries do
+        described_class.new([jane, child]).tap { |dashboard_query| exercise_dashboard_query(dashboard_query) }
+      end
+
+      extra_people = create_list(:person, 3)
+      extra_people.each { |person| create_dashboard_sources_for(person) }
+
+      expanded_counts = count_dashboard_source_queries do
+        described_class.new([jane, child, *extra_people]).tap do |dashboard_query|
+          exercise_dashboard_query(dashboard_query)
+        end
+      end
+
+      expect(expanded_counts[:schedules]).to eq(baseline_counts[:schedules])
+      expect(expanded_counts[:person_medications]).to eq(baseline_counts[:person_medications])
+      expect(expanded_counts[:medication_takes]).to eq(baseline_counts[:medication_takes])
+    end
+
     it 'returns an aggregated list of doses for the person and their dependents' do
       results = query.call
       expect(results).to be_an(Array)
@@ -352,6 +371,47 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       min_hours_between_doses: nil,
       administration_kind: :routine
     )
+  end
+
+  def count_dashboard_source_queries(&)
+    counts = Hash.new(0)
+    patterns = dashboard_query_patterns
+
+    subscriber = lambda do |_name, _start, _finish, _id, payload|
+      sql = payload[:sql]
+      next if payload[:cached] || payload[:name] == 'SCHEMA'
+
+      patterns.each do |key, required_fragments|
+        counts[key] += 1 if required_fragments.all? { |fragment| sql.include?(fragment) }
+      end
+    end
+
+    ActiveRecord::Base.uncached do
+      ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
+    end
+    counts
+  end
+
+  def dashboard_query_patterns
+    {
+      schedules: ['FROM "schedules"', '"schedules"."person_id"'],
+      person_medications: ['FROM "person_medications"', '"person_medications"."person_id"'],
+      medication_takes: ['FROM "medication_takes"']
+    }
+  end
+
+  def exercise_dashboard_query(dashboard_query)
+    dashboard_query.call
+    dashboard_query.as_needed_by_person
+    dashboard_query.today_takes_by_person
+  end
+
+  def create_dashboard_sources_for(person)
+    medication = create(:medication)
+    schedule = create(:schedule, person: person, medication: medication)
+    person_medication = create(:person_medication, person: person, medication: medication)
+    create(:medication_take, schedule: schedule, taken_at: 1.hour.ago)
+    create(:medication_take, person_medication: person_medication, taken_at: 2.hours.ago)
   end
 
   def create_prn_schedule(max_daily_doses: 4, min_hours_between_doses: 4)
