@@ -50,20 +50,18 @@ module Components
       def render_date_field(name:, label:, value:)
         div(class: 'flex flex-col gap-1') do
           label(for: name, class: label_classes) { label }
-          input(type: 'date', name: name, id: name, value: value, class: input_classes(:input))
+          m3_input(
+            type: :date,
+            name: name,
+            id: name,
+            value: value,
+            class: 'h-9 min-h-[36px] px-3 py-2 text-sm shadow-sm'
+          )
         end
       end
 
       def label_classes
         'text-xs font-semibold uppercase tracking-wider text-on-surface-variant'
-      end
-
-      def input_classes(type)
-        [
-          "form-#{type}",
-          'rounded-shape-sm border-border bg-background text-sm text-foreground',
-          'focus:border-primary focus:ring-primary'
-        ].join(' ')
       end
 
       def translate(key)
