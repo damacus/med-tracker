@@ -4,7 +4,6 @@ class SchedulesController < ApplicationController
   include TimelineRefreshable
   include PersonViewable
   include TakeMedicationGuardable
-  include ScheduleIndexPersonResolvable
   include ScheduleResourceResolvable
   include MedicationWorkflowBackPathable
 
@@ -104,6 +103,13 @@ class SchedulesController < ApplicationController
 
   def redirect_direct_new_schedule
     redirect_to schedules_workflow_path if params[:person_id].blank?
+  end
+
+  def schedule_index_person
+    return Person.new if current_user.nil?
+    return current_user.person if current_user.person.nil?
+
+    current_user.person.patients.first || current_user.person
   end
 
   def set_person

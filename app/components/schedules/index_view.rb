@@ -83,34 +83,36 @@ module Components
             class: 'rounded-shape-xl border border-outline-variant/30 bg-surface-container-lowest ' \
                    'overflow-hidden shadow-elevation-1'
           ) do
-            table(class: 'w-full text-sm') do
-              thead(
+            Table(class: 'text-sm') do
+              TableHeader(
                 class: 'bg-surface-container-low text-on-surface-variant uppercase tracking-widest ' \
                        'text-[10px] font-black'
               ) do
-                tr do
-                  th(class: 'text-left px-6 py-4') { t('dashboard.table.person') }
-                  th(class: 'text-left px-6 py-4') { t('dashboard.table.medication') }
-                  th(class: 'text-left px-6 py-4') { t('dashboard.table.dosage') }
-                  th(class: 'text-left px-6 py-4') { t('dashboard.table.frequency') }
-                  th(class: 'text-left px-6 py-4') { t('schedules.index.start_date') }
-                  th(class: 'text-left px-6 py-4') { t('dashboard.table.end_date') }
+                TableRow(class: 'hover:bg-transparent') do
+                  TableHead(class: 'px-6 py-4') { t('dashboard.table.person') }
+                  TableHead(class: 'px-6 py-4') { t('dashboard.table.medication') }
+                  TableHead(class: 'px-6 py-4') { t('dashboard.table.dosage') }
+                  TableHead(class: 'px-6 py-4') { t('dashboard.table.frequency') }
+                  TableHead(class: 'px-6 py-4') { t('schedules.index.start_date') }
+                  TableHead(class: 'px-6 py-4') { t('dashboard.table.end_date') }
                 end
               end
-              tbody(class: 'divide-y divide-outline-variant/30') do
+              TableBody(class: 'divide-y divide-outline-variant/30') do
                 schedules.each do |schedule|
-                  tr do
-                    td(class: 'px-6 py-5 font-bold text-foreground') do
+                  TableRow do
+                    TableCell(class: 'px-6 py-5 font-bold text-foreground') do
                       m3_link(href: person_path(schedule.person), variant: :text, size: :sm,
                               class: 'p-0 h-auto no-underline hover:text-primary') do
                         schedule.person.name
                       end
                     end
-                    td(class: 'px-6 py-5 text-foreground font-medium') { schedule.medication.display_name }
-                    td(class: 'px-6 py-5 text-foreground font-medium') { dosage_label(schedule) }
-                    td(class: 'px-6 py-5 text-foreground font-medium') { schedule.frequency }
-                    td(class: 'px-6 py-5 text-on-surface-variant font-medium') { format_date(schedule.start_date) }
-                    td(class: 'px-6 py-5 text-on-surface-variant font-medium') { format_date(schedule.end_date) }
+                    TableCell(class: 'px-6 py-5 text-foreground font-medium') { schedule.medication.display_name }
+                    TableCell(class: 'px-6 py-5 text-foreground font-medium') { dosage_label(schedule) }
+                    TableCell(class: 'px-6 py-5 text-foreground font-medium') { schedule.frequency }
+                    TableCell(class: 'px-6 py-5 text-on-surface-variant font-medium') do
+                      format_date(schedule.start_date)
+                    end
+                    TableCell(class: 'px-6 py-5 text-on-surface-variant font-medium') { format_date(schedule.end_date) }
                   end
                 end
               end
