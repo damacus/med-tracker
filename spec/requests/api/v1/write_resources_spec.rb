@@ -37,6 +37,31 @@ RSpec.describe 'API v1 write resources' do
     expect(response.parsed_body.dig('data', 'id')).to eq(first_id)
   end
 
+  it 'rejects medication takes with invalid timestamps' do
+    post api_v1_household_medication_takes_path(household_id),
+         params: {
+           medication_take: {
+             source_type: 'schedule',
+             source_id: schedules(:john_paracetamol).id,
+             taken_at: 'not-a-time'
+           }
+         },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body.dig('error', 'message')).to eq('taken_at is invalid')
+  end
+
+  it 'returns not found for unknown medication take source types' do
+    post api_v1_household_medication_takes_path(household_id),
+         params: { medication_take: { source_type: 'unknown', source_id: schedules(:john_paracetamol).id } },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:not_found)
+  end
+
   it 'creates and updates people' do
     post api_v1_household_people_path(household_id),
          params: { person: { name: 'API Child', date_of_birth: '2020-01-01', person_type: 'minor' } },
@@ -54,6 +79,17 @@ RSpec.describe 'API v1 write resources' do
 
     expect(response).to have_http_status(:ok)
     expect(response.parsed_body.dig('data', 'name')).to eq('API Child Updated')
+  end
+
+  it 'creates adults without carer relationships' do
+    expect do
+      post api_v1_household_people_path(household_id),
+           params: { person: { name: 'API Adult', date_of_birth: '1990-01-01', person_type: 'adult' } },
+           headers: headers,
+           as: :json
+    end.not_to change(CarerRelationship, :count)
+
+    expect(response).to have_http_status(:created)
   end
 
   it 'creates and updates medications' do
@@ -114,6 +150,13 @@ RSpec.describe 'API v1 write resources' do
 
     expect(response).to have_http_status(:ok)
     expect(response.parsed_body.dig('data', 'frequency')).to eq('Every morning')
+
+    patch api_v1_household_schedule_path(household_id, schedule_id),
+          params: { schedule: { medication_id: medications(:ibuprofen).id } },
+          headers: headers,
+          as: :json
+
+    expect(response).to have_http_status(:ok)
   end
 
   it 'creates and updates person medications' do
@@ -143,6 +186,13 @@ RSpec.describe 'API v1 write resources' do
 
     expect(response).to have_http_status(:ok)
     expect(response.parsed_body.dig('data', 'notes')).to eq('Use with food')
+
+    patch api_v1_household_person_medication_path(household_id, person_medication_id),
+          params: { person_medication: { medication_id: medications(:paracetamol).id } },
+          headers: headers,
+          as: :json
+
+    expect(response).to have_http_status(:ok)
   end
 
   it 'updates the current notification preference' do
@@ -154,6 +204,18 @@ RSpec.describe 'API v1 write resources' do
     expect(response).to have_http_status(:ok)
     expect(response.parsed_body.dig('data', 'enabled')).to be(false)
     expect(response.parsed_body.dig('data', 'low_stock_enabled')).to be(false)
+  end
+
+  it 'creates a notification preference when the current person does not have one' do
+    user.person.notification_preference&.destroy!
+
+    patch api_v1_household_notification_preference_path(household_id),
+          params: { notification_preference: { enabled: true, dose_due_enabled: true } },
+          headers: headers,
+          as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.dig('data', 'dose_due_enabled')).to be(true)
   end
 
   it 'returns validation errors for invalid write payloads' do
