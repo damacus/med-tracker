@@ -70,6 +70,21 @@ RSpec.describe 'Platform settings' do
     expect(response).to redirect_to(root_path)
   end
 
+  it 'denies lookup setting updates from household owners without platform admin access' do
+    sign_in(household_owner)
+
+    patch platform_settings_path,
+          params: {
+            app_settings: {
+              medicine_lookup_base_url: 'https://terminology.example.test/fhir',
+              medicine_lookup_source_priority: %w[open_products_facts local_nhs_dmd]
+            }
+          }
+
+    expect(response).to redirect_to(root_path)
+    expect(AppSettings.instance.reload.medicine_lookup_base_url).to eq(NhsDmd::Client::BASE_URL)
+  end
+
   it 'keeps household admin settings denied to household managers without platform admin access' do
     sign_in(household_owner)
 
