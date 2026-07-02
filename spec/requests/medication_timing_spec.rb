@@ -146,6 +146,41 @@ RSpec.describe 'Medication Timing Restrictions' do
       end
     end
 
+    context 'when another active prescription for the same medication sets a stricter limit' do
+      let!(:other_schedule) do
+        Schedule.create!(
+          person: person,
+          medication: medication,
+          dose_amount: 1000,
+          dose_unit: 'mg',
+          start_date: Time.zone.today - 1.day,
+          end_date: Time.zone.today + 30.days,
+          max_daily_doses: 1,
+          min_hours_between_doses: nil
+        )
+      end
+
+      before do
+        MedicationTake.create!(
+          schedule: other_schedule,
+          taken_at: 1.hour.ago,
+          dose_amount: 1000,
+          dose_unit: 'mg',
+          taken_from_medication: medication,
+          taken_from_location: medication.location
+        )
+      end
+
+      it 'does not create a medication take and explains the overlapping prescription limit' do
+        expect do
+          post take_medication_person_schedule_path(person, schedule)
+        end.not_to change(MedicationTake, :count)
+
+        expect(response).to redirect_to(person_path(person))
+        expect(flash[:alert]).to include('another active prescription')
+      end
+    end
+
     context 'when schedule dose is invalid' do
       it 'does not create a medication take and shows a friendly alert' do
         expect do

@@ -1292,6 +1292,7 @@ en:
     invalid_taken_at: Choose a valid dose time.
     future_taken_at: Dose time cannot be more than an hour in the future.
     paused: 'Cannot take medication: paused'
+    overlapping_prescription_restriction: 'Cannot take medication: another active prescription for this medication sets a stricter timing limit.'
   barcode_scanner:
     title: Scan Barcode
     start: Start Scanner

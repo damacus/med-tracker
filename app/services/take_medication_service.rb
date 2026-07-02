@@ -19,7 +19,9 @@
 #                   #    :selection_required | :invalid_source | :create_failed
 class TakeMedicationService
   Result = Data.define(:success, :take, :error)
-  PreparedTake = Data.define(:source, :amount, :unit, :medication, :taken_at, :client_uuid, :error) do
+  PreparedTake = Data.define(
+    :source, :amount, :unit, :medication, :taken_at, :client_uuid, :error, :decision_context
+  ) do
     def record
       source.medication_takes.create(medication_take_attributes)
     end
@@ -62,7 +64,7 @@ class TakeMedicationService
   end
 
   def rule_blocked_failure(prepared_take, source:, user:, options:)
-    publish_take_metric('take_blocked_by_rules.med_tracker', source:, user:, options:, error: prepared_take.error)
+    publish_rule_blocked_metric(prepared_take, source:, user:, options:)
     failure(prepared_take.error)
   end
 
@@ -88,13 +90,23 @@ class TakeMedicationService
     error, medication = resolve_stock_source(resolver, taken_from_medication_id)
     return prepared_error(error) if error
 
+    decision_error = overlapping_decision_error(source, taken_at)
+    return decision_error if decision_error
+
     prepared_success(source:, amount:, medication:, taken_at:, options:)
   end
 
-  def prepared_error(error)
+  def overlapping_decision_error(source, taken_at)
+    decision_context = MedicationDoseDecisionContext.new(source: source, taken_at: taken_at)
+    return unless decision_context.blocked?
+
+    prepared_error(decision_context.blocked_reason, decision_context: decision_context.audit_payload)
+  end
+
+  def prepared_error(error, decision_context: nil)
     PreparedTake.new(
       source: nil, amount: nil, unit: nil, medication: nil,
-      taken_at: nil, client_uuid: nil, error: error
+      taken_at: nil, client_uuid: nil, error: error, decision_context: decision_context
     )
   end
 
@@ -106,7 +118,8 @@ class TakeMedicationService
       medication: medication,
       taken_at: taken_at,
       client_uuid: options[:client_uuid],
-      error: nil
+      error: nil,
+      decision_context: nil
     )
   end
 
@@ -154,10 +167,26 @@ class TakeMedicationService
   end
 
   def publish_take_metric(event_name, source:, user:, options:, error: nil)
-    ActiveSupport::Notifications.instrument(event_name, take_metric_payload(source:, user:, options:, error:))
+    ActiveSupport::Notifications.instrument(
+      event_name,
+      take_metric_payload(source:, user:, options:, error:, decision_context: nil)
+    )
   end
 
-  def take_metric_payload(source:, user:, options:, error:)
+  def publish_rule_blocked_metric(prepared_take, source:, user:, options:)
+    ActiveSupport::Notifications.instrument(
+      'take_blocked_by_rules.med_tracker',
+      take_metric_payload(
+        source: source,
+        user: user,
+        options: options,
+        error: prepared_take.error,
+        decision_context: prepared_take.decision_context
+      )
+    )
+  end
+
+  def take_metric_payload(source:, user:, options:, error:, decision_context:)
     {
       environment: Rails.env.to_s,
       role: metric_role(user),
@@ -165,7 +194,7 @@ class TakeMedicationService
       medicine_context_class: source.class.name,
       source_type: source.class.model_name.singular,
       error: error&.to_s
-    }
+    }.merge(decision_context || {})
   end
 
   def metric_role(user)
