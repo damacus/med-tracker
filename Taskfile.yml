@@ -124,6 +124,39 @@ tasks:
         vars:
           TEST_FILE: '{{ .TEST_FILE | default "" }}'
 
+  profile:dashboard:
+    desc: Capture a Vernier baseline profile for the dashboard pipeline
+    summary: |
+      Capture a reproducible Vernier profile for the representative dashboard pipeline.
+      Requires the development database and seeded data.
+      Usage: task profile:dashboard
+      Usage: task profile:dashboard OUT=docs/performance/profiles/dashboard-before.vernier.json.gz
+      Usage: task profile:dashboard PROFILE_DASHBOARD_EMAIL=admin@example.com
+    vars:
+      output: '{{ .OUT | default "docs/performance/profiles/dashboard-baseline.vernier.json.gz" }}'
+      summary_path: '{{ .SUMMARY | default "docs/performance/dashboard-baseline.md" }}'
+      interval: '{{ .INTERVAL | default "500" }}'
+      allocation_interval: '{{ .ALLOCATION_INTERVAL | default "10" }}'
+      profile_email: '{{ .PROFILE_DASHBOARD_EMAIL | default "admin@example.com" }}'
+      selected_person_id: '{{ .PROFILE_DASHBOARD_PERSON_ID | default "all" }}'
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: dev
+          COMMAND: >-
+            env PROFILE_DASHBOARD_EMAIL={{ .profile_email }}
+            PROFILE_DASHBOARD_PERSON_ID={{ .selected_person_id }}
+            PROFILE_DASHBOARD_ARTIFACT={{ .output }}
+            PROFILE_DASHBOARD_SUMMARY={{ .summary_path }}
+            bundle exec vernier run
+            --output {{ .output }}
+            --interval {{ .interval }}
+            --allocation-interval {{ .allocation_interval }}
+            --hooks rails,memory_usage
+            --metadata workflow=dashboard
+            --
+            bin/rails runner scripts/profile_dashboard_request.rb
+
   translator:hook:
     desc: Run the Codex translator hook for staged locale and typography changes
     summary: |
