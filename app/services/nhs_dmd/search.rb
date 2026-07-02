@@ -88,7 +88,7 @@ module NhsDmd
       off_match = open_food_facts_result_for(query)
       return barcode_result(query, off_match) if off_match
 
-      supplement_results = text_supplement_items(query)
+      supplement_results = likely_supplement_text_query?(query) ? text_supplement_items(query) : []
       return Result.new(results: build_results(supplement_results), error: nil) if supplement_results.any?
 
       Result.new(results: [], error: exception.message)

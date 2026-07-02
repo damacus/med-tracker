@@ -565,11 +565,11 @@ RSpec.describe NhsDmd::Search do
 
         allow(client).to receive(:configured?).and_return(true)
         allow(client).to receive(:search).and_raise(NhsDmd::Client::ApiError, 'Service unavailable')
-        allow(open_food_facts_search).to receive(:search).with('wellman').and_return([off_result])
+        allow(open_food_facts_search).to receive(:search).with('vitamin').and_return([off_result])
       end
 
       it 'returns secondary source results without an error' do
-        result = search.call('wellman')
+        result = search.call('vitamin')
 
         expect(result).to be_success
         expect(result.error).to be_nil
