@@ -136,6 +136,8 @@ RSpec.describe Components::Medications::ShowView, type: :component do
 
     expect(order_form).to be_present
     expect(order_form['data-turbo']).to eq('false')
+    expect(order_form.at_css("input[name='_method'][value='patch']")).to be_present
+    expect(order_form.at_css("input[name='authenticity_token']")).to be_present
     expect(order_form.at_css("button[type='submit']")).to be_present
     expect(rendered.text).to include('Supplier')
     expect(rendered.text).to include('Quantity')

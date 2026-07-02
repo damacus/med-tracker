@@ -167,8 +167,8 @@ module Components
           class: 'col-span-2 space-y-3 rounded-shape-xl border border-border/60 bg-card p-4',
           data_turbo: 'false'
         ) do
-          input(type: :hidden, name: :_method, value: :patch)
-          input(type: :hidden, name: :authenticity_token, value: view_context.form_authenticity_token)
+          input(type: :hidden, name: '_method', value: :patch)
+          input(type: :hidden, name: 'authenticity_token', value: view_context.form_authenticity_token)
           render_order_field(:supplier, t('medications.show.order_supplier'), type: :text)
           render_order_field(:quantity, t('medications.show.order_quantity'), type: :number, step: '0.01', min: '0')
           render_order_field(:expected_arrival_on, t('medications.show.expected_arrival'), type: :date)
