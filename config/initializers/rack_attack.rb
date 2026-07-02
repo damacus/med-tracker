@@ -3,6 +3,7 @@
 module Rack
   class Attack
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
+    MEDICATION_LOOKUP_PATH = %r{\A/households/[^/]+/medication-finder/search(?:\.[a-z]+)?\z}
 
     throttle('req/ip', limit: 300, period: 5.minutes, &:ip)
 
@@ -49,6 +50,17 @@ module Rack
       end
     end
 
+    throttle('medication_lookup/ip', limit: 60, period: 1.minute) do |req|
+      req.ip if req.get? && req.path.match?(MEDICATION_LOOKUP_PATH)
+    end
+
+    throttle('medication_lookup/user', limit: 120, period: 1.hour) do |req|
+      if req.get? && req.path.match?(MEDICATION_LOOKUP_PATH)
+        session = req.env['rack.session']
+        session && session['account_id']
+      end
+    end
+
     throttle('ai_medication_suggestions/ip', limit: 10, period: 1.minute) do |req|
       req.ip if req.path == '/ai-medication-suggestions' && req.post?
     end
@@ -66,6 +78,7 @@ module Rack
       retry_after = match_data[:period] - (now % match_data[:period])
 
       throttle_type = request.env['rack.attack.matched']
+      ActiveSupport::Notifications.instrument('rack_attack.throttled', throttle: throttle_type, ip: request.ip)
       Rails.logger.warn("Rate limit exceeded: #{throttle_type} from IP #{request.ip}")
 
       [
