@@ -7,28 +7,8 @@ RSpec.describe 'Medication stock sources' do
 
   let(:admin) { users(:admin) }
   let(:person) { household_person(people(:jane)) }
+  let(:source_medication) { household_medication(medications(:ibuprofen)) }
   let(:school_location) { household_location(locations(:school)) }
-  let(:source_medication) do
-    create(
-      :medication,
-      household: person.household,
-      location: household_location(locations(:home)),
-      name: 'Stock source ibuprofen',
-      dose_amount: 400,
-      dose_unit: 'mg',
-      current_supply: 30,
-      reorder_threshold: 5
-    )
-  end
-  let(:source_dosage) do
-    create(
-      :dosage,
-      medication: source_medication,
-      amount: source_medication.dose_amount,
-      unit: source_medication.dose_unit,
-      frequency: 'Every 6-8 hours'
-    )
-  end
 
   before do
     sign_in(admin)
@@ -175,7 +155,7 @@ RSpec.describe 'Medication stock sources' do
     Schedule.create!(
       person: person,
       medication: source_medication,
-      dosage: source_dosage,
+      dosage: dosages(:ibuprofen_adult),
       start_date: Time.zone.today,
       end_date: Time.zone.today + 30.days
     )
