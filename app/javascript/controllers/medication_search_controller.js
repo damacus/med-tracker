@@ -143,6 +143,7 @@ export default class extends Controller {
 
     const identifier = this.renderIdentifier(result)
     const pilLink = this.renderPilLink(result)
+    const medicineDetails = this.renderMedicineDetails(result)
     const interactions = this.renderInteractions(result)
     const title = result.name || result.display
     const packageSize = result.package_size
@@ -157,6 +158,7 @@ export default class extends Controller {
             ${packageSize}
             ${identifier}
             ${pilLink}
+            ${medicineDetails}
             ${interactions}
           </div>
           <div class="flex flex-col items-end gap-1 shrink-0">
@@ -169,6 +171,53 @@ export default class extends Controller {
         ${action}
       </div>
     `
+  }
+
+  renderMedicineDetails(result) {
+    const detailRows = this.medicineDetailRows(result)
+    if (detailRows.length === 0) return ''
+
+    const detailsId = `medicine-details-${Math.random().toString(36).slice(2)}`
+    const rows = detailRows.map(([label, value]) => `
+      <div>
+        <dt class="text-xs font-bold text-on-surface-variant">${this.escapeHtml(label)}</dt>
+        <dd class="mt-1 text-xs text-foreground">${this.escapeHtml(value)}</dd>
+      </div>
+    `).join('')
+
+    return `
+      <div class="mt-3" data-testid="medicine-details-panel">
+        <button
+          type="button"
+          class="text-xs font-bold text-primary underline underline-offset-2"
+          aria-expanded="false"
+          aria-controls="${this.escapeHtml(detailsId)}"
+          data-action="medication-search#toggleMedicineDetails"
+          data-details-id="${this.escapeHtml(detailsId)}"
+        >${this.escapeHtml(this.t("medicineDetailsButton"))}</button>
+        <dl id="${this.escapeHtml(detailsId)}" class="hidden mt-3 space-y-3 rounded-lg border border-border bg-surface-container-low p-3" data-testid="medicine-details">
+          ${rows}
+        </dl>
+      </div>
+    `
+  }
+
+  medicineDetailRows(result) {
+    return [
+      [this.t("detailsDescription"), result.description],
+      [this.t("detailsCategory"), result.category],
+      [this.t("detailsPackage"), result.package_size],
+      [this.t("detailsDirections"), result.directions],
+      [this.t("detailsWarnings"), result.warnings]
+    ].filter(([, value]) => value)
+  }
+
+  toggleMedicineDetails(event) {
+    const details = document.getElementById(event.currentTarget.dataset.detailsId)
+    if (!details) return
+
+    const expanded = details.classList.toggle("hidden") === false
+    event.currentTarget.setAttribute("aria-expanded", String(expanded))
   }
 
   renderInteractions(result) {

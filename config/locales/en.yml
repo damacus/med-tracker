@@ -767,6 +767,13 @@ en:
         drops: Drops
         spray: Sprays
         powder: Powders and sachets
+      medicine_details_button: View medicine details
+      details:
+        description: Description
+        category: Category
+        package: Package
+        directions: Directions
+        warnings: Warnings
       interaction_summary: "%{count} interaction warning (%{severity})"
       interaction_details_button: View Interaction Details
       interaction_details: Interaction Details

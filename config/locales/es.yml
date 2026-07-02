@@ -745,6 +745,13 @@ es:
         drops: Gotas
         spray: Sprays
         powder: Polvos y sobres
+      medicine_details_button: Ver detalles del medicamento
+      details:
+        description: Descripción
+        category: Categoría
+        package: Envase
+        directions: Instrucciones
+        warnings: Advertencias
       update_stock: Actualizar stock
       confirm_restock: Confirme que desea añadir %{quantity} unidades a %{medication}.
       confirm_restock_without_quantity: Confirme cuántas unidades desea añadir a

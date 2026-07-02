@@ -49,9 +49,42 @@ RSpec.describe 'MedicationFinder' do
     expect(medication.reload.current_supply).to eq(40)
   end
 
-  def stub_medication_finder_search(medication)
-    payload = medication_finder_payload(medication)
+  it 'expands structured details for an external medicine result' do
+    driven_by(:playwright)
+    login_as(user)
+    stub_medication_finder_payload(
+      results: [
+        {
+          name: 'Aspirin 300mg tablets',
+          display: 'Aspirin 300mg tablets',
+          description: 'Pain relief medicine',
+          directions: 'Take with water',
+          warnings: 'Do not exceed the stated dose',
+          category: 'Analgesic',
+          package_size: '32 tablets',
+          source_label: 'NHS dm+d'
+        }
+      ],
+      permissions: { can_create: true, can_restock: true }
+    )
 
+    visit medication_finder_path
+    fill_in 'medication-search-input', with: 'aspirin'
+    click_on 'Search'
+    click_on 'View medicine details'
+
+    expect(page).to have_css('[data-testid="medicine-details"]')
+    expect(page).to have_text('Pain relief medicine')
+    expect(page).to have_text('Take with water')
+    expect(page).to have_text('Do not exceed the stated dose')
+  end
+
+  def stub_medication_finder_search(medication)
+    stub_medication_finder_payload(**medication_finder_payload(medication))
+  end
+
+  def stub_medication_finder_payload(payload = nil, **overrides)
+    payload ||= overrides
     page.driver.with_playwright_page do |playwright_page|
       playwright_page.add_init_script(
         script: "window.medicationFinderPayload = #{payload.to_json};" \
