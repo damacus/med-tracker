@@ -29,4 +29,29 @@ RSpec.describe HealthEvent do
     expect(event).not_to be_valid
     expect(event.errors[:ended_on]).to include('must be on or after the start date')
   end
+
+  it 'allows an end date on or after the start date' do
+    event = described_class.new(
+      person: people(:john),
+      event_kind: :illness,
+      title: 'Cold',
+      started_on: Date.new(2026, 1, 4),
+      ended_on: Date.new(2026, 1, 5)
+    )
+
+    expect(event).to be_valid
+    expect(event).not_to be_ongoing
+  end
+
+  it 'does not add end date ordering errors when the start date is missing' do
+    event = described_class.new(
+      person: people(:john),
+      event_kind: :illness,
+      title: 'Cold',
+      ended_on: Date.new(2026, 1, 5)
+    )
+
+    expect(event).not_to be_valid
+    expect(event.errors[:ended_on]).to be_empty
+  end
 end

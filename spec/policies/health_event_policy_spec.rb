@@ -51,4 +51,11 @@ RSpec.describe HealthEventPolicy, type: :policy do
     expect(manager_scope).to include(event, other_event)
     expect(member_scope).to contain_exactly(event)
   end
+
+  it 'allows household managers to create from the class record' do
+    owner = household_policy_member(role: :owner, household: household)
+
+    expect(described_class.new(owner.fetch(:context), HealthEvent)).to permit_action(:create)
+    expect(described_class.new(member.fetch(:context), HealthEvent)).to forbid_action(:create)
+  end
 end
