@@ -172,21 +172,15 @@ module Components
             ) { t('admin.users.form.locations') }
             div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2') do
               locations.each do |location|
-                label(
-                  class: 'flex items-center gap-3 p-4 rounded-xl border border-outline-variant ' \
-                         'bg-surface-container-low ' \
-                         'hover:bg-surface-container-high cursor-pointer transition-all state-layer relative'
-                ) do
-                  input(
-                    type: 'checkbox',
-                    name: 'user[person_attributes][location_ids][]',
-                    value: location.id,
-                    id: "location_#{location.id}",
-                    checked: user.person&.location_ids&.include?(location.id),
-                    class: "z-10 #{checkbox_classes}"
-                  )
-                  span(class: 'z-10 font-bold text-foreground') { location.name }
-                end
+                m3_selectable_option(
+                  type: :checkbox,
+                  name: 'user[person_attributes][location_ids][]',
+                  value: location.id,
+                  input_id: "location_#{location.id}",
+                  label: location.name,
+                  checked: user.person&.location_ids&.include?(location.id),
+                  input_class: checkbox_classes
+                )
               end
             end
             # Hidden field to ensure location_ids is sent even if none selected (though validation will catch it)
@@ -432,22 +426,16 @@ module Components
             end
             div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-3') do
               dependents.each do |dependent|
-                label(
-                  class: 'flex items-center gap-3 p-4 rounded-xl border border-outline-variant ' \
-                         'bg-surface-container-low hover:bg-surface-container-high cursor-pointer ' \
-                         'transition-all state-layer relative'
-                ) do
-                  input(
-                    type: 'checkbox',
-                    name: 'user[dependent_ids][]',
-                    value: dependent.id,
-                    id: "user_dependent_#{dependent.id}",
-                    checked: selected_dependent_ids.include?(dependent.id),
-                    disabled: !dependent_assignment_role?,
-                    class: "z-10 #{checkbox_classes}"
-                  )
-                  span(class: 'z-10 font-bold text-foreground') { dependent.name }
-                end
+                m3_selectable_option(
+                  type: :checkbox,
+                  name: 'user[dependent_ids][]',
+                  value: dependent.id,
+                  input_id: "user_dependent_#{dependent.id}",
+                  label: dependent.name,
+                  checked: selected_dependent_ids.include?(dependent.id),
+                  disabled: !dependent_assignment_role?,
+                  input_class: checkbox_classes
+                )
               end
             end
             input(type: 'hidden', name: 'user[dependent_ids][]', value: '', disabled: !dependent_assignment_role?)

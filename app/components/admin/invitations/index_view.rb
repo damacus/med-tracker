@@ -158,22 +158,16 @@ module Components
             p(class: 'text-sm text-on-surface-variant') { t('admin.invitations.index.form.dependents_hint') }
             div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-3') do
               @dependents.each do |dependent|
-                label(
-                  class: 'flex items-center gap-3 p-4 rounded-xl border border-outline-variant ' \
-                         'bg-surface-container-low hover:bg-surface-container-high cursor-pointer ' \
-                         'transition-all state-layer relative'
-                ) do
-                  input(
-                    type: 'checkbox',
-                    name: 'invitation[dependent_ids][]',
-                    value: dependent.id,
-                    id: "invitation_dependent_#{dependent.id}",
-                    checked: selected_dependent_ids.include?(dependent.id),
-                    disabled: !dependent_assignment_role?,
-                    class: "z-10 #{checkbox_classes}"
-                  )
-                  span(class: 'z-10 font-bold text-foreground') { dependent.name }
-                end
+                m3_selectable_option(
+                  type: :checkbox,
+                  name: 'invitation[dependent_ids][]',
+                  value: dependent.id,
+                  input_id: "invitation_dependent_#{dependent.id}",
+                  label: dependent.name,
+                  checked: selected_dependent_ids.include?(dependent.id),
+                  disabled: !dependent_assignment_role?,
+                  input_class: checkbox_classes
+                )
               end
             end
             input(type: 'hidden', name: 'invitation[dependent_ids][]', value: '', disabled: !dependent_assignment_role?)
