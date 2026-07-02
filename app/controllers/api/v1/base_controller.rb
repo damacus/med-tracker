@@ -112,8 +112,8 @@ module Api
         }
       end
 
-      def render_resource(record, serializer:)
-        render json: { data: serializer.new(record).as_json }
+      def render_resource(record, serializer:, status: :ok)
+        render json: { data: serializer.new(record).as_json }, status: status
       end
 
       def apply_collection_filters(scope)
@@ -158,6 +158,16 @@ module Api
 
       def render_unprocessable(message)
         render json: { error: { code: 'unprocessable_content', message: message } }, status: :unprocessable_content
+      end
+
+      def render_validation_errors(record)
+        render json: {
+          error: {
+            code: 'validation_failed',
+            message: 'Validation failed',
+            errors: record.errors.to_hash(true)
+          }
+        }, status: :unprocessable_content
       end
 
       def render_invalid_filter(exception)
