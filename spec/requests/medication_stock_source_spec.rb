@@ -7,8 +7,19 @@ RSpec.describe 'Medication stock sources' do
 
   let(:admin) { users(:admin) }
   let(:person) { household_person(people(:jane)) }
-  let(:source_medication) { household_medication(medications(:ibuprofen)) }
   let(:school_location) { household_location(locations(:school)) }
+  let(:source_medication) do
+    create(
+      :medication,
+      household: person.household,
+      location: household_location(locations(:home)),
+      name: 'Stock source ibuprofen',
+      dose_amount: 400,
+      dose_unit: 'mg',
+      current_supply: 30,
+      reorder_threshold: 5
+    )
+  end
 
   before do
     sign_in(admin)
