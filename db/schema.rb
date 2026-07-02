@@ -513,6 +513,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_172000) do
     t.index ["person_id"], name: "index_notification_preferences_on_person_id", unique: true
   end
 
+  create_table "notification_events", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "event_key", null: false
+    t.string "event_type", null: false
+    t.bigint "household_id", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.bigint "person_id"
+    t.datetime "sent_at"
+    t.string "skipped_reason"
+    t.datetime "updated_at", null: false
+    t.index ["event_type", "event_key"], name: "index_notification_events_on_event_type_and_event_key", unique: true
+    t.index ["household_id"], name: "index_notification_events_on_household_id"
+    t.index ["id", "household_id"], name: "index_notification_events_on_id_and_household_id", unique: true
+    t.index ["person_id"], name: "index_notification_events_on_person_id"
+    t.index ["sent_at"], name: "index_notification_events_on_sent_at"
+  end
+
   create_table "people", force: :cascade do |t|
     t.bigint "account_id"
     t.datetime "created_at", null: false
@@ -758,6 +775,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_172000) do
   add_foreign_key "medications", "locations", column: ["location_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_medications_location_id_household"
   add_foreign_key "medications", "locations", deferrable: :deferred
   add_foreign_key "native_device_tokens", "accounts"
+  add_foreign_key "notification_events", "households", deferrable: :deferred
+  add_foreign_key "notification_events", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_notification_events_person_id_household"
+  add_foreign_key "notification_events", "people", deferrable: :deferred
   add_foreign_key "notification_preferences", "households"
   add_foreign_key "notification_preferences", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_notification_preferences_person_id_household"
   add_foreign_key "notification_preferences", "people", deferrable: :deferred
@@ -835,6 +855,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_172000) do
     notification_preferences
     health_events
     health_event_medications
+    notification_events
     household_memberships
     person_access_grants
     household_invitations

@@ -180,6 +180,7 @@ class MedicationTake < ApplicationRecord
 
   def low_stock_threshold_payload(inventory:, stock_row:)
     {
+      household_id: inventory.household_id,
       medication_id: inventory.id,
       location_id: inventory.location_id,
       take_id: id,

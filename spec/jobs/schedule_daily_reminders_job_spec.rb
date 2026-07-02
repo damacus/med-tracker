@@ -49,21 +49,34 @@ RSpec.describe ScheduleDailyRemindersJob do
       .at(Time.zone.local(2026, 5, 12, 8, 0))
   end
 
-  it 'enqueues exact reminders for active schedule times when preferences are enabled' do
+  it 'enqueues exact reminders for active schedule times when dose-due preferences are enabled' do
     create(:notification_preference, person: person, morning_time: nil, afternoon_time: nil,
-                                     evening_time: nil, night_time: nil)
+                                     evening_time: nil, night_time: nil, dose_due_enabled: true,
+                                     missed_dose_enabled: false)
     create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
                       frequency: 'Twice daily', schedule_type: :multiple_daily,
-                      schedule_config: { 'times' => %w[07:15 19:45] })
+                      schedule_config: { 'times' => ['07:15'] })
 
     expect do
       described_class.perform_now
     end.to have_enqueued_job(MedicationReminderJob)
       .with(household.id, person.id, :scheduled, '07:15')
       .at(Time.zone.local(2026, 5, 12, 7, 15))
-      .and have_enqueued_job(MedicationReminderJob)
-      .with(household.id, person.id, :scheduled, '19:45')
-      .at(Time.zone.local(2026, 5, 12, 19, 45))
+  end
+
+  it 'enqueues missed-dose checks after active schedule times when missed-dose preferences are enabled' do
+    create(:notification_preference, person: person, morning_time: nil, afternoon_time: nil,
+                                     evening_time: nil, night_time: nil, dose_due_enabled: false,
+                                     missed_dose_enabled: true)
+    create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
+                      frequency: 'Once daily', schedule_type: :multiple_daily,
+                      schedule_config: { 'times' => ['07:15'] })
+
+    expect do
+      described_class.perform_now
+    end.to have_enqueued_job(MissedDoseNotificationJob)
+      .with(household.id, person.id, '2026-05-12', '07:15')
+      .at(Time.zone.local(2026, 5, 12, 7, 45))
   end
 
   it 'does not enqueue exact reminders for as-needed schedules' do
