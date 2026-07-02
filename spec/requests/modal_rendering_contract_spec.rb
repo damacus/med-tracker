@@ -122,6 +122,38 @@ RSpec.describe 'Modal rendering contract' do
       expect_modal_stream
       expect(response.body).to include('Edit Person')
     end
+
+    it 'replaces the modal frame for the schedule form' do
+      get new_person_schedule_path(people(:john)), headers: turbo_stream_headers
+
+      expect_modal_stream
+      expect(response.body).to include('New Schedule for John Doe')
+    end
+
+    it 'replaces the modal frame for the person medication form' do
+      get new_person_person_medication_path(people(:admin)), headers: turbo_stream_headers
+
+      expect_modal_stream
+      expect(response.body).to include('Add Medication for')
+    end
+
+    it 'replaces the modal frame for the admin carer relationship form' do
+      get new_admin_carer_relationship_path, headers: turbo_stream_headers
+
+      expect_modal_stream
+      expect(response.body).to include('New Carer Relationship')
+    end
+  end
+
+  describe 'Turbo Stream medication assignment modal requests' do
+    before { sign_in(users(:parent)) }
+
+    it 'replaces the modal frame for the medication assignment form' do
+      get new_person_medication_assignment_path(people(:child_user_person)), headers: turbo_stream_headers
+
+      expect_modal_stream
+      expect(response.body).to include('Add Medication for')
+    end
   end
 
   def expect_application_layout
