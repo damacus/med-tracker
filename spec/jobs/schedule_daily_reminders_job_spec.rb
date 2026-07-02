@@ -65,10 +65,13 @@ RSpec.describe ScheduleDailyRemindersJob do
   end
 
   it 'enqueues missed-dose checks after active schedule times when missed-dose preferences are enabled' do
+    medication = create(:medication, :vitamin, household: household, location: locations(:home))
+    dosage = create(:dosage, medication: medication, amount: 1000, unit: 'IU', frequency: 'Once daily')
+
     create(:notification_preference, person: person, morning_time: nil, afternoon_time: nil,
                                      evening_time: nil, night_time: nil, dose_due_enabled: false,
                                      missed_dose_enabled: true)
-    create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
+    create(:schedule, person: person, medication: medication, dosage: dosage,
                       frequency: 'Once daily', schedule_type: :daily,
                       schedule_config: { 'times' => ['07:15'] })
 
