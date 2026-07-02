@@ -29,6 +29,18 @@ RSpec.describe 'API v1 write resources' do
     expect(response.parsed_body.dig('error', 'message')).to eq('updated_since must be ISO8601')
   end
 
+  it 'applies valid collection filters and pagination bounds' do
+    get api_v1_household_medications_path(household_id),
+        params: { updated_since: 1.year.ago.iso8601, page: 0, per_page: 500 },
+        headers: headers,
+        as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.dig('meta', 'page')).to eq(1)
+    expect(response.parsed_body.dig('meta', 'per_page')).to eq(100)
+    expect(response.parsed_body['data']).not_to be_empty
+  end
+
   it 'shows writable resources by id' do
     get api_v1_household_medication_path(household_id, medications(:paracetamol).id),
         headers: headers,
@@ -342,6 +354,17 @@ RSpec.describe 'API v1 write resources' do
 
     expect(response).to have_http_status(:ok)
     expect(response.parsed_body.dig('data', 'dose_due_enabled')).to be(true)
+  end
+
+  it 'shows the current notification preference' do
+    create(:notification_preference, person: user.person, enabled: true)
+
+    get api_v1_household_notification_preference_path(household_id),
+        headers: headers,
+        as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.dig('data', 'person_id')).to eq(user.person_id)
   end
 
   it 'returns validation errors for invalid write payloads' do
