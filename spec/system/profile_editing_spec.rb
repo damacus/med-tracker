@@ -23,14 +23,14 @@ RSpec.describe 'Profile Editing' do
     it 'opens modal when clicking change' do
       click_on 'Change', match: :prefer_exact
 
-      expect(page).to have_css('dialog[open]')
+      expect(page).to have_css('[data-controller="ruby-ui--dialog"] [data-state="open"]')
       expect(page).to have_text('Change Login')
     end
 
     it 'submits email change request when saving' do
       click_on 'Change', match: :prefer_exact
 
-      expect(page).to have_css('dialog[open]')
+      expect(page).to have_css('[data-controller="ruby-ui--dialog"] [data-state="open"]')
 
       fill_in 'New Login', with: 'newemail@example.com'
       fill_in 'Password', with: 'password'
@@ -45,7 +45,7 @@ RSpec.describe 'Profile Editing' do
       # In M3, these are likely m3_links which are anchors
       all('a', text: 'Change')[1].click
 
-      expect(page).to have_css('dialog[open]')
+      expect(page).to have_css('[data-controller="ruby-ui--dialog"] [data-state="open"]')
       expect(page).to have_text('Change Password')
     end
   end
