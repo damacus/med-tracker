@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.6](https://github.com/damacus/med-tracker/compare/v0.5.5...v0.5.6) (2026-07-02)
+
+
+### Bug Fixes
+
+* **admin:** use searchable audit filters ([#1429](https://github.com/damacus/med-tracker/issues/1429)) ([0cbc3ae](https://github.com/damacus/med-tracker/commit/0cbc3aee24323aa1ae23c8d03ade033c01e59a0d))
+* **dashboard:** stabilize mobile stock meters ([#1421](https://github.com/damacus/med-tracker/issues/1421)) ([d8e20ae](https://github.com/damacus/med-tracker/commit/d8e20ae3ac210bea83a4708d2916397456dfb600))
+* **ui:** add selectable option cards ([#1428](https://github.com/damacus/med-tracker/issues/1428)) ([c6cdd91](https://github.com/damacus/med-tracker/commit/c6cdd91a467a8af0114f37811335ac8b5e20a9c7))
+* **ui:** standardize select controls ([#1426](https://github.com/damacus/med-tracker/issues/1426)) ([68c3b9c](https://github.com/damacus/med-tracker/commit/68c3b9cecf01230d2d2003f37eb36823933f0c20))
+
 ## [0.5.5](https://github.com/damacus/med-tracker/compare/v0.5.4...v0.5.5) (2026-07-01)
 
 
