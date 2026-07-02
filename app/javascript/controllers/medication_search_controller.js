@@ -201,7 +201,7 @@ export default class extends Controller {
           aria-controls="${this.escapeHtml(detailsId)}"
           data-action="medication-search#toggleInteractionDetails"
           data-details-id="${this.escapeHtml(detailsId)}"
-        >${this.escapeHtml(this.t("interactionDetails"))}</button>
+        >${this.escapeHtml(this.t("interactionDetailsButton"))}</button>
         <div id="${this.escapeHtml(detailsId)}" class="hidden pt-3">
           <h3 class="text-sm font-bold text-on-warning-container">${this.escapeHtml(this.t("interactionDetails"))}</h3>
           <ul class="mt-2 space-y-2">${items}</ul>

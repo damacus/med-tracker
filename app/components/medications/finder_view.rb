@@ -25,6 +25,7 @@ module Components
               dmdCode: t('medications.finder.dmd_code'),
               pilLink: t('medications.finder.pil_link'),
               interactionSummary: t('medications.finder.interaction_summary'),
+              interactionDetailsButton: t('medications.finder.interaction_details_button'),
               interactionDetails: t('medications.finder.interaction_details'),
               interactionSeverity: t('medications.finder.interaction_severity'),
               interactionDescription: t('medications.finder.interaction_description'),
