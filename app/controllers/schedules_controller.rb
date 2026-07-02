@@ -191,23 +191,12 @@ class SchedulesController < ApplicationController
     editing = options.fetch(:editing, false)
     back_path = options[:back_path]
     status = options.fetch(:status, :ok)
-    is_modal = request.headers['Turbo-Frame'] == 'modal'
 
-    respond_to do |format|
-      format.html do
-        if is_modal
-          render schedule_modal_component(schedule:, medications:, title:, editing:, back_path:), layout: false, status: status
-        else
-          render schedule_form_view(schedule:, medications:, editing:), status: status
-        end
-      end
-      format.turbo_stream do
-        render turbo_stream: turbo_stream.replace(
-          'modal',
-          schedule_modal_component(schedule:, medications:, title:, editing:, back_path:)
-        ), status: status
-      end
-    end
+    render_modal_or_page(
+      modal: -> { schedule_modal_component(schedule:, medications:, title:, editing:, back_path:) },
+      page: -> { schedule_form_view(schedule:, medications:, editing:) },
+      status: status
+    )
   end
 
   def schedule_modal_component(schedule:, medications:, title:, editing: false, back_path: nil)
