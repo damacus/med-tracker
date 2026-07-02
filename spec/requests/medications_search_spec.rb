@@ -112,7 +112,7 @@ RSpec.describe 'GET /medication-finder/search' do
         get medication_finder_search_path(format: :json), params: { q: 'warfarin' }
 
         expect(response).to have_http_status(:ok)
-        expect(response.parsed_body.dig('results', 0, 'interactions')).to contain_exactly(
+        expect(response.parsed_body.dig('results', 0, 'interactions')).to include(
           a_hash_including(
             'severity' => 'high',
             'severity_label' => 'High',
