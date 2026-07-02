@@ -743,6 +743,13 @@ pt:
         drops: Gotas
         spray: Sprays
         powder: Pós e saquetas
+      medicine_details_button: Ver detalhes do medicamento
+      details:
+        description: Descrição
+        category: Categoria
+        package: Embalagem
+        directions: Instruções
+        warnings: Avisos
       update_stock: Atualizar stock
       confirm_restock: Confirme que pretende adicionar %{quantity} unidades a %{medication}.
       confirm_restock_without_quantity: Confirme quantas unidades pretende adicionar

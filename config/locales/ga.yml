@@ -740,6 +740,13 @@ ga:
         drops: Braonta
         spray: Spraeanna
         powder: Púdair agus saicíní
+      medicine_details_button: Féach sonraí an leighis
+      details:
+        description: Cur síos
+        category: Catagóir
+        package: Pacáiste
+        directions: Treoracha
+        warnings: Rabhaidh
       update_stock: Nuashonraigh stoc
       confirm_restock: Deimhnigh gur mian leat %{quantity} aonad a chur le %{medication}.
       confirm_restock_without_quantity: Deimhnigh cé mhéad aonad is mian leat a chur

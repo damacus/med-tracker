@@ -737,6 +737,13 @@ cy:
         drops: Diferion
         spray: Chwistrellau
         powder: Powdrau a sachau
+      medicine_details_button: Gweld manylion meddyginiaeth
+      details:
+        description: Disgrifiad
+        category: Categori
+        package: Pecyn
+        directions: Cyfarwyddiadau
+        warnings: Rhybuddion
       update_stock: Diweddaru stoc
       confirm_restock: Cadarnhewch eich bod am ychwanegu %{quantity} uned at %{medication}.
       confirm_restock_without_quantity: Cadarnhewch faint o unedau rydych am eu hychwanegu
