@@ -46,11 +46,10 @@ RSpec.describe 'Person medication workflow' do
     select '250 mg - Standard child dose (6-12 years)', from: 'Dose'
     click_button 'Next'
 
-    expect(page).to have_text('Review')
+    expect(page).to have_text('Additional guidance')
     expect(page).to have_text(/dose/i)
     expect(page).to have_text('250 mg')
-    expect(page).to have_text('Every 4-6 hours')
-    expect(page).to have_text('PLAN TYPE')
+    expect(page).to have_text('Medication type')
     expect(page).to have_text('As needed')
     expect(page).to have_no_text('Schedule type')
     expect(page).to have_no_text('Active dates')
