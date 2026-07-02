@@ -200,14 +200,19 @@ module Components
 
       def order_field_value(name)
         attribute = name == :expected_arrival_on ? name : :"order_#{name}"
-        medication.public_send(attribute) if medication.respond_to?(attribute)
+        return unless medication.respond_to?(attribute)
+
+        format_order_value(name, medication.public_send(attribute))
       end
 
       def render_order_details
         div(class: 'col-span-2 space-y-3 rounded-shape-xl border border-border/60 bg-card p-4') do
           m3_heading(variant: :title_small, level: 3) { t('medications.show.order_details') }
           render_order_detail(t('medications.show.order_supplier'), medication.order_supplier)
-          render_order_detail(t('medications.show.order_quantity'), medication.order_quantity)
+          render_order_detail(
+            t('medications.show.order_quantity'),
+            format_order_value(:quantity, medication.order_quantity)
+          )
           render_order_detail(t('medications.show.expected_arrival'), formatted_expected_arrival)
           m3_link(
             href: mark_as_received_medication_path(medication),
@@ -233,6 +238,16 @@ module Components
 
       def formatted_expected_arrival
         I18n.l(medication.expected_arrival_on, format: :long) if medication.expected_arrival_on
+      end
+
+      def format_order_value(name, value)
+        return if value.blank?
+
+        case name
+        when :quantity then MedicationStockQuantityFormatter.format(value)
+        when :expected_arrival_on then value.respond_to?(:iso8601) ? value.iso8601 : value
+        else value
+        end
       end
 
       def render_refill_modal

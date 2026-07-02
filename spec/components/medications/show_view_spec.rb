@@ -131,6 +131,7 @@ RSpec.describe Components::Medications::ShowView, type: :component do
   end
 
   it 'renders order workflow fields before a medication is ordered', :aggregate_failures do
+    medication.update!(order_quantity: BigDecimal('2.0'))
     rendered = render_inline(described_class.new(medication: medication))
     order_form = rendered.at_css("form[action$='/mark_as_ordered']")
 
@@ -138,6 +139,7 @@ RSpec.describe Components::Medications::ShowView, type: :component do
     expect(order_form['data-turbo']).to eq('false')
     expect(order_form.at_css("input[name='_method'][value='patch']")).to be_present
     expect(order_form.at_css("input[name='authenticity_token']")).to be_present
+    expect(order_form.at_css("input[name='order[quantity]']")['value']).to eq('2')
     expect(order_form.at_css("button[type='submit']")).to be_present
     expect(rendered.text).to include('Supplier')
     expect(rendered.text).to include('Quantity')
@@ -149,7 +151,7 @@ RSpec.describe Components::Medications::ShowView, type: :component do
       reorder_status: :ordered,
       ordered_at: Time.zone.local(2026, 5, 5, 9, 30),
       order_supplier: 'Boots',
-      order_quantity: 2,
+      order_quantity: BigDecimal('2.0'),
       expected_arrival_on: Date.new(2026, 5, 8)
     )
 
@@ -157,6 +159,7 @@ RSpec.describe Components::Medications::ShowView, type: :component do
 
     expect(rendered.text).to include('Boots')
     expect(rendered.text).to include('2')
+    expect(rendered.text).not_to include('0.2e1')
     expect(rendered.text).to include(I18n.l(Date.new(2026, 5, 8), format: :long))
     expect(rendered.css("a[href$='/mark_as_received']")).to be_present
   end
