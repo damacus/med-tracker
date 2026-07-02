@@ -235,6 +235,62 @@ RSpec.describe Schedule do
     end
   end
 
+  describe 'dose availability' do
+    let(:now) { Time.zone.local(2026, 4, 20, 9, 0, 0) }
+    let(:schedule) do
+      create(
+        :schedule,
+        start_date: now.to_date,
+        end_date: now.to_date + 1.week,
+        max_daily_doses: 1,
+        min_hours_between_doses: 4,
+        schedule_config: { 'times' => %w[08:00 14:00] }
+      )
+    end
+
+    it 'allows a dose when the schedule is active, stocked, and timing permits' do
+      travel_to now do
+        expect(schedule.can_take_dose?(at: now)).to be true
+      end
+    end
+
+    it 'reports inactive schedules as blocked' do
+      schedule.update!(active: false)
+
+      expect(schedule.dose_blocked_reason(at: now)).to eq(:inactive)
+    end
+
+    it 'reports out-of-stock schedules as stock blocked' do
+      schedule.medication.update!(current_supply: 0)
+
+      expect(schedule.dose_blocked_reason(at: now)).to eq(:stock)
+    end
+
+    it 'reports cooldown-blocked schedules as timing blocked' do
+      travel_to now do
+        create(:medication_take, :for_schedule, schedule: schedule, taken_at: now - 1.hour)
+
+        expect(schedule.reload.dose_blocked_reason(at: now)).to eq(:timing)
+      end
+    end
+
+    it 'returns the next configured dose time' do
+      before_first_dose = Time.zone.local(2026, 4, 20, 7, 0, 0)
+
+      expect(schedule.next_dose_due_at(at: before_first_dose)).to eq(Time.zone.local(2026, 4, 20, 8, 0, 0))
+    end
+
+    it 'reports overdue when a configured dose time has passed without a take' do
+      expect(schedule.overdue?(at: now)).to be true
+    end
+
+    it 'does not report overdue when the configured dose has been taken' do
+      create(:medication_take, :for_schedule, schedule: schedule, taken_at: now.change(hour: 8, min: 15))
+
+      expect(schedule.overdue?(at: now)).to be false
+    end
+  end
+
   describe '#active?' do
     let(:schedule) do
       described_class.new(

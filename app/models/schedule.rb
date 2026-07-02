@@ -3,6 +3,7 @@
 # Schedule model
 class Schedule < ApplicationRecord
   include TimingRestrictions
+  include ScheduleDoseAvailability
   include HouseholdAssignable
   include Pausable
 
@@ -35,8 +36,7 @@ class Schedule < ApplicationRecord
 
   scope :active, -> { where(active: true).where('start_date <= ? AND end_date >= ?', Time.zone.today, Time.zone.today) }
 
-  validates :start_date, presence: true
-  validates :end_date, presence: true
+  validates :start_date, :end_date, presence: true
   validates :dose_amount, presence: true, numericality: { greater_than: 0 }
   validates :dose_unit, presence: true, inclusion: { in: Medication::DOSAGE_UNITS }
   validate :source_dosage_option_matches_medication
