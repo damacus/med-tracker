@@ -20,6 +20,31 @@ RSpec.describe 'Health events' do
     expect(response.body).to include('Record suspected side effect')
   end
 
+  it 'renders the new form with valid and invalid event kind params' do
+    get new_person_health_event_path(person), params: { event_kind: 'suspected_side_effect' }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('Record suspected side effect')
+
+    get new_person_health_event_path(person), params: { event_kind: 'unknown' }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('Record notable illness')
+  end
+
+  it 'renders the edit form with selected medication links' do
+    medication = medications(:paracetamol)
+    event = HealthEvent.create!(person: person, event_kind: :suspected_side_effect, title: 'Nausea',
+                                started_on: Date.new(2026, 2, 10))
+    HealthEventMedication.create!(health_event: event, medication: medication)
+
+    get edit_person_health_event_path(person, event)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('Nausea')
+    expect(response.body).to include('Paracetamol')
+  end
+
   it 'creates a notable illness' do
     expect do
       post person_health_events_path(person),
@@ -42,6 +67,16 @@ RSpec.describe 'Health events' do
 
     event = HealthEvent.suspected_side_effect.order(:id).last
     expect(event.health_event_medications.sole.medication_name).to eq('Paracetamol')
+  end
+
+  it 're-renders the form when creation fails validation' do
+    expect do
+      post person_health_events_path(person),
+           params: { health_event: illness_params(title: '', started_on: '') }
+    end.not_to change(HealthEvent, :count)
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.body).to include('Capture facts entered by the family or carer.')
   end
 
   it 'rejects medication links that are not assigned to the selected person' do
@@ -71,6 +106,16 @@ RSpec.describe 'Health events' do
 
     expect(response).to redirect_to(person_health_events_path(person))
     expect(event.reload).to have_attributes(title: 'Cold again', ended_on: nil)
+  end
+
+  it 're-renders the form when updates fail validation' do
+    event = HealthEvent.create!(person: person, event_kind: :illness, title: 'Cold', started_on: Date.new(2026, 2, 1))
+
+    patch person_health_event_path(person, event),
+          params: { health_event: illness_params(started_on: '2026-02-10', ended_on: '2026-02-01') }
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(event.reload.started_on).to eq(Date.new(2026, 2, 1))
   end
 
   it 'deletes an event' do

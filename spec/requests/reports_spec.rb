@@ -123,5 +123,19 @@ RSpec.describe 'Reports' do
       expect(response).to have_http_status(:ok)
       expect(response.body).to start_with('%PDF')
     end
+
+    it 'exports an empty PDF for nonnumeric person filters' do
+      get health_history_report_path, params: { person_id: 'not-a-person' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to start_with('%PDF')
+    end
+
+    it 'redirects with alert when export dates are invalid' do
+      get health_history_report_path, params: { start_date: 'invalid-date' }
+
+      expect(response).to redirect_to(reports_path)
+      expect(flash[:alert]).to eq('Invalid date format provided.')
+    end
   end
 end
