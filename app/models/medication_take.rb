@@ -36,24 +36,28 @@ class MedicationTake < ApplicationRecord
   after_commit :publish_low_stock_threshold_reached, on: :create
 
   # Delegate to get the source (schedule or person_medication)
+  def dose_source
+    MedicationDoseSource.for(self)
+  end
+
   def source
-    schedule || person_medication
+    dose_source&.record
   end
 
   def source_type
-    schedule_id.present? ? 'schedule' : 'person_medication'
+    dose_source&.type
   end
 
   def source_record_id
-    schedule_id || person_medication_id
+    dose_source&.record_id
   end
 
   def person
-    schedule&.person || person_medication&.person
+    dose_source&.person
   end
 
   def medication
-    schedule&.medication || person_medication&.medication
+    dose_source&.medication
   end
 
   def inventory_medication

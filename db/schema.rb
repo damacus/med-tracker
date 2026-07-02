@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_02_154500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -359,6 +359,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
     t.bigint "taken_from_location_id"
     t.bigint "taken_from_medication_id"
     t.datetime "updated_at", null: false
+    t.check_constraint "num_nonnulls(schedule_id, person_medication_id) = 1", name: "chk_medication_takes_exactly_one_source"
     t.index ["client_uuid"], name: "index_medication_takes_on_client_uuid", unique: true, where: "(client_uuid IS NOT NULL)"
     t.index ["household_id"], name: "index_medication_takes_on_household_id"
     t.index ["id", "household_id"], name: "index_medication_takes_on_id_and_household_id", unique: true
