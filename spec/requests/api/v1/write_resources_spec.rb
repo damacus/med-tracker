@@ -156,7 +156,8 @@ RSpec.describe 'API v1 write resources' do
           headers: headers,
           as: :json
 
-    expect(response).to have_http_status(:ok)
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body.dig('error', 'errors')).to include('source_dosage_option')
   end
 
   it 'creates and updates person medications' do
