@@ -20,6 +20,15 @@ RSpec.describe 'Medication stock sources' do
       reorder_threshold: 5
     )
   end
+  let(:source_dosage) do
+    create(
+      :dosage,
+      medication: source_medication,
+      amount: source_medication.dose_amount,
+      unit: source_medication.dose_unit,
+      frequency: 'Every 6-8 hours'
+    )
+  end
 
   before do
     sign_in(admin)
@@ -166,7 +175,7 @@ RSpec.describe 'Medication stock sources' do
     Schedule.create!(
       person: person,
       medication: source_medication,
-      dosage: dosages(:ibuprofen_adult),
+      dosage: source_dosage,
       start_date: Time.zone.today,
       end_date: Time.zone.today + 30.days
     )
