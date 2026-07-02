@@ -21,8 +21,8 @@ medications_data.each do |attrs|
   medication.location ||= default_location
   medication.update!(
     category: attrs['category'],
-    dosage_amount: attrs['dosage_amount'],
-    dosage_unit: attrs['dosage_unit'],
+    dose_amount: attrs['dose_amount'],
+    dose_unit: attrs['dose_unit'],
     default_schedule_type: attrs.fetch('default_schedule_type', medication.default_schedule_type),
     current_supply: attrs['current_supply'],
     supply_at_last_restock: attrs['current_supply'],

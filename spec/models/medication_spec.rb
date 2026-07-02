@@ -90,14 +90,24 @@ RSpec.describe Medication do
     )
   end
 
+  describe 'dose terminology' do
+    it 'uses dose column names for the standard medication dose' do
+      expect(described_class.column_names).to include('dose_amount', 'dose_unit')
+      expect(described_class.column_names).not_to include(
+        %w[dosage amount].join('_'),
+        %w[dosage unit].join('_')
+      )
+    end
+  end
+
   describe 'validations' do
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.not_to validate_presence_of(:current_supply) }
-    it { is_expected.to allow_value('sachet').for(:dosage_unit) }
-    it { is_expected.to allow_value('capsule').for(:dosage_unit) }
-    it { is_expected.to allow_value('gummy').for(:dosage_unit) }
-    it { is_expected.to allow_value('pad').for(:dosage_unit) }
-    it { is_expected.to validate_numericality_of(:dosage_amount).is_greater_than(0).allow_nil }
+    it { is_expected.to allow_value('sachet').for(:dose_unit) }
+    it { is_expected.to allow_value('capsule').for(:dose_unit) }
+    it { is_expected.to allow_value('gummy').for(:dose_unit) }
+    it { is_expected.to allow_value('pad').for(:dose_unit) }
+    it { is_expected.to validate_numericality_of(:dose_amount).is_greater_than(0).allow_nil }
 
     it { is_expected.to allow_value(97.5).for(:current_supply) }
     it { is_expected.to allow_value(2.5).for(:reorder_threshold) }
@@ -182,7 +192,7 @@ RSpec.describe Medication do
 
   describe 'nested dosage records' do
     it 'ignores untouched auto-appended dose option rows on update' do
-      medication = create(:medication, dosage_unit: 'ml')
+      medication = create(:medication, dose_unit: 'ml')
       create_persisted_dose_option(medication)
 
       expect(
@@ -204,7 +214,7 @@ RSpec.describe Medication do
     end
 
     it 'increments current_supply by a decimal quantity' do
-      medication.update!(dosage_unit: 'ml', current_supply: 100, supply_at_last_restock: 100, reorder_threshold: 10)
+      medication.update!(dose_unit: 'ml', current_supply: 100, supply_at_last_restock: 100, reorder_threshold: 10)
 
       expect do
         medication.restock!(quantity: BigDecimal('12.5'))
@@ -604,7 +614,7 @@ RSpec.describe Medication do
   end
 
   describe '#sync_dosages' do
-    let(:medication) { create(:medication, dosage_amount: nil, dosage_unit: nil) }
+    let(:medication) { create(:medication, dose_amount: nil, dose_unit: nil) }
 
     before do
       create(:dosage, medication: medication, amount: 10, unit: 'mg')
@@ -612,9 +622,9 @@ RSpec.describe Medication do
     end
 
     context 'when switching from multi-dose to single-dose' do
-      it 'removes associated dosages when dosage_amount is set and there are no schedules' do
+      it 'removes associated dosages when dose_amount is set and there are no schedules' do
         expect do
-          medication.update!(dosage_amount: 500, dosage_unit: 'mg')
+          medication.update!(dose_amount: 500, dose_unit: 'mg')
         end.to change { medication.dosages.count }.from(2).to(0)
       end
     end
@@ -625,21 +635,21 @@ RSpec.describe Medication do
       end
 
       it 'rejects the switch to single-dose mode' do
-        expect(medication.update(dosage_amount: 500, dosage_unit: 'mg')).to be(false)
-        expect(medication.errors[:dosage_amount]).to include(
+        expect(medication.update(dose_amount: 500, dose_unit: 'mg')).to be(false)
+        expect(medication.errors[:dose_amount]).to include(
           'cannot switch to a single standard dose while schedules still use dose options'
         )
       end
 
       it 'keeps the existing dosages intact' do
         expect do
-          medication.update(dosage_amount: 500, dosage_unit: 'mg')
+          medication.update(dose_amount: 500, dose_unit: 'mg')
         end.not_to(change { medication.dosages.count })
       end
     end
 
     context 'when remaining in multi-dose mode' do
-      it 'does not remove dosages when dosage_amount remains nil' do
+      it 'does not remove dosages when dose_amount remains nil' do
         expect do
           medication.update!(name: 'New Name')
         end.not_to change(medication.dosages, :count)
@@ -651,7 +661,7 @@ RSpec.describe Medication do
         person_medication = create(:person_medication, medication: medication)
         take = create(:medication_take, :for_person_medication, person_medication: person_medication)
 
-        medication.update!(dosage_amount: 500, dosage_unit: 'mg')
+        medication.update!(dose_amount: 500, dose_unit: 'mg')
 
         expect(take.reload.person_medication).to eq(person_medication)
         expect(person_medication.reload.source_dosage_option).to be_nil
@@ -662,7 +672,7 @@ RSpec.describe Medication do
         person_medication = create(:person_medication, medication: medication, max_daily_doses: 1)
         create(:medication_take, :for_person_medication, :today, person_medication: person_medication)
 
-        medication.update!(dosage_amount: 500, dosage_unit: 'mg')
+        medication.update!(dose_amount: 500, dose_unit: 'mg')
 
         expect(person_medication.reload.can_take_now?).to be false
       end
@@ -671,7 +681,7 @@ RSpec.describe Medication do
         person_medication = create(:person_medication, medication: medication, max_daily_doses: 2)
         before_switch = medication.days_until_low_stock
 
-        medication.update!(dosage_amount: 500, dosage_unit: 'mg')
+        medication.update!(dose_amount: 500, dose_unit: 'mg')
         refreshed_medication = described_class.find(medication.id)
 
         expect(refreshed_medication.days_until_low_stock).to eq(before_switch)
@@ -682,7 +692,7 @@ RSpec.describe Medication do
 
   describe 'dose mode transitions' do
     context 'when switching from single-dose to multi-dose with take history' do
-      let(:medication) { create(:medication, dosage_amount: 500, dosage_unit: 'mg') }
+      let(:medication) { create(:medication, dose_amount: 500, dose_unit: 'mg') }
 
       it 'keeps existing person medication behavior intact' do
         person_medication = create(:person_medication, medication: medication, max_daily_doses: 1)
@@ -694,7 +704,7 @@ RSpec.describe Medication do
         refreshed_medication = described_class.find(medication.id)
 
         expect(take.reload.person_medication).to eq(person_medication)
-        expect(medication.reload.dosage_amount).to be_nil
+        expect(medication.reload.dose_amount).to be_nil
         expect(person_medication.reload.can_take_now?).to be false
         expect(refreshed_medication.days_until_low_stock).to eq(before_low_stock)
         expect(refreshed_medication.days_until_out_of_stock).to eq(before_out_of_stock)

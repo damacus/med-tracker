@@ -9,8 +9,8 @@ RSpec.describe MedicationTake do
     Medication.create!(
       name: 'Lisinopril',
       location: Location.find_or_create_by!(name: 'Test Home'),
-      dosage_amount: 10,
-      dosage_unit: 'mg',
+      dose_amount: 10,
+      dose_unit: 'mg',
       current_supply: 50,
       reorder_threshold: 10
     )
@@ -221,7 +221,7 @@ RSpec.describe MedicationTake do
       end
 
       it 'deducts the dose amount from ml stock' do
-        medication.update!(dosage_amount: 2.5, dosage_unit: 'ml', current_supply: 100, reorder_threshold: 10)
+        medication.update!(dose_amount: 2.5, dose_unit: 'ml', current_supply: 100, reorder_threshold: 10)
         liquid_schedule = create_schedule_for(person: person, medication: medication,
                                               dosage: default_dosage_for(medication))
 
@@ -236,7 +236,7 @@ RSpec.describe MedicationTake do
       end
 
       it 'rejects a volume dose when stock is below the dose amount' do
-        medication.update!(dosage_amount: 2.5, dosage_unit: 'ml', current_supply: 2, reorder_threshold: 10)
+        medication.update!(dose_amount: 2.5, dose_unit: 'ml', current_supply: 2, reorder_threshold: 10)
         liquid_schedule = create_schedule_for(person: person, medication: medication,
                                               dosage: default_dosage_for(medication))
         take = described_class.new(
@@ -610,8 +610,8 @@ RSpec.describe MedicationTake do
   def default_dosage_for(medication)
     Dosage.create!(
       medication: medication,
-      amount: medication.dosage_amount || 10,
-      unit: medication.dosage_unit || 'mg',
+      amount: medication.dose_amount || 10,
+      unit: medication.dose_unit || 'mg',
       frequency: 'daily',
       default_max_daily_doses: 1,
       default_min_hours_between_doses: 24,
@@ -684,8 +684,8 @@ RSpec.describe MedicationTake do
       {
         name: medication.name,
         location: location,
-        dosage_amount: medication.dosage_amount,
-        dosage_unit: medication.dosage_unit,
+        dose_amount: medication.dose_amount,
+        dose_unit: medication.dose_unit,
         current_supply: 12,
         reorder_threshold: 2
       }.merge(overrides)

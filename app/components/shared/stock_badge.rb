@@ -43,7 +43,7 @@ module Components
 
       def formatted_supply
         value = MedicationStockQuantityFormatter.format(medication.current_supply)
-        return "#{value} ml" if medication.dosage_unit == 'ml'
+        return "#{value} ml" if medication.dose_unit == 'ml'
 
         value
       end

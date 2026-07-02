@@ -77,8 +77,8 @@ module HouseholdPolicyHelpers
     household.medications.create!(
       name: name || "Policy Medication #{SecureRandom.hex(3)}",
       location: location || household_policy_location(household),
-      dosage_amount: 500,
-      dosage_unit: 'mg',
+      dose_amount: 500,
+      dose_unit: 'mg',
       reorder_threshold: 0
     )
   end

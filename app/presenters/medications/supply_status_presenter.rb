@@ -100,7 +100,7 @@ module Medications
     private
 
     def volume_stock?
-      MedicationStockConsumption.volume_unit?(medication.dosage_unit)
+      MedicationStockConsumption.volume_unit?(medication.dose_unit)
     end
 
     def list_stock_alert?

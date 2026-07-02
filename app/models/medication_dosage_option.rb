@@ -85,7 +85,7 @@ class MedicationDosageOption < ApplicationRecord
   end
 
   def sync_medication_dosage
-    stmt = 'UPDATE medications SET dosage_amount = NULL WHERE id = $1'
+    stmt = 'UPDATE medications SET dose_amount = NULL WHERE id = $1'
     binds = [
       ActiveRecord::Relation::QueryAttribute.new('id', medication_id, ActiveRecord::Type::BigInteger.new)
     ]

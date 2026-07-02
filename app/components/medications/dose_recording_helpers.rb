@@ -112,7 +112,7 @@ module Components
 
       def medication_description(medication)
         parts = [medication.display_name]
-        dose = DoseAmount.new(medication.dosage_amount, medication.dosage_unit).to_s
+        dose = DoseAmount.new(medication.dose_amount, medication.dose_unit).to_s
         parts << dose if dose.present?
         parts.join(' • ')
       end
@@ -126,7 +126,7 @@ module Components
       end
 
       def stock_label_for(medication)
-        if medication.dosage_unit == 'ml'
+        if medication.dose_unit == 'ml'
           return "#{MedicationStockQuantityFormatter.format(medication.current_supply)} ml"
         end
 
@@ -146,7 +146,7 @@ module Components
       def source_dose_unit
         return source.dose_unit if source.respond_to?(:dose_unit)
 
-        source.medication.dosage_unit
+        source.medication.dose_unit
       end
 
       def stock_source_input_id(medication)

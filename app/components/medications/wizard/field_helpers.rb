@@ -141,17 +141,17 @@ module Components
           end
         end
 
-        def render_dosage_amount_field
+        def render_dose_amount_field
           div(class: 'space-y-2') do
             render RubyUI::FormFieldLabel.new(
-              for: 'medication_dosage_amount',
+              for: 'medication_dose_amount',
               class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
             ) { t('forms.medications.standard_dosage') }
             m3_input(
               type: :number,
-              name: 'medication[dosage_amount]',
-              id: 'medication_dosage_amount',
-              value: medication.dosage_amount,
+              name: 'medication[dose_amount]',
+              id: 'medication_dose_amount',
+              value: medication.dose_amount,
               step: 'any',
               min: '1',
               title: 'Standard dose amount, e.g. 500',
@@ -160,20 +160,20 @@ module Components
                      'focus:ring-2 focus:ring-primary/10 ' \
                      'focus:border-primary transition-all'
             )
-            render_field_error(medication, :dosage_amount)
+            render_field_error(medication, :dose_amount)
           end
         end
 
-        def render_dosage_unit_field
+        def render_dose_unit_field
           div(class: 'space-y-2') do
             render RubyUI::FormFieldLabel.new(
-              for: 'medication_dosage_unit_trigger',
+              for: 'medication_dose_unit_trigger',
               class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
             ) { t('forms.medications.unit') }
             render RubyUI::Combobox.new(class: 'w-full') do
               render RubyUI::ComboboxTrigger.new(
-                placeholder: medication.dosage_unit.presence || t('forms.medications.select_unit'),
-                class: "rounded-shape-sm #{field_error_class(medication, :dosage_unit)}"
+                placeholder: medication.dose_unit.presence || t('forms.medications.select_unit'),
+                class: "rounded-shape-sm #{field_error_class(medication, :dose_unit)}"
               )
 
               render RubyUI::ComboboxPopover.new do
@@ -188,9 +188,9 @@ module Components
 
                   render RubyUI::ComboboxItem.new do
                     render RubyUI::ComboboxRadio.new(
-                      name: 'medication[dosage_unit]',
+                      name: 'medication[dose_unit]',
                       value: '',
-                      checked: medication.dosage_unit.blank?
+                      checked: medication.dose_unit.blank?
                     )
                     span { t('forms.medications.select_unit') }
                   end
@@ -198,9 +198,9 @@ module Components
                   Medication::DOSAGE_UNITS.each do |unit|
                     render RubyUI::ComboboxItem.new do
                       render RubyUI::ComboboxRadio.new(
-                        name: 'medication[dosage_unit]',
+                        name: 'medication[dose_unit]',
                         value: unit,
-                        checked: medication.dosage_unit == unit
+                        checked: medication.dose_unit == unit
                       )
                       span { unit }
                     end
@@ -208,7 +208,7 @@ module Components
                 end
               end
             end
-            render_field_error(medication, :dosage_unit)
+            render_field_error(medication, :dose_unit)
           end
         end
 
@@ -225,8 +225,8 @@ module Components
             hidden_primary_dosage_field(index, 'description', dosage.description)
 
             div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-4') do
-              render_primary_dosage_amount_field(dosage, index)
-              render_primary_dosage_unit_field(dosage, index)
+              render_primary_dose_amount_field(dosage, index)
+              render_primary_dose_unit_field(dosage, index)
             end
 
             div(class: 'space-y-2') { render_primary_frequency_field(dosage, index) }
@@ -333,7 +333,7 @@ module Components
           end
         end
 
-        def dosage_units
+        def dose_units
           Medication::DOSAGE_UNITS
         end
 
@@ -467,7 +467,7 @@ module Components
           parts.join(' • ')
         end
 
-        def render_primary_dosage_amount_field(dosage, index)
+        def render_primary_dose_amount_field(dosage, index)
           div(class: 'space-y-2') do
             render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_amount") do
               'Amount'
@@ -490,7 +490,7 @@ module Components
           end
         end
 
-        def render_primary_dosage_unit_field(dosage, index)
+        def render_primary_dose_unit_field(dosage, index)
           div(class: 'space-y-2') do
             render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_unit") do
               'Unit'
@@ -502,7 +502,7 @@ module Components
               required: true
             ) do
               option(value: '', selected: dosage.unit.blank?) { 'Select unit' }
-              dosage_units.each do |unit|
+              dose_units.each do |unit|
                 option(value: unit, selected: dosage.unit == unit) { unit }
               end
             end

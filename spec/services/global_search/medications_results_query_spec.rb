@@ -84,8 +84,8 @@ RSpec.describe GlobalSearch::MedicationsResultsQuery do
         Medication.create!(
           name: 'NoCat Med',
           location: locations(:home),
-          dosage_amount: 1,
-          dosage_unit: 'mg',
+          dose_amount: 1,
+          dose_unit: 'mg',
           current_supply: 0,
           reorder_threshold: 0
         )

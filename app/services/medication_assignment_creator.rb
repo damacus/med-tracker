@@ -75,8 +75,8 @@ class MedicationAssignmentCreator
     return unless legacy_dose_selected?
 
     MedicationDosage.new(
-      amount: medication.dosage_amount,
-      unit: medication.dosage_unit,
+      amount: medication.dose_amount,
+      unit: medication.dose_unit,
       frequency: fallback_frequency,
       description: nil,
       default_for_adults: false,
@@ -93,15 +93,15 @@ class MedicationAssignmentCreator
 
   def complete_legacy_dose?
     medication.present? &&
-      medication.dosage_amount.present? &&
-      medication.dosage_unit.present? &&
+      medication.dose_amount.present? &&
+      medication.dose_unit.present? &&
       assignment.dose_amount.present? &&
       assignment.dose_unit.present?
   end
 
   def submitted_legacy_dose_matches?
-    BigDecimal(medication.dosage_amount.to_s) == assignment.dose_amount &&
-      medication.dosage_unit == assignment.dose_unit
+    BigDecimal(medication.dose_amount.to_s) == assignment.dose_amount &&
+      medication.dose_unit == assignment.dose_unit
   end
 
   def schedule_attributes

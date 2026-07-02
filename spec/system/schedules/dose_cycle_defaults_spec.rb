@@ -12,7 +12,7 @@ RSpec.describe 'Schedule dose cycle defaults' do
   let(:admin) { users(:admin) }
   let(:location) { locations(:home) }
   let!(:person) { create(:person, name: 'Weekly Patient') }
-  let!(:medication) { create(:medication, name: 'Weekly Capsule', location:, dosage_amount: nil, dosage_unit: nil) }
+  let!(:medication) { create(:medication, name: 'Weekly Capsule', location:, dose_amount: nil, dose_unit: nil) }
   let!(:dosage) do
     create(
       :dosage,

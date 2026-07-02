@@ -57,8 +57,8 @@ RSpec.describe 'Historical dose recording' do
       name: medication.name,
       location: locations(:school),
       category: medication.category,
-      dosage_amount: medication.dosage_amount,
-      dosage_unit: medication.dosage_unit,
+      dose_amount: medication.dose_amount,
+      dose_unit: medication.dose_unit,
       current_supply: 7,
       reorder_threshold: 1
     )

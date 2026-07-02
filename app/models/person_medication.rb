@@ -84,12 +84,12 @@ class PersonMedication < ApplicationRecord
 
   def resolved_dose_amount
     dosage = resolved_dosage_record
-    dosage&.amount || medication&.dosage_amount
+    dosage&.amount || medication&.dose_amount
   end
 
   def resolved_dose_unit
     dosage = resolved_dosage_record
-    dosage&.unit || medication&.dosage_unit
+    dosage&.unit || medication&.dose_unit
   end
 
   def resolved_dosage_record

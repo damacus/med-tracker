@@ -30,8 +30,8 @@ RSpec.describe MedicationOnboardingBuilder do
       before do
         stub_prefill_with(
           medication_attributes: {
-            dosage_amount: 1,
-            dosage_unit: 'tablet',
+            dose_amount: 1,
+            dose_unit: 'tablet',
             current_supply: 30,
             reorder_threshold: 7
           },
@@ -43,8 +43,8 @@ RSpec.describe MedicationOnboardingBuilder do
 
       it 'assigns prefill medication attributes onto the medication' do
         builder.build_new(medication: medication, params: { name: 'Vitamin C' })
-        expect(medication.dosage_amount).to eq(1)
-        expect(medication.dosage_unit).to eq('tablet')
+        expect(medication.dose_amount).to eq(1)
+        expect(medication.dose_unit).to eq('tablet')
       end
 
       it 'builds dosage records from the prefill' do
@@ -66,8 +66,8 @@ RSpec.describe MedicationOnboardingBuilder do
       end
 
       it 'builds a default dosage record from medication attributes' do
-        medication.dosage_amount = 500
-        medication.dosage_unit = 'mg'
+        medication.dose_amount = 500
+        medication.dose_unit = 'mg'
         builder.build_new(medication: medication, params: {})
         expect(medication.dosage_records.length).to eq(1)
         expect(medication.dosage_records.first.unit).to eq('mg')

@@ -5,8 +5,8 @@ FactoryBot.define do
     household { Current.household || Household.first || association(:household) }
     sequence(:name) { |n| "Medication #{n}" }
     location { association(:location, household: household) }
-    dosage_amount { 500 }
-    dosage_unit { 'mg' }
+    dose_amount { 500 }
+    dose_unit { 'mg' }
     current_supply { 50 }
     supply_at_last_restock { 50 }
     expiry_date { 1.year.from_now }
@@ -14,14 +14,14 @@ FactoryBot.define do
 
     trait :vitamin do
       name { 'Vitamin D' }
-      dosage_amount { 1000 }
-      dosage_unit { 'IU' }
+      dose_amount { 1000 }
+      dose_unit { 'IU' }
     end
 
     trait :painkiller do
       name { 'Paracetamol' }
-      dosage_amount { 500 }
-      dosage_unit { 'mg' }
+      dose_amount { 500 }
+      dose_unit { 'mg' }
     end
 
     trait :with_barcode do

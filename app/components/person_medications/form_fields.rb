@@ -133,8 +133,8 @@ module Components
                       required: !editing,
                       data: {
                         text: med.name,
-                        dose_amount: decimal_string(med.dosage_amount),
-                        dose_unit: med.dosage_unit,
+                        dose_amount: decimal_string(med.dose_amount),
+                        dose_unit: med.dose_unit,
                         person_medication_form_target: 'medicationSelect',
                         action: 'change->person-medication-form#updateDefaults'
                       }

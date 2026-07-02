@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Components::PersonMedications::Card, type: :component do
   let(:person) { create(:person) }
-  let(:medication) { create(:medication, dosage_amount: 1, dosage_unit: 'tablet') }
+  let(:medication) { create(:medication, dose_amount: 1, dose_unit: 'tablet') }
   let(:person_medication) do
     create(:person_medication, person: person, medication: medication, max_daily_doses: nil,
                                min_hours_between_doses: nil)

@@ -21,7 +21,7 @@ RSpec.describe MedicationDosageOption do
 
   describe 'unit alignment' do
     it 'allows a dose option to keep its own unit' do
-      medication = build(:medication, dosage_unit: 'tablet')
+      medication = build(:medication, dose_unit: 'tablet')
       dosage_option = build(:dosage, medication: medication, unit: 'capsule')
 
       dosage_option.valid?

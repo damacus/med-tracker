@@ -127,12 +127,12 @@ class MedicationOnboardingPrefill
 
     units = dosages.filter_map { |dosage| dosage[:unit] }.uniq
     attributes = {}
-    attributes[:dosage_unit] = units.first if units.one?
+    attributes[:dose_unit] = units.first if units.one?
     return attributes unless dosages.one?
 
     attributes.merge(
-      dosage_amount: dosages.first[:amount],
-      dosage_unit: dosages.first[:unit]
+      dose_amount: dosages.first[:amount],
+      dose_unit: dosages.first[:unit]
     )
   end
 

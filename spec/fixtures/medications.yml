@@ -4,8 +4,8 @@ paracetamol:
   name: Paracetamol
   location: home
   category: Analgesic
-  dosage_amount: 500
-  dosage_unit: "mg"
+  dose_amount: 500
+  dose_unit: "mg"
   default_schedule_type: 4
   current_supply: 80
   supply_at_last_restock: 80
@@ -24,8 +24,8 @@ ibuprofen:
   name: Ibuprofen
   location: home
   category: Analgesic
-  dosage_amount: 200
-  dosage_unit: "mg"
+  dose_amount: 200
+  dose_unit: "mg"
   default_schedule_type: 4
   current_supply: 30
   supply_at_last_restock: 30
@@ -46,8 +46,8 @@ aspirin:
     Aspirin is used to treat pain, reduce inflammation and lower fever. It can
     also be taken in low doses to help prevent heart attacks and strokes in
     high-risk patients.
-  dosage_amount: 300
-  dosage_unit: "mg"
+  dose_amount: 300
+  dose_unit: "mg"
   current_supply: 25
   supply_at_last_restock: 25
   expiry_date: <%= 1.year.from_now.to_date %>
@@ -63,8 +63,8 @@ calpol:
   description: >-
     Calpol is a brand of children's medication that contains paracetamol. It is
     used to relieve pain and reduce fever in children.
-  dosage_amount: 5
-  dosage_unit: ml
+  dose_amount: 5
+  dose_unit: ml
   current_supply: 35
   supply_at_last_restock: 35
   expiry_date: <%= 1.year.from_now.to_date %>
@@ -81,8 +81,8 @@ movicol:
   friendly_name: Movicol Paediatric Plain
   location: home
   category: Osmotic Laxative
-  dosage_amount: 1
-  dosage_unit: sachet
+  dose_amount: 1
+  dose_unit: sachet
   current_supply: 30
   supply_at_last_restock: 30
   expiry_date: <%= 1.year.from_now.to_date %>
@@ -95,8 +95,8 @@ vitamin_d:
   description: >-
     Vitamin D helps regulate the amount of calcium and phosphate in the body.
     These nutrients are needed to keep bones, teeth and muscles healthy.
-  dosage_amount: 1000
-  dosage_unit: IU
+  dose_amount: 1000
+  dose_unit: IU
   current_supply: 40
   supply_at_last_restock: 40
   expiry_date: <%= 1.year.from_now.to_date %>
@@ -112,8 +112,8 @@ vitamin_c:
   description: >-
     Vitamin C is an essential nutrient that supports immune function and acts
     as an antioxidant.
-  dosage_amount: 500
-  dosage_unit: mg
+  dose_amount: 500
+  dose_unit: mg
   current_supply: 60
   supply_at_last_restock: 60
   expiry_date: <%= 1.year.from_now.to_date %>
@@ -126,8 +126,8 @@ gabapentin:
   name: Gabapentin
   location: home
   category: Anticonvulsant
-  dosage_amount: 300
-  dosage_unit: mg
+  dose_amount: 300
+  dose_unit: mg
   current_supply: 90
   supply_at_last_restock: 90
   expiry_date: <%= 1.year.from_now.to_date %>
@@ -145,8 +145,8 @@ metformin:
   name: Metformin
   location: home
   category: Antidiabetic
-  dosage_amount: 500
-  dosage_unit: mg
+  dose_amount: 500
+  dose_unit: mg
   current_supply: 60
   supply_at_last_restock: 60
   expiry_date: <%= 1.year.from_now.to_date %>
@@ -163,8 +163,8 @@ mebeverine:
   name: Mebeverine
   location: home
   category: Gastrointestinal
-  dosage_amount: 135
-  dosage_unit: mg
+  dose_amount: 135
+  dose_unit: mg
   current_supply: 60
   supply_at_last_restock: 60
   expiry_date: <%= 1.year.from_now.to_date %>
@@ -181,8 +181,8 @@ sitagliptin:
   name: Sitagliptin
   location: home
   category: Antidiabetic
-  dosage_amount: 100
-  dosage_unit: mg
+  dose_amount: 100
+  dose_unit: mg
   current_supply: 30
   supply_at_last_restock: 30
   expiry_date: <%= 1.year.from_now.to_date %>
@@ -198,8 +198,8 @@ simvastatin:
   name: Simvastatin
   location: home
   category: Cholesterol
-  dosage_amount: 40
-  dosage_unit: mg
+  dose_amount: 40
+  dose_unit: mg
   current_supply: 30
   supply_at_last_restock: 30
   expiry_date: <%= 1.year.from_now.to_date %>
@@ -215,8 +215,8 @@ dapagliflozin:
   name: Dapagliflozin
   location: home
   category: Antidiabetic
-  dosage_amount: 10
-  dosage_unit: mg
+  dose_amount: 10
+  dose_unit: mg
   current_supply: 30
   supply_at_last_restock: 30
   expiry_date: <%= 1.year.from_now.to_date %>
@@ -233,8 +233,8 @@ omeprazole:
   name: Omeprazole
   location: home
   category: Gastrointestinal
-  dosage_amount: 20
-  dosage_unit: mg
+  dose_amount: 20
+  dose_unit: mg
   current_supply: 30
   supply_at_last_restock: 30
   expiry_date: <%= 1.year.from_now.to_date %>
@@ -251,8 +251,8 @@ duloxetine:
   name: Duloxetine
   location: home
   category: Antidepressant
-  dosage_amount: 30
-  dosage_unit: mg
+  dose_amount: 30
+  dose_unit: mg
   current_supply: 120
   supply_at_last_restock: 120
   expiry_date: <%= 1.year.from_now.to_date %>

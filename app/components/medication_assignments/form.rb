@@ -323,15 +323,15 @@ module Components
       def dose_options_for(medication)
         options = medication.dose_options_payload.map(&:deep_stringify_keys)
         return options if options.any?
-        return [] if medication.dosage_amount.blank? || medication.dosage_unit.blank?
+        return [] if medication.dose_amount.blank? || medication.dose_unit.blank?
 
         [
           {
-            'amount' => decimal_string(medication.dosage_amount),
-            'unit' => medication.dosage_unit,
+            'amount' => decimal_string(medication.dose_amount),
+            'unit' => medication.dose_unit,
             'frequency' => medication.default_schedule_type_prn? ? 'As needed' : 'As directed',
             'default_dose_cycle' => 'daily',
-            'option_value' => "#{decimal_string(medication.dosage_amount)}|#{medication.dosage_unit}"
+            'option_value' => "#{decimal_string(medication.dose_amount)}|#{medication.dose_unit}"
           }
         ]
       end

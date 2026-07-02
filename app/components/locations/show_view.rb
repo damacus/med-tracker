@@ -111,9 +111,9 @@ module Components
                 ) do
                   medication.display_name
                 end
-                if medication.dosage_amount.present? && medication.dosage_unit.present?
+                if medication.dose_amount.present? && medication.dose_unit.present?
                   m3_text(size: '1', class: 'text-on-surface-variant') do
-                    "#{medication.dosage_amount} #{medication.dosage_unit}"
+                    "#{medication.dose_amount} #{medication.dose_unit}"
                   end
                 end
               end

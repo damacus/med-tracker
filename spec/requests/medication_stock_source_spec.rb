@@ -164,8 +164,8 @@ RSpec.describe 'Medication stock sources' do
     PersonMedication.create!(
       person: person,
       medication: source_medication,
-      dose_amount: source_medication.dosage_amount,
-      dose_unit: source_medication.dosage_unit
+      dose_amount: source_medication.dose_amount,
+      dose_unit: source_medication.dose_unit
     )
   end
 
@@ -174,8 +174,8 @@ RSpec.describe 'Medication stock sources' do
       name: source_medication.name,
       location: school_location,
       category: source_medication.category,
-      dosage_amount: source_medication.dosage_amount,
-      dosage_unit: source_medication.dosage_unit,
+      dose_amount: source_medication.dose_amount,
+      dose_unit: source_medication.dose_unit,
       current_supply: 7,
       reorder_threshold: 1
     )
@@ -186,8 +186,8 @@ RSpec.describe 'Medication stock sources' do
       name: source_medication.name,
       location: school_location,
       category: source_medication.category,
-      dosage_amount: source_medication.dosage_amount + 100,
-      dosage_unit: source_medication.dosage_unit,
+      dose_amount: source_medication.dose_amount + 100,
+      dose_unit: source_medication.dose_unit,
       current_supply: 7,
       reorder_threshold: 1
     )

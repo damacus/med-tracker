@@ -214,8 +214,8 @@ RSpec.describe TakeMedicationService do
         :medication,
         name: 'Pregnacare Plus tablets and capsules (Vitabiotics Ltd)',
         location: location,
-        dosage_amount: nil,
-        dosage_unit: nil,
+        dose_amount: nil,
+        dose_unit: nil,
         current_supply: 84,
         supply_at_last_restock: 84,
         reorder_threshold: 21
@@ -612,8 +612,8 @@ RSpec.describe TakeMedicationService do
       name: medication.name,
       location: location,
       household: medication.household,
-      dosage_amount: medication.dosage_amount,
-      dosage_unit: medication.dosage_unit,
+      dose_amount: medication.dose_amount,
+      dose_unit: medication.dose_unit,
       current_supply: 12,
       reorder_threshold: 2
     )

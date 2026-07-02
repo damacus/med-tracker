@@ -14,8 +14,8 @@ RSpec.describe Components::Medications::PriorDayTakeAction, type: :component do
       medication: medication,
       start_date: Time.zone.today,
       end_date: Time.zone.today + 30.days,
-      dose_amount: medication.dosage_amount,
-      dose_unit: medication.dosage_unit
+      dose_amount: medication.dose_amount,
+      dose_unit: medication.dose_unit
     )
   end
 
@@ -98,8 +98,8 @@ RSpec.describe Components::Medications::PriorDayTakeAction, type: :component do
       name: medication.name,
       location: locations(:school),
       category: medication.category,
-      dosage_amount: medication.dosage_amount,
-      dosage_unit: medication.dosage_unit,
+      dose_amount: medication.dose_amount,
+      dose_unit: medication.dose_unit,
       current_supply: 7,
       reorder_threshold: 1
     )

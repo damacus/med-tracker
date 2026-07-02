@@ -6,28 +6,28 @@ RSpec.describe MedicationInventoryMatcher do
   subject(:matcher) { described_class.new(scope: scope) }
 
   # Helper to build a medication-like struct with only the attributes the matcher uses
-  def med(name:, barcode: nil, dmd_code: nil, dosage_unit: nil, dosage_amount: nil)
+  def med(name:, barcode: nil, dmd_code: nil, dose_unit: nil, dose_amount: nil)
     instance_double(
       Medication,
       name: name,
       barcode: barcode,
       dmd_code: dmd_code,
-      dosage_unit: dosage_unit.to_s,
-      dosage_amount: dosage_amount
+      dose_unit: dose_unit.to_s,
+      dose_amount: dose_amount
     )
   end
 
   let(:paracetamol_500mg) do
-    create(:medication, name: 'Paracetamol 500 mg Tablets', dosage_unit: 'tablet', dosage_amount: nil)
+    create(:medication, name: 'Paracetamol 500 mg Tablets', dose_unit: 'tablet', dose_amount: nil)
   end
   let(:paracetamol_250mg) do
-    create(:medication, name: 'Paracetamol 250 mg Tablets', dosage_unit: 'tablet', dosage_amount: nil)
+    create(:medication, name: 'Paracetamol 250 mg Tablets', dose_unit: 'tablet', dose_amount: nil)
   end
   let(:amoxicillin) do
-    create(:medication, name: 'Amoxicillin 500 mg Capsules', dosage_unit: 'capsule', dosage_amount: nil)
+    create(:medication, name: 'Amoxicillin 500 mg Capsules', dose_unit: 'capsule', dose_amount: nil)
   end
   let(:vitamin_d_liquid) do
-    create(:medication, name: 'Vitamin D Oral Solution 3000IU/ml', dosage_unit: 'ml', dosage_amount: nil)
+    create(:medication, name: 'Vitamin D Oral Solution 3000IU/ml', dose_unit: 'ml', dose_amount: nil)
   end
 
   let(:scope) do
@@ -87,7 +87,7 @@ RSpec.describe MedicationInventoryMatcher do
       end
 
       it 'matches liquid formulation by name' do
-        candidate = med(name: 'Vitamin D Oral Solution 3000IU/ml', dosage_unit: 'ml')
+        candidate = med(name: 'Vitamin D Oral Solution 3000IU/ml', dose_unit: 'ml')
         expect(matcher.call(candidate)).to eq(vitamin_d_liquid)
       end
     end
@@ -111,23 +111,23 @@ RSpec.describe MedicationInventoryMatcher do
 
   it 'normalises "micrograms" to "mcg" when matching strength' do
     mcg_med = create(:medication, name: 'Levothyroxine 25 micrograms Tablets',
-                                  dosage_unit: 'tablet', dosage_amount: nil)
+                                  dose_unit: 'tablet', dose_amount: nil)
     scoped_matcher = described_class.new(scope: Medication.where(id: mcg_med.id))
     candidate = med(name: 'Levothyroxine 25mcg Tablets')
     expect(scoped_matcher.call(candidate)).to eq(mcg_med)
   end
 
   it 'returns the tablet form when candidate specifies tablet' do
-    tablet_med = create(:medication, name: 'Ibuprofen 400 mg', dosage_unit: 'tablet', dosage_amount: nil)
-    capsule_med = create(:medication, name: 'Ibuprofen 400 mg', dosage_unit: 'capsule', dosage_amount: nil)
+    tablet_med = create(:medication, name: 'Ibuprofen 400 mg', dose_unit: 'tablet', dose_amount: nil)
+    capsule_med = create(:medication, name: 'Ibuprofen 400 mg', dose_unit: 'capsule', dose_amount: nil)
     scoped_matcher = described_class.new(scope: Medication.where(id: [tablet_med, capsule_med].map(&:id)))
     candidate = med(name: 'Ibuprofen 400 mg Tablets')
     expect(scoped_matcher.call(candidate)).to eq(tablet_med)
   end
 
   it 'returns the capsule form when candidate specifies capsule' do
-    tablet_med = create(:medication, name: 'Ibuprofen 400 mg', dosage_unit: 'tablet', dosage_amount: nil)
-    capsule_med = create(:medication, name: 'Ibuprofen 400 mg', dosage_unit: 'capsule', dosage_amount: nil)
+    tablet_med = create(:medication, name: 'Ibuprofen 400 mg', dose_unit: 'tablet', dose_amount: nil)
+    capsule_med = create(:medication, name: 'Ibuprofen 400 mg', dose_unit: 'capsule', dose_amount: nil)
     scoped_matcher = described_class.new(scope: Medication.where(id: [tablet_med, capsule_med].map(&:id)))
     candidate = med(name: 'Ibuprofen 400 mg Capsules')
     expect(scoped_matcher.call(candidate)).to eq(capsule_med)

@@ -38,7 +38,7 @@ RSpec.describe Components::Dashboard::ScheduleRow, type: :component do
       sql = payload[:sql]
       count += 1 if sql.include?('FROM "medications"') &&
                     sql.include?('"medications"."name"') &&
-                    sql.include?('"medications"."dosage_amount"')
+                    sql.include?('"medications"."dose_amount"')
     end
 
     ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)

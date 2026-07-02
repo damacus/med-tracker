@@ -58,28 +58,28 @@ module Components
       def render_basic_fields
         div(class: 'grid grid-cols-2 gap-4') do
           FormField do
-            FormFieldLabel(for: 'dosage_amount') do
+            FormFieldLabel(for: 'dose_amount') do
               plain 'Amount'
               span(class: 'text-destructive ml-0.5') { ' *' }
             end
-            m3_input(type: :number, name: 'dosage[amount]', id: 'dosage_amount',
+            m3_input(type: :number, name: 'dosage[amount]', id: 'dose_amount',
                      value: dosage.amount, step: 'any', min: '0', required: true,
-                     **field_error_attributes(dosage, :amount, input_id: 'dosage_amount'))
-            render_field_error(dosage, :amount, input_id: 'dosage_amount')
+                     **field_error_attributes(dosage, :amount, input_id: 'dose_amount'))
+            render_field_error(dosage, :amount, input_id: 'dose_amount')
           end
 
           FormField do
-            FormFieldLabel(for: 'dosage_unit') do
+            FormFieldLabel(for: 'dose_unit') do
               plain 'Unit'
               span(class: 'text-destructive ml-0.5') { ' *' }
             end
-            m3_input(type: :text, name: 'dosage[unit]', id: 'dosage_unit',
+            m3_input(type: :text, name: 'dosage[unit]', id: 'dose_unit',
                      value: dosage.unit, required: true,
                      placeholder: 'mg, tablet, ml…',
-                     list: 'dosage_unit_list',
-                     **field_error_attributes(dosage, :unit, input_id: 'dosage_unit'))
-            render_field_error(dosage, :unit, input_id: 'dosage_unit')
-            datalist(id: 'dosage_unit_list') do
+                     list: 'dose_unit_list',
+                     **field_error_attributes(dosage, :unit, input_id: 'dose_unit'))
+            render_field_error(dosage, :unit, input_id: 'dose_unit')
+            datalist(id: 'dose_unit_list') do
               Medication::DOSAGE_UNITS.each { |u| option(value: u) }
             end
           end

@@ -48,8 +48,8 @@ RSpec.describe MedicationOnboardingPrefill do
       name: 'Wellman Original',
       description: 'Daily multivitamin food supplement',
       category: 'Supplement',
-      dosage_amount: 1,
-      dosage_unit: 'tablet',
+      dose_amount: 1,
+      dose_unit: 'tablet',
       current_supply: 30,
       reorder_threshold: 7
     )
@@ -79,8 +79,8 @@ RSpec.describe MedicationOnboardingPrefill do
       )
 
       expect(result.medication_attributes).to include(
-        dosage_amount: 1,
-        dosage_unit: 'tablet',
+        dose_amount: 1,
+        dose_unit: 'tablet',
         current_supply: 16,
         reorder_threshold: 4
       )
@@ -105,8 +105,8 @@ RSpec.describe MedicationOnboardingPrefill do
       )
 
       expect(result.medication_attributes).to include(
-        dosage_amount: 1,
-        dosage_unit: 'pad',
+        dose_amount: 1,
+        dose_unit: 'pad',
         current_supply: 3,
         reorder_threshold: 0
       )
@@ -125,8 +125,8 @@ RSpec.describe MedicationOnboardingPrefill do
         category: 'Vitamin',
         description: a_string_including('children aged 3+ years'),
         warnings: a_string_including('Contains vitamin A'),
-        dosage_amount: 2,
-        dosage_unit: 'gummy',
+        dose_amount: 2,
+        dose_unit: 'gummy',
         current_supply: 60,
         reorder_threshold: 14
       )
@@ -155,8 +155,8 @@ RSpec.describe MedicationOnboardingPrefill do
       )
 
       expect(result.medication_attributes).to include(
-        dosage_amount: 1,
-        dosage_unit: 'gummy',
+        dose_amount: 1,
+        dose_unit: 'gummy',
         current_supply: 60,
         reorder_threshold: 15
       )
@@ -172,7 +172,7 @@ RSpec.describe MedicationOnboardingPrefill do
         category: 'Analgesic',
         description: a_string_including('mild to moderate pain'),
         warnings: a_string_including('Contains paracetamol'),
-        dosage_unit: 'ml',
+        dose_unit: 'ml',
         reorder_threshold: 0
       )
       expect_calpol_six_plus_doses(result.dosage_records_attributes)
@@ -186,8 +186,8 @@ RSpec.describe MedicationOnboardingPrefill do
       )
 
       expect(result.medication_attributes).to include(
-        dosage_amount: 1,
-        dosage_unit: 'tablet',
+        dose_amount: 1,
+        dose_unit: 'tablet',
         current_supply: 29,
         reorder_threshold: 7
       )
@@ -203,7 +203,7 @@ RSpec.describe MedicationOnboardingPrefill do
         package_unit: nil
       )
 
-      expect(result.medication_attributes).not_to include(:dosage_amount, :dosage_unit, :current_supply)
+      expect(result.medication_attributes).not_to include(:dose_amount, :dose_unit, :current_supply)
       expect(result.dosage_records_attributes).to eq([])
     end
 

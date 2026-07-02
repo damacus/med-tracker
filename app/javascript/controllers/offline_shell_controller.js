@@ -142,8 +142,8 @@ export default class extends Controller {
               data-action="offline-shell#queue"
               data-source-type="${this.escape(sourceType)}"
               data-source-id="${source.id}"
-              data-dose-amount="${this.escape(source.dose_amount || medication?.dosage_amount || "")}"
-              data-dose-unit="${this.escape(source.dose_unit || medication?.dosage_unit || "")}"
+              data-dose-amount="${this.escape(source.dose_amount || medication?.dose_amount || "")}"
+              data-dose-unit="${this.escape(source.dose_unit || medication?.dose_unit || "")}"
               ${disabled ? "disabled" : ""}
             >${this.escape(disabled ? "Out of stock" : label)}</button>
           </div>
@@ -201,8 +201,8 @@ export default class extends Controller {
   inventoryFor(data, medication, queued = [], source = null) {
     return (data.medications || []).find((candidate) =>
       candidate.name === medication.name &&
-      String(candidate.dosage_amount) === String(medication.dosage_amount) &&
-      candidate.dosage_unit === medication.dosage_unit &&
+      String(candidate.dose_amount) === String(medication.dose_amount) &&
+      candidate.dose_unit === medication.dose_unit &&
       !this.locallyOutOfStock(candidate, queued, source)
     )
   }
@@ -212,8 +212,8 @@ export default class extends Controller {
 
     const supply = this.localSupply(medication, queued)
     const consumption = this.stockConsumptionFor({
-      dose_amount: source?.dose_amount || medication.dosage_amount,
-      dose_unit: source?.dose_unit || medication.dosage_unit
+      dose_amount: source?.dose_amount || medication.dose_amount,
+      dose_unit: source?.dose_unit || medication.dose_unit
     })
 
     return supply === null ? medication.out_of_stock : supply < consumption
@@ -223,7 +223,7 @@ export default class extends Controller {
     const supply = this.localSupply(medication, queued)
     if (supply === null) return "Untracked"
 
-    return medication.dosage_unit === "ml" ? `${this.formatQuantity(supply)} ml` : this.formatQuantity(supply)
+    return medication.dose_unit === "ml" ? `${this.formatQuantity(supply)} ml` : this.formatQuantity(supply)
   }
 
   localSupply(medication, queued) {

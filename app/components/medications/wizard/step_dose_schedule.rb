@@ -219,7 +219,7 @@ module Components
                 }
               ) do
                 option(value: '', selected: dosage&.unit.blank?) { t('forms.medications.select_unit') }
-                dosage_units.each do |unit|
+                dose_units.each do |unit|
                   option(value: unit, selected: dosage&.unit == unit) { unit }
                 end
               end

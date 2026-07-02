@@ -69,8 +69,8 @@ class Medication < ApplicationRecord # :nodoc:
   validates :dmd_system, presence: true, if: -> { dmd_code.present? }
   validates :name, presence: true
   validates :category, inclusion: { in: CATEGORIES }, allow_blank: true
-  validates :dosage_amount, numericality: { greater_than: 0 }, allow_nil: true
-  validates :dosage_unit, inclusion: { in: DOSAGE_UNITS }, allow_blank: true
+  validates :dose_amount, numericality: { greater_than: 0 }, allow_nil: true
+  validates :dose_unit, inclusion: { in: DOSAGE_UNITS }, allow_blank: true
   validates :current_supply, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validates :supply_at_last_restock, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validates :reorder_threshold, presence: true, numericality: { greater_than_or_equal_to: 0 }
@@ -96,7 +96,7 @@ class Medication < ApplicationRecord # :nodoc:
     # This avoids a redundant COUNT/EXISTS query if `schedules` is already loaded in memory
     return if schedules.any?
 
-    # When switching to single-dose mode (dosage_amount is set),
+    # When switching to single-dose mode (dose_amount is set),
     # remove all orphaned multi-dose records to prevent data pollution.
     # Uses SQL to comply with RuboCop and project standards.
     binds = [ActiveRecord::Relation::QueryAttribute.new('medication_id', id, ActiveRecord::Type::BigInteger.new)]
@@ -234,19 +234,19 @@ class Medication < ApplicationRecord # :nodoc:
     # This avoids a redundant COUNT/EXISTS query if `schedules` is already loaded in memory
     return unless schedules.any?
 
-    errors.add(:dosage_amount,
+    errors.add(:dose_amount,
                'cannot switch to a single standard dose while schedules still use dose options')
   end
 
   def switching_to_single_dose_mode?
-    return false unless will_save_change_to_dosage_amount?
+    return false unless will_save_change_to_dose_amount?
 
-    previous_amount, new_amount = dosage_amount_change_to_be_saved
+    previous_amount, new_amount = dose_amount_change_to_be_saved
     previous_amount.blank? && new_amount.present?
   end
 
   def switched_to_single_dose_mode?
-    change = previous_changes['dosage_amount']
+    change = previous_changes['dose_amount']
     return false if change.blank?
 
     previous_amount, new_amount = change

@@ -135,13 +135,13 @@ class MedicationInventoryMatcher
   end
 
   def strength_from_dosage(medication)
-    unit = normalized_strength_unit(medication.dosage_unit)
+    unit = normalized_strength_unit(medication.dose_unit)
     return nil unless STRENGTH_UNITS.include?(unit)
 
-    dosage_amount = medication.dosage_amount
-    return nil if dosage_amount.blank?
+    dose_amount = medication.dose_amount
+    return nil if dose_amount.blank?
 
-    "#{normalized_decimal(dosage_amount)} #{unit}"
+    "#{normalized_decimal(dose_amount)} #{unit}"
   end
 
   def normalized_strength_unit(unit)
@@ -152,7 +152,7 @@ class MedicationInventoryMatcher
   end
 
   def form_key(medication)
-    normalized_unit = FORM_UNITS[medication.dosage_unit.to_s.downcase]
+    normalized_unit = FORM_UNITS[medication.dose_unit.to_s.downcase]
     return normalized_unit if normalized_unit.present?
 
     name_form_key(medication.name)
