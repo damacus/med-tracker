@@ -80,6 +80,34 @@ RSpec.describe MedicationTake do
     end
   end
 
+  describe '#dose_source' do
+    it 'wraps scheduled doses in an explicit source value object' do
+      source = described_class.new(schedule: schedule).dose_source
+
+      expect(source).to have_attributes(
+        type: 'schedule',
+        record: schedule,
+        record_id: schedule.id,
+        person: schedule.person,
+        medication: schedule.medication,
+        household: schedule.household
+      )
+    end
+
+    it 'wraps ad hoc doses in an explicit source value object' do
+      source = described_class.new(person_medication: person_medication).dose_source
+
+      expect(source).to have_attributes(
+        type: 'person_medication',
+        record: person_medication,
+        record_id: person_medication.id,
+        person: person_medication.person,
+        medication: person_medication.medication,
+        household: person_medication.household
+      )
+    end
+  end
+
   describe 'household assignment' do
     it 'falls back to the person medication household when a present schedule has none' do
       household = Household.create!(name: 'Medication Take Source Household')
@@ -89,6 +117,18 @@ RSpec.describe MedicationTake do
       )
 
       expect(take.send(:source_household)).to eq(household)
+    end
+  end
+
+  describe 'database constraints' do
+    it 'enforces exactly one aggregate source below model validations' do
+      constraint = ActiveRecord::Base.connection.check_constraints(:medication_takes).find do |check|
+        check.name == 'chk_medication_takes_exactly_one_source'
+      end
+
+      expect(constraint&.expression).to include('num_nonnulls')
+      expect(constraint&.expression).to include('schedule_id')
+      expect(constraint&.expression).to include('person_medication_id')
     end
   end
 
