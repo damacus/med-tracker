@@ -99,6 +99,31 @@ class Person < ApplicationRecord
     (minor? || dependent_adult?) && carers.empty?
   end
 
+  def assign_carer!(carer, relationship_type: nil)
+    transaction do
+      relationship = carer_relationships.find_or_initialize_by(carer: carer)
+      relationship.relationship_type = relationship_type.presence ||
+                                       relationship.relationship_type.presence ||
+                                       'family_member'
+      relationship.active = true
+      relationship.save!
+
+      relationship
+    end
+  end
+
+  def remove_carer!(carer)
+    transaction do
+      relationship = carer_relationships.find_by!(carer: carer, active: true)
+      relationship.deactivate!
+      carer_relationships.reset
+      active_carer_relationships.reset
+      validate!
+
+      relationship
+    end
+  end
+
   private
 
   def assign_default_location
