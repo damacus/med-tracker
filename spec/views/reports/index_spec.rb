@@ -118,6 +118,17 @@ RSpec.describe Views::Reports::Index do
     expect(rendered).to include('Paracetamol')
   end
 
+  it 'renders report filter dates with shared M3 input controls' do
+    rendered = Nokogiri::HTML.fragment(render(report_view))
+    start_date = rendered.at_css('input#start_date[type="date"]')
+    end_date = rendered.at_css('input#end_date[type="date"]')
+
+    expect(start_date['class']).to include('border-outline')
+    expect(start_date['class']).not_to include('form-input')
+    expect(end_date['class']).to include('border-outline')
+    expect(end_date['class']).not_to include('form-input')
+  end
+
   it 'does not render timestamps in the Today section' do
     rendered = render report_view
 

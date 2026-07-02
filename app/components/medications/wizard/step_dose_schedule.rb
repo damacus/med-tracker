@@ -242,22 +242,22 @@ module Components
 
         def render_schedule_type_card(type)
           selected = type == default_schedule_type
-          button(
-            type: 'button',
-            class: selection_card_classes(selected),
-            data: {
+          m3_selectable_option(
+            type: :radio,
+            name: 'wizard_schedule_type',
+            value: type,
+            input_id: "wizard_schedule_type_#{type}",
+            label: t("forms.medications.wizard.dose.schedule_types.#{type}.title"),
+            description: t("forms.medications.wizard.dose.schedule_types.#{type}.description"),
+            checked: selected,
+            input_class: 'sr-only',
+            class: selection_card_classes,
+            label_data: {
               action: 'click->medication-schedule-wizard#selectScheduleType',
               'medication-schedule-wizard-target': 'scheduleTypeCard',
               schedule_type: type
             }
-          ) do
-            span(class: 'text-sm font-black text-foreground') do
-              t("forms.medications.wizard.dose.schedule_types.#{type}.title")
-            end
-            span(class: 'text-xs font-semibold text-on-surface-variant') do
-              t("forms.medications.wizard.dose.schedule_types.#{type}.description")
-            end
-          end
+          )
         end
 
         def render_follow_up_fields
@@ -528,11 +528,10 @@ module Components
           end
         end
 
-        def selection_card_classes(selected)
+        def selection_card_classes
           base = 'flex flex-col items-start gap-1 rounded-3xl border p-4 text-left transition-all ' \
                  'hover:border-primary hover:bg-primary/5'
-          state = selected ? 'border-primary bg-primary/10 shadow-elevation-1' : 'border-outline-variant/60 bg-surface'
-          "#{base} #{state}"
+          "#{base} border-outline-variant/60 bg-surface"
         end
 
         def schedule_panel_classes(type)

@@ -25,18 +25,18 @@ RSpec.describe 'MedicationNewLayout' do
         expect(page).to have_text('Who will take this?')
         expect(page).to have_field('Amount')
         expect(page).to have_select('Unit', with_options: %w[mg sachet])
-        expect(page).to have_button('Multiple daily')
-        expect(page).to have_button('Daily')
-        expect(page).to have_button('Weekly')
-        expect(page).to have_button('Specific dates')
-        expect(page).to have_button('As needed')
-        expect(page).to have_button('Tapering')
+        expect(page).to have_field('wizard_schedule_type_multiple_daily', type: 'radio', visible: :all)
+        expect(page).to have_field('wizard_schedule_type_daily', type: 'radio', visible: :all)
+        expect(page).to have_field('wizard_schedule_type_weekly', type: 'radio', visible: :all)
+        expect(page).to have_field('wizard_schedule_type_specific_dates', type: 'radio', visible: :all)
+        expect(page).to have_field('wizard_schedule_type_prn', type: 'radio', visible: :all)
+        expect(page).to have_field('wizard_schedule_type_tapering', type: 'radio', visible: :all)
       end
 
       select 'John Doe', from: 'Who will take this?'
       fill_in 'Amount', with: 200
       select 'mg', from: 'Unit'
-      click_button 'Multiple daily'
+      choose_schedule_type('multiple_daily')
       fill_in 'Doses per day', with: 2
       fill_in 'Hours apart', with: 12
       fill_in 'First dose', with: '08:00'
@@ -102,7 +102,7 @@ RSpec.describe 'MedicationNewLayout' do
       select 'John Doe', from: 'Who will take this?'
       fill_in 'Amount', with: 5
       select 'ml', from: 'Unit'
-      click_button 'Multiple daily'
+      choose_schedule_type('multiple_daily')
       fill_in 'Doses per day', with: 3
       fill_in 'Hours apart', with: 6
       fill_in 'First dose', with: '08:00'
@@ -138,7 +138,7 @@ RSpec.describe 'MedicationNewLayout' do
       select 'John Doe', from: 'Who will take this?'
       fill_in 'Amount', with: 1
       select 'tablet', from: 'Unit'
-      click_button 'Specific dates'
+      choose_schedule_type('specific_dates')
       fill_in 'Date to add', with: Time.zone.today.to_s
       click_button 'Add date'
       fill_in 'Date to add', with: 2.days.from_now.to_date.to_s
@@ -174,7 +174,7 @@ RSpec.describe 'MedicationNewLayout' do
       select 'John Doe', from: 'Who will take this?'
       fill_in 'Amount', with: 500
       select 'mg', from: 'Unit'
-      click_button 'As needed'
+      choose_schedule_type('prn')
 
       expect(page).to have_field('Start date')
       expect(page).to have_no_field('End date')
@@ -184,5 +184,9 @@ RSpec.describe 'MedicationNewLayout' do
       expect(page).to have_text('500 mg, As needed for John Doe')
       expect(page).to have_no_text(1.month.from_now.to_date.to_s)
     end
+  end
+
+  def choose_schedule_type(type)
+    find("label[data-medication-schedule-wizard-target='scheduleTypeCard'][data-schedule-type='#{type}']").click
   end
 end

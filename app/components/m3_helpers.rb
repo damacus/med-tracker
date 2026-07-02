@@ -7,6 +7,7 @@ module Components
     def m3_card(...) = render(Components::M3::Card.new(...))
     def m3_input(...) = render(Components::M3::Input.new(...))
     def m3_select(...) = render(Components::M3::Select.new(...))
+    def m3_selectable_option(...) = render(Components::M3::SelectableOption.new(...))
     def m3_link(...) = render(Components::M3::Link.new(...))
     def m3_heading(...) = render(Components::M3::Heading.new(...))
     def m3_text(...) = render(Components::M3::Text.new(...))
