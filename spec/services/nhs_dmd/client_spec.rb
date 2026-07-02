@@ -223,6 +223,28 @@ RSpec.describe NhsDmd::Client do
       end
     end
 
+    context 'with custom medicine lookup endpoints' do
+      before do
+        AppSettings.instance.update!(
+          medicine_lookup_base_url: 'https://terminology.example.test/fhir',
+          medicine_lookup_token_url: 'https://auth.example.test/token'
+        )
+        stub_request(:post, 'https://auth.example.test/token')
+          .to_return(status: 200, body: { 'access_token' => 'custom-token' }.to_json,
+                     headers: { 'Content-Type' => 'application/json' })
+        stub_request(:get, %r{terminology\.example\.test/fhir/ValueSet/\$expand})
+          .to_return(status: 200, body: '{"resourceType":"ValueSet","expansion":{"total":0,"contains":[]}}',
+                     headers: { 'Content-Type' => 'application/json' })
+      end
+
+      it 'uses the configured base and token endpoints' do
+        client.search('aspirin')
+
+        expect(WebMock).to have_requested(:post, 'https://auth.example.test/token').once
+        expect(WebMock).to have_requested(:get, %r{terminology\.example\.test/fhir/ValueSet/\$expand}).twice
+      end
+    end
+
     context 'when the same query is requested repeatedly' do
       before do
         stub_request(:get, /ontology\.nhs\.uk/)

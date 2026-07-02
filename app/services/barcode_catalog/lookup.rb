@@ -2,26 +2,24 @@
 
 module BarcodeCatalog
   class Lookup
+    SOURCE_LOOKUPS = {
+      'imported_catalog' => :lookup_imported_catalog,
+      'local_nhs_dmd' => :lookup_local,
+      'cached_open_products_facts' => :lookup_cached_open_products_facts,
+      'open_products_facts' => :lookup_open_products_facts,
+      'curated_catalog' => :lookup_curated
+    }.freeze
+
     def initialize(opf_lookup: OpenProductsFacts::BarcodeLookup.new)
       @opf_lookup = opf_lookup
     end
 
     def lookup(barcode)
       barcode_candidates(barcode).each do |candidate|
-        imported = lookup_imported_catalog(candidate)
-        return imported if imported
-
-        local = lookup_local(candidate)
-        return local if local
-
-        cached_opf = lookup_cached_open_products_facts(candidate)
-        return cached_opf if cached_opf
-
-        opf = lookup_open_products_facts(candidate)
-        return opf if opf
-
-        curated = lookup_curated(candidate)
-        return curated if curated
+        configured_source_lookups.each do |lookup_method|
+          result = send(lookup_method, candidate)
+          return result if result
+        end
       end
 
       nil
@@ -31,6 +29,10 @@ module BarcodeCatalog
 
     def barcode_candidates(barcode)
       NhsDmd::BarcodeLookup.candidates_for(barcode)
+    end
+
+    def configured_source_lookups
+      AppSettings.instance.lookup_source_priority_for(SOURCE_LOOKUPS.keys).map { |source| SOURCE_LOOKUPS.fetch(source) }
     end
 
     def lookup_imported_catalog(candidate)

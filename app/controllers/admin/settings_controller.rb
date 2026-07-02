@@ -33,7 +33,12 @@ module Admin
     private
 
     def settings_params
-      params.expect(app_settings: [:invite_only])
+      params.expect(app_settings: [
+                      :invite_only,
+                      :medicine_lookup_base_url,
+                      :medicine_lookup_token_url,
+                      { medicine_lookup_source_priority: [] }
+                    ])
     end
   end
 end

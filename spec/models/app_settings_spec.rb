@@ -59,4 +59,30 @@ RSpec.describe AppSettings do
       expect(PaperTrail::Version.where(item_type: 'AppSettings', item_id: settings.id).last.event).to eq('update')
     end
   end
+
+  describe 'medicine lookup settings' do
+    it 'defaults to the built-in dm+d endpoints and source priority' do
+      settings = described_class.instance
+
+      expect(settings.medicine_lookup_base_url).to eq(NhsDmd::Client::BASE_URL)
+      expect(settings.medicine_lookup_token_url).to eq(NhsDmd::Client::TOKEN_URL)
+      expect(settings.lookup_source_priority_for(%w[open_products_facts local_nhs_dmd])).to eq(
+        %w[local_nhs_dmd open_products_facts]
+      )
+    end
+
+    it 'accepts only HTTPS lookup endpoint URLs' do
+      settings = described_class.instance
+
+      expect(settings.update(medicine_lookup_base_url: 'http://example.test/fhir')).to be(false)
+      expect(settings.errors[:medicine_lookup_base_url]).to include('must be an HTTPS URL')
+    end
+
+    it 'rejects unknown lookup source priority values' do
+      settings = described_class.instance
+
+      expect(settings.update(medicine_lookup_source_priority: %w[local_nhs_dmd unknown])).to be(false)
+      expect(settings.errors[:medicine_lookup_source_priority]).to include('contains unknown sources')
+    end
+  end
 end

@@ -28,6 +28,27 @@ RSpec.describe 'Platform settings' do
     expect(AppSettings.instance.reload.invite_only).to be(false)
   end
 
+  it 'updates medicine lookup settings for an active platform admin' do
+    PlatformAdmin.create!(account: platform_user.person.account)
+    sign_in(platform_user)
+
+    patch platform_settings_path,
+          params: {
+            app_settings: {
+              medicine_lookup_base_url: 'https://terminology.example.test/fhir',
+              medicine_lookup_token_url: 'https://auth.example.test/token',
+              medicine_lookup_source_priority: %w[open_products_facts local_nhs_dmd curated_catalog]
+            }
+          }
+
+    settings = AppSettings.instance.reload
+    expect(response).to redirect_to(platform_settings_path)
+    expect(settings.medicine_lookup_base_url).to eq('https://terminology.example.test/fhir')
+    expect(settings.lookup_source_priority_for(%w[local_nhs_dmd open_products_facts])).to eq(
+      %w[open_products_facts local_nhs_dmd]
+    )
+  end
+
   it 'renders validation errors when platform settings cannot be updated' do
     PlatformAdmin.create!(account: platform_user.person.account)
     settings = AppSettings.instance
@@ -47,6 +68,21 @@ RSpec.describe 'Platform settings' do
     get platform_settings_path
 
     expect(response).to redirect_to(root_path)
+  end
+
+  it 'denies lookup setting updates from household owners without platform admin access' do
+    sign_in(household_owner)
+
+    patch platform_settings_path,
+          params: {
+            app_settings: {
+              medicine_lookup_base_url: 'https://terminology.example.test/fhir',
+              medicine_lookup_source_priority: %w[open_products_facts local_nhs_dmd]
+            }
+          }
+
+    expect(response).to redirect_to(root_path)
+    expect(AppSettings.instance.reload.medicine_lookup_base_url).to eq(NhsDmd::Client::BASE_URL)
   end
 
   it 'keeps household admin settings denied to household managers without platform admin access' do

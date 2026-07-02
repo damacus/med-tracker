@@ -67,7 +67,7 @@ module NhsDmd
     end
 
     def build_uri(value_set_url, query, count)
-      uri = URI("#{BASE_URL}/ValueSet/$expand")
+      uri = URI.join("#{base_url.chomp('/')}/", 'ValueSet/$expand')
       uri.query = URI.encode_www_form(
         'url' => value_set_url,
         'count' => count.to_s,
@@ -164,7 +164,7 @@ module NhsDmd
     end
 
     def fetch_access_token
-      uri = URI(TOKEN_URL)
+      uri = URI(token_url)
       response = Net::HTTP.post_form(uri, {
                                        'grant_type' => 'client_credentials',
                                        'client_id' => client_id,
@@ -188,12 +188,21 @@ module NhsDmd
       ENV.fetch('NHS_DMD_CLIENT_SECRET', nil)
     end
 
+    def base_url
+      AppSettings.instance.medicine_lookup_base_url
+    end
+
+    def token_url
+      AppSettings.instance.medicine_lookup_token_url
+    end
+
     def value_set_cache_key(value_set_url, query, count)
-      "#{CACHE_PREFIX}/search/#{Digest::SHA256.hexdigest(value_set_url)}/#{count}/#{query}"
+      endpoint_fingerprint = Digest::SHA256.hexdigest("#{base_url}:#{value_set_url}")
+      "#{CACHE_PREFIX}/search/#{endpoint_fingerprint}/#{count}/#{query}"
     end
 
     def token_cache_key
-      token_fingerprint = Digest::SHA256.hexdigest("#{client_id}:#{client_secret}")
+      token_fingerprint = Digest::SHA256.hexdigest("#{token_url}:#{client_id}:#{client_secret}")
       "#{CACHE_PREFIX}/access_token/#{token_fingerprint}"
     end
   end

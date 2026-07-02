@@ -29,6 +29,28 @@ RSpec.describe BarcodeCatalog::Lookup do
       )
     end
 
+    def prioritize_open_products_facts
+      AppSettings.instance.update!(
+        medicine_lookup_source_priority: %w[
+          open_products_facts
+          local_nhs_dmd
+          imported_catalog
+          cached_open_products_facts
+          curated_catalog
+        ]
+      )
+    end
+
+    def stub_open_products_facts_result
+      allow(opf_lookup).to receive(:lookup).with(gtin).and_return(
+        gtin: gtin,
+        display: 'Configured Open Products Facts name',
+        source: 'open_products_facts',
+        system: OpenProductsFacts::Client::BASE_URL,
+        concept_class: 'OTC Medicine'
+      )
+    end
+
     it 'prefers an external catalogue entry over the local dm+d barcode table' do
       create_external_entry
       create_local_entry(code: 'old-code', display: 'Old dm+d mapping')
@@ -115,6 +137,17 @@ RSpec.describe BarcodeCatalog::Lookup do
 
       expect(lookup.lookup(gtin)).to include(source: 'nhs_dmd')
       expect(opf_lookup).not_to have_received(:lookup)
+    end
+
+    it 'uses configured source priority when multiple sources match' do
+      prioritize_open_products_facts
+      create_local_entry(code: 'dmd-code', display: 'dm+d name')
+      stub_open_products_facts_result
+
+      expect(lookup.lookup(gtin)).to include(
+        display: 'Configured Open Products Facts name',
+        source: 'open_products_facts'
+      )
     end
 
     it 'prefers dm+d over a cached Open Products Facts entry' do
