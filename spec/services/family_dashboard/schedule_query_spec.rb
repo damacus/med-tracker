@@ -92,6 +92,22 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       end
     end
 
+    it 'resets routine direct medication progress at the local day boundary' do
+      travel_to Time.zone.parse('2026-05-06 00:00:00') do
+        routine_medication = create_routine_person_medication
+        MedicationTake.create!(
+          person_medication: routine_medication,
+          taken_at: Time.zone.parse('2026-05-05 23:59:00'),
+          dose_amount: 500,
+          dose_unit: 'mg'
+        )
+
+        rows = described_class.new([people(:john)]).call.select { |row| row[:source] == routine_medication }
+
+        expect(rows).to contain_exactly(include(status: :upcoming, daily_dose_count: 0, daily_dose_limit: 1))
+      end
+    end
+
     it 'keeps a completed routine direct medication out of the actionable schedule' do
       travel_to Time.zone.parse('2026-05-05 20:00:00') do
         routine_medication = create_routine_person_medication
