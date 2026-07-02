@@ -61,20 +61,13 @@ module Components
         def render_item_type_filter
           div(class: 'min-w-0 md:w-48') do
             render RubyUI::FormField.new do
-              render RubyUI::FormFieldLabel.new(for: 'item_type') { t('admin.audit_logs.index.filter.record_type') }
-              m3_select(
+              render_filter_combobox(
                 name: 'item_type',
-                id: 'item_type',
-                size: :sm,
-                data: { action: 'change->filter-form#submit' }
-              ) do
-                option(value: '', selected: filter_params[:item_type].blank?) do
-                  t('admin.audit_logs.index.filter.all_types')
-                end
-                item_types.each do |type|
-                  option(value: type, selected: filter_params[:item_type] == type) { type.titleize }
-                end
-              end
+                label: t('admin.audit_logs.index.filter.record_type'),
+                all_label: t('admin.audit_logs.index.filter.all_types'),
+                selected_value: selected_filter_value(:item_type),
+                options: item_types.map { |type| [type, type.titleize] }
+              )
             end
           end
         end
@@ -82,22 +75,69 @@ module Components
         def render_event_type_filter
           div(class: 'min-w-0 md:w-48') do
             render RubyUI::FormField.new do
-              render RubyUI::FormFieldLabel.new(for: 'event') { t('admin.audit_logs.index.filter.event_type') }
-              m3_select(
+              render_filter_combobox(
                 name: 'event',
-                id: 'event',
-                size: :sm,
-                data: { action: 'change->filter-form#submit' }
-              ) do
-                option(value: '', selected: filter_params[:event].blank?) do
-                  t('admin.audit_logs.index.filter.all_events')
-                end
-                events.each do |event|
-                  option(value: event, selected: filter_params[:event] == event) { event.titleize }
+                label: t('admin.audit_logs.index.filter.event_type'),
+                all_label: t('admin.audit_logs.index.filter.all_events'),
+                selected_value: selected_filter_value(:event),
+                options: events.map { |event| [event, event.titleize] }
+              )
+            end
+          end
+        end
+
+        def render_filter_combobox(name:, label:, all_label:, selected_value:, options:)
+          trigger_id = "#{name}_trigger"
+
+          render RubyUI::FormFieldLabel.new(for: trigger_id) { label }
+          render RubyUI::Combobox.new(class: 'w-full') do
+            render RubyUI::ComboboxTrigger.new(
+              id: trigger_id,
+              placeholder: selected_combobox_label(selected_value, all_label, options)
+            )
+
+            render RubyUI::ComboboxPopover.new do
+              render RubyUI::ComboboxSearchInput.new(placeholder: label)
+              render RubyUI::ComboboxList.new do
+                render(RubyUI::ComboboxEmptyState.new { t('admin.audit_logs.index.empty.no_logs') })
+                render_filter_combobox_option(name, "#{name}_all", '', all_label, selected_value.blank?)
+
+                options.each do |value, text|
+                  render_filter_combobox_option(name, "#{name}_#{value.parameterize(separator: '_')}", value, text,
+                                                selected_value == value)
                 end
               end
             end
           end
+        end
+
+        def render_filter_combobox_option(name, id, value, text, checked)
+          render RubyUI::ComboboxItem.new do
+            render RubyUI::ComboboxRadio.new(
+              name: name,
+              id: id,
+              value: value,
+              checked: checked,
+              data: {
+                text: text,
+                action: [
+                  'ruby-ui--combobox#inputChanged',
+                  'input->ruby-ui--form-field#onInput',
+                  'invalid->ruby-ui--form-field#onInvalid',
+                  'change->filter-form#submit'
+                ]
+              }
+            )
+            span { text }
+          end
+        end
+
+        def selected_filter_value(name)
+          filter_params[name].presence || filter_params[name.to_s].presence
+        end
+
+        def selected_combobox_label(selected_value, all_label, options)
+          options.to_h.fetch(selected_value, all_label)
         end
 
         def render_filter_actions

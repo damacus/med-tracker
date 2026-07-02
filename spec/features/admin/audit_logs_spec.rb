@@ -57,21 +57,23 @@ RSpec.describe 'Admin Audit Logs', type: :system do
 
       expect(page).to have_text('Audit Trail')
       expect(page).to have_text('Complete history of all changes')
-      expect(page).to have_select('item_type')
-      expect(page).to have_select('event')
+      expect(page).to have_button('All Types')
+      expect(page).to have_button('All Events')
     end
 
     it 'includes Medication in record type filter options' do
       visit admin_audit_logs_path
 
-      expect(page).to have_select('item_type', with_options: ['Medication'])
+      click_button 'All Types'
+
+      expect(page).to have_css('label[role="option"]', text: 'Medication')
     end
 
-    it 'shows filter form with dropdowns' do
+    it 'shows filter form with searchable comboboxes' do
       visit admin_audit_logs_path
 
-      expect(page).to have_select('item_type')
-      expect(page).to have_select('event')
+      expect(page).to have_css('[role="combobox"]', count: 2)
+      expect(page).to have_css('input[type="search"][role="searchbox"]', visible: :all, count: 2)
     end
   end
 
@@ -88,9 +90,12 @@ RSpec.describe 'Admin Audit Logs', type: :system do
     it 'has dropdowns with auto-submit actions' do
       visit admin_audit_logs_path
 
-      # Verify selects have the change action wired to Stimulus
-      expect(page).to have_css('select#item_type[data-action*="filter-form#submit"]')
-      expect(page).to have_css('select#event[data-action*="filter-form#submit"]')
+      # Verify filter radios have the change action wired to Stimulus
+      expect(page).to have_css(
+        'input[type="radio"][name="item_type"][data-action*="filter-form#submit"]',
+        visible: :all
+      )
+      expect(page).to have_css('input[type="radio"][name="event"][data-action*="filter-form#submit"]', visible: :all)
     end
 
     it 'shows clear link when visiting with filter params' do
@@ -200,7 +205,8 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       visit admin_audit_logs_path
 
       # Filter by User
-      select 'User', from: 'item_type'
+      click_button 'All Types'
+      find('label[role="option"]', text: 'User').click
 
       # Verify only User entries shown
       within('tbody') do
@@ -219,7 +225,8 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       visit admin_audit_logs_path
 
       # Filter by update event
-      select 'Update', from: 'event'
+      click_button 'All Events'
+      find('label[role="option"]', text: 'Update').click
 
       # Verify only update events shown
       within('tbody') do
