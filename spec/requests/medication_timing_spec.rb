@@ -125,6 +125,26 @@ RSpec.describe 'Medication Timing Restrictions' do
         expect(response).to redirect_to(person_path(person))
         expect(flash[:alert]).to include('Cannot take medication')
       end
+
+      it 'allows another dose after the local midnight reset' do
+        travel_to Time.zone.local(2026, 4, 29, 0, 5) do
+          schedule.update!(min_hours_between_doses: nil)
+          2.times do |index|
+            MedicationTake.create!(
+              schedule: schedule,
+              taken_at: Time.zone.local(2026, 4, 28, 23, 30) + index.minutes,
+              dose_amount: 10
+            )
+          end
+
+          expect do
+            post take_medication_person_schedule_path(person, schedule)
+          end.to change(MedicationTake, :count).by(1)
+        end
+
+        expect(response).to redirect_to(person_path(person))
+        expect(flash[:notice]).to include('Medication taken')
+      end
     end
 
     context 'when minimum hours between doses not met' do
