@@ -9,6 +9,8 @@ class ObservabilityFailureController < ApplicationController
 end
 
 RSpec.describe 'Observability exception capture' do
+  fixtures :accounts, :people, :users
+
   around do |example|
     Rails.application.routes.draw do
       get '/observability_failure', to: 'observability_failure#show'
@@ -19,12 +21,12 @@ RSpec.describe 'Observability exception capture' do
     Rails.application.reload_routes!
   end
 
-  it 'records request exceptions on the current trace span before rendering the failure response' do
+  it 'records request exceptions on the current trace span before reraising the failure' do
     allow(Otel::ExceptionRecorder).to receive(:record)
 
-    get '/observability_failure'
+    sign_in users(:admin)
 
-    expect(response).to have_http_status(:internal_server_error)
+    expect { get '/observability_failure' }.to raise_error(RuntimeError, 'request failure')
     expect(Otel::ExceptionRecorder).to have_received(:record)
       .with(instance_of(RuntimeError), source: 'request')
   end
