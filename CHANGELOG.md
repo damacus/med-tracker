@@ -1,5 +1,46 @@
 # Changelog
 
+## [0.5.7](https://github.com/damacus/med-tracker/compare/v0.5.6...v0.5.7) (2026-07-03)
+
+
+### Features
+
+* **api:** add v1 write endpoints ([#1449](https://github.com/damacus/med-tracker/issues/1449)) ([0a1f34a](https://github.com/damacus/med-tracker/commit/0a1f34a872cde2d214203c6561acc82fb0da187a))
+* **inventory:** capture medicine order details ([#1470](https://github.com/damacus/med-tracker/issues/1470)) ([9df2f34](https://github.com/damacus/med-tracker/commit/9df2f34bd9f96bfe8c1e20f1311f0cc9b64eebe7))
+* **lookup:** configure medicine sources and endpoints ([#1454](https://github.com/damacus/med-tracker/issues/1454)) ([a15ecf9](https://github.com/damacus/med-tracker/commit/a15ecf9b8d8219c0b7c36f8388186539c2582436))
+* **lookup:** filter finder results by form ([#1461](https://github.com/damacus/med-tracker/issues/1461)) ([01d654e](https://github.com/damacus/med-tracker/commit/01d654e6fb5cb32880a73f236acd28f17cf34897))
+* **lookup:** rate limit finder searches ([#1459](https://github.com/damacus/med-tracker/issues/1459)) ([0365b20](https://github.com/damacus/med-tracker/commit/0365b200246c9da6a97984c5229cbc88509ff6e7))
+* **lookup:** show external medicine details ([#1462](https://github.com/damacus/med-tracker/issues/1462)) ([3b81395](https://github.com/damacus/med-tracker/commit/3b81395b7072aa875a5557f43679a68483cbadf2))
+* **lookup:** show SPC links in finder results ([#1457](https://github.com/damacus/med-tracker/issues/1457)) ([1a38856](https://github.com/damacus/med-tracker/commit/1a38856fd92dd163957bfbaad28c0ce56a716289))
+* **mailers:** migrate emails to Phlex templates ([#1450](https://github.com/damacus/med-tracker/issues/1450)) ([5c5c880](https://github.com/damacus/med-tracker/commit/5c5c8806194f0d5011779cded2d4a208ec98aacd))
+* **medication-takes:** define dose source boundary ([#1446](https://github.com/damacus/med-tracker/issues/1446)) ([85ea11f](https://github.com/damacus/med-tracker/commit/85ea11fbf1ec639bca11075b299d77b2c0e4e97e))
+* **medications:** show lookup interaction warnings ([#1452](https://github.com/damacus/med-tracker/issues/1452)) ([a98a245](https://github.com/damacus/med-tracker/commit/a98a245fe73394603e3985417bb902d2a01ff745))
+* **notifications:** deliver native push notifications ([#1447](https://github.com/damacus/med-tracker/issues/1447)) ([410fe7f](https://github.com/damacus/med-tracker/commit/410fe7f30683ba44616ae73d26a89d7fd2496a66))
+* **notifications:** send missed-dose and low-stock pushes ([#1444](https://github.com/damacus/med-tracker/issues/1444)) ([a7c848e](https://github.com/damacus/med-tracker/commit/a7c848e0a81ce11029a0aa1db9f871c91078f7a4))
+* **observability:** configure production trace sampling ([#1460](https://github.com/damacus/med-tracker/issues/1460)) ([fd42389](https://github.com/damacus/med-tracker/commit/fd42389c13a6febc154aa0b53a33832832960dc2))
+* **observability:** emit medication take metrics ([#1437](https://github.com/damacus/med-tracker/issues/1437)) ([95e7e1b](https://github.com/damacus/med-tracker/commit/95e7e1b7ca8be4145769218516381d4406faebef))
+* **performance:** add Vernier dashboard profiling ([#1464](https://github.com/damacus/med-tracker/issues/1464)) ([65e0ece](https://github.com/damacus/med-tracker/commit/65e0ecee0323a30ec708695074a4eb4fab156dc5))
+* **person:** add carer assignment commands ([#1433](https://github.com/damacus/med-tracker/issues/1433)) ([25edfcd](https://github.com/damacus/med-tracker/commit/25edfcd7cce4556bd8d77675174ec4344dfe2c0c))
+* **profile:** add account time zone preference ([#1463](https://github.com/damacus/med-tracker/issues/1463)) ([da1300e](https://github.com/damacus/med-tracker/commit/da1300ec17d6a37ce36ebea261427f38fcc50779))
+* **reports:** add health history export ([#1443](https://github.com/damacus/med-tracker/issues/1443)) ([a152c7c](https://github.com/damacus/med-tracker/commit/a152c7c173c99e744ec386e176dba9ccfa8acc7a))
+* **schedules:** expose dose availability state ([#1435](https://github.com/damacus/med-tracker/issues/1435)) ([ee9954c](https://github.com/damacus/med-tracker/commit/ee9954cc5eb70768e691f3b77ff6b5f9c0599c83))
+
+
+### Bug Fixes
+
+* **lookup:** fall back when primary search fails ([#1456](https://github.com/damacus/med-tracker/issues/1456)) ([c94e3c4](https://github.com/damacus/med-tracker/commit/c94e3c4a2e8b13220d32022bdb65a47b621fbe17))
+* **medications:** aggregate overlapping dose limits ([#1453](https://github.com/damacus/med-tracker/issues/1453)) ([b7c5725](https://github.com/damacus/med-tracker/commit/b7c5725929e8f0cdadca6cae7159b6faa8730a94))
+* **notifications:** honor low-stock preferences ([#1442](https://github.com/damacus/med-tracker/issues/1442)) ([68d3417](https://github.com/damacus/med-tracker/commit/68d34175f417b56089c752f6a0715de12eda7b30))
+* **observability:** record request and job exceptions ([#1466](https://github.com/damacus/med-tracker/issues/1466)) ([e3ab2b7](https://github.com/damacus/med-tracker/commit/e3ab2b743f8de52140e9152b1c83d3a11a476a4c))
+* **people:** route add medication through chooser ([#1436](https://github.com/damacus/med-tracker/issues/1436)) ([bac168f](https://github.com/damacus/med-tracker/commit/bac168f50da44e1a5b68a12184ab0b34825347e9))
+* **ui:** align workflow controls with M3 links ([#1439](https://github.com/damacus/med-tracker/issues/1439)) ([7d8411d](https://github.com/damacus/med-tracker/commit/7d8411d22659b0a68292d364b405df42784ad469))
+* **ui:** retire legacy modal and schedules table primitives ([#1430](https://github.com/damacus/med-tracker/issues/1430)) ([15946da](https://github.com/damacus/med-tracker/commit/15946daf297d20411a806a783677787780abef28))
+
+
+### Performance Improvements
+
+* **admin:** preload user list row associations ([#1458](https://github.com/damacus/med-tracker/issues/1458)) ([542bc46](https://github.com/damacus/med-tracker/commit/542bc466592586e7060ff354b2c360708aa7f16d))
+
 ## [0.5.6](https://github.com/damacus/med-tracker/compare/v0.5.5...v0.5.6) (2026-07-02)
 
 
