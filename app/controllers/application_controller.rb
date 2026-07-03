@@ -46,6 +46,9 @@ class ApplicationController < ActionController::Base
     Current.account = current_account
     Current.request_id = request.request_id
     Time.use_zone(current_account_time_zone) { with_current_tenant_context(&) }
+  rescue StandardError => e
+    Otel::ExceptionRecorder.record(e, source: 'request')
+    raise
   ensure
     Current.reset
   end

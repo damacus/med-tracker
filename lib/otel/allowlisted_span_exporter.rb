@@ -6,6 +6,9 @@ module Otel
       %w[
         db.operation
         db.system
+        error.type
+        exception.escaped
+        exception.source
         http.method
         http.request.method
         http.response.status_code
