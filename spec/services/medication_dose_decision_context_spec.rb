@@ -22,7 +22,9 @@ RSpec.describe MedicationDoseDecisionContext do
       dose_amount: 500,
       dose_unit: 'mg',
       max_daily_doses: 4,
-      min_hours_between_doses: nil
+      min_hours_between_doses: nil,
+      start_date: taken_at.to_date - 1.day,
+      end_date: taken_at.to_date + 30.days
     )
   end
 
@@ -96,7 +98,9 @@ RSpec.describe MedicationDoseDecisionContext do
         dose_amount: 500,
         dose_unit: 'mg',
         max_daily_doses: 1,
-        min_hours_between_doses: nil
+        min_hours_between_doses: nil,
+        start_date: taken_at.to_date - 30.days,
+        end_date: taken_at.to_date - 1.day
       )
       inactive_schedule = create(
         :schedule,
@@ -107,7 +111,9 @@ RSpec.describe MedicationDoseDecisionContext do
         dose_unit: 'mg',
         max_daily_doses: 1,
         min_hours_between_doses: nil,
-        active: false
+        active: false,
+        start_date: taken_at.to_date - 1.day,
+        end_date: taken_at.to_date + 30.days
       )
 
       record_take_for(expired_schedule)

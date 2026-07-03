@@ -724,6 +724,7 @@ cy:
       barcode: Cod bar
       dmd_code: Cod dm+d
       pil_link: Taflen wybodaeth i gleifion
+      spc_link: Crynodeb o Nodweddion y Cynnyrch
       form_filter_label: Ffurf dos
       all_forms: Pob ffurf
       forms:

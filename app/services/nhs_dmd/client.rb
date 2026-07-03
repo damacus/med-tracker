@@ -24,9 +24,21 @@ module NhsDmd
       patient_information_leaflet_url
       patientInformationLeafletUrl
     ].freeze
-    PIL_VALUE_KEYS = %w[valueUrl valueUri valueString valueCanonical].freeze
+    GUIDANCE_VALUE_KEYS = %w[valueUrl valueUri valueString valueCanonical].freeze
     PIL_EXTENSION_MATCHER = /(?:\bpil\b|patient[-_\s]?information[-_\s]?leaflet)/i
     PIL_URL_VALUE_MATCHER = %r{(?:/pil(?:[/?#]|$)|patient[-_\s]?information[-_\s]?leaflet)}i
+    SPC_URL_KEYS = %w[
+      spc_url
+      spcUrl
+      summary_of_product_characteristics
+      summaryOfProductCharacteristics
+      summary_of_product_characteristics_url
+      summaryOfProductCharacteristicsUrl
+    ].freeze
+    SPC_EXTENSION_MATCHER = /(?:\bspc\b|\bsmpc\b|summary[-_\s]?of[-_\s]?product[-_\s]?characteristics)/i
+    SPC_URL_VALUE_MATCHER = %r{
+      (?:/smpc(?:[/?#]|$)|/spc(?:[/?#]|$)|summary[-_\s]?of[-_\s]?product[-_\s]?characteristics)
+    }ix
 
     VMP_VALUE_SET = 'https://dmd.nhs.uk/ValueSet/VMP'
     AMP_VALUE_SET = 'https://dmd.nhs.uk/ValueSet/AMP'
@@ -107,7 +119,8 @@ module NhsDmd
         display: item['display'],
         system: item['system'],
         concept_class: extract_concept_class(item),
-        pil_url: extract_pil_url(item)
+        pil_url: extract_pil_url(item),
+        spc_url: extract_spc_url(item)
       }
     end
 
@@ -120,37 +133,45 @@ module NhsDmd
     end
 
     def extract_pil_url(item)
-      direct_pil_url(item) || extension_pil_url(item)
+      direct_guidance_url(item, PIL_URL_KEYS) ||
+        extension_guidance_url(item, PIL_EXTENSION_MATCHER, PIL_URL_VALUE_MATCHER)
     end
 
-    def direct_pil_url(item)
-      PIL_URL_KEYS.filter_map { |key| item[key].presence }.first
+    def extract_spc_url(item)
+      direct_guidance_url(item, SPC_URL_KEYS) ||
+        extension_guidance_url(item, SPC_EXTENSION_MATCHER, SPC_URL_VALUE_MATCHER)
     end
 
-    def extension_pil_url(item)
-      extension_pil_urls(Array(item['extension'])).first
+    def direct_guidance_url(item, keys)
+      keys.filter_map { |key| item[key].presence }.first
     end
 
-    def extension_pil_urls(extensions)
+    def extension_guidance_url(item, extension_matcher, url_value_matcher)
+      extension_guidance_urls(Array(item['extension']), extension_matcher, url_value_matcher).first
+    end
+
+    def extension_guidance_urls(extensions, extension_matcher, url_value_matcher)
       extensions.flat_map do |extension|
         values = []
         value = extension_url_value(extension)
-        values << value if pil_extension?(extension) || pil_url_value?(value)
-        values.concat(extension_pil_urls(Array(extension['extension'])))
+        matched_guidance = guidance_extension?(extension, extension_matcher) ||
+                           guidance_url_value?(value, url_value_matcher)
+        values << value if matched_guidance
+        values.concat(extension_guidance_urls(Array(extension['extension']), extension_matcher, url_value_matcher))
         values
       end.compact
     end
 
     def extension_url_value(extension)
-      PIL_VALUE_KEYS.filter_map { |key| extension[key].presence }.first
+      GUIDANCE_VALUE_KEYS.filter_map { |key| extension[key].presence }.first
     end
 
-    def pil_extension?(extension)
-      extension['url'].to_s.match?(PIL_EXTENSION_MATCHER)
+    def guidance_extension?(extension, matcher)
+      extension['url'].to_s.match?(matcher)
     end
 
-    def pil_url_value?(value)
-      value.to_s.match?(PIL_URL_VALUE_MATCHER)
+    def guidance_url_value?(value, matcher)
+      value.to_s.match?(matcher)
     end
 
     def authenticated?

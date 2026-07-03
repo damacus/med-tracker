@@ -754,6 +754,7 @@ en:
       barcode: Barcode
       dmd_code: dm+d code
       pil_link: Patient information leaflet
+      spc_link: Summary of Product Characteristics
       form_filter_label: Dosage form
       all_forms: All forms
       forms:

@@ -60,14 +60,19 @@ module NhsDmdStubs
       }
     ]
 
-    if result[:pil_url].present?
-      extension << {
-        url: 'https://medtracker.test/fhir/StructureDefinition/patient-information-leaflet',
-        valueUrl: result[:pil_url]
-      }
-    end
+    append_guidance_extension(extension, result[:pil_url], 'patient-information-leaflet')
+    append_guidance_extension(extension, result[:spc_url], 'summary-of-product-characteristics')
 
     extension
+  end
+
+  def append_guidance_extension(extension, value_url, slug)
+    return if value_url.blank?
+
+    extension << {
+      url: "https://medtracker.test/fhir/StructureDefinition/#{slug}",
+      valueUrl: value_url
+    }
   end
 end
 

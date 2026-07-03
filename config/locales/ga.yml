@@ -727,6 +727,7 @@ ga:
       barcode: Barrachód
       dmd_code: cód dm+d
       pil_link: Bileog eolais don othar
+      spc_link: Achoimre ar Shaintréithe an Táirge
       form_filter_label: Foirm dáileoige
       all_forms: Gach foirm
       forms:
