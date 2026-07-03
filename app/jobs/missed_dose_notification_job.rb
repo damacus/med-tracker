@@ -20,7 +20,7 @@ class MissedDoseNotificationJob < ApplicationJob
     person = Person.find_by(id: person_id, household: household)
     return unless eligible_person?(person)
 
-    scheduled_at = scheduled_at(scheduled_on, scheduled_time)
+    scheduled_at = parsed_scheduled_at(scheduled_on, scheduled_time)
     return unless missed_dose_due?(person, scheduled_time, scheduled_at)
 
     event = record_missed_dose_event(household, person, scheduled_on, scheduled_time)
@@ -68,7 +68,7 @@ class MissedDoseNotificationJob < ApplicationJob
     preference&.enabled && preference.missed_dose_enabled
   end
 
-  def scheduled_at(scheduled_on, scheduled_time)
+  def parsed_scheduled_at(scheduled_on, scheduled_time)
     date = Date.iso8601(scheduled_on.to_s)
     hour, min = scheduled_time.to_s.split(':', 3)
     return unless hour&.match?(/\A\d{1,2}\z/) && min&.match?(/\A\d{1,2}\z/)
