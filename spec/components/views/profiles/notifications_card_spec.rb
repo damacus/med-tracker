@@ -18,6 +18,16 @@ RSpec.describe Views::Profiles::NotificationsCard, type: :component do
     expect(test_button['data-action']).to eq('push-notification#sendTest')
   end
 
+  it 'renders browser notification status as an accessible live region' do
+    rendered = render_inline(described_class.new(person: person))
+    status = rendered.at_css('[data-push-notification-target="status"]')
+
+    expect(status).to be_present
+    expect(status['role']).to eq('status')
+    expect(status['aria-live']).to eq('polite')
+    expect(status['aria-atomic']).to eq('true')
+  end
+
   it 'renders notification category controls in the profile form' do
     rendered = render_inline(described_class.new(person: person))
 
