@@ -45,6 +45,12 @@ RSpec.describe 'OTEL-011: OTLP exporter configuration' do
       propagators = OpenTelemetry.propagation
       expect(propagators).to be_a(OpenTelemetry::Context::Propagation::CompositeTextMapPropagator)
     end
+
+    it 'does not install span processors that export traces in test' do
+      span_processors = OpenTelemetry.tracer_provider.instance_variable_get(:@span_processors)
+
+      expect(span_processors).to be_empty
+    end
   end
 
   context 'when parsing OTLP headers' do
