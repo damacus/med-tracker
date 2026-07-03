@@ -71,6 +71,7 @@ module Views
         div(class: 'flex items-center justify-between') do
           p(
             class: 'text-sm text-on-surface-variant',
+            role: 'status', aria: { live: 'polite', atomic: 'true' },
             data: { push_notification_target: 'status' }
           ) { t('profiles.notifications.checking_status') }
           render_push_action_buttons

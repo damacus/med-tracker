@@ -60,6 +60,24 @@ RSpec.describe PushNotificationService do
       expect(PushSubscription.exists?(second_subscription.id)).to be(true)
     end
 
+    it 'removes invalid subscriptions and continues with the rest' do
+      calls = 0
+      stub_const('WebPush::InvalidSubscription', Class.new(StandardError))
+
+      allow(WebPush).to receive(:payload_send) do
+        calls += 1
+        raise WebPush::InvalidSubscription if calls == 1
+      end
+
+      expect do
+        described_class.send_to_account(account, title: 'Medication Reminder', body: 'Take aspirin')
+      end.to change(PushSubscription, :count).by(-1)
+
+      expect(WebPush).to have_received(:payload_send).twice
+      expect(PushSubscription.exists?(first_subscription.id)).to be(false)
+      expect(PushSubscription.exists?(second_subscription.id)).to be(true)
+    end
+
     it 'does not write notification title or body content to native push logs' do
       create_native_device_token
       allow(WebPush).to receive(:payload_send)

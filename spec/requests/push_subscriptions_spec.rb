@@ -130,4 +130,30 @@ RSpec.describe 'Push subscriptions' do
       expect(version.object).not_to include('auth_secret')
     end
   end
+
+  describe 'POST /push_subscription/test' do
+    it 'sends a test notification for the signed-in account' do
+      allow(PushNotificationService).to receive(:send_to_account)
+
+      post test_push_subscription_path, as: :json
+
+      expect(response).to have_http_status(:no_content)
+      expect(PushNotificationService).to have_received(:send_to_account).with(
+        user.person.account,
+        title: 'MedTracker Test',
+        body: 'Push notifications are working correctly from the server.'
+      )
+    end
+
+    it 'returns a JSON error when the test notification cannot be sent' do
+      allow(PushNotificationService).to receive(:send_to_account).and_raise(SocketError, 'lookup failed')
+      allow(Rails.logger).to receive(:error)
+
+      post test_push_subscription_path, as: :json
+
+      expect(response).to have_http_status(:service_unavailable)
+      expect(response.parsed_body['error']).to eq('Unable to send test notification.')
+      expect(Rails.logger).to have_received(:error).with(/Test push notification failed/)
+    end
+  end
 end
