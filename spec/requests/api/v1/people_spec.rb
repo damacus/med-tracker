@@ -81,6 +81,9 @@ RSpec.describe 'API v1 people' do
         record.role = :owner
         record.status = :active
       end
+      login_data = api_login(user, household_id: household.id)
+
+      household.person_access_grants.where(household_membership: membership).destroy_all
       household.person_access_grants.create!(
         household_membership: membership,
         person: people(:jane),
@@ -95,8 +98,6 @@ RSpec.describe 'API v1 people' do
         relationship_type: :parent,
         granted_by_membership: membership
       )
-
-      login_data = api_login(user, household_id: household.id)
 
       allow(TenantContext).to receive(:with).and_call_original
       allow(TenantContext).to receive(:set_membership!).and_call_original

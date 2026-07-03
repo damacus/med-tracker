@@ -98,6 +98,15 @@ class BackfillMissingHouseholdMemberships < ActiveRecord::Migration[8.1]
 
   def create_relationship_access_grants
     execute <<~SQL.squish
+      WITH owner_memberships AS (
+        SELECT DISTINCT ON (household_id)
+               id,
+               household_id
+        FROM household_memberships
+        WHERE role = 'owner'
+          AND status = 'active'
+        ORDER BY household_id, id
+      )
       INSERT INTO person_access_grants (
         household_id, household_membership_id, person_id, access_level, relationship_type,
         granted_by_membership_id, created_at, updated_at
@@ -119,10 +128,8 @@ class BackfillMissingHouseholdMemberships < ActiveRecord::Migration[8.1]
       JOIN household_memberships
         ON household_memberships.person_id = carer_relationships.carer_id
        AND household_memberships.status = 'active'
-      JOIN household_memberships owners
+      JOIN owner_memberships owners
         ON owners.household_id = household_memberships.household_id
-       AND owners.role = 'owner'
-       AND owners.status = 'active'
       WHERE carer_relationships.active = true
       ON CONFLICT (household_membership_id, person_id) WHERE revoked_at IS NULL DO UPDATE
       SET access_level = EXCLUDED.access_level,

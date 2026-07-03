@@ -16,8 +16,8 @@ RSpec.describe 'API v1 auth sessions' do
 
     def create_api_household_for(user)
       household = user.person.household
-      household.household_memberships.create!(
-        account: user.person.account,
+      membership = household.household_memberships.find_or_initialize_by(account: user.person.account)
+      membership.update!(
         person: user.person,
         role: :owner,
         status: :active
@@ -59,14 +59,14 @@ RSpec.describe 'API v1 auth sessions' do
 
       api_session = ApiSession.order(:id).last
       expect(response).to have_http_status(:created)
-      expect(api_session.household_membership).to eq(household.household_memberships.sole)
+      expect(api_session.household_membership).to eq(household.household_memberships.find_by!(account: account))
       expect(response.parsed_body.dig('data', 'household', 'id')).to eq(household.id)
     end
 
     it 'binds sessions to the requested active household membership' do
       household = people(:jane).household
-      membership = household.household_memberships.create!(
-        account: user.person.account,
+      membership = household.household_memberships.find_or_initialize_by(account: user.person.account)
+      membership.update!(
         person: people(:jane),
         role: :owner,
         status: :active

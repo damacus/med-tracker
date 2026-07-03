@@ -109,21 +109,25 @@ RSpec.describe 'API v1 resources' do
   end
 
   it 'scopes household resource collections to explicitly granted people' do
-    account = user.person.account
-    household = user.person.household
+    scoped_user = users(:jane)
+    account = scoped_user.person.account
+    household = scoped_user.person.household
     other_household = Household.create!(name: 'Other Resource Household', slug: 'other-resource-household')
 
     membership = household.household_memberships.find_or_create_by!(
       account: account,
-      person: people(:admin)
+      person: scoped_user.person
     ) do |record|
       record.role = :member
       record.status = :active
     end
+    membership.update!(person: scoped_user.person, role: :member, status: :active)
     visible_person = create(:person, household: household, name: 'Alex Resource')
     hidden_person = create(:person, household: household, name: 'Alex Hidden Resource')
     other_person = create(:person, household: other_household, name: 'Alex Other Resource')
 
+    login_data = api_login(scoped_user, household_id: household.id)
+    household.person_access_grants.where(household_membership: membership).destroy_all
     household.person_access_grants.create!(
       household_membership: membership,
       person: visible_person,
@@ -180,7 +184,6 @@ RSpec.describe 'API v1 resources' do
     hidden_take = create(:medication_take, :for_schedule, household: household, schedule: hidden_schedule)
     other_take = create(:medication_take, :for_schedule, household: other_household, schedule: other_schedule)
 
-    login_data = api_login(user, household_id: household.id)
     headers = api_auth_headers(login_data.fetch('access_token'))
 
     {

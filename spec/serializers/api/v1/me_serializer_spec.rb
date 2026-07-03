@@ -11,12 +11,8 @@ RSpec.describe Api::V1::MeSerializer do
 
   before do
     household = user.person.household
-    Current.membership = household.household_memberships.create!(
-      account: user.person.account,
-      person: user.person,
-      role: :owner,
-      status: :active
-    )
+    Current.membership = household.household_memberships.find_or_initialize_by(account: user.person.account)
+    Current.membership.update!(person: user.person, role: :owner, status: :active)
   end
 
   after { Current.reset }

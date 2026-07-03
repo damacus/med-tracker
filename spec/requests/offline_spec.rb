@@ -32,9 +32,8 @@ RSpec.describe 'Offline mode' do
 
   before do
     membership
-    household.person_access_grants.create!(
-      household_membership: membership,
-      person: user.person,
+    grant = household.person_access_grants.find_or_initialize_by(household_membership: membership, person: user.person)
+    grant.update!(
       access_level: :manage,
       relationship_type: :self,
       granted_by_membership: membership

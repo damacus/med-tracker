@@ -26,9 +26,10 @@ RSpec.describe 'Request sign-in helper' do
   end
 
   it 'redirects authenticated root requests to the active household dashboard' do
-    household = Household.create_with_owner!(
+    account = users(:admin).person.account
+    Household.create_with_owner!(
       name: 'Root Household',
-      owner_account: users(:admin).person.account,
+      owner_account: account,
       owner_person_attributes: {
         name: 'Root Owner',
         date_of_birth: 30.years.ago.to_date,
@@ -36,6 +37,7 @@ RSpec.describe 'Request sign-in helper' do
         has_capacity: true
       }
     )
+    household = account.reload.first_active_household
 
     sign_in(users(:admin))
     get root_path

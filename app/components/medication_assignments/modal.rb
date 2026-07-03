@@ -6,13 +6,14 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include RubyUI
 
-      attr_reader :assignment, :person, :medications, :back_path
+      attr_reader :assignment, :person, :medications, :back_path, :return_to
 
-      def initialize(assignment:, person:, medications:, back_path: nil)
+      def initialize(assignment:, person:, medications:, back_path: nil, return_to: nil)
         @assignment = assignment
         @person = person
         @medications = medications
         @back_path = back_path
+        @return_to = return_to
         super()
       end
 
@@ -31,7 +32,7 @@ module Components
                   person: person,
                   medications: medications,
                   modal: true,
-                  back_path: back_path
+                  navigation: { back_path: back_path, return_to: return_to }
                 )
               end
             end

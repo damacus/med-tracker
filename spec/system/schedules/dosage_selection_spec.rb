@@ -53,4 +53,13 @@ RSpec.describe 'Schedule dosage selection' do
 
     expect(page).to have_text('No dose options are available for this medication.')
   end
+
+  it 'returns to the person page when cancelling the full-page form' do
+    login_as(admin)
+    visit new_person_schedule_path(person)
+
+    click_on 'Cancel'
+
+    expect(page).to have_current_path(person_path(person))
+  end
 end

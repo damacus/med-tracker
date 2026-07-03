@@ -268,11 +268,26 @@ module Components
 
       def render_actions(_f)
         div(class: 'flex gap-3 justify-end pt-4') do
-          m3_button(variant: :text, data: { action: 'click->ruby-ui--dialog#dismiss' }) { t('people.form.cancel') }
+          render_cancel_action
           m3_button(type: :submit, variant: :filled) do
             person.new_record? ? t('people.form.create') : t('people.form.update')
           end
         end
+      end
+
+      def render_cancel_action
+        if is_modal
+          m3_button(variant: :text, data: { action: 'click->ruby-ui--dialog#dismiss' }) { t('people.form.cancel') }
+        else
+          m3_link(href: cancel_path, variant: :text) { t('people.form.cancel') }
+        end
+      end
+
+      def cancel_path
+        return return_to if return_to.present?
+        return person_path(person) if person.persisted?
+
+        people_path
       end
 
       def available_person_types

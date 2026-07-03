@@ -237,7 +237,7 @@ RSpec.describe Admin::DashboardMetricsQuery do
     create(
       :household_invitation,
       household: household,
-      invited_by_membership: household.household_memberships.owner.sole,
+      invited_by_membership: metrics_owner_membership,
       expires_at: expires_at
     )
   end
@@ -245,7 +245,11 @@ RSpec.describe Admin::DashboardMetricsQuery do
   def paper_trail_info
     {
       household_id: household.id,
-      actor_membership_id: household.household_memberships.owner.sole.id
+      actor_membership_id: metrics_owner_membership.id
     }
+  end
+
+  def metrics_owner_membership
+    household.household_memberships.owner.active.order(:id).first!
   end
 end

@@ -5,7 +5,11 @@ class MedicationWorkflowController < ApplicationController
     authorize Person, :index?
     people = medication_workflow_people_query.call
 
-    render Components::MedicationWorkflow::PersonSelection.new(people: people, medication_id: params[:medication_id])
+    render Components::MedicationWorkflow::PersonSelection.new(
+      people: people,
+      medication_id: params[:medication_id],
+      return_to: url_from(params[:return_to])
+    )
   end
 
   private

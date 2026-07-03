@@ -92,7 +92,10 @@ class MedicationAssignmentsController < ApplicationController
   end
 
   def render_assignment_form(status: :ok)
-    back_path = params[:source] == 'workflow' ? add_medication_path(medication_id: params[:medication_id]) : nil
+    return_to = url_from(params[:return_to])
+    back_path = if params[:source] == 'workflow'
+                  add_medication_path(medication_id: params[:medication_id], return_to: return_to)
+                end
 
     render_modal_or_page(
       modal: lambda {
@@ -100,7 +103,8 @@ class MedicationAssignmentsController < ApplicationController
           assignment: @assignment,
           person: @person,
           medications: @medications,
-          back_path: back_path
+          back_path: back_path,
+          return_to: return_to
         )
       },
       page: lambda {

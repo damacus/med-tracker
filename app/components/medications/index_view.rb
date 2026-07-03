@@ -66,11 +66,12 @@ module Components
               render Components::Medications::InventoryScanModal.new if can_refill_medication?
               if can_create_medication?
                 m3_link(
-                  href: add_medication_path,
+                  href: add_medication_path(return_to: medications_path),
                   variant: :outlined,
                   size: :lg,
                   class: 'max-w-full justify-center rounded-shape-full font-bold text-sm bg-card shadow-sm ' \
-                         'border-border'
+                         'border-border',
+                  data: { turbo_frame: 'modal' }
                 ) do
                   render Icons::PlusCircle.new(size: 20, class: 'mr-2 text-primary')
                   span { 'Add Schedule' }
