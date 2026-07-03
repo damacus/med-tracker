@@ -15,6 +15,7 @@ RSpec.describe SchemaInventory do
       notification_preferences
       health_events
       health_event_medications
+      notification_events
       household_memberships
       person_access_grants
       household_invitations

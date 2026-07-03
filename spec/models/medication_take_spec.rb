@@ -369,6 +369,7 @@ RSpec.describe MedicationTake do
 
     def expected_low_stock_event(medication:, location:, previous_current_supply:, current_supply:, reorder_threshold:)
       {
+        household_id: medication.household_id,
         medication_id: medication.id,
         location_id: location.id,
         previous_current_supply: previous_current_supply,

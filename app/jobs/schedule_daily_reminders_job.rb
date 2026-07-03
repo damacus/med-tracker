@@ -16,7 +16,8 @@ class ScheduleDailyRemindersJob < ApplicationJob
   private
 
   def schedule_household_reminders(household)
-    NotificationPreference.where(household: household, enabled: true, dose_due_enabled: true)
+    NotificationPreference.where(household: household, enabled: true)
+                          .where('dose_due_enabled = ? OR missed_dose_enabled = ?', true, true)
                           .includes(person: [:account, { schedules: %i[medication medication_takes] }])
                           .find_each do |pref|
       next unless pref.person&.account
@@ -28,7 +29,7 @@ class ScheduleDailyRemindersJob < ApplicationJob
   end
 
   def enqueue_reminders_for(pref)
-    enqueue_period_reminders_for(pref)
+    enqueue_period_reminders_for(pref) if pref.dose_due_enabled
     enqueue_schedule_time_reminders_for(pref)
   end
 
@@ -45,16 +46,27 @@ class ScheduleDailyRemindersJob < ApplicationJob
   end
 
   def enqueue_schedule_time_reminders_for(pref)
-    configured_times_for(pref.person).each do |time|
+    configured_times_for(pref).each do |time|
       send_at = build_send_time_from_configured_time(time)
       next if send_at.blank? || send_at < Time.current
 
-      MedicationReminderJob.set(wait_until: send_at).perform_later(pref.household_id, pref.person_id, :scheduled, time)
+      if pref.dose_due_enabled
+        MedicationReminderJob
+          .set(wait_until: send_at)
+          .perform_later(pref.household_id, pref.person_id, :scheduled, time)
+      end
+      enqueue_missed_dose_check_for(pref, send_at, time) if pref.missed_dose_enabled
     end
   end
 
-  def configured_times_for(person)
-    MedicationReminderEligibilityQuery.new(person: person).configured_times
+  def enqueue_missed_dose_check_for(pref, send_at, time)
+    MissedDoseNotificationJob
+      .set(wait_until: send_at + MissedDoseNotificationJob::GRACE_PERIOD)
+      .perform_later(pref.household_id, pref.person_id, send_at.to_date.iso8601, time)
+  end
+
+  def configured_times_for(pref)
+    MedicationReminderEligibilityQuery.new(person: pref.person).configured_times
   end
 
   def build_send_time(time)
