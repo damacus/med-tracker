@@ -107,6 +107,8 @@ module OpenTelemetryConfig
 end
 
 if Rails.env.test?
+  ENV['OTEL_TRACES_EXPORTER'] = 'none'
+
   require 'opentelemetry/sdk'
   require 'opentelemetry/instrumentation/active_record'
   require 'opentelemetry/instrumentation/pg'
