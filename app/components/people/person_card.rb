@@ -132,7 +132,8 @@ module Components
           href: add_medication_person_path(person),
           variant: :filled,
           size: :lg,
-          class: 'w-full font-black shadow-elevation-2'
+          class: 'w-full font-black shadow-elevation-2',
+          data: { turbo_frame: 'modal' }
         ) { t('people.card.add_medication') }
       end
 

@@ -77,10 +77,7 @@ module Components
 
       def render_actions(_f)
         div(class: 'flex gap-3 justify-end pt-4') do
-          m3_button(variant: :text, size: :lg, class: 'font-bold',
-                    data: { action: 'click->ruby-ui--dialog#dismiss' }) do
-            t('schedules.form.cancel')
-          end
+          render_cancel_action
           unless schedule.new_record? && schedule.medication.blank?
             m3_button(
               type: :submit,
@@ -92,6 +89,23 @@ module Components
             ) { schedule.new_record? ? t('schedules.form.add_plan') : t('schedules.form.update_plan') }
           end
         end
+      end
+
+      def render_cancel_action
+        if modal_form?
+          m3_button(variant: :text, size: :lg, class: 'font-bold',
+                    data: { action: 'click->ruby-ui--dialog#dismiss' }) do
+            t('schedules.form.cancel')
+          end
+        else
+          m3_link(href: person_path(person), variant: :text, size: :lg, class: 'font-bold') do
+            t('schedules.form.cancel')
+          end
+        end
+      end
+
+      def modal_form?
+        frame_id == 'modal'
       end
 
       def form_payload

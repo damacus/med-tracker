@@ -7,11 +7,12 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include RubyUI
 
-      attr_reader :people, :medication_id
+      attr_reader :people, :medication_id, :return_to
 
-      def initialize(people:, medication_id: nil)
+      def initialize(people:, medication_id: nil, return_to: nil)
         @people = people
         @medication_id = medication_id
+        @return_to = return_to
         super()
       end
 
@@ -41,7 +42,7 @@ module Components
         div(class: 'grid grid-cols-1 gap-3 py-2') do
           people.each do |person|
             m3_link(
-              href: new_person_medication_assignment_path(person, source: :workflow, medication_id: medication_id),
+              href: person_assignment_path(person),
               variant: :outlined,
               size: :lg,
               data: { turbo_frame: 'modal' },
@@ -80,11 +81,7 @@ module Components
                       data: {
                         text: person.name,
                         action: 'change->medication-workflow#navigateToType',
-                        url: new_person_medication_assignment_path(
-                          person,
-                          source: :workflow,
-                          medication_id: medication_id
-                        )
+                        url: person_assignment_path(person)
                       }
                     )
                     span { person.name }
@@ -94,6 +91,15 @@ module Components
             end
           end
         end
+      end
+
+      def person_assignment_path(person)
+        new_person_medication_assignment_path(
+          person,
+          source: :workflow,
+          medication_id: medication_id,
+          return_to: return_to
+        )
       end
     end
   end

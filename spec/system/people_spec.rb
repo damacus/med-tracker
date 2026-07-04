@@ -80,6 +80,34 @@ RSpec.describe 'People' do
     end
   end
 
+  describe 'form navigation' do
+    it 'links cancel back to people from the full-page new form' do
+      visit new_person_path
+
+      expect(page).to have_link('Cancel', href: people_path)
+    end
+
+    it 'does not leave a blank page when cancelling add medication from the people list' do
+      driven_by(:playwright)
+      login_as(user)
+      person = people(:john)
+
+      visit people_path
+
+      within "##{tenant_dom_id(person)}" do
+        click_link 'Add Medication'
+      end
+
+      expect(page).to have_text('How is this medication taken?')
+
+      click_button 'Close'
+
+      expect(page).to have_current_path(people_path)
+      expect(page).to have_text('People')
+      expect(page).to have_no_text('How is this medication taken?')
+    end
+  end
+
   describe 'patients without carers' do
     it 'highlights dependent adults who need carer assignment' do
       carer = Person.create!(

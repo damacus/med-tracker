@@ -5,14 +5,15 @@ module Components
     class Form < Components::Base
       include Phlex::Rails::Helpers::FormWith
 
-      attr_reader :assignment, :person, :medications, :modal, :back_path
+      attr_reader :assignment, :person, :medications, :modal, :back_path, :return_to
 
-      def initialize(assignment:, person:, medications:, modal: false, back_path: nil)
+      def initialize(assignment:, person:, medications:, modal: false, navigation: {})
         @assignment = assignment
         @person = person
         @medications = medications
         @modal = modal
-        @back_path = back_path
+        @back_path = navigation[:back_path]
+        @return_to = navigation[:return_to]
         super()
       end
 
@@ -24,6 +25,7 @@ module Components
           class: 'space-y-6',
           data: form_data
         ) do
+          input(type: :hidden, name: 'return_to', value: return_to) if return_to.present?
           render_errors if assignment.errors.any?
           render_workflow
           render_actions
@@ -288,7 +290,7 @@ module Components
       def render_cancel_action
         if modal
           m3_link(
-            href: person_path(person),
+            href: cancel_path,
             variant: :text,
             size: :xl,
             class: 'w-full justify-center sm:w-auto',
@@ -302,6 +304,12 @@ module Components
             class: 'w-full justify-center sm:w-auto'
           ) { t('person_medications.form.cancel') }
         end
+      end
+
+      def cancel_path
+        return return_to if return_to.present?
+
+        person_path(person)
       end
 
       def medication_options_payload

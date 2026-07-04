@@ -63,6 +63,9 @@ RSpec.describe Views::Reports::Index do
       "/reports/health-history?#{params.to_query}"
     end
     allow(report_view).to receive(:view_context).and_return(helper_view_context)
+    allow(report_view).to receive(:health_history_report_path) do |params|
+      "/reports/health-history?#{params.to_query}"
+    end
     # rubocop:enable RSpec/SubjectStub
   end
 
