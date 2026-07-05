@@ -1,6 +1,12 @@
 # MedTracker Agent Guide
 
-> `CLAUDE.md` is a symlink to this file (`agents.md`). Edit `agents.md`.
+> Keep `AGENTS.md` and `agents.md` in sync. `CLAUDE.md` is a separate Claude Code guide.
+
+## Mandatory First Steps
+
+- **Serena MCP** — For coding, review, or architecture tasks, use tool discovery for `serena initial_instructions` if Serena tools are not already visible, then call Serena `initial_instructions` before broad code exploration or implementation. Activate the project if needed. Prefer Serena symbolic navigation for code structure; if Serena is unavailable or lacks the needed tool, say so briefly and continue with `rg`, `sed`, and normal repo tools.
+- **Ruby skill** — For Ruby or Rails coding, review, or debugging tasks, load the Ruby skill before implementation and follow the applicable reference files.
+- **Context7** — Fetch current documentation with Context7 before answering or implementing library, framework, SDK, API, CLI, or cloud-service usage details.
 
 ## TDD
 
