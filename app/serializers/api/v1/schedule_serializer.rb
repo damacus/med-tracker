@@ -20,10 +20,27 @@ module Api
       end
 
       def association_data
+        identity_data.merge(subject_data).merge(dose_data)
+      end
+
+      def identity_data
         {
           id: schedule.id,
+          portable_id: schedule.portable_id
+        }
+      end
+
+      def subject_data
+        {
           person_id: schedule.person_id,
+          person_portable_id: schedule.person&.portable_id,
           medication_id: schedule.medication_id,
+          medication_portable_id: schedule.medication&.portable_id
+        }
+      end
+
+      def dose_data
+        {
           dose_amount: schedule.dose_amount,
           dose_unit: schedule.dose_unit,
           frequency: schedule.frequency,

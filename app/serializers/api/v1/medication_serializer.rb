@@ -22,6 +22,7 @@ module Api
       def identity_data
         {
           id: medication.id,
+          portable_id: medication.portable_id,
           name: medication.name,
           display_name: medication.display_name,
           category: medication.category,
@@ -37,6 +38,7 @@ module Api
           reorder_threshold: medication.reorder_threshold,
           reorder_status: medication.reorder_status,
           location_id: medication.location_id,
+          location_portable_id: medication.location&.portable_id,
           updated_at: medication.updated_at.iso8601
         }
       end

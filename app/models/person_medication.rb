@@ -4,6 +4,7 @@
 # without requiring a formal schedule. This is useful for vitamins, supplements,
 # and over-the-counter medications.
 class PersonMedication < ApplicationRecord
+  include PortableIdentifiable
   include TimingRestrictions
   include HouseholdAssignable
   include Pausable

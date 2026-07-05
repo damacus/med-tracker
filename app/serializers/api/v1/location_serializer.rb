@@ -10,6 +10,7 @@ module Api
       def as_json(*)
         {
           id: location.id,
+          portable_id: location.portable_id,
           name: location.name,
           description: location.description,
           updated_at: location.updated_at.iso8601

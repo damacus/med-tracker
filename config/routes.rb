@@ -18,6 +18,10 @@ Rails.application.routes.draw do
         resources :person_medications, only: %i[index show create update]
         resources :medication_takes, only: %i[index create]
         resource :notification_preference, only: %i[show update]
+        get :portable_export, to: 'portable_exports#show'
+        get :mobile_snapshot, to: 'mobile_snapshots#show'
+        post 'portable_imports/dry_run', to: 'portable_imports#dry_run'
+        post :portable_imports, to: 'portable_imports#create'
       end
     end
   end

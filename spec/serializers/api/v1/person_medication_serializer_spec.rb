@@ -7,7 +7,9 @@ RSpec.describe Api::V1::PersonMedicationSerializer do
     pm = create(:person_medication, dose_cycle: :daily)
     json = described_class.new(pm).as_json
     expect(json).to include(
-      id: pm.id, person_id: pm.person_id, medication_id: pm.medication_id,
+      id: pm.id, portable_id: pm.portable_id, person_id: pm.person_id,
+      person_portable_id: pm.person.portable_id, medication_id: pm.medication_id,
+      medication_portable_id: pm.medication.portable_id,
       dose_unit: pm.dose_unit, dose_cycle: 'daily',
       administration_kind: pm.administration_kind, notes: pm.notes, position: pm.position,
       active: true, paused: false,

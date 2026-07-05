@@ -16,15 +16,25 @@ module Api
       attr_reader :preference
 
       def base_attributes
+        identity_attributes.merge(notification_flags).merge(updated_at: preference.updated_at.iso8601)
+      end
+
+      def identity_attributes
         {
           id: preference.id,
+          portable_id: preference.portable_id,
           person_id: preference.person_id,
+          person_portable_id: preference.person&.portable_id
+        }
+      end
+
+      def notification_flags
+        {
           enabled: preference.enabled,
           dose_due_enabled: preference.dose_due_enabled,
           missed_dose_enabled: preference.missed_dose_enabled,
           low_stock_enabled: preference.low_stock_enabled,
-          private_text_enabled: preference.private_text_enabled,
-          updated_at: preference.updated_at.iso8601
+          private_text_enabled: preference.private_text_enabled
         }
       end
 

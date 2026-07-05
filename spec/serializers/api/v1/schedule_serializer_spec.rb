@@ -7,7 +7,9 @@ RSpec.describe Api::V1::ScheduleSerializer do
     schedule = create(:schedule)
     json = described_class.new(schedule).as_json
     expect(json).to include(
-      id: schedule.id, person_id: schedule.person_id, medication_id: schedule.medication_id,
+      id: schedule.id, portable_id: schedule.portable_id, person_id: schedule.person_id,
+      person_portable_id: schedule.person.portable_id, medication_id: schedule.medication_id,
+      medication_portable_id: schedule.medication.portable_id,
       frequency: schedule.frequency, dose_cycle: schedule.dose_cycle, active: schedule.active?, paused: false,
       max_daily_doses: schedule.max_daily_doses, min_hours_between_doses: schedule.min_hours_between_doses
     )

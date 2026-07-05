@@ -15,14 +15,7 @@ RSpec.describe 'API v1 auth sessions' do
     end
 
     def create_api_household_for(user)
-      household = user.person.household
-      membership = household.household_memberships.find_or_initialize_by(account: user.person.account)
-      membership.update!(
-        person: user.person,
-        role: :owner,
-        status: :active
-      )
-      household
+      ensure_api_household_for(user)
     end
 
     it 'returns access and refresh tokens with the current user payload' do
@@ -59,7 +52,7 @@ RSpec.describe 'API v1 auth sessions' do
 
       api_session = ApiSession.order(:id).last
       expect(response).to have_http_status(:created)
-      expect(api_session.household_membership).to eq(household.household_memberships.find_by!(account: account))
+      expect(api_session.household_membership).to eq(account.household_memberships.active.sole)
       expect(response.parsed_body.dig('data', 'household', 'id')).to eq(household.id)
     end
 

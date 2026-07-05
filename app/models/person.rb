@@ -2,6 +2,8 @@
 
 # Person captures an individual's demographic details and their medication plan.
 class Person < ApplicationRecord
+  include PortableIdentifiable
+
   attr_accessor :primary_location
 
   # Audit trail for patient/carer demographic changes

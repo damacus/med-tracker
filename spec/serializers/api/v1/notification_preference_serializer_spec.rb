@@ -6,7 +6,8 @@ RSpec.describe Api::V1::NotificationPreferenceSerializer do
   it 'serialises the preference with HH:MM:SS period times' do
     preference = create(:notification_preference, enabled: true, morning_time: '08:30', night_time: nil)
     expect(described_class.new(preference).as_json).to include(
-      id: preference.id, person_id: preference.person_id, enabled: true,
+      id: preference.id, portable_id: preference.portable_id, person_id: preference.person_id,
+      person_portable_id: preference.person.portable_id, enabled: true,
       updated_at: preference.updated_at.iso8601, morning_time: '08:30:00', night_time: nil
     )
   end
