@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'API v1 people' do
+RSpec.describe Api::V1::PeopleController do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :carer_relationships
 
   let(:user) { users(:jane) }
