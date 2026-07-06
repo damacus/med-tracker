@@ -18,9 +18,11 @@ RSpec.describe Components::PersonMedications::Modal, type: :component do
 
     rendered = render_inline(
       described_class.new(
-        person_medication: person_medication,
-        person: person,
-        medications: [medication]
+        described_class::Props.new(
+          person_medication: person_medication,
+          person: person,
+          medications: [medication]
+        )
       )
     )
 
@@ -40,9 +42,11 @@ RSpec.describe Components::PersonMedications::Modal, type: :component do
 
     payload = rendered_dose_options(
       described_class.new(
-        person_medication: person_medication,
-        person: person,
-        medications: [medication]
+        described_class::Props.new(
+          person_medication: person_medication,
+          person: person,
+          medications: [medication]
+        )
       )
     )
 
@@ -67,8 +71,14 @@ RSpec.describe Components::PersonMedications::Modal, type: :component do
     person_medication = build(:person_medication, person: person, medication: medication)
     back_path = route_helpers.add_medication_person_path(person, household_slug: 'test-household')
     rendered = render_inline(
-      described_class.new(person_medication: person_medication, person: person, medications: [medication],
-                          back_path: back_path)
+      described_class.new(
+        described_class::Props.new(
+          person_medication: person_medication,
+          person: person,
+          medications: [medication],
+          back_path: back_path
+        )
+      )
     )
 
     rendered.at_css("a[href='#{back_path}']")
