@@ -8,20 +8,11 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include RubyUI
 
-      Props = Data.define(:person_medication, :person, :medications, :title, :editing, :back_path) do
-        # rubocop:disable Metrics/ParameterLists
-        def initialize(person_medication:, person:, medications:, title: nil, editing: false, back_path: nil)
-          # rubocop:enable Metrics/ParameterLists
-          super(
-            person_medication: person_medication,
-            person: person,
-            medications: medications,
-            title: title,
-            editing: editing,
-            back_path: back_path
-          )
-        end
-      end
+Props = Data.define(:person_medication, :person, :medications, :title, :editing, :back_path) do
+  def initialize(person_medication:, person:, medications:, title: nil, editing: false, back_path: nil)
+    super
+  end
+end
 
       delegate :person_medication, :person, :medications, :editing, :back_path, to: :@props
 
