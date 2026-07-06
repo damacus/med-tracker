@@ -18,35 +18,44 @@ module ExternalLookup
     private
 
     def version_attrs(source:, event:, query:, result_status:, **details)
+      context = paper_trail_context
+
       {
         item_type: ITEM_TYPE,
         item_id: 0,
         event: "#{source}/#{event}",
         object: object_attrs(query:, result_status:, **details).to_json,
-        whodunnit: PaperTrail.request.whodunnit,
-        ip: PaperTrail.request.controller_info&.dig(:ip),
-        request_id: PaperTrail.request.controller_info&.dig(:request_id),
-        household_id: household_id,
-        actor_membership_id: actor_membership_id,
+        whodunnit: context[:whodunnit],
+        ip: context[:ip],
+        request_id: context[:request_id],
+        household_id: context[:household_id],
+        actor_membership_id: context[:actor_membership_id],
         created_at: Time.current
       }
     end
 
     def object_attrs(query:, result_status:, **details)
+      normalized_query = query.to_s
+
       {
-        query: query.to_s,
-        query_hash: Digest::SHA256.hexdigest(query.to_s.strip.downcase),
+        query: normalized_query,
+        query_hash: Digest::SHA256.hexdigest(normalized_query.strip.downcase),
         result_status: result_status,
         result_count: details.fetch(:result_count, 0)
       }.merge(details.fetch(:metadata, {}))
     end
 
-    def household_id
-      PaperTrail.request.controller_info&.dig(:household_id) || Current.household&.id
-    end
+    def paper_trail_context
+      request = PaperTrail.request
+      controller_info = request.controller_info
 
-    def actor_membership_id
-      PaperTrail.request.controller_info&.dig(:actor_membership_id) || Current.membership&.id
+      {
+        whodunnit: request.whodunnit,
+        ip: controller_info&.dig(:ip),
+        request_id: controller_info&.dig(:request_id),
+        household_id: controller_info&.dig(:household_id) || Current.household&.id,
+        actor_membership_id: controller_info&.dig(:actor_membership_id) || Current.membership&.id
+      }
     end
   end
 end
