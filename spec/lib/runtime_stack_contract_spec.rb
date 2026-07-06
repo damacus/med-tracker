@@ -26,8 +26,9 @@ RSpec.describe RuntimeStackContract do
     expect(read_file('.ruby-version').strip).to eq("ruby-#{expected_ruby_version}")
     expect(read_file('Dockerfile')).to start_with("FROM ruby:#{expected_ruby_version}-slim-trixie AS base")
     expect(ci_values('ruby-version')).to contain_exactly(expected_ruby_version)
-    expect(read_file('AGENTS.md')).to include("- Ruby #{expected_ruby_version}")
-    expect(read_file('agents.md')).to include("- Ruby #{expected_ruby_version}")
+    agent_guide_paths.each do |path|
+      expect(read_file(path)).to include("- Ruby #{expected_ruby_version}")
+    end
   end
 
   it 'keeps Node runtime metadata aligned across Docker and CI' do
@@ -45,7 +46,7 @@ RSpec.describe RuntimeStackContract do
   end
 
   it 'documents locked dependency versions in both agent guides' do
-    ['AGENTS.md', 'agents.md'].each do |path|
+    agent_guide_paths.each do |path|
       document = read_file(path)
 
       expect(document).to include("- Rails #{expected_versions.fetch(:rails)}")
@@ -57,6 +58,14 @@ RSpec.describe RuntimeStackContract do
 
   def read_file(path)
     Rails.root.join(path).read
+  end
+
+  def agent_guide_paths
+    paths = ['agents.md']
+    uppercase_path = Rails.root.join('AGENTS.md')
+
+    paths << 'AGENTS.md' if uppercase_path.exist? && !File.identical?(uppercase_path, Rails.root.join('agents.md'))
+    paths
   end
 
   def uncommented_file(path)
