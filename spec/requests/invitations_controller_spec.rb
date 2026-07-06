@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
-RSpec.describe InvitationsController, type: :request do
+RSpec.describe InvitationsController do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :carer_relationships
 
   describe 'GET #accept' do
@@ -18,7 +20,9 @@ RSpec.describe InvitationsController, type: :request do
       )
     end
     let(:membership) { household.household_memberships.sole }
-    let(:invitation) { FactoryBot.create(:household_invitation, household: household, invited_by_membership: membership) }
+    let(:invitation) do
+      create(:household_invitation, household: household, invited_by_membership: membership)
+    end
 
     it 'renders the accept invitation view for a valid token' do
       get accept_invitation_path(token: invitation.token)
@@ -34,10 +38,10 @@ RSpec.describe InvitationsController, type: :request do
       expect(response.body).to include('This invitation link is invalid or has expired.')
     end
 
-    it 'raises ActionController::ParameterMissing when token is missing' do
-      expect do
-        get accept_invitation_path
-      end.to raise_error(ActionController::ParameterMissing)
+    it 'returns a 400 Bad Request when token is missing' do
+      get accept_invitation_path
+
+      expect(response).to have_http_status(:bad_request)
     end
   end
 end
