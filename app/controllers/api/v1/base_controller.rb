@@ -131,9 +131,6 @@ module Api
 
         relation = includes ? scope.includes(*Array(includes)) : scope
 
-        # ⚡ Bolt Optimization: Use `scope.count` instead of `relation.count`
-        # Calling count on the `scope` avoids triggering unnecessary LEFT OUTER JOINs
-        # that `.includes` would otherwise generate, resulting in a faster, cleaner COUNT query.
         total_count = scope.count
 
         records = relation.limit(per_page).offset((page - 1) * per_page)
