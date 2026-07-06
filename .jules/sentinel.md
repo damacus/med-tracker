@@ -18,3 +18,7 @@
 **Vulnerability:** DOM-based Stored XSS in `app/javascript/controllers/schedule_form_controller.js`. User-controlled dosage properties were interpolated directly into a string mapped to an HTML payload which was then directly assigned to `element.innerHTML`, executing malicious inputs.
 **Learning:** Raw Javascript template literals injected into `.innerHTML` are dangerous. Even if the expected value is alphanumeric (like unit amounts), it must be treated as untrusted and safely escaped. When writing custom escape methods, ensure quotes (`"` and `'`) are covered so attribute injection attacks are also prevented.
 **Prevention:** Use a robust `escapeHtml` function that replaces `&, <, >, ", '` with their entity equivalents. Apply escaping strictly to the output context (HTML strings) while using raw values for logical internal state comparisons to avoid breaking app functionality.
+
+**Vulnerability:** Insecure Randomness for Client UUIDs
+**Learning:** `Math.random()` should not be used as a fallback for generating UUIDs, as it is predictable and not cryptographically secure, which could lead to ID collisions or predictability.
+**Prevention:** Always use a Cryptographically Secure Pseudo-Random Number Generator (CSPRNG) like `window.crypto.getRandomValues()` when generating unique identifiers in the client-side fallback if `window.crypto.randomUUID()` is unavailable.

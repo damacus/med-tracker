@@ -99,7 +99,9 @@ export async function refreshSnapshot(snapshotUrl, tenantKey = defaultTenantKey(
 export function buildClientUuid() {
   if (window.crypto?.randomUUID) return window.crypto.randomUUID()
 
-  return `offline-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+    (c ^ window.crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+  )
 }
 
 export async function queueTake(attributes, tenantKey = defaultTenantKey()) {
