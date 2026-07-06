@@ -93,9 +93,19 @@ class HealthEventsController < ApplicationController
 
   def replace_medication_links
     @health_event.health_event_medications.destroy_all
-    selected_medications.each do |medication|
-      @health_event.health_event_medications.create!(medication: medication)
+    return if selected_medications.empty?
+
+    records = selected_medications.map do |medication|
+      {
+        health_event_id: @health_event.id,
+        medication_id: medication.id,
+        medication_name: medication.name,
+        household_id: @health_event.household_id,
+        created_at: Time.current,
+        updated_at: Time.current
+      }
     end
+    HealthEventMedication.insert_all!(records) # rubocop:disable Rails/SkipsModelValidations
   end
 
   def health_event_params
