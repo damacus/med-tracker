@@ -44,19 +44,10 @@ class LocationsController < ApplicationController
     if @location.save
       respond_to do |format|
         format.html { redirect_to @location, notice: t('locations.created') }
-        format.turbo_stream do
-          flash.now[:notice] = t('locations.created')
-          render turbo_stream: location_main_content_streams(@location.reload)
-        end
+        format.turbo_stream { render_create_stream }
       end
     else
-      respond_to do |format|
-        format.html { render new_location_form, status: :unprocessable_content }
-        format.turbo_stream do
-          render turbo_stream: turbo_stream.replace('main-content', new_location_form),
-                 status: :unprocessable_content
-        end
-      end
+      render_error(new_location_form)
     end
   end
 
@@ -65,19 +56,10 @@ class LocationsController < ApplicationController
     if @location.update(location_params)
       respond_to do |format|
         format.html { redirect_to safe_redirect_path(params[:return_to]) || @location, notice: t('locations.updated') }
-        format.turbo_stream do
-          flash.now[:notice] = t('locations.updated')
-          render turbo_stream: location_main_content_streams(@location.reload)
-        end
+        format.turbo_stream { render_update_stream }
       end
     else
-      respond_to do |format|
-        format.html { render edit_location_form, status: :unprocessable_content }
-        format.turbo_stream do
-          render turbo_stream: turbo_stream.replace('main-content', edit_location_form),
-                 status: :unprocessable_content
-        end
-      end
+      render_error(edit_location_form)
     end
   end
 
@@ -87,14 +69,7 @@ class LocationsController < ApplicationController
     @location.destroy
     respond_to do |format|
       format.html { redirect_to locations_url, notice: t('locations.deleted') }
-      format.turbo_stream do
-        flash.now[:notice] = t('locations.deleted')
-        render turbo_stream: [
-          turbo_stream.remove(tenant_dom_target("location_#{location_id}")),
-          turbo_stream.remove(tenant_dom_target("location_show_#{location_id}")),
-          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-        ]
-      end
+      format.turbo_stream { render_destroy_stream(location_id) }
     end
   end
 
@@ -148,5 +123,35 @@ class LocationsController < ApplicationController
 
   def available_people_for_location(location)
     policy_scope(Person).where.not(id: location.member_ids).order(:name)
+  end
+
+  def render_create_stream
+    flash.now[:notice] = t('locations.created')
+    render turbo_stream: location_main_content_streams(@location.reload)
+  end
+
+  def render_update_stream
+    flash.now[:notice] = t('locations.updated')
+    render turbo_stream: location_main_content_streams(@location.reload)
+  end
+
+  def render_destroy_stream(location_id)
+    flash.now[:notice] = t('locations.deleted')
+    render turbo_stream: [
+      turbo_stream.remove(tenant_dom_target("location_#{location_id}")),
+      turbo_stream.remove(tenant_dom_target("location_show_#{location_id}")),
+      turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+    ]
+  end
+
+  def render_error(form)
+    respond_to do |format|
+      format.html { render form, status: :unprocessable_content }
+      format.turbo_stream { render_error_stream(form) }
+    end
+  end
+
+  def render_error_stream(form)
+    render turbo_stream: turbo_stream.replace('main-content', form), status: :unprocessable_content
   end
 end
