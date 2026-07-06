@@ -91,7 +91,7 @@ RSpec.describe 'API v1 schedules' do
            as: :json
 
       expect(response).to have_http_status(:unprocessable_content)
-      expect(response.parsed_body.dig('error', 'errors')).to include('schedule_type')
+      expect(response.parsed_body.dig('error', 'errors')).to include('dose_amount', 'dose_unit', 'end_date')
     end
   end
 
