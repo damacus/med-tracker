@@ -45,7 +45,7 @@ RSpec.describe Api::V1::BaseController do
       revoked_at: nil,
       access_expires_at: 1.day.from_now,
       account: account,
-      household_membership: instance_double(HouseholdMembership, active?: true)
+      household_membership: instance_double(HouseholdMembership, active?: true, household: instance_double(Household, id: 1))
     )
   end
 
