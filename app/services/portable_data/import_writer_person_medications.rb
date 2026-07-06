@@ -34,11 +34,13 @@ module PortableData
     end
 
     def person_medication_state_attributes(row)
-      {
+      attributes = {
         administration_kind: row[:administration_kind].presence || :as_needed,
         active: row.fetch(:active, true),
         notes: row[:notes]
       }
+      attributes[:position] = row[:position] if row.key?(:position) && !row[:position].nil?
+      attributes
     end
   end
 end

@@ -2,6 +2,10 @@
 
 module PortableData
   class Importer
+    RECORD_TYPES = %w[
+      people locations medications dosage_options schedules person_medications medication_takes notification_preferences
+    ].freeze
+
     Result = Data.define(:applied, :counts, :conflicts, :errors) do
       def applied? = applied
     end
@@ -40,16 +44,92 @@ module PortableData
     def validate_payload!
       raise Error, 'Unsupported portable data format' unless payload[:format] == Exporter::FORMAT
       raise Error, 'Portable data records are required' unless payload[:records].is_a?(Hash)
+
+      validate_record_collections!
     end
 
     def authorize_import!
       return if membership&.owner? || membership&.administrator?
 
-      payload_person_ids = records(:people).pluck(:portable_id)
+      payload_person_ids = referenced_person_portable_ids
       manageable_ids = manageable_payload_person_ids(payload_person_ids)
       return if payload_person_ids.present? && (payload_person_ids - manageable_ids).empty?
 
       raise Pundit::NotAuthorizedError
+    end
+
+    def validate_record_collections!
+      raise Error, unsupported_record_types_message if unknown_record_types.any?
+
+      payload[:records].each do |record_type, rows|
+        validate_record_collection!(record_type, rows)
+      end
+    end
+
+    def unknown_record_types
+      @unknown_record_types ||= payload[:records].keys.map(&:to_s) - RECORD_TYPES
+    end
+
+    def unsupported_record_types_message
+      "Unsupported portable record types: #{unknown_record_types.sort.join(', ')}"
+    end
+
+    def validate_record_collection!(record_type, rows)
+      raise Error, "#{record_type} must be an array" unless rows.is_a?(Array)
+
+      rows.each_with_index do |row, index|
+        validate_record_row!(record_type, row, index)
+      end
+    end
+
+    def validate_record_row!(record_type, row, index)
+      raise Error, "#{record_type} must contain objects" unless row.respond_to?(:to_h)
+
+      portable_id = row.to_h.with_indifferent_access[:portable_id]
+      raise Error, "#{record_type}[#{index}].portable_id is required" if portable_id.blank?
+    end
+
+    def referenced_person_portable_ids
+      ids = records(:people).pluck(:portable_id)
+      ids.concat(records(:schedules).pluck(:person_portable_id))
+      ids.concat(records(:person_medications).pluck(:person_portable_id))
+      ids.concat(records(:notification_preferences).pluck(:person_portable_id))
+      ids.concat(medication_take_person_portable_ids)
+      ids.compact_blank.uniq
+    end
+
+    def medication_take_person_portable_ids
+      records(:medication_takes).filter_map do |row|
+        portable_id_for_medication_take_source(row)
+      end
+    end
+
+    def portable_id_for_medication_take_source(row)
+      source_portable_id = row[:source_portable_id]
+      case row[:source_type]
+      when 'schedule'
+        person_portable_id_for_schedule(source_portable_id)
+      when 'person_medication'
+        person_portable_id_for_person_medication(source_portable_id)
+      end
+    end
+
+    def person_portable_id_for_schedule(portable_id)
+      schedule_row_for(portable_id)&.fetch(:person_portable_id, nil) ||
+        Schedule.find_by(household: household, portable_id: portable_id)&.person&.portable_id
+    end
+
+    def person_portable_id_for_person_medication(portable_id)
+      person_medication_row_for(portable_id)&.fetch(:person_portable_id, nil) ||
+        PersonMedication.find_by(household: household, portable_id: portable_id)&.person&.portable_id
+    end
+
+    def schedule_row_for(portable_id)
+      records(:schedules).find { |row| row[:portable_id] == portable_id }
+    end
+
+    def person_medication_row_for(portable_id)
+      records(:person_medications).find { |row| row[:portable_id] == portable_id }
     end
 
     def manageable_payload_person_ids(payload_person_ids)
@@ -82,7 +162,7 @@ module PortableData
 
     def apply_import
       ActiveRecord::Base.transaction do
-        ImportWriter.new(household: household, payload: payload).call
+        ImportWriter.new(household: household, membership: membership, payload: payload).call
         record_audit_event
       end
 

@@ -139,6 +139,61 @@ RSpec.describe PortableData::Importer do
     ).call
   end
 
+  def member_membership(household, person:)
+    household.household_memberships.create!(
+      account: account("portable-import-member-#{SecureRandom.hex(4)}@example.test"),
+      person: person,
+      role: :member,
+      status: :active
+    )
+  end
+
+  def grant_manage_access(household:, membership:, person:)
+    PersonAccessGrant.create!(
+      household: household,
+      household_membership: membership,
+      person: person,
+      access_level: :manage,
+      relationship_type: :self,
+      granted_by_membership: membership
+    )
+  end
+
+  def payload_with_unmanaged_schedule_reference(household:, manageable_person:, unmanaged_person:)
+    medication = create(:medication, household: household, portable_id: 'existing-medication-portable')
+    payload = solo_person_payload_for(manageable_person)
+    payload[:records][:schedules] = [unmanaged_schedule_row(unmanaged_person, medication)]
+    payload
+  end
+
+  def solo_person_payload_for(person)
+    payload = portable_payload.deep_dup
+    empty_record_types.each { |record_type| payload[:records][record_type] = [] }
+    payload[:records][:people] = [
+      payload[:records][:people].first.merge(portable_id: person.portable_id)
+    ]
+    payload
+  end
+
+  def empty_record_types
+    %i[
+      locations medications dosage_options schedules person_medications medication_takes notification_preferences
+    ]
+  end
+
+  def unmanaged_schedule_row(unmanaged_person, medication)
+    {
+      portable_id: 'unmanaged-schedule-portable',
+      person_portable_id: unmanaged_person.portable_id,
+      medication_portable_id: medication.portable_id,
+      dose_amount: 1,
+      dose_unit: 'tablet',
+      schedule_type: 'daily',
+      start_date: '2026-01-01',
+      end_date: '2026-12-31'
+    }
+  end
+
   def portable_record_counts
     [Person, Location, Medication, MedicationDosageOption, Schedule, PersonMedication, MedicationTake,
      NotificationPreference].index_with(&:count)
@@ -178,6 +233,43 @@ RSpec.describe PortableData::Importer do
     expect(take.schedule.portable_id).to eq('schedule-portable-1')
   end
 
+  it 'grants the importing membership manage access to imported people' do
+    household = create(:household)
+    membership = owner_membership(household)
+
+    result = import_result(household: household, membership: membership, dry_run: false)
+
+    imported_person = Person.find_by!(household: household, portable_id: 'person-portable-1')
+    expect(result).to be_applied
+    expect(
+      PersonAccessGrant.active.exists?(
+        household: household,
+        household_membership: membership,
+        person: imported_person,
+        access_level: :manage
+      )
+    ).to be(true)
+  end
+
+  it 'rejects member imports that reference unmanaged household people outside the top-level people array' do
+    household = create(:household)
+    manageable_person = create(:person, household: household, portable_id: 'manageable-person-portable')
+    unmanaged_person = create(:person, household: household, portable_id: 'unmanaged-person-portable')
+    membership = member_membership(household, person: manageable_person)
+    grant_manage_access(household: household, membership: membership, person: manageable_person)
+    payload = payload_with_unmanaged_schedule_reference(
+      household: household,
+      manageable_person: manageable_person,
+      unmanaged_person: unmanaged_person
+    )
+
+    expect do
+      import_result(household: household, membership: membership, payload: payload, dry_run: false)
+    end.to raise_error(Pundit::NotAuthorizedError)
+
+    expect(Schedule.exists?(household: household, portable_id: 'unmanaged-schedule-portable')).to be(false)
+  end
+
   it 'rejects bundles that contain Rails numeric IDs' do
     household = create(:household)
     membership = owner_membership(household)
@@ -190,6 +282,44 @@ RSpec.describe PortableData::Importer do
     expect(result).not_to be_applied
     expect(result.errors.join).to include('Rails numeric IDs')
     expect(Person.exists?(portable_id: 'person-portable-1')).to be(false)
+  end
+
+  it 'rejects dependent people whose bundle marks them as having capacity' do
+    household = create(:household)
+    membership = owner_membership(household)
+    payload = portable_payload.deep_dup
+    payload[:records][:people].first[:person_type] = 'minor'
+    payload[:records][:people].first[:date_of_birth] = 10.years.ago.to_date.iso8601
+    payload[:records][:people].first[:has_capacity] = true
+
+    result = import_result(household: household, membership: membership, payload: payload, dry_run: false)
+
+    expect(result).not_to be_applied
+    expect(result.errors.join).to include('has_capacity must be false')
+    expect(Person.exists?(portable_id: 'person-portable-1')).to be(false)
+  end
+
+  it 'rejects malformed record rows before applying data' do
+    household = create(:household)
+    membership = owner_membership(household)
+    payload = portable_payload.deep_dup
+    payload[:records][:people] = ['not-a-record']
+
+    expect do
+      import_result(household: household, membership: membership, payload: payload, dry_run: false)
+    end.to raise_error(PortableData::Importer::Error, /people must contain objects/)
+  end
+
+  it 'preserves person medication ordering during import' do
+    household = create(:household)
+    membership = owner_membership(household)
+    payload = portable_payload.deep_dup
+    payload[:records][:person_medications].first[:position] = 7
+
+    result = import_result(household: household, membership: membership, payload: payload, dry_run: false)
+
+    expect(result).to be_applied
+    expect(PersonMedication.find_by!(portable_id: 'person-medication-portable-1').position).to eq(7)
   end
 
   it 'reports target conflicts before applying records' do

@@ -5,8 +5,9 @@ module PortableData
     include ImportWriterPersonMedications
     include ImportWriterRecords
 
-    def initialize(household:, payload:)
+    def initialize(household:, membership:, payload:)
       @household = household
+      @membership = membership
       @payload = payload
     end
 
@@ -25,7 +26,7 @@ module PortableData
 
     private
 
-    attr_reader :household, :payload
+    attr_reader :household, :membership, :payload
 
     def records(name)
       Array(payload.dig(:records, name)).map(&:with_indifferent_access)
@@ -45,6 +46,7 @@ module PortableData
         person.primary_location = location_by_portable_id(Array(row[:location_portable_ids]).first)
         person.assign_attributes(person_attributes(row))
         person.save!
+        grant_imported_person_access(person)
       end
     end
 
@@ -54,8 +56,26 @@ module PortableData
         email: row[:email],
         date_of_birth: row[:date_of_birth],
         person_type: row[:person_type].presence || :adult,
-        has_capacity: row.fetch(:has_capacity, true)
+        has_capacity: imported_capacity(row)
       }
+    end
+
+    def imported_capacity(row)
+      return false if row[:person_type].to_s.in?(%w[minor dependent_adult])
+
+      row.fetch(:has_capacity, true)
+    end
+
+    def grant_imported_person_access(person)
+      return if membership.blank?
+
+      grant = household.person_access_grants
+                       .where(revoked_at: nil)
+                       .find_or_initialize_by(household_membership: membership, person: person)
+      grant.access_level = :manage
+      grant.relationship_type ||= :family_member
+      grant.granted_by_membership ||= membership
+      grant.save!
     end
 
     def import_location_memberships

@@ -41,6 +41,10 @@ RSpec.describe 'API v1 portable data' do
     PortableData::Encryptor.encrypt(portable_import_payload, passphrase: passphrase)
   end
 
+  def portable_headers(headers = self.headers)
+    headers.merge('X-MedTracker-Portable-Passphrase' => passphrase)
+  end
+
   def add_backup_owner(household)
     account = Account.create!(
       email: "portable-backup-owner-#{SecureRandom.hex(4)}@example.test",
@@ -51,7 +55,7 @@ RSpec.describe 'API v1 portable data' do
 
   it 'requires bearer auth for portable export' do
     get "/api/v1/households/#{household_id}/portable_export",
-        params: { passphrase: passphrase },
+        headers: portable_headers({}),
         as: :json
 
     expect(response).to have_http_status(:unauthorized)
@@ -59,8 +63,7 @@ RSpec.describe 'API v1 portable data' do
 
   it 'returns an encrypted portable export for the current household' do
     get "/api/v1/households/#{household_id}/portable_export",
-        params: { passphrase: passphrase },
-        headers: headers,
+        headers: portable_headers,
         as: :json
 
     expect(response).to have_http_status(:ok)
@@ -71,6 +74,16 @@ RSpec.describe 'API v1 portable data' do
     expect(response.body).not_to include(medications(:paracetamol).name)
     expect(payload.dig('records', 'people')).not_to be_empty
     expect(payload.dig('records', 'people').first).to include('portable_id')
+  end
+
+  it 'rejects portable export passphrases sent in query params' do
+    get "/api/v1/households/#{household_id}/portable_export",
+        params: { passphrase: passphrase },
+        headers: headers,
+        as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body.dig('error', 'message')).to eq('Portable passphrase header is required')
   end
 
   it 'returns a portable mobile snapshot with portable relationship fields' do
@@ -91,8 +104,8 @@ RSpec.describe 'API v1 portable data' do
   it 'dry-runs encrypted portable imports without writing records' do
     expect do
       post "/api/v1/households/#{household_id}/portable_imports/dry_run",
-           params: { passphrase: passphrase, bundle: encrypted_import_payload },
-           headers: headers,
+           params: { bundle: encrypted_import_payload },
+           headers: portable_headers,
            as: :json
     end.not_to change(Person, :count)
 
@@ -112,8 +125,8 @@ RSpec.describe 'API v1 portable data' do
     before_counts = [Person.count, Location.count]
 
     post "/api/v1/households/#{household_id}/portable_imports",
-         params: { passphrase: passphrase, bundle: encrypted_import_payload },
-         headers: api_auth_headers(raw_token),
+         params: { bundle: encrypted_import_payload },
+         headers: portable_headers(api_auth_headers(raw_token)),
          as: :json
 
     expect(response).to have_http_status(:created)
@@ -177,12 +190,20 @@ RSpec.describe 'API v1 portable data' do
     payload[:records][:people].first[:id] = people(:admin).id
 
     post "/api/v1/households/#{household_id}/portable_imports",
-         params: { passphrase: passphrase, bundle: PortableData::Encryptor.encrypt(payload, passphrase: passphrase) },
-         headers: headers,
+         params: { bundle: PortableData::Encryptor.encrypt(payload, passphrase: passphrase) },
+         headers: portable_headers,
          as: :json
 
     expect(response).to have_http_status(:unprocessable_content)
     expect(response.parsed_body.dig('data', 'errors').join).to include('Rails numeric IDs')
     expect(Person.exists?(portable_id: 'request-person-portable-1')).to be(false)
+  end
+
+  it 'filters portable passphrase parameters from logs if a client sends them' do
+    filtered = ActiveSupport::ParameterFilter
+               .new(Rails.application.config.filter_parameters)
+               .filter(passphrase: passphrase)
+
+    expect(filtered.fetch(:passphrase)).to eq('[FILTERED]')
   end
 end

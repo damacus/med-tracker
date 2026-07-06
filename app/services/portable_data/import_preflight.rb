@@ -20,7 +20,7 @@ module PortableData
     attr_reader :household, :payload
 
     def preflight_errors
-      rails_id_errors + missing_reference_errors
+      rails_id_errors + person_capacity_errors + missing_reference_errors
     end
 
     def rails_id_errors
@@ -36,6 +36,15 @@ module PortableData
 
     def rails_id_key?(key)
       key == 'id' || (key.end_with?('_id') && key.exclude?('portable'))
+    end
+
+    def person_capacity_errors
+      records(:people).each_with_index.filter_map do |row, index|
+        next unless row[:person_type].to_s.in?(%w[minor dependent_adult])
+        next unless row.key?(:has_capacity) && ActiveModel::Type::Boolean.new.cast(row[:has_capacity])
+
+        "people[#{index}].has_capacity must be false for minors and dependent adults"
+      end
     end
 
     def missing_reference_errors

@@ -38,7 +38,7 @@ module PortableData
     def decrypt(envelope)
       validate_passphrase!
       data = envelope.to_h.with_indifferent_access
-      raise Error, 'Unsupported portable data envelope' unless data[:format] == FORMAT
+      validate_envelope_metadata!(data)
 
       plaintext = encryptor(data.fetch(:salt)).decrypt_and_verify(data.fetch(:ciphertext))
       raise Error, 'Portable data checksum mismatch' unless Digest::SHA256.hexdigest(plaintext) == data[:checksum]
@@ -54,6 +54,12 @@ module PortableData
 
     def validate_passphrase!
       raise Error, 'Passphrase is required' if passphrase.blank?
+    end
+
+    def validate_envelope_metadata!(data)
+      raise Error, 'Unsupported portable data envelope' unless data[:format] == FORMAT
+      raise Error, 'Unsupported portable data envelope' unless data[:cipher] == CIPHER
+      raise Error, 'Unsupported portable data envelope' unless data[:kdf] == 'pbkdf2_sha256'
     end
 
     def encryptor(salt)
