@@ -270,6 +270,19 @@ RSpec.describe PortableData::Importer do
     expect(Schedule.exists?(household: household, portable_id: 'unmanaged-schedule-portable')).to be(false)
   end
 
+  it 'rejects member imports that would create a new person without an existing manage grant' do
+    household = create(:household)
+    manageable_person = create(:person, household: household, portable_id: 'manageable-person-portable')
+    membership = member_membership(household, person: manageable_person)
+    grant_manage_access(household: household, membership: membership, person: manageable_person)
+
+    expect do
+      import_result(household: household, membership: membership, dry_run: false)
+    end.to raise_error(Pundit::NotAuthorizedError)
+
+    expect(Person.exists?(household: household, portable_id: 'person-portable-1')).to be(false)
+  end
+
   it 'rejects bundles that contain Rails numeric IDs' do
     household = create(:household)
     membership = owner_membership(household)
@@ -282,6 +295,60 @@ RSpec.describe PortableData::Importer do
     expect(result).not_to be_applied
     expect(result.errors.join).to include('Rails numeric IDs')
     expect(Person.exists?(portable_id: 'person-portable-1')).to be(false)
+  end
+
+  it 'rejects bundles with unsupported portable data formats' do
+    household = create(:household)
+    membership = owner_membership(household)
+    payload = portable_payload.deep_dup
+    payload[:format] = 'medtracker.portable.v0'
+
+    expect do
+      import_result(household: household, membership: membership, payload: payload, dry_run: false)
+    end.to raise_error(described_class::Error, 'Unsupported portable data format')
+  end
+
+  it 'rejects bundles without record collections' do
+    household = create(:household)
+    membership = owner_membership(household)
+    payload = portable_payload.except(:records)
+
+    expect do
+      import_result(household: household, membership: membership, payload: payload, dry_run: false)
+    end.to raise_error(described_class::Error, 'Portable data records are required')
+  end
+
+  it 'rejects unsupported record collection names' do
+    household = create(:household)
+    membership = owner_membership(household)
+    payload = portable_payload.deep_dup
+    payload[:records][:appointments] = [{ portable_id: 'appointment-portable-1' }]
+
+    expect do
+      import_result(household: household, membership: membership, payload: payload, dry_run: false)
+    end.to raise_error(described_class::Error, 'Unsupported portable record types: appointments')
+  end
+
+  it 'rejects record collections that are not arrays' do
+    household = create(:household)
+    membership = owner_membership(household)
+    payload = portable_payload.deep_dup
+    payload[:records][:people] = { portable_id: 'person-portable-1' }
+
+    expect do
+      import_result(household: household, membership: membership, payload: payload, dry_run: false)
+    end.to raise_error(described_class::Error, 'people must be an array')
+  end
+
+  it 'rejects record rows without portable IDs' do
+    household = create(:household)
+    membership = owner_membership(household)
+    payload = portable_payload.deep_dup
+    payload[:records][:people].first.delete(:portable_id)
+
+    expect do
+      import_result(household: household, membership: membership, payload: payload, dry_run: false)
+    end.to raise_error(described_class::Error, 'people[0].portable_id is required')
   end
 
   it 'rejects dependent people whose bundle marks them as having capacity' do
@@ -316,6 +383,20 @@ RSpec.describe PortableData::Importer do
     payload = portable_payload.deep_dup
     payload[:records][:person_medications].first[:position] = 7
 
+    result = import_result(household: household, membership: membership, payload: payload, dry_run: false)
+
+    expect(result).to be_applied
+    expect(PersonMedication.find_by!(portable_id: 'person-medication-portable-1').position).to eq(7)
+  end
+
+  it 'does not clear existing person medication ordering when an import row has a nil position' do
+    household = create(:household)
+    membership = owner_membership(household)
+    payload = portable_payload.deep_dup
+    payload[:records][:person_medications].first[:position] = 7
+    import_result(household: household, membership: membership, payload: payload, dry_run: false)
+
+    payload[:records][:person_medications].first[:position] = nil
     result = import_result(household: household, membership: membership, payload: payload, dry_run: false)
 
     expect(result).to be_applied

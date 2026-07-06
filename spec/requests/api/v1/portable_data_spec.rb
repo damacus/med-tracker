@@ -87,18 +87,29 @@ RSpec.describe 'API v1 portable data' do
   end
 
   it 'returns a portable mobile snapshot with portable relationship fields' do
-    get "/api/v1/households/#{household_id}/mobile_snapshot",
-        headers: headers,
-        as: :json
+    request_headers = headers
+
+    expect do
+      get "/api/v1/households/#{household_id}/mobile_snapshot",
+          headers: request_headers,
+          as: :json
+    end.to change(SecurityAuditEvent, :count).by(1)
 
     expect(response).to have_http_status(:ok)
     snapshot = response.parsed_body.fetch('data')
     medication = snapshot.dig('records', 'medications').first
+    audit_event = SecurityAuditEvent.order(:created_at).last
 
     expect(snapshot).to include('format' => 'medtracker.portable.v1')
     expect(snapshot.dig('records', 'people').first).to include('portable_id')
     expect(medication).to include('portable_id', 'location_portable_id')
     expect(medication).not_to include('id', 'location_id')
+    expect(audit_event).to have_attributes(
+      household_id: household_id,
+      actor_account_id: user.person.account_id,
+      event_type: 'portable_data.mobile_snapshot_read'
+    )
+    expect(audit_event.metadata).to include('encrypted' => false, 'record_counts' => include('people'))
   end
 
   it 'dry-runs encrypted portable imports without writing records' do

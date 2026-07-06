@@ -4,7 +4,7 @@ module Api
   module V1
     class MobileSnapshotsController < BaseController
       def show
-        render json: { data: exporter.payload }
+        render json: { data: exporter.mobile_snapshot }
       end
 
       private

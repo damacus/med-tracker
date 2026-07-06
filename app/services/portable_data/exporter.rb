@@ -18,6 +18,12 @@ module PortableData
       envelope
     end
 
+    def mobile_snapshot
+      payload.tap do |export_payload|
+        record_audit_event(export_payload, event_type: 'portable_data.mobile_snapshot_read', encrypted: false)
+      end
+    end
+
     def payload
       export_payload
     end
@@ -135,17 +141,17 @@ module PortableData
                                                           .order(:id)
     end
 
-    def record_audit_event(payload)
+    def record_audit_event(payload, event_type: 'portable_data.exported', encrypted: true)
       SecurityAuditEvent.create!(
         household: household,
         actor_account: membership.account,
         actor_membership: membership,
-        event_type: 'portable_data.exported',
+        event_type: event_type,
         request_id: request&.request_id,
         ip: request&.remote_ip,
         metadata: {
           record_counts: record_counts(payload),
-          encrypted: true
+          encrypted: encrypted
         }
       )
     end

@@ -79,6 +79,37 @@ RSpec.describe PortableData::Exporter do
     expect(payload.dig('records', 'medications').pluck('name')).to contain_exactly('Managed Medicine')
   end
 
+  it 'limits owner exports to requested person IDs' do
+    household = create(:household)
+    owner = membership(household: household, role: :owner, email: 'filtered-owner@example.test')
+    included = create_portable_person_graph(household: household, name: 'Included Patient',
+                                            medication_name: 'Included Medicine')
+    create_portable_person_graph(household: household, name: 'Excluded Patient',
+                                 medication_name: 'Excluded Medicine')
+
+    envelope = described_class.new(
+      household: household,
+      membership: owner,
+      passphrase: passphrase,
+      person_ids: [included.id]
+    ).call
+    payload = PortableData::Encryptor.decrypt(envelope, passphrase: passphrase)
+
+    expect(payload.dig('records', 'people').pluck('portable_id')).to contain_exactly(included.portable_id)
+    expect(payload.dig('records', 'medications').pluck('name')).to contain_exactly('Included Medicine')
+  end
+
+  it 'exports no people without a membership access context' do
+    household = create(:household)
+    create_portable_person_graph(household: household, name: 'No Context Patient',
+                                 medication_name: 'No Context Medicine')
+
+    payload = described_class.new(household: household, membership: nil, passphrase: passphrase).payload
+
+    expect(payload.dig(:records, :people)).to be_empty
+    expect(payload.dig(:records, :medications)).to be_empty
+  end
+
   it 'records redacted export audit metadata' do
     household = create(:household)
     owner = membership(household: household, role: :owner, email: 'auditor@example.test')
