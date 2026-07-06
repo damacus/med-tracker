@@ -107,3 +107,4 @@ RSpec.describe 'API v1 medications' do
       expect(response.parsed_body.dig('error', 'errors')).to include('name')
     end
   end
+end
