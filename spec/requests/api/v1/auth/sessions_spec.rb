@@ -120,6 +120,7 @@ RSpec.describe 'API v1 auth sessions' do
 
       expect(response).to have_http_status(:unauthorized)
       expect(response.parsed_body.dig('error', 'code')).to eq('invalid_credentials')
+      expect(response.parsed_body.dig('error', 'request_id')).to eq(response.headers.fetch('X-Request-Id'))
     end
 
     it 'rejects a locked account without creating an API session' do
@@ -149,7 +150,7 @@ RSpec.describe 'API v1 auth sessions' do
              password: 'wrong-password'
            },
            as: :json
-      invalid_credentials_response = [response.status, response.parsed_body]
+      invalid_credentials_response = [response.status, response.parsed_body.fetch('error').slice('code', 'message')]
 
       expect do
         post api_v1_auth_login_path,
@@ -160,7 +161,8 @@ RSpec.describe 'API v1 auth sessions' do
              as: :json
       end.not_to change(ApiSession, :count)
 
-      expect([response.status, response.parsed_body]).to eq(invalid_credentials_response)
+      expect([response.status, response.parsed_body.fetch('error').slice('code', 'message')])
+        .to eq(invalid_credentials_response)
     end
 
     it 'returns the generic invalid credentials response when WebAuthn is configured' do
@@ -178,7 +180,7 @@ RSpec.describe 'API v1 auth sessions' do
              password: 'wrong-password'
            },
            as: :json
-      invalid_credentials_response = [response.status, response.parsed_body]
+      invalid_credentials_response = [response.status, response.parsed_body.fetch('error').slice('code', 'message')]
 
       expect do
         post api_v1_auth_login_path,
@@ -189,7 +191,8 @@ RSpec.describe 'API v1 auth sessions' do
              as: :json
       end.not_to change(ApiSession, :count)
 
-      expect([response.status, response.parsed_body]).to eq(invalid_credentials_response)
+      expect([response.status, response.parsed_body.fetch('error').slice('code', 'message')])
+        .to eq(invalid_credentials_response)
     end
   end
 

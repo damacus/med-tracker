@@ -27,10 +27,12 @@ Follow Red-Green-Refactor — no production code without a failing test first.
 
 ## Stack
 
-- Ruby 3.4
-- Rails 8.1
+- Ruby 4.0.5
+- Rails 8.1.3
 - PostgreSQL 18
+- Bundler 4.0.3
 - RSpec, Capybara, VCR, Rails fixtures
+- Playwright 1.61
 - RubyUI, Phlex, Hotwire, Propshaft
 - RuboCop
 

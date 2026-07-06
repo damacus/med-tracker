@@ -1,0 +1,338 @@
+openapi: 3.1.0
+info:
+  title: MedTracker API
+  version: v1
+  description: Hosted MedTracker API contract for mobile clients, API clients, and portable migration.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/capabilities:
+    get:
+      summary: Describe supported API features and client contracts.
+      security: []
+      responses:
+        '200':
+          description: API capability document.
+  /api/v1/auth/login:
+    post:
+      summary: Exchange development or migration password credentials for API tokens.
+      security: []
+      responses:
+        '201':
+          description: API session created.
+        '401':
+          description: Credentials are invalid or password login is unavailable.
+  /api/v1/auth/refresh:
+    post:
+      summary: Rotate an API session refresh token.
+      security: []
+      responses:
+        '200':
+          description: New access and refresh tokens.
+        '401':
+          description: Refresh token is invalid or expired.
+  /api/v1/auth/logout:
+    delete:
+      summary: Revoke the current API session or app token.
+      responses:
+        '204':
+          description: Credential revoked.
+  /api/v1/households/{household_id}/me:
+    get:
+      summary: Read the current account and person profile for a household session.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Current user profile.
+  /api/v1/households/{household_id}/people:
+    get:
+      summary: List visible people in the household.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: People collection.
+    post:
+      summary: Create a person in the household.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '201':
+          description: Person created.
+  /api/v1/households/{household_id}/people/{id}:
+    get:
+      summary: Read a person.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Person resource.
+    patch:
+      summary: Update a person.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Person updated.
+    put:
+      summary: Replace a person.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Person updated.
+  /api/v1/households/{household_id}/locations:
+    get:
+      summary: List visible locations.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Locations collection.
+  /api/v1/households/{household_id}/locations/{id}:
+    get:
+      summary: Read a location.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Location resource.
+  /api/v1/households/{household_id}/medications:
+    get:
+      summary: List visible medications.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Medications collection.
+    post:
+      summary: Create a medication.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '201':
+          description: Medication created.
+  /api/v1/households/{household_id}/medications/{id}:
+    get:
+      summary: Read a medication.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Medication resource.
+    patch:
+      summary: Update a medication.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Medication updated.
+    put:
+      summary: Replace a medication.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Medication updated.
+  /api/v1/households/{household_id}/schedules:
+    get:
+      summary: List visible schedules.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Schedules collection.
+    post:
+      summary: Create a schedule.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '201':
+          description: Schedule created.
+  /api/v1/households/{household_id}/schedules/{id}:
+    get:
+      summary: Read a schedule.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Schedule resource.
+    patch:
+      summary: Update a schedule.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Schedule updated.
+    put:
+      summary: Replace a schedule.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Schedule updated.
+  /api/v1/households/{household_id}/person_medications:
+    get:
+      summary: List visible person medication assignments.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Person medication collection.
+    post:
+      summary: Create a person medication assignment.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '201':
+          description: Person medication created.
+  /api/v1/households/{household_id}/person_medications/{id}:
+    get:
+      summary: Read a person medication assignment.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Person medication resource.
+    patch:
+      summary: Update a person medication assignment.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Person medication updated.
+    put:
+      summary: Replace a person medication assignment.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Person medication updated.
+  /api/v1/households/{household_id}/medication_takes:
+    get:
+      summary: List visible medication takes.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Medication takes collection.
+    post:
+      summary: Record a medication take.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '201':
+          description: Medication take created.
+  /api/v1/households/{household_id}/notification_preference:
+    get:
+      summary: Read the signed-in person's notification preference.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Notification preference resource.
+    patch:
+      summary: Update the signed-in person's notification preference.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Notification preference updated.
+    put:
+      summary: Replace the signed-in person's notification preference.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Notification preference updated.
+  /api/v1/households/{household_id}/portable_export:
+    get:
+      summary: Export an encrypted portable household bundle.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Encrypted portable bundle.
+  /api/v1/households/{household_id}/mobile_snapshot:
+    get:
+      summary: Read a plaintext mobile sync snapshot over authenticated transport.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Mobile snapshot payload.
+  /api/v1/households/{household_id}/portable_imports/dry_run:
+    post:
+      summary: Validate an encrypted portable import without writing data.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Import validation summary.
+  /api/v1/households/{household_id}/portable_imports:
+    post:
+      summary: Apply an encrypted portable import transactionally.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '201':
+          description: Import applied.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    household_id:
+      name: household_id
+      in: path
+      required: true
+      schema:
+        type: integer
+    id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+            - request_id
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            request_id:
+              type: string
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string

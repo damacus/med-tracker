@@ -3,6 +3,8 @@
 Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
+      get :capabilities, to: 'capabilities#show'
+
       namespace :auth do
         post :login, to: 'sessions#create'
         post :refresh, to: 'sessions#refresh'

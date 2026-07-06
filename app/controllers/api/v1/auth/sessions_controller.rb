@@ -4,6 +4,8 @@ module Api
   module V1
     module Auth
       class SessionsController < ActionController::API
+        include ErrorRendering
+
         def create
           account = Account.find_by(email: params.expect(:email).to_s.strip.downcase)
           household_membership = requested_household_membership(account)
@@ -158,13 +160,19 @@ module Api
         end
 
         def render_invalid_credentials
-          render json: { error: { code: 'invalid_credentials', message: 'Email or password is invalid' } },
-                 status: :unauthorized
+          render_api_error(
+            code: 'invalid_credentials',
+            message: 'Email or password is invalid',
+            status: :unauthorized
+          )
         end
 
         def render_invalid_refresh_token
-          render json: { error: { code: 'invalid_refresh_token', message: 'Refresh token is invalid or expired' } },
-                 status: :unauthorized
+          render_api_error(
+            code: 'invalid_refresh_token',
+            message: 'Refresh token is invalid or expired',
+            status: :unauthorized
+          )
         end
       end
     end
