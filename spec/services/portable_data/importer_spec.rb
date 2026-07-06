@@ -283,6 +283,45 @@ RSpec.describe PortableData::Importer do
     expect(Person.exists?(household: household, portable_id: 'person-portable-1')).to be(false)
   end
 
+  it 'rejects imports without a household membership context' do
+    household = create(:household)
+
+    expect do
+      import_result(household: household, membership: nil, dry_run: false)
+    end.to raise_error(Pundit::NotAuthorizedError)
+  end
+
+  it 'allows member imports when every referenced person is already manageable' do
+    household = create(:household)
+    manageable_person = create(:person, household: household, portable_id: 'manageable-person-portable')
+    membership = member_membership(household, person: manageable_person)
+    grant_manage_access(household: household, membership: membership, person: manageable_person)
+    payload = solo_person_payload_for(manageable_person)
+    payload[:records][:people].first[:location_portable_ids] = []
+
+    result = import_result(household: household, membership: membership, payload: payload)
+
+    expect(result).not_to be_applied
+    expect(result.errors).to be_empty
+  end
+
+  it 'derives person access from person-medication medication take sources' do
+    household = create(:household)
+    membership = owner_membership(household)
+    payload = portable_payload.deep_dup
+    payload[:records][:schedules] = []
+    payload[:records][:medication_takes].first.merge!(
+      source_type: 'person_medication',
+      source_portable_id: 'person-medication-portable-1'
+    )
+
+    result = import_result(household: household, membership: membership, payload: payload, dry_run: false)
+
+    expect(result).to be_applied
+    expect(MedicationTake.find_by!(portable_id: 'take-portable-1').person_medication.portable_id)
+      .to eq('person-medication-portable-1')
+  end
+
   it 'rejects bundles that contain Rails numeric IDs' do
     household = create(:household)
     membership = owner_membership(household)
