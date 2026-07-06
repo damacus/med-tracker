@@ -23,7 +23,7 @@ end
 
 require_relative '../../app/controllers/locations_controller'
 
-RSpec.describe LocationsController, type: :controller do
+RSpec.describe LocationsController do
   it 'inherits from ApplicationController' do
     expect(described_class.ancestors).to include(ApplicationController)
   end
