@@ -38,3 +38,8 @@
 ## 2025-03-09 - Avoid O(N^2) Linear Searches in Nested Loops
 **Learning:** In view components (like `Locations::ShowView`), looping over a collection (e.g. `location.members`) and performing a linear search (`.find { ... }`) on another association inside the loop creates an O(N^2) performance bottleneck, especially if both collections can grow.
 **Action:** Before entering the loop, pre-index the association being searched using `.index_by(&:foreign_key)`. Then, perform O(1) hash lookups inside the loop (e.g. `indexed_hash[item.id]`), effectively reducing the operation to O(N).
+## 2025-03-09 - Avoid Unnecessary LEFT OUTER JOINs in Pagination Count Queries
+
+**Learning:** When using ActiveRecord to paginate a relation that eager loads associations (e.g., `relation = scope.includes(:association)`), calling `relation.count` forces ActiveRecord to execute a complex `SELECT COUNT(DISTINCT base_table.id) FROM base_table LEFT OUTER JOIN ...` query. This overhead is completely unnecessary for a simple pagination count, as the total number of base records does not change based on eager-loaded children.
+
+**Action:** When computing the `total_count` for pagination on an eager-loaded relation, always call `.count` on the original base `scope` instead of the preloaded `relation` (e.g., `total_count = scope.count`). This ensures a clean, fast `SELECT COUNT(*) FROM base_table` query is executed.
