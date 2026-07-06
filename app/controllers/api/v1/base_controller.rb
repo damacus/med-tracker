@@ -130,7 +130,12 @@ module Api
         per_page = params.fetch(:per_page, 20).to_i.clamp(1, 100)
 
         relation = includes ? scope.includes(*Array(includes)) : scope
-        total_count = relation.count
+
+        # ⚡ Bolt Optimization: Use `scope.count` instead of `relation.count`
+        # Calling count on the `scope` avoids triggering unnecessary LEFT OUTER JOINs
+        # that `.includes` would otherwise generate, resulting in a faster, cleaner COUNT query.
+        total_count = scope.count
+
         records = relation.limit(per_page).offset((page - 1) * per_page)
 
         {
