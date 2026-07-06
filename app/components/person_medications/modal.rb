@@ -8,11 +8,11 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include RubyUI
 
-Props = Data.define(:person_medication, :person, :medications, :title, :editing, :back_path) do
-  def initialize(person_medication:, person:, medications:, title: nil, editing: false, back_path: nil)
-    super
-  end
-end
+      Props = Data.define(:person_medication, :person, :medications, :title, :editing, :back_path) do
+        def initialize(person_medication:, person:, medications:, title: nil, editing: false, back_path: nil)
+          super
+        end
+      end
 
       delegate :person_medication, :person, :medications, :editing, :back_path, to: :@props
 
