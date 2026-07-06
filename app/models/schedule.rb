@@ -2,6 +2,7 @@
 
 # Schedule model
 class Schedule < ApplicationRecord
+  include PortableIdentifiable
   include TimingRestrictions
   include ScheduleDoseAvailability
   include HouseholdAssignable
@@ -28,8 +29,7 @@ class Schedule < ApplicationRecord
     weekly: 2,
     specific_dates: 3,
     prn: 4,
-    tapering: 5,
-    every_other_day: 6
+    tapering: 5, every_other_day: 6
   }, prefix: :schedule_type
 
   has_many :medication_takes, dependent: :destroy

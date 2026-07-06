@@ -4,7 +4,10 @@ require 'openssl'
 
 # MedicationTake records when a dose of medication was administered
 class MedicationTake < ApplicationRecord
+  include PortableIdentifiable
   include OtelInstrumented
+
+  attr_accessor :skip_stock_mutation
 
   belongs_to :household, optional: true
   belongs_to :schedule, optional: true
@@ -32,7 +35,7 @@ class MedicationTake < ApplicationRecord
   before_validation :assign_household
   before_validation :assign_taken_from_location
   before_validation :assign_dose_snapshot
-  after_create :decrement_medication_stock
+  after_create :decrement_medication_stock, unless: :skip_stock_mutation
   after_commit :publish_low_stock_threshold_reached, on: :create
 
   # Delegate to get the source (schedule or person_medication)

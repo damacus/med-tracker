@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class NotificationPreference < ApplicationRecord
+  include PortableIdentifiable
+
   has_paper_trail
 
   belongs_to :household, optional: true

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Medication < ApplicationRecord # :nodoc:
+  include PortableIdentifiable
+
   DOSAGE_UNITS = %w[tablet capsule gummy mg ml g mcg IU spray drop sachet pad].freeze
   CATEGORIES = [
     'Analgesic',
@@ -13,8 +15,7 @@ class Medication < ApplicationRecord # :nodoc:
     'Antifungal',
     'Antihistamine',
     'Antihypertensive',
-    'Anti-Inflammatory',
-    'Antiparasitic',
+    'Anti-Inflammatory', 'Antiparasitic',
     'Antipsychotic',
     'Antiviral',
     'Anxiolytic',

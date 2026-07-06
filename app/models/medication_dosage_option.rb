@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class MedicationDosageOption < ApplicationRecord
+  include PortableIdentifiable
+
   self.table_name = 'dosages'
 
   has_paper_trail

@@ -11,11 +11,14 @@ RSpec.describe Api::V1::PersonSerializer do
 
     json = described_class.new(person).as_json
     expect(json).to include(
-      id: person.id, name: 'Alex', email: person.email, person_type: person.person_type,
+      id: person.id, portable_id: person.portable_id, name: 'Alex', email: person.email,
+      person_type: person.person_type,
       has_capacity: person.has_capacity, updated_at: person.updated_at.iso8601,
-      age: person.age, notification_preference_id: preference.id
+      age: person.age, notification_preference_id: preference.id,
+      notification_preference_portable_id: preference.portable_id
     )
     expect(json[:location_ids]).to include(location.id)
+    expect(json[:location_portable_ids]).to include(location.portable_id)
     expect(json[:date_of_birth]).to eq(person.date_of_birth&.iso8601)
   end
 

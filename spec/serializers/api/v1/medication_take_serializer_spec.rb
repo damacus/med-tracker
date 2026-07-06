@@ -6,13 +6,15 @@ RSpec.describe Api::V1::MedicationTakeSerializer do
   it 'serialises source, event and subject data' do
     take = create(:medication_take, :for_schedule, client_uuid: SecureRandom.uuid)
     expect(described_class.new(take).as_json).to include(
-      id: take.id, client_uuid: take.client_uuid, schedule_id: take.schedule_id,
-      person_medication_id: take.person_medication_id,
+      id: take.id, portable_id: take.portable_id, client_uuid: take.client_uuid,
+      schedule_id: take.schedule_id, schedule_portable_id: take.schedule.portable_id,
+      person_medication_id: take.person_medication_id, person_medication_portable_id: nil,
       taken_from_medication_id: take.taken_from_medication_id,
       taken_from_location_id: take.taken_from_location_id,
       dose_amount: take.dose_amount&.to_f, dose_unit: take.dose_unit,
       taken_at: take.taken_at&.iso8601, updated_at: take.updated_at.iso8601,
-      person_id: take.person&.id, medication_id: take.medication&.id
+      person_id: take.person&.id, person_portable_id: take.person.portable_id,
+      medication_id: take.medication&.id, medication_portable_id: take.medication.portable_id
     )
   end
 
@@ -44,6 +46,8 @@ RSpec.describe Api::V1::MedicationTakeSerializer do
     take = create(:medication_take, :for_person_medication)
     json = described_class.new(take).as_json
     expect(json[:person_medication_id]).to eq(take.person_medication_id)
+    expect(json[:person_medication_portable_id]).to eq(take.person_medication.portable_id)
     expect(json[:schedule_id]).to be_nil
+    expect(json[:schedule_portable_id]).to be_nil
   end
 end

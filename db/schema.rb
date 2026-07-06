@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_02_172000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_05_120500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -251,9 +251,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_172000) do
     t.string "frequency"
     t.bigint "household_id", null: false
     t.bigint "medication_id", null: false
+    t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
     t.decimal "reorder_threshold", precision: 10, scale: 2
     t.string "unit"
     t.datetime "updated_at", null: false
+    t.index ["household_id", "portable_id"], name: "index_dosages_on_household_id_and_portable_id", unique: true
     t.index ["household_id"], name: "index_dosages_on_household_id"
     t.index ["id", "household_id"], name: "index_dosages_on_id_and_household_id", unique: true
     t.index ["medication_id"], name: "index_dosages_on_medication_id"
@@ -377,8 +379,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_172000) do
     t.text "description"
     t.bigint "household_id", null: false
     t.string "name", null: false
+    t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
     t.datetime "updated_at", null: false
     t.index "household_id, lower((name)::text)", name: "index_locations_on_household_id_and_lower_name", unique: true, where: "(household_id IS NOT NULL)"
+    t.index ["household_id", "portable_id"], name: "index_locations_on_household_id_and_portable_id", unique: true
     t.index ["household_id"], name: "index_locations_on_household_id"
     t.index ["id", "household_id"], name: "index_locations_on_id_and_household_id", unique: true
     t.index ["name"], name: "index_locations_on_name_trigram", opclass: :gin_trgm_ops, using: :gin
@@ -391,6 +395,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_172000) do
     t.string "dose_unit"
     t.bigint "household_id", null: false
     t.bigint "person_medication_id"
+    t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
     t.bigint "schedule_id"
     t.datetime "taken_at"
     t.bigint "taken_from_location_id"
@@ -398,6 +403,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_172000) do
     t.datetime "updated_at", null: false
     t.check_constraint "num_nonnulls(schedule_id, person_medication_id) = 1", name: "chk_medication_takes_exactly_one_source"
     t.index ["client_uuid"], name: "index_medication_takes_on_client_uuid", unique: true, where: "(client_uuid IS NOT NULL)"
+    t.index ["household_id", "portable_id"], name: "index_medication_takes_on_household_id_and_portable_id", unique: true
     t.index ["household_id"], name: "index_medication_takes_on_household_id"
     t.index ["id", "household_id"], name: "index_medication_takes_on_id_and_household_id", unique: true
     t.index ["person_medication_id"], name: "index_medication_takes_on_person_medication_id"
@@ -429,6 +435,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_172000) do
     t.datetime "ordered_at"
     t.decimal "order_quantity", precision: 10, scale: 2
     t.string "order_supplier"
+    t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
     t.integer "reorder_status"
     t.decimal "reorder_threshold", precision: 10, scale: 2, default: "10.0", null: false
     t.datetime "reordered_at"
@@ -441,6 +448,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_172000) do
     t.index ["default_schedule_type"], name: "index_medications_on_default_schedule_type"
     t.index ["dmd_code"], name: "index_medications_on_dmd_code"
     t.index ["dmd_code"], name: "index_medications_on_dmd_code_trigram", opclass: :gin_trgm_ops, using: :gin
+    t.index ["household_id", "portable_id"], name: "index_medications_on_household_id_and_portable_id", unique: true
     t.index ["household_id"], name: "index_medications_on_household_id"
     t.index ["id", "household_id"], name: "index_medications_on_id_and_household_id", unique: true
     t.index ["location_id"], name: "index_medications_on_location_id"
@@ -506,8 +514,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_172000) do
     t.time "morning_time", default: "2000-01-01 08:00:00"
     t.time "night_time", default: "2000-01-01 22:00:00"
     t.bigint "person_id", null: false
+    t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
     t.boolean "private_text_enabled", default: false, null: false
     t.datetime "updated_at", null: false
+    t.index ["household_id", "portable_id"], name: "index_notification_preferences_on_household_id_and_portable_id", unique: true
     t.index ["household_id"], name: "index_notification_preferences_on_household_id"
     t.index ["id", "household_id"], name: "index_notification_preferences_on_id_and_household_id", unique: true
     t.index ["person_id"], name: "index_notification_preferences_on_person_id", unique: true
@@ -539,11 +549,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_172000) do
     t.bigint "household_id", null: false
     t.string "name", null: false
     t.integer "person_type", default: 0, null: false
+    t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
     t.string "professional_title"
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_people_on_account_id"
     t.index ["email"], name: "index_people_on_email_present_unique", unique: true, where: "((email IS NOT NULL) AND (btrim((email)::text) <> ''::text))"
     t.index ["household_id", "account_id"], name: "index_people_on_household_id_and_account_id", unique: true, where: "((household_id IS NOT NULL) AND (account_id IS NOT NULL))"
+    t.index ["household_id", "portable_id"], name: "index_people_on_household_id_and_portable_id", unique: true
     t.index ["household_id"], name: "index_people_on_household_id"
     t.index ["id", "household_id"], name: "index_people_on_id_and_household_id", unique: true
     t.index ["name"], name: "index_people_on_name_trigram", opclass: :gin_trgm_ops, using: :gin
@@ -582,11 +594,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_172000) do
     t.integer "min_hours_between_doses"
     t.text "notes"
     t.bigint "person_id", null: false
+    t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
     t.integer "position", null: false
     t.bigint "source_dosage_option_id"
     t.datetime "updated_at", null: false
     t.index ["active"], name: "index_person_medications_on_active"
     t.index ["administration_kind"], name: "index_person_medications_on_administration_kind"
+    t.index ["household_id", "portable_id"], name: "index_person_medications_on_household_id_and_portable_id", unique: true
     t.index ["household_id"], name: "index_person_medications_on_household_id"
     t.index ["id", "household_id"], name: "index_person_medications_on_id_and_household_id", unique: true
     t.index ["medication_id"], name: "index_person_medications_on_medication_id"
@@ -630,12 +644,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_172000) do
     t.integer "min_hours_between_doses"
     t.text "notes"
     t.bigint "person_id", null: false
+    t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
     t.jsonb "schedule_config", default: {}, null: false
     t.integer "schedule_type", default: 0, null: false
     t.bigint "source_dosage_option_id"
     t.date "start_date"
     t.datetime "updated_at", null: false
     t.index ["active"], name: "index_schedules_on_active"
+    t.index ["household_id", "portable_id"], name: "index_schedules_on_household_id_and_portable_id", unique: true
     t.index ["household_id"], name: "index_schedules_on_household_id"
     t.index ["id", "household_id"], name: "index_schedules_on_id_and_household_id", unique: true
     t.index ["medication_id"], name: "index_schedules_on_medication_id"

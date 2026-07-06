@@ -3,6 +3,7 @@
 module Api
   module V1
     class BaseController < ActionController::API
+      include ErrorRendering
       include Pundit::Authorization
 
       around_action :with_api_request_context
@@ -146,30 +147,32 @@ module Api
       end
 
       def render_not_found
-        render json: { error: { code: 'not_found', message: 'Record not found' } }, status: :not_found
+        render_api_error(code: 'not_found', message: 'Record not found', status: :not_found)
       end
 
       def render_forbidden
-        render json: { error: { code: 'forbidden', message: 'You are not authorized to perform this action.' } },
-               status: :forbidden
+        render_api_error(
+          code: 'forbidden',
+          message: 'You are not authorized to perform this action.',
+          status: :forbidden
+        )
       end
 
       def render_unauthorized(message)
-        render json: { error: { code: 'unauthorized', message: message } }, status: :unauthorized
+        render_api_error(code: 'unauthorized', message: message, status: :unauthorized)
       end
 
       def render_unprocessable(message)
-        render json: { error: { code: 'unprocessable_content', message: message } }, status: :unprocessable_content
+        render_api_error(code: 'unprocessable_content', message: message, status: :unprocessable_content)
       end
 
       def render_validation_errors(record)
-        render json: {
-          error: {
-            code: 'validation_failed',
-            message: 'Validation failed',
-            errors: record.errors.to_hash(true)
-          }
-        }, status: :unprocessable_content
+        render_api_error(
+          code: 'validation_failed',
+          message: 'Validation failed',
+          status: :unprocessable_content,
+          errors: record.errors.to_hash(true)
+        )
       end
 
       def render_invalid_filter(exception)

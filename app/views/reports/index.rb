@@ -93,8 +93,8 @@ module Views
           div(class: 'flex items-center justify-between px-2') do
             m3_heading(level: 2, size: '5', class: 'font-bold') { t('reports.index.timeline_title') }
             m3_link(
-              href: health_history_report_path(start_date: @start_date, end_date: @end_date,
-                                               person_id: @selected_person_id.presence),
+              href: view_context.health_history_report_path(start_date: @start_date, end_date: @end_date,
+                                                            person_id: @selected_person_id.presence),
               variant: :outlined, size: :sm
             ) { t('reports.index.download_pdf') }
           end

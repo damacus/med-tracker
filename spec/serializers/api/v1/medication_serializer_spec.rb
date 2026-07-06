@@ -17,4 +17,14 @@ RSpec.describe Api::V1::MedicationSerializer do
     )
     expect(json[:display_name]).to eq('Movicol Paediatric Plain')
   end
+
+  it 'includes portable identity fields for mobile clients' do
+    medication = create(:medication)
+    json = described_class.new(medication).as_json
+
+    expect(json).to include(
+      portable_id: medication.portable_id,
+      location_portable_id: medication.location.portable_id
+    )
+  end
 end

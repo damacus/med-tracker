@@ -1,0 +1,163 @@
+# frozen_string_literal: true
+
+module PortableData
+  class Exporter
+    FORMAT = 'medtracker.portable.v1'
+
+    def initialize(household:, membership:, passphrase:, person_ids: nil, request: nil)
+      @household = household
+      @membership = membership
+      @passphrase = passphrase
+      @person_ids = Array(person_ids).compact_blank
+      @request = request
+    end
+
+    def call
+      envelope = Encryptor.encrypt(payload, passphrase: passphrase)
+      record_audit_event(payload)
+      envelope
+    end
+
+    def mobile_snapshot
+      payload.tap do |export_payload|
+        record_audit_event(export_payload, event_type: 'portable_data.mobile_snapshot_read', encrypted: false)
+      end
+    end
+
+    def payload
+      export_payload
+    end
+
+    private
+
+    attr_reader :household, :membership, :passphrase, :person_ids, :request
+
+    def export_payload
+      {
+        format: FORMAT,
+        scope: 'single_person',
+        exported_at: Time.current.iso8601,
+        source_instance_id: source_instance_id,
+        records: records_payload
+      }
+    end
+
+    def records_payload
+      ExportRecordSerializer.new(
+        people: people,
+        locations: locations,
+        medications: medications,
+        dosage_options: dosage_options,
+        schedules: schedules,
+        person_medications: person_medications,
+        medication_takes: medication_takes,
+        notification_preferences: notification_preferences
+      ).as_json
+    end
+
+    def source_instance_id
+      "hosted:#{Rails.env}"
+    end
+
+    def people
+      @people ||= begin
+        scope = household.people.where(id: manageable_person_ids).order(:id)
+        person_ids.present? ? scope.where(id: person_ids) : scope
+      end
+    end
+
+    def manageable_person_ids
+      return household.people.select(:id) if household_manager?
+
+      PersonAccessGrant.active
+                       .where(household: household, household_membership: membership, access_level: :manage)
+                       .select(:person_id)
+    end
+
+    def household_manager?
+      membership&.owner? || membership&.administrator?
+    end
+
+    def person_id_values
+      @person_id_values ||= people.pluck(:id)
+    end
+
+    def location_id_values
+      @location_id_values ||= begin
+        ids = LocationMembership.where(household: household, person_id: person_id_values).pluck(:location_id)
+        ids.concat(medications.pluck(:location_id))
+        ids.concat(medication_takes.pluck(:taken_from_location_id))
+        ids.compact.uniq
+      end
+    end
+
+    def medication_id_values
+      @medication_id_values ||= begin
+        ids = schedules.pluck(:medication_id)
+        ids.concat(person_medications.pluck(:medication_id))
+        ids.compact.uniq
+      end
+    end
+
+    def locations
+      @locations ||= household.locations.where(id: location_id_values).order(:id)
+    end
+
+    def medications
+      @medications ||= household.medications.where(id: medication_id_values).includes(:location).order(:id)
+    end
+
+    def dosage_options
+      @dosage_options ||= MedicationDosageOption.where(household: household, medication_id: medication_id_values)
+                                                .includes(:medication)
+                                                .order(:id)
+    end
+
+    def schedules
+      @schedules ||= Schedule.where(household: household, person_id: person_id_values)
+                             .includes(:person, :medication, :source_dosage_option)
+                             .order(:id)
+    end
+
+    def person_medications
+      @person_medications ||= PersonMedication.where(household: household, person_id: person_id_values)
+                                              .includes(:person, :medication, :source_dosage_option)
+                                              .order(:id)
+    end
+
+    def medication_takes
+      @medication_takes ||= begin
+        scheduled = MedicationTake.where(household: household, schedule_id: schedules.select(:id))
+        unscheduled = MedicationTake.where(household: household, person_medication_id: person_medications.select(:id))
+        scheduled.or(unscheduled)
+                 .includes(:schedule, :person_medication, :taken_from_medication, :taken_from_location)
+                 .order(:id)
+      end
+    end
+
+    def notification_preferences
+      @notification_preferences ||= NotificationPreference.where(household: household, person_id: person_id_values)
+                                                          .includes(:person)
+                                                          .order(:id)
+    end
+
+    def record_audit_event(payload, event_type: 'portable_data.exported', encrypted: true)
+      SecurityAuditEvent.create!(
+        household: household,
+        actor_account: membership.account,
+        actor_membership: membership,
+        event_type: event_type,
+        request_id: request&.request_id,
+        ip: request&.remote_ip,
+        metadata: {
+          record_counts: record_counts(payload),
+          encrypted: encrypted
+        }
+      )
+    end
+
+    def record_counts(payload)
+      payload.fetch(:records).transform_values(&:size)
+    end
+  end
+end
