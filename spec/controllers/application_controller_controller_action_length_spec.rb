@@ -6,6 +6,7 @@ RSpec.describe ApplicationController do
   let(:action_class) { Data.define(:controller, :name, :line_number, :body_lines) }
   let(:controllers) do
     [
+      LocationsController,
       MedicationsController,
       PersonMedicationsController,
       SchedulesController

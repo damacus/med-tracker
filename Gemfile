@@ -143,3 +143,7 @@ end
 gem 'ruby-lsp', '~> 0.26.9', group: :development
 
 gem 'ruby-lsp-rails', '~> 0.4.8', group: :development
+gem 'opentelemetry-instrumentation-active_record'
+gem 'opentelemetry-instrumentation-pg'
+gem 'opentelemetry-instrumentation-rack'
+gem 'opentelemetry-instrumentation-rails'
