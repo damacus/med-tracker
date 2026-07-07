@@ -50,6 +50,7 @@ gem 'web-push'
 
 # OpenTelemetry for observability [https://opentelemetry.io/docs/languages/ruby/]
 gem 'opentelemetry-api'
+gem 'opentelemetry-sdk'
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem 'tzinfo-data', platforms: %i[windows jruby]
@@ -73,7 +74,6 @@ group :production, :test do
   gem 'opentelemetry-instrumentation-pg'
   gem 'opentelemetry-instrumentation-rack'
   gem 'opentelemetry-instrumentation-rails'
-  gem 'opentelemetry-sdk'
 end
 
 group :production do

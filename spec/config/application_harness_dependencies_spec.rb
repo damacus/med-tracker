@@ -83,6 +83,12 @@ RSpec.describe ApplicationHarnessDependencies do
     expect(development_stage).not_to include('COPY --chown=ruby:ruby . .')
   end
 
+  it 'keeps the OpenTelemetry SDK available to development boot' do
+    dependency = gemfile_dependencies.fetch('opentelemetry-sdk')
+
+    expect(dependency.groups).to include(:default)
+  end
+
   it 'copies only required Rails and test paths into the test Docker image' do
     test_stage = docker_stage('test')
 
@@ -113,6 +119,13 @@ RSpec.describe ApplicationHarnessDependencies do
 
   def gemfile
     Rails.root.join('Gemfile').read
+  end
+
+  def gemfile_dependencies
+    Bundler::Dsl
+      .evaluate(Rails.root.join('Gemfile').to_s, Rails.root.join('Gemfile.lock').to_s, {})
+      .dependencies
+      .index_by(&:name)
   end
 
   def dockerfile
