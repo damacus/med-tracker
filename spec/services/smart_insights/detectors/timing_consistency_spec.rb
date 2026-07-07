@@ -74,6 +74,12 @@ RSpec.describe SmartInsights::Detectors::TimingConsistency do
       end
     end
 
+    def on_time_takes_for(schedule)
+      (start_date..end_date).map do |date|
+        take_at(schedule_id: schedule.id, taken_at: expected_time(date, time_str), schedule: schedule)
+      end
+    end
+
     it 'returns no insights when on-time ratio is below 0.8' do
       # Only 1 of 5 takes is on-time → ratio = 0.2
       takes = (start_date..end_date).map.with_index do |date, i|
@@ -199,6 +205,21 @@ RSpec.describe SmartInsights::Detectors::TimingConsistency do
       end
       ctx = context_with(schedules: [ext_sched], takes: takes, start_date: start_date, end_date: extended_end)
       expect(described_class.new(ctx).call.size).to eq(1)
+    end
+
+    it 'matches takes by schedule before scanning timing windows' do
+      other_sched = schedule_double(id: 99, time: time_str, start_date: start_date, end_date: end_date)
+      ctx = context_with(
+        schedules: [sched, other_sched],
+        takes: on_time_takes_for(other_sched) + on_time_takes_for(sched),
+        start_date: start_date,
+        end_date: end_date
+      )
+      insights = described_class.new(ctx).call
+
+      expect(insights.size).to eq(1)
+      expect(insights.first.metric_value).to eq(I18n.t('smart_insights.detectors.timing_consistency.metric_value',
+                                                       count: 10))
     end
 
     it 'skips days where expected_doses_on returns 0 when counting occurrences' do
