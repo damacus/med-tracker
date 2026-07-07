@@ -8,7 +8,7 @@ class LocationMembershipsController < ApplicationController
     location_membership_params = params.expect(location_membership: [:person_id])
     @person = policy_scope(Person).find(location_membership_params[:person_id])
 
-    if LocationMembership.create(location: @location, person: @person)
+    if LocationMembership.create(location: @location, person: @person).persisted?
       respond_to do |format|
         format.html { redirect_to @location, notice: t('.success', name: @person.name, location: @location.name) }
         format.turbo_stream do
