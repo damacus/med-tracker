@@ -68,13 +68,41 @@ RSpec.describe 'BackfillMissingHouseholdMemberships' do
     expect(grant.granted_by_membership).to eq(household.household_memberships.owner.active.sole)
   end
 
+  it 'uses one active owner grantor when backfilling relationships for households with multiple owners' do
+    household = Household.create!(name: 'Multiple Owner Backfill', slug: 'multiple-owner-backfill')
+    owner_one_membership = create_owner_membership(household, 'multiple-owner-one@example.test', 'Multiple Owner One')
+    owner_two_membership = create_owner_membership(household, 'multiple-owner-two@example.test', 'Multiple Owner Two')
+    carer_account = create_account('multiple-owner-carer@example.test')
+    carer = create_person(household, carer_account, 'Multiple Owner Carer')
+    child = create_adult_person(household, 'Multiple Owner Child')
+    CarerRelationship.create!(carer: carer, patient: child, relationship_type: 'parent', active: true)
+
+    BackfillMissingHouseholdMemberships.new.up
+
+    membership = household.household_memberships.find_by!(account: carer_account)
+    grant = household.person_access_grants.find_by!(household_membership: membership, person: child)
+    owner_ids = [owner_one_membership.id, owner_two_membership.id]
+
+    expect(grant).to have_attributes(access_level: 'manage', relationship_type: 'parent')
+    expect(owner_ids).to include(grant.granted_by_membership_id)
+  end
+
+  def create_owner_membership(household, email, name)
+    account = create_account(email)
+    person = create_person(household, account, name)
+    household.household_memberships.create!(account: account, person: person, role: :owner, status: :active)
+  end
+
   def create_account(email)
     Account.create!(email: email, status: :verified)
   end
 
   def create_person(household, account, name)
+    create_adult_person(household, name).tap { |person| person.update!(account: account) }
+  end
+
+  def create_adult_person(household, name)
     household.people.create!(
-      account: account,
       name: name,
       date_of_birth: 30.years.ago.to_date,
       person_type: :adult,

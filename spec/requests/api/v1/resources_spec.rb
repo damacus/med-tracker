@@ -63,6 +63,52 @@ RSpec.describe 'API v1 resources' do
     end
   end
 
+  it 'returns individual read-only resources' do
+    login_data = api_login(user)
+    household_id = login_data.dig('household', 'id')
+    headers = api_auth_headers(login_data.fetch('access_token'))
+
+    {
+      api_v1_household_location_path(household_id, locations(:home)) => locations(:home).id,
+      api_v1_household_medication_path(household_id, medications(:paracetamol)) => medications(:paracetamol).id,
+      api_v1_household_schedule_path(household_id, schedules(:john_paracetamol)) => schedules(:john_paracetamol).id,
+      api_v1_household_person_medication_path(
+        household_id,
+        person_medications(:john_vitamin_d)
+      ) => person_medications(:john_vitamin_d).id
+    }.each do |path, expected_id|
+      get path, headers: headers, as: :json
+
+      expect(response.status).to eq(200), response.parsed_body.merge('path' => path).inspect
+      expect(response.parsed_body.dig('data', 'id')).to eq(expected_id)
+    end
+  end
+
+  it 'does not return individual resources outside the signed-in household scope' do
+    login_data = api_login(user)
+    household_id = login_data.dig('household', 'id')
+    headers = api_auth_headers(login_data.fetch('access_token'))
+    other_household = Household.create!(name: 'Other API Household', slug: 'other-api-household')
+    other_location = create(:location, household: other_household, name: 'Other Location')
+
+    get api_v1_household_location_path(household_id, other_location), headers: headers, as: :json
+
+    expect(response).to have_http_status(:not_found)
+  end
+
+  it 'returns the signed-in users notification preference' do
+    login_data = api_login(user)
+    household_id = login_data.dig('household', 'id')
+
+    get api_v1_household_notification_preference_path(household_id),
+        headers: api_auth_headers(login_data.fetch('access_token')),
+        as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.dig('data', 'person_id')).to eq(people(:admin).id)
+    expect(response.parsed_body.dig('data', 'morning_time')).to eq('08:00:00')
+  end
+
   it 'serializes schedule dose snapshot fields instead of dosage identity' do
     login_data = api_login(user)
     household_id = login_data.dig('household', 'id')
@@ -105,6 +151,7 @@ RSpec.describe 'API v1 resources' do
       account: account,
       person: scoped_user.person
     ) do |record|
+      record.person = scoped_user.person
       record.role = :member
       record.status = :active
     end

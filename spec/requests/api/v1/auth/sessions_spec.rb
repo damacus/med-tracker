@@ -51,8 +51,10 @@ RSpec.describe 'API v1 auth sessions' do
            as: :json
 
       api_session = ApiSession.order(:id).last
+      expected_membership = household.household_memberships.find_by!(account: account)
+
       expect(response).to have_http_status(:created)
-      expect(api_session.household_membership).to eq(account.household_memberships.active.sole)
+      expect(api_session.household_membership).to eq(expected_membership)
       expect(response.parsed_body.dig('data', 'household', 'id')).to eq(household.id)
     end
 

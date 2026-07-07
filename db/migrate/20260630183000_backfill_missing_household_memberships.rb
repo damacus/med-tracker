@@ -98,7 +98,7 @@ class BackfillMissingHouseholdMemberships < ActiveRecord::Migration[8.1]
 
   def create_relationship_access_grants
     execute <<~SQL.squish
-      WITH owner_memberships AS (
+      WITH owner_grantors AS (
         SELECT DISTINCT ON (household_id)
                id,
                household_id
@@ -106,31 +106,42 @@ class BackfillMissingHouseholdMemberships < ActiveRecord::Migration[8.1]
         WHERE role = 'owner'
           AND status = 'active'
         ORDER BY household_id, id
+      ),
+      relationship_grants AS (
+        SELECT DISTINCT ON (household_memberships.id, carer_relationships.patient_id)
+               household_memberships.household_id,
+               household_memberships.id AS household_membership_id,
+               carer_relationships.patient_id,
+               CASE WHEN carer_relationships.relationship_type IN ('self', 'parent') THEN 'manage' ELSE 'record' END AS access_level,
+               CASE
+                 WHEN carer_relationships.relationship_type = 'professional_carer' THEN 'professional'
+                 WHEN carer_relationships.relationship_type IN ('parent', 'carer', 'family_member', 'self')
+                   THEN carer_relationships.relationship_type
+                 ELSE 'family_member'
+               END AS relationship_type,
+               owner_grantors.id AS granted_by_membership_id
+        FROM carer_relationships
+        JOIN household_memberships
+          ON household_memberships.person_id = carer_relationships.carer_id
+         AND household_memberships.status = 'active'
+        JOIN owner_grantors
+          ON owner_grantors.household_id = household_memberships.household_id
+        WHERE carer_relationships.active = true
+        ORDER BY household_memberships.id, carer_relationships.patient_id, carer_relationships.id
       )
       INSERT INTO person_access_grants (
         household_id, household_membership_id, person_id, access_level, relationship_type,
         granted_by_membership_id, created_at, updated_at
       )
-      SELECT household_memberships.household_id,
-             household_memberships.id,
-             carer_relationships.patient_id,
-             CASE WHEN carer_relationships.relationship_type IN ('self', 'parent') THEN 'manage' ELSE 'record' END,
-             CASE
-               WHEN carer_relationships.relationship_type = 'professional_carer' THEN 'professional'
-               WHEN carer_relationships.relationship_type IN ('parent', 'carer', 'family_member', 'self')
-                 THEN carer_relationships.relationship_type
-               ELSE 'family_member'
-             END,
-             owners.id,
+      SELECT relationship_grants.household_id,
+             relationship_grants.household_membership_id,
+             relationship_grants.patient_id,
+             relationship_grants.access_level,
+             relationship_grants.relationship_type,
+             relationship_grants.granted_by_membership_id,
              CURRENT_TIMESTAMP,
              CURRENT_TIMESTAMP
-      FROM carer_relationships
-      JOIN household_memberships
-        ON household_memberships.person_id = carer_relationships.carer_id
-       AND household_memberships.status = 'active'
-      JOIN owner_memberships owners
-        ON owners.household_id = household_memberships.household_id
-      WHERE carer_relationships.active = true
+      FROM relationship_grants
       ON CONFLICT (household_membership_id, person_id) WHERE revoked_at IS NULL DO UPDATE
       SET access_level = EXCLUDED.access_level,
           relationship_type = EXCLUDED.relationship_type,

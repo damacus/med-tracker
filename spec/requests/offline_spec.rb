@@ -10,9 +10,11 @@ RSpec.describe 'Offline mode' do
   let(:medication) { medications(:gabapentin) }
   let(:household) { user.person.household }
   let(:membership) do
-    household.household_memberships.find_or_create_by!(account: user.person.account, person: user.person) do |record|
+    household.household_memberships.find_or_initialize_by(account: user.person.account).tap do |record|
+      record.person = user.person
       record.role = :owner
       record.status = :active
+      record.save!
     end
   end
   let(:schedule) do

@@ -19,6 +19,7 @@ development:
 test:
   adapter: postgresql
   url: <%= ENV['DATABASE_URL'] %>
+  prepared_statements: false
 <% if primary_database_role != "" %>
   variables:
     role: <%= primary_database_role %>
