@@ -19,7 +19,13 @@ module MedTrackerMcp
         end
 
         def read(server_context:)
-          Tools::HouseholdSnapshotTool.call(server_context: server_context).structured_content
+          payload = Tools::HouseholdSnapshotTool.call(server_context: server_context).to_h.fetch(:structuredContent)
+
+          MCP::Resource::TextContents.new(
+            uri: URI,
+            mime_type: 'application/json',
+            text: JSON.generate(payload)
+          )
         end
       end
     end

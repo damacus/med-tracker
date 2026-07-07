@@ -20,6 +20,10 @@ RSpec.describe 'API v1 capabilities' do
     expect(data.dig('sync', 'portable_ids')).to be(true)
     expect(data.dig('sync', 'numeric_ids')).to eq('backward_compatible')
     expect(data.dig('client_tools', 'cli')).to include('supported' => false, 'status' => 'deferred')
-    expect(data.dig('client_tools', 'mcp_server')).to include('supported' => false, 'status' => 'deferred')
+    expect(data.dig('client_tools', 'mcp_server')).to include(
+      'supported' => true,
+      'transport' => 'streamable_http',
+      'endpoint' => '/mcp'
+    )
   end
 end
