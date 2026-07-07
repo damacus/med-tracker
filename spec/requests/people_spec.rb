@@ -352,15 +352,15 @@ RSpec.describe 'People' do
   describe 'GET /people/:id/add_medication' do
     before { sign_in(users(:admin)) }
 
-    it 'redirects to the medication assignment flow with source and medication id preserved' do
+    it 'renders medication workflow options with the selected medication id preserved' do
       person = people(:john)
       medication = medications(:paracetamol)
 
       get add_medication_person_path(person), params: { source: 'finder', medication_id: medication.id }
 
-      expect(response).to redirect_to(
-        new_person_medication_assignment_path(person, source: 'finder', medication_id: medication.id)
-      )
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(new_person_schedule_path(person, medication_id: medication.id))
+      expect(response.body).to include(new_person_person_medication_path(person, medication_id: medication.id))
     end
   end
 

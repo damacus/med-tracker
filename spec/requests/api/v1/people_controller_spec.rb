@@ -74,23 +74,24 @@ RSpec.describe Api::V1::PeopleController do
         date_of_birth: 10.years.ago.to_date,
         person_type: :minor
       )
-      membership = household.household_memberships.find_or_create_by!(
-        account: account,
-        person: people(:jane)
-      ) do |record|
+      membership = household.household_memberships.find_or_initialize_by(account: account).tap do |record|
+        record.person = people(:jane)
         record.role = :owner
         record.status = :active
+        record.save!
       end
       login_data = api_login(user, household_id: household.id)
 
       household.person_access_grants.where(household_membership: membership).destroy_all
-      household.person_access_grants.create!(
+      household.person_access_grants.find_or_initialize_by(
         household_membership: membership,
-        person: people(:jane),
-        access_level: :manage,
-        relationship_type: :self,
-        granted_by_membership: membership
-      )
+        person: people(:jane)
+      ).tap do |grant|
+        grant.access_level = :manage
+        grant.relationship_type = :self
+        grant.granted_by_membership = membership
+        grant.save!
+      end
       household.person_access_grants.create!(
         household_membership: membership,
         person: granted_person,
@@ -122,9 +123,11 @@ RSpec.describe Api::V1::PeopleController do
       account = user.person.account
       household = user.person.household
       other_household = Household.create!(name: 'Secondary API Household', slug: 'secondary-api-household')
-      household.household_memberships.find_or_create_by!(account: account, person: people(:jane)) do |record|
+      household.household_memberships.find_or_initialize_by(account: account).tap do |record|
+        record.person = people(:jane)
         record.role = :owner
         record.status = :active
+        record.save!
       end
 
       login_data = api_login(user, household_id: household.id)
