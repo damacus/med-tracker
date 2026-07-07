@@ -60,7 +60,6 @@ RSpec.describe Api::V1::BaseController do # rubocop:disable RSpec/MultipleMemoiz
 
     # Instead of stubbing is_a?, we can stub lookup_api_credential to return our object
     # Or rely on the fact that is_a? might be defined if we create the double right
-    allow(api_session).to receive(:is_a?).and_call_original
     allow(api_session).to receive(:is_a?).with(ApiSession).and_return(true)
     allow(api_session).to receive(:is_a?).with(ApiAppToken).and_return(false)
     allow(api_session).to receive(:active_for_membership?).and_return(true)
@@ -98,7 +97,6 @@ RSpec.describe Api::V1::BaseController do # rubocop:disable RSpec/MultipleMemoiz
       end
 
       before do
-        allow(api_session).to receive(:is_a?).and_call_original
         allow(api_session).to receive(:is_a?).with(ApiSession).and_return(true)
         allow(api_session).to receive(:is_a?).with(ApiAppToken).and_return(false)
         allow(api_session).to receive(:household_membership).and_return(membership)
