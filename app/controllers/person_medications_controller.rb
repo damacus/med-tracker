@@ -114,12 +114,14 @@ class PersonMedicationsController < ApplicationController
 
   def person_medication_modal(title:, editing: false, back_path: nil)
     Components::PersonMedications::Modal.new(
-      person_medication: @person_medication,
-      person: @person,
-      medications: @medications,
-      title: title,
-      editing: editing,
-      back_path: back_path
+      Components::PersonMedications::Modal::Props.new(
+        person_medication: @person_medication,
+        person: @person,
+        medications: @medications,
+        title: title,
+        editing: editing,
+        back_path: back_path
+      )
     )
   end
 

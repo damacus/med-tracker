@@ -8,17 +8,16 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include RubyUI
 
-      attr_reader :person_medication, :person, :medications, :editing, :back_path
+      Props = Data.define(:person_medication, :person, :medications, :title, :editing, :back_path) do
+        def initialize(person_medication:, person:, medications:, title: nil, editing: false, back_path: nil)
+          super
+        end
+      end
 
-      # rubocop:disable Metrics/ParameterLists
-      def initialize(person_medication:, person:, medications:, title: nil, editing: false, back_path: nil)
-        # rubocop:enable Metrics/ParameterLists
-        @person_medication = person_medication
-        @person = person
-        @medications = medications
-        @editing = editing
-        @back_path = back_path
-        @explicit_title = title
+      delegate :person_medication, :person, :medications, :editing, :back_path, to: :@props
+
+      def initialize(props)
+        @props = props
         super()
       end
 
@@ -149,7 +148,7 @@ module Components
       end
 
       def title
-        @explicit_title || default_title
+        @props.title || default_title
       end
 
       def default_title
