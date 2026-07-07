@@ -42,24 +42,35 @@ module MedTrackerMcp
     def record_audit_event(request, context, outcome, response)
       context_data = context.to_h
 
-      SecurityAuditEvent.create!(
+      SecurityAuditEvent.create!(audit_event_attributes(request, context_data, outcome, response))
+    rescue StandardError => e
+      Rails.logger.warn("MCP audit event failed: #{e.class}: #{e.message}")
+    end
+
+    def audit_event_attributes(request, context_data, outcome, response)
+      {
         household: context_data.fetch(:household),
         actor_account: context_data.fetch(:account),
         actor_membership: context_data.fetch(:membership),
         event_type: 'mcp.request',
         request_id: context_data.fetch(:request_id),
         ip: context_data.fetch(:remote_ip),
-        metadata: {
-          method: json_rpc_method(request),
-          outcome: outcome,
-          status: response&.first
-        }.compact
-      )
+        metadata: audit_event_metadata(request, outcome, response)
+      }
+    end
+
+    def audit_event_metadata(request, outcome, response)
+      {
+        method: json_rpc_method(request),
+        outcome: outcome,
+        status: response&.first
+      }.compact
     end
 
     def json_rpc_method(request)
       request.body.rewind
-      JSON.parse(request.body.read).fetch('method', nil)
+      parsed = JSON.parse(request.body.read)
+      parsed.fetch('method', nil) if parsed.is_a?(Hash)
     rescue JSON::ParserError
       nil
     ensure

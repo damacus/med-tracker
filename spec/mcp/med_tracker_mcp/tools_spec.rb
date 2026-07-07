@@ -8,6 +8,7 @@ RSpec.describe MedTrackerMcp::Tools do
 
   before do
     grant_jane_manage_access!
+    grant_child_manage_access!
     medications(:ibuprofen).update!(current_supply: 1, reorder_threshold: 5, supply_at_last_restock: 30)
   end
 
@@ -115,6 +116,18 @@ RSpec.describe MedTrackerMcp::Tools do
     ) do |grant|
       grant.access_level = :manage
       grant.relationship_type = :self
+      grant.granted_by_membership = membership
+    end
+  end
+
+  def grant_child_manage_access!
+    PersonAccessGrant.find_or_create_by!(
+      household: households(:fixture_household),
+      household_membership: membership,
+      person: people(:child_patient)
+    ) do |grant|
+      grant.access_level = :manage
+      grant.relationship_type = :parent
       grant.granted_by_membership = membership
     end
   end
