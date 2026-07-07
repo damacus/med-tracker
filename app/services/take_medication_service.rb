@@ -10,7 +10,9 @@
 # @param taken_from_medication_id [Integer, nil] optional specific medication ID
 # @param user [User] the user recording the dose
 # @param options [Hash] additional options, such as :taken_at (defaults to now)
-# @return [TakeMedicationService::Result] object containing success boolean, the take record, and any error symbol (:out_of_stock, :cooldown, :invalid_amount, :selection_required, :invalid_source, :create_failed)
+# @return [TakeMedicationService::Result] object containing success boolean,
+#   the take record, and any error symbol (:out_of_stock, :cooldown,
+#   :invalid_amount, :selection_required, :invalid_source, :create_failed)
 class TakeMedicationService
   Result = Data.define(:success, :take, :error)
   PreparedTake = Data.define(
