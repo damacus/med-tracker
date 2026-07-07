@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe 'API v1 medications' do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :carer_relationships, :medications
 
-  let(:user) { users(:jane) }
+  let(:user) { users(:admin) }
 
   describe 'GET /api/v1/households/:household_id/medications collection' do
     it 'returns only medications in the signed-in user scope' do
