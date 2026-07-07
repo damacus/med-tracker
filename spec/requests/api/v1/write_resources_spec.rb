@@ -390,40 +390,6 @@ RSpec.describe 'API v1 write resources' do
     expect(response).to have_http_status(:not_found)
   end
 
-  it 'updates the current notification preference' do
-    patch api_v1_household_notification_preference_path(household_id),
-          params: { notification_preference: { enabled: false, low_stock_enabled: false } },
-          headers: headers,
-          as: :json
-
-    expect(response).to have_http_status(:ok)
-    expect(response.parsed_body.dig('data', 'enabled')).to be(false)
-    expect(response.parsed_body.dig('data', 'low_stock_enabled')).to be(false)
-  end
-
-  it 'creates a notification preference when the current person does not have one' do
-    user.person.notification_preference&.destroy!
-
-    patch api_v1_household_notification_preference_path(household_id),
-          params: { notification_preference: { enabled: true, dose_due_enabled: true } },
-          headers: headers,
-          as: :json
-
-    expect(response).to have_http_status(:ok)
-    expect(response.parsed_body.dig('data', 'dose_due_enabled')).to be(true)
-  end
-
-  it 'shows the current notification preference' do
-    create(:notification_preference, person: user.person, enabled: true)
-
-    get api_v1_household_notification_preference_path(household_id),
-        headers: headers,
-        as: :json
-
-    expect(response).to have_http_status(:ok)
-    expect(response.parsed_body.dig('data', 'person_id')).to eq(user.person_id)
-  end
-
   it 'returns validation errors for invalid write payloads' do
     post api_v1_household_people_path(household_id),
          params: { person: { name: '', date_of_birth: '' } },

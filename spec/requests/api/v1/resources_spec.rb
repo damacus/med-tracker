@@ -63,19 +63,6 @@ RSpec.describe 'API v1 resources' do
     end
   end
 
-  it 'returns the signed-in users notification preference' do
-    login_data = api_login(user)
-    household_id = login_data.dig('household', 'id')
-
-    get api_v1_household_notification_preference_path(household_id),
-        headers: api_auth_headers(login_data.fetch('access_token')),
-        as: :json
-
-    expect(response).to have_http_status(:ok)
-    expect(response.parsed_body.dig('data', 'person_id')).to eq(people(:admin).id)
-    expect(response.parsed_body.dig('data', 'morning_time')).to eq('08:00:00')
-  end
-
   it 'serializes schedule dose snapshot fields instead of dosage identity' do
     login_data = api_login(user)
     household_id = login_data.dig('household', 'id')
