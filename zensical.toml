@@ -19,6 +19,7 @@ nav = [
     { "Self-Hosting Setup" = "self-hosting.md" },
     { Deployment = "deployment.md" },
     { Testing = "testing.md" },
+    { "MCP Integration" = "mcp.md" },
     { Design = "design.md" },
     { "Database Relationships" = "database-relationships.md" },
     { "Audit Trail" = "audit-trail.md" }
