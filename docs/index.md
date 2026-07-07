@@ -23,6 +23,7 @@ ensuring medications are given on time and safely.
 - [Testing Guide](testing.md): run the RSpec and Capybara/Playwright test suites.
 - [Design & Architecture](design.md): explore the domain model and safety guardrails.
 - [Audit & Compliance](audit-trail.md): details on versioning and data history.
+- [MCP Integration](mcp.md): authenticated read-only agent access for medication context.
 - [Pre-0.5 database upgrade](pre-0-5-database-upgrade.md): bootstrap existing PostgreSQL databases before the household/RLS cutover.
 
 ---

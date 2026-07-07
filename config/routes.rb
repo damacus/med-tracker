@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
+  mount MedTrackerMcp::RackApp.new => '/mcp'
+
   namespace :api do
     namespace :v1 do
       get :capabilities, to: 'capabilities#show'

@@ -14,6 +14,13 @@ The following models have audit trail enabled:
 - **Medication**: Track changes to medication definitions and stock
 - **MedicationTake**: Track all medication doses (critical for patient safety)
 
+## Security Audit Events
+
+Security-sensitive operational events are stored in `security_audit_events`.
+MCP requests write `event_type: mcp.request` with the request ID, IP address,
+household, actor account, actor membership, JSON-RPC method, outcome, and HTTP
+status. Raw bearer tokens are not stored.
+
 ## Accessing Audit Logs
 
 - **URL**: `/admin/audit_logs`

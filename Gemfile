@@ -59,6 +59,7 @@ gem 'solid_queue'
 gem 'bootsnap', require: false
 # Use Phlex for views [https://github.com/phlex-rb/phlex-rails]
 gem 'csv'
+gem 'mcp', require: false
 gem 'phlex-rails'
 gem 'ruby_llm', require: false
 gem 'ruby_ui', require: false

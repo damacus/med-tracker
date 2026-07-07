@@ -45,6 +45,14 @@ RSpec.describe RuntimeStackContract do
     expect(playwright_version).to start_with("#{expected_versions.fetch(:playwright)}.")
   end
 
+  it 'loads the MCP Ruby SDK server primitives used by the hosted MCP endpoint' do
+    require 'mcp'
+
+    expect(MCP::Server).to be_a(Class)
+    expect(MCP::Tool).to be_a(Class)
+    expect(MCP::Server::Transports::StreamableHTTPTransport).to be_a(Class)
+  end
+
   it 'documents locked dependency versions in both agent guides' do
     agent_guide_paths.each do |path|
       document = read_file(path)

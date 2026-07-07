@@ -4,6 +4,7 @@ module Rack
   class Attack
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
     MEDICATION_LOOKUP_PATH = %r{\A/households/[^/]+/medication-finder/search(?:\.[a-z]+)?\z}
+    MCP_PATH = '/mcp'
 
     throttle('req/ip', limit: 300, period: 5.minutes, &:ip)
 
@@ -37,6 +38,10 @@ module Rack
 
     throttle('api/auth/refresh/ip', limit: 30, period: 1.minute) do |req|
       req.ip if req.path == '/api/v1/auth/refresh' && req.post?
+    end
+
+    throttle('mcp/ip', limit: 60, period: 1.minute) do |req|
+      req.ip if req.path == MCP_PATH
     end
 
     throttle('admin/audit_logs/ip', limit: 100, period: 1.minute) do |req|

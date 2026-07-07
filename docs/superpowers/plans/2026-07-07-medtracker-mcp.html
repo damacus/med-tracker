@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MedTracker MCP Implementation Plan</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #172033;
+      --muted: #59677a;
+      --border: #d9e2e7;
+      --teal: #0f766e;
+      --teal-dark: #0f3f3a;
+      --amber: #b45309;
+      --red: #b91c1c;
+      --slate: #0f172a;
+      --code: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font: 16px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 40px 24px 64px;
+    }
+
+    header {
+      border-left: 6px solid var(--teal);
+      padding: 20px 24px;
+      background: var(--panel);
+      box-shadow: 0 1px 8px rgb(15 23 42 / 8%);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 34px;
+      line-height: 1.15;
+    }
+
+    h2 {
+      margin: 34px 0 14px;
+      color: var(--teal-dark);
+      font-size: 24px;
+    }
+
+    h3 {
+      margin: 0 0 10px;
+      font-size: 19px;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    .lede {
+      color: var(--muted);
+      margin-bottom: 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px;
+    }
+
+    .decision {
+      border-top: 4px solid var(--teal);
+    }
+
+    .warning {
+      border-top: 4px solid var(--amber);
+    }
+
+    .no {
+      border-top: 4px solid var(--red);
+    }
+
+    .tasks {
+      display: grid;
+      gap: 16px;
+    }
+
+    code,
+    pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.95em;
+    }
+
+    code {
+      background: #eef3f6;
+      border: 1px solid #dce5ea;
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+
+    pre {
+      overflow-x: auto;
+      background: var(--slate);
+      color: var(--code);
+      padding: 14px;
+      border-radius: 8px;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 8px 12px;
+      margin-top: 14px;
+    }
+
+    .meta dt {
+      font-weight: 700;
+    }
+
+    .meta dd {
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>MedTracker MCP Implementation Plan</h1>
+    <p class="lede"><strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development, recommended, or superpowers:executing-plans to implement this plan task by task. Steps use checkbox syntax in the task details for tracking.</p>
+    <dl class="meta">
+      <dt>Goal</dt>
+      <dd>Add a secure, policy-aware Model Context Protocol server for MedTracker using <code>modelcontextprotocol/ruby-sdk</code>, starting with read-focused household context tools and explicitly deferring higher-risk writes.</dd>
+      <dt>Architecture</dt>
+      <dd>Mount the Ruby SDK <code>StreamableHTTPTransport</code> in Rails, authenticate with existing API app tokens, bind the same account, household, and membership context as <code>Api::V1::BaseController</code>, and expose MCP tools, resources, and prompts through service objects that reuse existing serializers, queries, Pundit scopes, tenant context, and audit events.</dd>
+      <dt>Tech Stack</dt>
+      <dd>Rails 8, Ruby, RSpec, Pundit, PaperTrail, SecurityAuditEvent, OpenTelemetry, <code>modelcontextprotocol/ruby-sdk</code>.</dd>
+    </dl>
+  </header>
+
+  <section>
+    <h2>Product Decision</h2>
+    <div class="grid">
+      <div class="card decision">
+        <h3>Why add an MCP?</h3>
+        <p>MedTracker already has structured medication, schedule, adherence, inventory, health-event, and household-context data. MCP makes that data usable by AI clients without teaching every assistant the app's bespoke REST API, route structure, and portable export format.</p>
+        <p>The strongest v1 use case is assisted review: "What doses are due today?", "Which medication needs reordering?", "Summarise this person's recent medication history", and "Prepare a clinician handoff from my household data."</p>
+      </div>
+
+      <div class="card decision">
+        <h3>Advantages</h3>
+        <ul>
+          <li><strong>Lower integration cost:</strong> one MCP contract works across MCP-capable clients instead of custom client glue per assistant.</li>
+          <li><strong>Safer AI access:</strong> tools can be narrow, typed, audited, policy-scoped, and easier to reason about than free-form database or API access.</li>
+          <li><strong>Better context quality:</strong> resources and prompts can provide domain-shaped context rather than raw JSON dumps.</li>
+          <li><strong>Reuses existing boundaries:</strong> the app already has API tokens, tenant context, serializers, Pundit policies, portable snapshots, and audit logging.</li>
+          <li><strong>Future product signal:</strong> <code>Api::V1::CapabilitiesController</code> already advertises <code>client_tools.mcp_server</code> as deferred, so this fills an existing product slot.</li>
+        </ul>
+      </div>
+
+      <div class="card no">
+        <h3>When not to build it</h3>
+        <ul>
+          <li>Do not build MCP if the goal is only mobile sync or CRUD integration; the existing REST API is the right surface for that.</li>
+          <li>Do not build it until authorization, tenant binding, audit logging, rate limiting, and token revocation are first-class in the MCP path.</li>
+          <li>Do not expose write tools until read tools have production telemetry and misuse patterns are understood.</li>
+          <li>Do not use MCP for emergency or clinical decision support; MCP responses must remain informational and user-mediated.</li>
+          <li>Do not expose raw portable exports as a default tool result; context should be minimized by task and person access.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Key Interfaces</h2>
+    <div class="card">
+      <ul>
+        <li>Add <code>gem "mcp", require: false</code> or the exact gem name required by the current <code>modelcontextprotocol/ruby-sdk</code> release after confirming Bundler resolution.</li>
+        <li>Mount <code>MCP::Server::Transports::StreamableHTTPTransport.new(server, stateless: true)</code> at <code>/mcp</code>.</li>
+        <li>Create <code>app/mcp/med_tracker_mcp/server.rb</code> to assemble server metadata, tools, resources, prompts, and SDK configuration.</li>
+        <li>Create <code>app/mcp/med_tracker_mcp/context.rb</code> to authenticate bearer tokens with <code>ApiSession.lookup_by_access_token</code> and <code>ApiAppToken.lookup_by_token</code>, then bind <code>TenantContext</code>, <code>Current.account</code>, <code>Current.household</code>, and <code>Current.membership</code>.</li>
+        <li>Create read-only v1 tools: <code>medtracker_current_user</code>, <code>medtracker_household_snapshot</code>, <code>medtracker_today_schedule</code>, <code>medtracker_inventory_risks</code>, and <code>medtracker_health_history_summary</code>.</li>
+        <li>Create one prompt: <code>medtracker_prepare_clinician_handoff</code>, which asks the client model to summarise tool and resource output without inventing medical advice.</li>
+        <li>Update <code>Api::V1::CapabilitiesController</code> so <code>client_tools.mcp_server.supported</code> becomes <code>true</code> only after the route and auth tests pass.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>Implementation Tasks</h2>
+    <div class="tasks">
+      <div class="card">
+        <h3>Task 1: SDK dependency and boot wiring</h3>
+        <p><strong>Files:</strong> <code>Gemfile</code>, <code>config/application.rb</code> if autoload paths need <code>app/mcp</code>, <code>spec/lib/runtime_stack_contract_spec.rb</code>.</p>
+        <ul>
+          <li><input type="checkbox" disabled> Write a failing spec proving the MCP SDK constant can load in the test container.</li>
+          <li><input type="checkbox" disabled> Add the SDK gem and run <code>task test TEST_FILE=spec/lib/runtime_stack_contract_spec.rb</code>.</li>
+          <li><input type="checkbox" disabled> Run <code>task rubocop</code>.</li>
+          <li><input type="checkbox" disabled> Commit with <code>feat(mcp): add ruby sdk dependency</code>.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Task 2: Authenticated MCP context</h3>
+        <p><strong>Files:</strong> <code>app/mcp/med_tracker_mcp/context.rb</code>, <code>spec/mcp/med_tracker_mcp/context_spec.rb</code>.</p>
+        <ul>
+          <li><input type="checkbox" disabled> Write failing specs for missing bearer token, revoked token, locked account, inactive membership, stale permissions version, and successful app-token binding.</li>
+          <li><input type="checkbox" disabled> Implement a small context object that mirrors <code>Api::V1::BaseController</code> authentication rules and returns a plain context hash for <code>server_context</code>.</li>
+          <li><input type="checkbox" disabled> Include <code>request_id</code>, account ID, household ID, membership ID, and trace metadata; never include raw token values.</li>
+          <li><input type="checkbox" disabled> Run <code>task test TEST_FILE=spec/mcp/med_tracker_mcp/context_spec.rb</code>.</li>
+          <li><input type="checkbox" disabled> Commit with <code>feat(mcp): bind authenticated tenant context</code>.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Task 3: Read-only MCP tools and resources</h3>
+        <p><strong>Files:</strong> <code>app/mcp/med_tracker_mcp/tools/*.rb</code>, <code>app/mcp/med_tracker_mcp/resources/*.rb</code>, <code>spec/mcp/med_tracker_mcp/tools/*_spec.rb</code>.</p>
+        <ul>
+          <li><input type="checkbox" disabled> Write failing specs for each tool returning only policy-scoped household data.</li>
+          <li><input type="checkbox" disabled> Implement tools using existing services and serializers: <code>Api::V1::MeSerializer</code>, <code>PortableData::Exporter#mobile_snapshot</code>, <code>Reports::TodayTakenMedicationsQuery</code>, <code>Reports::HealthHistoryQuery</code>, and medication inventory/reorder query services.</li>
+          <li><input type="checkbox" disabled> Return compact MCP text and JSON payloads with stable keys, ISO8601 times, and no raw database errors.</li>
+          <li><input type="checkbox" disabled> Reject unbounded date ranges; default health history to the last 30 days and cap it at 180 days.</li>
+          <li><input type="checkbox" disabled> Run <code>task test TEST_FILE=spec/mcp/med_tracker_mcp/tools</code>.</li>
+          <li><input type="checkbox" disabled> Commit with <code>feat(mcp): expose read only medication context tools</code>.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Task 4: Server mount, prompt, capabilities, and audits</h3>
+        <p><strong>Files:</strong> <code>app/mcp/med_tracker_mcp/server.rb</code>, <code>config/routes.rb</code>, <code>app/controllers/api/v1/capabilities_controller.rb</code>, <code>spec/requests/mcp/server_spec.rb</code>, <code>spec/requests/api/v1/capabilities_spec.rb</code>.</p>
+        <ul>
+          <li><input type="checkbox" disabled> Write request specs for unauthenticated <code>/mcp</code>, authenticated initialize/list-tools, and capability flag output.</li>
+          <li><input type="checkbox" disabled> Mount the SDK Streamable HTTP transport in stateless mode.</li>
+          <li><input type="checkbox" disabled> Add an SDK configuration <code>around_request</code> hook that records method/tool name, request ID, membership ID, and outcome through existing audit and telemetry paths.</li>
+          <li><input type="checkbox" disabled> Add <code>medtracker_prepare_clinician_handoff</code> as a prompt that instructs clients to summarise facts, uncertainties, and suggested questions, not prescribe treatment.</li>
+          <li><input type="checkbox" disabled> Run <code>task test TEST_FILE=spec/requests/mcp/server_spec.rb</code> and <code>task test TEST_FILE=spec/requests/api/v1/capabilities_spec.rb</code>.</li>
+          <li><input type="checkbox" disabled> Commit with <code>feat(mcp): mount hosted streamable http server</code>.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Task 5: Documentation, security review, and final gates</h3>
+        <p><strong>Files:</strong> <code>docs/mcp.md</code>, <code>docs/api/openapi.v1.yaml</code> if capability docs are mirrored there, <code>docs/security-review.md</code> if the security model changes.</p>
+        <ul>
+          <li><input type="checkbox" disabled> Document purpose, supported tools, token setup, revocation, limitations, and "not medical advice" boundaries.</li>
+          <li><input type="checkbox" disabled> Add a short admin/operator note for hosted deployment: route path, stateless transport, logs, audit events, and rate-limit expectations.</li>
+          <li><input type="checkbox" disabled> Run <code>task rubocop</code>, <code>task brakeman</code>, and <code>task test</code>.</li>
+          <li><input type="checkbox" disabled> Commit with <code>docs(mcp): document agent access boundaries</code>.</li>
+          <li><input type="checkbox" disabled> Finish with <code>git pull --rebase</code>, <code>git push</code>, and <code>git status</code> showing the branch is up to date.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Test Plan</h2>
+    <div class="card warning">
+      <ul>
+        <li><strong>Auth:</strong> missing, malformed, expired, revoked, locked-out, inactive membership, stale permissions version, and valid app-token cases.</li>
+        <li><strong>Authorization:</strong> household manager sees full household-scoped data; carer, parent, and clinician users only see policy-granted people and medication records.</li>
+        <li><strong>Tenant safety:</strong> cross-household IDs never leak; tools use Pundit scopes and tenant context rather than raw model lookups.</li>
+        <li><strong>Tool behavior:</strong> output is bounded, deterministic, JSON-serializable, and stable for empty households, no medications, no takes today, and invalid date ranges.</li>
+        <li><strong>Observability:</strong> each MCP request has request ID, tool name, actor membership, success/failure outcome, and no raw bearer token in logs or spans.</li>
+        <li><strong>Security gates:</strong> <code>task brakeman</code> plus manual review of auth, authorization, token handling, rate limiting, audit trails, and health-data minimization.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>Assumptions and Defaults</h2>
+    <div class="card">
+      <ul>
+        <li>V1 is hosted Streamable HTTP MCP, not a local stdio-only helper, because MedTracker's value is authenticated household data.</li>
+        <li>V1 is read-only. Medication-taking and mutation tools are deferred until there is an explicit confirmation UX and stronger misuse telemetry.</li>
+        <li>Existing API app tokens are the initial credential type; no new OAuth provider is introduced in this plan.</li>
+        <li>All implementation commands use <code>task</code>; no direct <code>bundle exec rspec</code> or <code>docker compose</code> commands.</li>
+        <li>SDK details are based on current Context7 docs for <code>/modelcontextprotocol/ruby-sdk</code>: <code>MCP::Server</code>, class-based tools/resources, prompts, <code>server_context</code>, SDK configuration hooks, and Rails-mounted <code>StreamableHTTPTransport</code>.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+</body>
+</html>

@@ -49,7 +49,13 @@ module Api
       def client_tools
         {
           cli: deferred_client_tool,
-          mcp_server: deferred_client_tool,
+          mcp_server: {
+            supported: true,
+            transport: 'streamable_http',
+            endpoint: '/mcp',
+            tools: MedTrackerMcp::Server::TOOLS.map(&:name_value),
+            resources: MedTrackerMcp::Server::RESOURCES.map { |resource| resource::URI }
+          },
           diagnostics: %w[request_id retry_after]
         }
       end
