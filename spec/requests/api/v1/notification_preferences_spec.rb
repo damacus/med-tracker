@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'API v1 notification preferences' do
-  fixtures :accounts, :people, :users, :households, :household_memberships, :person_access_grants
+  fixtures :accounts, :people, :users, :households
 
   let(:user) { users(:admin) }
   let(:headers) { api_auth_headers(api_login(user).fetch('access_token')) }

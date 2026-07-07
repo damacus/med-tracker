@@ -390,9 +390,6 @@ RSpec.describe 'API v1 write resources' do
     expect(response).to have_http_status(:not_found)
   end
 
-
-
-
   it 'returns validation errors for invalid write payloads' do
     post api_v1_household_people_path(household_id),
          params: { person: { name: '', date_of_birth: '' } },

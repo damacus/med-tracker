@@ -63,7 +63,6 @@ RSpec.describe 'API v1 resources' do
     end
   end
 
-
   it 'serializes schedule dose snapshot fields instead of dosage identity' do
     login_data = api_login(user)
     household_id = login_data.dig('household', 'id')
