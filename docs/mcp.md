@@ -10,10 +10,12 @@ it does not support writes.
 
 ## Prerequisites
 
-- A running MedTracker deployment reachable over HTTPS.
+- A running MedTracker deployment reachable over HTTPS. Local development can
+  use `http://localhost:<port>`.
 - A MedTracker account with active access to the household you want the client
   to read.
-- Multi-factor authentication completed when your account policy requires it.
+- Access to complete multi-factor authentication when your account policy
+  requires it.
 - `curl` and `jq` for the verification commands below.
 - An MCP client that supports hosted HTTP MCP servers, such as Codex, Claude
   Code, or VS Code.
@@ -23,18 +25,28 @@ it does not support writes.
 API app tokens are the recommended credential for MCP clients because they are
 revocable and scoped to one household membership.
 
-1. Sign in to MedTracker.
-2. Open `/households/<household_slug>/profile`.
-3. Complete two-factor authentication if MedTracker prompts for it.
-4. Find **API Tokens**.
-5. Enter a clear **Token name**, such as `Laptop Codex MCP`.
-6. Select **Create token**.
-7. Copy the token immediately. MedTracker only shows it once.
+1. Sign in to MedTracker with the account that should own the MCP credential.
+2. From the household dashboard, open your profile. The direct URL is
+   `/households/<household_slug>/profile`.
+3. In the **API Tokens** card, enter a clear **Token name**, such as
+   `Laptop Codex MCP`.
+4. Select **Create token**.
+5. If MedTracker asks for two-factor authentication, complete it, return to the
+   profile page, and select **Create token** again.
+6. Copy the token immediately from the success message. MedTracker only shows
+   the raw token once.
 
 Set the deployment URL and token in your shell:
 
 ```bash
 export MEDTRACKER_URL="https://medtracker.example.com"
+export MEDTRACKER_MCP_TOKEN="paste-token-here"
+```
+
+For local development, use the dev server URL instead:
+
+```bash
+export MEDTRACKER_URL="http://localhost:$(task dev:port)"
 export MEDTRACKER_MCP_TOKEN="paste-token-here"
 ```
 
@@ -84,9 +96,9 @@ codex mcp add medtracker --url "$MEDTRACKER_URL/mcp" --bearer-token-env-var MEDT
 codex mcp get medtracker
 ```
 
-Restart any already-running Codex session after exporting
-`MEDTRACKER_MCP_TOKEN`; a process cannot read environment variables that were
-created after it started.
+Export `MEDTRACKER_MCP_TOKEN` before starting Codex or restart any already
+running Codex session after exporting it. A running process cannot read
+environment variables that were created after it started.
 
 ### Claude Code
 
