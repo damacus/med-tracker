@@ -5,18 +5,14 @@
 # Both Schedule and PersonMedication can be the source of a dose. This service
 # handles the shared flow so controllers remain thin.
 #
-# @example
-#   result = TakeMedicationService.new.call(
-#     source: @schedule,
-#     amount_override: params[:dose_amount],
-#     taken_from_medication_id: params[:taken_from_medication_id],
-#     user: current_user,
-#     taken_at: params[:taken_at] || Time.current   # optional, defaults to now
-#   )
-#   result.success  # => true / false
-#   result.take     # => MedicationTake record (when successful)
-#   result.error    # => :out_of_stock | :cooldown | :invalid_amount |
-#                   #    :selection_required | :invalid_source | :create_failed
+# @param source [Schedule, PersonMedication] the source of the dose
+# @param amount_override [String, nil] optional dose amount override
+# @param taken_from_medication_id [Integer, nil] optional specific medication ID
+# @param user [User] the user recording the dose
+# @param options [Hash] additional options, such as :taken_at (defaults to now)
+# @return [TakeMedicationService::Result] object containing success boolean,
+#   the take record, and any error symbol (:out_of_stock, :cooldown,
+#   :invalid_amount, :selection_required, :invalid_source, :create_failed)
 class TakeMedicationService
   Result = Data.define(:success, :take, :error)
   PreparedTake = Data.define(
