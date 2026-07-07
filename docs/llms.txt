@@ -99,7 +99,9 @@ High-value files for fast orientation:
 - User roles/types: `docs/user-management.md`
 - Deployment: `docs/deployment.md`
 - K8s seeding runbook: `docs/kubernetes-user-seeding.md`
+- MCP setup and usage: `docs/mcp.md`
 - Routes: `config/routes.rb`
+- Hosted MCP server: `app/mcp/med_tracker_mcp/*`
 - Seeds:
   - `db/seeds.rb`
   - `db/seeds/seed_users.rb`
@@ -109,6 +111,7 @@ High-value files for fast orientation:
   - `app/services/admin/bootstrap_service.rb`
 - Tests:
   - Feature/system specs: `spec/features/`, `spec/system/`
+  - MCP request contract: `spec/requests/mcp/server_spec.rb`
 
 ## OPS_RUNBOOK
 - Dev start: `task dev:up` then `task dev:seed`
