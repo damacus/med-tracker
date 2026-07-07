@@ -3,10 +3,9 @@
 require 'rails_helper'
 
 RSpec.describe 'API v1 person medications' do
-  fixtures :accounts, :people, :users, :households, :household_memberships, :person_medications, :medications,
-           :carer_relationships
+  fixtures :accounts, :people, :users, :households, :person_medications, :medications, :carer_relationships
 
-  let(:user) { users(:jane) }
+  let(:user) { users(:admin) }
   let(:household_id) { user.person.household.id }
 
   describe 'GET /api/v1/households/:household_id/person_medications' do
