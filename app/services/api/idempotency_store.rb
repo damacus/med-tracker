@@ -27,7 +27,7 @@ module Api
       return unless active? && response.status < 500
 
       ApiIdempotencyKey.create!(idempotency_attributes(response))
-    rescue ActiveRecord::RecordNotUnique
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
       nil
     end
 

@@ -52,6 +52,42 @@ RSpec.describe 'API v1 domain parity' do
     expect(dosage_option.reload.medication).to eq(medications(:paracetamol))
   end
 
+  it 'rejects stale dosage option updates' do
+    dosage_option = dosages(:paracetamol_adult)
+
+    patch api_v1_household_dosage_option_path(household_id, dosage_option.portable_id),
+          params: { dosage_option: { amount: 375 } },
+          headers: headers.merge('If-Match' => '"stale-etag"'),
+          as: :json
+
+    expect(response).to have_http_status(:conflict)
+  end
+
+  it 'returns validation errors for invalid dosage option creates and updates' do
+    medication = medications(:paracetamol)
+
+    post api_v1_household_dosage_options_path(household_id),
+         params: {
+           dosage_option: {
+             medication_id: medication.portable_id,
+             amount: nil,
+             unit: nil,
+             frequency: nil
+           }
+         },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+
+    patch api_v1_household_dosage_option_path(household_id, dosages(:paracetamol_adult).portable_id),
+          params: { dosage_option: { amount: nil } },
+          headers: headers,
+          as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+  end
+
   it 'creates health events with portable person and medication ids' do
     person = people(:john)
     medication = medications(:paracetamol)
@@ -74,6 +110,86 @@ RSpec.describe 'API v1 domain parity' do
     expect(response).to have_http_status(:created)
     expect(response.parsed_body.dig('data', 'person_portable_id')).to eq(person.portable_id)
     expect(response.parsed_body.dig('data', 'medication_portable_ids')).to contain_exactly(medication.portable_id)
+  end
+
+  it 'updates health events without requiring medication ids' do
+    event = HealthEvent.create!(
+      household_id: household_id,
+      person: people(:john),
+      event_kind: :illness,
+      title: 'Cold symptoms',
+      started_on: '2026-02-25'
+    )
+
+    patch api_v1_household_health_event_path(household_id, event.portable_id),
+          params: { health_event: { title: 'Improving cold symptoms', started_on: '2026-02-25' } },
+          headers: headers,
+          as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.dig('data', 'title')).to eq('Improving cold symptoms')
+  end
+
+  it 'rejects stale health event updates' do
+    event = HealthEvent.create!(
+      household_id: household_id,
+      person: people(:john),
+      event_kind: :illness,
+      title: 'Cold symptoms',
+      started_on: '2026-02-25'
+    )
+
+    patch api_v1_household_health_event_path(household_id, event.portable_id),
+          params: { health_event: { title: 'Stale cold symptoms', started_on: '2026-02-25' } },
+          headers: headers.merge('If-Match' => '"stale-etag"'),
+          as: :json
+
+    expect(response).to have_http_status(:conflict)
+  end
+
+  it 'returns validation errors for invalid health event creates and updates' do
+    post api_v1_household_health_events_path(household_id),
+         params: {
+           health_event: {
+             person_id: people(:john).portable_id,
+             event_kind: 'illness',
+             title: '',
+             started_on: ''
+           }
+         },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+
+    post api_v1_household_health_events_path(household_id),
+         params: {
+           health_event: {
+             person_id: people(:john).portable_id,
+             event_kind: 'illness',
+             title: 'Cold symptoms',
+             started_on: '2026-02-25'
+           }
+         },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:created)
+    event_portable_id = response.parsed_body.dig('data', 'portable_id')
+
+    patch api_v1_household_health_event_path(household_id, event_portable_id),
+          params: {
+            health_event: {
+              event_kind: 'illness',
+              title: 'Cold symptoms',
+              started_on: '2026-02-25',
+              ended_on: '2026-02-24'
+            }
+          },
+          headers: headers,
+          as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
   end
 
   it 'records medication takes using portable schedule ids' do
@@ -149,6 +265,35 @@ RSpec.describe 'API v1 domain parity' do
     expect(response.parsed_body.dig('data', 'current_supply')).to eq('42.0')
   end
 
+  it 'returns validation errors for invalid inventory adjustments' do
+    medication = medications(:paracetamol)
+
+    patch adjust_inventory_api_v1_household_medication_path(household_id, medication.portable_id),
+          params: { adjustment: { new_quantity: -1, reason: 'Invalid cycle count' } },
+          headers: headers,
+          as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body.dig('error', 'message')).to eq('Quantity cannot be negative')
+  end
+
+  it 'authenticates API app tokens for household-scoped reads' do
+    api_session = ApiSession.lookup_by_access_token(login_data.fetch('access_token'))
+    app_token, raw_token = ApiAppToken.issue_for(
+      account: user.person.account,
+      household_membership: api_session.household_membership,
+      name: 'Read test token'
+    )
+
+    get api_v1_household_medications_path(household_id),
+        headers: api_auth_headers(raw_token),
+        as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch('data')).not_to be_empty
+    expect(app_token.reload.last_used_at).to be_present
+  end
+
   it 'registers device tokens and push subscriptions through the API household scope' do
     post api_v1_household_native_device_tokens_path(household_id),
          params: { native_device_token: { device_token: 'api-device-token', platform: 'ios' } },
@@ -157,6 +302,11 @@ RSpec.describe 'API v1 domain parity' do
 
     expect(response).to have_http_status(:created)
     expect(user.person.account.native_device_tokens.find_by(device_token: 'api-device-token')).to be_present
+
+    delete api_v1_household_native_device_token_path(household_id, 'api-device-token'), headers: headers, as: :json
+
+    expect(response).to have_http_status(:no_content)
+    expect(user.person.account.native_device_tokens.find_by(device_token: 'api-device-token')).to be_nil
 
     post api_v1_household_push_subscription_path(household_id),
          params: {
@@ -172,6 +322,54 @@ RSpec.describe 'API v1 domain parity' do
     expect(
       user.person.account.push_subscriptions.find_by(endpoint: 'https://push.example.test/api-subscription')
     ).to be_present
+
+    delete api_v1_household_push_subscription_path(household_id),
+           params: { endpoint: 'https://push.example.test/api-subscription' },
+           headers: headers,
+           as: :json
+
+    expect(response).to have_http_status(:no_content)
+    expect(
+      user.person.account.push_subscriptions.find_by(endpoint: 'https://push.example.test/api-subscription')
+    ).to be_nil
+  end
+
+  it 'handles invalid and idempotent native device token requests' do
+    post api_v1_household_native_device_tokens_path(household_id),
+         params: { native_device_token: { device_token: '', platform: '' } },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+
+    delete api_v1_household_native_device_token_path(household_id, 'missing-device-token'),
+           headers: headers,
+           as: :json
+
+    expect(response).to have_http_status(:no_content)
+  end
+
+  it 'handles invalid, idempotent, and failed push subscription requests' do
+    post api_v1_household_push_subscription_path(household_id),
+         params: { push_subscription: { endpoint: '', keys: { p256dh: '', auth: '' } } },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+
+    delete api_v1_household_push_subscription_path(household_id),
+           params: { endpoint: 'https://push.example.test/missing' },
+           headers: headers,
+           as: :json
+
+    expect(response).to have_http_status(:no_content)
+
+    allow(PushNotificationService).to receive(:send_to_account).and_raise(StandardError)
+
+    post test_api_v1_household_push_subscription_path(household_id), headers: headers, as: :json
+
+    expect(response).to have_http_status(:service_unavailable)
+    expect(response.parsed_body.dig('error', 'code')).to eq('push_test_failed')
   end
 
   it 'uses household-scoped medication lookup from the API' do
@@ -216,6 +414,33 @@ RSpec.describe 'API v1 domain parity' do
 
     expect(response).to have_http_status(:ok)
     expect(response.parsed_body.dig('data', 'medication', 'description')).to eq('Paracetamol pain and fever relief')
+  end
+
+  it 'returns not found for AI medication suggestions when the feature is disabled' do
+    post api_v1_household_ai_medication_suggestions_path(household_id),
+         params: { medication: { name: 'Calpol Six Plus' } },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:not_found)
+  end
+
+  it 'requests AI medication suggestions with empty identity when medication params are absent' do
+    suggestion = AiMedication::Suggestion.new(
+      medication: { description: 'Fallback medication suggestion' },
+      doses: [],
+      sources: []
+    )
+    service = instance_double(AiMedication::SuggestionService, call: suggestion)
+
+    Household.find(household_id).update!(subscription_plan: 'family_plus')
+    allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('true')
+    allow(AiMedication::SuggestionService).to receive(:new).and_return(service)
+
+    post api_v1_household_ai_medication_suggestions_path(household_id), headers: headers, as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(service).to have_received(:call).with(medication_identity: {}, user: user)
   end
 
   it 'rejects cross-household portable ids as not found' do

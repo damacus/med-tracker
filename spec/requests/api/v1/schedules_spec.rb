@@ -75,6 +75,33 @@ RSpec.describe 'API v1 schedules' do
       expect(response.parsed_body.dig('data', 'dose_amount')).to eq('500.0')
     end
 
+    it 'creates schedules from source dosage options' do
+      person = people(:john)
+      medication = medications(:paracetamol)
+      dosage_option = dosages(:paracetamol_light)
+
+      post api_v1_household_schedules_path(household_id),
+           params: {
+             schedule: {
+               person_id: person.portable_id,
+               medication_id: medication.portable_id,
+               source_dosage_option_id: dosage_option.portable_id,
+               dose_amount: 500,
+               dose_unit: 'mg',
+               frequency: 'Daily',
+               start_date: '2026-02-25',
+               end_date: '2026-12-31',
+               max_daily_doses: 1,
+               dose_cycle: 'daily'
+             }
+           },
+           headers: headers,
+           as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(Schedule.order(:id).last.source_dosage_option_id).to eq(dosage_option.id)
+    end
+
     it 'returns validation errors for invalid payload' do
       person = people(:john)
       medication = medications(:paracetamol)
@@ -110,6 +137,15 @@ RSpec.describe 'API v1 schedules' do
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body.dig('data', 'frequency')).to eq('Every 8 hours')
+    end
+
+    it 'rejects stale schedule updates' do
+      patch api_v1_household_schedule_path(household_id, schedules(:john_paracetamol).id),
+            params: { schedule: { frequency: 'Every 12 hours' } },
+            headers: headers.merge('If-Match' => '"stale-etag"'),
+            as: :json
+
+      expect(response).to have_http_status(:conflict)
     end
 
     it 'returns validation errors when updating a schedule with invalid attributes' do

@@ -111,4 +111,85 @@ RSpec.describe 'API v1 sync' do
     expect(response).to have_http_status(:created)
     expect(HealthEvent.exists?(event.id)).to be(false)
   end
+
+  it 'updates health events in batch mutations' do
+    event = HealthEvent.create!(
+      household_id: household_id,
+      person: people(:john),
+      event_kind: :illness,
+      title: 'Cold',
+      started_on: '2026-02-25'
+    )
+
+    post api_v1_household_sync_batches_path(household_id),
+         params: {
+           batch: {
+             operations: [
+               {
+                 action: 'update',
+                 resource_type: 'health_event',
+                 id: event.portable_id,
+                 attributes: { title: 'Recovered cold', severity: 'mild', ended_on: '2026-02-26' }
+               }
+             ]
+           }
+         },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:created)
+    expect(event.reload).to have_attributes(title: 'Recovered cold', severity: 'mild', ended_on: Date.new(2026, 2, 26))
+  end
+
+  it 'rejects unsupported batch actions before writing records' do
+    medication = medications(:paracetamol)
+
+    post api_v1_household_sync_batches_path(household_id),
+         params: {
+           batch: {
+             operations: [
+               {
+                 action: 'replace',
+                 resource_type: 'medication',
+                 id: medication.portable_id,
+                 attributes: { name: 'Unsupported Replace' }
+               }
+             ]
+           }
+         },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(medication.reload.name).not_to eq('Unsupported Replace')
+  end
+
+  it 'rolls back batch updates with invalid attributes' do
+    event = HealthEvent.create!(
+      household_id: household_id,
+      person: people(:john),
+      event_kind: :illness,
+      title: 'Cold',
+      started_on: '2026-02-25'
+    )
+
+    post api_v1_household_sync_batches_path(household_id),
+         params: {
+           batch: {
+             operations: [
+               {
+                 action: 'update',
+                 resource_type: 'health_event',
+                 id: event.portable_id,
+                 attributes: { title: '', ended_on: '2026-02-24' }
+               }
+             ]
+           }
+         },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(event.reload.title).to eq('Cold')
+  end
 end

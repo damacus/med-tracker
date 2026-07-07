@@ -18,7 +18,7 @@ module Api
       private
 
       def medication_identity_params
-        return ActionController::Parameters.new if params[:medication].blank?
+        return ActionController::Parameters.new.permit! if params[:medication].blank?
 
         params.expect(medication: %i[name barcode dmd_code dmd_system dmd_concept_class category description])
       end

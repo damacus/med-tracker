@@ -50,4 +50,34 @@ RSpec.describe Api::V1::MedicationTakeSerializer do
     expect(json[:schedule_id]).to be_nil
     expect(json[:schedule_portable_id]).to be_nil
   end
+
+  it 'serialises missing optional associations as nil portable IDs' do
+    json = described_class.new(missing_association_take).as_json
+
+    expect(json).to include(
+      schedule_portable_id: nil,
+      person_medication_portable_id: nil,
+      taken_from_medication_portable_id: nil,
+      taken_from_location_portable_id: nil,
+      dose_amount: nil,
+      taken_at: nil,
+      person_id: nil,
+      person_portable_id: nil,
+      medication_id: nil,
+      medication_portable_id: nil
+    )
+  end
+
+  def missing_association_take
+    instance_double(
+      MedicationTake,
+      id: 1, portable_id: SecureRandom.uuid, client_uuid: nil,
+      schedule_id: nil, schedule: nil, person_medication_id: nil,
+      person_medication: nil, taken_from_medication_id: nil,
+      taken_from_medication: nil, taken_from_location_id: nil,
+      taken_from_location: nil, dose_amount: nil, dose_unit: nil,
+      taken_at: nil, updated_at: Time.zone.parse('2026-07-07 12:00:00'),
+      person: nil, medication: nil
+    )
+  end
 end

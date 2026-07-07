@@ -45,4 +45,27 @@ RSpec.describe Api::V1::PersonMedicationSerializer do
     expect(json[:active]).to be false
     expect(json[:paused]).to be true
   end
+
+  it 'serialises missing optional association and dose values as nil' do
+    updated_at = Time.zone.parse('2026-07-07 12:00:00')
+    json = described_class.new(missing_association_person_medication(updated_at)).as_json
+
+    expect(json).to include(
+      person_portable_id: nil,
+      medication_portable_id: nil,
+      dose_amount: nil,
+      updated_at: updated_at.iso8601
+    )
+  end
+
+  def missing_association_person_medication(updated_at)
+    instance_double(
+      PersonMedication,
+      id: 1, portable_id: SecureRandom.uuid, person_id: nil, person: nil,
+      medication_id: nil, medication: nil, dose_amount: nil, dose_unit: nil,
+      active?: false, paused?: true, dose_cycle: 'daily',
+      administration_kind: 'as_needed', notes: nil, position: nil,
+      updated_at: updated_at, max_daily_doses: nil, min_hours_between_doses: nil
+    )
+  end
 end

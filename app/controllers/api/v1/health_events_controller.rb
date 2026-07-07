@@ -52,7 +52,9 @@ module Api
             { medication_ids: [] }
           ]
         )
-        attributes[:person_id] = api_record_id(policy_scope(Person), attributes[:person_id])
+        if attributes[:person_id].present?
+          attributes[:person_id] = api_record_id(policy_scope(Person), attributes[:person_id])
+        end
         attributes[:medication_ids] = Array(attributes[:medication_ids]).map do |identifier|
           api_record_id(policy_scope(Medication), identifier)
         end

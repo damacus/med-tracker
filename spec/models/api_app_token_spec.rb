@@ -31,6 +31,54 @@ RSpec.describe ApiAppToken do
     end
   end
 
+  describe '#active_for_membership?' do
+    let(:account) { accounts(:jane_doe) }
+    let(:membership) { api_membership_for(account) }
+
+    it 'requires an attached active membership with the current permissions version' do
+      app_token = described_class.issue_for(
+        account: account,
+        household_membership: membership,
+        name: 'RSpec token'
+      ).first
+
+      expect(app_token).to be_active_for_membership
+
+      app_token.update!(permissions_version: membership.permissions_version + 1)
+      expect(app_token).not_to be_active_for_membership
+
+      app_token.update!(permissions_version: membership.permissions_version)
+      create_backup_owner
+      membership.update!(status: :revoked)
+      expect(app_token).not_to be_active_for_membership
+    end
+
+    it 'rejects tokens with no membership' do
+      app_token = described_class.new(household_membership: nil)
+
+      expect(app_token).not_to be_active_for_membership
+    end
+  end
+
+  describe 'validations' do
+    let(:account) { accounts(:jane_doe) }
+    let(:household) { api_household }
+
+    it 'rejects household memberships from a different account' do
+      other_account = Account.create!(email: 'api-token-other-account@example.test', status: :verified)
+      token = described_class.new(
+        account: account,
+        household_membership: mismatched_membership(other_account),
+        name: 'Mismatched token',
+        token_digest: described_class.digest('mismatched-token'),
+        last_used_at: Time.current
+      )
+
+      expect(token).not_to be_valid
+      expect(token.errors[:household_membership]).to include('must belong to the account')
+    end
+  end
+
   def issue_app_token_at_issued_time
     travel_to(issued_at) do
       described_class.issue_for(
@@ -64,6 +112,25 @@ RSpec.describe ApiAppToken do
       date_of_birth: 30.years.ago.to_date,
       person_type: :adult,
       has_capacity: true
+    )
+  end
+
+  def mismatched_membership(account)
+    household.household_memberships.create!(
+      account: account,
+      person: api_person_for(account, household),
+      role: :member,
+      status: :active
+    )
+  end
+
+  def create_backup_owner
+    backup_account = Account.create!(email: "api-backup-owner-#{SecureRandom.hex(4)}@example.test", status: :verified)
+    membership.household.household_memberships.create!(
+      account: backup_account,
+      person: api_person_for(backup_account, membership.household),
+      role: :owner,
+      status: :active
     )
   end
 end

@@ -27,4 +27,24 @@ RSpec.describe Api::V1::MedicationSerializer do
       location_portable_id: medication.location.portable_id
     )
   end
+
+  it 'serialises medications without a location' do
+    json = described_class.new(medication_without_location).as_json
+
+    expect(json[:location_id]).to be_nil
+    expect(json[:location_portable_id]).to be_nil
+  end
+
+  def medication_without_location
+    instance_double(
+      Medication,
+      id: 1, portable_id: SecureRandom.uuid, name: 'Paracetamol',
+      display_name: 'Paracetamol', category: 'tablet', description: nil,
+      dose_amount: nil, dose_unit: nil, current_supply: nil,
+      reorder_threshold: nil, reorder_status: 'ok', location_id: nil,
+      location: nil, updated_at: Time.zone.parse('2026-07-07 12:00:00'),
+      low_stock?: false, out_of_stock?: false,
+      days_until_low_stock: nil, days_until_out_of_stock: nil
+    )
+  end
 end

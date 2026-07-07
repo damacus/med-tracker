@@ -86,6 +86,22 @@ RSpec.describe 'API v1 portable data' do
     expect(response.parsed_body.dig('error', 'message')).to eq('Portable passphrase header is required')
   end
 
+  it 'rejects portable imports without passphrase headers' do
+    post "/api/v1/households/#{household_id}/portable_imports/dry_run",
+         params: { bundle: encrypted_import_payload },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+
+    post "/api/v1/households/#{household_id}/portable_imports",
+         params: { bundle: encrypted_import_payload },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+  end
+
   it 'returns a portable mobile snapshot with portable relationship fields' do
     request_headers = headers
 
