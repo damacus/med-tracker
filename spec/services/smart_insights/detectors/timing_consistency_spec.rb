@@ -24,6 +24,22 @@ RSpec.describe SmartInsights::Detectors::TimingConsistency do
     take
   end
 
+  def counted_take_at(schedule:, taken_at:, counter:)
+    take = instance_double(MedicationTake, taken_at: taken_at)
+    allow(take).to receive(:schedule).and_return(schedule)
+    allow(take).to receive(:schedule_id) do
+      counter[:schedule_id_reads] += 1
+      schedule.id
+    end
+    take
+  end
+
+  def counted_takes_for(schedule:, start_date:, end_date:, time_str:, counter:)
+    (start_date..end_date).map do |date|
+      counted_take_at(schedule: schedule, taken_at: expected_time(date, time_str), counter: counter)
+    end
+  end
+
   # Build a context double that satisfies all methods the detector calls.
   def context_with(schedules:, takes:, start_date:, end_date:)
     instance_double(
@@ -199,6 +215,24 @@ RSpec.describe SmartInsights::Detectors::TimingConsistency do
       end
       ctx = context_with(schedules: [ext_sched], takes: takes, start_date: start_date, end_date: extended_end)
       expect(described_class.new(ctx).call.size).to eq(1)
+    end
+
+    it 'matches takes by schedule before scanning timing windows' do
+      other_sched = schedule_double(id: 99, time: time_str, start_date: start_date, end_date: end_date)
+      counter = { schedule_id_reads: 0 }
+      other_takes = counted_takes_for(schedule: other_sched, start_date: start_date, end_date: end_date,
+                                      time_str: time_str, counter: counter)
+      primary_takes = counted_takes_for(schedule: sched, start_date: start_date, end_date: end_date,
+                                        time_str: time_str, counter: counter)
+      ctx = context_with(
+        schedules: [sched, other_sched],
+        takes: other_takes + primary_takes,
+        start_date: start_date,
+        end_date: end_date
+      )
+
+      expect(described_class.new(ctx).call.size).to eq(1)
+      expect(counter[:schedule_id_reads]).to be <= 20
     end
 
     it 'skips days where expected_doses_on returns 0 when counting occurrences' do

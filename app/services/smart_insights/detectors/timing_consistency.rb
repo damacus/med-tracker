@@ -40,9 +40,10 @@ module SmartInsights
 
       def on_time_count
         @on_time_count ||= begin
-          remaining_takes = takes_with_configured_times.dup
+          remaining_takes_by_schedule_id = takes_with_configured_times.group_by(&:schedule_id)
 
           expected_occurrences.count do |occurrence|
+            remaining_takes = remaining_takes_by_schedule_id.fetch(occurrence[:schedule].id, [])
             matching_take = remaining_takes.find { |take| on_time?(take, occurrence) }
             remaining_takes.delete(matching_take) if matching_take
           end
