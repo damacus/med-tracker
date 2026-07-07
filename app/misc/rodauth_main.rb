@@ -17,7 +17,6 @@ class RodauthMain < Rodauth::Rails::Auth
     # See the Rodauth documentation for the list of available config options:
     # http://rodauth.jeremyevans.net/documentation.html
 
-    # ==> General
     # Initialize Sequel and have it reuse Active Record's database connection.
     # Use appropriate adapter based on Rails database configuration
     db_adapter = ActiveRecord::Base.connection.adapter_name.downcase
@@ -306,25 +305,21 @@ class RodauthMain < Rodauth::Rails::Auth
     account_lockouts_id_column :account_id
     account_login_failures_id_column :account_id
 
-    # ==> Lockout Configuration
     # Lock account after 5 failed login attempts
     max_invalid_logins 5
     # Unlock account after 30 minutes
     account_lockouts_deadline_interval(minutes: 30)
 
-    # ==> Active Sessions Configuration
     # Track active sessions for session management
     # Session expires after 30 minutes of inactivity
     session_inactivity_deadline 30.minutes.to_i
     # Session expires after 24 hours regardless of activity
     session_lifetime_deadline 24.hours.to_i
 
-    # ==> Two-Factor Authentication (OTP) Configuration
     # TOTP issuer name shown in authenticator apps
     otp_issuer 'MedTracker'
     auto_remove_recovery_codes? true
 
-    # ==> WebAuthn (Passkey) Configuration
     webauthn_rp_name 'MedTracker'
     webauthn_rp_id do
       if ENV['APP_URL'].present?
@@ -387,7 +382,6 @@ class RodauthMain < Rodauth::Rails::Auth
       require_two_factor_authenticated
     end
 
-    # ==> OmniAuth (Generic OIDC)
     # Configure OpenID Connect provider
     # Credentials from Rails credentials or environment variables
     oidc_issuer = Rails.application.credentials.dig(:oidc, :issuer_url) || ENV.fetch('OIDC_ISSUER_URL', nil)
@@ -411,7 +405,6 @@ class RodauthMain < Rodauth::Rails::Auth
                         }
     end
 
-    # ==> Hooks
     # Block the create-account page entirely when an administrator exists and no
     # valid invitation token is present. This prevents unauthenticated users from
     # even seeing the registration form in invite-only mode.
@@ -592,11 +585,9 @@ class RodauthMain < Rodauth::Rails::Auth
       audit_auth_token('login_change_key', 'revoked')
     end
 
-    # ==> Flash overrides
     # Login redirect is routine, not an error — use notice instead of alert
     require_login_error_flash { I18n.t('authentication.login_required', default: 'Please login to continue') }
 
-    # ==> Views
     # Render Phlex components directly for speed (no ERB indirection)
     auth_class_eval do
       def set_redirect_error_flash(message) # rubocop:disable Naming/AccessorMethodName
@@ -653,7 +644,6 @@ class RodauthMain < Rodauth::Rails::Auth
       end
     end
 
-    # ==> Redirects
     # Current.user is set in ApplicationController before_action instead of here
 
     # Redirect to dashboard after successful login
@@ -694,7 +684,6 @@ class RodauthMain < Rodauth::Rails::Auth
     # Redirect to login page after password reset.
     reset_password_redirect { login_path }
 
-    # ==> Deadlines
     # Change default deadlines for some actions.
     # This allows unverified users to login during the grace period in non-production
     verify_account_grace_period Rails.env.production? ? 0 : 7.days.to_i
