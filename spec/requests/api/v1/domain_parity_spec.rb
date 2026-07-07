@@ -38,6 +38,20 @@ RSpec.describe 'API v1 domain parity' do
     expect(response.parsed_body.dig('data', 'amount')).to eq('250.0')
   end
 
+  it 'updates dosage options without requiring clients to resend the medication id' do
+    dosage_option = dosages(:paracetamol_adult)
+
+    patch api_v1_household_dosage_option_path(household_id, dosage_option.portable_id),
+          params: { dosage_option: { amount: 375, frequency: 'Every 8 hours' } },
+          headers: headers,
+          as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.dig('data', 'amount')).to eq('375.0')
+    expect(response.parsed_body.dig('data', 'frequency')).to eq('Every 8 hours')
+    expect(dosage_option.reload.medication).to eq(medications(:paracetamol))
+  end
+
   it 'creates health events with portable person and medication ids' do
     person = people(:john)
     medication = medications(:paracetamol)

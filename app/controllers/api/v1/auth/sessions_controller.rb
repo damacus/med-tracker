@@ -8,7 +8,7 @@ module Api
 
         def index
           api_credential = authenticated_api_credential
-          return render_unauthorized('Authentication required') unless api_credential
+          return render_authentication_required unless api_credential
 
           render json: {
             data: api_credential.account.api_sessions.active.order(created_at: :desc).map do |session|
@@ -51,14 +51,14 @@ module Api
 
         def households
           api_credential = authenticated_api_credential
-          return render_unauthorized('Authentication required') unless api_credential
+          return render_authentication_required unless api_credential
 
           render json: { data: household_memberships_payload(api_credential.account) }
         end
 
         def revoke
           api_credential = authenticated_api_credential
-          return render_unauthorized('Authentication required') unless api_credential
+          return render_authentication_required unless api_credential
 
           api_session = api_credential.account.api_sessions.active.find(params.expect(:id))
           api_session.revoke!(audit_context: audit_context(api_credential.account), action: 'revoked')
@@ -260,10 +260,19 @@ module Api
           )
         end
 
+        def render_authentication_required
+          render_api_error(
+            code: 'unauthorized',
+            message: 'Authentication required',
+            status: :unauthorized
+          )
+        end
+
         def authenticated_api_credential
           token = request.headers['Authorization'].to_s.split(' ', 2).last
           credential = ApiSession.lookup_by_access_token(token) || ApiAppToken.lookup_by_token(token)
           return unless credential&.active_for_membership?
+          return if credential.is_a?(ApiSession) && !credential.access_expires_at.future?
           return if ApiAuthState.locked_out?(credential.account)
 
           credential.touch_last_used!

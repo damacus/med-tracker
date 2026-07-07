@@ -56,7 +56,9 @@ module Api
             reorder_threshold
           ]
         ).tap do |attributes|
-          attributes[:medication_id] = api_record_id(policy_scope(Medication), attributes[:medication_id])
+          if attributes[:medication_id].present?
+            attributes[:medication_id] = api_record_id(policy_scope(Medication), attributes[:medication_id])
+          end
         end
       end
 

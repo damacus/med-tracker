@@ -336,6 +336,26 @@ RSpec.describe 'API v1 auth sessions' do
       expect(response).to have_http_status(:no_content)
       expect(ApiSession.find(session_id)).to be_revoked_at
     end
+
+    it 'rejects expired access tokens on auth session management endpoints' do
+      login_data = api_login(user)
+      headers = api_auth_headers(login_data.fetch('access_token'))
+      api_session = ApiSession.lookup_by_access_token(login_data.fetch('access_token'))
+      api_session.update!(access_expires_at: 1.minute.ago)
+
+      get api_v1_auth_households_path, headers: headers, as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+
+      get api_v1_auth_sessions_path, headers: headers, as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+
+      delete api_v1_auth_session_path(api_session.id), headers: headers, as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(api_session.reload.revoked_at).to be_nil
+    end
   end
 
   describe 'POST /api/v1/auth/refresh' do

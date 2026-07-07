@@ -79,6 +79,16 @@ RSpec.describe 'API v1 sync safety primitives' do
     expect(response).to have_http_status(:not_found)
   end
 
+  it 'finds resources by future UUID version portable ids' do
+    portable_id = '01890f13-7d4a-7cc5-98f3-90d8d3934b8e'
+    medication = create(:medication, household: Household.find(household_id), portable_id: portable_id)
+
+    get api_v1_household_medication_path(household_id, medication.portable_id), headers: headers, as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.dig('data', 'portable_id')).to eq(portable_id)
+  end
+
   it 'uses etags and if-match to reject stale writes' do
     medication = medications(:paracetamol)
 
