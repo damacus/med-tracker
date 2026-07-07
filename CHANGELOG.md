@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.5.8](https://github.com/damacus/med-tracker/compare/v0.5.7...v0.5.8) (2026-07-07)
+
+
+### Features
+
+* **api:** add portable mobile data export and import ([#1479](https://github.com/damacus/med-tracker/issues/1479)) ([32716af](https://github.com/damacus/med-tracker/commit/32716af0dfc672b975aa4352bfa8366e46989601))
+
+
+### Bug Fixes
+
+* **notifications:** harden browser push test flow ([#1473](https://github.com/damacus/med-tracker/issues/1473)) ([274a955](https://github.com/damacus/med-tracker/commit/274a9559bab3d10cfae85e1bbb534b50b9b67483))
+* **observability:** disable test trace exporting ([#1471](https://github.com/damacus/med-tracker/issues/1471)) ([3b5f1a6](https://github.com/damacus/med-tracker/commit/3b5f1a6153ff5ab574a257709bdbfba5950a7e54))
+* **workflows:** keep modal cancels on origin page ([#1478](https://github.com/damacus/med-tracker/issues/1478)) ([51793ed](https://github.com/damacus/med-tracker/commit/51793edb69ceeec9bf1e83f102e8873d040ff075))
+
+
+### Performance Improvements
+
+* ⚡ Bolt: Optimize API pagination count query ([#1483](https://github.com/damacus/med-tracker/issues/1483)) ([f0053ef](https://github.com/damacus/med-tracker/commit/f0053ef78022473b0de85a1d2a1595bcb36bfcc4))
+* ⚡ Bolt: Use insert_all! for medication links to resolve N+1 ([#1500](https://github.com/damacus/med-tracker/issues/1500)) ([c80808f](https://github.com/damacus/med-tracker/commit/c80808f4f0f6e8234564e9c1b15f1f92d3618da0))
+* Group timing insight take matching ([#1511](https://github.com/damacus/med-tracker/issues/1511)) ([60aeb47](https://github.com/damacus/med-tracker/commit/60aeb47be55aa0083721f72e6ca5652efb454c75))
+
 ## [0.5.7](https://github.com/damacus/med-tracker/compare/v0.5.6...v0.5.7) (2026-07-03)
 
 
