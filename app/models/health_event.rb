@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class HealthEvent < ApplicationRecord
+  include PortableIdentifiable
+
   has_paper_trail
 
   belongs_to :household

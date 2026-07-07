@@ -66,9 +66,9 @@ module Api
       def medication_take_source(source_type, source_id)
         case source_type
         when 'schedule'
-          policy_scope(Schedule).find(source_id)
+          find_api_record(policy_scope(Schedule), source_id)
         when 'person_medication'
-          policy_scope(PersonMedication).find(source_id)
+          find_api_record(policy_scope(PersonMedication), source_id)
         else
           raise ActiveRecord::RecordNotFound
         end

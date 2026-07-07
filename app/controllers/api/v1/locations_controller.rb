@@ -9,7 +9,7 @@ module Api
       end
 
       def show
-        location = policy_scope(Location).find(params.expect(:id))
+        location = find_api_record(policy_scope(Location), params.expect(:id))
         authorize location
 
         render_resource(location, serializer: LocationSerializer)

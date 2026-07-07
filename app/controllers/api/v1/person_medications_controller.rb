@@ -9,7 +9,8 @@ module Api
       end
 
       def show
-        person_medication = policy_scope(PersonMedication).includes(:person, :medication).find(params.expect(:id))
+        person_medication = find_api_record(policy_scope(PersonMedication).includes(:person, :medication),
+                                            params.expect(:id))
         authorize person_medication
 
         render_resource(person_medication, serializer: PersonMedicationSerializer)
@@ -25,24 +26,58 @@ module Api
 
         return render_validation_errors(person_medication) unless person_medication.save
 
+        record_api_change(person_medication, action: 'create')
         render_resource(person_medication.reload, serializer: PersonMedicationSerializer, status: :created)
       end
 
       def update
-        person_medication = policy_scope(PersonMedication).includes(:person, :medication).find(params.expect(:id))
+        person_medication = find_api_record(policy_scope(PersonMedication).includes(:person, :medication),
+                                            params.expect(:id))
         authorize person_medication
+        return unless fresh_api_record?(person_medication)
+
         attributes = person_medication_update_params
         assert_medication_access!(attributes[:medication_id]) if attributes[:medication_id].present?
 
         return render_validation_errors(person_medication) unless person_medication.update(attributes)
 
+        record_api_change(person_medication, action: 'update')
         render_resource(person_medication.reload, serializer: PersonMedicationSerializer)
+      end
+
+      def pause
+        update_pause_state(:pause!)
+      end
+
+      def resume
+        update_pause_state(:resume!)
+      end
+
+      def reorder
+        person_medication = find_api_record(policy_scope(PersonMedication).includes(:person, :medication),
+                                            params.expect(:id))
+        authorize person_medication, :update?
+        PersonMedicationReorderService.new.call(
+          person_medication: person_medication,
+          direction: params.expect(:direction)
+        )
+        record_api_change(person_medication.reload, action: 'update')
+        render_resource(person_medication, serializer: PersonMedicationSerializer)
       end
 
       private
 
+      def update_pause_state(method_name)
+        person_medication = find_api_record(policy_scope(PersonMedication).includes(:person, :medication),
+                                            params.expect(:id))
+        authorize person_medication, :update?
+        person_medication.public_send(method_name)
+        record_api_change(person_medication.reload, action: 'update')
+        render_resource(person_medication, serializer: PersonMedicationSerializer)
+      end
+
       def person_medication_params
-        params.expect(
+        attributes = params.expect(
           person_medication: %i[
             person_id
             medication_id
@@ -56,6 +91,19 @@ module Api
             dose_cycle
           ]
         )
+        if attributes[:person_id].present?
+          attributes[:person_id] = api_record_id(policy_scope(Person), attributes[:person_id])
+        end
+        if attributes[:medication_id].present?
+          attributes[:medication_id] = api_record_id(policy_scope(Medication), attributes[:medication_id])
+        end
+        if attributes[:source_dosage_option_id].present?
+          attributes[:source_dosage_option_id] = api_record_id(
+            policy_scope(MedicationDosageOption),
+            attributes[:source_dosage_option_id]
+          )
+        end
+        attributes
       end
 
       def person_medication_update_params

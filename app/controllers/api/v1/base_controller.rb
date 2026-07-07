@@ -7,6 +7,7 @@ module Api
       include Pundit::Authorization
 
       around_action :with_api_request_context
+      around_action :with_api_idempotency
 
       class InvalidFilterValue < StandardError; end
 
@@ -114,7 +115,33 @@ module Api
       end
 
       def render_resource(record, serializer:, status: :ok)
+        response.set_header('ETag', api_etag(record))
         render json: { data: serializer.new(record).as_json }, status: status
+      end
+
+      def find_api_record(scope, identifier)
+        Api::PortableRecordLocator.new(household: current_household).find(scope, identifier)
+      end
+
+      def api_record_id(scope, identifier)
+        find_api_record(scope, identifier).id
+      end
+
+      def fresh_api_record?(record)
+        expected = request.headers['If-Match'].to_s
+        return true if expected.blank? || expected == api_etag(record)
+
+        render_conflict('Record has changed since it was last read')
+        false
+      end
+
+      def record_api_change(record, action:)
+        Api::ChangeRecorder.new(
+          household: current_household,
+          credential: current_api_session,
+          membership: current_membership,
+          request: request
+        ).record(record, action: action)
       end
 
       def apply_collection_filters(scope)
@@ -177,6 +204,36 @@ module Api
 
       def render_invalid_filter(exception)
         render_unprocessable(exception.message)
+      end
+
+      def render_conflict(message, code: 'conflict')
+        render_api_error(code: code, message: message, status: :conflict)
+      end
+
+      def api_etag(record)
+        %("#{Digest::SHA256.hexdigest([record.class.name, record.id, record.updated_at.to_f].join(':'))}")
+      end
+
+      def with_api_idempotency
+        store = Api::IdempotencyStore.new(request: request, credential: current_api_session, household: current_household)
+        unless store.active?
+          yield
+          return
+        end
+
+        result = store.lookup
+        if result.replayed
+          response.set_header('Idempotency-Replayed', 'true')
+          render json: result.record.response_body, status: result.record.response_status
+          return
+        end
+        if result.conflict
+          return render_conflict('Idempotency key has already been used for a different request',
+                                 code: 'idempotency_key_reused')
+        end
+
+        yield
+        store.store!(response) unless performed? && response.status == 409
       end
     end
   end

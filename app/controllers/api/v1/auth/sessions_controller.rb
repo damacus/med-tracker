@@ -6,6 +6,17 @@ module Api
       class SessionsController < ActionController::API
         include ErrorRendering
 
+        def index
+          api_credential = authenticated_api_credential
+          return render_unauthorized('Authentication required') unless api_credential
+
+          render json: {
+            data: api_credential.account.api_sessions.active.order(created_at: :desc).map do |session|
+              session_payload(session)
+            end
+          }
+        end
+
         def create
           account = Account.find_by(email: params.expect(:email).to_s.strip.downcase)
           household_membership = requested_household_membership(account)
@@ -26,6 +37,33 @@ module Api
 
           render json: { data: login_payload(api_session, access_token, refresh_token, household_membership) },
                  status: :created
+        end
+
+        def oidc_exchange
+          result = Api::OidcSessionExchange.new(params: oidc_exchange_params, request: request).call
+          render json: {
+            data: login_payload(result.api_session, result.access_token, result.refresh_token,
+                                result.household_membership)
+          }, status: :created
+        rescue Api::OidcSessionExchange::Error
+          render_invalid_oidc_exchange
+        end
+
+        def households
+          api_credential = authenticated_api_credential
+          return render_unauthorized('Authentication required') unless api_credential
+
+          render json: { data: household_memberships_payload(api_credential.account) }
+        end
+
+        def revoke
+          api_credential = authenticated_api_credential
+          return render_unauthorized('Authentication required') unless api_credential
+
+          api_session = api_credential.account.api_sessions.active.find(params.expect(:id))
+          api_session.revoke!(audit_context: audit_context(api_credential.account), action: 'revoked')
+
+          head :no_content
         end
 
         def refresh
@@ -56,6 +94,10 @@ module Api
         end
 
         private
+
+        def oidc_exchange_params
+          params.permit(:id_token, :nonce, :code_verifier, :device_name, :household_id, :provider)
+        end
 
         def audit_context(account)
           {
@@ -156,6 +198,27 @@ module Api
           }
         end
 
+        def household_memberships_payload(account)
+          account.household_memberships.active.includes(:household).order(:id).map do |membership|
+            household_payload(membership.household).merge(
+              role: membership.role,
+              membership_id: membership.id
+            )
+          end
+        end
+
+        def session_payload(api_session)
+          {
+            id: api_session.id,
+            device_name: api_session.device_name,
+            household_id: api_session.household_membership&.household_id,
+            last_used_at: api_session.last_used_at.iso8601,
+            access_token_expires_at: api_session.access_expires_at.iso8601,
+            refresh_token_expires_at: api_session.refresh_expires_at.iso8601,
+            created_at: api_session.created_at.iso8601
+          }
+        end
+
         def login_payload(api_session, access_token, refresh_token, household_membership)
           refresh_payload(api_session, access_token, refresh_token).merge(
             me: Api::V1::MeSerializer.new(api_session.account.person.user).as_json,
@@ -187,6 +250,24 @@ module Api
             message: 'Refresh token is invalid or expired',
             status: :unauthorized
           )
+        end
+
+        def render_invalid_oidc_exchange
+          render_api_error(
+            code: 'invalid_oidc_exchange',
+            message: 'OIDC exchange is invalid',
+            status: :unauthorized
+          )
+        end
+
+        def authenticated_api_credential
+          token = request.headers['Authorization'].to_s.split(' ', 2).last
+          credential = ApiSession.lookup_by_access_token(token) || ApiAppToken.lookup_by_token(token)
+          return unless credential&.active_for_membership?
+          return if ApiAuthState.locked_out?(credential.account)
+
+          credential.touch_last_used!
+          credential
         end
       end
     end

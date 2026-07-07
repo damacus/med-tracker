@@ -41,6 +41,30 @@ module Rack
       req.ip if req.path == '/api/v1/auth/refresh' && req.post?
     end
 
+    throttle('api/auth/oidc_exchange/ip', limit: 10, period: 1.minute) do |req|
+      req.ip if req.path == '/api/v1/auth/oidc_exchange' && req.post?
+    end
+
+    throttle('api/data_exports/ip', limit: 10, period: 1.minute) do |req|
+      req.ip if req.get? && req.path.match?(%r{\A/api/v1/households/[^/]+/data_exports/})
+    end
+
+    throttle('api/sync_batches/ip', limit: 30, period: 1.minute) do |req|
+      req.ip if req.post? && req.path.match?(%r{\A/api/v1/households/[^/]+/sync/batches\z})
+    end
+
+    throttle('api/medication_lookup/ip', limit: 60, period: 1.minute) do |req|
+      req.ip if req.get? && req.path.match?(%r{\A/api/v1/households/[^/]+/medication_lookup\z})
+    end
+
+    throttle('api/ai_medication_suggestions/ip', limit: 10, period: 1.minute) do |req|
+      req.ip if req.post? && req.path.match?(%r{\A/api/v1/households/[^/]+/ai_medication_suggestions\z})
+    end
+
+    throttle('api/admin/audit_logs/ip', limit: 100, period: 1.minute) do |req|
+      req.ip if req.get? && req.path.match?(%r{\A/api/v1/households/[^/]+/admin/audit_logs})
+    end
+
     throttle('mcp/ip', limit: 60, period: 1.minute) do |req|
       req.ip if req.path == MCP_PATH
     end
@@ -89,11 +113,32 @@ module Rack
 
       [
         429,
+        throttle_headers(request, match_data, retry_after),
+        throttle_body(request, retry_after)
+      ]
+    end
+
+    def self.throttle_headers(request, match_data, retry_after)
+      headers = {
+        'Retry-After' => retry_after.to_s,
+        'ratelimit-limit' => match_data[:limit].to_s,
+        'ratelimit-remaining' => '0',
+        'ratelimit-reset' => (match_data[:epoch_time] + retry_after).to_s
+      }
+      headers['Content-Type'] = request.path.start_with?('/api/') ? 'application/json' : 'text/plain'
+      headers
+    end
+
+    def self.throttle_body(request, retry_after)
+      return ["Rate limit exceeded. Retry in #{retry_after} seconds.\n"] unless request.path.start_with?('/api/')
+
+      [
         {
-          'Content-Type' => 'text/plain',
-          'Retry-After' => retry_after.to_s
-        },
-        ["Rate limit exceeded. Retry in #{retry_after} seconds.\n"]
+          error: {
+            code: 'rate_limited',
+            message: "Rate limit exceeded. Retry in #{retry_after} seconds."
+          }
+        }.to_json
       ]
     end
 

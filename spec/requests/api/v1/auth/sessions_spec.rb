@@ -7,6 +7,17 @@ RSpec.describe 'API v1 auth sessions' do
 
   let(:user) { users(:jane) }
   let(:account) { user.person.account }
+  let(:oidc_issuer) { 'https://issuer.example.test' }
+  let(:oidc_client_id) { 'medtracker-mobile-test' }
+  let(:oidc_client_secret) { 'oidc-test-secret' }
+
+  before do
+    allow(ENV).to receive(:fetch).and_call_original
+    allow(ENV).to receive(:fetch).with('OIDC_ISSUER_URL', nil).and_return(oidc_issuer)
+    allow(ENV).to receive(:fetch).with('OIDC_MOBILE_CLIENT_ID', nil).and_return(oidc_client_id)
+    allow(ENV).to receive(:fetch).with('OIDC_CLIENT_ID', nil).and_return(oidc_client_id)
+    allow(ENV).to receive(:fetch).with('OIDC_CLIENT_SECRET', nil).and_return(oidc_client_secret)
+  end
 
   describe 'POST /api/v1/auth/login' do
     before do
@@ -232,6 +243,101 @@ RSpec.describe 'API v1 auth sessions' do
     end
   end
 
+  describe 'POST /api/v1/auth/oidc_exchange' do
+    before do
+      AccountLockout.where(account_id: account.id).delete_all if defined?(AccountLockout)
+      AccountIdentity.find_or_create_by!(account: account, provider: 'oidc', uid: 'jane-oidc-sub')
+      ensure_api_household_for(user)
+    end
+
+    it 'exchanges a valid OIDC identity token for an API session' do
+      post api_v1_auth_oidc_exchange_path,
+           params: {
+             id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'nonce-1'),
+             nonce: 'nonce-1',
+             code_verifier: 'pkce-verifier',
+             device_name: 'RSpec Mobile'
+           },
+           as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(response.parsed_body.dig('data', 'access_token')).to be_present
+      expect(response.parsed_body.dig('data', 'refresh_token')).to be_present
+      expect(response.parsed_body.dig('data', 'me', 'email_address')).to eq(user.email_address)
+      expect(ApiSession.order(:id).last.device_name).to eq('RSpec Mobile')
+    end
+
+    it 'rejects invalid issuer, audience, expiry, nonce, replay, locked account, and revoked membership cases' do
+      invalid_cases = [
+        [oidc_token(sub: 'jane-oidc-sub', issuer: 'https://evil.example.test', nonce: 'bad-issuer'), 'bad-issuer'],
+        [oidc_token(sub: 'jane-oidc-sub', audience: 'wrong-client', nonce: 'bad-audience'), 'bad-audience'],
+        [oidc_token(sub: 'jane-oidc-sub', exp: 1.minute.ago.to_i, nonce: 'expired'), 'expired'],
+        [oidc_token(sub: 'jane-oidc-sub', nonce: 'expected-nonce'), 'different-nonce']
+      ]
+
+      invalid_cases.each do |token, nonce|
+        post api_v1_auth_oidc_exchange_path,
+             params: { id_token: token, nonce: nonce, code_verifier: 'pkce-verifier' },
+             as: :json
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(response.parsed_body.dig('error', 'code')).to eq('invalid_oidc_exchange')
+      end
+
+      replay_token = oidc_token(sub: 'jane-oidc-sub', nonce: 'replay-nonce')
+      post api_v1_auth_oidc_exchange_path,
+           params: { id_token: replay_token, nonce: 'replay-nonce', code_verifier: 'pkce-verifier' },
+           as: :json
+      post api_v1_auth_oidc_exchange_path,
+           params: { id_token: replay_token, nonce: 'replay-nonce', code_verifier: 'pkce-verifier' },
+           as: :json
+      expect(response).to have_http_status(:unauthorized)
+
+      lock_account!(account)
+      post api_v1_auth_oidc_exchange_path,
+           params: {
+             id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'locked-nonce'),
+             nonce: 'locked-nonce',
+             code_verifier: 'pkce-verifier'
+           },
+           as: :json
+      expect(response).to have_http_status(:unauthorized)
+      AccountLockout.where(account_id: account.id).delete_all
+
+      account.household_memberships.active.first.update!(status: :revoked)
+      post api_v1_auth_oidc_exchange_path,
+           params: {
+             id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'revoked-nonce'),
+             nonce: 'revoked-nonce',
+             code_verifier: 'pkce-verifier'
+           },
+           as: :json
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe 'API session household selection, listing, and revocation' do
+    it 'lists households, lists sessions, and revokes a selected session' do
+      login_data = api_login(user)
+      headers = api_auth_headers(login_data.fetch('access_token'))
+
+      get api_v1_auth_households_path, headers: headers, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.fetch('data').first).to include('id', 'name', 'role')
+
+      get api_v1_auth_sessions_path, headers: headers, as: :json
+
+      expect(response).to have_http_status(:ok)
+      session_id = response.parsed_body.fetch('data').first.fetch('id')
+
+      delete api_v1_auth_session_path(session_id), headers: headers, as: :json
+
+      expect(response).to have_http_status(:no_content)
+      expect(ApiSession.find(session_id)).to be_revoked_at
+    end
+  end
+
   describe 'POST /api/v1/auth/refresh' do
     before do
       clear_2fa_for_account(account)
@@ -345,6 +451,21 @@ RSpec.describe 'API v1 auth sessions' do
       account_id: account.id,
       key: SecureRandom.hex(16),
       deadline: 30.minutes.from_now
+    )
+  end
+
+  def oidc_token(sub:, nonce:, issuer: oidc_issuer, audience: oidc_client_id, exp: 15.minutes.from_now.to_i)
+    JWT.encode(
+      {
+        iss: issuer,
+        aud: audience,
+        exp: exp,
+        iat: Time.current.to_i,
+        sub: sub,
+        nonce: nonce
+      },
+      oidc_client_secret,
+      'HS256'
     )
   end
 end
