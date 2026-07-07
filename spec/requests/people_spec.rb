@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'People' do
-  fixtures :accounts, :people, :users, :locations, :location_memberships, :carer_relationships
+  fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :carer_relationships
 
   describe 'GET /people/new' do
     context 'when signed in as a parent' do
@@ -326,6 +326,44 @@ RSpec.describe 'People' do
     end
   end
 
+  describe 'DELETE /people/:id' do
+    before { sign_in(users(:admin)) }
+
+    it 'destroys the person and redirects to the people index' do
+      person = create_managed_person_for(users(:admin), 'Delete Me')
+
+      expect do
+        delete person_path(person)
+      end.to change(Person, :count).by(-1)
+
+      expect(response).to redirect_to(people_path)
+      expect(flash[:notice]).to eq(I18n.t('people.deleted'))
+    end
+
+    it 'returns no content for JSON requests' do
+      person = create_managed_person_for(users(:admin), 'Delete JSON')
+
+      delete person_path(person), as: :json
+
+      expect(response).to have_http_status(:no_content)
+    end
+  end
+
+  describe 'GET /people/:id/add_medication' do
+    before { sign_in(users(:admin)) }
+
+    it 'redirects to the medication assignment flow with source and medication id preserved' do
+      person = people(:john)
+      medication = medications(:paracetamol)
+
+      get add_medication_person_path(person), params: { source: 'finder', medication_id: medication.id }
+
+      expect(response).to redirect_to(
+        new_person_medication_assignment_path(person, source: 'finder', medication_id: medication.id)
+      )
+    end
+  end
+
   def household_target(target)
     household = Household.find_by!(slug: default_url_options.fetch(:household_slug))
 
@@ -336,5 +374,19 @@ RSpec.describe 'People' do
     household = Household.find_by!(slug: default_url_options.fetch(:household_slug))
 
     household.household_memberships.find_by!(account: Account.find_by!(email: users(:jane).email_address))
+  end
+
+  def create_managed_person_for(user, name)
+    household = Household.find_by!(slug: default_url_options.fetch(:household_slug))
+    membership = household.household_memberships.find_by!(account: user.person.account)
+    person = create(:person, household: household, name: name)
+    household.person_access_grants.create!(
+      household_membership: membership,
+      person: person,
+      access_level: :manage,
+      relationship_type: :family_member,
+      granted_by_membership: membership
+    )
+    person
   end
 end

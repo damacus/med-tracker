@@ -68,6 +68,45 @@ RSpec.describe 'Schedules' do
     end
   end
 
+  describe 'POST /people/:person_id/schedules' do
+    before { sign_in(users(:admin)) }
+
+    it 'creates a schedule and redirects to the person page' do
+      person = people(:john)
+      medication = medications(:paracetamol)
+
+      expect do
+        post person_schedules_path(person),
+             params: {
+               schedule: {
+                 medication_id: medication.id,
+                 dose_amount: '500',
+                 dose_unit: 'mg',
+                 frequency: 'Daily',
+                 start_date: Time.zone.today.to_s,
+                 end_date: 1.month.from_now.to_date.to_s
+               }
+             }
+      end.to change(Schedule, :count).by(1)
+
+      expect(response).to redirect_to(person_path(person))
+    end
+  end
+
+  describe 'PATCH /people/:person_id/schedules/:id' do
+    before { sign_in(users(:admin)) }
+
+    it 'updates a schedule and redirects to the person page' do
+      schedule = schedules(:john_paracetamol)
+
+      patch person_schedule_path(schedule.person, schedule),
+            params: { schedule: { frequency: 'Twice daily' } }
+
+      expect(response).to redirect_to(person_path(schedule.person))
+      expect(schedule.reload.frequency).to eq('Twice daily')
+    end
+  end
+
   describe 'PATCH /people/:person_id/schedules/:id/pause' do
     let(:schedule) { schedules(:child_schedule) }
     let(:person) { schedule.person }

@@ -29,5 +29,40 @@ RSpec.describe 'Notification preferences turbo streams' do
       expect(response.body).to include('target="flash"')
       expect(user.person.notification_preference.reload).not_to be_enabled
     end
+
+    it 'redirects to the profile after an HTML update' do
+      patch notification_preference_path,
+            params: {
+              notification_preference: {
+                enabled: '1',
+                dose_due_enabled: '1',
+                missed_dose_enabled: '0',
+                low_stock_enabled: '1',
+                private_text_enabled: '0'
+              }
+            }
+
+      expect(response).to redirect_to(profile_path)
+      expect(flash[:notice]).to eq(I18n.t('notification_preferences.updated'))
+      expect(user.person.notification_preference.reload).to be_enabled
+    end
+
+    it 'returns turbo stream validation feedback when the preference cannot be saved' do
+      account = user.person.account
+      preference = user.person.notification_preference || user.person.create_notification_preference!
+      allow(Account).to receive(:find_by).and_call_original
+      allow(Account).to receive(:find_by).with(id: account.id).and_return(account)
+      allow(user.person).to receive(:notification_preference).and_return(preference)
+      allow(preference).to receive(:update).and_return(false)
+
+      patch notification_preference_path,
+            params: { notification_preference: { enabled: '1' } },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include('target="notifications-card"')
+      expect(response.body).to include(I18n.t('notification_preferences.update_failed'))
+    end
   end
 end
