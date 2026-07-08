@@ -59,7 +59,10 @@ class MedicationStockSourceResolver
     context = authorization_context
     return Medication.where(id: source.medication_id) unless context
 
-    MedicationPolicy::Scope.new(context, Medication.all).resolve
+    policy_scope = MedicationPolicy::Scope.new(context, Medication.all).resolve
+    return policy_scope if household_manager_context?(context)
+
+    policy_scope.where(id: source_person_medication_ids(context))
   end
 
   def authorization_context
@@ -72,5 +75,35 @@ class MedicationStockSourceResolver
     return unless membership
 
     AuthorizationContext.new(account: account, household: membership.household, membership: membership)
+  end
+
+  def household_manager_context?(context)
+    membership = context.membership
+    return true if membership&.active? && (membership.owner? || membership.administrator?)
+
+    platform_support_context?(context)
+  end
+
+  def platform_support_context?(context)
+    context.account&.platform_admin&.active? &&
+      Current.support_access_session&.active? &&
+      Current.support_access_session.household_id == context.household&.id
+  end
+
+  def source_person_medication_ids(context)
+    person_id = source_person_id
+    return [source.medication_id] if person_id.blank?
+
+    ids = [source.medication_id]
+    ids.concat(Schedule.where(household: context.household, person_id: person_id).pluck(:medication_id))
+    ids.concat(PersonMedication.where(household: context.household, person_id: person_id).pluck(:medication_id))
+    ids.compact.uniq
+  end
+
+  def source_person_id
+    return source.person_id if source.respond_to?(:person_id) && source.person_id.present?
+    return source.person&.id if source.respond_to?(:person)
+
+    nil
   end
 end

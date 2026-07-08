@@ -54,7 +54,7 @@ class MedicationPolicy < ApplicationPolicy
       return scope.none unless active_membership?
 
       household_scope = scope.where(household: household)
-      return household_scope if household_manager? || any_person_grant_allows?(:manage)
+      return household_scope if household_manager?
 
       household_scope.where(id: granted_medication_ids_for(:view))
     end

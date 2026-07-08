@@ -304,7 +304,7 @@ module Components
                 render RubyUI::ComboboxList.new do
                   render(RubyUI::ComboboxEmptyState.new { t('admin.users.form.select_role') })
 
-                  HouseholdMembership.roles.each_key do |role|
+                  ::Admin::MembershipRoleUpdater::ALLOWED_ROLES.each do |role|
                     render RubyUI::ComboboxItem.new do
                       render RubyUI::ComboboxRadio.new(
                         name: field_name,

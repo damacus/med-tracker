@@ -36,6 +36,14 @@ module Admin
       @user = User.new(user_params)
       authorize @user
 
+      unless create_membership_role_valid?
+        respond_to do |format|
+          format.html { render_user_form_with_errors }
+          format.turbo_stream { render_user_form_with_errors }
+        end
+        return
+      end
+
       if account_already_exists?
         respond_to do |format|
           format.html { render_user_form_with_errors }
@@ -156,6 +164,22 @@ module Admin
 
       @user.errors.add(:email_address, :taken)
       true
+    end
+
+    def create_membership_role_valid?
+      requested_role = @user.membership_role.presence || 'member'
+      return true if ::Admin::MembershipRoleUpdater::ALLOWED_ROLES.include?(requested_role)
+
+      @user.errors.add(:membership_role, create_membership_role_error(requested_role))
+      false
+    end
+
+    def create_membership_role_error(requested_role)
+      if requested_role == ::Admin::MembershipRoleUpdater::OWNER_ROLE
+        t('admin.membership_roles.owner_rejected')
+      else
+        t('admin.membership_roles.invalid_role')
+      end
     end
 
     def create_user_with_account!
@@ -315,7 +339,7 @@ module Admin
 
     def membership_role
       requested_role = @user.membership_role.presence
-      return requested_role if HouseholdMembership.roles.key?(requested_role)
+      return requested_role if ::Admin::MembershipRoleUpdater::ALLOWED_ROLES.include?(requested_role)
 
       :member
     end

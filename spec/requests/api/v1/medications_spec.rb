@@ -3,7 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'API v1 medications' do
-  fixtures :accounts, :people, :users, :locations, :location_memberships, :carer_relationships, :medications
+  fixtures :accounts, :people, :users, :locations, :location_memberships, :carer_relationships, :medications,
+           :person_medications
 
   let(:user) { users(:admin) }
 
@@ -20,6 +21,41 @@ RSpec.describe 'API v1 medications' do
 
       returned_ids = response.parsed_body.fetch('data').map { |m| m.fetch('id') }
       expect(returned_ids).to include(medications(:paracetamol).id)
+    end
+
+    it 'omits unrelated medications for delegated members with manage grants' do
+      scoped_user = users(:jane)
+      household = scoped_user.person.household
+      membership = household.household_memberships.find_or_create_by!(account: scoped_user.person.account) do |record|
+        record.person = scoped_user.person
+        record.role = :member
+        record.status = :active
+      end
+      membership.update!(person: scoped_user.person, role: :member, status: :active)
+      visible_person = create(:person, household: household, name: 'Delegated Medication Visible')
+      hidden_person = create(:person, household: household, name: 'Delegated Medication Hidden')
+      visible_medication = create(:medication, household: household, location: locations(:home), name: 'Visible Stock')
+      hidden_medication = create(:medication, household: household, location: locations(:home), name: 'Hidden Stock')
+      create(:person_medication, household: household, person: visible_person, medication: visible_medication)
+      create(:person_medication, household: household, person: hidden_person, medication: hidden_medication)
+      login_data = api_login(scoped_user, household_id: household.id)
+      household.person_access_grants.where(household_membership: membership).destroy_all
+      household.person_access_grants.create!(
+        household_membership: membership,
+        person: visible_person,
+        access_level: :manage,
+        relationship_type: :family_member,
+        granted_by_membership: membership
+      )
+
+      get api_v1_household_medications_path(household.id),
+          headers: api_auth_headers(login_data.fetch('access_token')),
+          as: :json
+
+      expect(response).to have_http_status(:ok)
+      returned_ids = response.parsed_body.fetch('data').map { |m| m.fetch('id') }
+      expect(returned_ids).to include(visible_medication.id)
+      expect(returned_ids).not_to include(hidden_medication.id)
     end
   end
 

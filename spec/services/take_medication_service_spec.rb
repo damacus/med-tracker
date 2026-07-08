@@ -261,6 +261,24 @@ RSpec.describe TakeMedicationService do
     end
   end
 
+  describe '#call with delegated stock source selection' do
+    it 'rejects another persons matching medication and leaves inventory unchanged' do
+      setup = delegated_stock_source_setup
+
+      result = service.call(
+        source: setup.fetch(:source),
+        amount_override: nil,
+        taken_from_medication_id: setup.fetch(:hidden_medication).id,
+        user: setup.fetch(:context),
+        taken_at: Time.current
+      )
+
+      expect(result.error).to eq(:invalid_source)
+      expect(setup.fetch(:hidden_medication).reload.current_supply).to eq(20)
+      expect(MedicationTake.where(person_medication: setup.fetch(:source))).to be_empty
+    end
+  end
+
   describe 'taken_at override' do
     let(:schedule) { schedules(:john_paracetamol) }
     let(:custom_time) { 2.hours.ago }
@@ -684,6 +702,65 @@ RSpec.describe TakeMedicationService do
       current_supply: 12,
       reorder_threshold: 2
     )
+  end
+
+  def delegated_context_for(household:, person:)
+    account = Account.create!(email: "take-delegate-#{SecureRandom.hex(4)}@example.test", status: :verified)
+    membership = delegated_membership_for(household, account)
+    grant_manage_access_to(household, membership, person)
+    AuthorizationContext.new(account: account, household: household, membership: membership)
+  end
+
+  def delegated_membership_for(household, account)
+    household.household_memberships.create!(
+      account: account,
+      person: create(:person, household: household, account: account),
+      role: :member,
+      status: :active
+    )
+  end
+
+  def grant_manage_access_to(household, membership, person)
+    household.person_access_grants.create!(
+      household_membership: membership,
+      person: person,
+      access_level: :manage,
+      relationship_type: :family_member,
+      granted_by_membership: membership
+    )
+  end
+
+  def create_stock_source_medication(household, name:, current_supply:)
+    create(
+      :medication,
+      household: household,
+      location: create(:location, household: household),
+      name: name,
+      dose_amount: 500,
+      dose_unit: 'mg',
+      current_supply: current_supply,
+      supply_at_last_restock: current_supply
+    )
+  end
+
+  def delegated_stock_source_setup
+    household = user.person.account.first_active_household_membership.household
+    granted_person = create(:person, household: household)
+    hidden_person = create(:person, household: household)
+    source_medication = delegated_rescue_spray(household)
+    hidden_medication = delegated_rescue_spray(household)
+    source = link_stock_source(household: household, person: granted_person, medication: source_medication)
+    link_stock_source(household: household, person: hidden_person, medication: hidden_medication)
+    context = delegated_context_for(household: household, person: granted_person)
+    { source: source, hidden_medication: hidden_medication, context: context }
+  end
+
+  def delegated_rescue_spray(household)
+    create_stock_source_medication(household, name: 'Delegated Rescue Spray', current_supply: 20)
+  end
+
+  def link_stock_source(household:, person:, medication:)
+    create(:person_medication, household: household, person: person, medication: medication)
   end
 
   def fixture_household

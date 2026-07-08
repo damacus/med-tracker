@@ -119,6 +119,14 @@ RSpec.describe PortableData::Importer do
     )
   end
 
+  def administrator_membership(household)
+    household.household_memberships.create!(
+      account: account("portable-import-administrator-#{SecureRandom.hex(4)}@example.test"),
+      role: :administrator,
+      status: :active
+    )
+  end
+
   def import_result(household:, membership:, payload: portable_payload, dry_run: true)
     described_class.new(
       household: household,
@@ -170,7 +178,7 @@ RSpec.describe PortableData::Importer do
     payload = portable_payload.deep_dup
     empty_record_types.each { |record_type| payload[:records][record_type] = [] }
     payload[:records][:people] = [
-      payload[:records][:people].first.merge(portable_id: person.portable_id)
+      payload[:records][:people].first.merge(portable_id: person.portable_id, location_portable_ids: [])
     ]
     payload
   end
@@ -191,6 +199,43 @@ RSpec.describe PortableData::Importer do
       schedule_type: 'daily',
       start_date: '2026-01-01',
       end_date: '2026-12-31'
+    }
+  end
+
+  def medication_update_payload_for(person:, medication:, current_supply:)
+    payload = solo_person_payload_for(person)
+    payload[:records][:medications] = [
+      {
+        portable_id: medication.portable_id,
+        location_portable_id: medication.location.portable_id,
+        name: medication.name,
+        dose_amount: medication.dose_amount,
+        dose_unit: medication.dose_unit,
+        current_supply: current_supply,
+        reorder_threshold: 2
+      }
+    ]
+    payload
+  end
+
+  def dosage_update_payload_for(person:, dosage:, amount:)
+    payload = solo_person_payload_for(person)
+    payload[:records][:dosage_options] = [dosage_update_row(dosage, amount)]
+    payload
+  end
+
+  def dosage_update_row(dosage, amount)
+    {
+      portable_id: dosage.portable_id,
+      medication_portable_id: dosage.medication.portable_id,
+      amount: amount,
+      unit: dosage.unit,
+      frequency: dosage.frequency,
+      default_max_daily_doses: dosage.default_max_daily_doses,
+      default_min_hours_between_doses: dosage.default_min_hours_between_doses,
+      default_dose_cycle: dosage.default_dose_cycle,
+      current_supply: 7,
+      reorder_threshold: 1
     }
   end
 
@@ -303,6 +348,92 @@ RSpec.describe PortableData::Importer do
 
     expect(result).not_to be_applied
     expect(result.errors).to be_empty
+  end
+
+  it 'rejects member medication writes for medications outside granted people' do
+    household = create(:household)
+    manageable_person = create(:person, household: household, portable_id: 'manageable-person-portable')
+    unmanaged_person = create(:person, household: household, portable_id: 'unmanaged-person-portable')
+    medication = create(:medication, household: household, current_supply: 20)
+    create(:person_medication, household: household, person: unmanaged_person, medication: medication)
+    membership = member_membership(household, person: manageable_person)
+    grant_manage_access(household: household, membership: membership, person: manageable_person)
+    payload = medication_update_payload_for(person: manageable_person, medication: medication, current_supply: 99)
+
+    expect do
+      import_result(household: household, membership: membership, payload: payload, dry_run: false)
+    end.to raise_error(Pundit::NotAuthorizedError)
+
+    expect(medication.reload.current_supply).to eq(20)
+  end
+
+  it 'allows member medication writes for medications linked to granted people' do
+    household = create(:household)
+    manageable_person = create(:person, household: household, portable_id: 'manageable-person-portable')
+    medication = create(:medication, household: household, current_supply: 20)
+    create(:person_medication, household: household, person: manageable_person, medication: medication)
+    membership = member_membership(household, person: manageable_person)
+    grant_manage_access(household: household, membership: membership, person: manageable_person)
+    payload = medication_update_payload_for(person: manageable_person, medication: medication, current_supply: 33)
+
+    result = import_result(household: household, membership: membership, payload: payload, dry_run: false)
+
+    expect(result).to be_applied
+    expect(medication.reload.current_supply).to eq(33)
+  end
+
+  it 'rejects member dosage option writes for medications outside granted people' do
+    household = create(:household)
+    manageable_person = create(:person, household: household, portable_id: 'manageable-person-portable')
+    unmanaged_person = create(:person, household: household, portable_id: 'unmanaged-person-portable')
+    medication = create(:medication, household: household)
+    create(:person_medication, household: household, person: unmanaged_person, medication: medication)
+    dosage = create(:dosage, medication: medication, amount: 5)
+    membership = member_membership(household, person: manageable_person)
+    grant_manage_access(household: household, membership: membership, person: manageable_person)
+    payload = dosage_update_payload_for(person: manageable_person, dosage: dosage, amount: 10)
+
+    expect do
+      import_result(household: household, membership: membership, payload: payload, dry_run: false)
+    end.to raise_error(Pundit::NotAuthorizedError)
+
+    expect(dosage.reload.amount).to eq(5)
+  end
+
+  it 'allows member dosage option writes for medications linked to granted people' do
+    household = create(:household)
+    manageable_person = create(:person, household: household, portable_id: 'manageable-person-portable')
+    medication = create(:medication, household: household)
+    create(:person_medication, household: household, person: manageable_person, medication: medication)
+    dosage = create(:dosage, medication: medication, amount: 5)
+    membership = member_membership(household, person: manageable_person)
+    grant_manage_access(household: household, membership: membership, person: manageable_person)
+    payload = dosage_update_payload_for(person: manageable_person, dosage: dosage, amount: 10)
+
+    result = import_result(household: household, membership: membership, payload: payload, dry_run: false)
+
+    expect(result).to be_applied
+    expect(dosage.reload.amount).to eq(10)
+  end
+
+  it 'keeps owner and administrator medication imports unrestricted within the household' do
+    household = create(:household)
+    unmanaged_person = create(:person, household: household, portable_id: 'unmanaged-person-portable')
+
+    [owner_membership(household), administrator_membership(household)].each_with_index do |membership, index|
+      medication = create(:medication, household: household, current_supply: 20 + index)
+      create(:person_medication, household: household, person: unmanaged_person, medication: medication)
+      payload = medication_update_payload_for(
+        person: unmanaged_person,
+        medication: medication,
+        current_supply: 80 + index
+      )
+
+      result = import_result(household: household, membership: membership, payload: payload, dry_run: false)
+
+      expect(result).to be_applied
+      expect(medication.reload.current_supply).to eq(80 + index)
+    end
   end
 
   it 'derives person access from person-medication medication take sources' do

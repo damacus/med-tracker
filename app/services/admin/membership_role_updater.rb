@@ -2,6 +2,9 @@
 
 module Admin
   class MembershipRoleUpdater
+    OWNER_ROLE = 'owner'
+    ALLOWED_ROLES = %w[administrator member].freeze
+
     Result = Data.define(:success?, :message)
 
     def initialize(membership:, role:, actor_account:, actor_membership:, request:)
@@ -13,7 +16,7 @@ module Admin
     end
 
     def call
-      return Result.new(false, I18n.t('admin.membership_roles.owner_rejected')) if role == 'owner'
+      return Result.new(false, I18n.t('admin.membership_roles.owner_rejected')) if role == OWNER_ROLE
       return Result.new(false, I18n.t('admin.membership_roles.invalid_role')) unless allowed_role?
 
       previous_role = membership.role
@@ -29,7 +32,7 @@ module Admin
     attr_reader :membership, :role, :actor_account, :actor_membership, :request
 
     def allowed_role?
-      %w[administrator member].include?(role)
+      ALLOWED_ROLES.include?(role)
     end
 
     def record_audit_event(previous_role)

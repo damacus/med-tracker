@@ -53,7 +53,10 @@ module PortableData
 
       payload_person_ids = referenced_person_portable_ids
       manageable_ids = manageable_payload_person_ids(payload_person_ids)
-      return if payload_person_ids.present? && (payload_person_ids - manageable_ids).empty?
+      if payload_person_ids.present? && (payload_person_ids - manageable_ids).empty?
+        authorize_record_writes!(manageable_ids)
+        return
+      end
 
       raise Pundit::NotAuthorizedError
     end
@@ -146,6 +149,60 @@ module PortableData
         access_level: :manage,
         revoked_at: nil
       }
+    end
+
+    def authorize_record_writes!(manageable_person_portable_ids)
+      authorized_ids = medication_portable_ids_for(manageable_person_portable_ids)
+      return if medication_rows_authorized?(authorized_ids) && dosage_rows_authorized?(authorized_ids)
+
+      raise Pundit::NotAuthorizedError
+    end
+
+    def medication_portable_ids_for(manageable_person_portable_ids)
+      (
+        payload_medication_portable_ids_for(manageable_person_portable_ids) +
+        existing_medication_portable_ids_for(manageable_person_portable_ids)
+      ).compact_blank.uniq
+    end
+
+    def payload_medication_portable_ids_for(manageable_person_portable_ids)
+      schedule_ids = records(:schedules).filter_map do |row|
+        row[:medication_portable_id] if manageable_person_portable_ids.include?(row[:person_portable_id])
+      end
+      person_medication_ids = records(:person_medications).filter_map do |row|
+        row[:medication_portable_id] if manageable_person_portable_ids.include?(row[:person_portable_id])
+      end
+
+      schedule_ids + person_medication_ids
+    end
+
+    def existing_medication_portable_ids_for(manageable_person_portable_ids)
+      schedule_medication_portable_ids_for(manageable_person_portable_ids) +
+        person_medication_portable_ids_for(manageable_person_portable_ids)
+    end
+
+    def schedule_medication_portable_ids_for(manageable_person_portable_ids)
+      Schedule.joins(:person, :medication)
+              .where(household: household, people: { portable_id: manageable_person_portable_ids })
+              .pluck('medications.portable_id')
+    end
+
+    def person_medication_portable_ids_for(manageable_person_portable_ids)
+      PersonMedication.joins(:person, :medication)
+                      .where(household: household, people: { portable_id: manageable_person_portable_ids })
+                      .pluck('medications.portable_id')
+    end
+
+    def medication_rows_authorized?(authorized_medication_portable_ids)
+      records(:medications).all? do |row|
+        authorized_medication_portable_ids.include?(row[:portable_id])
+      end
+    end
+
+    def dosage_rows_authorized?(authorized_medication_portable_ids)
+      records(:dosage_options).all? do |row|
+        authorized_medication_portable_ids.include?(row[:medication_portable_id])
+      end
     end
 
     def records(name)
