@@ -40,20 +40,20 @@ module DataExports
     end
 
     def backup_zip
-      json = JSON.pretty_generate(portable_payload.merge(format: 'medtracker.backup.v1'))
-      {
-        filename: "medtracker-backup-#{Time.current.utc.strftime('%Y%m%d%H%M%S')}.zip",
-        content_type: 'application/zip',
-        base64: Base64.strict_encode64(zip_file('medtracker-backup.json', json))
-      }
+      portable_exporter(passphrase: nil).export_unencrypted(export_mode: mode) do |payload|
+        json = JSON.pretty_generate(payload.merge(format: 'medtracker.backup.v1'))
+        {
+          filename: "medtracker-backup-#{Time.current.utc.strftime('%Y%m%d%H%M%S')}.zip",
+          content_type: 'application/zip',
+          base64: Base64.strict_encode64(zip_file('medtracker-backup.json', json))
+        }
+      end
     end
 
     def health_data_json
-      portable_payload.merge(format: 'medtracker.health_data.v1')
-    end
-
-    def portable_payload
-      @portable_payload ||= portable_exporter(passphrase: nil).payload
+      portable_exporter(passphrase: nil).export_unencrypted(export_mode: mode) do |payload|
+        payload.merge(format: 'medtracker.health_data.v1')
+      end
     end
 
     def portable_exporter(passphrase:)
