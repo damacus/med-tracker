@@ -90,6 +90,31 @@ RSpec.describe 'MedicationNewLayout' do
     expect(checked_location.value).to eq(household_location(locations(:home)).id.to_s)
   end
 
+  it 'keeps the wizard readable on a mobile viewport' do
+    sign_in(users(:john))
+    page.current_window.resize_to(320, 844)
+
+    visit new_medication_path
+
+    geometry = page.evaluate_script(<<~JS)
+      (() => {
+        const content = document.querySelector('#wizard-content');
+        const labels = Array.from(document.querySelectorAll('[data-indicator-label]'));
+        const labelBounds = labels.map((label) => label.getBoundingClientRect());
+
+        return {
+          contentWidth: content.getBoundingClientRect().width,
+          labelsFit: labelBounds.every((bounds, index) => {
+            const nextBounds = labelBounds[index + 1];
+            return !nextBounds || bounds.right + 4 <= nextBounds.left;
+          })
+        };
+      })()
+    JS
+
+    expect(geometry).to include('contentWidth' => be >= 240, 'labelsFit' => true)
+  end
+
   it 'stores one configured time for each multiple-daily dose' do
     sign_in(users(:john))
 
