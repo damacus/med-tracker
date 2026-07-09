@@ -10,11 +10,13 @@ RSpec.describe 'Push subscriptions' do
   before { sign_in(user) }
 
   describe 'POST /push_subscription' do
+    let(:valid_endpoint) { 'https://fcm.googleapis.com/fcm/send/registration-token' }
+
     it 'creates a push subscription for the signed-in account' do
       expect do
         post push_subscription_path,
              params: {
-               endpoint: 'https://example.com/push/subscriptions/123',
+               endpoint: valid_endpoint,
                keys: {
                  p256dh: 'public_key',
                  auth: 'auth_secret'
@@ -27,16 +29,33 @@ RSpec.describe 'Push subscriptions' do
 
       subscription = PushSubscription.order(:id).last
       expect(subscription.account).to eq(user.person.account)
-      expect(subscription.endpoint).to eq('https://example.com/push/subscriptions/123')
+      expect(subscription.endpoint).to eq(valid_endpoint)
       expect(subscription.p256dh).to eq('public_key')
       expect(subscription.auth).to eq('auth_secret')
+    end
+
+    it 'rejects unsupported push service endpoints without storing them' do
+      expect do
+        post push_subscription_path,
+             params: {
+               endpoint: 'https://127.0.0.1/push/subscriptions/internal',
+               keys: {
+                 p256dh: 'public_key',
+                 auth: 'auth_secret'
+               }
+             },
+             as: :json
+      end.not_to change(PushSubscription, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body['errors']).to include('Endpoint must be a supported HTTPS Web Push endpoint')
     end
 
     it 'records a redacted creation audit event' do
       expect do
         post push_subscription_path,
              params: {
-               endpoint: 'https://example.com/push/subscriptions/123',
+               endpoint: valid_endpoint,
                keys: {
                  p256dh: 'public_key',
                  auth: 'auth_secret'
@@ -52,8 +71,8 @@ RSpec.describe 'Push subscriptions' do
       data = JSON.parse(version.object)
 
       expect(version.item_id).to eq(user.person.account.id)
-      expect(data['endpoint_hash']).to eq(Digest::SHA256.hexdigest('https://example.com/push/subscriptions/123'))
-      expect(version.object).not_to include('https://example.com/push/subscriptions/123')
+      expect(data['endpoint_hash']).to eq(Digest::SHA256.hexdigest(valid_endpoint))
+      expect(version.object).not_to include(valid_endpoint)
       expect(version.object).not_to include('public_key')
       expect(version.object).not_to include('auth_secret')
     end
@@ -61,7 +80,7 @@ RSpec.describe 'Push subscriptions' do
     it 'returns a validation error when required keys are missing' do
       post push_subscription_path,
            params: {
-             endpoint: 'https://example.com/push/subscriptions/missing-keys',
+             endpoint: valid_endpoint,
              keys: {
                p256dh: '',
                auth: ''
@@ -77,14 +96,14 @@ RSpec.describe 'Push subscriptions' do
     it 'returns a validation error instead of crashing when the endpoint is already taken' do
       PushSubscription.create!(
         account: users(:jane).person.account,
-        endpoint: 'https://example.com/push/subscriptions/shared',
+        endpoint: valid_endpoint,
         p256dh: 'existing_public_key',
         auth: 'existing_auth_secret'
       )
 
       post push_subscription_path,
            params: {
-             endpoint: 'https://example.com/push/subscriptions/shared',
+             endpoint: valid_endpoint,
              keys: {
                p256dh: 'public_key',
                auth: 'auth_secret'
@@ -101,7 +120,7 @@ RSpec.describe 'Push subscriptions' do
   describe 'DELETE /push_subscription' do
     it 'returns no content when the endpoint does not exist' do
       delete push_subscription_path,
-             params: { endpoint: 'https://example.com/push/subscriptions/missing' },
+             params: { endpoint: 'https://fcm.googleapis.com/fcm/send/missing' },
              as: :json
 
       expect(response).to have_http_status(:no_content)
@@ -110,14 +129,14 @@ RSpec.describe 'Push subscriptions' do
     it 'records a redacted revocation audit event' do
       PushSubscription.create!(
         account: user.person.account,
-        endpoint: 'https://example.com/push/subscriptions/123',
+        endpoint: 'https://fcm.googleapis.com/fcm/send/registration-token',
         p256dh: 'public_key',
         auth: 'auth_secret'
       )
 
       expect do
         delete push_subscription_path,
-               params: { endpoint: 'https://example.com/push/subscriptions/123' },
+               params: { endpoint: 'https://fcm.googleapis.com/fcm/send/registration-token' },
                as: :json
       end.to change {
         PaperTrail::Version.where(item_type: 'AuthenticationToken',
@@ -125,7 +144,7 @@ RSpec.describe 'Push subscriptions' do
       }.by(1)
 
       version = PaperTrail::Version.where(item_type: 'AuthenticationToken').last
-      expect(version.object).not_to include('https://example.com/push/subscriptions/123')
+      expect(version.object).not_to include('https://fcm.googleapis.com/fcm/send/registration-token')
       expect(version.object).not_to include('public_key')
       expect(version.object).not_to include('auth_secret')
     end

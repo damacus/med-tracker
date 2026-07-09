@@ -63,8 +63,12 @@ Rails.application.config.after_initialize do
   # OIDC_REDIRECT_URI env var.  A missing or HTTP-only APP_URL would otherwise
   # produce a redirect_uri mismatch at Zitadel with no warning in the logs.
   explicit_redirect_uri = ENV.fetch('OIDC_REDIRECT_URI', nil).presence
-  effective_redirect_uri = explicit_redirect_uri ||
-                           "#{ENV.fetch('APP_URL', 'http://localhost:3000').delete_suffix('/')}/auth/oidc/callback"
+  app_url = ENV.fetch('APP_URL') do
+    raise KeyError, 'APP_URL is required in production' if Rails.env.production?
+
+    'http://localhost:3000'
+  end.delete_suffix('/')
+  effective_redirect_uri = explicit_redirect_uri || "#{app_url}/auth/oidc/callback"
 
   begin
     OidcSecurity.validate_issuer_url!(issuer_url)
