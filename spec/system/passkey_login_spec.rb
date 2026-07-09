@@ -115,6 +115,25 @@ RSpec.describe 'Passkey login', :js do
     JS
   end
 
+  def failing_conditional_passkey_stub
+    <<~JS
+      Object.defineProperty(window, "PublicKeyCredential", {
+        configurable: true,
+        value: class PublicKeyCredential {},
+      });
+      window.PublicKeyCredential.isConditionalMediationAvailable = async () => true;
+
+      Object.defineProperty(window.navigator, "credentials", {
+        configurable: true,
+        value: {
+          get: async () => {
+            throw new DOMException("Passkey failed", "UnknownError");
+          },
+        },
+      });
+    JS
+  end
+
   def invalid_passkey_stub
     <<~JS
       Object.defineProperty(window, "PublicKeyCredential", {
@@ -188,6 +207,16 @@ RSpec.describe 'Passkey login', :js do
     expect(page).to have_css('html[data-passkey-mediation="conditional"]', visible: :all)
     expect(page).to have_css('html[data-passkey-submit-count="1"]', visible: :all)
     expect(find_by_id('webauthn-auth', visible: :all).value).to include('"rawId":"AQID"')
+  end
+
+  it 'keeps background conditional passkey failures hidden' do
+    add_init_script(failing_conditional_passkey_stub)
+
+    visit login_path
+
+    expect(page).to have_button('Continue with Passkey')
+    expect(page).to have_css('#passkey-login-error[hidden]', visible: :all)
+    expect(page).to have_no_text('We could not sign you in with that passkey.')
   end
 
   it 'submits the hidden login form after the passkey CTA is clicked' do
