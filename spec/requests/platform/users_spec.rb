@@ -26,6 +26,7 @@ RSpec.describe 'Platform users' do
 
   it 'elevates a household user to system administrator' do
     sign_in(platform_user)
+    authenticate_platform_totp(platform_user.person.account)
 
     expect do
       patch platform_user_path(target_user), params: { platform_user: { system_administrator: '1' } }
@@ -39,12 +40,24 @@ RSpec.describe 'Platform users' do
     ensure_platform_admin!(target_user.person.account)
     target_membership = ensure_household_membership!(target_user.person.account, target_user.person, role: :owner)
     sign_in(platform_user)
+    authenticate_platform_totp(platform_user.person.account)
 
     patch platform_user_path(target_user), params: { platform_user: { system_administrator: '0' } }
 
     expect(response).to redirect_to(platform_users_path)
     expect(target_user.person.account.platform_admin.reload).to be_disabled
     expect(target_membership.reload).to be_owner
+  end
+
+  it 'requires fresh privileged MFA before changing system administrator access' do
+    sign_in(platform_user)
+
+    expect do
+      patch platform_user_path(target_user), params: { platform_user: { system_administrator: '1' } }
+    end.not_to change(PlatformAdmin.active, :count)
+
+    expect(response).to redirect_to(profile_path)
+    expect(target_user.person.account.platform_admin).to be_nil
   end
 
   it 'denies household owners without system administrator access' do
@@ -69,5 +82,13 @@ RSpec.describe 'Platform users' do
     membership.status = :active
     membership.save!
     membership
+  end
+
+  def authenticate_platform_totp(account)
+    secret = 'jbswy3dpehpk3pxp'
+    visible_secret = RodauthApp.rodauth.allocate.send(:otp_hmac_secret, secret)
+    AccountOtpKey.where(id: account.id).delete_all
+    AccountOtpKey.create!(id: account.id, key: secret, last_use: 5.minutes.ago)
+    post '/otp-auth', params: { otp: ROTP::TOTP.new(visible_secret).at(Time.current) }
   end
 end

@@ -2,8 +2,6 @@
 
 module Platform
   class SupportAccessSessionsController < BaseController
-    before_action :require_privileged_action_mfa
-
     def create
       support_session = current_platform_admin.support_access_sessions.new(support_access_session_params)
       authorize support_session
