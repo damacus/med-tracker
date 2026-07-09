@@ -15,15 +15,14 @@ class ApiSession < ApplicationRecord
   scope :active, -> { where(revoked_at: nil) }
 
   class << self
-    def issue_for(account:, household_membership:, device_name: nil, user_agent: nil, audit_context: nil)
+    def issue_for(account:, household_membership:, audit_context: nil, **)
       access_token = build_token
       refresh_token = build_token
       session = create_session(
         account: account,
         household_membership: household_membership,
-        device_name: device_name,
-        user_agent: user_agent,
-        tokens: { access: access_token, refresh: refresh_token }
+        tokens: { access: access_token, refresh: refresh_token },
+        **
       )
 
       record_audit(session, 'created', audit_context)
@@ -55,15 +54,17 @@ class ApiSession < ApplicationRecord
 
     private
 
-    def create_session(account:, household_membership:, device_name:, user_agent:, tokens:)
+    def create_session(account:, household_membership:, tokens:, **options)
       now = Time.current
 
       create!(
         account: account,
         household_membership: household_membership,
         permissions_version: household_membership.permissions_version,
-        device_name: device_name,
-        user_agent: user_agent,
+        device_name: options[:device_name],
+        user_agent: options[:user_agent],
+        mfa_verified_at: options[:mfa_verified_at],
+        oidc_mfa_verified: options.fetch(:oidc_mfa_verified, false),
         last_used_at: now,
         access_expires_at: now + ACCESS_TOKEN_TTL,
         refresh_expires_at: now + REFRESH_TOKEN_TTL,

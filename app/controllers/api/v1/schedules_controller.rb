@@ -9,7 +9,7 @@ module Api
       end
 
       def show
-        schedule = policy_scope(Schedule).includes(:person, :medication).find(params.expect(:id))
+        schedule = find_api_record(policy_scope(Schedule).includes(:person, :medication), params.expect(:id))
         authorize schedule
 
         render_resource(schedule, serializer: ScheduleSerializer)
@@ -25,24 +25,44 @@ module Api
 
         return render_validation_errors(schedule) unless schedule.save
 
+        record_api_change(schedule, action: 'create')
         render_resource(schedule.reload, serializer: ScheduleSerializer, status: :created)
       end
 
       def update
-        schedule = policy_scope(Schedule).includes(:person, :medication).find(params.expect(:id))
+        schedule = find_api_record(policy_scope(Schedule).includes(:person, :medication), params.expect(:id))
         authorize schedule
+        return unless fresh_api_record?(schedule)
+
         attributes = schedule_update_params
         assert_medication_access!(attributes[:medication_id]) if attributes[:medication_id].present?
 
         return render_validation_errors(schedule) unless schedule.update(attributes)
 
+        record_api_change(schedule, action: 'update')
         render_resource(schedule.reload, serializer: ScheduleSerializer)
+      end
+
+      def pause
+        update_pause_state(:pause!)
+      end
+
+      def resume
+        update_pause_state(:resume!)
       end
 
       private
 
+      def update_pause_state(method_name)
+        schedule = find_api_record(policy_scope(Schedule).includes(:person, :medication), params.expect(:id))
+        authorize schedule, :update?
+        schedule.public_send(method_name)
+        record_api_change(schedule.reload, action: 'update')
+        render_resource(schedule, serializer: ScheduleSerializer)
+      end
+
       def schedule_params
-        params.expect(
+        attributes = params.expect(
           schedule: [
             :person_id,
             :medication_id,
@@ -61,6 +81,19 @@ module Api
             { schedule_config: {} }
           ]
         )
+        if attributes[:person_id].present?
+          attributes[:person_id] = api_record_id(policy_scope(Person), attributes[:person_id])
+        end
+        if attributes[:medication_id].present?
+          attributes[:medication_id] = api_record_id(policy_scope(Medication), attributes[:medication_id])
+        end
+        if attributes[:source_dosage_option_id].present?
+          attributes[:source_dosage_option_id] = api_record_id(
+            policy_scope(MedicationDosageOption),
+            attributes[:source_dosage_option_id]
+          )
+        end
+        attributes
       end
 
       def schedule_update_params

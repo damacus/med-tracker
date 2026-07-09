@@ -17,8 +17,29 @@ RSpec.describe 'API v1 capabilities' do
     )
     expect(data.dig('authentication', 'methods')).to include('bearer_session', 'api_app_token')
     expect(data.dig('authentication', 'hosted_mobile')).to eq('oidc_authorization_code_pkce')
+    expect(data.dig('authentication', 'oidc_exchange')).to include(
+      'supported' => true,
+      'pkce_required' => true,
+      'session_listing' => true,
+      'session_revocation' => true
+    )
+    expect(data).to include('administration' => include('household' => true, 'fresh_mfa_required' => true))
     expect(data.dig('sync', 'portable_ids')).to be(true)
     expect(data.dig('sync', 'numeric_ids')).to eq('backward_compatible')
+    expect(data.dig('sync', 'idempotency_keys')).to be(true)
+    expect(data.dig('sync', 'etag_conflicts')).to be(true)
+    expect(data.dig('sync', 'change_feed')).to be(true)
+    expect(data.dig('sync', 'batch_mutations')).to be(true)
+    expect(data.dig('sync', 'tombstones')).to be(true)
+    expect(data['portable_formats']).to include('medtracker.portable.v2')
+    expect(data).to include(
+      'backups' => include('unencrypted_zip' => true, 'health_data_json' => true),
+      'fhir' => include(
+        'version' => 'R4',
+        'resources' => include('Patient', 'Medication', 'MedicationRequest', 'MedicationStatement',
+                               'MedicationAdministration')
+      )
+    )
     expect(data.dig('client_tools', 'cli')).to include('supported' => false, 'status' => 'deferred')
     expect(data.dig('client_tools', 'mcp_server')).to include(
       'supported' => true,

@@ -18,6 +18,9 @@ class SchemaInventory
     person_access_grants
     household_invitations
     household_invitation_grants
+    api_change_events
+    api_idempotency_keys
+    api_tombstones
     security_audit_events
     active_storage_attachments
   ].freeze
@@ -39,6 +42,7 @@ class SchemaInventory
     active_storage_blobs
     active_storage_variant_records
     api_app_tokens
+    api_oidc_nonces
     api_sessions
     app_settings
     barcode_catalog_entries

@@ -33,6 +33,33 @@ paths:
           description: New access and refresh tokens.
         '401':
           description: Refresh token is invalid or expired.
+  /api/v1/auth/oidc_exchange:
+    post:
+      summary: Exchange a hosted OIDC ID token for an API session.
+      security: []
+      responses:
+        '201':
+          description: API session created.
+  /api/v1/auth/households:
+    get:
+      summary: List households available to the current API credential.
+      responses:
+        '200':
+          description: Household collection.
+  /api/v1/auth/sessions:
+    get:
+      summary: List active API sessions for the current account.
+      responses:
+        '200':
+          description: API session collection.
+  /api/v1/auth/sessions/{id}:
+    delete:
+      summary: Revoke an API session.
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: API session revoked.
   /api/v1/auth/logout:
     delete:
       summary: Revoke the current API session or app token.
@@ -144,6 +171,113 @@ paths:
       responses:
         '200':
           description: Medication updated.
+  /api/v1/households/{household_id}/medications/{id}/adjust_inventory:
+    patch:
+      summary: Adjust medication inventory.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Medication inventory adjusted.
+  /api/v1/households/{household_id}/medications/{id}/mark_as_ordered:
+    patch:
+      summary: Mark a medication reorder as ordered.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Reorder status updated.
+  /api/v1/households/{household_id}/medications/{id}/mark_as_received:
+    patch:
+      summary: Mark a medication reorder as received.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Reorder status updated.
+  /api/v1/households/{household_id}/dosage_options:
+    get:
+      summary: List medication dosage options.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Dosage option collection.
+    post:
+      summary: Create a medication dosage option.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '201':
+          description: Dosage option created.
+  /api/v1/households/{household_id}/dosage_options/{id}:
+    get:
+      summary: Read a medication dosage option.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Dosage option resource.
+    patch:
+      summary: Update a medication dosage option.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Dosage option updated.
+    put:
+      summary: Replace a medication dosage option.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Dosage option updated.
+  /api/v1/households/{household_id}/health_events:
+    get:
+      summary: List visible health events.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Health event collection.
+    post:
+      summary: Create a health event.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '201':
+          description: Health event created.
+  /api/v1/households/{household_id}/health_events/{id}:
+    get:
+      summary: Read a health event.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Health event resource.
+    patch:
+      summary: Update a health event.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Health event updated.
+    put:
+      summary: Replace a health event.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Health event updated.
   /api/v1/households/{household_id}/schedules:
     get:
       summary: List visible schedules.
@@ -184,6 +318,24 @@ paths:
       responses:
         '200':
           description: Schedule updated.
+  /api/v1/households/{household_id}/schedules/{id}/pause:
+    patch:
+      summary: Pause a schedule.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Schedule paused.
+  /api/v1/households/{household_id}/schedules/{id}/resume:
+    patch:
+      summary: Resume a schedule.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Schedule resumed.
   /api/v1/households/{household_id}/person_medications:
     get:
       summary: List visible person medication assignments.
@@ -224,6 +376,33 @@ paths:
       responses:
         '200':
           description: Person medication updated.
+  /api/v1/households/{household_id}/person_medications/{id}/pause:
+    patch:
+      summary: Pause a person medication assignment.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Person medication paused.
+  /api/v1/households/{household_id}/person_medications/{id}/resume:
+    patch:
+      summary: Resume a person medication assignment.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Person medication resumed.
+  /api/v1/households/{household_id}/person_medications/{id}/reorder:
+    patch:
+      summary: Reorder a person medication assignment.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Person medication reordered.
   /api/v1/households/{household_id}/medication_takes:
     get:
       summary: List visible medication takes.
@@ -261,6 +440,62 @@ paths:
       responses:
         '200':
           description: Notification preference updated.
+  /api/v1/households/{household_id}/native_device_tokens:
+    post:
+      summary: Register a native device token.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '201':
+          description: Device token registered.
+  /api/v1/households/{household_id}/native_device_tokens/{id}:
+    delete:
+      summary: Revoke a native device token.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: Device token revoked.
+  /api/v1/households/{household_id}/push_subscription:
+    post:
+      summary: Register a web push subscription.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '201':
+          description: Push subscription registered.
+    delete:
+      summary: Revoke a web push subscription.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '204':
+          description: Push subscription revoked.
+  /api/v1/households/{household_id}/push_subscription/test:
+    post:
+      summary: Send a test push notification.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '204':
+          description: Test notification queued.
+  /api/v1/households/{household_id}/medication_lookup:
+    get:
+      summary: Search external medication lookup data.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Medication lookup results.
+  /api/v1/households/{household_id}/ai_medication_suggestions:
+    post:
+      summary: Generate medication setup suggestions.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Suggestion payload.
   /api/v1/households/{household_id}/portable_export:
     get:
       summary: Export an encrypted portable household bundle.
@@ -293,6 +528,178 @@ paths:
       responses:
         '201':
           description: Import applied.
+  /api/v1/households/{household_id}/data_exports/{mode}:
+    get:
+      summary: Export household data in a selected backup/profile mode.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: mode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Export payload.
+  /api/v1/households/{household_id}/sync/snapshot:
+    get:
+      summary: Read a portable v2 sync snapshot.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Sync snapshot.
+  /api/v1/households/{household_id}/sync/changes:
+    get:
+      summary: Read sync changes after a cursor.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Change feed.
+  /api/v1/households/{household_id}/sync/batches:
+    post:
+      summary: Apply transactional sync batch operations.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '201':
+          description: Batch applied.
+  /api/v1/households/{household_id}/admin/settings:
+    get:
+      summary: Read household administration settings.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Household settings.
+    patch:
+      summary: Update household administration settings.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Household settings updated.
+    put:
+      summary: Replace household administration settings.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Household settings updated.
+  /api/v1/households/{household_id}/admin/memberships:
+    get:
+      summary: List household memberships.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Membership collection.
+  /api/v1/households/{household_id}/admin/memberships/{id}:
+    patch:
+      summary: Update a household membership.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Membership updated.
+    put:
+      summary: Replace a household membership.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Membership updated.
+    delete:
+      summary: Revoke a household membership.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: Membership revoked.
+  /api/v1/households/{household_id}/admin/invitations:
+    get:
+      summary: List household invitations.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Invitation collection.
+    post:
+      summary: Create a household invitation.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '201':
+          description: Invitation created.
+  /api/v1/households/{household_id}/admin/invitations/{id}:
+    delete:
+      summary: Revoke a household invitation.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: Invitation revoked.
+  /api/v1/households/{household_id}/admin/person_access_grants:
+    get:
+      summary: List person access grants.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Access grant collection.
+    post:
+      summary: Create a person access grant.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '201':
+          description: Access grant created.
+  /api/v1/households/{household_id}/admin/person_access_grants/{id}:
+    delete:
+      summary: Revoke a person access grant.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: Access grant revoked.
+  /api/v1/households/{household_id}/admin/app_tokens:
+    get:
+      summary: List API app tokens.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: API app token collection.
+    post:
+      summary: Create an API app token.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '201':
+          description: API app token created.
+  /api/v1/households/{household_id}/admin/app_tokens/{id}:
+    delete:
+      summary: Revoke an API app token.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: API app token revoked.
+  /api/v1/households/{household_id}/admin/audit_logs:
+    get:
+      summary: List household security audit events.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Audit event collection.
 components:
   securitySchemes:
     bearerAuth:

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_05_120500) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_09_123000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -181,6 +181,60 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_05_120500) do
     t.index ["token_digest"], name: "index_api_app_tokens_on_token_digest", unique: true
   end
 
+  create_table "api_change_events", force: :cascade do |t|
+    t.string "action", null: false
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "household_id", null: false
+    t.bigint "household_membership_id", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "occurred_at", null: false
+    t.string "record_portable_id"
+    t.bigint "record_id", null: false
+    t.string "record_type", null: false
+    t.string "request_id"
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_api_change_events_on_account_id"
+    t.index ["household_id", "occurred_at"], name: "index_api_change_events_on_household_id_and_occurred_at"
+    t.index ["household_id", "record_portable_id"], name: "index_api_change_events_on_household_id_and_record_portable_id"
+    t.index ["household_id"], name: "index_api_change_events_on_household_id"
+    t.index ["household_membership_id"], name: "index_api_change_events_on_household_membership_id"
+    t.index ["record_type", "record_id"], name: "index_api_change_events_on_record_type_and_record_id"
+  end
+
+  create_table "api_idempotency_keys", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "api_app_token_id"
+    t.bigint "api_session_id"
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.bigint "household_id", null: false
+    t.string "key", null: false
+    t.string "request_digest", null: false
+    t.string "request_method", null: false
+    t.string "request_path", null: false
+    t.jsonb "response_body", default: {}, null: false
+    t.integer "response_status", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_api_idempotency_keys_on_account_id"
+    t.index ["api_app_token_id"], name: "index_api_idempotency_keys_on_api_app_token_id"
+    t.index ["api_session_id"], name: "index_api_idempotency_keys_on_api_session_id"
+    t.index ["expires_at"], name: "index_api_idempotency_keys_on_expires_at"
+    t.index ["household_id", "key"], name: "index_api_idempotency_keys_on_household_id_and_key", unique: true
+    t.index ["household_id"], name: "index_api_idempotency_keys_on_household_id"
+  end
+
+  create_table "api_oidc_nonces", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "issuer", null: false
+    t.string "nonce", null: false
+    t.string "subject", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "used_at", null: false
+    t.index ["issuer", "subject", "nonce"], name: "index_api_oidc_nonces_on_issuer_and_subject_and_nonce", unique: true
+    t.index ["used_at"], name: "index_api_oidc_nonces_on_used_at"
+  end
+
   create_table "api_sessions", force: :cascade do |t|
     t.datetime "access_expires_at", null: false
     t.string "access_token_digest", null: false
@@ -189,6 +243,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_05_120500) do
     t.string "device_name"
     t.bigint "household_membership_id"
     t.datetime "last_used_at", null: false
+    t.datetime "mfa_verified_at"
+    t.boolean "oidc_mfa_verified", default: false, null: false
     t.integer "permissions_version", default: 1, null: false
     t.datetime "refresh_expires_at", null: false
     t.string "refresh_token_digest", null: false
@@ -199,8 +255,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_05_120500) do
     t.index ["account_id"], name: "index_api_sessions_on_account_id"
     t.index ["household_membership_id", "revoked_at"], name: "index_api_sessions_on_membership_and_revoked_at"
     t.index ["household_membership_id"], name: "index_api_sessions_on_household_membership_id"
+    t.index ["mfa_verified_at"], name: "index_api_sessions_on_mfa_verified_at"
     t.index ["refresh_token_digest"], name: "index_api_sessions_on_refresh_token_digest", unique: true
     t.index ["revoked_at"], name: "index_api_sessions_on_revoked_at"
+  end
+
+  create_table "api_tombstones", force: :cascade do |t|
+    t.string "action", default: "delete", null: false
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "deleted_at", null: false
+    t.bigint "household_id", null: false
+    t.bigint "household_membership_id", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.string "record_portable_id", null: false
+    t.string "record_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_api_tombstones_on_account_id"
+    t.index ["household_id", "deleted_at"], name: "index_api_tombstones_on_household_id_and_deleted_at"
+    t.index ["household_id", "record_type", "record_portable_id"], name: "index_api_tombstones_on_household_record"
+    t.index ["household_id"], name: "index_api_tombstones_on_household_id"
+    t.index ["household_membership_id"], name: "index_api_tombstones_on_household_membership_id"
   end
 
   create_table "app_settings", force: :cascade do |t|
@@ -272,10 +347,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_05_120500) do
     t.boolean "medical_help_sought", default: false, null: false
     t.text "notes"
     t.bigint "person_id", null: false
+    t.string "portable_id", default: -> { "gen_random_uuid()::text" }, null: false
     t.integer "severity"
     t.date "started_on", null: false
     t.string "title", null: false
     t.datetime "updated_at", null: false
+    t.index ["household_id", "portable_id"], name: "index_health_events_on_household_id_and_portable_id", unique: true
     t.index ["household_id"], name: "index_health_events_on_household_id"
     t.index ["id", "household_id"], name: "index_health_events_on_id_and_household_id", unique: true
     t.index ["person_id", "event_kind", "started_on"], name: "index_health_events_on_person_id_and_event_kind_and_started_on"
@@ -747,8 +824,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_05_120500) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "api_app_tokens", "accounts"
   add_foreign_key "api_app_tokens", "household_memberships"
+  add_foreign_key "api_change_events", "accounts"
+  add_foreign_key "api_change_events", "household_memberships"
+  add_foreign_key "api_change_events", "households"
+  add_foreign_key "api_idempotency_keys", "accounts"
+  add_foreign_key "api_idempotency_keys", "api_app_tokens"
+  add_foreign_key "api_idempotency_keys", "api_sessions"
+  add_foreign_key "api_idempotency_keys", "households"
   add_foreign_key "api_sessions", "accounts"
   add_foreign_key "api_sessions", "household_memberships"
+  add_foreign_key "api_tombstones", "accounts"
+  add_foreign_key "api_tombstones", "household_memberships"
+  add_foreign_key "api_tombstones", "households"
   add_foreign_key "carer_relationships", "people", column: "carer_id", deferrable: :deferred
   add_foreign_key "carer_relationships", "people", column: "patient_id", deferrable: :deferred
   add_foreign_key "dosages", "households"
@@ -880,6 +967,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_05_120500) do
     person_access_grants
     household_invitations
     household_invitation_grants
+    api_change_events
+    api_idempotency_keys
+    api_tombstones
     security_audit_events
     active_storage_attachments
   ].each do |table_name|

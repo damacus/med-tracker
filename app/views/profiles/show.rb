@@ -81,6 +81,7 @@ module Views
         div(class: 'space-y-6') do
           render AccountSecurityCard.new(account: account)
           render_api_tokens_card
+          render DataExportsCard.new
           render NotificationsCard.new(person: person)
           render ExperimentsCard.new(account: account)
           render DangerZoneCard.new

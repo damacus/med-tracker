@@ -4,11 +4,29 @@ Rails.application.routes.draw do
   mount MedTrackerMcp::RackApp.new => '/mcp'
 
   namespace :api do
+    scope 'fhir/R4', module: 'fhir/r4', as: :fhir_r4 do
+      get :metadata, to: 'metadata#show'
+      get 'Patient', to: 'patients#index'
+      get 'Patient/:id', to: 'patients#show'
+      get 'Medication', to: 'medications#index'
+      get 'Medication/:id', to: 'medications#show'
+      get 'MedicationRequest', to: 'medication_requests#index'
+      get 'MedicationRequest/:id', to: 'medication_requests#show'
+      get 'MedicationStatement', to: 'medication_statements#index'
+      get 'MedicationStatement/:id', to: 'medication_statements#show'
+      get 'MedicationAdministration', to: 'medication_administrations#index'
+      get 'MedicationAdministration/:id', to: 'medication_administrations#show'
+    end
+
     namespace :v1 do
       get :capabilities, to: 'capabilities#show'
 
       namespace :auth do
         post :login, to: 'sessions#create'
+        post :oidc_exchange, to: 'sessions#oidc_exchange'
+        get :households, to: 'sessions#households'
+        get :sessions, to: 'sessions#index'
+        delete 'sessions/:id', to: 'sessions#revoke', as: :session
         post :refresh, to: 'sessions#refresh'
         delete :logout, to: 'sessions#destroy'
       end
@@ -18,14 +36,56 @@ Rails.application.routes.draw do
         resources :people, only: %i[index show create update]
         resources :locations, only: %i[index show]
         resources :medications, only: %i[index show create update]
-        resources :schedules, only: %i[index show create update]
-        resources :person_medications, only: %i[index show create update]
+        resources :medications, only: [] do
+          member do
+            patch :adjust_inventory
+            patch :mark_as_ordered
+            patch :mark_as_received
+          end
+        end
+        resources :dosage_options, only: %i[index show create update]
+        resources :health_events, only: %i[index show create update]
+        resources :schedules, only: %i[index show create update] do
+          member do
+            patch :pause
+            patch :resume
+          end
+        end
+        resources :person_medications, only: %i[index show create update] do
+          member do
+            patch :pause
+            patch :resume
+            patch :reorder
+          end
+        end
         resources :medication_takes, only: %i[index create]
         resource :notification_preference, only: %i[show update]
+        resources :native_device_tokens, only: %i[create destroy]
+        resource :push_subscription, only: %i[create destroy] do
+          post :test, on: :collection
+        end
+        get :medication_lookup, to: 'medication_lookup#show'
+        post :ai_medication_suggestions, to: 'ai_medication_suggestions#create'
         get :portable_export, to: 'portable_exports#show'
         get :mobile_snapshot, to: 'mobile_snapshots#show'
         post 'portable_imports/dry_run', to: 'portable_imports#dry_run'
         post :portable_imports, to: 'portable_imports#create'
+        get 'data_exports/:mode', to: 'data_exports#show', as: :data_export
+
+        namespace :sync do
+          get :snapshot, to: 'feeds#snapshot'
+          get :changes, to: 'feeds#changes'
+          post :batches, to: 'batches#create'
+        end
+
+        namespace :admin do
+          resource :settings, only: %i[show update], controller: 'settings'
+          resources :memberships, only: %i[index update destroy]
+          resources :invitations, only: %i[index create destroy]
+          resources :person_access_grants, only: %i[index create destroy]
+          resources :app_tokens, only: %i[index create destroy]
+          resources :audit_logs, only: %i[index]
+        end
       end
     end
   end
@@ -136,6 +196,7 @@ Rails.application.routes.draw do
       patch :experiments, on: :member
       resources :api_tokens, only: %i[create destroy], controller: 'profiles/api_tokens'
     end
+    get 'profile/data_exports/:mode', to: 'profiles/data_exports#show', as: :profile_data_export
     delete 'profile/avatar', to: 'profiles#avatar', as: :profile_avatar
 
     resources :reports, only: %i[index]

@@ -25,6 +25,7 @@ ensuring medications are given on time and safely.
 - [Audit & Compliance](audit-trail.md): details on versioning and data history.
 - [MCP Integration](mcp.md): set up the hosted MCP server and connect Codex,
   Claude Code, or VS Code to read medication context.
+- [API Contract](api/openapi.v1.yaml): OpenAPI contract for hosted auth, portable IDs, sync, backups, admin APIs, and FHIR R4 reads.
 - [Pre-0.5 database upgrade](pre-0-5-database-upgrade.md): bootstrap existing PostgreSQL databases before the household/RLS cutover.
 
 ---

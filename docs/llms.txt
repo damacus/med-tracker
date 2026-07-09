@@ -22,9 +22,13 @@
 - UI renders server-sent HTML; Turbo Streams for interactive updates.
 - Critical identity and medication flows are audited.
 - Role-based authorization controls admin/clinical actions.
+- The `/api/v1` surface supports hosted OIDC session exchange, portable IDs, idempotent writes, sync feeds,
+  transactional batches, self-service exports, household administration, and protected FHIR R4 read endpoints.
 
 Key entry points:
 - Routes: `config/routes.rb`
+- API contract: `docs/api/openapi.v1.yaml`
+- API capabilities: `/api/v1/capabilities`
 - Dashboard: `app/controllers/dashboard_controller.rb`
 - Admin area: `app/controllers/admin/*`
 - Medication models: `app/models/medicine.rb`, `app/models/prescription.rb`, `app/models/person_medicine.rb`, `app/models/medication_take.rb`

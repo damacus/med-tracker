@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'API v1 person medications' do
-  fixtures :accounts, :people, :users, :households, :person_medications, :medications, :carer_relationships
+  fixtures :accounts, :people, :users, :households, :person_medications, :medications, :dosages, :carer_relationships
 
   let(:user) { users(:admin) }
   let(:household_id) { user.person.household.id }
@@ -61,6 +61,30 @@ RSpec.describe 'API v1 person medications' do
       expect(response.parsed_body.dig('data', 'administration_kind')).to eq('as_needed')
     end
 
+    it 'creates person medications from source dosage options' do
+      login_data = api_login(user)
+      person = people(:john)
+      medication = medications(:ibuprofen)
+      dosage_option = dosages(:ibuprofen_light)
+
+      post api_v1_household_person_medications_path(household_id),
+           params: {
+             person_medication: {
+               person_id: person.portable_id,
+               medication_id: medication.portable_id,
+               source_dosage_option_id: dosage_option.portable_id,
+               dose_amount: 200,
+               dose_unit: 'mg',
+               administration_kind: 'as_needed'
+             }
+           },
+           headers: api_auth_headers(login_data.fetch('access_token')),
+           as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(PersonMedication.order(:id).last.source_dosage_option_id).to eq(dosage_option.id)
+    end
+
     it 'fails validation when creating duplicate person medication' do
       login_data = api_login(user)
       person = people(:john)
@@ -114,6 +138,18 @@ RSpec.describe 'API v1 person medications' do
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body.dig('data', 'notes')).to eq('Use with food')
+    end
+
+    it 'rejects stale person medication updates' do
+      login_data = api_login(user)
+      person_medication = person_medications(:john_vitamin_d)
+
+      patch api_v1_household_person_medication_path(household_id, person_medication.id),
+            params: { person_medication: { notes: 'Stale update' } },
+            headers: api_auth_headers(login_data.fetch('access_token')).merge('If-Match' => '"stale-etag"'),
+            as: :json
+
+      expect(response).to have_http_status(:conflict)
     end
 
     it 'fails validation when updating with invalid attributes' do
