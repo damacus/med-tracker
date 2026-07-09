@@ -81,6 +81,25 @@ GEM
     android_key_attestation (0.3.0)
     ast (2.4.3)
     attr_required (1.0.2)
+    aws-eventstream (1.4.0)
+    aws-partitions (1.1267.0)
+    aws-sdk-core (3.254.0)
+      aws-eventstream (~> 1, >= 1.3.0)
+      aws-partitions (~> 1, >= 1.992.0)
+      aws-sigv4 (~> 1.9)
+      base64
+      bigdecimal
+      jmespath (~> 1, >= 1.6.1)
+      logger
+    aws-sdk-kms (1.130.0)
+      aws-sdk-core (~> 3, >= 3.254.0)
+      aws-sigv4 (~> 1.5)
+    aws-sdk-s3 (1.227.0)
+      aws-sdk-core (~> 3, >= 3.254.0)
+      aws-sdk-kms (~> 1)
+      aws-sigv4 (~> 1.5)
+    aws-sigv4 (1.12.1)
+      aws-eventstream (~> 1, >= 1.0.2)
     axiom-types (0.1.1)
       descendants_tracker (~> 0.0.4)
       ice_nine (~> 0.11.0)
@@ -250,6 +269,7 @@ GEM
       prism (>= 1.3.0)
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
+    jmespath (1.6.2)
     json (2.20.0)
     json-jwt (1.17.1)
       activesupport (>= 4.2)
@@ -826,6 +846,7 @@ PLATFORMS
   x86_64-linux-musl
 
 DEPENDENCIES
+  aws-sdk-s3
   bcrypt
   bootsnap
   brakeman

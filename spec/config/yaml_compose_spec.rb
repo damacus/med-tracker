@@ -90,6 +90,28 @@ RSpec.describe YAML do
       .to eq('${DATABASE_ROLE:-med_tracker_app}')
   end
 
+  it 'runs the audit exporter with isolated database and WORM credentials' do
+    exporter = compose_config.dig('services', 'audit-exporter-prod')
+    web_environment = compose_config.dig('services', 'web-prod', 'environment')
+
+    expect(exporter['command']).to eq('bin/audit-exporter')
+    expect(exporter.dig('environment', 'DATABASE_ROLE')).to eq('med_tracker_audit_exporter')
+    expect(exporter.dig('environment', 'DATABASE_URL')).to include('medtracker_audit_exporter:')
+    expect(exporter['environment']).to include(
+      'AUDIT_WORM_BUCKET', 'AUDIT_WORM_EXPECTED_OWNER', 'AUDIT_SIGNING_KEY_ID', 'AUDIT_SIGNING_PRIVATE_KEY',
+      'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'
+    )
+    expect(web_environment).not_to include(
+      'AUDIT_WORM_BUCKET', 'AUDIT_SIGNING_PRIVATE_KEY', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'
+    )
+  end
+
+  it 'does not grant the audit exporter login an application or owner role' do
+    expect(init_roles_sql).to include('GRANT med_tracker_audit_exporter TO medtracker_audit_exporter;')
+    expect(init_roles_sql).not_to include('GRANT med_tracker_app TO medtracker_audit_exporter;')
+    expect(init_roles_sql).not_to include('GRANT med_tracker_owner TO medtracker_audit_exporter;')
+  end
+
   it 'bootstraps the deployed runtime role without owner or bypassrls privileges' do
     expect(init_roles_sql).to include('ALTER ROLE med_tracker_app NOLOGIN NOSUPERUSER NOBYPASSRLS;')
     expect(init_roles_sql).to include('GRANT USAGE ON SCHEMA public TO med_tracker_app;')
