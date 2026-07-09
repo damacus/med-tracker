@@ -161,6 +161,14 @@ class RodauthMain < Rodauth::Rails::Auth
         methods - ['recovery_code']
       end
 
+      def medtracker_app_url
+        ENV.fetch('APP_URL') do
+          raise KeyError, 'APP_URL is required in production' if Rails.env.production?
+
+          request.base_url
+        end.delete_suffix('/')
+      end
+
       def create_household_for_account!(account_record, person, household: nil)
         household ||= create_owned_household(account_record, person)
         person.update!(household: household) if person.household_id != household.id
@@ -321,15 +329,8 @@ class RodauthMain < Rodauth::Rails::Auth
     auto_remove_recovery_codes? true
 
     webauthn_rp_name 'MedTracker'
-    webauthn_rp_id do
-      if ENV['APP_URL'].present?
-        URI.parse(ENV.fetch('APP_URL')).host
-      else
-        request.host
-      end
-    end
-
-    webauthn_origin { ENV.fetch('APP_URL', request.base_url) }
+    webauthn_rp_id { URI.parse(medtracker_app_url).host }
+    webauthn_origin { medtracker_app_url }
     webauthn_user_verification 'required'
     webauthn_authenticator_selection do
       {
@@ -388,6 +389,11 @@ class RodauthMain < Rodauth::Rails::Auth
     oidc_client_id = Rails.application.credentials.dig(:oidc, :client_id) || ENV.fetch('OIDC_CLIENT_ID', nil)
     oidc_client_secret = Rails.application.credentials.dig(:oidc,
                                                            :client_secret) || ENV.fetch('OIDC_CLIENT_SECRET', nil)
+    app_url = ENV.fetch('APP_URL') do
+      raise KeyError, 'APP_URL is required in production' if Rails.env.production?
+
+      'http://localhost:3000'
+    end.delete_suffix('/')
 
     if oidc_client_id.present? && oidc_issuer.present?
       omniauth_provider :openid_connect,
@@ -401,7 +407,7 @@ class RodauthMain < Rodauth::Rails::Auth
                           identifier: oidc_client_id,
                           secret: oidc_client_secret,
                           redirect_uri: ENV.fetch('OIDC_REDIRECT_URI', nil).presence ||
-                                        "#{ENV.fetch('APP_URL', 'http://localhost:3000').delete_suffix('/')}/auth/oidc/callback"
+                                        "#{app_url}/auth/oidc/callback"
                         }
     end
 
@@ -669,7 +675,7 @@ class RodauthMain < Rodauth::Rails::Auth
       next if issuer.blank?
 
       end_session_url = "#{issuer}/oidc/v1/end_session"
-      app_url = ENV.fetch('APP_URL', request.base_url)
+      app_url = medtracker_app_url
       redirect "#{end_session_url}?" \
                "id_token_hint=#{CGI.escape(@oidc_id_token_for_logout)}&" \
                "post_logout_redirect_uri=#{CGI.escape(app_url)}"

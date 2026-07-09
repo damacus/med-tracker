@@ -21,7 +21,7 @@
 - Modify `config/environments/production.rb` to require `APP_URL`, derive `config.hosts`, and keep health checks excluded from host authorization.
 - Modify `app/misc/rodauth_main.rb` to use a fail-closed app URL helper for WebAuthn and OIDC logout URL material.
 - Modify `config/initializers/oidc_security.rb` to validate the same fail-closed APP_URL-derived redirect fallback.
-- Modify `spec/security/zitadel_oidc_spec.rb`, `spec/security/oidc_security_spec.rb`, and create `spec/config/production_host_authorization_spec.rb` for host/auth URL hardening.
+- Modify `spec/security/zitadel_oidc_spec.rb`, `spec/security/oidc_security_spec.rb`, and create `spec/config/med_tracker/application_host_authorization_spec.rb` for host/auth URL hardening.
 
 ## Task 1: Validate Stored Web Push Endpoints Before Storage And Delivery
 
@@ -429,20 +429,20 @@ git commit -m "fix(security): throttle tenant AI suggestions"
 - Modify: `config/environments/production.rb`
 - Modify: `app/misc/rodauth_main.rb`
 - Modify: `config/initializers/oidc_security.rb`
-- Create: `spec/config/production_host_authorization_spec.rb`
+- Create: `spec/config/med_tracker/application_host_authorization_spec.rb`
 - Modify: `spec/security/zitadel_oidc_spec.rb`
 - Modify: `spec/security/oidc_security_spec.rb`
 
 - [ ] **Step 1: Add failing production host configuration spec**
 
-Create `spec/config/production_host_authorization_spec.rb`:
+Create `spec/config/med_tracker/application_host_authorization_spec.rb`:
 
 ```ruby
 # frozen_string_literal: true
 
 require 'rails_helper'
 
-RSpec.describe 'production host authorization' do
+RSpec.describe MedTracker::Application do
   let(:production_config) { Rails.root.join('config/environments/production.rb').read }
 
   it 'requires APP_URL and derives production host authorization from it' do
@@ -495,7 +495,7 @@ expect(initializer_file).to include("raise KeyError, 'APP_URL is required in pro
 Run:
 
 ```fish
-task test TEST_FILE=spec/config/production_host_authorization_spec.rb
+task test TEST_FILE=spec/config/med_tracker/application_host_authorization_spec.rb
 task test TEST_FILE=spec/security/zitadel_oidc_spec.rb
 task test TEST_FILE=spec/security/oidc_security_spec.rb
 ```
@@ -579,7 +579,7 @@ effective_redirect_uri = explicit_redirect_uri || "#{app_url}/auth/oidc/callback
 Run:
 
 ```fish
-task test TEST_FILE=spec/config/production_host_authorization_spec.rb
+task test TEST_FILE=spec/config/med_tracker/application_host_authorization_spec.rb
 task test TEST_FILE=spec/security/zitadel_oidc_spec.rb
 task test TEST_FILE=spec/security/oidc_security_spec.rb
 ```
@@ -589,7 +589,7 @@ Expected: PASS.
 - [ ] **Step 8: Commit**
 
 ```fish
-git add config/environments/production.rb app/misc/rodauth_main.rb config/initializers/oidc_security.rb spec/config/production_host_authorization_spec.rb spec/security/zitadel_oidc_spec.rb spec/security/oidc_security_spec.rb
+git add config/environments/production.rb app/misc/rodauth_main.rb config/initializers/oidc_security.rb spec/config/med_tracker/application_host_authorization_spec.rb spec/security/zitadel_oidc_spec.rb spec/security/oidc_security_spec.rb
 git commit -m "fix(security): require production app host"
 ```
 
@@ -607,7 +607,7 @@ task test TEST_FILE=spec/jobs/low_stock_notification_job_spec.rb
 task test TEST_FILE=spec/jobs/missed_dose_notification_job_spec.rb
 task test TEST_FILE=spec/requests/ai_medication_rate_limiting_spec.rb
 task test TEST_FILE=spec/requests/ai_medication_suggestions_spec.rb
-task test TEST_FILE=spec/config/production_host_authorization_spec.rb
+task test TEST_FILE=spec/config/med_tracker/application_host_authorization_spec.rb
 task test TEST_FILE=spec/security/zitadel_oidc_spec.rb
 task test TEST_FILE=spec/security/oidc_security_spec.rb
 ```

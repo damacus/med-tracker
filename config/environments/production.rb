@@ -63,9 +63,18 @@ Rails.application.configure do
   config.action_mailer.raise_delivery_errors = true
   config.action_mailer.perform_deliveries = true
 
+  app_url = URI.parse(ENV.fetch('APP_URL'))
+  raise KeyError, 'APP_URL must include a host' if app_url.host.blank?
+
+  allowed_hosts = [
+    app_url.host,
+    *ENV.fetch('RAILS_ALLOWED_HOSTS', '').split(',').map(&:strip).reject(&:blank?)
+  ].uniq
+
   # Derive mailer host from APP_URL (used in links inside emails)
   config.action_mailer.default_url_options = {
-    host: URI.parse(ENV.fetch('APP_URL', 'https://example.com')).host
+    host: app_url.host,
+    protocol: app_url.scheme
   }
 
   # Provider-agnostic SMTP delivery — configure via environment variables.
@@ -107,4 +116,9 @@ Rails.application.configure do
   #
   # Skip DNS rebinding protection for the default health check endpoint.
   # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  config.hosts = allowed_hosts
+
+  config.host_authorization = {
+    exclude: ->(request) { request.path == '/up' || request.path == '/health' }
+  }
 end

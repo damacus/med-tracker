@@ -31,8 +31,10 @@ RSpec.describe 'Zitadel OIDC Enhancements' do # rubocop:disable RSpec/DescribeCl
       expect(rodauth_source).to include('CGI.escape(app_url)')
     end
 
-    it 'falls back to request.base_url when APP_URL is not set' do
-      expect(rodauth_source).to include("ENV.fetch('APP_URL', request.base_url)")
+    it 'uses a fail-closed app URL helper for logout redirect URIs' do
+      expect(rodauth_source).to include('def medtracker_app_url')
+      expect(rodauth_source).to include("raise KeyError, 'APP_URL is required in production' if Rails.env.production?")
+      expect(rodauth_source).not_to include("ENV.fetch('APP_URL', request.base_url)")
     end
   end
 
