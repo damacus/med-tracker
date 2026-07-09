@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Reports::HealthHistoryQuery do
-  fixtures :people, :locations, :medications, :dosages
+  fixtures :accounts, :people, :locations, :medications, :dosages
 
   let(:person) { people(:john) }
   let(:start_date) { Date.new(2026, 2, 1) }
@@ -67,6 +67,16 @@ RSpec.describe Reports::HealthHistoryQuery do
     expect(result.notable_illnesses.sole.duration_days).to eq(3)
   end
 
+  it 'loads matching health events once for report sections and patterns' do
+    create_suspected_side_effect
+    create_illness_episode(Date.new(2026, 2, 1), Date.new(2026, 2, 3), 'Cold')
+    create_illness_episode(Date.new(2026, 2, 20), Date.new(2026, 2, 22), 'Cold')
+
+    expect(count_health_event_queries do
+      described_class.new(people: Person.where(id: person.id), start_date: start_date, end_date: end_date).call
+    end).to eq(1)
+  end
+
   def create_illness_episode(started_on, ended_on, title)
     HealthEvent.create!(
       person: person,
@@ -89,5 +99,19 @@ RSpec.describe Reports::HealthHistoryQuery do
       medical_help_sought: true
     )
     HealthEventMedication.create!(health_event: side_effect, medication: medications(:paracetamol))
+  end
+
+  def count_health_event_queries(&)
+    count = 0
+
+    subscriber = lambda do |_name, _start, _finish, _id, payload|
+      sql = payload[:sql]
+      next if payload[:cached] || payload[:name] == 'SCHEMA'
+
+      count += 1 if sql.include?('FROM "health_events"')
+    end
+
+    ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
+    count
   end
 end

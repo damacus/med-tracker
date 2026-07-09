@@ -32,9 +32,9 @@ module Reports
       Result.new(
         people: people_records,
         medication_takes: medication_take_entries,
-        suspected_side_effects: health_event_entries(health_events.suspected_side_effect),
-        notable_illnesses: health_event_entries(health_events.illness),
-        illness_patterns: HealthEvents::PatternSummary.new(events: health_events.illness).call
+        suspected_side_effects: health_event_entries(suspected_side_effects),
+        notable_illnesses: health_event_entries(illnesses),
+        illness_patterns: HealthEvents::PatternSummary.new(events: illnesses).call
       )
     end
 
@@ -107,7 +107,7 @@ module Reports
     end
 
     def health_event_entries(scope)
-      scope.order(:started_on, :id).map do |event|
+      scope.sort_by { |event| [event.started_on, event.id] }.map do |event|
         HealthEventEntry.new(
           event: event,
           medication_names: event.health_event_medications.map(&:medication_name)
@@ -126,7 +126,15 @@ module Reports
                              .includes(:person, :health_event_medications)
                              .where(person_id: person_ids)
                              .where(started_on: ..end_date, ended_on: start_date..)
-                         )
+                         ).to_a
+    end
+
+    def suspected_side_effects
+      @suspected_side_effects ||= health_events.select(&:suspected_side_effect?)
+    end
+
+    def illnesses
+      @illnesses ||= health_events.select(&:illness?)
     end
   end
 end
