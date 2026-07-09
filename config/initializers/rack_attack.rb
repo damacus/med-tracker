@@ -4,6 +4,7 @@ module Rack
   class Attack
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
     MEDICATION_LOOKUP_PATH = %r{\A/households/[^/]+/medication-finder/search(?:\.[a-z]+)?\z}
+    AI_MEDICATION_SUGGESTIONS_PATH = %r{\A/households/[^/]+/ai-medication-suggestions\z}
     MCP_PATH = '/mcp'
 
     throttle('req/ip', limit: 300, period: 5.minutes, &:ip)
@@ -67,11 +68,11 @@ module Rack
     end
 
     throttle('ai_medication_suggestions/ip', limit: 10, period: 1.minute) do |req|
-      req.ip if req.path == '/ai-medication-suggestions' && req.post?
+      req.ip if req.path.match?(AI_MEDICATION_SUGGESTIONS_PATH) && req.post?
     end
 
     throttle('ai_medication_suggestions/user', limit: 20, period: 1.hour) do |req|
-      if req.path == '/ai-medication-suggestions' && req.post?
+      if req.path.match?(AI_MEDICATION_SUGGESTIONS_PATH) && req.post?
         session = req.env['rack.session']
         session && session['account_id']
       end
