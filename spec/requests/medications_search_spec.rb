@@ -107,7 +107,7 @@ RSpec.describe 'GET /medication-finder/search' do
         expect(response.parsed_body['results'].first['display']).to eq('Aspirin 300mg tablets')
       end
 
-      it 'includes interaction warnings for matching accessible medication stock' do
+      it 'includes medication review prompts for matching accessible medication stock' do
         search = instance_double(
           NhsDmd::Search,
           call: NhsDmd::Search::Result.new(
@@ -127,13 +127,17 @@ RSpec.describe 'GET /medication-finder/search' do
         get medication_finder_search_path(format: :json), params: { q: 'warfarin' }
 
         expect(response).to have_http_status(:ok)
-        expect(response.parsed_body.dig('results', 0, 'interactions')).to include(
+        expect(response.parsed_body.dig('results', 0, 'review_prompts')).to include(
           a_hash_including(
-            'severity' => 'high',
-            'severity_label' => 'High',
-            'interacting_medication_name' => 'Ibuprofen'
+            'risk_level' => 'high',
+            'risk_level_label' => 'High',
+            'interacting_medication_name' => 'Ibuprofen',
+            'source_name' => 'MedTracker review prompt seed data',
+            'source_checked_on' => Date.current.iso8601,
+            'description' => include('Review with a pharmacist, nurse, GP, or prescriber')
           )
         )
+        expect(response.parsed_body.dig('results', 0)).not_to have_key('interactions')
       end
     end
 

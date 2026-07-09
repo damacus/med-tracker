@@ -1,28 +1,35 @@
 # frozen_string_literal: true
 
 class MedicationInteractionLookup
-  Interaction = Data.define(:candidate_terms, :existing_terms, :severity, :description)
+  ReviewPrompt = Data.define(:candidate_terms, :existing_terms, :risk_level, :description)
+
+  SOURCE_NAME = 'MedTracker review prompt seed data'
 
   RULES = [
-    Interaction.new(
+    ReviewPrompt.new(
       candidate_terms: %w[warfarin],
       existing_terms: %w[aspirin ibuprofen naproxen diclofenac],
-      severity: 'high',
-      description: 'May increase bleeding risk when used together. Review before adding or prescribing.'
+      risk_level: 'high',
+      description: 'May increase bleeding risk when used together. Review with a pharmacist, nurse, GP, or prescriber.'
     ),
-    Interaction.new(
+    ReviewPrompt.new(
       candidate_terms: %w[aspirin ibuprofen naproxen diclofenac],
       existing_terms: %w[warfarin],
-      severity: 'high',
-      description: 'May increase bleeding risk when used together. Review before adding or prescribing.'
+      risk_level: 'high',
+      description: 'May increase bleeding risk when used together. Review with a pharmacist, nurse, GP, or prescriber.'
     )
   ].freeze
 
-  SEVERITY_LABELS = {
+  RISK_LEVEL_LABELS = {
     'high' => 'High',
     'moderate' => 'Moderate',
-    'low' => 'Low'
+    'low' => 'Low',
+    'unknown' => 'Unknown - unclassified'
   }.freeze
+
+  def self.risk_level_label(risk_level)
+    RISK_LEVEL_LABELS.fetch(risk_level, risk_level.to_s.titleize)
+  end
 
   def initialize(medication_scope:)
     @medication_scope = medication_scope
@@ -54,9 +61,11 @@ class MedicationInteractionLookup
     return unless rule
 
     {
-      severity: rule.severity,
-      severity_label: SEVERITY_LABELS.fetch(rule.severity, rule.severity.titleize),
+      risk_level: rule.risk_level,
+      risk_level_label: self.class.risk_level_label(rule.risk_level),
       interacting_medication_name: medication.display_name,
+      source_name: SOURCE_NAME,
+      source_checked_on: Date.current.iso8601,
       description: rule.description
     }
   end

@@ -56,7 +56,7 @@ class MedicationFinderSearchResponder
     search_result.to_h.tap do |payload|
       medication = existing_medication_for(search_result, barcode)
       payload[:existing_medication] = existing_medication_payload(medication) if medication
-      payload[:interactions] = @interaction_lookup.call(search_result)
+      payload[:review_prompts] = @interaction_lookup.call(search_result)
     end
   end
 
