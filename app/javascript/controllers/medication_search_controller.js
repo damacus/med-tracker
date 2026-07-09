@@ -150,7 +150,7 @@ export default class extends Controller {
     const pilLink = this.renderPilLink(result)
     const spcLink = this.renderSpcLink(result)
     const medicineDetails = this.renderMedicineDetails(result)
-    const interactions = this.renderInteractions(result)
+    const reviewPrompts = this.renderReviewPrompts(result)
     const title = result.name || result.display
     const packageSize = result.package_size
       ? `<p class="text-xs text-on-surface-variant mt-0.5">Pack size: ${this.escapeHtml(result.package_size)}</p>`
@@ -166,7 +166,7 @@ export default class extends Controller {
             ${pilLink}
             ${spcLink}
             ${medicineDetails}
-            ${interactions}
+            ${reviewPrompts}
           </div>
           <div class="flex flex-col items-end gap-1 shrink-0">
             ${matchReasonBadge}
@@ -227,51 +227,57 @@ export default class extends Controller {
     event.currentTarget.setAttribute("aria-expanded", String(expanded))
   }
 
-  renderInteractions(result) {
-    const interactions = Array.isArray(result.interactions) ? result.interactions : []
-    if (interactions.length === 0) return ''
+  renderReviewPrompts(result) {
+    const reviewPrompts = Array.isArray(result.review_prompts) ? result.review_prompts : []
+    if (reviewPrompts.length === 0) return ''
 
-    const detailsId = `interaction-details-${Math.random().toString(36).slice(2)}`
-    const highestSeverity = interactions[0]?.severity_label || ''
-    const summary = this.t("interactionSummary")
-      .replace("%{count}", interactions.length)
-      .replace("%{severity}", highestSeverity)
+    const detailsId = `review-prompt-details-${Math.random().toString(36).slice(2)}`
+    const highestRiskLevel = reviewPrompts[0]?.risk_level_label || ''
+    const summary = this.reviewPromptSummaryText(reviewPrompts.length, highestRiskLevel)
 
-    const items = interactions.map((interaction) => `
+    const items = reviewPrompts.map((reviewPrompt) => `
       <li class="rounded-md border border-warning/40 bg-warning-container/10 p-3">
         <p class="text-xs font-bold text-on-warning-container">
-          ${this.escapeHtml(this.t("interactionSeverity"))}: ${this.escapeHtml(interaction.severity_label || interaction.severity)}
+          ${this.escapeHtml(this.t("reviewPromptRiskLevel"))}: ${this.escapeHtml(reviewPrompt.risk_level_label || reviewPrompt.risk_level)}
         </p>
         <p class="mt-1 text-xs text-on-warning-container">
-          ${this.escapeHtml(interaction.interacting_medication_name || '')}
+          ${this.escapeHtml(reviewPrompt.interacting_medication_name || '')}
         </p>
         <p class="mt-2 text-xs text-on-warning-container">
-          <span class="font-bold">${this.escapeHtml(this.t("interactionDescription"))}:</span>
-          ${this.escapeHtml(interaction.description || '')}
+          <span class="font-bold">${this.escapeHtml(this.t("reviewPromptSource"))}:</span>
+          ${this.escapeHtml(reviewPrompt.source_name || '')}
+        </p>
+        <p class="mt-1 text-xs text-on-warning-container">
+          <span class="font-bold">${this.escapeHtml(this.t("reviewPromptCheckedOn"))}:</span>
+          ${this.escapeHtml(reviewPrompt.source_checked_on || '')}
+        </p>
+        <p class="mt-2 text-xs text-on-warning-container">
+          <span class="font-bold">${this.escapeHtml(this.t("reviewPromptDescription"))}:</span>
+          ${this.escapeHtml(reviewPrompt.description || '')}
         </p>
       </li>
     `).join('')
 
     return `
-      <div class="mt-3 rounded-lg border border-warning/50 bg-warning-container/20 p-3" data-testid="interaction-warning">
+      <div class="mt-3 rounded-lg border border-warning/50 bg-warning-container/20 p-3" data-testid="medication-review-prompt">
         <p class="text-xs font-bold text-on-warning-container">${this.escapeHtml(summary)}</p>
         <button
           type="button"
           class="mt-2 text-xs font-bold text-on-warning-container underline underline-offset-2"
           aria-expanded="false"
           aria-controls="${this.escapeHtml(detailsId)}"
-          data-action="medication-search#toggleInteractionDetails"
+          data-action="medication-search#toggleReviewPromptDetails"
           data-details-id="${this.escapeHtml(detailsId)}"
-        >${this.escapeHtml(this.t("interactionDetailsButton"))}</button>
+        >${this.escapeHtml(this.t("reviewPromptDetailsButton"))}</button>
         <div id="${this.escapeHtml(detailsId)}" class="hidden pt-3">
-          <h3 class="text-sm font-bold text-on-warning-container">${this.escapeHtml(this.t("interactionDetails"))}</h3>
+          <h3 class="text-sm font-bold text-on-warning-container">${this.escapeHtml(this.t("reviewPromptDetails"))}</h3>
           <ul class="mt-2 space-y-2">${items}</ul>
         </div>
       </div>
     `
   }
 
-  toggleInteractionDetails(event) {
+  toggleReviewPromptDetails(event) {
     const details = document.getElementById(event.currentTarget.dataset.detailsId)
     if (!details) return
 
@@ -531,5 +537,15 @@ export default class extends Controller {
     return template
       .replace("%{count}", count)
       .replace("%{query}", query)
+  }
+
+  reviewPromptSummaryText(count, riskLevel) {
+    const rules = new Intl.PluralRules(document.documentElement.lang || "en")
+    const category = rules.select(count)
+    const templates = this.translationsValue?.reviewPromptSummary || {}
+    const template = templates[category] || templates.other || templates.one || ""
+    return template
+      .replace("%{count}", count)
+      .replace("%{risk_level}", riskLevel)
   }
 }

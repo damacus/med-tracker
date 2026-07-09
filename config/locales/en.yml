@@ -778,11 +778,15 @@ en:
         package: Package
         directions: Directions
         warnings: Warnings
-      interaction_summary: "%{count} interaction warning (%{severity})"
-      interaction_details_button: View Interaction Details
-      interaction_details: Interaction Details
-      interaction_severity: Severity
-      interaction_description: Description
+      review_prompt_summary:
+        one: "%{count} medication review prompt (%{risk_level})"
+        other: "%{count} medication review prompts (%{risk_level})"
+      review_prompt_details_button: View Review Prompt Details
+      review_prompt_details: Review Prompt Details
+      review_prompt_risk_level: Risk level
+      review_prompt_source: Evidence source
+      review_prompt_checked_on: Evidence checked on
+      review_prompt_description: Review with a practitioner
       update_stock: Update stock
       confirm_restock: Confirm you wish to add %{quantity} units to %{medication}.
       confirm_restock_without_quantity: Confirm how many units you wish to add to

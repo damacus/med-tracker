@@ -763,6 +763,15 @@ ga:
         package: Pacáiste
         directions: Treoracha
         warnings: Rabhaidh
+      review_prompt_summary:
+        one: "%{count} medication review prompt (%{risk_level})"
+        other: "%{count} medication review prompts (%{risk_level})"
+      review_prompt_details_button: View Review Prompt Details
+      review_prompt_details: Review Prompt Details
+      review_prompt_risk_level: Risk level
+      review_prompt_source: Evidence source
+      review_prompt_checked_on: Evidence checked on
+      review_prompt_description: Review with a practitioner
       update_stock: Nuashonraigh stoc
       confirm_restock: Deimhnigh gur mian leat %{quantity} aonad a chur le %{medication}.
       confirm_restock_without_quantity: Deimhnigh cé mhéad aonad is mian leat a chur

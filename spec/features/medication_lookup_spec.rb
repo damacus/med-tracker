@@ -251,7 +251,7 @@ RSpec.describe 'Medication Lookup', type: :system do
     expect(page).to have_no_field('medication[barcode]', type: :hidden)
   end
 
-  it 'User views drug interactions from lookup results' do
+  it 'User views medication review prompts from lookup results' do
     stub_nhs_dmd_search(
       query: 'Warfarin',
       results: [
@@ -270,13 +270,17 @@ RSpec.describe 'Medication Lookup', type: :system do
     fill_in 'medication-search-input', with: 'Warfarin'
     click_button 'Search'
 
-    click_button('View Interaction Details', match: :first)
+    expect(page).to have_text('2 medication review prompts (High)')
 
-    expect(page).to have_text('Interaction Details')
-    expect(page).to have_text('Severity')
+    click_button('View Review Prompt Details', match: :first)
+
+    expect(page).to have_text('Review Prompt Details')
+    expect(page).to have_text('Review with a practitioner')
+    expect(page).to have_text('Risk level')
     expect(page).to have_text('High')
     expect(page).to have_text('Ibuprofen')
-    expect(page).to have_text('bleeding')
+    expect(page).to have_text('pharmacist, nurse, GP, or prescriber')
+    expect(page).to have_no_text('interaction warning')
   end
 
   def expect_external_guidance_link(test_id, href)
