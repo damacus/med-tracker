@@ -110,13 +110,12 @@ module PortableData
     end
 
     def record_audit_event
-      SecurityAuditEvent.create!(
+      Audit::Event.record!(
         household: household,
         actor_account: membership.account,
         actor_membership: membership,
         event_type: 'portable_data.imported',
-        request_id: request&.request_id,
-        ip: request&.remote_ip,
+        request: request,
         metadata: {
           record_counts: counts,
           dry_run: false

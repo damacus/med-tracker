@@ -109,12 +109,16 @@ RSpec.describe 'API v1 portable data' do
       get "/api/v1/households/#{household_id}/mobile_snapshot",
           headers: request_headers,
           as: :json
-    end.to change(SecurityAuditEvent, :count).by(1)
+    end.to change {
+      SecurityAuditEvent.where(event_type: 'portable_data.mobile_snapshot_read').count
+    }.by(1).and change {
+      SecurityAuditEvent.where(event_type: 'api.request').count
+    }.by(1)
 
     expect(response).to have_http_status(:ok)
     snapshot = response.parsed_body.fetch('data')
     medication = snapshot.dig('records', 'medications').first
-    audit_event = SecurityAuditEvent.order(:created_at).last
+    audit_event = SecurityAuditEvent.where(event_type: 'portable_data.mobile_snapshot_read').order(:created_at).last
 
     expect(snapshot).to include('format' => 'medtracker.portable.v1')
     expect(snapshot.dig('records', 'people').first).to include('portable_id')

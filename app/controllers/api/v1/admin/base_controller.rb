@@ -25,13 +25,12 @@ module Api
         end
 
         def audit_admin_action!(event_type:, target:, outcome:)
-          SecurityAuditEvent.create!(
+          Audit::Event.record!(
             household: current_household,
             actor_account: current_account,
             actor_membership: current_membership,
             event_type: event_type,
-            request_id: request.request_id,
-            ip: request.remote_ip,
+            request: request,
             metadata: {
               target_type: target.class.name,
               target_id: target.id,

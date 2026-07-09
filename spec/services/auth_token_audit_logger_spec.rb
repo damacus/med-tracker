@@ -72,6 +72,11 @@ RSpec.describe AuthTokenAuditLogger do
     end
 
     def expect_tenant_security_event
+      expect_security_event_identity
+      expect_security_event_context
+    end
+
+    def expect_security_event_identity
       expect(security_event).to have_attributes(
         household_id: security_household.id,
         actor_account_id: account.id,
@@ -84,6 +89,16 @@ RSpec.describe AuthTokenAuditLogger do
         'account_id' => account.id,
         'token_type' => 'api_session',
         'action' => 'created'
+      )
+    end
+
+    def expect_security_event_context
+      expect(security_event.audit_context).to include(
+        'actor_user_id' => user.id,
+        'actor_membership_id' => security_membership.id,
+        'household_id' => security_household.id,
+        'request_id' => 'req-security-001',
+        'ip' => '10.0.0.2'
       )
     end
 

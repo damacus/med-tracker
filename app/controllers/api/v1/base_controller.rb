@@ -5,6 +5,7 @@ module Api
     class BaseController < ActionController::API
       include ErrorRendering
       include Pundit::Authorization
+      include Audit::Authorization
 
       around_action :with_api_request_context
       around_action :with_api_idempotency
@@ -19,16 +20,17 @@ module Api
 
       private
 
-      def with_api_request_context
+      def with_api_request_context(&)
         authenticate_api_request!
         return if performed?
 
         TenantContext.with(account: current_account, household: nil, request_id: request.request_id) do
           bind_api_session_context!
           bind_api_household_context! unless performed?
-          yield unless performed?
+          audit_api_request(&) unless performed?
         end
       ensure
+        Audit::Context.clear!
         Current.reset
       end
 
@@ -89,6 +91,36 @@ module Api
         Current.membership = @current_membership
         TenantContext.set_household!(@current_household)
         TenantContext.set_membership!(@current_membership)
+        Audit::Context.start!(
+          request: request,
+          account: current_account,
+          user: current_user,
+          membership: @current_membership,
+          credential: @current_api_session
+        )
+      end
+
+      def audit_api_request
+        yield
+        record_api_request_event
+      rescue StandardError
+        record_api_request_event(outcome: 'error')
+        raise
+      end
+
+      def record_api_request_event(outcome: nil)
+        status = response.status
+        Audit::Event.record!(
+          household: current_household,
+          event_type: 'api.request',
+          metadata: {
+            http_method: request.request_method,
+            controller: controller_path,
+            action: action_name,
+            outcome: outcome || (status < 400 ? 'success' : 'failure'),
+            status: status
+          }
+        )
       end
 
       def bearer_token

@@ -54,13 +54,12 @@ module Admin
     end
 
     def record_audit_event(previous_role)
-      SecurityAuditEvent.create!(
+      Audit::Event.record!(
         household: membership.household,
         actor_account: actor_account,
         actor_membership: actor_membership,
         event_type: 'household_membership.role_updated',
-        request_id: request.request_id,
-        ip: request.remote_ip,
+        request: request,
         metadata: {
           target_account_id: membership.account_id,
           target_membership_id: membership.id,

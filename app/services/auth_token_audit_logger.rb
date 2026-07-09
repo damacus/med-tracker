@@ -5,13 +5,13 @@ class AuthTokenAuditLogger
   HASHED_FIELDS = %i[endpoint user_agent].freeze
 
   def record(account:, token_type:, action:, metadata: {}, context: nil)
-    # rubocop:disable Rails/SkipsModelValidations
-    PaperTrail::Version.insert(version_attrs(account:, token_type:, action:, metadata:, context:))
-    # rubocop:enable Rails/SkipsModelValidations
+    # rubocop:disable Rails/SkipsModelValidations, Lint/RedundantCopDisableDirective
+    Audit::VersionEvent.record!(**version_attrs(account:, token_type:, action:, metadata:, context:))
+    # rubocop:enable Rails/SkipsModelValidations, Lint/RedundantCopDisableDirective
     security_event_attrs = security_event_attrs(account:, token_type:, action:, metadata:, context:)
     return if security_event_attrs[:household_id].blank?
 
-    SecurityAuditEvent.create!(security_event_attrs)
+    Audit::Event.record!(**security_event_attrs, audit_context: context.to_h)
   rescue StandardError => e
     Rails.logger.error("AuthTokenAuditLogger failed: #{e.class}: #{e.message}")
   end

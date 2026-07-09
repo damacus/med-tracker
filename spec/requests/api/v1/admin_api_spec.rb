@@ -39,11 +39,13 @@ RSpec.describe 'API v1 household administration' do
             params: { household: { name: 'API Admin Renamed Household' } },
             headers: headers,
             as: :json
-    end.to change(SecurityAuditEvent, :count).by(1)
+    end.to change {
+      SecurityAuditEvent.where(event_type: 'api/admin/household_settings/updated').count
+    }.by(1)
 
     expect(response).to have_http_status(:ok)
     expect(response.parsed_body.dig('data', 'name')).to eq('API Admin Renamed Household')
-    audit_event = SecurityAuditEvent.order(:created_at).last
+    audit_event = SecurityAuditEvent.where(event_type: 'api/admin/household_settings/updated').order(:created_at).last
     expect(audit_event.metadata).not_to include('body', 'token', 'bundle')
   end
 

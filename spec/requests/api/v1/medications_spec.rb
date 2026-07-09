@@ -9,6 +9,34 @@ RSpec.describe 'API v1 medications' do
   let(:user) { users(:admin) }
 
   describe 'GET /api/v1/households/:household_id/medications collection' do
+    it 'records high-risk API access without persisting the bearer token', :aggregate_failures do
+      login_data = api_login(user)
+      household_id = login_data.dig('household', 'id')
+      access_token = login_data.fetch('access_token')
+
+      expect do
+        get api_v1_household_medications_path(household_id),
+            headers: api_auth_headers(access_token),
+            as: :json
+      end.to change { SecurityAuditEvent.where(event_type: 'api.request').count }.by(1)
+
+      event = SecurityAuditEvent.where(event_type: 'api.request').order(:created_at).last
+      expect(event.audit_context).to include(
+        'authentication_method' => 'api_session',
+        'active_role' => 'owner',
+        'policy_class' => 'MedicationPolicy',
+        'policy_query' => 'index?'
+      )
+      expect(event.metadata).to include(
+        'http_method' => 'GET',
+        'controller' => 'api/v1/medications',
+        'action' => 'index',
+        'outcome' => 'success',
+        'status' => 200
+      )
+      expect(event.attributes.to_json).not_to include(access_token)
+    end
+
     it 'returns only medications in the signed-in user scope' do
       login_data = api_login(user)
       household_id = login_data.dig('household', 'id')
@@ -167,6 +195,29 @@ RSpec.describe 'API v1 medications' do
   end
 
   describe 'PATCH /api/v1/households/:household_id/medications/:id' do
+    it 'attributes PaperTrail changes to the API session and authorization decision', :aggregate_failures do
+      login_data = api_login(user)
+      household_id = login_data.dig('household', 'id')
+      access_token = login_data.fetch('access_token')
+      medication = medications(:paracetamol)
+
+      patch api_v1_household_medication_path(household_id, medication.id),
+            params: { medication: { current_supply: 91 } },
+            headers: api_auth_headers(access_token),
+            as: :json
+
+      version = PaperTrail::Version.where(item: medication).order(:created_at).last
+      expect(version.audit_context).to include(
+        'authentication_method' => 'api_session',
+        'active_role' => 'owner',
+        'policy_class' => 'MedicationPolicy',
+        'policy_query' => 'update?'
+      )
+      expect(version.audit_context.fetch('session_reference')).to match(/\Aapi_session:\d+\z/)
+      expect(version.object_changes).to be_present
+      expect(version.attributes.to_json).not_to include(access_token)
+    end
+
     it 'updates a medication with valid attributes' do
       login_data = api_login(user)
       household_id = login_data.dig('household', 'id')

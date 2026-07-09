@@ -36,10 +36,20 @@ RSpec.describe Api::V1::BaseController do # rubocop:disable RSpec/MultipleMemoiz
   end
 
   let(:account) { instance_double(Account, present?: true, verified?: true) }
-  let(:user) { instance_double(User, present?: true, active?: true) }
+  let(:user) { instance_double(User, id: 1, present?: true, active?: true) }
   let(:person) { instance_double(Person, user: user) }
   let(:household) { instance_double(Household, id: 1) }
-  let(:membership) { instance_double(HouseholdMembership, active?: true, household: household, id: 1) }
+  let(:membership) do
+    instance_double(
+      HouseholdMembership,
+      active?: true,
+      household: household,
+      household_id: 1,
+      id: 1,
+      role: 'owner',
+      permissions_version: 1
+    )
+  end
 
   let(:api_session) do
     instance_double(
@@ -57,6 +67,7 @@ RSpec.describe Api::V1::BaseController do # rubocop:disable RSpec/MultipleMemoiz
     allow(ApiSession).to receive(:lookup_by_access_token).and_return(api_session)
     allow(ApiAppToken).to receive(:lookup_by_token).and_return(nil)
     allow(ApiAuthState).to receive(:locked_out?).and_return(false)
+    allow(Audit::Event).to receive(:record!)
 
     # Instead of stubbing is_a?, we can stub lookup_api_credential to return our object
     # Or rely on the fact that is_a? might be defined if we create the double right
@@ -135,7 +146,7 @@ RSpec.describe Api::V1::BaseController do # rubocop:disable RSpec/MultipleMemoiz
     end
 
     context 'when user is not active' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:user) { instance_double(User, present?: true, active?: false) }
+      let(:user) { instance_double(User, id: 1, present?: true, active?: false) }
 
       it 'returns unauthorized' do
         get :index

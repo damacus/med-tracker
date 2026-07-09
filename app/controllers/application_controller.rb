@@ -3,6 +3,7 @@
 class ApplicationController < ActionController::Base
   include Authentication
   include Pundit::Authorization
+  include Audit::Authorization
   include Pagy::Method
   include TurboNativeDetectable
   include TenantDomTargetsHelper
@@ -45,11 +46,13 @@ class ApplicationController < ActionController::Base
   def with_current_context(&)
     Current.account = current_account
     Current.request_id = request.request_id
+    Audit::Context.start!(request:, account: current_account, user: current_user, credential: :web)
     Time.use_zone(current_account_time_zone) { with_current_tenant_context(&) }
   rescue StandardError => e
     Otel::ExceptionRecorder.record(e, source: 'request')
     raise
   ensure
+    Audit::Context.clear!
     Current.reset
   end
 
@@ -63,12 +66,12 @@ class ApplicationController < ActionController::Base
 
       if @current_membership
         TenantContext.set_membership!(@current_membership)
-        PaperTrail.request.controller_info = info_for_paper_trail
+        refresh_audit_context
         yield
       elsif active_support_access_session
         @current_support_access_session = active_support_access_session
         Current.support_access_session = @current_support_access_session
-        PaperTrail.request.controller_info = info_for_paper_trail
+        refresh_audit_context
         yield
       else
         user_not_authorized
@@ -105,12 +108,16 @@ class ApplicationController < ActionController::Base
   end
 
   def info_for_paper_trail
-    {
-      ip: request.remote_ip,
-      request_id: request.request_id,
-      household_id: Current.household&.id,
-      actor_membership_id: Current.membership&.id
-    }
+    PaperTrail.request.controller_info
+  end
+
+  def refresh_audit_context
+    Audit::Context.refresh!(
+      account: current_account,
+      user: current_user,
+      membership: Current.membership,
+      support_access_session: Current.support_access_session
+    )
   end
 
   def support_authorization_context

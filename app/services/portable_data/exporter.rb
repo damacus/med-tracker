@@ -153,13 +153,12 @@ module PortableData
     end
 
     def record_audit_event(payload, export_mode:, event_type: 'portable_data.exported', encrypted: true)
-      SecurityAuditEvent.create!(
+      Audit::Event.record!(
         household: household,
         actor_account: membership.account,
         actor_membership: membership,
         event_type: event_type,
-        request_id: request&.request_id,
-        ip: request&.remote_ip,
+        request: request,
         metadata: {
           record_counts: record_counts(payload),
           encrypted: encrypted,

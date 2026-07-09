@@ -5,12 +5,12 @@ module ExternalLookup
     ITEM_TYPE = 'ExternalMedicineLookup'
 
     def record(source:, event:, query:, result_status:, **details)
-      # rubocop:disable Rails/SkipsModelValidations
+      # rubocop:disable Rails/SkipsModelValidations, Lint/RedundantCopDisableDirective
       # PaperTrail::Version is a gem storage table — there are no meaningful validations to run.
       # We use insert to bypass PaperTrail's before_create callbacks, which would attempt to
       # resolve the item type string into a matching ActiveRecord class.
-      PaperTrail::Version.insert(version_attrs(source:, event:, query:, result_status:, **details))
-      # rubocop:enable Rails/SkipsModelValidations
+      Audit::VersionEvent.record!(**version_attrs(source:, event:, query:, result_status:, **details))
+      # rubocop:enable Rails/SkipsModelValidations, Lint/RedundantCopDisableDirective
     rescue StandardError => e
       Rails.logger.error("ExternalLookup::AuditLogger failed: #{e.class}: #{e.message}")
     end
