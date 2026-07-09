@@ -311,7 +311,7 @@ RSpec.describe 'API v1 domain parity' do
     post api_v1_household_push_subscription_path(household_id),
          params: {
            push_subscription: {
-             endpoint: 'https://push.example.test/api-subscription',
+             endpoint: 'https://fcm.googleapis.com/fcm/send/api-subscription',
              keys: { p256dh: 'p256dh', auth: 'auth' }
            }
          },
@@ -320,17 +320,17 @@ RSpec.describe 'API v1 domain parity' do
 
     expect(response).to have_http_status(:created)
     expect(
-      user.person.account.push_subscriptions.find_by(endpoint: 'https://push.example.test/api-subscription')
+      user.person.account.push_subscriptions.find_by(endpoint: 'https://fcm.googleapis.com/fcm/send/api-subscription')
     ).to be_present
 
     delete api_v1_household_push_subscription_path(household_id),
-           params: { endpoint: 'https://push.example.test/api-subscription' },
+           params: { endpoint: 'https://fcm.googleapis.com/fcm/send/api-subscription' },
            headers: headers,
            as: :json
 
     expect(response).to have_http_status(:no_content)
     expect(
-      user.person.account.push_subscriptions.find_by(endpoint: 'https://push.example.test/api-subscription')
+      user.person.account.push_subscriptions.find_by(endpoint: 'https://fcm.googleapis.com/fcm/send/api-subscription')
     ).to be_nil
   end
 
