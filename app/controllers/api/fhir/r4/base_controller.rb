@@ -4,15 +4,130 @@ module Api
   module Fhir
     module R4
       class BaseController < Api::V1::BaseController
+        FHIR_JSON = 'application/fhir+json'
+        SUPPORTED_FORMATS = ['json', FHIR_JSON].freeze
+
+        before_action :ensure_fhir_format
+
         private
 
-        def render_fhir_collection(scope, serializer)
-          records = scope.limit(100).to_a
-          render json: ::Fhir::R4::Serializer.bundle(records, type: serializer)
+        def render_fhir_collection(scope, serializer, search: {})
+          searched = apply_fhir_search(scope, search)
+          paginated = paginate_fhir(searched)
+          render json: ::Fhir::R4::Serializer.bundle(
+            paginated.fetch(:records),
+            type: serializer,
+            total: paginated.fetch(:total),
+            links: bundle_links(paginated)
+          ), content_type: FHIR_JSON
         end
 
         def render_fhir_resource(record, serializer)
-          render json: ::Fhir::R4::Serializer.public_send(serializer, record)
+          render json: ::Fhir::R4::Serializer.public_send(serializer, record), content_type: FHIR_JSON
+        end
+
+        def render_api_error(code:, message:, status:, errors: nil)
+          outcome_code = fhir_issue_code(code)
+          issue = {
+            severity: 'error',
+            code: outcome_code,
+            details: { text: message },
+            diagnostics: request.request_id
+          }
+          if errors.present?
+            issue[:extension] = [{ url: 'https://medtracker.example/fhir/error-details',
+                                   valueString: errors.to_json }]
+          end
+
+          render json: { resourceType: 'OperationOutcome', issue: [issue] }, status: status, content_type: FHIR_JSON
+        end
+
+        def render_not_acceptable(message)
+          render_api_error(code: 'not_supported', message: message, status: :not_acceptable)
+        end
+
+        def apply_fhir_search(scope, search)
+          unsupported = request.query_parameters.keys - supported_query_parameters(search)
+          raise InvalidFilterValue, "Unsupported FHIR search parameter: #{unsupported.first}" if unsupported.any?
+
+          search.reduce(scope) do |filtered, (name, callable)|
+            value = params[name]
+            value.present? ? callable.call(filtered, value) : filtered
+          end
+        end
+
+        def paginate_fhir(scope)
+          page = [params.fetch(:page, 1).to_i, 1].max
+          count = params.fetch(:_count, 100).to_i.clamp(1, 100)
+          total = scope.count
+
+          {
+            page: page,
+            count: count,
+            total: total,
+            records: scope.limit(count).offset((page - 1) * count).to_a
+          }
+        end
+
+        def bundle_links(paginated)
+          links = [{ relation: 'self', url: request.original_url }]
+          return links unless paginated.fetch(:page) * paginated.fetch(:count) < paginated.fetch(:total)
+
+          links << { relation: 'next', url: next_page_url(paginated.fetch(:page) + 1) }
+        end
+
+        def next_page_url(page)
+          query = request.query_parameters.merge('page' => page)
+          "#{request.base_url}#{request.path}?#{query.to_query}"
+        end
+
+        def supported_query_parameters(search)
+          search.keys.map(&:to_s) + %w[_count _format page]
+        end
+
+        def ensure_fhir_format
+          requested_format = params[:_format].presence
+          return if requested_format.blank? || SUPPORTED_FORMATS.include?(requested_format)
+
+          render_not_acceptable("FHIR R4 responses are only available as #{FHIR_JSON}")
+        end
+
+        def fhir_issue_code(code)
+          case code.to_s
+          when 'not_supported'
+            'not-supported'
+          when 'not_found'
+            'not-found'
+          when 'forbidden', 'unauthorized'
+            'security'
+          when 'unprocessable_content'
+            'invalid'
+          else
+            'processing'
+          end
+        end
+
+        def portable_reference_id(value)
+          value.to_s.split('/').last
+        end
+
+        def iso8601_date(value, field:)
+          Date.iso8601(value.to_s)
+        rescue ArgumentError
+          raise InvalidFilterValue, "#{field} must be ISO8601"
+        end
+
+        def search_by_portable_id
+          lambda do |scope, value|
+            scope.where(portable_id: portable_reference_id(value))
+          end
+        end
+
+        def search_by_updated_date
+          lambda do |scope, value|
+            date = iso8601_date(value, field: 'date')
+            scope.where(updated_at: date.all_day)
+          end
         end
       end
     end

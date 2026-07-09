@@ -14,30 +14,42 @@ RSpec.describe 'FHIR R4 API' do
     get '/api/fhir/R4/metadata', as: :json
 
     expect(response).to have_http_status(:unauthorized)
+    expect(response.media_type).to eq('application/fhir+json')
+    expect(fhir_json).to include('resourceType' => 'OperationOutcome')
   end
 
   it 'returns FHIR metadata' do
     get '/api/fhir/R4/metadata', headers: headers, as: :json
 
     expect(response).to have_http_status(:ok)
-    expect(response.parsed_body).to include('resourceType' => 'CapabilityStatement', 'fhirVersion' => '4.0.1')
+    expect(response.media_type).to eq('application/fhir+json')
+    expect(fhir_json).to include(
+      'resourceType' => 'CapabilityStatement',
+      'fhirVersion' => '4.0.1',
+      'format' => include('json', 'application/fhir+json')
+    )
+    patient = fhir_json.dig('rest', 0, 'resource').find { |resource| resource.fetch('type') == 'Patient' }
+    expect(patient.fetch('searchParam').pluck('name')).to include('_id', 'name', 'birthdate')
   end
 
   it 'searches and reads patients with household scoping' do
     person = people(:john)
 
-    get '/api/fhir/R4/Patient', headers: headers, as: :json
+    get "/api/fhir/R4/Patient?name=#{person.name}&_count=1", headers: headers
 
     expect(response).to have_http_status(:ok)
-    expect(response.parsed_body.fetch('resourceType')).to eq('Bundle')
-    expect(response.parsed_body.fetch('entry').map { |entry| entry.dig('resource', 'id') }).to include(
+    expect(response.media_type).to eq('application/fhir+json')
+    expect(fhir_json).to include('resourceType' => 'Bundle', 'type' => 'searchset')
+    expect(fhir_json.fetch('link').pluck('relation')).to include('self')
+    expect(fhir_json.fetch('entry')).to all(include('search' => { 'mode' => 'match' }))
+    expect(fhir_json.fetch('entry').map { |entry| entry.dig('resource', 'id') }).to contain_exactly(
       person.portable_id
     )
 
     get "/api/fhir/R4/Patient/#{person.portable_id}", headers: headers, as: :json
 
     expect(response).to have_http_status(:ok)
-    expect(response.parsed_body).to include('resourceType' => 'Patient', 'id' => person.portable_id)
+    expect(fhir_json).to include('resourceType' => 'Patient', 'id' => person.portable_id)
   end
 
   it 'returns medication, request, statement, and administration resources with references' do
@@ -46,19 +58,57 @@ RSpec.describe 'FHIR R4 API' do
     take = create(:medication_take, schedule: schedule, household: schedule.household, taken_at: Time.current)
 
     get "/api/fhir/R4/Medication/#{schedule.medication.portable_id}", headers: headers, as: :json
-    expect(response.parsed_body).to include('resourceType' => 'Medication', 'id' => schedule.medication.portable_id)
+    expect(fhir_json).to include('resourceType' => 'Medication', 'id' => schedule.medication.portable_id)
 
     get "/api/fhir/R4/MedicationRequest/#{schedule.portable_id}", headers: headers, as: :json
-    expect(response.parsed_body.dig('subject', 'reference')).to eq("Patient/#{schedule.person.portable_id}")
-    expect(response.parsed_body.dig('medicationReference', 'reference')).to eq(
+    expect(fhir_json.dig('subject', 'reference')).to eq("Patient/#{schedule.person.portable_id}")
+    expect(fhir_json.dig('medicationReference', 'reference')).to eq(
       "Medication/#{schedule.medication.portable_id}"
     )
 
     get "/api/fhir/R4/MedicationStatement/#{person_medication.portable_id}", headers: headers, as: :json
-    expect(response.parsed_body.dig('subject', 'reference')).to eq("Patient/#{person_medication.person.portable_id}")
+    expect(fhir_json.dig('subject', 'reference')).to eq("Patient/#{person_medication.person.portable_id}")
 
     get "/api/fhir/R4/MedicationAdministration/#{take.portable_id}", headers: headers, as: :json
-    expect(response.parsed_body.dig('subject', 'reference')).to eq("Patient/#{schedule.person.portable_id}")
+    expect(fhir_json.dig('subject', 'reference')).to eq("Patient/#{schedule.person.portable_id}")
+  end
+
+  it 'filters resources by supported FHIR search parameters' do
+    medication = medications(:paracetamol)
+    medication.update!(dmd_code: '123456', dmd_system: 'https://dmd.nhs.uk', dmd_concept_class: 'VMP')
+    schedule = schedules(:john_paracetamol)
+    take = create(
+      :medication_take,
+      schedule: schedule,
+      household: schedule.household,
+      taken_at: Time.zone.local(2026, 1, 2, 9)
+    )
+
+    get '/api/fhir/R4/Medication?code=123456', headers: headers
+    expect(fhir_json.fetch('entry').map { |entry| entry.dig('resource', 'id') }).to include(medication.portable_id)
+
+    query = {
+      patient: "Patient/#{schedule.person.portable_id}",
+      medication: "Medication/#{medication.portable_id}"
+    }.to_query
+    get "/api/fhir/R4/MedicationRequest?#{query}", headers: headers
+    expect(fhir_json.fetch('entry').map { |entry| entry.dig('resource', 'id') }).to include(schedule.portable_id)
+
+    get "/api/fhir/R4/MedicationAdministration?patient=#{schedule.person.portable_id}&date=2026-01-02", headers: headers
+    expect(fhir_json.fetch('entry').map { |entry| entry.dig('resource', 'id') }).to include(take.portable_id)
+  end
+
+  it 'returns OperationOutcome for unsupported FHIR formats and search parameters' do
+    get '/api/fhir/R4/Patient?family=Smith', headers: headers
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.media_type).to eq('application/fhir+json')
+    expect(fhir_json).to include('resourceType' => 'OperationOutcome')
+
+    get '/api/fhir/R4/Patient?_format=xml', headers: headers
+
+    expect(response).to have_http_status(:not_acceptable)
+    expect(fhir_json.dig('issue', 0, 'code')).to eq('not-supported')
   end
 
   it 'returns not found for inaccessible resources' do
@@ -68,5 +118,10 @@ RSpec.describe 'FHIR R4 API' do
     get "/api/fhir/R4/Patient/#{other_person.portable_id}", headers: headers, as: :json
 
     expect(response).to have_http_status(:not_found)
+    expect(fhir_json).to include('resourceType' => 'OperationOutcome')
+  end
+
+  def fhir_json
+    ActiveSupport::JSON.decode(response.body)
   end
 end
