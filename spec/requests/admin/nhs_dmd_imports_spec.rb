@@ -9,7 +9,10 @@ RSpec.describe 'Admin::NhsDmdImports' do
   let(:regular_user) { users(:jane) }
 
   describe 'GET /admin' do
-    before { sign_in(admin) }
+    before do
+      ensure_platform_admin!(admin.person.account)
+      sign_in(admin)
+    end
 
     it 'includes a quick action link to import an NHS dm+d release' do
       get admin_root_path
@@ -21,8 +24,11 @@ RSpec.describe 'Admin::NhsDmdImports' do
   end
 
   describe 'GET /admin/nhs_dmd_import/new' do
-    context 'when authenticated as administrator' do
-      before { sign_in(admin) }
+    context 'when authenticated as platform administrator' do
+      before do
+        ensure_platform_admin!(admin.person.account)
+        sign_in(admin)
+      end
 
       it 'renders the import form' do
         get new_admin_nhs_dmd_import_path
@@ -75,6 +81,19 @@ RSpec.describe 'Admin::NhsDmdImports' do
       end
     end
 
+    context 'when authenticated as household administrator without platform access' do
+      before do
+        remove_platform_admin!(admin.person.account)
+        sign_in(admin)
+      end
+
+      it 'denies access to the global dm+d import form' do
+        get new_admin_nhs_dmd_import_path
+
+        expect(response).to redirect_to(root_path)
+      end
+    end
+
     context 'when authenticated as non-administrator' do
       before { sign_in(regular_user) }
 
@@ -87,9 +106,12 @@ RSpec.describe 'Admin::NhsDmdImports' do
   end
 
   describe 'POST /admin/nhs_dmd_import' do
-    before { sign_in(admin) }
+    before do
+      ensure_platform_admin!(admin.person.account)
+      sign_in(admin)
+    end
 
-    it 'creates an import run, enqueues the job, and redirects with a start notice' do
+    it 'allows active platform admins to create an import run, enqueue the job, and redirect with a start notice' do
       upload = uploaded_zip('nhsbsa_dmd_release.zip')
       import_run = nil
 
@@ -135,6 +157,17 @@ RSpec.describe 'Admin::NhsDmdImports' do
       expect(failed_import.reload).to be_failed
       expect(failed_import).not_to be_active
     end
+  end
+
+  def ensure_platform_admin!(account)
+    platform_admin = account.platform_admin || PlatformAdmin.create!(account: account)
+    platform_admin.active!
+    platform_admin
+  end
+
+  def remove_platform_admin!(account)
+    account.platform_admin&.destroy!
+    account.reload
   end
 
   def uploaded_zip(filename)
