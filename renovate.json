@@ -37,6 +37,14 @@
       "ignoreTests": false
     },
     {
+      "description": "Require review for Cargo dependency updates",
+      "matchManagers": ["cargo"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": false,
+      "automergeType": "pr",
+      "ignoreTests": false
+    },
+    {
       "description": "Require review for Docker patch and digest updates",
       "matchManagers": ["dockerfile", "docker-compose"],
       "matchUpdateTypes": ["patch", "digest"],

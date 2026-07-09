@@ -28,6 +28,26 @@ tasks:
     silent: true
     cmds: [task --list]
 
+  client-tools:fmt:
+    desc: Format Rust client tools
+    cmds:
+      - cargo fmt --manifest-path client-tools/Cargo.toml --all
+
+  client-tools:check:
+    desc: Check Rust client tools
+    cmds:
+      - cargo check --manifest-path client-tools/Cargo.toml --workspace --all-targets
+
+  client-tools:clippy:
+    desc: Lint Rust client tools
+    cmds:
+      - cargo clippy --manifest-path client-tools/Cargo.toml --workspace --all-targets -- -D warnings
+
+  client-tools:test:
+    desc: Test Rust client tools
+    cmds:
+      - cargo test --manifest-path client-tools/Cargo.toml --workspace
+
   test:
     desc: Run tests in Docker (optionally specify TEST_FILE=path/to/spec)
     summary: |

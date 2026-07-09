@@ -1,0 +1,60 @@
+---
+name: Client Tools Release
+
+"on":
+  workflow_call:
+    inputs:
+      tag_name:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Release tag to build
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.artifact }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - artifact: medtracker-client-tools-linux-x86_64
+            runner: ubuntu-latest
+          - artifact: medtracker-client-tools-macos-x86_64
+            runner: macos-13
+          - artifact: medtracker-client-tools-macos-aarch64
+            runner: macos-14
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          ref: ${{ inputs.tag_name }}
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
+        with:
+          toolchain: stable
+
+      - name: Build client tools
+        run: cargo build --manifest-path client-tools/Cargo.toml --workspace --release
+
+      - name: Stage artifacts
+        shell: bash
+        run: |
+          mkdir -p dist/${{ matrix.artifact }}
+          cp client-tools/target/release/medtracker dist/${{ matrix.artifact }}/
+          cp client-tools/target/release/medtracker-mcp dist/${{ matrix.artifact }}/
+          tar -C dist -czf ${{ matrix.artifact }}.tar.gz ${{ matrix.artifact }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}.tar.gz
