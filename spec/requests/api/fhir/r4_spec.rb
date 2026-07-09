@@ -46,6 +46,10 @@ RSpec.describe 'FHIR R4 API' do
       person.portable_id
     )
 
+    get '/api/fhir/R4/Patient?_count=1', headers: headers
+
+    expect(fhir_json.fetch('link').pluck('relation')).to include('next')
+
     get "/api/fhir/R4/Patient/#{person.portable_id}", headers: headers, as: :json
 
     expect(response).to have_http_status(:ok)
@@ -77,6 +81,14 @@ RSpec.describe 'FHIR R4 API' do
     medication = medications(:paracetamol)
     medication.update!(dmd_code: '123456', dmd_system: 'https://dmd.nhs.uk', dmd_concept_class: 'VMP')
     schedule = schedules(:john_paracetamol)
+    person_medication = create(:person_medication, person: people(:john), medication: medications(:ibuprofen))
+    stopped_schedule = create(
+      :schedule,
+      active: false,
+      person: schedule.person,
+      medication: schedule.medication,
+      household: schedule.household
+    )
     take = create(
       :medication_take,
       schedule: schedule,
@@ -94,8 +106,38 @@ RSpec.describe 'FHIR R4 API' do
     get "/api/fhir/R4/MedicationRequest?#{query}", headers: headers
     expect(fhir_json.fetch('entry').map { |entry| entry.dig('resource', 'id') }).to include(schedule.portable_id)
 
-    get "/api/fhir/R4/MedicationAdministration?patient=#{schedule.person.portable_id}&date=2026-01-02", headers: headers
+    get '/api/fhir/R4/MedicationRequest?status=active', headers: headers
+    expect(fhir_json.fetch('entry').map { |entry| entry.dig('resource', 'id') }).to include(schedule.portable_id)
+
+    get '/api/fhir/R4/MedicationRequest?status=stopped', headers: headers
+    expect(fhir_json.fetch('entry').map { |entry| entry.dig('resource', 'id') }).to include(
+      stopped_schedule.portable_id
+    )
+
+    get '/api/fhir/R4/MedicationRequest?status=draft', headers: headers
+    expect(response).to have_http_status(:unprocessable_content)
+
+    get '/api/fhir/R4/MedicationStatement?status=active', headers: headers
+    expect(fhir_json.fetch('entry').map { |entry| entry.dig('resource', 'id') }).to include(
+      person_medication.portable_id
+    )
+
+    person_medication.update!(active: false)
+
+    get '/api/fhir/R4/MedicationStatement?status=stopped', headers: headers
+    expect(fhir_json.fetch('entry').map { |entry| entry.dig('resource', 'id') }).to include(
+      person_medication.portable_id
+    )
+
+    get '/api/fhir/R4/MedicationStatement?status=entered-in-error', headers: headers
+    expect(response).to have_http_status(:unprocessable_content)
+
+    get "/api/fhir/R4/MedicationAdministration?patient=#{schedule.person.portable_id}&date=2026-01-02&status=completed",
+        headers: headers
     expect(fhir_json.fetch('entry').map { |entry| entry.dig('resource', 'id') }).to include(take.portable_id)
+
+    get '/api/fhir/R4/MedicationAdministration?status=in-progress', headers: headers
+    expect(response).to have_http_status(:unprocessable_content)
   end
 
   it 'returns OperationOutcome for unsupported FHIR formats and search parameters' do
