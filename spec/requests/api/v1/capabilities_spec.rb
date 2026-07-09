@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'API v1 capabilities' do
-  it 'publishes the supported API, auth, portability, sync, and deferred client-tool contracts without auth' do
+  it 'publishes the supported API, auth, portability, sync, and client-tool contracts without auth' do
     get api_v1_capabilities_path, as: :json
 
     expect(response).to have_http_status(:ok)
@@ -40,11 +40,18 @@ RSpec.describe 'API v1 capabilities' do
                                'MedicationAdministration')
       )
     )
-    expect(data.dig('client_tools', 'cli')).to include('supported' => false, 'status' => 'deferred')
+    expect(data.dig('client_tools', 'cli')).to include(
+      'supported' => true,
+      'status' => 'available',
+      'binary' => 'medtracker',
+      'api_boundary' => '/api/v1',
+      'distribution' => 'github_release'
+    )
     expect(data.dig('client_tools', 'mcp_server')).to include(
       'supported' => true,
       'transport' => 'streamable_http',
       'endpoint' => '/mcp',
+      'stdio_binary' => 'medtracker-mcp',
       'tools' => include(
         'medtracker_current_user',
         'medtracker_household_snapshot',

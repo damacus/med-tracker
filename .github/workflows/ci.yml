@@ -52,6 +52,36 @@ jobs:
       - name: Lint code for consistent style
         run: bin/rubocop -f github
 
+  client_tools:
+    runs-on: [ubuntu-latest]
+    name: Rust Client Tools
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0 # v2.8.0
+        with:
+          workspaces: client-tools
+
+      - name: Check formatting
+        run: cargo fmt --manifest-path client-tools/Cargo.toml --all --check
+
+      - name: Check workspace
+        run: cargo check --manifest-path client-tools/Cargo.toml --workspace --all-targets
+
+      - name: Lint workspace
+        run: cargo clippy --manifest-path client-tools/Cargo.toml --workspace --all-targets -- -D warnings
+
+      - name: Test workspace
+        run: cargo test --manifest-path client-tools/Cargo.toml --workspace
+
   test_non_system:
     runs-on: [ubuntu-latest]
     name: RSpec Tests (Models, Policies, Controllers, Components)

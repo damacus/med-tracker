@@ -95,22 +95,22 @@ module Api
 
       def client_tools
         {
-          cli: deferred_client_tool,
+          cli: {
+            supported: true,
+            status: 'available',
+            binary: 'medtracker',
+            api_boundary: '/api/v1',
+            distribution: 'github_release'
+          },
           mcp_server: {
             supported: true,
             transport: 'streamable_http',
             endpoint: '/mcp',
+            stdio_binary: 'medtracker-mcp',
             tools: MedTrackerMcp::Server::TOOLS.map(&:name_value),
             resources: MedTrackerMcp::Server::RESOURCES.map { |resource| resource::URI }
           },
           diagnostics: %w[request_id retry_after]
-        }
-      end
-
-      def deferred_client_tool
-        {
-          supported: false,
-          status: 'deferred'
         }
       end
     end

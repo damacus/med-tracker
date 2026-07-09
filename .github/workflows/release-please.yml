@@ -39,3 +39,10 @@ jobs:
     with:
       tag_name: ${{ needs.release-please.outputs.tag_name }}
     secrets: inherit
+
+  client-tools:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.releases_created == 'true' }}
+    uses: ./.github/workflows/client-tools-release.yml
+    with:
+      tag_name: ${{ needs.release-please.outputs.tag_name }}

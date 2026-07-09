@@ -37,6 +37,17 @@ Open <http://localhost:3000>.
 task test
 ```
 
+## Client Tools
+
+First-party Rust tools live under `client-tools/`:
+
+- `medtracker`: CLI for `/api/v1` workflows.
+- `medtracker-mcp`: stdio MCP server for agent clients.
+
+Run local tool gates with `task client-tools:fmt`,
+`task client-tools:check`, `task client-tools:clippy`, and
+`task client-tools:test`.
+
 ## Documentation
 
 Published docs: <https://damacus.github.io/med-tracker/>
@@ -49,6 +60,7 @@ Key pages:
 - [Kubernetes User Seeding](https://damacus.github.io/med-tracker/kubernetes-user-seeding/)
 - [Carer Onboarding: First Dose](https://damacus.github.io/med-tracker/user-onboarding-carer-first-dose/)
 - [Testing](https://damacus.github.io/med-tracker/testing/)
+- [Client Tools](docs/api/client-tools.md)
 - [Design](https://damacus.github.io/med-tracker/design/)
 - [User Management](https://damacus.github.io/med-tracker/user-management/)
 
