@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_09_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_09_150100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -562,6 +562,61 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_150000) do
     t.index ["name"], name: "index_locations_on_name_trigram", opclass: :gin_trgm_ops, using: :gin
   end
 
+  create_table "medication_review_evidence_records", force: :cascade do |t|
+    t.string "active_ingredient"
+    t.string "candidate_terms", default: [], null: false, array: true
+    t.datetime "created_at", null: false
+    t.text "evidence_text", null: false
+    t.string "interacting_terms", default: [], null: false, array: true
+    t.string "label_section", null: false
+    t.string "match_confidence", default: "unknown", null: false
+    t.string "match_status", default: "unreviewed", null: false
+    t.string "product_name", null: false
+    t.date "retrieved_on", null: false
+    t.string "risk_level", default: "unknown", null: false
+    t.string "source_name", null: false
+    t.string "source_record_id", null: false
+    t.string "source_url", null: false
+    t.datetime "updated_at", null: false
+    t.index ["candidate_terms"], name: "index_medication_review_evidence_records_on_candidate_terms", using: :gin
+    t.index ["interacting_terms"], name: "index_medication_review_evidence_records_on_interacting_terms", using: :gin
+    t.index ["match_status"], name: "index_medication_review_evidence_records_on_match_status"
+    t.index ["source_record_id"], name: "index_medication_review_evidence_records_on_source_record_id", unique: true
+  end
+
+  create_table "medication_review_prompts", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "evidence_record_id", null: false
+    t.date "evidence_source_checked_on", null: false
+    t.string "evidence_source_name", null: false
+    t.string "evidence_source_url", null: false
+    t.text "evidence_text", null: false
+    t.bigint "household_id", null: false
+    t.bigint "interacting_medication_id", null: false
+    t.string "interacting_medication_name", null: false
+    t.string "match_confidence", null: false
+    t.bigint "person_id", null: false
+    t.string "practitioner_name"
+    t.string "practitioner_role"
+    t.bigint "primary_medication_id", null: false
+    t.string "primary_medication_name", null: false
+    t.text "review_note"
+    t.bigint "reviewed_by_membership_id"
+    t.date "reviewed_on"
+    t.string "risk_level", null: false
+    t.string "status", default: "needs_review", null: false
+    t.datetime "updated_at", null: false
+    t.index ["evidence_record_id"], name: "index_medication_review_prompts_on_evidence_record_id"
+    t.index ["household_id", "person_id", "primary_medication_id", "interacting_medication_id", "evidence_record_id"], name: "idx_medication_review_prompts_unique_pair", unique: true
+    t.index ["household_id", "status"], name: "index_medication_review_prompts_on_household_id_and_status"
+    t.index ["household_id"], name: "index_medication_review_prompts_on_household_id"
+    t.index ["id", "household_id"], name: "index_medication_review_prompts_on_id_and_household_id", unique: true
+    t.index ["interacting_medication_id"], name: "index_medication_review_prompts_on_interacting_medication_id"
+    t.index ["person_id"], name: "index_medication_review_prompts_on_person_id"
+    t.index ["primary_medication_id"], name: "index_medication_review_prompts_on_primary_medication_id"
+    t.index ["reviewed_by_membership_id"], name: "index_medication_review_prompts_on_reviewed_by_membership_id"
+  end
+
   create_table "medication_takes", force: :cascade do |t|
     t.string "client_uuid"
     t.datetime "created_at", null: false
@@ -973,6 +1028,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_150000) do
   add_foreign_key "location_memberships", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_location_memberships_person_id_household"
   add_foreign_key "location_memberships", "people", deferrable: :deferred
   add_foreign_key "locations", "households"
+  add_foreign_key "medication_review_prompts", "household_memberships", column: "reviewed_by_membership_id", deferrable: :deferred
+  add_foreign_key "medication_review_prompts", "household_memberships", column: ["reviewed_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_review_prompts_reviewer_household", validate: false
+  add_foreign_key "medication_review_prompts", "households", deferrable: :deferred
+  add_foreign_key "medication_review_prompts", "medication_review_evidence_records", column: "evidence_record_id", deferrable: :deferred
+  add_foreign_key "medication_review_prompts", "medications", column: "interacting_medication_id", deferrable: :deferred
+  add_foreign_key "medication_review_prompts", "medications", column: "primary_medication_id", deferrable: :deferred
+  add_foreign_key "medication_review_prompts", "medications", column: ["interacting_medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_review_prompts_interacting_medication_household", validate: false
+  add_foreign_key "medication_review_prompts", "medications", column: ["primary_medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_review_prompts_primary_medication_household", validate: false
+  add_foreign_key "medication_review_prompts", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_review_prompts_person_household", validate: false
+  add_foreign_key "medication_review_prompts", "people", deferrable: :deferred
   add_foreign_key "medication_takes", "households"
   add_foreign_key "medication_takes", "locations", column: "taken_from_location_id"
   add_foreign_key "medication_takes", "locations", column: ["taken_from_location_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_medication_takes_taken_from_location_id_household"
@@ -1076,6 +1141,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_150000) do
     api_change_events
     api_idempotency_keys
     api_tombstones
+    medication_review_prompts
     security_audit_events
     active_storage_attachments
   ].each do |table_name|

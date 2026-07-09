@@ -3,7 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'GET /medication-finder/search' do
-  fixtures :accounts, :people, :users, :locations, :medications, :location_memberships, :carer_relationships
+  fixtures :accounts, :people, :users, :locations, :medications, :location_memberships, :carer_relationships,
+           :medication_review_evidence_records
 
   let(:doctor) { users(:doctor) }
   let(:doctor_account) { accounts(:dr_jones) }
@@ -132,11 +133,12 @@ RSpec.describe 'GET /medication-finder/search' do
             'risk_level' => 'high',
             'risk_level_label' => 'High',
             'interacting_medication_name' => 'Ibuprofen',
-            'source_name' => 'MedTracker review prompt seed data',
-            'source_checked_on' => Date.current.iso8601,
-            'description' => include('Review with a pharmacist, nurse, GP, or prescriber')
+            'source_name' => 'DailyMed',
+            'source_checked_on' => '2026-07-09',
+            'description' => include('worth reviewing with a pharmacist, nurse, GP, or prescriber')
           )
         )
+        expect(response.parsed_body.dig('results', 0, 'review_prompt_filter')).to eq('hidden_count' => 0)
         expect(response.parsed_body.dig('results', 0)).not_to have_key('interactions')
       end
     end

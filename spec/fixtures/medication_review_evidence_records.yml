@@ -1,0 +1,20 @@
+warfarin_nsaids:
+  source_name: DailyMed
+  source_record_id: 0cbce382-9c88-4f58-ae0f-532a841e8f95
+  source_url: https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=0cbce382-9c88-4f58-ae0f-532a841e8f95
+  retrieved_on: 2026-07-09
+  product_name: Warfarin Sodium
+  active_ingredient: Warfarin sodium
+  label_section: Drug Interactions
+  evidence_text: >-
+    The public label identifies increased bleeding risk when some medicines are used with warfarin and recommends closer monitoring.
+  risk_level: high
+  match_confidence: high
+  match_status: reviewed_pair
+  candidate_terms:
+    - warfarin
+  interacting_terms:
+    - aspirin
+    - ibuprofen
+    - naproxen
+    - diclofenac

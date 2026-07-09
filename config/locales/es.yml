@@ -771,6 +771,9 @@ es:
       review_prompt_summary:
         one: "%{count} medication review prompt (%{risk_level})"
         other: "%{count} medication review prompts (%{risk_level})"
+      review_prompt_filtered:
+        one: 1 elemento de revisión de menor confianza oculto para reducir el ruido
+        other: "%{count} elementos de revisión de menor confianza ocultos para reducir el ruido"
       review_prompt_details_button: View Review Prompt Details
       review_prompt_details: Review Prompt Details
       review_prompt_risk_level: Risk level
@@ -1440,12 +1443,57 @@ es:
       locations: Ubicaciones
       finder: Buscador de Medicamentos
       people: Personas
+      medicine_reviews: Revisiones de medicamentos
       reports: Informes
       administration: Administración
       sign_out: Cerrar sesión
       user_fallback: Usuario
     mobile_rail:
       primary_navigation: Navegación principal
+  medication_reviews:
+    eyebrow: Registro de revisión profesional
+    title: Revisiones de medicamentos
+    subtitle: Evidencia pública de etiquetas de medicamentos organizada para su próxima conversación con un profesional.
+    boundary: Esta evidencia apoya una conversación con un profesional. No sustituye el juicio clínico ni indica que deba cambiar un medicamento.
+    export_pdf: Exportar PDF de revisión
+    hidden_count:
+      one: 1 elemento de revisión de menor confianza oculto para reducir el ruido
+      other: "%{count} elementos de revisión de menor confianza ocultos para reducir el ruido"
+    show_hidden: Mostrar elementos filtrados
+    hide_hidden: Ocultar elementos filtrados
+    empty_title: No hay revisiones de medicamentos que mostrar
+    empty_description: Ningún par de evidencias revisado coincide con los medicamentos activos de los registros del hogar seleccionado.
+    review_reason: La evidencia pública de las etiquetas sugiere que puede ser útil revisar esta combinación con un farmacéutico, enfermero, médico de cabecera o prescriptor.
+    evidence_excerpt: Evidencia pública de la etiqueta
+    checked_on: Evidencia consultada el %{date}
+    confidence: Confianza de coincidencia %{value}
+    recorded_outcome: Esta combinación se revisó con %{name} (%{role}) el %{date}.
+    updated: Registro de revisión actualizado.
+    risk_levels:
+      low: Riesgo bajo en la fuente
+      moderate: Riesgo moderado en la fuente
+      high: Riesgo alto en la fuente
+      unknown: Desconocido - sin clasificar
+    confidence_levels:
+      low: Baja
+      moderate: Moderada
+      high: Alta
+      unknown: Desconocida - sin clasificar
+    statuses:
+      needs_review: Pendiente de revisión
+      reviewed_with_practitioner: Revisado con un profesional
+      expected_prescribed_combination: Esperado según la prescripción
+      not_relevant: No relevante
+      hidden_low_signal: Elemento filtrado de menor confianza
+    form:
+      title: Registrar revisión profesional
+      status: Resultado
+      practitioner_role: Función del profesional
+      select_role: Seleccionar función
+      practitioner_name: Nombre del profesional
+      reviewed_on: Fecha de revisión
+      review_note: Nota de revisión
+      save: Guardar registro de revisión
   forms:
     locations:
       name_placeholder: p. ej. Casa, Escuela, Casa de la Abuela

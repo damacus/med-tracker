@@ -229,7 +229,18 @@ export default class extends Controller {
 
   renderReviewPrompts(result) {
     const reviewPrompts = Array.isArray(result.review_prompts) ? result.review_prompts : []
-    if (reviewPrompts.length === 0) return ''
+    const hiddenCount = Number(result.review_prompt_filter?.hidden_count || 0)
+    if (reviewPrompts.length === 0 && hiddenCount === 0) return ''
+
+    const hiddenNotice = hiddenCount > 0 ? `
+      <p class="text-xs font-medium text-on-surface-variant" data-testid="filtered-review-prompts">
+        ${this.escapeHtml(this.reviewPromptFilteredText(hiddenCount))}
+      </p>
+    ` : ''
+
+    if (reviewPrompts.length === 0) {
+      return `<div class="mt-3 border-y border-border py-3">${hiddenNotice}</div>`
+    }
 
     const detailsId = `review-prompt-details-${Math.random().toString(36).slice(2)}`
     const highestRiskLevel = reviewPrompts[0]?.risk_level_label || ''
@@ -261,6 +272,7 @@ export default class extends Controller {
     return `
       <div class="mt-3 rounded-lg border border-warning/50 bg-warning-container/20 p-3" data-testid="medication-review-prompt">
         <p class="text-xs font-bold text-on-warning-container">${this.escapeHtml(summary)}</p>
+        <div class="mt-2">${hiddenNotice}</div>
         <button
           type="button"
           class="mt-2 text-xs font-bold text-on-warning-container underline underline-offset-2"
@@ -547,5 +559,13 @@ export default class extends Controller {
     return template
       .replace("%{count}", count)
       .replace("%{risk_level}", riskLevel)
+  }
+
+  reviewPromptFilteredText(count) {
+    const rules = new Intl.PluralRules(document.documentElement.lang || "en")
+    const category = rules.select(count)
+    const templates = this.translationsValue?.reviewPromptFiltered || {}
+    const template = templates[category] || templates.other || templates.one || ""
+    return template.replace("%{count}", count)
   }
 }

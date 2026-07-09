@@ -97,6 +97,20 @@ RSpec.describe MedicationFinderSearchResponder do
         expect(result.body[:results].first).to include(code: 'DMD123')
       end
 
+      it 'includes visible review prompts and the filtered-noise count' do
+        responder_with_review_prompts = described_class.new(
+          search: search,
+          medication_scope: Medication.none,
+          interaction_lookup: interaction_lookup_with_hidden_prompts
+        )
+
+        result = responder_with_review_prompts.call(query: 'paracetamol')
+        payload = result.body[:results].first
+
+        expect(payload[:review_prompts]).to eq([{ risk_level: 'high' }])
+        expect(payload[:review_prompt_filter]).to eq(hidden_count: 3)
+      end
+
       it 'uses resolved_query from the search result when present' do
         resolved_result = successful_nhs_result(results: [], resolved_query: 'Paracetamol 500mg', barcode: nil)
         allow(search).to receive(:call).and_return(resolved_result)
@@ -207,5 +221,13 @@ RSpec.describe MedicationFinderSearchResponder do
       expect(result.body).to eq({ results: [] })
       expect(result.status).to eq(:ok)
     end
+  end
+
+  def interaction_lookup_with_hidden_prompts
+    result = MedicationInteractionLookup::Result.new(
+      visible_prompts: [{ risk_level: 'high' }],
+      hidden_count: 3
+    )
+    instance_double(MedicationInteractionLookup, call: result)
   end
 end

@@ -202,6 +202,8 @@ Rails.application.routes.draw do
 
     resources :reports, only: %i[index]
     get 'reports/health-history', to: 'health_history_reports#show', as: :health_history_report
+    get 'medicine-reviews/report', to: 'medication_review_reports#show', as: :medication_review_report
+    resources :medication_review_prompts, path: 'medicine-reviews', only: %i[index update]
 
     get 'offline', to: 'offline#show'
     get 'offline/snapshot', to: 'offline#snapshot'

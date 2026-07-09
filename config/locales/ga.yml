@@ -766,6 +766,9 @@ ga:
       review_prompt_summary:
         one: "%{count} medication review prompt (%{risk_level})"
         other: "%{count} medication review prompts (%{risk_level})"
+      review_prompt_filtered:
+        one: 1 mhír athbhreithnithe ar mhuinín níos ísle i bhfolach chun torann a laghdú
+        other: "%{count} mír athbhreithnithe ar mhuinín níos ísle i bhfolach chun torann a laghdú"
       review_prompt_details_button: View Review Prompt Details
       review_prompt_details: Review Prompt Details
       review_prompt_risk_level: Risk level
@@ -1440,12 +1443,57 @@ ga:
       locations: Suíomhanna
       finder: Aimsitheoir Leigheas
       people: Daoine
+      medicine_reviews: Athbhreithnithe cógas
       reports: Tuarascálacha
       administration: Riarachán
       sign_out: Sínigh Amach
       user_fallback: Úsáideoir
     mobile_rail:
       primary_navigation: Nascleanúint phríomha
+  medication_reviews:
+    eyebrow: Taifead athbhreithnithe cleachtóra
+    title: Athbhreithnithe cógas
+    subtitle: Fianaise phoiblí lipéid cógas eagraithe don chéad chomhrá eile le cleachtóir.
+    boundary: Tacaíonn an fhianaise seo le comhrá le cleachtóir. Ní ghlacann sí áit breithiúnais chliniciúil agus ní insíonn sí duit cógas a athrú.
+    export_pdf: Easpórtáil PDF athbhreithnithe
+    hidden_count:
+      one: 1 mhír athbhreithnithe ar mhuinín níos ísle i bhfolach chun torann a laghdú
+      other: "%{count} mír athbhreithnithe ar mhuinín níos ísle i bhfolach chun torann a laghdú"
+    show_hidden: Taispeáin míreanna scagtha
+    hide_hidden: Folaigh míreanna scagtha
+    empty_title: Níl aon athbhreithniú cógas le taispeáint
+    empty_description: Ní mheaitseálann aon phéire fianaise athbhreithnithe na cógais ghníomhacha sna taifid teaghlaigh roghnaithe.
+    review_reason: Tugann fianaise phoiblí lipéid le fios gur fiú an teaglaim seo a athbhreithniú le cógaiseoir, altra, dochtúir teaghlaigh nó oideasóir.
+    evidence_excerpt: Fianaise phoiblí lipéid
+    checked_on: Fianaise seiceáilte ar %{date}
+    confidence: Muinín mheaitseála %{value}
+    recorded_outcome: Athbhreithníodh an teaglaim seo le %{name} (%{role}) ar %{date}.
+    updated: Nuashonraíodh taifead an athbhreithnithe.
+    risk_levels:
+      low: Riosca íseal san fhoinse
+      moderate: Riosca measartha san fhoinse
+      high: Riosca ard san fhoinse
+      unknown: Anaithnid - neamhaicmithe
+    confidence_levels:
+      low: Íseal
+      moderate: Measartha
+      high: Ard
+      unknown: Anaithnid - neamhaicmithe
+    statuses:
+      needs_review: Athbhreithniú de dhíth
+      reviewed_with_practitioner: Athbhreithnithe le cleachtóir
+      expected_prescribed_combination: Mar a bhíothas ag súil de réir an oidis
+      not_relevant: Neamhábhartha
+      hidden_low_signal: Mír mhuiníne níos ísle scagtha
+    form:
+      title: Taifead athbhreithniú cleachtóra
+      status: Toradh
+      practitioner_role: Ról an chleachtóra
+      select_role: Roghnaigh ról
+      practitioner_name: Ainm an chleachtóra
+      reviewed_on: Dáta an athbhreithnithe
+      review_note: Nóta athbhreithnithe
+      save: Sábháil taifead an athbhreithnithe
   reports:
     date_range_too_large: Ni feidir le raon datai na tuarascola dul thar 180 la.
     index:

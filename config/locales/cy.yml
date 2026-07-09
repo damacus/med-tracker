@@ -763,6 +763,9 @@ cy:
       review_prompt_summary:
         one: "%{count} medication review prompt (%{risk_level})"
         other: "%{count} medication review prompts (%{risk_level})"
+      review_prompt_filtered:
+        one: 1 eitem adolygu llai hyderus wedi'i chuddio i leihau sŵn
+        other: "%{count} eitem adolygu llai hyderus wedi'u cuddio i leihau sŵn"
       review_prompt_details_button: View Review Prompt Details
       review_prompt_details: Review Prompt Details
       review_prompt_risk_level: Risk level
@@ -1462,12 +1465,57 @@ cy:
       locations: Lleoliadau
       finder: Darganfyddwr Meddyginiaethau
       people: Pobl
+      medicine_reviews: Adolygiadau meddyginiaethau
       reports: Adroddiadau
       administration: Gweinyddu
       sign_out: Allgofnodi
       user_fallback: Defnyddiwr
     mobile_rail:
       primary_navigation: Llywio cynradd
+  medication_reviews:
+    eyebrow: Cofnod adolygiad ymarferydd
+    title: Adolygiadau meddyginiaethau
+    subtitle: Tystiolaeth gyhoeddus o labeli meddyginiaeth wedi'i threfnu ar gyfer eich sgwrs nesaf ag ymarferydd.
+    boundary: Mae'r dystiolaeth hon yn cefnogi sgwrs ag ymarferydd. Nid yw'n disodli barn glinigol nac yn dweud wrthych am newid meddyginiaeth.
+    export_pdf: Allforio PDF adolygiad
+    hidden_count:
+      one: 1 eitem adolygu llai hyderus wedi'i chuddio i leihau sŵn
+      other: "%{count} eitem adolygu llai hyderus wedi'u cuddio i leihau sŵn"
+    show_hidden: Dangos eitemau wedi'u hidlo
+    hide_hidden: Cuddio eitemau wedi'u hidlo
+    empty_title: Dim adolygiadau meddyginiaeth i'w dangos
+    empty_description: Nid oes unrhyw bâr tystiolaeth a adolygwyd yn cyfateb i'r meddyginiaethau gweithredol yng nghofnodion yr aelwyd a ddewiswyd.
+    review_reason: Mae tystiolaeth gyhoeddus y label yn awgrymu y gallai fod yn werth adolygu'r cyfuniad hwn gyda fferyllydd, nyrs, meddyg teulu neu ragnodydd.
+    evidence_excerpt: Tystiolaeth gyhoeddus y label
+    checked_on: Gwiriwyd y dystiolaeth ar %{date}
+    confidence: Hyder cyfateb %{value}
+    recorded_outcome: Adolygwyd y cyfuniad hwn gyda %{name} (%{role}) ar %{date}.
+    updated: Diweddarwyd cofnod yr adolygiad.
+    risk_levels:
+      low: Risg isel yn y ffynhonnell
+      moderate: Risg gymedrol yn y ffynhonnell
+      high: Risg uchel yn y ffynhonnell
+      unknown: Anhysbys - heb ei ddosbarthu
+    confidence_levels:
+      low: Isel
+      moderate: Cymedrol
+      high: Uchel
+      unknown: Anhysbys - heb ei ddosbarthu
+    statuses:
+      needs_review: Angen adolygiad
+      reviewed_with_practitioner: Wedi'i adolygu gydag ymarferydd
+      expected_prescribed_combination: Yn ôl y disgwyl fel y rhagnodwyd
+      not_relevant: Ddim yn berthnasol
+      hidden_low_signal: Eitem llai hyderus wedi'i hidlo
+    form:
+      title: Cofnodi adolygiad ymarferydd
+      status: Canlyniad
+      practitioner_role: Rôl yr ymarferydd
+      select_role: Dewis rôl
+      practitioner_name: Enw'r ymarferydd
+      reviewed_on: Dyddiad yr adolygiad
+      review_note: Nodyn adolygu
+      save: Cadw cofnod yr adolygiad
   forms:
     locations:
       name_placeholder: e.e. Cartref, Ysgol, Tŷ Mam-gu

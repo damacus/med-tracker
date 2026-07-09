@@ -1,26 +1,15 @@
 # frozen_string_literal: true
 
 class MedicationInteractionLookup
-  ReviewPrompt = Data.define(:candidate_terms, :existing_terms, :risk_level, :description)
-
-  SOURCE_NAME = 'MedTracker review prompt seed data'
-
-  RULES = [
-    ReviewPrompt.new(
-      candidate_terms: %w[warfarin],
-      existing_terms: %w[aspirin ibuprofen naproxen diclofenac],
-      risk_level: 'high',
-      description: 'May increase bleeding risk when used together. Review with a pharmacist, nurse, GP, or prescriber.'
-    ),
-    ReviewPrompt.new(
-      candidate_terms: %w[aspirin ibuprofen naproxen diclofenac],
-      existing_terms: %w[warfarin],
-      risk_level: 'high',
-      description: 'May increase bleeding risk when used together. Review with a pharmacist, nurse, GP, or prescriber.'
-    )
-  ].freeze
+  Result = Data.define(:visible_prompts, :hidden_count)
 
   RISK_LEVEL_LABELS = {
+    'high' => 'High',
+    'moderate' => 'Moderate',
+    'low' => 'Low',
+    'unknown' => 'Unknown - unclassified'
+  }.freeze
+  MATCH_CONFIDENCE_LABELS = {
     'high' => 'High',
     'moderate' => 'Moderate',
     'low' => 'Low',
@@ -31,50 +20,82 @@ class MedicationInteractionLookup
     RISK_LEVEL_LABELS.fetch(risk_level, risk_level.to_s.titleize)
   end
 
-  def initialize(medication_scope:)
+  def self.match_confidence_label(match_confidence)
+    MATCH_CONFIDENCE_LABELS.fetch(match_confidence, match_confidence.to_s.titleize)
+  end
+
+  def initialize(medication_scope:, evidence_scope: MedicationReviewEvidenceRecord.reviewable)
     @medication_scope = medication_scope
+    @evidence_scope = evidence_scope
   end
 
   def call(search_result)
     candidate_name = normalized_name(search_result.name.presence || search_result.display)
-    return [] if candidate_name.blank?
+    return empty_result if candidate_name.blank?
 
-    active_medications.filter_map do |medication|
-      interaction_for(candidate_name, medication)
-    end
+    visible_prompts, hidden_prompts = prompts_for(candidate_name).partition { |prompt| !hidden_low_signal?(prompt) }
+    Result.new(visible_prompts: visible_prompts, hidden_count: hidden_prompts.size)
   end
 
   private
 
-  attr_reader :medication_scope
+  attr_reader :medication_scope, :evidence_scope
+
+  def empty_result
+    Result.new(visible_prompts: [], hidden_count: 0)
+  end
+
+  def prompts_for(candidate_name)
+    active_medications.flat_map do |medication|
+      evidence_records.filter_map { |evidence| prompt_for(candidate_name, medication, evidence) }
+    end
+  end
+
+  def prompt_for(candidate_name, medication, evidence)
+    return unless evidence.match_pair?(candidate_name: candidate_name, existing_name: medication.display_name)
+
+    prompt_metadata(medication, evidence).merge(evidence_metadata(evidence))
+  end
+
+  def prompt_metadata(medication, evidence)
+    {
+      evidence_record_id: evidence.id,
+      risk_level: evidence.risk_level,
+      risk_level_label: self.class.risk_level_label(evidence.risk_level),
+      match_confidence: evidence.match_confidence,
+      match_confidence_label: self.class.match_confidence_label(evidence.match_confidence),
+      interacting_medication_name: medication.display_name,
+      description: review_description
+    }
+  end
+
+  def evidence_metadata(evidence)
+    {
+      source_name: evidence.source_name,
+      source_checked_on: evidence.retrieved_on.iso8601,
+      source_url: evidence.source_url,
+      evidence_text: evidence.evidence_text.truncate(500)
+    }
+  end
+
+  def hidden_low_signal?(prompt)
+    prompt[:risk_level] == 'low' || prompt[:match_confidence] == 'low'
+  end
 
   def active_medications
     @active_medications ||= medication_scope.order(:name, :id).to_a
   end
 
-  def interaction_for(candidate_name, medication)
-    existing_name = normalized_name(medication.display_name)
-    rule = RULES.find do |candidate_rule|
-      term_match?(candidate_name, candidate_rule.candidate_terms) &&
-        term_match?(existing_name, candidate_rule.existing_terms)
-    end
-    return unless rule
-
-    {
-      risk_level: rule.risk_level,
-      risk_level_label: self.class.risk_level_label(rule.risk_level),
-      interacting_medication_name: medication.display_name,
-      source_name: SOURCE_NAME,
-      source_checked_on: Date.current.iso8601,
-      description: rule.description
-    }
-  end
-
-  def term_match?(name, terms)
-    terms.any? { |term| name.include?(term) }
+  def evidence_records
+    @evidence_records ||= evidence_scope.order(:id).to_a
   end
 
   def normalized_name(name)
     name.to_s.downcase.squish
+  end
+
+  def review_description
+    'Public medicine-label evidence suggests this combination may be worth reviewing with a pharmacist, nurse, ' \
+      'GP, or prescriber.'
   end
 end
