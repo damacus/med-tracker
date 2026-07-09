@@ -408,6 +408,8 @@ ga:
       updated: Socruithe nuashonraithe go rathúil.
     membership_roles:
       invalid_role: Roghnaigh ról teaghlaigh bailí.
+      owner_demotion_rejected: Ní féidir ach le húinéirí teaghlaigh ballraíochtaí
+        úinéara a athrú.
       owner_rejected: Teastaíonn tacaíocht riarthóra ardáin chun ardú go húinéir.
       update_submit: Nuashonraigh Ról
       updated: Nuashonraíodh ról ballraíochta.
@@ -1377,6 +1379,8 @@ ga:
     activated: Gníomhachtaithe cuntas an úsáideora.
     verified: Fíoraithe cuntas an úsáideora de láimh.
     cannot_deactivate_self: Ní féidir leat do chuntas féin a dhíghníomhachtú.
+    owner_deactivation_rejected: Ní féidir cuntais úinéara a dhíghníomhachtú ach
+      ag úinéir teaghlaigh eile fad a fhanann úsáideoir úinéara gníomhach eile ann.
   webauthn:
     passkey_removed: Baineadh an eochair róchair go rathúil
     passkey_registered: Cláraíodh an eochair róchair go rathúil

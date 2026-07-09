@@ -632,6 +632,8 @@ pt:
       updated: Definições atualizadas com sucesso.
     membership_roles:
       invalid_role: Selecione uma função de agregado válida.
+      owner_demotion_rejected: Apenas os proprietários do agregado podem alterar
+        associações de proprietário.
       owner_rejected: A promoção a proprietário requer suporte de administração
         da plataforma.
       update_submit: Atualizar função
@@ -1504,6 +1506,9 @@ pt:
     activated: Conta de utilizador ativada.
     verified: Conta de utilizador verificada manualmente.
     cannot_deactivate_self: Não pode desativar a sua própria conta.
+    owner_deactivation_rejected: As contas de proprietário só podem ser desativadas
+      por outro proprietário do agregado enquanto existir outro utilizador proprietário
+      ativo.
   webauthn:
     passkey_removed: Chave de acesso removida com sucesso
     passkey_registered: Chave de acesso registada com sucesso

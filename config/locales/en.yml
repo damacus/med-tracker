@@ -154,6 +154,7 @@ en:
       save: Save household
     membership_roles:
       invalid_role: Select a valid household role.
+      owner_demotion_rejected: Only household owners can change owner memberships.
       owner_rejected: Owner promotion requires platform admin support.
       update_submit: Update Role
       updated: Membership role updated.
@@ -1657,6 +1658,8 @@ en:
     activated: User account has been activated.
     verified: User account has been manually verified.
     cannot_deactivate_self: You cannot deactivate your own account.
+    owner_deactivation_rejected: Owner accounts can only be deactivated by another household
+      owner while another active owner user remains.
   webauthn:
     passkey_removed: Passkey removed successfully
     passkey_registered: Passkey registered successfully

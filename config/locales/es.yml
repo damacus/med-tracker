@@ -631,6 +631,8 @@ es:
       updated: Configuración actualizada con éxito.
     membership_roles:
       invalid_role: Seleccione un rol de hogar válido.
+      owner_demotion_rejected: Solo los propietarios del hogar pueden cambiar las
+        membresías de propietario.
       owner_rejected: La promoción a propietario requiere soporte de administración
         de plataforma.
       update_submit: Actualizar rol
@@ -1375,6 +1377,8 @@ es:
     deactivated: Cuenta de usuario desactivada.
     activated: Cuenta de usuario activada.
     cannot_deactivate_self: No puede desactivar su propia cuenta.
+    owner_deactivation_rejected: Las cuentas de propietario solo pueden ser desactivadas
+      por otro propietario del hogar mientras quede otro usuario propietario activo.
     verified: La cuenta del usuario ha sido verificada manualmente.
   webauthn:
     passkey_removed: Clave de acceso eliminada correctamente
