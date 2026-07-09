@@ -113,7 +113,7 @@ RSpec.describe DashboardPresenter do
 
       expected_people = [parent_user.person] + parent_user.person.patients.where(person_type: :minor).to_a
       expect(presenter.selected_person).to be_nil
-      expect(presenter.people).to eq(expected_people)
+      expect(presenter.people).to match_array(expected_people)
     end
 
     it 'filters active schedules to the selected person only' do

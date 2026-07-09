@@ -45,6 +45,11 @@ class SchemaInventory
     api_oidc_nonces
     api_sessions
     app_settings
+    audit_chain_heads
+    audit_checkpoints
+    audit_export_deliveries
+    audit_ledger_entries
+    audit_signing_keys
     barcode_catalog_entries
     carer_relationships
     households
