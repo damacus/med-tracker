@@ -72,7 +72,17 @@ module MedicationFormContext
           _destroy
         ]] }
       ]
-    ).tap { |permitted| MedicationParamsNormalizer.call(permitted, schedule_config_keys: SCHEDULE_CONFIG_KEYS) }
+    ).tap do |permitted|
+      MedicationParamsNormalizer.call(permitted, schedule_config_keys: SCHEDULE_CONFIG_KEYS)
+      constrain_medication_location!(permitted)
+    end
+  end
+
+  def constrain_medication_location!(permitted)
+    location_id = permitted[:location_id].presence
+    return if location_id.blank?
+
+    permitted[:location_id] = policy_scope(Location).find(location_id).id
   end
 
   def onboarding_schedule_params

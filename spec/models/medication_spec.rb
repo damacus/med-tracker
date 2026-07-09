@@ -162,6 +162,23 @@ RSpec.describe Medication do
 
       expect(medication.errors[:dmd_system]).to include("can't be blank")
     end
+
+    it 'allows a location from the same household' do
+      household = create(:household)
+      location = create(:location, household: household)
+      medication = build(:medication, household: household, location: location)
+
+      expect(medication).to be_valid
+    end
+
+    it 'rejects a location from another household' do
+      household = create(:household)
+      other_location = create(:location, household: create(:household))
+      medication = build(:medication, household: household, location: other_location)
+
+      expect(medication).not_to be_valid
+      expect(medication.errors[:location]).to include('must belong to the same household')
+    end
   end
 
   describe 'associations' do

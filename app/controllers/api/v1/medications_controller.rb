@@ -58,7 +58,14 @@ module Api
             location_id
             default_schedule_type
           ]
-        )
+        ).tap { |permitted| constrain_medication_location!(permitted) }
+      end
+
+      def constrain_medication_location!(permitted)
+        location_id = permitted[:location_id].presence
+        return if location_id.blank?
+
+        permitted[:location_id] = policy_scope(Location).find(location_id).id
       end
     end
   end
