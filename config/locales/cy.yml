@@ -1284,10 +1284,10 @@ cy:
     future_taken_at: Ni all amser y dos fod fwy nag awr yn y dyfodol.
   profiles:
     updated: Diweddarwyd y proffil yn llwyddiannus.
-    email_updated: Diweddarwyd yr e-bost yn llwyddiannus.
+    email_change_requires_verification: Defnyddiwch y llif newid e-bost wedi'i ddilysu
+      i ddiweddaru eich e-bost mewngofnodi.
     no_changes: Dim newidiadau i'w cadw.
     profile_update_failed: 'Methwyd â diweddaru''r proffil: %{errors}'
-    email_update_failed: 'Methwyd â diweddaru''r e-bost: %{errors}'
     appearance:
       title: Ymddangosiad
       description: Dewiswch sut mae MedTracker yn edrych ar draws sgriniau wedi'u

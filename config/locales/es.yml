@@ -1258,10 +1258,10 @@ es:
     future_taken_at: La hora de la dosis no puede ser más de una hora en el futuro.
   profiles:
     updated: Perfil actualizado correctamente.
-    email_updated: Correo electrónico actualizado correctamente.
+    email_change_requires_verification: Usa el flujo verificado de cambio de correo
+      para actualizar tu correo de inicio de sesión.
     no_changes: No hay cambios que guardar.
     profile_update_failed: 'Error al actualizar el perfil: %{errors}'
-    email_update_failed: 'Error al actualizar el correo electrónico: %{errors}'
     appearance:
       title: Apariencia
       description: Elige cómo se ve MedTracker en pantallas autenticadas y públicas.

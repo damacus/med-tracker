@@ -1260,10 +1260,10 @@ ga:
       sa todhchaí.
   profiles:
     updated: Nuashonraíodh an phróifíl go rathúil.
-    email_updated: Nuashonraíodh an seoladh ríomhphoist go rathúil.
+    email_change_requires_verification: Úsáid an sreabhadh fíoraithe athraithe ríomhphoist
+      chun do ríomhphost sínithe isteach a nuashonrú.
     no_changes: Gan athruithe le sábháil.
     profile_update_failed: 'Theip ar nuashonrú na próifíle: %{errors}'
-    email_update_failed: 'Theip ar nuashonrú an ríomhphoist: %{errors}'
     appearance:
       title: Cuma
       description: Roghnaigh conas a fheictear MedTracker ar scáileáin shínithe isteach

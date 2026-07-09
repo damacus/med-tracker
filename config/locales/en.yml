@@ -1532,10 +1532,10 @@ en:
         metric_value: Schedule
   profiles:
     updated: Profile updated successfully.
-    email_updated: Email updated successfully.
+    email_change_requires_verification: Use the verified email change flow to update
+      your sign-in email.
     no_changes: No changes to save.
     profile_update_failed: 'Failed to update profile: %{errors}'
-    email_update_failed: 'Failed to update email: %{errors}'
     appearance:
       title: Appearance
       description: Choose how MedTracker looks across signed-in and signed-out screens.

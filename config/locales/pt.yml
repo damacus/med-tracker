@@ -1389,10 +1389,10 @@ pt:
         metric_value: Horário
   profiles:
     updated: Perfil atualizado com sucesso.
-    email_updated: Email atualizado com sucesso.
+    email_change_requires_verification: Use o fluxo verificado de alteração de email
+      para atualizar o email de início de sessão.
     no_changes: Sem alterações a guardar.
     profile_update_failed: 'Falha ao atualizar perfil: %{errors}'
-    email_update_failed: 'Falha ao atualizar email: %{errors}'
     appearance:
       title: Aspeto
       description: Escolha como o MedTracker aparece em ecrãs autenticados e públicos.
