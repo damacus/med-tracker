@@ -272,7 +272,7 @@ GEM
       logger (~> 1.6)
     lint_roller (1.1.0)
     logger (1.7.0)
-    lograge (0.14.0)
+    lograge (0.15.0)
       actionpack (>= 4)
       activesupport (>= 4)
       railties (>= 4)
