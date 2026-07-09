@@ -55,8 +55,10 @@ class MedicationFinderSearchResponder
   def result_payload(search_result, barcode)
     search_result.to_h.tap do |payload|
       medication = existing_medication_for(search_result, barcode)
+      review_result = @interaction_lookup.call(search_result)
       payload[:existing_medication] = existing_medication_payload(medication) if medication
-      payload[:review_prompts] = @interaction_lookup.call(search_result)
+      payload[:review_prompts] = review_result.visible_prompts
+      payload[:review_prompt_filter] = { hidden_count: review_result.hidden_count }
     end
   end
 

@@ -20,6 +20,7 @@ RSpec.describe SchemaInventory do
       person_access_grants
       household_invitations
       household_invitation_grants
+      medication_review_prompts
       security_audit_events
       active_storage_attachments
     ]
@@ -31,6 +32,7 @@ RSpec.describe SchemaInventory do
       barcode_catalog_entries
       carer_relationships
       households
+      medication_review_evidence_records
       native_device_tokens
       nhs_dmd_barcodes
       nhs_dmd_imports

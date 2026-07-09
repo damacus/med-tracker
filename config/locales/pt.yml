@@ -769,6 +769,9 @@ pt:
       review_prompt_summary:
         one: "%{count} medication review prompt (%{risk_level})"
         other: "%{count} medication review prompts (%{risk_level})"
+      review_prompt_filtered:
+        one: 1 item de revisão de menor confiança ocultado para reduzir o ruído
+        other: "%{count} itens de revisão de menor confiança ocultados para reduzir o ruído"
       review_prompt_details_button: View Review Prompt Details
       review_prompt_details: Review Prompt Details
       review_prompt_risk_level: Risk level
@@ -1569,12 +1572,57 @@ pt:
       locations: Localizações
       finder: Pesquisador de Medicamentos
       people: Pessoas
+      medicine_reviews: Revisões de medicamentos
       reports: Relatórios
       administration: Administração
       sign_out: Terminar sessão
       user_fallback: Utilizador
     mobile_rail:
       primary_navigation: Navegação principal
+  medication_reviews:
+    eyebrow: Registo de revisão profissional
+    title: Revisões de medicamentos
+    subtitle: Evidência pública de rótulos de medicamentos organizada para a próxima conversa com um profissional.
+    boundary: Esta evidência apoia uma conversa com um profissional. Não substitui o julgamento clínico nem indica a alteração de um medicamento.
+    export_pdf: Exportar PDF da revisão
+    hidden_count:
+      one: 1 item de revisão de menor confiança ocultado para reduzir o ruído
+      other: "%{count} itens de revisão de menor confiança ocultados para reduzir o ruído"
+    show_hidden: Mostrar itens filtrados
+    hide_hidden: Ocultar itens filtrados
+    empty_title: Não há revisões de medicamentos para mostrar
+    empty_description: Nenhum par de evidências revisto corresponde aos medicamentos ativos nos registos do agregado selecionado.
+    review_reason: A evidência pública do rótulo sugere que esta combinação pode merecer revisão com um farmacêutico, enfermeiro, médico de família ou prescritor.
+    evidence_excerpt: Evidência pública do rótulo
+    checked_on: Evidência verificada em %{date}
+    confidence: Confiança de correspondência %{value}
+    recorded_outcome: Esta combinação foi revista com %{name} (%{role}) em %{date}.
+    updated: Registo de revisão atualizado.
+    risk_levels:
+      low: Risco baixo na fonte
+      moderate: Risco moderado na fonte
+      high: Risco alto na fonte
+      unknown: Desconhecido - não classificado
+    confidence_levels:
+      low: Baixa
+      moderate: Moderada
+      high: Alta
+      unknown: Desconhecida - não classificada
+    statuses:
+      needs_review: Precisa de revisão
+      reviewed_with_practitioner: Revisto com um profissional
+      expected_prescribed_combination: Esperado conforme prescrito
+      not_relevant: Não relevante
+      hidden_low_signal: Item filtrado de menor confiança
+    form:
+      title: Registar revisão profissional
+      status: Resultado
+      practitioner_role: Função do profissional
+      select_role: Selecionar função
+      practitioner_name: Nome do profissional
+      reviewed_on: Data da revisão
+      review_note: Nota da revisão
+      save: Guardar registo da revisão
   notification_settings:
     title: Definições de Notificação
     description: Gira as notificações de lembrete da sua medicação.

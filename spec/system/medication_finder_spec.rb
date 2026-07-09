@@ -96,6 +96,29 @@ RSpec.describe 'MedicationFinder' do
     expect(request_url).to include('q=paracetamol', 'strength=500mg')
   end
 
+  it 'shows when lower-confidence review items were filtered' do
+    driven_by(:playwright)
+    login_as(user)
+    stub_medication_finder_payload(
+      results: [
+        {
+          name: 'Example medicine',
+          display: 'Example medicine',
+          review_prompts: [],
+          review_prompt_filter: { hidden_count: 12 }
+        }
+      ],
+      permissions: { can_create: true, can_restock: true }
+    )
+
+    visit medication_finder_path
+    fill_in 'medication-search-input', with: 'example'
+    click_on 'Search'
+
+    expect(page).to have_css('[data-testid="filtered-review-prompts"]')
+    expect(page).to have_text('12 lower-confidence review items hidden to reduce noise')
+  end
+
   def stub_medication_finder_search(medication)
     stub_medication_finder_payload(**medication_finder_payload(medication))
   end

@@ -37,6 +37,10 @@ module Components
                 one: t('medications.finder.review_prompt_summary.one'),
                 other: t('medications.finder.review_prompt_summary.other')
               },
+              reviewPromptFiltered: {
+                one: t('medications.finder.review_prompt_filtered.one'),
+                other: t('medications.finder.review_prompt_filtered.other')
+              },
               reviewPromptDetailsButton: t('medications.finder.review_prompt_details_button'),
               reviewPromptDetails: t('medications.finder.review_prompt_details'),
               reviewPromptRiskLevel: t('medications.finder.review_prompt_risk_level'),

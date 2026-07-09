@@ -781,6 +781,9 @@ en:
       review_prompt_summary:
         one: "%{count} medication review prompt (%{risk_level})"
         other: "%{count} medication review prompts (%{risk_level})"
+      review_prompt_filtered:
+        one: 1 lower-confidence review item hidden to reduce noise
+        other: "%{count} lower-confidence review items hidden to reduce noise"
       review_prompt_details_button: View Review Prompt Details
       review_prompt_details: Review Prompt Details
       review_prompt_risk_level: Risk level
@@ -1706,10 +1709,55 @@ en:
       locations: Locations
       finder: Medication Finder
       people: People
+      medicine_reviews: Medicine reviews
       reports: Reports
       administration: Administration
       sign_out: Sign Out
       user_fallback: User
+  medication_reviews:
+    eyebrow: Practitioner review record
+    title: Medicine reviews
+    subtitle: Public medicine-label evidence organised for your next practitioner conversation.
+    boundary: This evidence supports a conversation with a practitioner. It does not replace clinical judgement or tell you to change a medicine.
+    export_pdf: Export review PDF
+    hidden_count:
+      one: 1 lower-confidence review item hidden to reduce noise
+      other: "%{count} lower-confidence review items hidden to reduce noise"
+    show_hidden: Show filtered items
+    hide_hidden: Hide filtered items
+    empty_title: No medicine reviews to show
+    empty_description: No reviewed evidence pairs match the active medicines in the selected household records.
+    review_reason: Public medicine-label evidence suggests this combination may be worth reviewing with a pharmacist, nurse, GP, or prescriber.
+    evidence_excerpt: Public label evidence
+    checked_on: Evidence checked on %{date}
+    confidence: "%{value} match confidence"
+    recorded_outcome: This medicine combination was reviewed with %{name} (%{role}) on %{date}.
+    updated: Medicine review record updated.
+    risk_levels:
+      low: Low source risk
+      moderate: Moderate source risk
+      high: High source risk
+      unknown: Unknown - unclassified
+    confidence_levels:
+      low: Low
+      moderate: Moderate
+      high: High
+      unknown: Unknown - unclassified
+    statuses:
+      needs_review: Needs review
+      reviewed_with_practitioner: Reviewed with practitioner
+      expected_prescribed_combination: Expected as prescribed
+      not_relevant: Not relevant
+      hidden_low_signal: Filtered lower-confidence item
+    form:
+      title: Record practitioner review
+      status: Outcome
+      practitioner_role: Practitioner role
+      select_role: Select role
+      practitioner_name: Practitioner name
+      reviewed_on: Date reviewed
+      review_note: Review note
+      save: Save review record
   notification_settings:
     title: Notification Settings
     description: Manage your medication reminder notifications.

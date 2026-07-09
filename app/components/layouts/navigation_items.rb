@@ -12,6 +12,8 @@ module Components
           navigation_item(t('layouts.sidebar.locations'), household_navigation_path(:locations_path), Icons::Home),
           navigation_item(t('layouts.sidebar.people'), household_navigation_path(:people_path), Icons::Users),
           navigation_item(t('layouts.sidebar.finder'), household_navigation_path(:medication_finder_path), Icons::Search),
+          navigation_item(t('layouts.sidebar.medicine_reviews'),
+                          household_navigation_path(:medication_review_prompts_path), Icons::FileText),
           navigation_item(t('layouts.sidebar.reports'), household_navigation_path(:reports_path), Icons::AlertCircle)
         ]
       end

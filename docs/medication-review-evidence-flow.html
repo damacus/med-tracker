@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MedTracker medicine review evidence flow</title>
+  <style>
+    :root {
+      --ink: #17211f;
+      --muted: #5b6864;
+      --forest: #174a46;
+      --mint: #ddebe7;
+      --paper: #f7f9f8;
+      --line: #d7dedb;
+      --coral: #b94b43;
+      --amber: #a66c13;
+      --white: #ffffff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+      line-height: 1.55;
+    }
+
+    header {
+      background: var(--forest);
+      color: var(--white);
+      padding: 52px 24px 58px;
+    }
+
+    header div, main { max-width: 1080px; margin: 0 auto; }
+
+    .eyebrow, .label {
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 { max-width: 780px; margin: 10px 0 14px; font-size: clamp(36px, 7vw, 68px); line-height: 1.02; }
+    header p { max-width: 700px; margin: 0; font-size: 19px; color: #dce9e6; }
+    main { padding: 42px 24px 72px; }
+    h2 { margin: 0 0 18px; font-size: 30px; }
+    h3 { margin: 5px 0 8px; font-size: 21px; }
+    p { margin: 0; }
+
+    .boundary {
+      border-left: 5px solid var(--forest);
+      background: var(--mint);
+      padding: 18px 20px;
+      margin-bottom: 42px;
+      font-size: 18px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      margin: 0 0 48px;
+      border: 1px solid var(--line);
+      background: var(--white);
+    }
+
+    .step { min-height: 220px; padding: 22px 18px; border-right: 1px solid var(--line); }
+    .step:last-child { border-right: 0; }
+    .step-number { color: var(--forest); font-size: 34px; font-weight: 800; line-height: 1; }
+    .step p { color: var(--muted); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; }
+    .gate { border-top: 5px solid var(--amber); }
+    .record { border-top: 5px solid var(--forest); }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 48px;
+    }
+
+    .panel { border: 1px solid var(--line); background: var(--white); padding: 24px; border-radius: 8px; }
+    .risk { border-top: 5px solid var(--coral); }
+    .confidence { border-top: 5px solid var(--amber); }
+    .panel p, .panel li { font-family: ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
+    ul { padding-left: 20px; margin: 15px 0 0; }
+    li + li { margin-top: 7px; }
+
+    .example {
+      display: grid;
+      grid-template-columns: 170px 1fr;
+      border-top: 1px solid var(--line);
+      padding: 16px 0;
+    }
+
+    .example:last-child { border-bottom: 1px solid var(--line); }
+    .example p { font-family: ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
+    .high { color: var(--coral); }
+    .unknown { color: var(--amber); }
+
+    .reading {
+      margin-top: 48px;
+      background: var(--ink);
+      color: var(--white);
+      padding: 28px;
+    }
+
+    .reading a { color: #a9ddd2; }
+    .reading p { font-family: ui-sans-serif, system-ui, sans-serif; color: #d9e1df; }
+    .reading p + p { margin-top: 10px; }
+
+    @media (max-width: 850px) {
+      .flow { grid-template-columns: 1fr; }
+      .step { min-height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+      .step:last-child { border-bottom: 0; }
+      .comparison { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 560px) {
+      .example { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <span class="eyebrow">MedTracker learning guide</span>
+      <h1>How medicine-label evidence becomes a practitioner review record</h1>
+      <p>A visual map of what the app knows, what it does not know, and where a qualified practitioner remains responsible for judgement.</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="boundary">
+      MedTracker organises public label evidence for a conversation. It does not decide whether a medicine combination is appropriate and does not tell someone to change treatment.
+    </div>
+
+    <h2>The evidence journey</h2>
+    <section class="flow" aria-label="Five-step medicine review evidence flow">
+      <article class="step">
+        <div class="step-number">01</div>
+        <h3>Public label</h3>
+        <p>MedTracker imports the Drug Interactions section from an openFDA or DailyMed SPL record into the local database.</p>
+      </article>
+      <article class="step">
+        <div class="step-number">02</div>
+        <h3>Unreviewed evidence</h3>
+        <p>The raw narrative begins as unknown risk, unknown match confidence, and unreviewed. It cannot create a user prompt.</p>
+      </article>
+      <article class="step gate">
+        <div class="step-number">03</div>
+        <h3>Pair review gate</h3>
+        <p>A human reviewer identifies the two medicine terms, assigns a source-risk level, and records match confidence.</p>
+      </article>
+      <article class="step">
+        <div class="step-number">04</div>
+        <h3>Practitioner discussion</h3>
+        <p>An adult takes the source evidence to a pharmacist, nurse, GP, or prescriber. The app does not choose the outcome.</p>
+      </article>
+      <article class="step record">
+        <div class="step-number">05</div>
+        <h3>Review record</h3>
+        <p>MedTracker records who was consulted, their role, the date, the outcome, and a note for the next appointment PDF.</p>
+      </article>
+    </section>
+
+    <h2>Two separate questions</h2>
+    <section class="comparison">
+      <article class="panel risk">
+        <span class="label high">Source risk</span>
+        <h3>What does the reviewed source evidence describe?</h3>
+        <ul>
+          <li>Low, moderate, high, or unknown</li>
+          <li>Unknown means unclassified, not most dangerous</li>
+          <li>This is not a diagnosis or treatment recommendation</li>
+        </ul>
+      </article>
+      <article class="panel confidence">
+        <span class="label unknown">Match confidence</span>
+        <h3>How sure are we that this evidence matches these medicines?</h3>
+        <ul>
+          <li>Low, moderate, high, or unknown</li>
+          <li>Low-confidence items are filtered by default</li>
+          <li>The user still sees how many items were filtered</li>
+        </ul>
+      </article>
+    </section>
+
+    <h2>What each status means</h2>
+    <section aria-label="Medicine review status examples">
+      <div class="example"><span class="label">Needs review</span><p>The evidence has not yet been discussed with a practitioner.</p></div>
+      <div class="example"><span class="label">Reviewed</span><p>A practitioner discussion happened and the details were recorded.</p></div>
+      <div class="example"><span class="label">Expected as prescribed</span><p>The practitioner confirmed that the combination was expected in this person's treatment.</p></div>
+      <div class="example"><span class="label">Not relevant</span><p>The evidence does not apply to this person's actual medicine use.</p></div>
+      <div class="example"><span class="label">Filtered</span><p>A low-risk or low-confidence item is hidden from the default view to reduce noise.</p></div>
+    </section>
+
+    <section class="reading">
+      <h2>Read the source material</h2>
+      <p><a href="https://open.fda.gov/apis/drug/label/">openFDA Drug Labeling API</a> explains the SPL-derived label dataset and its medical-decision disclaimer.</p>
+      <p><a href="https://dailymed.nlm.nih.gov/dailymed/webservices-help/v2/spls_api.cfm">DailyMed SPL API</a> explains how current Structured Product Labels can be searched and retrieved.</p>
+    </section>
+  </main>
+</body>
+</html>
