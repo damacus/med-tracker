@@ -7,10 +7,11 @@ module Components
       class IndexView < Components::Base
         include Phlex::Rails::Helpers::TurboFrameTag
 
-        attr_reader :users, :search_params, :current_user, :pagy_obj
+        attr_reader :users, :search_params, :current_user, :pagy_obj, :access_summary
 
-        def initialize(users:, search_params: {}, current_user: nil, pagy: nil)
+        def initialize(users:, access_summary:, search_params: {}, current_user: nil, pagy: nil)
           @users = users
+          @access_summary = access_summary
           @search_params = search_params
           @current_user = current_user
           @pagy_obj = pagy
@@ -28,6 +29,7 @@ module Components
               div(class: 'rounded-[2rem] border border-border bg-card shadow-sm overflow-x-auto p-4') do
                 render Components::Admin::Users::UsersTable.new(
                   users: users,
+                  access_summary: access_summary,
                   search_params: search_params,
                   current_user: current_user
                 )

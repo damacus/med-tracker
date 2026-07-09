@@ -4,7 +4,12 @@ module Platform
   class UsersController < BaseController
     def index
       users = User.includes(person: :account).order(:email_address)
-      render Components::Platform::Users::IndexView.new(users: users, current_user: current_user)
+      access_summary = Admin::UserAccessSummaryQuery.new(users: users).call
+      render Components::Platform::Users::IndexView.new(
+        users: users,
+        current_user: current_user,
+        access_summary: access_summary
+      )
     end
 
     def update

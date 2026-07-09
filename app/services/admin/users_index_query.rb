@@ -107,4 +107,49 @@ module Admin
       { 'desc' => :desc }.fetch(direction, :asc)
     end
   end
+
+  class UserAccessSummaryQuery
+    Result = Data.define(:membership_roles_by_account_id, :platform_admin_account_ids) do
+      def membership_role_for(account_id)
+        membership_roles_by_account_id[account_id]
+      end
+
+      def platform_admin?(account_id)
+        platform_admin_account_ids.include?(account_id)
+      end
+    end
+
+    attr_reader :users, :household
+
+    def initialize(users:, household: nil)
+      @users = users
+      @household = household
+    end
+
+    def call
+      Result.new(
+        membership_roles_by_account_id: membership_roles_by_account_id,
+        platform_admin_account_ids: platform_admin_account_ids
+      )
+    end
+
+    private
+
+    def membership_roles_by_account_id
+      membership_scope.index_by(&:account_id).transform_values(&:role)
+    end
+
+    def membership_scope
+      scope = household ? household.household_memberships : HouseholdMembership.all
+      scope.active.where(account_id: account_ids).order(:id)
+    end
+
+    def platform_admin_account_ids
+      PlatformAdmin.active.where(account_id: account_ids).pluck(:account_id).to_set
+    end
+
+    def account_ids
+      @account_ids ||= users.filter_map { |user| user.person&.account_id }.uniq
+    end
+  end
 end

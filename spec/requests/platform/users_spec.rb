@@ -91,4 +91,34 @@ RSpec.describe 'Platform users' do
     AccountOtpKey.create!(id: account.id, key: secret, last_use: 5.minutes.ago)
     post '/otp-auth', params: { otp: ROTP::TOTP.new(visible_secret).at(Time.current) }
   end
+
+  describe Components::Platform::Users::IndexView, type: :component do
+    fixtures :accounts, :people, :users
+
+    it 'does not execute SQL while rendering preloaded users' do
+      current_user = users(:admin)
+      user_list = User.where(id: [current_user.id, users(:jane).id]).includes(person: :account).to_a
+      access_summary = Admin::UserAccessSummaryQuery.new(users: user_list).call
+
+      expect(count_queries do
+        render_inline(described_class.new(
+                        users: user_list,
+                        current_user: current_user,
+                        access_summary: access_summary
+                      ))
+      end).to eq(0)
+    end
+
+    def count_queries(&)
+      count = 0
+      subscriber = lambda do |_name, _started, _finished, _unique_id, payload|
+        next if payload[:cached] || payload[:name] == 'SCHEMA'
+
+        count += 1
+      end
+
+      ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
+      count
+    end
+  end
 end

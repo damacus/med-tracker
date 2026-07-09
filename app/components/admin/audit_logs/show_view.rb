@@ -10,10 +10,11 @@ module Components
         # Fields that should never be displayed in audit logs for security
         SENSITIVE_FIELDS = %w[password_digest password_hash token token_digest].freeze
 
-        attr_reader :version
+        attr_reader :version, :detail
 
-        def initialize(version:)
+        def initialize(version:, detail:)
           @version = version
+          @detail = detail
           super()
         end
 
@@ -101,15 +102,7 @@ module Components
         end
 
         def user_name
-          return @user_name if defined?(@user_name)
-
-          @user_name = if version.whodunnit.blank?
-                         I18n.t('admin.audit_logs.show.system')
-                       else
-                         user = User.find_by(id: version.whodunnit)
-
-                         user ? user.name : "User ##{version.whodunnit}"
-                       end
+          detail.actor_name
         end
 
         def render_changes_section
@@ -207,17 +200,7 @@ module Components
         end
 
         def medication_take_record
-          return @medication_take_record if defined?(@medication_take_record)
-
-          @medication_take_record = if version.item_type == 'MedicationTake' && version.item_id.present?
-                                      medication_take_relation.find_by(id: version.item_id)
-                                    end
-        end
-
-        def medication_take_relation
-          MedicationTake.includes(:taken_from_medication, :taken_from_location,
-                                  schedule: %i[medication person],
-                                  person_medication: %i[medication person])
+          detail.medication_take
         end
 
         def external_lookup?
@@ -246,11 +229,7 @@ module Components
 
         def compute_new_state
           # Try to get the next version's object (which represents state after this change)
-          next_version = PaperTrail::Version
-                         .where(item_type: version.item_type, item_id: version.item_id)
-                         .where('id > ?', version.id)
-                         .order(:id)
-                         .first
+          next_version = detail.next_version
 
           if next_version&.object.present?
             # The next version's object is the state after this version's change
@@ -265,7 +244,7 @@ module Components
           model_class = version.item_type.safe_constantize
           return nil unless model_class
 
-          record = model_class.find_by(id: version.item_id)
+          record = detail.current_record
           return nil unless record
 
           # Convert to hash, excluding sensitive fields
@@ -356,26 +335,16 @@ module Components
           }.compact
         end
 
-        def medication_take_payload_source_record(data)
-          return medication_take_record.source if medication_take_record&.source
-
-          schedule_id = data['schedule_id'].presence
-          return Schedule.includes(:medication, :person).find_by(id: schedule_id) if schedule_id
-
-          person_medication_id = data['person_medication_id'].presence
-          return unless person_medication_id
-
-          PersonMedication.includes(:medication, :person).find_by(id: person_medication_id)
+        def medication_take_payload_source_record(_data)
+          detail.source_record
         end
 
-        def medication_take_payload_stock_source(data)
-          medication_take_record&.inventory_medication ||
-            Medication.find_by(id: data['taken_from_medication_id'].presence)
+        def medication_take_payload_stock_source(_data)
+          detail.stock_source
         end
 
-        def medication_take_payload_stock_location(data)
-          medication_take_record&.inventory_location ||
-            Location.find_by(id: data['taken_from_location_id'].presence)
+        def medication_take_payload_stock_location(_data)
+          detail.stock_location
         end
       end
     end

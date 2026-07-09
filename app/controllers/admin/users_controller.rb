@@ -11,8 +11,10 @@ module Admin
         household: admin_target_household
       ).call
       @pagy, users = pagy(:offset, users)
+      access_summary = user_access_summary(users)
       render Components::Admin::Users::IndexView.new(
         users: users,
+        access_summary: access_summary,
         search_params: search_params,
         current_user: current_user,
         pagy: @pagy
@@ -144,8 +146,10 @@ module Admin
         household: admin_target_household
       ).call
       @pagy, users = pagy(:offset, users)
+      access_summary = user_access_summary(users)
       Components::Admin::Users::IndexView.new(
         users: users,
+        access_summary: access_summary,
         search_params: search_params,
         current_user: current_user,
         pagy: @pagy
@@ -232,13 +236,23 @@ module Admin
     end
 
     def user_row_streams(user)
+      rendered_user = User.includes(person: :account).find(user.id)
+      access_summary = user_access_summary([rendered_user])
       [
         turbo_stream.replace(
           "user_#{user.id}",
-          Components::Admin::Users::UserRow.new(user: user.reload, current_user: current_user)
+          Components::Admin::Users::UserRow.new(
+            user: rendered_user,
+            current_user: current_user,
+            access_summary: access_summary
+          )
         ),
         turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
       ]
+    end
+
+    def user_access_summary(users)
+      Admin::UserAccessSummaryQuery.new(users: users, household: admin_target_household).call
     end
   end
 end

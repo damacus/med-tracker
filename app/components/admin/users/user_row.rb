@@ -7,13 +7,12 @@ module Components
       class UserRow < Components::Base
         include Phlex::Rails::Helpers::FormWith
 
-        attr_reader :user, :current_user, :household
+        attr_reader :user, :current_user, :access_summary
 
-        def initialize(user:, current_user: nil, household: nil, membership_role: nil)
+        def initialize(user:, access_summary:, current_user: nil)
           @user = user
+          @access_summary = access_summary
           @current_user = current_user
-          @household = household || Current.household
-          @membership_role = membership_role
           super()
         end
 
@@ -43,17 +42,10 @@ module Components
         private
 
         def membership_role
-          return @membership_role if @membership_role
-
-          lookup_membership_role
-        end
-
-        def lookup_membership_role
           account_id = user.person&.account_id
-          return no_membership_label unless household && account_id
+          return no_membership_label unless account_id
 
-          membership = household.household_memberships.active.find_by(account_id: account_id)
-          membership&.role&.titleize || no_membership_label
+          access_summary.membership_role_for(account_id)&.titleize || no_membership_label
         end
 
         def no_membership_label
@@ -61,9 +53,7 @@ module Components
         end
 
         def render_system_access_badge
-          account = user.person&.account
-
-          if account&.platform_admin&.active?
+          if access_summary.platform_admin?(user.person&.account_id)
             render RubyUI::Badge.new(variant: :destructive) { t('admin.users.table.system_administrator') }
           else
             render RubyUI::Badge.new(variant: :tonal) { t('admin.users.table.household_user') }

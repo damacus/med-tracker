@@ -6,11 +6,12 @@ module Components
       class IndexView < Components::Base
         include Phlex::Rails::Helpers::FormWith
 
-        attr_reader :users, :current_user
+        attr_reader :users, :current_user, :access_summary
 
-        def initialize(users:, current_user:)
+        def initialize(users:, current_user:, access_summary:)
           @users = users
           @current_user = current_user
+          @access_summary = access_summary
           super()
         end
 
@@ -100,27 +101,12 @@ module Components
         end
 
         def household_role_for(user)
-          membership = memberships_by_account_id[user.person&.account_id]
-          membership&.role&.titleize || t('admin.users.form.no_membership', default: 'No membership')
+          role = access_summary.membership_role_for(user.person&.account_id)
+          role&.titleize || t('admin.users.form.no_membership', default: 'No membership')
         end
 
         def platform_admin?(user)
-          platform_admin_account_ids.include?(user.person&.account_id)
-        end
-
-        def memberships_by_account_id
-          @memberships_by_account_id ||= HouseholdMembership.active
-                                                            .where(account_id: account_ids)
-                                                            .order(:id)
-                                                            .index_by(&:account_id)
-        end
-
-        def platform_admin_account_ids
-          @platform_admin_account_ids ||= PlatformAdmin.active.where(account_id: account_ids).pluck(:account_id).to_set
-        end
-
-        def account_ids
-          @account_ids ||= users.filter_map { |user| user.person&.account_id }.uniq
+          access_summary.platform_admin?(user.person&.account_id)
         end
       end
     end
