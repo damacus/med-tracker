@@ -24,6 +24,7 @@ RSpec.describe RuntimeStackContract do
     expected_ruby_version = expected_versions.fetch(:ruby)
 
     expect(read_file('.ruby-version').strip).to eq("ruby-#{expected_ruby_version}")
+    expect(mise_version('ruby')).to eq(expected_ruby_version)
     expect(read_file('Dockerfile')).to start_with("FROM ruby:#{expected_ruby_version}-slim-trixie AS base")
     expect(ci_values('ruby-version')).to contain_exactly(expected_ruby_version)
     agent_guide_paths.each do |path|
@@ -34,6 +35,7 @@ RSpec.describe RuntimeStackContract do
   it 'keeps Node runtime metadata aligned across Docker and CI' do
     expected_node_version = expected_versions.fetch(:node)
 
+    expect(mise_version('node')).to eq(expected_node_version)
     expect(read_file('Dockerfile')).to include("https://deb.nodesource.com/node_#{expected_node_version}.x")
     expect(ci_values('node-version')).to contain_exactly(expected_node_version)
   end
@@ -85,6 +87,10 @@ RSpec.describe RuntimeStackContract do
       .scan(/#{Regexp.escape(key)}:\s*["']?([^"'\s]+)["']?/)
       .flatten
       .uniq
+  end
+
+  def mise_version(tool)
+    read_file('mise.toml')[/^#{Regexp.escape(tool)} = "([^"]+)"$/, 1]
   end
 
   def locked_gem_version(name)
