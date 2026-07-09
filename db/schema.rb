@@ -417,6 +417,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_05_120500) do
     t.string "barcode"
     t.string "category"
     t.datetime "created_at", null: false
+    t.bigint "created_by_membership_id"
     t.decimal "current_supply", precision: 10, scale: 2
     t.jsonb "default_schedule_config", default: {}, null: false
     t.integer "default_schedule_type", default: 1, null: false
@@ -445,6 +446,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_05_120500) do
     t.index ["barcode"], name: "index_medications_on_barcode", unique: true, where: "((barcode IS NOT NULL) AND ((barcode)::text <> ''::text))"
     t.index ["barcode"], name: "index_medications_on_barcode_trigram", opclass: :gin_trgm_ops, using: :gin
     t.index ["category"], name: "index_medications_on_category_trigram", opclass: :gin_trgm_ops, using: :gin
+    t.index ["created_by_membership_id"], name: "index_medications_on_created_by_membership_id"
     t.index ["default_schedule_type"], name: "index_medications_on_default_schedule_type"
     t.index ["dmd_code"], name: "index_medications_on_dmd_code"
     t.index ["dmd_code"], name: "index_medications_on_dmd_code_trigram", opclass: :gin_trgm_ops, using: :gin
@@ -788,6 +790,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_05_120500) do
   add_foreign_key "medication_takes", "schedules", column: ["schedule_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_medication_takes_schedule_id_household"
   add_foreign_key "medication_takes", "schedules", deferrable: :deferred
   add_foreign_key "medications", "households"
+  add_foreign_key "medications", "household_memberships", column: "created_by_membership_id"
+  add_foreign_key "medications", "household_memberships", column: ["created_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_medications_created_by_membership_id_household"
   add_foreign_key "medications", "locations", column: ["location_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_medications_location_id_household"
   add_foreign_key "medications", "locations", deferrable: :deferred
   add_foreign_key "native_device_tokens", "accounts"

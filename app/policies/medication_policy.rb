@@ -54,9 +54,17 @@ class MedicationPolicy < ApplicationPolicy
       return scope.none unless active_membership?
 
       household_scope = scope.where(household: household)
-      return household_scope if household_manager? || any_person_grant_allows?(:manage)
+      return household_scope if household_manager?
 
-      household_scope.where(id: granted_medication_ids_for(:view))
+      granted_scope = household_scope.where(id: granted_medication_ids_for(:view))
+      granted_scope.or(delegated_created_unlinked_scope(household_scope))
+    end
+
+    def delegated_created_unlinked_scope(household_scope)
+      household_scope
+        .where(created_by_membership_id: membership&.id)
+        .where.not(id: Schedule.where(household: household).select(:medication_id))
+        .where.not(id: PersonMedication.where(household: household).select(:medication_id))
     end
   end
 
@@ -66,7 +74,7 @@ class MedicationPolicy < ApplicationPolicy
     return false unless active_membership? && same_household?(record)
     return true if household_manager?
 
-    granted_medication_ids_for(:view).include?(record.id)
+    granted_medication_ids_for(:view).include?(record.id) || delegated_created_unlinked_medication?
   end
 
   def can_refill_in_household?
@@ -81,5 +89,12 @@ class MedicationPolicy < ApplicationPolicy
     return true if record.is_a?(Class) || record.location_id.blank?
 
     same_household?(record.location)
+  end
+
+  def delegated_created_unlinked_medication?
+    return false unless record.created_by_membership_id == membership&.id
+
+    Schedule.where(household: household, medication: record).none? &&
+      PersonMedication.where(household: household, medication: record).none?
   end
 end

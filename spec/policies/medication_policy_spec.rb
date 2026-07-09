@@ -57,4 +57,15 @@ RSpec.describe MedicationPolicy, type: :policy do
     expect(manager_scope).not_to include(other_medication)
     expect(member_scope).to contain_exactly(granted_medication)
   end
+
+  it 'does not expand member medication scope beyond granted people for manage grants' do
+    medication
+    granted_medication = household_policy_medication(household)
+    household_policy_person_medication(household, person: person, medication: granted_medication)
+    grant_policy_person_access(member, person, access_level: :manage)
+
+    member_scope = described_class::Scope.new(member.fetch(:context), Medication.all).resolve
+
+    expect(member_scope).to contain_exactly(granted_medication)
+  end
 end

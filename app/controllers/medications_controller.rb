@@ -234,7 +234,9 @@ class MedicationsController < ApplicationController
   end
 
   def build_medication_from_request
-    Medication.new(onboarding_builder.merge_create_attributes(medication_params.to_h.deep_symbolize_keys))
+    Medication.new(onboarding_builder.merge_create_attributes(medication_params.to_h.deep_symbolize_keys)).tap do |medication|
+      medication.created_by_membership_id = Current.membership&.id
+    end
   end
 
   def redirect_update_success

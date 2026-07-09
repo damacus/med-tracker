@@ -137,6 +137,57 @@ RSpec.describe MedicationStockSourceResolver do
         expect(resolver.resolve_selected(medication.id.to_s)).to eq(medication)
       end
     end
+
+    context 'when a delegated user selects matching stock for another person' do
+      it 'returns nil' do
+        granted_person = create(:person, household: fixture_household)
+        hidden_person = create(:person, household: fixture_household)
+        source_medication = matching_medication(name: 'Shared Rescue Spray', current_supply: 20)
+        hidden_medication = matching_medication(name: 'Shared Rescue Spray', current_supply: 20)
+        source = linked_person_medication(granted_person, source_medication)
+        linked_person_medication(hidden_person, hidden_medication)
+        context = delegated_context_for(granted_person)
+
+        resolver = described_class.new(user: context, source: source, taken_at: taken_at)
+
+        expect(resolver.resolve_selected(hidden_medication.id)).to be_nil
+      end
+    end
+
+    context 'when a delegated user selects alternate matching stock for the same granted person' do
+      it 'returns the selected medication' do
+        granted_person = create(:person, household: fixture_household)
+        source_medication = matching_medication(name: 'Shared Same Person Spray', current_supply: 20)
+        alternate_medication = matching_medication(name: 'Shared Same Person Spray', current_supply: 20)
+        source = linked_person_medication(granted_person, source_medication)
+        linked_person_medication(granted_person, alternate_medication)
+        context = delegated_context_for(granted_person)
+
+        resolver = described_class.new(user: context, source: source, taken_at: taken_at)
+
+        expect(resolver.resolve_selected(alternate_medication.id)).to eq(alternate_medication)
+      end
+    end
+
+    context 'when a household manager selects matching stock for another person' do
+      it 'returns the selected medication' do
+        granted_person = create(:person, household: fixture_household)
+        hidden_person = create(:person, household: fixture_household)
+        source_medication = matching_medication(name: 'Shared Manager Spray', current_supply: 20)
+        hidden_medication = matching_medication(name: 'Shared Manager Spray', current_supply: 20)
+        source = create(
+          :person_medication,
+          household: fixture_household,
+          person: granted_person,
+          medication: source_medication
+        )
+        create(:person_medication, household: fixture_household, person: hidden_person, medication: hidden_medication)
+
+        resolver = described_class.new(user: users(:john), source: source, taken_at: taken_at)
+
+        expect(resolver.resolve_selected(hidden_medication.id)).to eq(hidden_medication)
+      end
+    end
   end
 
   describe '#selection_required?' do
@@ -185,5 +236,48 @@ RSpec.describe MedicationStockSourceResolver do
 
   def fixture_household
     users(:john).person.account.first_active_household_membership.household
+  end
+
+  def delegated_context_for(person)
+    account = Account.create!(email: "stock-source-delegate-#{SecureRandom.hex(4)}@example.test", status: :verified)
+    membership = delegated_membership_for(account)
+    grant_manage_access_to(membership, person)
+    AuthorizationContext.new(account: account, household: fixture_household, membership: membership)
+  end
+
+  def delegated_membership_for(account)
+    fixture_household.household_memberships.create!(
+      account: account,
+      person: create(:person, household: fixture_household, account: account),
+      role: :member,
+      status: :active
+    )
+  end
+
+  def grant_manage_access_to(membership, person)
+    fixture_household.person_access_grants.create!(
+      household_membership: membership,
+      person: person,
+      access_level: :manage,
+      relationship_type: :family_member,
+      granted_by_membership: membership
+    )
+  end
+
+  def matching_medication(name:, current_supply:)
+    create(
+      :medication,
+      household: fixture_household,
+      location: create(:location, household: fixture_household),
+      name: name,
+      dose_amount: 500,
+      dose_unit: 'mg',
+      current_supply: current_supply,
+      supply_at_last_restock: current_supply
+    )
+  end
+
+  def linked_person_medication(person, medication)
+    create(:person_medication, household: fixture_household, person: person, medication: medication)
   end
 end
