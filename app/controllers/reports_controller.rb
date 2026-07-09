@@ -5,8 +5,9 @@ class ReportsController < ApplicationController
     authorize :report, :index?
 
     # Resolve date range
-    @end_date = params[:end_date].present? ? Date.parse(params[:end_date]) : Time.zone.today
-    @start_date = params[:start_date].present? ? Date.parse(params[:start_date]) : @end_date - 6.days
+    @date_range = Reports::DateRange.parse(start_date: params[:start_date], end_date: params[:end_date])
+    @start_date = @date_range.start_date
+    @end_date = @date_range.end_date
 
     # Aggregating data for the current user and their patients
     # We use PersonPolicy::Scope to fetch people the user is authorized to see
@@ -28,6 +29,8 @@ class ReportsController < ApplicationController
       people: @people,
       selected_person_id: @selected_person_id
     )
+  rescue Reports::DateRange::RangeTooLarge
+    redirect_to reports_path, alert: t('reports.date_range_too_large')
   rescue ArgumentError
     redirect_to reports_path, alert: t('reports.invalid_date')
   end

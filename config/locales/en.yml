@@ -1382,6 +1382,7 @@ en:
       medical_help_sought: Medical help was sought
   reports:
     invalid_date: Invalid date format provided.
+    date_range_too_large: Report date range cannot exceed 180 days.
     index:
       eyebrow: Wellness Analytics
       title: Health Report
