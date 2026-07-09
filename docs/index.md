@@ -35,6 +35,8 @@ ensuring medications are given on time and safely.
 - [NHS dm+d Integration](nhs-dmd-integration.md): use the UK's medicine dictionary to find accurate names.
 - [Kubernetes NHS dm+d Release Import](kubernetes-nhs-dmd-import.md): import dm+d AMPP and GTIN release files in production.
 - [UK Regulatory Compliance Plan](uk-regulatory-compliance-plan.md): how MedTracker aligns with health data standards.
+- [Compliance Foundations](compliance/index.md): internal learning and preparation for clinical safety evidence.
+- [DCB0129 Foundations Teaching Page](compliance/learning/dcb0129-foundations.html): visual guide to what we are doing and why.
 - [Audit Trail](audit-trail.md): how we ensure clinical records are safe and traceable.
 
 ---
