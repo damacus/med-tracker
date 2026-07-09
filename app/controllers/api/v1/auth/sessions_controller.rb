@@ -90,9 +90,16 @@ module Api
         end
 
         def login_permitted?(account, household_membership, password)
-          ApiAuthState.password_authenticated?(account, password) &&
-            !ApiAuthState.locked_out?(account) &&
-            !ApiAuthState.mfa_configured?(account) &&
+          return false unless account&.verified?
+          return false if ApiAuthState.locked_out?(account)
+
+          unless ApiAuthState.password_authenticated?(account, password)
+            ApiLoginFailureRecorder.record_failure(account)
+            return false
+          end
+
+          ApiLoginFailureRecorder.clear_failures(account)
+          !ApiAuthState.mfa_configured?(account) &&
             account.person&.user&.active? &&
             household_membership.present?
         end

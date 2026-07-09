@@ -125,6 +125,40 @@ RSpec.describe 'API v1 auth sessions' do
       expect(response.parsed_body.dig('error', 'request_id')).to eq(response.headers.fetch('X-Request-Id'))
     end
 
+    it 'records API password failures and locks the account after five attempts' do
+      create_api_household_for(user)
+
+      expect do
+        5.times do
+          post api_v1_auth_login_path,
+               params: { email: user.email_address, password: 'wrong-password' },
+               as: :json
+        end
+      end.to change { AccountLockout.active.where(account_id: account.id).count }.from(0).to(1)
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(response.parsed_body.dig('error', 'code')).to eq('invalid_credentials')
+    end
+
+    it 'clears accumulated API password failures after successful password login' do
+      create_api_household_for(user)
+
+      2.times do
+        post api_v1_auth_login_path,
+             params: { email: user.email_address, password: 'wrong-password' },
+             as: :json
+      end
+
+      expect(AccountLoginFailure.find_by(account_id: account.id)&.number).to eq(2)
+
+      post api_v1_auth_login_path,
+           params: { email: user.email_address, password: 'password' },
+           as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(AccountLoginFailure.find_by(account_id: account.id)).to be_nil
+    end
+
     it 'rejects a locked account without creating an API session' do
       create_api_household_for(user)
       lock_account!(account)
