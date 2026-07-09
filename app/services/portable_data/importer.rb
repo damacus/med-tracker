@@ -152,8 +152,8 @@ module PortableData
     end
 
     def authorize_record_writes!(manageable_person_portable_ids)
-      authorized_ids = medication_portable_ids_for(manageable_person_portable_ids)
-      return if medication_rows_authorized?(authorized_ids) && dosage_rows_authorized?(authorized_ids)
+      ids = medication_portable_ids_for(manageable_person_portable_ids)
+      return if records(:locations).empty? && medication_rows_authorized?(ids) && dosage_rows_authorized?(ids)
 
       raise Pundit::NotAuthorizedError
     end

@@ -244,6 +244,26 @@ RSpec.describe PortableData::Importer do
      NotificationPreference].index_with(&:count)
   end
 
+  def manager_location_payload(location:, name:, description:)
+    payload = portable_payload.deep_dup
+    payload[:records] = payload[:records].transform_values { [] }
+    payload[:records][:locations] = [
+      { portable_id: location.portable_id, name: name, description: description }
+    ]
+    payload
+  end
+
+  def expect_manager_location_import_allowed(membership, label)
+    location = create(:location, household: membership.household, portable_id: "#{label.downcase}-location-portable")
+    payload = manager_location_payload(location: location, name: "#{label} Updated Location",
+                                       description: "#{label} description")
+    result = import_result(household: membership.household, membership: membership, payload: payload, dry_run: false)
+
+    expect(result).to be_applied
+    expect(location.reload).to have_attributes(name: "#{label} Updated Location",
+                                               description: "#{label} description")
+  end
+
   def expect_import_creates_portable_graph(household:, membership:, envelope:)
     before_counts = portable_record_counts
     apply_import(household: household, membership: membership, envelope: envelope)
@@ -350,6 +370,25 @@ RSpec.describe PortableData::Importer do
     expect(result.errors).to be_empty
   end
 
+  it 'rejects member location writes before the import writer mutates records' do
+    household = create(:household)
+    manageable_person = create(:person, household: household, portable_id: 'manageable-person-portable')
+    location = create(:location, household: household, portable_id: 'location-portable', name: 'Original Shelf')
+    original_description = location.description
+    membership = member_membership(household, person: manageable_person)
+    grant_manage_access(household: household, membership: membership, person: manageable_person)
+    payload = solo_person_payload_for(manageable_person)
+    payload[:records][:locations] = [
+      { portable_id: location.portable_id, name: 'Delegated Rename', description: 'Changed by import' }
+    ]
+
+    expect do
+      import_result(household: household, membership: membership, payload: payload, dry_run: false)
+    end.to raise_error(Pundit::NotAuthorizedError)
+
+    expect(location.reload).to have_attributes(name: 'Original Shelf', description: original_description)
+  end
+
   it 'rejects member medication writes for medications outside granted people' do
     household = create(:household)
     manageable_person = create(:person, household: household, portable_id: 'manageable-person-portable')
@@ -414,6 +453,16 @@ RSpec.describe PortableData::Importer do
 
     expect(result).to be_applied
     expect(dosage.reload.amount).to eq(10)
+  end
+
+  it 'keeps owner location imports unrestricted within the household' do
+    household = create(:household)
+    expect_manager_location_import_allowed(owner_membership(household), 'Owner')
+  end
+
+  it 'keeps administrator location imports unrestricted within the household' do
+    household = create(:household)
+    expect_manager_location_import_allowed(administrator_membership(household), 'Administrator')
   end
 
   it 'keeps owner and administrator medication imports unrestricted within the household' do

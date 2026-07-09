@@ -105,6 +105,54 @@ RSpec.describe 'API v1 medications' do
       expect(response.parsed_body.dig('data', 'name')).to eq('New API Medication')
     end
 
+    it 'keeps delegated api-created medications visible to the creating membership' do
+      scoped_user = users(:jane)
+      household = scoped_user.person.household
+      membership = household.household_memberships.find_or_create_by!(account: scoped_user.person.account) do |record|
+        record.person = scoped_user.person
+        record.role = :member
+        record.status = :active
+      end
+      membership.update!(person: scoped_user.person, role: :member, status: :active)
+      managed_person = create(:person, household: household, name: 'Delegated Medication Creator')
+      location = create(:location, household: household, name: 'Delegated API Shelf')
+      household.person_access_grants.where(household_membership: membership).destroy_all
+      household.person_access_grants.create!(
+        household_membership: membership,
+        person: managed_person,
+        access_level: :manage,
+        relationship_type: :family_member,
+        granted_by_membership: membership
+      )
+      login_data = api_login(scoped_user, household_id: household.id)
+
+      post api_v1_household_medications_path(household.id),
+           params: {
+             medication: {
+               name: 'Delegated API Medication', location_id: location.id,
+               dose_amount: 5, dose_unit: 'ml', current_supply: 100, reorder_threshold: 10
+             }
+           },
+           headers: api_auth_headers(login_data.fetch('access_token')), as: :json
+
+      expect(response).to have_http_status(:created)
+
+      created_id = response.parsed_body.dig('data', 'id')
+      get api_v1_household_medication_path(household.id, created_id),
+          headers: api_auth_headers(login_data.fetch('access_token')),
+          as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.dig('data', 'id')).to eq(created_id)
+
+      get api_v1_household_medications_path(household.id),
+          headers: api_auth_headers(login_data.fetch('access_token')),
+          as: :json
+
+      returned_ids = response.parsed_body.fetch('data').map { |medication| medication.fetch('id') }
+      expect(returned_ids).to include(created_id)
+    end
+
     it 'returns unprocessable content with invalid attributes' do
       login_data = api_login(user)
       household_id = login_data.dig('household', 'id')

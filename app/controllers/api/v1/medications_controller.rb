@@ -18,6 +18,7 @@ module Api
       def create
         medication = Medication.new(medication_params)
         medication.household = current_household
+        medication.created_by_membership_id = current_membership.id
         medication.paper_trail_event = 'api_create'
         authorize medication
 
