@@ -15,7 +15,7 @@ RSpec.describe MissedDoseNotificationJob do
     person.person_medications.destroy_all
     PushSubscription.create!(
       account: person.account,
-      endpoint: 'https://example.com/push/subscriptions/missed-dose',
+      endpoint: 'https://fcm.googleapis.com/fcm/send/missed-dose',
       p256dh: 'public-key',
       auth: 'auth-secret'
     )

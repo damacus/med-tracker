@@ -68,6 +68,11 @@ class PushNotificationService
   private_class_method :build_vapid_config
 
   def self.deliver(sub, payload, vapid)
+    unless PushSubscriptionEndpointPolicy.allowed?(sub.endpoint)
+      Rails.logger.warn("Skipped unsafe web push endpoint for subscription #{sub.id}")
+      return
+    end
+
     WebPush.payload_send(
       message: payload,
       endpoint: sub.endpoint,

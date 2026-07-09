@@ -11,7 +11,7 @@ RSpec.describe PushNotificationService do
     let!(:first_subscription) do
       PushSubscription.create!(
         account: account,
-        endpoint: 'https://example.com/push/subscriptions/first',
+        endpoint: 'https://fcm.googleapis.com/fcm/send/first',
         p256dh: 'first_public_key',
         auth: 'first_auth_secret'
       )
@@ -19,7 +19,7 @@ RSpec.describe PushNotificationService do
     let!(:second_subscription) do
       PushSubscription.create!(
         account: account,
-        endpoint: 'https://example.com/push/subscriptions/second',
+        endpoint: 'https://fcm.googleapis.com/fcm/send/second',
         p256dh: 'second_public_key',
         auth: 'second_auth_secret'
       )
@@ -40,6 +40,22 @@ RSpec.describe PushNotificationService do
 
       expect(WebPush).to have_received(:payload_send).twice
       expect(Rails.logger).to have_received(:error).with(/Push notification delivery failed/)
+    end
+
+    it 'skips unsafe legacy web push endpoints before delivery' do
+      PushSubscription.new(
+        account: account,
+        endpoint: 'https://127.0.0.1/push/internal',
+        p256dh: 'legacy_public_key',
+        auth: 'legacy_auth_secret'
+      ).save!(validate: false)
+      allow(WebPush).to receive(:payload_send)
+      allow(Rails.logger).to receive(:warn)
+
+      described_class.send_to_account(account, title: 'Medication Reminder', body: 'Take aspirin')
+
+      expect(WebPush).to have_received(:payload_send).twice
+      expect(Rails.logger).to have_received(:warn).with(/Skipped unsafe web push endpoint/)
     end
 
     it 'removes expired subscriptions and continues with the rest' do

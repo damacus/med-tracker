@@ -18,7 +18,7 @@ RSpec.describe LowStockNotificationJob do
                       frequency: 'Once daily', schedule_type: :daily, schedule_config: { 'times' => ['07:15'] })
     PushSubscription.create!(
       account: person.account,
-      endpoint: 'https://example.com/push/subscriptions/low-stock',
+      endpoint: 'https://fcm.googleapis.com/fcm/send/low-stock',
       p256dh: 'public-key',
       auth: 'auth-secret'
     )
