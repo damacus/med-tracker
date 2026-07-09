@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MedTracker DCB0129 Foundations</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f6f8fb;
+      color: #18212f;
+      line-height: 1.55;
+    }
+
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+
+    .hero {
+      padding: 28px;
+      border: 1px solid #d7dee8;
+      background: #ffffff;
+      border-radius: 8px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0 0 12px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+      margin: 22px 0;
+    }
+
+    .card {
+      background: #ffffff;
+      border: 1px solid #d7dee8;
+      border-radius: 8px;
+      padding: 18px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      margin: 18px 0 4px;
+    }
+
+    .step {
+      min-height: 92px;
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid #c5d2e3;
+      background: #eef4fb;
+    }
+
+    .warning {
+      border-left: 5px solid #a64026;
+      background: #fff5ef;
+      padding: 14px 16px;
+      border-radius: 6px;
+      margin: 18px 0;
+    }
+
+    .sources a {
+      color: #174c8f;
+    }
+
+    .label {
+      display: inline-block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #4c5f77;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <span class="label">Internal learning</span>
+      <h1>DCB0129 first</h1>
+      <p>
+        This page explains the first compliance foundation pass for MedTracker.
+        It is designed for learning, not for public assurance or certification.
+      </p>
+    </section>
+
+    <section class="grid" aria-label="Standards comparison">
+      <article class="card">
+        <h2>DCB0129</h2>
+        <p>The software-maker side: intended use, hazards, controls, evidence, gaps, safety case, and incident learning.</p>
+      </article>
+      <article class="card">
+        <h2>DCB0160</h2>
+        <p>The deployment side: a care organisation's local workflows, users, training, rollout, configuration, and residual risk.</p>
+      </article>
+      <article class="card">
+        <h2>ISO 13485</h2>
+        <p>A medical-device quality management system. Deferred until MedTracker has a reason to pursue medical-device QMS work.</p>
+      </article>
+      <article class="card">
+        <h2>SaMD</h2>
+        <p>Software with its own medical purpose. MedTracker is not claiming that boundary in this pass.</p>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2>What we are building</h2>
+      <div class="flow">
+        <div class="step"><strong>1. Intended use</strong><br>What MedTracker does and does not do.</div>
+        <div class="step"><strong>2. Evidence map</strong><br>Where current code and docs support safety claims.</div>
+        <div class="step"><strong>3. Gap analysis</strong><br>What is missing before broader users.</div>
+        <div class="step"><strong>4. Hazard log</strong><br>How things could cause harm and what controls exist.</div>
+        <div class="step"><strong>5. Safety case</strong><br>A structured argument, not an approval claim.</div>
+      </div>
+    </section>
+
+    <section class="warning">
+      <h2>What we are not claiming</h2>
+      <p>
+        This work does not claim NHS approval, clinical approval, DCB0129 completion,
+        DCB0160 completion, ISO 13485 certification, MHRA registration, UKCA marking,
+        or medical-device status.
+      </p>
+    </section>
+
+    <section class="card sources">
+      <h2>Reading links</h2>
+      <ul>
+        <li><a href="https://digital.nhs.uk/services/clinical-safety/clinical-risk-management-standards">NHS England Digital clinical risk management standards</a></li>
+        <li><a href="https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dcb0129-clinical-risk-management-its-application-in-the-manufacture-of-health-it-systems">DCB0129 standard page</a></li>
+        <li><a href="https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dcb0160-clinical-risk-management-its-application-in-the-deployment-and-use-of-health-it-systems">DCB0160 standard page</a></li>
+        <li><a href="https://www.imdrf.org/documents/software-medical-device-samd-key-definitions">IMDRF SaMD key definitions</a></li>
+        <li><a href="https://www.iso.org/standard/59752.html">ISO 13485:2016 overview</a></li>
+      </ul>
+      <h2>Video starting points</h2>
+      <p>
+        A specific official DCB0129 training video was not identified during planning.
+        Start with the NHS England Digital channel and search deliberately rather than
+        treating random videos as authoritative.
+      </p>
+      <ul>
+        <li><a href="https://www.youtube.com/@NHSEnglandDigital">NHS England Digital YouTube channel</a></li>
+        <li><a href="https://www.youtube.com/results?search_query=DCB0129+DCB0160+clinical+risk+management">YouTube search: DCB0129 DCB0160 clinical risk management</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
