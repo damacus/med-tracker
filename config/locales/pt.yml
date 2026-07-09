@@ -1275,6 +1275,7 @@ pt:
     updated: Definições de notificação guardadas.
     update_failed: Falha ao guardar as definições de notificação.
   reports:
+    date_range_too_large: O intervalo de datas do relatorio nao pode exceder 180 dias.
     index:
       eyebrow: Análises de Bem-estar
       title: Relatório de Saúde

@@ -1680,6 +1680,7 @@ cy:
     updated: Cedwir y gosodiadau hysbysiadau.
     update_failed: Methwyd â chadw'r gosodiadau hysbysiadau.
   reports:
+    date_range_too_large: Ni chaiff ystod dyddiadau'r adroddiad fod yn fwy na 180 diwrnod.
     index:
       eyebrow: Dadansoddeg Lles
       title: Adroddiad Iechyd

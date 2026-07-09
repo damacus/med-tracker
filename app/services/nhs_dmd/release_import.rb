@@ -21,6 +21,10 @@ module NhsDmd
       def skipped_count = skipped_expired_count + skipped_missing_name_count + skipped_invalid_count
     end
 
+    def initialize(extractor: ReleaseArchiveExtractor.new)
+      @extractor = extractor
+    end
+
     def import(release_dir, progress_callback: nil)
       dir = Pathname.new(release_dir)
       ampp_file = glob_one(dir, 'f_ampp2_3*.xml')
@@ -36,6 +40,8 @@ module NhsDmd
     end
 
     private
+
+    attr_reader :extractor
 
     def glob_one(dir, pattern)
       matches = Dir.glob(dir.join(pattern))
@@ -57,8 +63,7 @@ module NhsDmd
     end
 
     def extract_gtin_xml(zip_path, dest)
-      system('unzip', '-o', zip_path.to_s, 'f_gtin2_0*.xml', '-d', dest.to_s,
-             exception: true)
+      extractor.extract(zip_path, dest, pattern: 'f_gtin2_0*.xml')
     end
 
     def parse_ampp_names(path, counts:, progress_callback:)

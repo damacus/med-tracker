@@ -8,6 +8,8 @@ class HealthHistoryReportsController < ApplicationController
               filename: filename,
               type: 'application/pdf',
               disposition: 'attachment'
+  rescue Reports::DateRange::RangeTooLarge
+    redirect_to reports_path, alert: t('reports.date_range_too_large')
   rescue ArgumentError
     redirect_to reports_path, alert: t('reports.invalid_date')
   end
@@ -41,11 +43,15 @@ class HealthHistoryReportsController < ApplicationController
   end
 
   def start_date
-    @start_date ||= params[:start_date].present? ? Date.parse(params[:start_date]) : end_date - 6.days
+    date_range.start_date
   end
 
   def end_date
-    @end_date ||= params[:end_date].present? ? Date.parse(params[:end_date]) : Time.zone.today
+    date_range.end_date
+  end
+
+  def date_range
+    @date_range ||= Reports::DateRange.parse(start_date: params[:start_date], end_date: params[:end_date])
   end
 
   def filename

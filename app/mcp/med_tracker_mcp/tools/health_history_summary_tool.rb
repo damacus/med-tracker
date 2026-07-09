@@ -3,8 +3,6 @@
 module MedTrackerMcp
   module Tools
     class HealthHistorySummaryTool < BaseTool
-      MAX_RANGE_DAYS = 180
-
       tool_name 'medtracker_health_history_summary'
       description 'Return a bounded health-history summary for visible people.'
       input_schema(
@@ -19,7 +17,6 @@ module MedTrackerMcp
       class << self
         def call(server_context:, start_date: nil, end_date: nil, person_ids: nil)
           dates = date_range(start_date, end_date)
-          return error_response('Health history date range cannot exceed 180 days.') if range_too_large?(dates)
 
           context = tool_context(server_context)
           context.with_current do
@@ -32,6 +29,8 @@ module MedTrackerMcp
 
             response(payload(result, dates), 'Bounded MedTracker health-history summary.')
           end
+        rescue Reports::DateRange::RangeTooLarge
+          error_response('Health history date range cannot exceed 180 days.')
         rescue ArgumentError
           error_response('start_date and end_date must be valid ISO8601 dates.')
         end
@@ -39,14 +38,11 @@ module MedTrackerMcp
         private
 
         def date_range(start_date, end_date)
-          end_on = end_date.present? ? Date.iso8601(end_date.to_s) : Time.zone.today
-          start_on = start_date.present? ? Date.iso8601(start_date.to_s) : end_on - 30.days
-
-          { start_date: start_on, end_date: end_on }
-        end
-
-        def range_too_large?(dates)
-          (dates.fetch(:end_date) - dates.fetch(:start_date)).to_i > MAX_RANGE_DAYS
+          Reports::DateRange.parse(
+            start_date: start_date,
+            end_date: end_date,
+            default_range_days: 30
+          ).to_h
         end
 
         def visible_people(context, person_ids)

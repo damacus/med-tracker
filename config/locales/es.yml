@@ -1752,6 +1752,7 @@ es:
       cancel: Cancelar
       save: Guardar ajustes
   reports:
+    date_range_too_large: El intervalo de fechas del informe no puede superar los 180 dias.
     index:
       eyebrow: Análisis de bienestar
       title: Informe de salud

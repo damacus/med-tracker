@@ -82,6 +82,13 @@ RSpec.describe 'Reports' do
         expect(response).to redirect_to(reports_path)
         expect(flash[:alert]).to eq('Invalid date format provided.')
       end
+
+      it 'redirects with alert when the report date range exceeds 180 days' do
+        get reports_path, params: { start_date: '2026-01-01', end_date: '2026-07-01' }
+
+        expect(response).to redirect_to(reports_path)
+        expect(flash[:alert]).to eq('Report date range cannot exceed 180 days.')
+      end
     end
 
     context 'when user is authenticated but not authorized' do
@@ -136,6 +143,13 @@ RSpec.describe 'Reports' do
 
       expect(response).to redirect_to(reports_path)
       expect(flash[:alert]).to eq('Invalid date format provided.')
+    end
+
+    it 'redirects with alert when the PDF date range exceeds 180 days' do
+      get health_history_report_path, params: { start_date: '2026-01-01', end_date: '2026-07-01' }
+
+      expect(response).to redirect_to(reports_path)
+      expect(flash[:alert]).to eq('Report date range cannot exceed 180 days.')
     end
   end
 end

@@ -21,6 +21,7 @@ RSpec.describe 'Platform settings' do
   it 'updates platform settings for an active platform admin' do
     PlatformAdmin.create!(account: platform_user.person.account)
     sign_in(platform_user)
+    authenticate_platform_totp(platform_user.person.account)
 
     patch platform_settings_path, params: { app_settings: { invite_only: '0' } }
 
@@ -28,9 +29,20 @@ RSpec.describe 'Platform settings' do
     expect(AppSettings.instance.reload.invite_only).to be(false)
   end
 
+  it 'requires fresh privileged MFA before updating platform settings' do
+    PlatformAdmin.create!(account: platform_user.person.account)
+    sign_in(platform_user)
+
+    patch platform_settings_path, params: { app_settings: { invite_only: '0' } }
+
+    expect(response).to redirect_to(profile_path)
+    expect(AppSettings.instance.reload.invite_only).not_to be(false)
+  end
+
   it 'updates medicine lookup settings for an active platform admin' do
     PlatformAdmin.create!(account: platform_user.person.account)
     sign_in(platform_user)
+    authenticate_platform_totp(platform_user.person.account)
 
     patch platform_settings_path,
           params: {
@@ -55,6 +67,7 @@ RSpec.describe 'Platform settings' do
     allow(AppSettings).to receive(:instance).and_return(settings)
     allow(settings).to receive(:update).and_return(false)
     sign_in(platform_user)
+    authenticate_platform_totp(platform_user.person.account)
 
     patch platform_settings_path, params: { app_settings: { invite_only: '0' } }
 
@@ -91,5 +104,13 @@ RSpec.describe 'Platform settings' do
     get admin_settings_path
 
     expect(response).to redirect_to(root_path)
+  end
+
+  def authenticate_platform_totp(account)
+    secret = 'jbswy3dpehpk3pxp'
+    visible_secret = RodauthApp.rodauth.allocate.send(:otp_hmac_secret, secret)
+    AccountOtpKey.where(id: account.id).delete_all
+    AccountOtpKey.create!(id: account.id, key: secret, last_use: 5.minutes.ago)
+    post '/otp-auth', params: { otp: ROTP::TOTP.new(visible_secret).at(Time.current) }
   end
 end

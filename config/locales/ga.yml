@@ -1425,6 +1425,7 @@ ga:
     mobile_rail:
       primary_navigation: Nascleanúint phríomha
   reports:
+    date_range_too_large: Ni feidir le raon datai na tuarascola dul thar 180 la.
     index:
       eyebrow: Anailís Folláine
       title: Tuarascáil Sláinte

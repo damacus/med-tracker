@@ -3,6 +3,7 @@
 require 'rails_helper'
 require 'fileutils'
 require 'tmpdir'
+require 'zip'
 
 RSpec.describe NhsDmd::ReleaseImport do
   let(:importer) { described_class.new }
@@ -41,6 +42,28 @@ RSpec.describe NhsDmd::ReleaseImport do
 
   def write_single_gtin_xml(amppid:, gtin:, startdt:, enddt: nil)
     write_gtin_xml([{ amppid: amppid, gtins: [{ gtin: gtin, startdt: startdt, enddt: enddt }.compact] }])
+  end
+
+  def nested_gtin_xml
+    gtin_entry = '<GTINDATA><GTIN>5016298210989</GTIN><STARTDT>2020-01-01</STARTDT></GTINDATA>'
+    "<GTIN_DETAILS><AMPPS><AMPP><AMPPID>111</AMPPID>#{gtin_entry}</AMPP></AMPPS></GTIN_DETAILS>"
+  end
+
+  def write_nested_gtin_zip
+    nested_zip = release_dir.join('release_GTIN.zip')
+    Zip::File.open(nested_zip.to_s, create: true) do |zip|
+      zip.get_output_stream('f_gtin2_0000000.xml') { |io| io.write(nested_gtin_xml) }
+    end
+    nested_zip
+  end
+
+  def stub_safe_gtin_extractor(safe_extractor, nested_zip)
+    allow(safe_extractor).to receive(:extract) do |zip_path, destination, pattern:|
+      expect(zip_path).to eq(nested_zip.to_s)
+      expect(pattern).to eq('f_gtin2_0*.xml')
+
+      File.write(Pathname.new(destination).join('f_gtin2_0000000.xml'), nested_gtin_xml)
+    end
   end
 
   def gtin_entry(amppid:, gtins:)
@@ -255,6 +278,18 @@ RSpec.describe NhsDmd::ReleaseImport do
 
     expect { importer.import(release_dir) }
       .to raise_error(ArgumentError, /No GTIN XML or ZIP found/)
+  end
+
+  it 'extracts nested GTIN ZIPs through the configured safe archive extractor' do
+    write_ampp_xml([{ appid: '111', nm: 'Nested GTIN Product' }])
+    safe_extractor = instance_double(NhsDmd::ReleaseArchiveExtractor)
+    stub_safe_gtin_extractor(safe_extractor, write_nested_gtin_zip)
+
+    result = described_class.new(extractor: safe_extractor).import(release_dir)
+
+    expect(result.imported_count).to eq(1)
+    expect(barcode_record('5016298210989')).to have_attributes(display: 'Nested GTIN Product')
+    expect(safe_extractor).to have_received(:extract)
   end
 
   it 'reports progress across both AMPP parsing and GTIN import work' do

@@ -61,6 +61,17 @@ RSpec.describe MedTrackerMcp::Tools do
     expect(payload.fetch(:medication_takes).pluck(:medication_name)).to include('Ibuprofen')
   end
 
+  it 'returns an error when the health history date range exceeds 180 days' do
+    response = call_tool_response(
+      MedTrackerMcp::Tools::HealthHistorySummaryTool,
+      start_date: '2026-01-01',
+      end_date: '2026-07-01'
+    )
+
+    expect(response[:isError]).to be(true)
+    expect(response.dig(:content, 0, :text)).to eq('Health history date range cannot exceed 180 days.')
+  end
+
   it 'describes the household snapshot resource' do
     resource = MedTrackerMcp::Resources::HouseholdSnapshot.definition
 
@@ -72,8 +83,12 @@ RSpec.describe MedTrackerMcp::Tools do
   end
 
   def call_tool(tool, **arguments)
+    call_tool_response(tool, **arguments).fetch(:structuredContent)
+  end
+
+  def call_tool_response(tool, **arguments)
     context.with_current do
-      tool.call(**arguments, server_context: context.to_h).to_h.fetch(:structuredContent)
+      tool.call(**arguments, server_context: context.to_h).to_h
     end
   end
 
