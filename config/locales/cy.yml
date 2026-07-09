@@ -625,6 +625,8 @@ cy:
       updated: Gosodiadau wedi'u diweddaru'n llwyddiannus.
     membership_roles:
       invalid_role: Dewiswch rôl aelwyd ddilys.
+      owner_demotion_rejected: Dim ond perchnogion cartrefi sy'n gallu newid aelodaethau
+        perchnogion.
       owner_rejected: Mae hyrwyddo i berchennog yn gofyn am gymorth gweinyddwr
         platfform.
       update_submit: Diweddaru Rôl
@@ -1282,10 +1284,10 @@ cy:
     future_taken_at: Ni all amser y dos fod fwy nag awr yn y dyfodol.
   profiles:
     updated: Diweddarwyd y proffil yn llwyddiannus.
-    email_updated: Diweddarwyd yr e-bost yn llwyddiannus.
+    email_change_requires_verification: Defnyddiwch y llif newid e-bost wedi'i ddilysu
+      i ddiweddaru eich e-bost mewngofnodi.
     no_changes: Dim newidiadau i'w cadw.
     profile_update_failed: 'Methwyd â diweddaru''r proffil: %{errors}'
-    email_update_failed: 'Methwyd â diweddaru''r e-bost: %{errors}'
     appearance:
       title: Ymddangosiad
       description: Dewiswch sut mae MedTracker yn edrych ar draws sgriniau wedi'u
@@ -1399,6 +1401,8 @@ cy:
     activated: Mae cyfrif y defnyddiwr wedi'i actifadu.
     verified: Mae cyfrif y defnyddiwr wedi'i wirio â llaw.
     cannot_deactivate_self: Ni allwch ddadactifadu eich cyfrif eich hun.
+    owner_deactivation_rejected: Dim ond perchennog cartref arall all ddadactifadu
+      cyfrif perchennog tra bod defnyddiwr perchennog gweithredol arall yn parhau.
   webauthn:
     passkey_removed: Allwedd mynediad wedi'i dynnu'n llwyddiannus
     passkey_registered: Allwedd mynediad wedi'i chofrestru'n llwyddiannus

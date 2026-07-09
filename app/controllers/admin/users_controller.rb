@@ -92,6 +92,13 @@ module Admin
             render turbo_stream: turbo_stream.update('flash', Components::Layouts::Flash.new(alert: flash[:alert])),
                    status: :unprocessable_content
           end
+        elsif owner_deactivation_blocked?
+          format.html { redirect_to admin_users_path, alert: t('users.owner_deactivation_rejected') }
+          format.turbo_stream do
+            flash.now[:alert] = t('users.owner_deactivation_rejected')
+            render turbo_stream: turbo_stream.update('flash', Components::Layouts::Flash.new(alert: flash[:alert])),
+                   status: :unprocessable_content
+          end
         else
           @user.deactivate!
           format.html { redirect_to admin_users_path, notice: t('users.deactivated') }
@@ -313,6 +320,24 @@ module Admin
 
     def admin_target_membership
       current_membership || current_account&.active_household_membership_for(admin_target_household)
+    end
+
+    def owner_deactivation_blocked?
+      !owner_governance.can_deactivate_owner_user?(existing_household_membership_for(@user))
+    end
+
+    def owner_governance
+      @owner_governance ||= Admin::OwnerGovernance.new(
+        household: admin_target_household,
+        actor_membership: admin_target_membership
+      )
+    end
+
+    def existing_household_membership_for(user)
+      account = user.person&.account
+      return unless admin_target_household && account
+
+      admin_target_household.household_memberships.active.find_by(account: account)
     end
 
     def create_household_membership_for(account, person)

@@ -124,6 +124,30 @@ RSpec.describe 'Admin user mutation boundary' do
     expect(membership.reload.role).to eq('member')
   end
 
+  it 'rejects administrator attempts to demote existing owners' do
+    owner = users(:parent)
+    administrator = users(:jane)
+    owner_membership = upsert_household_membership(owner.person, :owner)
+    upsert_household_membership(administrator.person, :administrator)
+    sign_in(administrator)
+
+    patch membership_role_admin_user_path(owner), params: { membership: { role: 'member' } }
+
+    expect(response).to redirect_to(admin_users_path)
+    expect(flash[:alert]).to include('Only household owners can change owner memberships')
+    expect(owner_membership.reload.role).to eq('owner')
+  end
+
+  it 'allows a household owner to demote another owner when another owner remains' do
+    target_owner = users(:parent)
+    target_membership = upsert_household_membership(target_owner.person, :owner)
+
+    patch membership_role_admin_user_path(target_owner), params: { membership: { role: 'member' } }
+
+    expect(response).to redirect_to(admin_users_path)
+    expect(target_membership.reload.role).to eq('member')
+  end
+
   it 'rejects unsupported membership roles through the dedicated household endpoint' do
     member = users(:jane)
     membership = household.household_memberships.find_by!(account: member.person.account)
@@ -133,6 +157,30 @@ RSpec.describe 'Admin user mutation boundary' do
     expect(response).to redirect_to(admin_users_path)
     expect(flash[:alert]).to include('Select a valid household role')
     expect(membership.reload.role).to eq('member')
+  end
+
+  it 'rejects administrator attempts to deactivate owner users' do
+    owner = users(:parent)
+    administrator = users(:jane)
+    upsert_household_membership(owner.person, :owner)
+    upsert_household_membership(administrator.person, :administrator)
+    sign_in(administrator)
+
+    delete admin_user_path(owner)
+
+    expect(response).to redirect_to(admin_users_path)
+    expect(flash[:alert]).to include('Owner accounts can only be deactivated by another household owner')
+    expect(owner.reload.active?).to be(true)
+  end
+
+  it 'allows an owner to deactivate another owner when another active owner user remains' do
+    target_owner = users(:parent)
+    upsert_household_membership(target_owner.person, :owner)
+
+    delete admin_user_path(target_owner)
+
+    expect(response).to redirect_to(admin_users_path)
+    expect(target_owner.reload.active?).to be(false)
   end
 
   def attach_fixture_users_to_household

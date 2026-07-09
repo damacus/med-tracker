@@ -24,6 +24,7 @@ class ProfilesController < ApplicationController
 
     attributes = person_params
     return update_person_profile(attributes) if attributes.present?
+    return respond_email_change_requires_verification if direct_email_change_requested?
 
     attributes = account_params
     return update_account_profile(attributes) if attributes.present?
@@ -86,9 +87,9 @@ class ProfilesController < ApplicationController
 
   def update_account_profile(attributes)
     if @account.update(attributes)
-      attributes.key?(:email) ? respond_email_updated : respond_profile_updated(person: @person, account: @account)
+      respond_profile_updated(person: @person, account: @account)
     else
-      attributes.key?(:email) ? respond_email_failed : respond_profile_failed(@account)
+      respond_profile_failed(@account)
     end
   end
 
@@ -116,31 +117,6 @@ class ProfilesController < ApplicationController
     end
   end
 
-  def respond_email_updated
-    respond_to do |format|
-      format.html { redirect_to profile_path, notice: t('profiles.email_updated') }
-      format.turbo_stream do
-        flash.now[:notice] = t('profiles.email_updated')
-        render turbo_stream: [
-          turbo_stream.update('modal', ''),
-          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice])),
-          turbo_stream.replace('main-content', Views::Profiles::Show.new(person: @person, account: @account.reload))
-        ]
-      end
-    end
-  end
-
-  def respond_email_failed
-    message = t('profiles.email_update_failed', errors: @account.errors.full_messages.join(', '))
-    respond_to do |format|
-      format.html { redirect_to profile_path, alert: message }
-      format.turbo_stream do
-        flash.now[:alert] = message
-        render turbo_stream: turbo_stream.update('flash', Components::Layouts::Flash.new(alert: flash[:alert]))
-      end
-    end
-  end
-
   def respond_no_changes
     respond_to do |format|
       format.html { redirect_to profile_path, alert: t('profiles.no_changes') }
@@ -151,11 +127,28 @@ class ProfilesController < ApplicationController
     end
   end
 
+  def respond_email_change_requires_verification
+    message = t('profiles.email_change_requires_verification')
+    respond_to do |format|
+      format.html { redirect_to '/change-login', alert: message }
+      format.turbo_stream do
+        flash.now[:alert] = message
+        render turbo_stream: turbo_stream.update('flash', Components::Layouts::Flash.new(alert: flash[:alert])),
+               status: :unprocessable_content
+      end
+    end
+  end
+
   def person_params
     params.expect(person: %i[date_of_birth avatar]) if params[:person]
   end
 
   def account_params
-    params.expect(account: %i[email gravatar_enabled time_zone]) if params[:account]
+    params.expect(account: %i[gravatar_enabled time_zone]) if params[:account]
+  end
+
+  def direct_email_change_requested?
+    account_attributes = params[:account]
+    account_attributes.respond_to?(:key?) && (account_attributes.key?(:email) || account_attributes.key?('email'))
   end
 end

@@ -190,5 +190,22 @@ RSpec.describe 'API v1 medications' do
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.parsed_body.dig('error', 'errors')).to include('name')
     end
+
+    it 'rejects a location from another household' do
+      login_data = api_login(user)
+      household_id = login_data.dig('household', 'id')
+      medication = medications(:paracetamol)
+      original_location = medication.location
+      other_household = Household.create!(name: 'Medication Location Boundary', slug: 'med-location-boundary')
+      other_location = Location.create!(household: other_household, name: 'Other Household Cabinet')
+
+      patch api_v1_household_medication_path(household_id, medication.id),
+            params: { medication: { location_id: other_location.id } },
+            headers: api_auth_headers(login_data.fetch('access_token')),
+            as: :json
+
+      expect(response).to have_http_status(:not_found)
+      expect(medication.reload.location).to eq(original_location)
+    end
   end
 end

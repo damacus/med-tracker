@@ -154,7 +154,8 @@ class DashboardPresenter
   end
 
   def default_selected_person
-    selectable_people.find { |person| person == current_person } || selectable_people.first
+    selectable_people.find { |person| person == current_person } ||
+      selectable_people.min_by { |person| [person.name.to_s.downcase, person.id] }
   end
 
   def initials_for(person)

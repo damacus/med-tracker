@@ -190,19 +190,26 @@ RSpec.describe 'Profiles' do
       expect(account.reload.time_zone).not_to eq('Atlantis/Nowhere')
     end
 
-    it 'rejects a blank account email' do
-      patch profile_path, params: { account: { email: '' } }
+    it 'rejects direct profile email changes without mutating the account email' do
+      original_email = account.email
 
-      expect(response).to redirect_to(profile_path)
-      expect(flash[:alert]).to include("Email can't be blank")
-      expect(account.reload.email).to be_present
+      expect do
+        patch profile_path, params: { account: { email: 'updated@example.test' } }
+      end.not_to(change { SecurityAuditEvent.where(event_type: 'auth_token/login_change_key/created').count })
+
+      expect(response).to redirect_to('/change-login')
+      expect(flash[:alert]).to include('Use the verified email change flow')
+      expect(account.reload.email).to eq(original_email)
     end
 
-    it 'updates the account email' do
-      patch profile_path, params: { account: { email: 'updated@example.test' } }
+    it 'creates a Rodauth login-change verification when using the change-login route' do
+      original_email = account.email
 
-      expect(response).to redirect_to(profile_path)
-      expect(account.reload.email).to eq('updated@example.test')
+      expect do
+        post '/change-login', params: { email: 'verified-change@example.test', password: 'password' }
+      end.to change { SecurityAuditEvent.where(event_type: 'auth_token/login_change_key/created').count }.by(1)
+
+      expect(account.reload.email).to eq(original_email)
     end
 
     it 'returns turbo_stream and updates flash when no changes are submitted' do
