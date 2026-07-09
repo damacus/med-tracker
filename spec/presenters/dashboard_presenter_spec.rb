@@ -102,7 +102,7 @@ RSpec.describe DashboardPresenter do
     end
 
     it 'defaults to the first available person when the logged-in user is not selectable' do
-      presenter = presenter_for(carer_user, people_scope: carer_user.person.patients)
+      presenter = presenter_for(carer_user, people_scope: carer_user.person.patients.reorder(name: :desc))
 
       expect(presenter.selected_person).to eq(people(:child_patient))
       expect(presenter.people).to eq([people(:child_patient)])

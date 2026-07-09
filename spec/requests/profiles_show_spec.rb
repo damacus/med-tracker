@@ -195,7 +195,7 @@ RSpec.describe 'Profiles' do
 
       expect do
         patch profile_path, params: { account: { email: 'updated@example.test' } }
-      end.not_to change { SecurityAuditEvent.where(event_type: 'auth_token/login_change_key/created').count }
+      end.not_to(change { SecurityAuditEvent.where(event_type: 'auth_token/login_change_key/created').count })
 
       expect(response).to redirect_to('/change-login')
       expect(flash[:alert]).to include('Use the verified email change flow')

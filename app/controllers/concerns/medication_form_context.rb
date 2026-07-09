@@ -82,7 +82,7 @@ module MedicationFormContext
     location_id = permitted[:location_id].presence
     return if location_id.blank?
 
-    permitted[:location_id] = policy_scope(Location).find(location_id).id
+    raise Pundit::NotAuthorizedError unless policy_scope(Location).exists?(location_id)
   end
 
   def onboarding_schedule_params

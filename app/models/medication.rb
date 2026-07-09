@@ -60,7 +60,6 @@ class Medication < ApplicationRecord # :nodoc:
 
   validate :single_dose_switch_requires_no_schedules
   validate :nested_dosage_records_are_valid
-  validate :location_must_belong_to_household
   before_validation :assign_household
   after_commit :sync_dosages, on: :update
 
@@ -214,12 +213,6 @@ class Medication < ApplicationRecord # :nodoc:
     return current_supply_total if supply_at_last_restock.blank? || current_supply_total > supply_at_last_restock
 
     supply_at_last_restock
-  end
-
-  def location_must_belong_to_household
-    return if location.blank? || household.blank? || location.household_id == household_id
-
-    errors.add(:location, 'must belong to the same household')
   end
 
   def child_person_type?(person_type)

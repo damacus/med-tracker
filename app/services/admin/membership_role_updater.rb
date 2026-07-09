@@ -16,9 +16,8 @@ module Admin
     end
 
     def call
-      return Result.new(false, I18n.t('admin.membership_roles.owner_rejected')) if role == OWNER_ROLE
-      return Result.new(false, I18n.t('admin.membership_roles.invalid_role')) unless allowed_role?
-      return Result.new(false, I18n.t('admin.membership_roles.owner_demotion_rejected')) unless owner_change_allowed?
+      failure = validation_failure
+      return failure if failure
 
       previous_role = membership.role
       ActiveRecord::Base.transaction do
@@ -34,6 +33,13 @@ module Admin
 
     def allowed_role?
       ALLOWED_ROLES.include?(role)
+    end
+
+    def validation_failure
+      return Result.new(false, I18n.t('admin.membership_roles.owner_rejected')) if role == OWNER_ROLE
+      return Result.new(false, I18n.t('admin.membership_roles.invalid_role')) unless allowed_role?
+
+      Result.new(false, I18n.t('admin.membership_roles.owner_demotion_rejected')) unless owner_change_allowed?
     end
 
     def owner_change_allowed?

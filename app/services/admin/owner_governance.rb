@@ -22,7 +22,7 @@ module Admin
     attr_reader :household, :actor_membership
 
     def owner_membership?(membership)
-      membership&.owner? && membership&.active?
+      membership&.owner? && membership.active?
     end
 
     def usable_owner_count_excluding(target_membership)
