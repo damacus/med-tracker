@@ -13,7 +13,7 @@ module Nlm
         'source' => 'NLM RxClass API using DailyMed relationships',
         'generated_on' => generated_on.iso8601,
         'selection_version' => manifest.version,
-        'entries' => client.entries_for(manifest.selection)
+        'entries' => client.entries_for(manifest.all_selection)
       }
     end
 

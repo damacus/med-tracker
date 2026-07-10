@@ -14,7 +14,13 @@ RSpec.describe OpenFda::SnapshotClient do
     expect(labels.map { |label| label.fetch('set_id') }).to all(be_present)
   end
 
+  it 'loads every committed label when no limit is supplied' do
+    labels = client.labels(limit: nil)
+
+    expect(labels.size).to eq(120)
+  end
+
   it 'rejects a request larger than the committed snapshot' do
-    expect { client.labels(limit: 81) }.to raise_error(ArgumentError, /contains 80 labels/)
+    expect { client.labels(limit: 121) }.to raise_error(ArgumentError, /contains 120 labels/)
   end
 end

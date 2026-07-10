@@ -28,6 +28,12 @@ RSpec.describe OpenFda::MedicationReviewEvidenceImporter do
     expect(client).to have_received(:labels).with(limit: 80)
   end
 
+  it 'imports every available snapshot label by default' do
+    described_class.new(client: client, retrieved_on: Date.new(2026, 7, 9)).call
+
+    expect(client).to have_received(:labels).with(limit: nil)
+  end
+
   it 'updates the same source record instead of duplicating it' do
     importer = described_class.new(client: client, retrieved_on: Date.new(2026, 7, 9))
 

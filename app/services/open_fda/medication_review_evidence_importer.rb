@@ -12,7 +12,7 @@ module OpenFda
       @attributes = attributes || EvidenceAttributes.new(retrieved_on: retrieved_on)
     end
 
-    def call(limit: 80, labels: nil)
+    def call(limit: nil, labels: nil)
       (labels || client.labels(limit: limit)).map { |label| import_label(label) }
     end
 

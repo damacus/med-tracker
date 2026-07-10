@@ -17,17 +17,29 @@ module OpenFda
     end
 
     def labels_for(terms)
-      responses = concurrent_responses(terms)
+      entries = terms.map { |term| { 'term' => term, 'interaction_targets' => [] } }
+      responses = concurrent_responses(entries)
       {
         'meta' => responses.first.fetch('meta'),
-        'results' => responses.zip(terms).map { |response, term| select_label(response, term) }
+        'results' => responses.zip(entries).map { |response, entry| select_label(response, entry.fetch('term')) }
+      }
+    end
+
+    def labels_for_targeted(entries)
+      responses = concurrent_responses(entries)
+      {
+        'meta' => responses.first.fetch('meta'),
+        'results' => responses.zip(entries).map do |response, entry|
+          select_label(response, entry.fetch('term'))
+        end
       }
     end
 
     private
 
-    def response_for(term)
-      searches_for(term).each do |search|
+    def response_for(entry)
+      term = entry.fetch('term')
+      searches_for(term, entry.fetch('interaction_targets')).each do |search|
         return request_json(request_uri(search: search, limit: SEARCH_RESULT_LIMIT, sort: 'effective_time:desc'))
       rescue NotFound
         next
@@ -64,12 +76,12 @@ module OpenFda
       JSON.parse(response.body)
     end
 
-    def concurrent_responses(terms)
+    def concurrent_responses(entries)
       queue = Queue.new
-      terms.each_with_index { |term, index| queue << [index, term] }
-      responses = Array.new(terms.size)
+      entries.each_with_index { |entry, index| queue << [index, entry] }
+      responses = Array.new(entries.size)
       errors = Queue.new
-      workers = Array.new([WORKER_COUNT, terms.size].min) { response_worker(queue, responses, errors) }
+      workers = Array.new([WORKER_COUNT, entries.size].min) { response_worker(queue, responses, errors) }
       workers.each(&:join)
       raise errors.pop unless errors.empty?
 
@@ -79,8 +91,8 @@ module OpenFda
     def response_worker(queue, responses, errors)
       Thread.new do
         loop do
-          index, term = queue.pop(true)
-          responses[index] = response_for(term)
+          index, entry = queue.pop(true)
+          responses[index] = response_for(entry)
         rescue ThreadError
           break
         rescue StandardError => e
@@ -90,11 +102,12 @@ module OpenFda
       end
     end
 
-    def searches_for(term)
+    def searches_for(term, interaction_targets)
+      target_searches = interaction_targets.map { |target| %(drug_interactions:"#{target}") }
       %w[generic_name substance_name].flat_map do |field|
         [
-          "openfda.#{field}.exact:\"#{term.upcase}\" AND _exists_:drug_interactions",
-          "openfda.#{field}:\"#{term}\" AND _exists_:drug_interactions"
+          ["openfda.#{field}.exact:\"#{term.upcase}\"", '_exists_:drug_interactions', *target_searches].join(' AND '),
+          ["openfda.#{field}:\"#{term}\"", '_exists_:drug_interactions', *target_searches].join(' AND ')
         ]
       end
     end

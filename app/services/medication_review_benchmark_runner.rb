@@ -16,7 +16,7 @@ class MedicationReviewBenchmarkRunner
     records = evidence_records(snapshot)
     report = MedicationReviewBenchmark.new(
       records: records,
-      selection: manifest.selection,
+      selection: manifest.all_selection,
       cases: benchmark_cases
     ).call
     report.merge(

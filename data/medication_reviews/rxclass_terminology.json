@@ -1,7 +1,7 @@
 {
   "source": "NLM RxClass API using DailyMed relationships",
   "generated_on": "2026-07-10",
-  "selection_version": 1,
+  "selection_version": 2,
   "entries": [
     {
       "selection_term": "warfarin",
@@ -1081,6 +1081,557 @@
         {
           "id": "N0000175558",
           "name": "Alkylating Drug",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "argatroban",
+      "rxcui": "1546207",
+      "ingredient_name": "argatroban anhydrous",
+      "classes": [
+        {
+          "id": "N0000175518",
+          "name": "Direct Thrombin Inhibitor",
+          "type": "EPC"
+        },
+        {
+          "id": "N0000175980",
+          "name": "Anti-coagulant",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "bupivacaine",
+      "rxcui": "1815",
+      "ingredient_name": "bupivacaine",
+      "classes": [
+        {
+          "id": "D000577",
+          "name": "Amides",
+          "type": "CHEM"
+        },
+        {
+          "id": "N0000175682",
+          "name": "Amide Local Anesthetic",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "buspirone",
+      "rxcui": null,
+      "ingredient_name": "buspirone",
+      "classes": []
+    },
+    {
+      "selection_term": "busulfan",
+      "rxcui": "1828",
+      "ingredient_name": "busulfan",
+      "classes": [
+        {
+          "id": "N0000175558",
+          "name": "Alkylating Drug",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "cidofovir",
+      "rxcui": "1546007",
+      "ingredient_name": "cidofovir anhydrous",
+      "classes": [
+        {
+          "id": "N0000175459",
+          "name": "Nucleoside Analog",
+          "type": "CHEM"
+        },
+        {
+          "id": "N0000175461",
+          "name": "Cytomegalovirus Nucleoside Analog DNA Polymerase Inhibitor",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "cyclobenzaprine",
+      "rxcui": "21949",
+      "ingredient_name": "cyclobenzaprine",
+      "classes": [
+        {
+          "id": "N0000175737",
+          "name": "Muscle Relaxant",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "dapsone",
+      "rxcui": "3108",
+      "ingredient_name": "dapsone",
+      "classes": [
+        {
+          "id": "D013450",
+          "name": "Sulfones",
+          "type": "CHEM"
+        },
+        {
+          "id": "N0000175881",
+          "name": "Sulfone",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "diflunisal",
+      "rxcui": "3393",
+      "ingredient_name": "diflunisal",
+      "classes": [
+        {
+          "id": "N0000175722",
+          "name": "Nonsteroidal Anti-inflammatory Drug",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "divalproex",
+      "rxcui": null,
+      "ingredient_name": "divalproex",
+      "classes": []
+    },
+    {
+      "selection_term": "dobutamine",
+      "rxcui": "3616",
+      "ingredient_name": "dobutamine",
+      "classes": [
+        {
+          "id": "N0000175555",
+          "name": "beta-Adrenergic Agonist",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "doxazosin",
+      "rxcui": "49276",
+      "ingredient_name": "doxazosin",
+      "classes": [
+        {
+          "id": "N0000175553",
+          "name": "alpha-Adrenergic Blocker",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "exenatide",
+      "rxcui": "60548",
+      "ingredient_name": "exenatide",
+      "classes": [
+        {
+          "id": "D052216",
+          "name": "Glucagon-Like Peptide 1",
+          "type": "CHEM"
+        },
+        {
+          "id": "N0000178480",
+          "name": "GLP-1 Receptor Agonist",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "finasteride",
+      "rxcui": "25025",
+      "ingredient_name": "finasteride",
+      "classes": [
+        {
+          "id": "N0000175836",
+          "name": "5-alpha Reductase Inhibitor",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "heparin",
+      "rxcui": "235473",
+      "ingredient_name": "heparin, porcine",
+      "classes": [
+        {
+          "id": "D006493",
+          "name": "Heparin",
+          "type": "CHEM"
+        },
+        {
+          "id": "N0000175474",
+          "name": "Unfractionated Heparin",
+          "type": "EPC"
+        },
+        {
+          "id": "N0000175980",
+          "name": "Anti-coagulant",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "imatinib",
+      "rxcui": "282388",
+      "ingredient_name": "imatinib",
+      "classes": [
+        {
+          "id": "N0000175605",
+          "name": "Kinase Inhibitor",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "isoniazid",
+      "rxcui": "6038",
+      "ingredient_name": "isoniazid",
+      "classes": [
+        {
+          "id": "N0000175483",
+          "name": "Antimycobacterial",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "ketorolac",
+      "rxcui": "35827",
+      "ingredient_name": "ketorolac",
+      "classes": [
+        {
+          "id": "N0000175722",
+          "name": "Nonsteroidal Anti-inflammatory Drug",
+          "type": "EPC"
+        },
+        {
+          "id": "N0000175939",
+          "name": "Cyclooxygenase Inhibitor",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "lidocaine",
+      "rxcui": "6387",
+      "ingredient_name": "lidocaine",
+      "classes": [
+        {
+          "id": "D000577",
+          "name": "Amides",
+          "type": "CHEM"
+        },
+        {
+          "id": "N0000175426",
+          "name": "Antiarrhythmic",
+          "type": "EPC"
+        },
+        {
+          "id": "N0000175682",
+          "name": "Amide Local Anesthetic",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "mepivacaine",
+      "rxcui": "6759",
+      "ingredient_name": "mepivacaine",
+      "classes": [
+        {
+          "id": "D000577",
+          "name": "Amides",
+          "type": "CHEM"
+        },
+        {
+          "id": "N0000175682",
+          "name": "Amide Local Anesthetic",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "metoclopramide",
+      "rxcui": "6915",
+      "ingredient_name": "metoclopramide",
+      "classes": [
+        {
+          "id": "N0000175800",
+          "name": "Dopamine-2 Receptor Antagonist",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "metyrapone",
+      "rxcui": "6923",
+      "ingredient_name": "metyrapone",
+      "classes": [
+        {
+          "id": "N0000175928",
+          "name": "Adrenal Steroid Synthesis Inhibitor",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "misoprostol",
+      "rxcui": "42331",
+      "ingredient_name": "misoprostol",
+      "classes": [
+        {
+          "id": "D011459",
+          "name": "Prostaglandins E, Synthetic",
+          "type": "CHEM"
+        },
+        {
+          "id": "N0000175785",
+          "name": "Prostaglandin E1 Analog",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "nicotine",
+      "rxcui": "7407",
+      "ingredient_name": "nicotine",
+      "classes": [
+        {
+          "id": "D009538",
+          "name": "Nicotine",
+          "type": "CHEM"
+        },
+        {
+          "id": "N0000175706",
+          "name": "Cholinergic Nicotinic Agonist",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "oseltamivir",
+      "rxcui": "260101",
+      "ingredient_name": "oseltamivir",
+      "classes": [
+        {
+          "id": "N0000175524",
+          "name": "Neuraminidase Inhibitor",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "pemetrexed",
+      "rxcui": "68446",
+      "ingredient_name": "pemetrexed",
+      "classes": [
+        {
+          "id": "N0000175584",
+          "name": "Folate Analog Metabolic Inhibitor",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "pilocarpine",
+      "rxcui": "8328",
+      "ingredient_name": "pilocarpine",
+      "classes": [
+        {
+          "id": "N0000175884",
+          "name": "Cholinergic Receptor Agonist",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "prilocaine",
+      "rxcui": "8686",
+      "ingredient_name": "prilocaine",
+      "classes": [
+        {
+          "id": "D000577",
+          "name": "Amides",
+          "type": "CHEM"
+        },
+        {
+          "id": "N0000175682",
+          "name": "Amide Local Anesthetic",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "probenecid",
+      "rxcui": null,
+      "ingredient_name": "probenecid",
+      "classes": []
+    },
+    {
+      "selection_term": "rilpivirine",
+      "rxcui": "1102270",
+      "ingredient_name": "rilpivirine",
+      "classes": [
+        {
+          "id": "N0000175460",
+          "name": "Non-Nucleoside Analog",
+          "type": "CHEM"
+        },
+        {
+          "id": "N0000175463",
+          "name": "Human Immunodeficiency Virus 1 Non-Nucleoside Analog Reverse Transcriptase Inhibitor",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "rimantadine",
+      "rxcui": "9386",
+      "ingredient_name": "rimantadine",
+      "classes": [
+        {
+          "id": "N0000175543",
+          "name": "Influenza A M2 Protein Inhibitor",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "ropinirole",
+      "rxcui": "72302",
+      "ingredient_name": "ropinirole",
+      "classes": [
+        {
+          "id": "N0000175768",
+          "name": "Nonergot Dopamine Agonist",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "ropivacaine",
+      "rxcui": "35780",
+      "ingredient_name": "ropivacaine",
+      "classes": [
+        {
+          "id": "D000577",
+          "name": "Amides",
+          "type": "CHEM"
+        },
+        {
+          "id": "N0000175682",
+          "name": "Amide Local Anesthetic",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "selegiline",
+      "rxcui": "9639",
+      "ingredient_name": "selegiline",
+      "classes": [
+        {
+          "id": "N0000175744",
+          "name": "Monoamine Oxidase Inhibitor",
+          "type": "EPC"
+        },
+        {
+          "id": "N0000175762",
+          "name": "Monoamine Oxidase Type B Inhibitor",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "sulindac",
+      "rxcui": "10237",
+      "ingredient_name": "sulindac",
+      "classes": [
+        {
+          "id": "N0000175722",
+          "name": "Nonsteroidal Anti-inflammatory Drug",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "telmisartan",
+      "rxcui": "73494",
+      "ingredient_name": "telmisartan",
+      "classes": [
+        {
+          "id": "N0000175561",
+          "name": "Angiotensin 2 Receptor Blocker",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "terazosin",
+      "rxcui": "37798",
+      "ingredient_name": "terazosin",
+      "classes": [
+        {
+          "id": "N0000175553",
+          "name": "alpha-Adrenergic Blocker",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "treprostinil",
+      "rxcui": "343048",
+      "ingredient_name": "treprostinil",
+      "classes": [
+        {
+          "id": "D044062",
+          "name": "Prostaglandins I",
+          "type": "CHEM"
+        },
+        {
+          "id": "N0000175416",
+          "name": "Prostacycline Vasodilator",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "triethanolamine salicylate",
+      "rxcui": null,
+      "ingredient_name": "triethanolamine salicylate",
+      "classes": []
+    },
+    {
+      "selection_term": "voriconazole",
+      "rxcui": "121243",
+      "ingredient_name": "voriconazole",
+      "classes": [
+        {
+          "id": "D001393",
+          "name": "Azoles",
+          "type": "CHEM"
+        },
+        {
+          "id": "N0000175487",
+          "name": "Azole Antifungal",
+          "type": "EPC"
+        }
+      ]
+    },
+    {
+      "selection_term": "zaleplon",
+      "rxcui": "74667",
+      "ingredient_name": "zaleplon",
+      "classes": [
+        {
+          "id": "N0000183360",
+          "name": "gamma-Aminobutyric Acid A Receptor Agonist",
           "type": "EPC"
         }
       ]
