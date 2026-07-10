@@ -89,7 +89,16 @@ RSpec.describe 'MedTracker MCP server' do
       request_id: be_present
     )
     expect(audit_event.metadata).to include('method' => 'tools/call', 'outcome' => 'ok')
+    expect(audit_event.audit_context).to include(
+      'authentication_method' => 'api_app_token',
+      'session_reference' => "api_app_token:#{app_token.id}",
+      'actor_account_id' => accounts(:jane_doe).id,
+      'actor_membership_id' => membership.id,
+      'active_role' => 'member',
+      'permissions_version' => membership.permissions_version
+    )
     expect(audit_event.metadata.to_json).not_to include(raw_token)
+    expect(audit_event.audit_context.to_json).not_to include(raw_token)
   end
 
   it 'does not let audit write failures replace the transport response' do
@@ -163,12 +172,20 @@ RSpec.describe 'MedTracker MCP server' do
   end
 
   def raw_token
-    @raw_token ||= ApiAppToken.issue_for(
+    @raw_token ||= issued_app_token.last
+  end
+
+  def app_token
+    issued_app_token.first
+  end
+
+  def issued_app_token
+    @issued_app_token ||= ApiAppToken.issue_for(
       account: accounts(:jane_doe),
       household_membership: membership,
       name: 'RSpec MCP server token',
       audit_context: { request_id: 'mcp-server-token' }
-    ).last
+    )
   end
 
   def membership

@@ -21,6 +21,7 @@ module Admin
 
       @total_count = result.total_count
       @versions = result.versions
+      record_audit_log_access('index')
 
       render Components::Admin::AuditLogs::IndexView.new(
         versions: @versions,
@@ -39,6 +40,7 @@ module Admin
       @version = policy_scope(PaperTrail::Version.all, policy_scope_class: AuditLogPolicy::Scope).find(params.expect(:id))
       authorize @version, policy_class: AuditLogPolicy
       detail = Admin::AuditLogDetailQuery.new(version: @version).call
+      record_audit_log_access('show', version_id: @version.id)
 
       render Components::Admin::AuditLogs::ShowView.new(version: @version, detail: detail)
     end
@@ -47,6 +49,14 @@ module Admin
 
     def authorize_audit_access
       authorize :audit_log, :index?, policy_class: AuditLogPolicy
+    end
+
+    def record_audit_log_access(action, version_id: nil)
+      Audit::Event.record!(
+        household: current_household,
+        event_type: 'audit_log.accessed',
+        metadata: { action: action, outcome: 'success', version_id: version_id }.compact
+      )
     end
   end
 end

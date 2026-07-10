@@ -22,6 +22,20 @@ RSpec.describe 'Admin::AuditLogs' do
     context 'when authenticated as administrator' do
       before { sign_in(admin) }
 
+      it 'records access to the audit log', :aggregate_failures do
+        expect do
+          get admin_audit_logs_path
+        end.to change { SecurityAuditEvent.where(event_type: 'audit_log.accessed').count }.by(1)
+
+        event = SecurityAuditEvent.where(event_type: 'audit_log.accessed').order(:created_at).last
+        expect(event.metadata).to include('action' => 'index', 'outcome' => 'success')
+        expect(event.audit_context).to include(
+          'active_role' => 'owner',
+          'policy_class' => 'AuditLogPolicy',
+          'policy_query' => 'index?'
+        )
+      end
+
       it 'returns success' do
         get admin_audit_logs_path
         expect(response).to have_http_status(:success)

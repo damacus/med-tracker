@@ -42,12 +42,11 @@ module Platform
     end
 
     def record_support_access_event(support_session, event_type)
-      SecurityAuditEvent.create!(
+      Audit::Event.record!(
         household: support_session.household,
         actor_account: current_account,
         event_type: event_type,
-        request_id: request.request_id,
-        ip: request.remote_ip,
+        request: request,
         metadata: {
           support_access_session_id: support_session.id
         }

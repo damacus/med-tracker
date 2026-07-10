@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_09_123000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_09_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -743,6 +743,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_123000) do
   create_table "security_audit_events", force: :cascade do |t|
     t.bigint "actor_account_id"
     t.bigint "actor_membership_id"
+    t.jsonb "audit_context", default: {}, null: false
     t.datetime "created_at", null: false
     t.string "event_type", null: false
     t.bigint "household_id", null: false
@@ -789,6 +790,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_123000) do
 
   create_table "versions", force: :cascade do |t|
     t.bigint "actor_membership_id"
+    t.jsonb "audit_context", default: {}, null: false
     t.datetime "created_at"
     t.string "event", null: false
     t.bigint "household_id"
@@ -796,6 +798,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_123000) do
     t.bigint "item_id", null: false
     t.string "item_type", null: false
     t.text "object"
+    t.text "object_changes"
     t.string "request_id"
     t.string "whodunnit"
     t.index ["actor_membership_id"], name: "index_versions_on_actor_membership_id"

@@ -5,9 +5,9 @@ module AiMedication
     ITEM_TYPE = 'AiMedicationSuggestion'
 
     def record(user:, medication_identity:, suggestion:)
-      # rubocop:disable Rails/SkipsModelValidations
-      PaperTrail::Version.insert(version_attrs(user:, medication_identity:, suggestion:))
-      # rubocop:enable Rails/SkipsModelValidations
+      # rubocop:disable Rails/SkipsModelValidations, Lint/RedundantCopDisableDirective
+      Audit::VersionEvent.record!(**version_attrs(user:, medication_identity:, suggestion:))
+      # rubocop:enable Rails/SkipsModelValidations, Lint/RedundantCopDisableDirective
     rescue StandardError => e
       Rails.logger.error("AiMedication::AuditLogger failed: #{e.class}: #{e.message}")
     end

@@ -42,7 +42,7 @@ module MedTrackerMcp
     def record_audit_event(request, context, outcome, response)
       context_data = context.to_h
 
-      SecurityAuditEvent.create!(audit_event_attributes(request, context_data, outcome, response))
+      Audit::Event.record!(**audit_event_attributes(request, context_data, outcome, response))
     rescue StandardError => e
       Rails.logger.warn("MCP audit event failed: #{e.class}: #{e.message}")
     end

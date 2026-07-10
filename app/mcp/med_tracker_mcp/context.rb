@@ -51,18 +51,35 @@ module MedTrackerMcp
     end
 
     def with_current(&)
-      TenantContext.with(
-        account: account,
-        household: household,
-        membership: membership,
-        request_id: request.request_id,
-        &
-      )
+      TenantContext.with(**tenant_context) do
+        bind_audit_context
+        yield
+      end
     ensure
+      Audit::Context.clear!
       Current.reset
     end
 
     private
+
+    def tenant_context
+      {
+        account: account,
+        household: household,
+        membership: membership,
+        request_id: request.request_id
+      }
+    end
+
+    def bind_audit_context
+      Audit::Context.start!(
+        request: request,
+        account: account,
+        user: user,
+        membership: membership,
+        credential: api_credential
+      )
+    end
 
     def valid_session?
       api_credential.present? && !revoked? && unexpired?
