@@ -3,6 +3,32 @@
 require 'rails_helper'
 
 RSpec.describe 'Login layout' do
+  it 'uses one non-empty CSP nonce across the anonymous response' do
+    get login_path
+
+    document = response.parsed_body
+    nonce = document.at_css('meta[name="csp-nonce"]')['content']
+    activation_script = document.css('script[nonce]').find do |script|
+      script.text.include?('applyLoginIllustrations')
+    end
+
+    expect(nonce).to be_present
+    expect(response.headers.fetch('Content-Security-Policy')).to include("'nonce-#{nonce}'")
+    expect(activation_script['nonce']).to eq(nonce)
+  end
+
+  it 'generates a new CSP nonce for each anonymous request' do
+    get login_path
+    first_nonce = response.parsed_body.at_css('meta[name="csp-nonce"]')['content']
+
+    get login_path
+    second_nonce = response.parsed_body.at_css('meta[name="csp-nonce"]')['content']
+
+    expect(first_nonce).to be_present
+    expect(second_nonce).to be_present
+    expect(second_nonce).not_to eq(first_nonce)
+  end
+
   it 'renders without the global mobile navigation chrome' do
     get login_path
 
