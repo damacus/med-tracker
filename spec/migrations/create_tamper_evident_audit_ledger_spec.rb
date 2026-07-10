@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require Rails.root.join('db/migrate/20260709131000_create_tamper_evident_audit_ledger')
+require Rails.root.join('db/migrate/20260709143000_configure_audit_object_lock_exporter')
 
 RSpec.describe CreateTamperEvidentAuditLedger do
   it 'backfills existing evidence into a labelled legacy epoch and rotates to a live head' do
@@ -17,11 +18,20 @@ RSpec.describe CreateTamperEvidentAuditLedger do
 
   def with_rebuilt_ledger
     ActiveRecord::Base.connection.transaction(requires_new: true) do
-      ActiveRecord::Migration.suppress_messages { described_class.new.down }
-      legacy_id = insert_legacy_version
-      ActiveRecord::Migration.suppress_messages { described_class.new.up }
+      legacy_id = rebuild_ledger
       yield legacy_id
       raise ActiveRecord::Rollback
+    end
+  end
+
+  def rebuild_ledger
+    ActiveRecord::Migration.suppress_messages do
+      ConfigureAuditObjectLockExporter.new.down
+      described_class.new.down
+      legacy_id = insert_legacy_version
+      described_class.new.up
+      ConfigureAuditObjectLockExporter.new.up
+      legacy_id
     end
   end
 

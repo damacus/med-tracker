@@ -11,6 +11,8 @@ module DatabaseRuntimeRoleSetup
     db/migrate/20260630141000_allow_account_linked_person_rls_login_lookup.rb
     db/migrate/20260709131000_create_tamper_evident_audit_ledger.rb
     db/migrate/20260709131100_enforce_audit_ledger_immutability.rb
+    db/migrate/20260709143000_configure_audit_object_lock_exporter.rb
+    db/migrate/20260709143100_enforce_recent_household_row_level_security.rb
   ].freeze
 
   def self.call
@@ -30,6 +32,8 @@ module DatabaseRuntimeRoleSetup
       apply_tenant_database_state
       install_audit_ledger_database_objects
       EnforceAuditLedgerImmutability.new.up
+      install_audit_exporter_database_objects
+      EnforceRecentHouseholdRowLevelSecurity.new.install_policies
     end
   end
 
@@ -48,6 +52,13 @@ module DatabaseRuntimeRoleSetup
     migration.send(:install_ledger_functions)
     migration.send(:install_source_triggers)
     migration.send(:create_household_read_view)
+  end
+
+  def self.install_audit_exporter_database_objects
+    migration = ConfigureAuditObjectLockExporter.new
+    migration.send(:install_exporter_role)
+    migration.send(:install_checkpoint_function)
+    migration.send(:lock_exporter_privileges)
   end
 end
 

@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require_relative '../config/environment'
+
+runner = Audit::ObjectLock::Runner.from_environment
+Signal.trap('TERM') { runner.stop! }
+Signal.trap('INT') { runner.stop! }
+runner.run_forever

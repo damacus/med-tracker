@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_09_131100) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_09_143100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -322,7 +322,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_131100) do
 
   create_table "audit_export_deliveries", force: :cascade do |t|
     t.integer "attempts", default: 0, null: false
-    t.bigint "audit_ledger_entry_id", null: false
+    t.bigint "audit_checkpoint_id"
+    t.bigint "audit_ledger_entry_id"
     t.string "checksum_sha256"
     t.datetime "created_at", null: false
     t.datetime "delivered_at"
@@ -335,8 +336,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_131100) do
     t.string "retention_mode"
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
+    t.index ["audit_checkpoint_id"], name: "index_audit_export_deliveries_on_audit_checkpoint_id", unique: true
     t.index ["audit_ledger_entry_id"], name: "index_audit_export_deliveries_on_audit_ledger_entry_id", unique: true
     t.index ["status", "next_attempt_at"], name: "index_audit_export_deliveries_on_status_and_next_attempt_at"
+    t.check_constraint "(audit_ledger_entry_id IS NULL) <> (audit_checkpoint_id IS NULL)", name: "audit_export_delivery_exactly_one_record"
   end
 
   create_table "audit_ledger_entries", force: :cascade do |t|
@@ -936,6 +939,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_131100) do
   add_foreign_key "audit_chain_heads", "households"
   add_foreign_key "audit_checkpoints", "audit_signing_keys"
   add_foreign_key "audit_checkpoints", "households"
+  add_foreign_key "audit_export_deliveries", "audit_checkpoints"
   add_foreign_key "audit_export_deliveries", "audit_ledger_entries"
   add_foreign_key "audit_ledger_entries", "households"
   add_foreign_key "carer_relationships", "people", column: "carer_id", deferrable: :deferred

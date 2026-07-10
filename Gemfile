@@ -44,6 +44,7 @@ gem 'rotp'
 # QR code generation for OTP setup [https://github.com/whomwah/rqrcode]
 gem 'rqrcode'
 # WebAuthn support for passkeys [https://github.com/cedarcode/webauthn-ruby]
+gem 'aws-sdk-s3', require: false
 gem 'webauthn'
 # Web push notifications (VAPID) [https://github.com/pushpad/web-push]
 gem 'web-push'
