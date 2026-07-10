@@ -4,13 +4,13 @@ module Components
   module Auth
     class MedicationIllustration < Components::Base
       LIGHT_ASSETS = {
-        desktop: 'auth/login-med-illustration-light-desktop.png',
-        mobile: 'auth/login-med-illustration-light-mobile.png'
+        desktop: 'auth/login-med-illustration-light-desktop.webp',
+        mobile: 'auth/login-med-illustration-light-mobile.webp'
       }.freeze
 
       DARK_ASSETS = {
-        desktop: 'auth/login-med-illustration-dark-desktop.png',
-        mobile: 'auth/login-med-illustration-dark-mobile.png'
+        desktop: 'auth/login-med-illustration-dark-desktop.webp',
+        mobile: 'auth/login-med-illustration-dark-mobile.webp'
       }.freeze
 
       def initialize(label:, image_path_resolver:)

@@ -39,6 +39,8 @@ SimpleCov.configure do
 
   at_exit do
     result = SimpleCov.result
+    next unless result
+
     result.format!
     next unless ENV['COVERAGE'] == 'true'
 

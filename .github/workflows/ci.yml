@@ -279,85 +279,104 @@ jobs:
       - name: Mutation test changed subjects (advisory)
         run: bundle exec mutant run --since origin/main
 
-  # lighthouse:
-  #   runs-on: [ubuntu-latest]
-  #   name: Lighthouse Mobile Audit
-  #   needs: [test_non_system]
-  #   timeout-minutes: 10
+  lighthouse:
+    runs-on: [ubuntu-latest]
+    name: Lighthouse Mobile Audit
+    needs: [test_non_system]
+    timeout-minutes: 15
 
-  #   services:
-  #     postgres:
-  #       image: postgres:18-alpine
-  #       env:
-  #         POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-  #         POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-  #         POSTGRES_DB: medtracker_test
-  #       ports:
-  #         - 5432:5432
-  #       options: >-
-  #         --health-cmd pg_isready
-  #         --health-interval 10s
-  #         --health-timeout 5s
-  #         --health-retries 5
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: medtracker_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
-  #   env:
-  #     DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
-  #     RAILS_ENV: production
-  #     SECRET_KEY_BASE: test-secret-key-base-for-ci-lighthouse-audit
-  #     RAILS_SERVE_STATIC_FILES: true
+    env:
+      TEST_DATABASE_ADAPTER: postgresql
+      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
+      RAILS_ENV: test
+      CI: true
 
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
-  #     - name: Set up Ruby
-  #       uses: ruby/setup-ruby@v1
-  #       with:
-  #         ruby-version: '3.4.7'
-  #         bundler-cache: true
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0.5"
+          bundler-cache: true
 
-  #     - name: Set up Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "npm"
 
-  #     - name: Install Chrome
-  #       uses: browser-actions/setup-chrome@v1
-  #       with:
-  #         chrome-version: stable
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@c785b87e244131f27c9f19c1a33e2ead956ab7ce # v1.7.3
+        with:
+          chrome-version: stable
 
-  #     - name: Install Task
-  #       uses: arduino/setup-task@v2
-  #       with:
-  #         version: 3.x
+      - name: Install Task
+        uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52 # v3.0.0
+        with:
+          version: 3.x
 
-  #     - name: Install Node dependencies
-  #       run: npm ci
+      - name: Install Node dependencies
+        run: npm ci
 
-  #     - name: Set up database
-  #       run: bundle exec rails db:create db:migrate
+      - name: Set up database
+        run: bundle exec rails db:prepare
 
-  #     - name: Seed database
-  #       run: bundle exec rails db:seed
+      - name: Seed database
+        run: bundle exec rails db:seed
 
-  #     - name: Precompile assets
-  #       run: bundle exec rails assets:precompile
+      - name: Precompile assets
+        run: bundle exec rails assets:precompile
 
-  #     - name: Start Rails server
-  #       run: |
-  #         bundle exec rails server -p 3000 -d
-  #         sleep 5
-  #         curl -s http://localhost:3000/up || (echo "Server failed to start" && exit 1)
+      - name: Start Rails server
+        run: |
+          bundle exec rails server -p 3000 > tmp/lighthouse-server.log 2>&1 &
+          for attempt in {1..30}; do
+            curl -fsS http://localhost:3000/up && break
+            sleep 1
+          done
+          curl -fsS http://localhost:3000/up
 
-  #     - name: Run Lighthouse audit
-  #       run: task lighthouse:ci
+      - name: Audit public login
+        run: task lighthouse:ci URL=http://localhost:3000/login REPORT_PATH=./lighthouse-login
 
-  #     - name: Upload Lighthouse report
-  #       uses: actions/upload-artifact@v4
-  #       if: always()
-  #       with:
-  #         name: lighthouse-report
-  #         path: |
-  #           lighthouse-report.json
-  #           lighthouse-report.html
-  #         retention-days: 30
+      - name: Audit authenticated dashboard
+        run: |
+          curl -fsS -c lighthouse-cookies.txt -X POST \
+            --data-urlencode email=jane.doe@example.com \
+            --data-urlencode password=password \
+            -o /dev/null http://localhost:3000/login
+          COOKIE_HEADER=$(awk 'BEGIN { separator="" } /^#HttpOnly_/ || $0 !~ /^#/ { if (NF >= 7) { printf "%s%s=%s", separator, $6, $7; separator="; " } } END { print "" }' lighthouse-cookies.txt)
+          test -n "$COOKIE_HEADER"
+          task lighthouse:ci \
+            URL=http://localhost:3000/households/fixture-household/dashboard \
+            REPORT_PATH=./lighthouse-dashboard \
+            EXTRA_HEADERS="{\"Cookie\":\"${COOKIE_HEADER}\"}"
+
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lighthouse-mobile-reports
+          path: |
+            lighthouse-*.report.json
+            lighthouse-*.report.html
+            tmp/lighthouse-server.log
+          if-no-files-found: ignore
+          retention-days: 30
