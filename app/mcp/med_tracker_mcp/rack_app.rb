@@ -23,7 +23,8 @@ module MedTrackerMcp
       MCP::Server::Transports::StreamableHTTPTransport.new(
         Server.build(server_context: context.to_h),
         stateless: true,
-        enable_json_response: true
+        enable_json_response: true,
+        allowed_hosts: Rails.application.config.hosts.grep(String)
       )
     end
 

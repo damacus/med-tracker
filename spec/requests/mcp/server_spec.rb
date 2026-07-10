@@ -17,6 +17,28 @@ RSpec.describe 'MedTracker MCP server' do
     expect(response.parsed_body.dig('error', 'code')).to eq('unauthorized')
   end
 
+  it 'accepts a host authorized by the Rails application' do
+    allow(Rails.application.config).to receive(:hosts).and_return(['mcp.example.com'])
+
+    mcp_post('tools/list', headers: mcp_headers.merge('Host' => 'mcp.example.com'))
+
+    expect(response).to have_http_status(:ok)
+  end
+
+  it 'rejects a host not authorized by the Rails application' do
+    mcp_post('tools/list', headers: mcp_headers.merge('Host' => 'evil.example.com'))
+
+    expect(response).to have_http_status(:forbidden)
+    expect(response.parsed_body.dig('error', 'message')).to eq('Forbidden: Invalid Host header')
+  end
+
+  it 'rejects a cross-origin browser request' do
+    mcp_post('tools/list', headers: mcp_headers.merge('Origin' => 'https://evil.example.com'))
+
+    expect(response).to have_http_status(:forbidden)
+    expect(response.parsed_body.dig('error', 'message')).to eq('Forbidden: Invalid Origin header')
+  end
+
   it 'throttles repeated MCP requests at the Rack boundary' do
     with_rack_attack_enabled do
       60.times { mcp_post('tools/list', headers: mcp_headers.except('Authorization')) }
@@ -154,7 +176,8 @@ RSpec.describe 'MedTracker MCP server' do
   def mcp_headers
     {
       'Authorization' => "Bearer #{raw_token}",
-      'Accept' => 'application/json'
+      'Accept' => 'application/json',
+      'Host' => 'localhost'
     }
   end
 
