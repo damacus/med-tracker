@@ -43,6 +43,16 @@ RSpec.describe OpenFda::MedicationReviewEvidenceImporter do
     expect(MedicationReviewEvidenceRecord.where(source_record_id: label.fetch('set_id')).count).to eq(1)
   end
 
+  it 'rolls back the complete import when any label is invalid' do
+    importer = described_class.new(client: client, retrieved_on: Date.new(2026, 7, 9))
+    original_count = MedicationReviewEvidenceRecord.count
+
+    expect do
+      importer.call(labels: [label, label.except('set_id')])
+    end.to raise_error(KeyError)
+    expect(MedicationReviewEvidenceRecord.count).to eq(original_count)
+  end
+
   def expected_imported_attributes
     {
       source_name: 'openFDA / DailyMed SPL',

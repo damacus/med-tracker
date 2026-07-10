@@ -8,6 +8,10 @@ class MedicationReviewSourceInstructionClassifier
     ['monitor_or_adjust', 'moderate', /\bmonitor|\badjust|\bdose reduction|\breduce(?:d)? dose|\bclosely observe/],
     ['possible_or_caution', 'low', /\bmay\b|\bcan\b|\bcaution|\brisk\b|\bpotential/]
   ].freeze
+  NO_ACTION_PATTERNS = [
+    /\bno (?:dose|dosing) adjustments? (?:(?:is|are) )?(?:needed|required|necessary)\b/,
+    /\bno clinically (?:meaningful|relevant|significant) (?:change|effect|interaction)\b/
+  ].freeze
 
   def initialize(text, matched_term:)
     @text = text.to_s
@@ -25,6 +29,8 @@ class MedicationReviewSourceInstructionClassifier
 
   def classification
     normalized_excerpt = MedicationReviewTermNormalizer.label(excerpt)
+    return %w[no_action_required low] if NO_ACTION_PATTERNS.any? { |pattern| normalized_excerpt.match?(pattern) }
+
     match = CLASSIFICATIONS.find { |_instruction, _risk_level, pattern| normalized_excerpt.match?(pattern) }
     match ? match.first(2) : %w[unclassified unknown]
   end
