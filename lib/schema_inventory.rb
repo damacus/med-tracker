@@ -56,6 +56,8 @@ class SchemaInventory
     native_device_tokens
     nhs_dmd_barcodes
     nhs_dmd_imports
+    oauth_applications
+    oauth_grants
     platform_admins
     push_subscriptions
     support_access_sessions

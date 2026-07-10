@@ -30,6 +30,9 @@ RSpec.describe 'FHIR R4 API' do
     )
     patient = fhir_json.dig('rest', 0, 'resource').find { |resource| resource.fetch('type') == 'Patient' }
     expect(patient.fetch('searchParam').pluck('name')).to include('_id', 'name', 'birthdate')
+    expect(fhir_json.dig('rest', 0, 'security', 'service', 0, 'coding', 0)).to include(
+      'code' => 'SMART-on-FHIR'
+    )
   end
 
   it 'searches and reads patients with household scoping' do

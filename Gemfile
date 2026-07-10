@@ -19,6 +19,7 @@ gem 'stimulus-rails'
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 gem 'bcrypt'
 # Authentication framework [https://rodauth.jeremyevans.net/]
+gem 'rodauth-oauth', '~> 1.6'
 gem 'rodauth-rails'
 # Required for Rodauth to use ActiveRecord's database connection
 gem 'sequel-activerecord_connection'

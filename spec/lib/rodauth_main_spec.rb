@@ -5,6 +5,26 @@ require 'rails_helper'
 RSpec.describe RodauthMain do
   fixtures :people
 
+  describe 'SMART OAuth provider' do
+    subject(:auth) { RodauthApp.rodauth.allocate }
+
+    it 'requires PKCE and publishes the supported SMART scopes' do
+      expect(auth.oauth_require_pkce).to be true
+      expect(auth.oauth_application_scopes).to include('launch/patient', 'patient/*.rs', 'offline_access')
+    end
+
+    it 'uses short access tokens, rotating refresh tokens, and a thirty day refresh lifetime' do
+      expect(auth.oauth_access_token_expires_in).to eq(15.minutes)
+      expect(auth.oauth_refresh_token_expires_in).to eq(30.days)
+      expect(auth.oauth_refresh_token_protection_policy).to eq('rotation')
+      expect(auth.oauth_applications_client_secret_hash_column).to eq(:client_secret_hash)
+    end
+
+    it 'exposes authorization, token, and revocation routes' do
+      expect(auth).to respond_to(:authorize_path, :token_path, :revoke_path)
+    end
+  end
+
   describe '#set_redirect_error_flash' do
     it 'does not set flash for the routine login-required redirect' do
       auth = RodauthApp.rodauth.allocate

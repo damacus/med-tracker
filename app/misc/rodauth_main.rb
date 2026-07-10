@@ -12,7 +12,17 @@ class RodauthMain < Rodauth::Rails::Auth
            :reset_password, :change_password, :change_login, :verify_login_change,
            :close_account, :omniauth,
            :otp, :recovery_codes,
-           :webauthn, :webauthn_login, :webauthn_autofill
+           :webauthn, :webauthn_login, :webauthn_autofill,
+           :oauth_pkce, :oauth_token_revocation
+
+    oauth_application_scopes OauthApplication::SUPPORTED_SCOPES
+    oauth_access_token_expires_in 15.minutes.to_i
+    oauth_refresh_token_expires_in 30.days.to_i
+    oauth_refresh_token_protection_policy 'rotation'
+    oauth_grants_token_hash_column :token_hash
+    oauth_grants_refresh_token_hash_column :refresh_token_hash
+    oauth_applications_client_secret_hash_column :client_secret_hash
+    oauth_token_endpoint_auth_methods_supported %w[none client_secret_basic client_secret_post]
 
     # See the Rodauth documentation for the list of available config options:
     # http://rodauth.jeremyevans.net/documentation.html
@@ -98,6 +108,61 @@ class RodauthMain < Rodauth::Rails::Auth
       super(password) && password_complex_enough?(password)
     end
     auth_class_eval do
+      public :password_hash
+
+      def resource_owner_params
+        membership = Account.find(account_id).first_active_household_membership
+        super.merge(
+          household_membership_id: membership.id,
+          person_id: membership.person_id,
+          permissions_version: membership.permissions_version,
+          created_at: Time.current,
+          updated_at: Time.current
+        )
+      end
+
+      def authorize_page_lead(name:)
+        membership = Account.find(account_id).first_active_household_membership
+        household_name = ERB::Util.html_escape(membership.household.name)
+        person_name = ERB::Util.html_escape(membership.person.name)
+        "#{super} for #{household_name} / #{person_name}"
+      end
+
+      def create_oauth_grant(create_params = {})
+        code = super
+        record_smart_oauth_event('smart_oauth.consent_granted', create_params.merge(resource_owner_params))
+        code
+      end
+
+      def revoke_oauth_grant
+        grant = super
+        record_smart_oauth_event('smart_oauth.token_revoked', grant)
+        grant
+      end
+
+      def record_smart_oauth_event(event_type, grant)
+        membership = HouseholdMembership.find(grant.fetch(:household_membership_id))
+        Audit::Event.record!(
+          household_id: membership.household_id,
+          actor_account_id: membership.account_id,
+          actor_membership_id: membership.id,
+          event_type: event_type,
+          request_id: rails_controller_instance&.request&.request_id,
+          ip: request.ip,
+          metadata: smart_oauth_audit_metadata(grant, membership)
+        )
+      end
+
+      def smart_oauth_audit_metadata(grant, membership)
+        {
+          oauth_application_id: oauth_application.fetch(oauth_applications_id_column),
+          account_id: membership.account_id,
+          household_membership_id: membership.id,
+          person_id: grant[:person_id] || membership.person_id,
+          scopes: grant[oauth_grants_scopes_column] || scopes.join(oauth_scope_separator)
+        }
+      end
+
       def audit_auth_token(token_type, action, metadata = {})
         audit_account = Account.find_by(id: account_id)
         return unless audit_account

@@ -5,6 +5,7 @@ Rails.application.routes.draw do
 
   namespace :api do
     scope 'fhir/R4', module: 'fhir/r4', as: :fhir_r4 do
+      get '.well-known/smart-configuration', to: 'smart_configuration#show'
       get :metadata, to: 'metadata#show'
       get 'Patient', to: 'patients#index'
       get 'Patient/:id', to: 'patients#show'
