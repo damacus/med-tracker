@@ -40,6 +40,17 @@ RSpec.describe 'Taskfiles' do
     expect(compose_project).to include('git hash-object --stdin')
   end
 
+  it 'serializes Docker Compose runs within each worktree environment' do
+    command = internal_taskfile.dig('tasks', 'run', 'cmds', 0)
+
+    expect(command).to include('./scripts/with_compose_lock.rb "{{ .COMPOSE_PROJECT }}-{{ .ENVIRONMENT }}"')
+    expect(compose_lock_script).to include(
+      'lock.flock(File::LOCK_EX)',
+      'Process.spawn(*command)',
+      'Process.wait2(pid)'
+    )
+  end
+
   it 'defines a Vernier dashboard profiling task' do
     task = root_taskfile.dig('tasks', 'profile:dashboard')
     commands = task.fetch('cmds')
@@ -92,5 +103,9 @@ RSpec.describe 'Taskfiles' do
 
   def dashboard_profile_script
     Rails.root.join('scripts/profile_dashboard_request.rb').read
+  end
+
+  def compose_lock_script
+    Rails.root.join('scripts/with_compose_lock.rb').read
   end
 end

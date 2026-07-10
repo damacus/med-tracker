@@ -30,7 +30,9 @@ tasks:
     vars:
       WEB_SERVICE: '{{ .SERVICE | default (printf "web-%s" .ENVIRONMENT) }}'
     cmds:
-      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} run --rm {{ .WEB_SERVICE }} {{ .COMMAND }}"
+      - 'MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} ./scripts/with_compose_lock.rb
+        "{{ .COMPOSE_PROJECT }}-{{ .ENVIRONMENT }}" docker compose -p {{ .COMPOSE_PROJECT }}
+        --profile {{ .ENVIRONMENT }} run --rm {{ .WEB_SERVICE }} {{ .COMMAND }}'
 
   # Build Docker images for specified environment
   # Required vars: ENVIRONMENT
