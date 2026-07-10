@@ -166,6 +166,8 @@ RUN apt-get update \
 
 USER ruby
 
+RUN mkdir -p /app/storage
+
 ENV RAILS_ENV=production \
   NODE_ENV=production \
   BUNDLE_WITHOUT="development:test:tools" \

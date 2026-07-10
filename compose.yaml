@@ -229,6 +229,8 @@ services:
     environment: &rails_env_prod
       RAILS_ENV: production
       APP_URL: ${APP_URL:-http://localhost}
+      ACTIVE_STORAGE_SERVICE: ${ACTIVE_STORAGE_SERVICE:-persistent}
+      ACTIVE_STORAGE_ROOT: ${ACTIVE_STORAGE_ROOT:-/app/storage}
       DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker
       DATABASE_ROLE: ${MIGRATION_DATABASE_ROLE:-med_tracker_owner}
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:-local-prod-testing-only-not-for-real-use}

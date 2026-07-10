@@ -29,6 +29,8 @@ ensuring medications are given on time and safely.
   `medtracker` CLI and `medtracker-mcp` stdio server over `/api/v1`.
 - [API Contract](api/openapi.v1.yaml): OpenAPI contract for hosted auth, portable IDs, sync, backups, admin APIs, and FHIR R4 reads.
 - [External App Integration Contract](adrs/0007-external-app-integration-contract.md): choose `/api/v1`, `/mcp`, or FHIR R4 by client audience.
+- [Production Upload Storage](adrs/0008-production-upload-storage.md): understand the single-node persistent-volume decision and scaling boundary.
+- [Upload Storage Backup and Restore](operations/upload-storage-backup-and-restore.md): back up and verify database records with stored blobs.
 - [Pre-0.5 database upgrade](pre-0-5-database-upgrade.md): bootstrap existing PostgreSQL databases before the household/RLS cutover.
 
 ---
