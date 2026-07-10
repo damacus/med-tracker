@@ -10,11 +10,12 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_09_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_09_131100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
+  enable_extension "pgcrypto"
 
   create_table "account_active_session_keys", id: false, force: :cascade do |t|
     t.bigint "account_id", null: false
@@ -285,6 +286,99 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_130000) do
     t.jsonb "medicine_lookup_source_priority", default: ["imported_catalog", "local_nhs_dmd", "cached_open_products_facts", "open_products_facts", "curated_catalog", "nhs_dmd", "supplements"], null: false
     t.string "medicine_lookup_token_url", default: "https://ontology.nhs.uk/authorisation/auth/realms/nhs-digital-terminology/protocol/openid-connect/token", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "audit_chain_heads", force: :cascade do |t|
+    t.uuid "chain_epoch", default: -> { "gen_random_uuid()" }, null: false
+    t.string "chain_key", null: false
+    t.datetime "created_at", null: false
+    t.string "epoch_kind", default: "live", null: false
+    t.bigint "household_id"
+    t.binary "last_hash"
+    t.bigint "last_sequence", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["chain_key"], name: "index_audit_chain_heads_on_chain_key", unique: true
+    t.index ["household_id"], name: "index_audit_chain_heads_on_household_id"
+    t.check_constraint "last_hash IS NULL OR octet_length(last_hash) = 32", name: "audit_chain_heads_last_hash_length"
+  end
+
+  create_table "audit_checkpoints", force: :cascade do |t|
+    t.bigint "audit_signing_key_id"
+    t.uuid "chain_epoch", null: false
+    t.string "chain_key", null: false
+    t.string "checkpoint_kind", default: "periodic", null: false
+    t.datetime "created_at", null: false
+    t.binary "entry_hash", null: false
+    t.bigint "household_id"
+    t.bigint "sequence", null: false
+    t.binary "signature"
+    t.datetime "signed_at"
+    t.datetime "updated_at", null: false
+    t.index ["audit_signing_key_id"], name: "index_audit_checkpoints_on_audit_signing_key_id"
+    t.index ["chain_key", "chain_epoch", "sequence"], name: "idx_audit_checkpoint_chain_sequence", unique: true
+    t.index ["household_id"], name: "index_audit_checkpoints_on_household_id"
+    t.check_constraint "octet_length(entry_hash) = 32", name: "audit_checkpoint_entry_hash_length"
+  end
+
+  create_table "audit_export_deliveries", force: :cascade do |t|
+    t.integer "attempts", default: 0, null: false
+    t.bigint "audit_ledger_entry_id", null: false
+    t.string "checksum_sha256"
+    t.datetime "created_at", null: false
+    t.datetime "delivered_at"
+    t.string "last_error_code"
+    t.text "last_error_message"
+    t.datetime "next_attempt_at"
+    t.string "object_key"
+    t.string "object_version_id"
+    t.datetime "retain_until"
+    t.string "retention_mode"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.index ["audit_ledger_entry_id"], name: "index_audit_export_deliveries_on_audit_ledger_entry_id", unique: true
+    t.index ["status", "next_attempt_at"], name: "index_audit_export_deliveries_on_status_and_next_attempt_at"
+  end
+
+  create_table "audit_ledger_entries", force: :cascade do |t|
+    t.binary "canonical_payload", null: false
+    t.uuid "chain_epoch", null: false
+    t.string "chain_key", null: false
+    t.datetime "created_at", null: false
+    t.binary "entry_hash", null: false
+    t.jsonb "envelope", null: false
+    t.string "epoch_kind", null: false
+    t.string "hash_algorithm", default: "sha256", null: false
+    t.bigint "household_id"
+    t.datetime "occurred_at", null: false
+    t.binary "previous_hash"
+    t.datetime "retain_until", null: false
+    t.string "retention_policy_version", null: false
+    t.integer "schema_version", default: 1, null: false
+    t.bigint "sequence", null: false
+    t.bigint "source_id", null: false
+    t.jsonb "source_payload", null: false
+    t.string "source_table", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chain_key", "chain_epoch", "sequence"], name: "idx_audit_ledger_chain_sequence", unique: true
+    t.index ["household_id", "occurred_at"], name: "index_audit_ledger_entries_on_household_id_and_occurred_at"
+    t.index ["household_id"], name: "index_audit_ledger_entries_on_household_id"
+    t.index ["retain_until"], name: "index_audit_ledger_entries_on_retain_until"
+    t.index ["source_table", "source_id"], name: "index_audit_ledger_entries_on_source_table_and_source_id", unique: true
+    t.check_constraint "octet_length(entry_hash) = 32", name: "audit_ledger_entry_hash_length"
+    t.check_constraint "previous_hash IS NULL OR octet_length(previous_hash) = 32", name: "audit_ledger_previous_hash_length"
+    t.check_constraint "retain_until >= occurred_at", name: "audit_ledger_retention_after_event"
+    t.check_constraint "sequence > 0", name: "audit_ledger_positive_sequence"
+  end
+
+  create_table "audit_signing_keys", force: :cascade do |t|
+    t.datetime "active_from", null: false
+    t.string "algorithm", default: "ed25519", null: false
+    t.datetime "created_at", null: false
+    t.string "key_id", null: false
+    t.binary "public_key", null: false
+    t.datetime "retired_at"
+    t.datetime "updated_at", null: false
+    t.index ["key_id"], name: "index_audit_signing_keys_on_key_id", unique: true
   end
 
   create_table "barcode_catalog_entries", force: :cascade do |t|
@@ -839,6 +933,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_130000) do
   add_foreign_key "api_tombstones", "accounts"
   add_foreign_key "api_tombstones", "household_memberships"
   add_foreign_key "api_tombstones", "households"
+  add_foreign_key "audit_chain_heads", "households"
+  add_foreign_key "audit_checkpoints", "audit_signing_keys"
+  add_foreign_key "audit_checkpoints", "households"
+  add_foreign_key "audit_export_deliveries", "audit_ledger_entries"
+  add_foreign_key "audit_ledger_entries", "households"
   add_foreign_key "carer_relationships", "people", column: "carer_id", deferrable: :deferred
   add_foreign_key "carer_relationships", "people", column: "patient_id", deferrable: :deferred
   add_foreign_key "dosages", "households"

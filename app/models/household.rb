@@ -20,7 +20,10 @@ class Household < ApplicationRecord
   has_many :notification_preferences, dependent: :restrict_with_error
   has_many :person_access_grants, dependent: :destroy
   has_many :household_invitations, dependent: :destroy
-  has_many :security_audit_events, dependent: :destroy
+  has_many :security_audit_events, dependent: :restrict_with_error
+  has_many :audit_ledger_entries, dependent: :restrict_with_error
+  has_many :audit_chain_heads, dependent: :restrict_with_error
+  has_many :audit_checkpoints, dependent: :restrict_with_error
 
   before_validation :assign_timezone, :assign_slug
 
