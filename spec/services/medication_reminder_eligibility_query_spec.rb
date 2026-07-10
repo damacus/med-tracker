@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe MedicationReminderEligibilityQuery do
   let(:person) { create(:person) }
-  let(:now) { Time.zone.local(2026, 6, 9, 10, 0, 0) }
+  let(:now) { Time.zone.now.change(hour: 10, min: 0, sec: 0) }
   let(:today) { now.to_date }
 
   before { travel_to(now) }

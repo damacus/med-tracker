@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class MedicationReviewPromptSync
-  def initialize(people:, evidence_scope: MedicationReviewEvidenceRecord.reviewable)
+  def initialize(people:, evidence_scope: MedicationReviewEvidenceRecord.detectable)
     @people = people
     @evidence_scope = evidence_scope
   end
@@ -37,9 +37,7 @@ class MedicationReviewPromptSync
   end
 
   def matching_evidence(first_medication, second_medication)
-    evidence_records.select do |evidence|
-      evidence.match_pair?(candidate_name: first_medication.display_name, existing_name: second_medication.display_name)
-    end
+    evidence_corpus.matches_for(first_medication.display_name, second_medication.display_name)
   end
 
   def sync_prompt(person, first_medication, second_medication, evidence)
@@ -59,15 +57,13 @@ class MedicationReviewPromptSync
   end
 
   def ordered_medications(first_medication, second_medication, evidence)
-    return [first_medication, second_medication] if terms_match?(first_medication.display_name,
-                                                                 evidence.candidate_terms)
+    return [first_medication, second_medication] if evidence_corpus.owner?(evidence, first_medication.display_name)
 
     [second_medication, first_medication]
   end
 
-  def terms_match?(name, terms)
-    normalized_name = name.to_s.downcase.squish
-    terms.any? { |term| normalized_name.include?(term.to_s.downcase.squish) }
+  def evidence_corpus
+    @evidence_corpus ||= MedicationReviewEvidenceCorpus.new(evidence_records)
   end
 
   def snapshot_attributes(primary_medication, interacting_medication, evidence)

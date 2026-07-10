@@ -24,7 +24,7 @@ class MedicationInteractionLookup
     MATCH_CONFIDENCE_LABELS.fetch(match_confidence, match_confidence.to_s.titleize)
   end
 
-  def initialize(medication_scope:, evidence_scope: MedicationReviewEvidenceRecord.reviewable)
+  def initialize(medication_scope:, evidence_scope: MedicationReviewEvidenceRecord.detectable)
     @medication_scope = medication_scope
     @evidence_scope = evidence_scope
   end
@@ -47,14 +47,10 @@ class MedicationInteractionLookup
 
   def prompts_for(candidate_name)
     active_medications.flat_map do |medication|
-      evidence_records.filter_map { |evidence| prompt_for(candidate_name, medication, evidence) }
+      evidence_corpus.matches_for(candidate_name, medication.display_name).map do |evidence|
+        prompt_metadata(medication, evidence).merge(evidence_metadata(evidence))
+      end
     end
-  end
-
-  def prompt_for(candidate_name, medication, evidence)
-    return unless evidence.match_pair?(candidate_name: candidate_name, existing_name: medication.display_name)
-
-    prompt_metadata(medication, evidence).merge(evidence_metadata(evidence))
   end
 
   def prompt_metadata(medication, evidence)
@@ -88,6 +84,10 @@ class MedicationInteractionLookup
 
   def evidence_records
     @evidence_records ||= evidence_scope.order(:id).to_a
+  end
+
+  def evidence_corpus
+    @evidence_corpus ||= MedicationReviewEvidenceCorpus.new(evidence_records)
   end
 
   def normalized_name(name)

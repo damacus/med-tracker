@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_09_150100) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_10_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -571,6 +571,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_150100) do
     t.string "label_section", null: false
     t.string "match_confidence", default: "unknown", null: false
     t.string "match_status", default: "unreviewed", null: false
+    t.string "pharmacologic_classes", default: [], null: false, array: true
     t.string "product_name", null: false
     t.date "retrieved_on", null: false
     t.string "risk_level", default: "unknown", null: false
@@ -581,6 +582,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_150100) do
     t.index ["candidate_terms"], name: "index_medication_review_evidence_records_on_candidate_terms", using: :gin
     t.index ["interacting_terms"], name: "index_medication_review_evidence_records_on_interacting_terms", using: :gin
     t.index ["match_status"], name: "index_medication_review_evidence_records_on_match_status"
+    t.index ["pharmacologic_classes"], name: "idx_on_pharmacologic_classes_df53f96090", using: :gin
     t.index ["source_record_id"], name: "index_medication_review_evidence_records_on_source_record_id", unique: true
   end
 

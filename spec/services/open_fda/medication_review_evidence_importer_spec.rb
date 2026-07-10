@@ -12,7 +12,8 @@ RSpec.describe OpenFda::MedicationReviewEvidenceImporter do
       'openfda' => {
         'brand_name' => ['Warfarin Sodium'],
         'generic_name' => ['WARFARIN SODIUM'],
-        'substance_name' => ['WARFARIN SODIUM']
+        'substance_name' => ['WARFARIN SODIUM'],
+        'pharm_class_epc' => ['Vitamin K Antagonist [EPC]']
       }
     }
   end
@@ -41,7 +42,7 @@ RSpec.describe OpenFda::MedicationReviewEvidenceImporter do
       source_record_id: 'importer-spec-record',
       product_name: 'Warfarin Sodium', active_ingredient: 'WARFARIN SODIUM', label_section: 'Drug Interactions',
       risk_level: 'unknown', match_confidence: 'unknown', match_status: 'unreviewed',
-      candidate_terms: [], interacting_terms: []
+      candidate_terms: ['warfarin sodium'], pharmacologic_classes: ['vitamin k antagonist'], interacting_terms: []
     }
   end
 end
