@@ -13,6 +13,12 @@ RSpec.describe 'Profiles' do
   end
 
   describe 'GET /profile' do
+    it 'does not load notification preferences or API tokens while rendering the view' do
+      rendered_queries = capture_profile_render_queries { get profile_path }
+
+      expect(rendered_queries.grep(/notification_preferences|api_app_tokens/)).to be_empty
+    end
+
     it 'renders the profile page shell and key sections' do
       get profile_path
 
@@ -106,6 +112,19 @@ RSpec.describe 'Profiles' do
       expect(response.body).to include('Test Passkey')
       expect(response.body).to include('Remove')
     end
+  end
+
+  def capture_profile_render_queries(&)
+    queries = []
+    sql_subscriber = lambda do |_name, _start, _finish, _id, payload|
+      next if payload[:cached] || payload[:name] == 'SCHEMA'
+      next unless caller_locations.any? { |location| location.path.include?('/app/views/profiles/') }
+
+      queries << payload[:sql]
+    end
+
+    ActiveSupport::Notifications.subscribed(sql_subscriber, 'sql.active_record', &)
+    queries
   end
 
   describe 'PATCH /profile' do
