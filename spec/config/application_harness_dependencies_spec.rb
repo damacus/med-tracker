@@ -66,6 +66,10 @@ RSpec.describe ApplicationHarnessDependencies do
     expect(app_stage).not_to include('APP_URL=')
   end
 
+  it 'provides an overridable URL to the production-style Compose environment' do
+    expect(compose_yaml).to include('APP_URL: ${APP_URL:-http://localhost}')
+  end
+
   it 'keeps Debian package installs out of the shared Docker base stage' do
     base_stage = docker_stage('base')
 
