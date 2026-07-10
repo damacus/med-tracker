@@ -73,6 +73,7 @@ Use `task` for everything. Never run `docker compose`, `bin/dev`, or `bundle exe
 | What | Command |
 |---|---|
 | Run tests | `task test` |
+| Test Docker preflight | `task test:preflight` |
 | Lint | `task rubocop` |
 | Start dev server | `task dev:up` |
 | Build dev images | `task dev:build` |
@@ -98,6 +99,8 @@ Use `task` for everything. Never run `docker compose`, `bin/dev`, or `bundle exe
 - Do not use Docker Compose watch; the bind mount and Rails reloader already provide live updates.
 
 ## Testing
+
+Run `task test:preflight` before implementation work. If it reports that Docker is unavailable or the test image is missing, fix that specific prerequisite. Use GitHub CI as the verification authority only when local Docker remains unavailable.
 
 - Write RSpec tests in `_spec.rb` files using Rails/RSpec conventions.
 - Test public APIs and observable behavior, not implementation details.

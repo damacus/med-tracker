@@ -36,8 +36,21 @@ RSpec.describe 'Taskfiles' do
   it 'uses a worktree-specific Docker Compose project name' do
     compose_project = internal_taskfile.dig('vars', 'COMPOSE_PROJECT', 'sh')
 
-    expect(compose_project).to include('git rev-parse --path-format=absolute --git-common-dir')
+    expect(compose_project).to include('pwd -P')
     expect(compose_project).to include('git hash-object --stdin')
+  end
+
+  it 'defines a Docker test preflight with distinct failure messages' do
+    commands = test_taskfile.dig('tasks', 'preflight', 'cmds')
+
+    expect(commands).to include(
+      './scripts/test_preflight.fish {{ .TEST_FILE | default "spec/config/taskfiles_spec.rb" }}'
+    )
+    expect(test_preflight_script).to include(
+      'Docker is unavailable',
+      'Test image med-tracker-web-test is missing',
+      'Test preflight spec failed'
+    )
   end
 
   it 'serializes Docker Compose runs within each worktree environment' do
@@ -107,5 +120,9 @@ RSpec.describe 'Taskfiles' do
 
   def compose_lock_script
     Rails.root.join('scripts/with_compose_lock.rb').read
+  end
+
+  def test_preflight_script
+    Rails.root.join('scripts/test_preflight.fish').read
   end
 end
