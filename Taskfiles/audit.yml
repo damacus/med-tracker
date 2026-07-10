@@ -1,0 +1,30 @@
+---
+version: "3"
+
+tasks:
+  verify:
+    desc: Verify the audit database ledger and optional Object Lock evidence
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          SERVICE: audit-verifier-prod
+          COMMAND: rails audit:verify
+
+  export:
+    desc: Export signed native audit evidence and optional FHIR R4 AuditEvent resources
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          SERVICE: audit-verifier-prod
+          COMMAND: rails audit:export
+
+  monitor:
+    desc: Emit the PHI-safe audit delivery backlog status
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          SERVICE: audit-verifier-prod
+          COMMAND: rails audit:monitor

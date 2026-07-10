@@ -18,6 +18,10 @@ Before onboarding another household, verify:
 - Invite-only registration is pinned by environment or platform-admin policy.
 - Backup and Restore test evidence exists for the current deployment.
 - Support access is only available through the audited Platform admin flow.
+- The audit exporter and verifier use dedicated credentials and cannot read clinical tables or mutate ledger history.
+- A signed `legacy-baseline` manifest has been retained outside PostgreSQL with its limitation recorded.
+- Full database and WORM verification pass; no delivery is older than five minutes.
+- The records manager/DPO has approved the versioned retention schedule and Object Lock mode.
 
 ## Tenant/RLS foundation verification
 
@@ -131,6 +135,8 @@ policy unless an explicit retention hold exists.
 4. Verify RLS default-denies without tenant context.
 5. Verify each restored household can only see its own people, medicines, schedules, notifications, audit rows, and attachments.
 6. Record restore date, backup identifier, app image/tag, migration version, tester, and outcome.
+7. Run combined audit verification and compare restored chain heads with signed WORM checkpoints.
+8. Treat a valid but older database chain as restore divergence; do not delete newer WORM evidence.
 
 ## Incident response
 
@@ -139,3 +145,4 @@ policy unless an explicit retention hold exists.
 3. Export a tenant-scoped evidence bundle for investigation.
 4. Patch and verify in an isolated environment.
 5. Re-run the go/no-go checklist before re-enabling affected access.
+6. Preserve signed manifests, public keys, Object Lock versions, delivery receipts, and verifier JSON output.

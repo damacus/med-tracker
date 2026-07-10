@@ -112,6 +112,17 @@ RSpec.describe YAML do
     expect(init_roles_sql).not_to include('GRANT med_tracker_owner TO medtracker_audit_exporter;')
   end
 
+  it 'runs audit verification without web, exporter, owner, or clinical database privileges', :aggregate_failures do
+    verifier = compose_config.dig('services', 'audit-verifier-prod')
+
+    expect(verifier.dig('environment', 'DATABASE_ROLE')).to eq('med_tracker_audit_verifier')
+    expect(verifier.dig('environment', 'DATABASE_URL')).to include('medtracker_audit_verifier:')
+    expect(verifier['environment']).to include('SCOPE', 'FORMAT', 'HOUSEHOLD_ID', 'FROM', 'TO')
+    expect(init_roles_sql).to include('GRANT med_tracker_audit_verifier TO medtracker_audit_verifier;')
+    expect(init_roles_sql).not_to include('GRANT med_tracker_owner TO medtracker_audit_verifier;')
+    expect(init_roles_sql).not_to include('GRANT med_tracker_app TO medtracker_audit_verifier;')
+  end
+
   it 'bootstraps the deployed runtime role without owner or bypassrls privileges' do
     expect(init_roles_sql).to include('ALTER ROLE med_tracker_app NOLOGIN NOSUPERUSER NOBYPASSRLS;')
     expect(init_roles_sql).to include('GRANT USAGE ON SCHEMA public TO med_tracker_app;')

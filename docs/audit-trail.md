@@ -1,139 +1,82 @@
-# Audit Trail Documentation
+# Audit Evidence
 
-## Overview
+## What the system records
 
-MedTracker uses [PaperTrail](https://github.com/paper-trail-gem/paper_trail) to maintain a complete audit trail of all changes to critical data models. This ensures compliance with UK healthcare regulations and provides accountability for all system actions.
+MedTracker records two audit sources:
 
-## Audited Models
+- `versions` contains PaperTrail create, update, and destroy evidence, including `object_changes`.
+- `security_audit_events` contains authentication, authorization, support access, import/export, API, MCP, and other security events.
 
-The following models have audit trail enabled:
+Both sources use the same versioned envelope. It identifies the event, outcome, time, household, affected entity, actor account/user/membership, active role, permissions version, authentication method, opaque session reference, request and trace identifiers, IP address, Pundit policy/query, support session, source row, redacted metadata, and retention decision. Secrets, bearer tokens, cookies, passwords, OIDC tokens, and raw session identifiers are not permitted in the envelope.
 
-- **User**: Track user account changes (excluding password fields for security)
-- **Person**: Track patient/carer demographic changes
-- **CarerRelationship**: Track carer assignments and removals
-- **Medication**: Track changes to medication definitions and stock
-- **MedicationTake**: Track all medication doses (critical for patient safety)
+The web and API controllers establish and clear the request context explicitly. Background work is identified as system activity; it is not represented as user-authorized activity.
 
-## Security Audit Events
+## Integrity boundary
 
-Security-sensitive operational events are stored in `security_audit_events`.
-MCP requests write `event_type: mcp.request` with the request ID, IP address,
-household, actor account, actor membership, JSON-RPC method, outcome, and HTTP
-status. Raw bearer tokens are not stored.
+PostgreSQL `SECURITY DEFINER` triggers append both source tables to `audit_ledger_entries` in the same transaction. Each household has an independent chain; events without a household use the global chain. Every entry binds the chain epoch, sequence, previous hash, canonical envelope, source payload, hash/schema versions, and retention decision into a SHA-256 hash.
 
-## Accessing Audit Logs
+The runtime application role can insert source events but cannot update or delete source or ledger rows. Household administrators read a tenant-filtered view. The audit exporter and verifier use separate database roles and credentials:
 
-- **URL**: `/admin/audit_logs`
-- **Access**: Administrators only (enforced by `AuditLogPolicy`)
-- **Features**:
-  - Filter by record type (User, Person, etc.)
-  - Filter by event type (create, update, destroy)
-  - View complete change history with timestamps
-  - See who made changes and from which IP address
-  - View previous state of records before changes
-  - Read-only interface (no editing or deletion of audit logs)
+- `med_tracker_audit_exporter` reads ledger/checkpoint data, signs checkpoints through a one-way database function, and updates delivery receipts. It cannot read source or clinical tables or modify ledger history.
+- `med_tracker_audit_verifier` reads source and ledger evidence and may insert the audit event describing an export. It cannot read clinical tables or alter existing source, ledger, checkpoint, or delivery rows.
 
-## Technical Details
+Database-owner access remains a break-glass capability. PostgreSQL cannot independently audit a malicious database owner who controls the database and its logs. Every owner-level audit-table operation therefore requires an incident or approved change record in a separate system.
 
-### Database Schema
+## Existing history
 
-Audit logs are stored in the `versions` table with the following key fields:
+Rows that existed when the ledger was installed are chained in a distinct `legacy-baseline` epoch. A signed baseline manifest proves the bytes exported at that point and detects later changes. It does not prove that pre-migration history was complete or unmodified before the baseline. Documentation and exports must retain that label.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `item_type` | string | Model class name (e.g., "User", "Person") |
-| `item_id` | bigint | ID of the record that changed |
-| `event` | string | Type of change: "create", "update", or "destroy" |
-| `whodunnit` | string | User ID who made the change |
-| `ip` | string | IP address of the request |
-| `object` | text | YAML snapshot of record state before change |
-| `created_at` | datetime | When the change occurred |
+## Object Lock evidence
 
-### Configuration
+The exporter writes one deterministic, content-addressed JSON object per ledger entry and signed checkpoint to an S3-compatible Object Lock bucket. Uploads use conditional creation, SHA-256 checksums, server-side encryption, expected-owner checks, versioning, and retention metadata. Matching conditional-write conflicts are accepted only after the existing object, checksum, version, mode, and retention are verified.
 
-See `config/initializers/paper_trail.rb` for:
+Temporary storage failures leave the transactional outbox pending for retry. Configuration, checksum, duplicate-version, and retention failures stop automatic retry and require operator action. The web process has no signing key or WORM credential.
 
-- Permitted YAML classes for safe deserialization
-- Default tracking options (create, update, destroy)
-- Global PaperTrail settings
+Governance mode is the default. `COMPLIANCE` mode requires `AUDIT_WORM_COMPLIANCE_APPROVED=true` after records-governance approval because its retention cannot be shortened. Object Lock configuration and permission validation is repeated while the exporter runs.
 
-### User Tracking
+## Verification
 
-The `ApplicationController` sets the audit context:
+Run:
 
-```ruby
-def user_for_paper_trail
-  current_user&.id
-end
-
-def info_for_paper_trail
-  { ip: request.remote_ip }
-end
+```fish
+task audit:verify
 ```
 
-This ensures every change is attributed to a specific user and IP address.
+Inputs are supplied as environment variables:
 
-### Adding Audit Trail to New Models
+| Variable | Values |
+|---|---|
+| `SCOPE` | `database`, `worm`, or `combined` |
+| `FORMAT` | `human` or `json` |
+| `HOUSEHOLD_ID` | Optional numeric household filter |
+| `FROM` / `TO` | Optional ISO 8601 time bounds |
 
-To enable audit tracking on a new model:
+Exit status `0` means all selected evidence is valid, `1` means an integrity failure was found, and `2` means verification could not run because of configuration or runtime failure.
 
-```ruby
-class YourModel < ApplicationRecord
-  has_paper_trail
-  
-  # Optional: exclude sensitive fields
-  # has_paper_trail ignore: %i[password_field secret_field]
-  
-  # Optional: track only specific events
-  # has_paper_trail on: %i[create destroy]
-end
+Database verification checks source-row equality, canonical payload parsing, sequence continuity, every previous-hash link, recomputed entry hashes, live chain heads, checkpoint targets, Ed25519 signatures, and retained public keys. WORM verification checks delivery completeness, object key/checksum/version, retention mode/date, missing objects, and duplicate versions.
+
+Time-bounded verification validates selected entries and their predecessor links but does not compare a filtered range with the current chain head. Scheduled full verification is still required to detect tail truncation.
+
+## Export
+
+Run:
+
+```fish
+task audit:export
 ```
 
-## Compliance & Regulatory Requirements
+Set `OUTPUT`, optional `HOUSEHOLD_ID`, `FROM`, `TO`, and `FHIR=true` as required. The export contains deterministic native NDJSON and a signed manifest. `FHIR=true` also writes a FHIR R4 `Bundle` of `AuditEvent` resources. The native envelope remains authoritative for integrity; FHIR is an interoperability representation. FHIR defines AuditEvent as a security log and advises servers not to support update/delete because that compromises audit integrity: <https://hl7.org/fhir/R4/auditevent.html>.
 
-This audit trail supports compliance with:
+Creating an export is itself written to `security_audit_events` without recording output paths or clinical content.
 
-- **UK GDPR Article 32**: Security of processing - maintaining records of data access and changes
-- **DCB0129**: Clinical Risk Management - tracking medication and patient data changes
-- **DCB0160**: Clinical Safety - audit trail for safety-critical operations
-- **NHS Data Security and Protection Toolkit**: Evidence of access controls and audit logging
+## Retention
 
-## Data Retention
+Retention policy `clinical-security-v1` applies a ten-year default floor to clinical/security audit evidence. A related record schedule, legal hold, inquiry, litigation requirement, or approved local policy may require longer retention. This is a floor, not a universal claim that every record must be destroyed after ten years or kept forever.
 
-Audit logs are retained **indefinitely** for regulatory compliance and legal requirements. The `versions` table should be monitored for growth and may require archival strategies for long-term deployments.
+Reaching `retain_until` makes evidence eligible for records-governance review. MedTracker does not automatically destroy expired audit evidence. A future governed disposal process must verify eligibility and legal holds and create an immutable destruction manifest.
 
-## Performance Considerations
+The policy must be approved by the deploying organisation's records manager and DPO before production retention is locked. NHS records guidance applies different schedules to different records, requires appraisal at the end of the minimum period, and warns against unjustified continued retention: <https://transform.england.nhs.uk/media/documents/NHSX_Records_Management_CoP_V7.pdf>.
 
-- Audit logs are written synchronously with each database change
-- The `versions` table will grow continuously - plan for database growth
-- Queries are optimized with indexes on `item_type`, `item_id`, and `created_at`
-- Consider archiving old audit logs (>7 years) to separate storage if needed
+## Limits
 
-## Security
-
-- **Read-only**: Audit logs cannot be edited or deleted through the UI
-- **Administrator access only**: Only users with `administrator` role can view audit logs
-- **IP tracking**: All changes include the originating IP address
-- **Password exclusion**: Password fields are never stored in audit logs
-- **Rate limiting**: To prevent abuse and DoS attacks on sensitive audit data:
-  - 100 requests per minute per IP address
-  - 200 requests per minute per authenticated user
-  - Violations are logged for monitoring
-
-## Testing
-
-Audit trail functionality is tested in:
-
-- `spec/models/*_spec.rb` - Model-level versioning tests
-- `spec/policies/audit_log_policy_spec.rb` - Authorization tests
-- `spec/components/admin/audit_logs/*_spec.rb` - UI component tests
-
-## Future Enhancements
-
-Potential improvements for consideration:
-
-1. **Export functionality**: Allow administrators to export audit logs as CSV/JSON
-2. **Advanced search**: Full-text search across change data
-3. **Diff view**: Visual comparison of before/after states
-4. **Alerts**: Notify administrators of suspicious patterns
-5. **Retention policies**: Automated archival of old logs
+These controls provide stronger technical evidence; they do not by themselves create UK GDPR, DSPT, DTAC, DCB0129, DCB0160, or other regulatory compliance. Governance, operating procedures, supplier controls, clinical safety work, and deployment-specific approval remain required.

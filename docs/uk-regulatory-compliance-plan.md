@@ -73,6 +73,8 @@ MedTracker’s compliance posture depends primarily on its intended use. The pla
 
 ## 6. Clinical safety and human factors (DCB0129/0160)
 
+DCB0129 and DCB0160 remain applicable, but NHS England is actively reviewing them. The clinical safety case must track the revised or replacement standard and must not treat the current audit implementation as compliance on its own.
+
 - Appoint a Clinical Safety Officer (CSO) for manufacturer and for each deploying organisation.
 - Create a Safety Case and Hazard Log; use ISO 14971 risk management.
 - Human factors: implement the “five rights” prompts, clear error states, and confirmation flows.

@@ -13,6 +13,7 @@ module DatabaseRuntimeRoleSetup
     db/migrate/20260709131100_enforce_audit_ledger_immutability.rb
     db/migrate/20260709143000_configure_audit_object_lock_exporter.rb
     db/migrate/20260709143100_enforce_recent_household_row_level_security.rb
+    db/migrate/20260709150000_configure_audit_verifier_role.rb
   ].freeze
 
   def self.call
@@ -34,6 +35,7 @@ module DatabaseRuntimeRoleSetup
       EnforceAuditLedgerImmutability.new.up
       install_audit_exporter_database_objects
       EnforceRecentHouseholdRowLevelSecurity.new.install_policies
+      install_audit_verifier_database_objects
     end
   end
 
@@ -59,6 +61,12 @@ module DatabaseRuntimeRoleSetup
     migration.send(:install_exporter_role)
     migration.send(:install_checkpoint_function)
     migration.send(:lock_exporter_privileges)
+  end
+
+  def self.install_audit_verifier_database_objects
+    migration = ConfigureAuditVerifierRole.new
+    migration.install_verifier_role
+    migration.lock_verifier_privileges
   end
 end
 

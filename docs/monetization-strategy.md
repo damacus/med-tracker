@@ -32,7 +32,7 @@ Monetize high-quality clinical data and labor-saving automations.
 
 ### Pillar D: Hardened Security Modules
 Features required for "High-Assurance" clinical use.
-*   **Forensic Audit Logs:** Tamper-evident log chaining, WORM (Write Once Read Many) storage support, and 10-year immutable retention.
+*   **Forensic Audit Logs:** Tamper-evident log chaining, WORM (Write Once Read Many) storage support, and policy-based retention with governed legal holds and disposal review.
 *   **SSO/OIDC Integration:** Custom enterprise identity provider mapping.
 
 ---

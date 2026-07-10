@@ -38,14 +38,18 @@ class MedicationReminderEligibilityQuery
     @schedules ||= if person.schedules.loaded?
                      loaded_active_schedules
                    else
-                     person.schedules.active.includes(:medication, :medication_takes).to_a
+                     active_schedules_for_today.includes(:medication, :medication_takes).to_a
                    end
   end
 
   def loaded_active_schedules
-    person.schedules.select(&:active?).tap do |schedules|
+    person.schedules.select { |schedule| schedule.active_on?(today) }.tap do |schedules|
       ActiveRecord::Associations::Preloader.new(records: schedules, associations: %i[medication medication_takes]).call
     end
+  end
+
+  def active_schedules_for_today
+    person.schedules.where(active: true).where('start_date <= ? AND end_date >= ?', today, today)
   end
 
   def person_medications

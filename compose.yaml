@@ -307,6 +307,53 @@ services:
     healthcheck:
       disable: true
 
+  audit-verifier-prod:
+    extends:
+      file: compose/base.yml
+      service: rails
+    profiles: [audit]
+    networks: [prod]
+    build:
+      target: app
+    depends_on:
+      db-prod:
+        condition: service_healthy
+      migrate-prod:
+        condition: service_completed_successfully
+    environment:
+      RAILS_ENV: production
+      DATABASE_URL: postgresql://medtracker_audit_verifier:local_audit_verifier_only@db-prod:5432/medtracker
+      DATABASE_ROLE: med_tracker_audit_verifier
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-local-prod-testing-only-not-for-real-use}
+      APP_URL: ${APP_URL:-http://localhost}
+      SCOPE: ${SCOPE:-database}
+      FORMAT: ${FORMAT:-human}
+      HOUSEHOLD_ID: ${HOUSEHOLD_ID:-}
+      FROM: ${FROM:-}
+      TO: ${TO:-}
+      OUTPUT: ${OUTPUT:-tmp/audit-exports/latest}
+      FHIR: ${FHIR:-false}
+      AUDIT_WORM_BUCKET: ${AUDIT_WORM_BUCKET:-}
+      AUDIT_WORM_REGION: ${AUDIT_WORM_REGION:-eu-west-2}
+      AUDIT_WORM_EXPECTED_OWNER: ${AUDIT_WORM_EXPECTED_OWNER:-}
+      AUDIT_WORM_RETENTION_MODE: ${AUDIT_WORM_RETENTION_MODE:-GOVERNANCE}
+      AUDIT_WORM_COMPLIANCE_APPROVED: ${AUDIT_WORM_COMPLIANCE_APPROVED:-false}
+      AUDIT_WORM_SSE: ${AUDIT_WORM_SSE:-aws:kms}
+      AUDIT_WORM_KMS_KEY_ID: ${AUDIT_WORM_KMS_KEY_ID:-}
+      AUDIT_WORM_ENDPOINT: ${AUDIT_WORM_ENDPOINT:-}
+      AUDIT_WORM_FORCE_PATH_STYLE: ${AUDIT_WORM_FORCE_PATH_STYLE:-false}
+      AUDIT_MANIFEST_SIGNING_KEY_ID: ${AUDIT_MANIFEST_SIGNING_KEY_ID:-}
+      AUDIT_MANIFEST_SIGNING_PRIVATE_KEY: ${AUDIT_MANIFEST_SIGNING_PRIVATE_KEY:-}
+      AUDIT_MANIFEST_SIGNING_PRIVATE_KEY_FILE: ${AUDIT_MANIFEST_SIGNING_PRIVATE_KEY_FILE:-}
+      AWS_ACCESS_KEY_ID: ${AUDIT_VERIFY_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AUDIT_VERIFY_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AUDIT_VERIFY_SESSION_TOKEN:-}
+    ports: []
+    volumes:
+      - ./tmp/audit-exports:/app/tmp/audit-exports
+    healthcheck:
+      disable: true
+
 networks:
   dev:
   test:
