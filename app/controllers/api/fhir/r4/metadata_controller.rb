@@ -12,11 +12,28 @@ module Api
             kind: 'instance',
             fhirVersion: '4.0.1',
             format: ['json', FHIR_JSON],
-            rest: [{ mode: 'server', resource: resources }]
+            rest: [{ mode: 'server', security: smart_security, resource: resources }]
           }, content_type: FHIR_JSON
         end
 
         private
+
+        def smart_security
+          {
+            service: [{
+              coding: [{
+                system: 'http://terminology.hl7.org/CodeSystem/restful-security-service',
+                code: 'SMART-on-FHIR'
+              }]
+            }],
+            extension: [{
+              url: 'http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris',
+              extension: %w[authorize token revoke].map do |endpoint|
+                { url: endpoint, valueUri: "#{request.base_url}/#{endpoint}" }
+              end
+            }]
+          }
+        end
 
         def resources
           [

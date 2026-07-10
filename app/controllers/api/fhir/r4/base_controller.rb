@@ -8,8 +8,54 @@ module Api
         SUPPORTED_FORMATS = ['json', FHIR_JSON].freeze
 
         before_action :ensure_fhir_format
+        before_action :ensure_smart_scope
 
         private
+
+        def policy_scope(scope, policy_scope_class: nil)
+          resolved = super
+          return resolved unless current_api_session.is_a?(OauthGrant) && current_api_session.patient_scoped?
+
+          smart_patient_scope(resolved)
+        end
+
+        def ensure_smart_scope
+          return unless current_api_session.is_a?(OauthGrant)
+          return if controller_name == 'metadata'
+          return if current_api_session.allows_fhir_read?(controller_name.classify)
+
+          render_forbidden
+        end
+
+        def smart_patient_scope(scope)
+          person_id = current_api_session.person_id
+          case scope.klass.name
+          when 'Person'
+            scope.where(id: person_id)
+          when 'Schedule', 'PersonMedication'
+            scope.where(person_id: person_id)
+          when 'MedicationTake'
+            smart_medication_take_scope(scope, person_id)
+          when 'Medication'
+            smart_medication_scope(scope, person_id)
+          else
+            scope.none
+          end
+        end
+
+        def smart_medication_take_scope(scope, person_id)
+          scope.left_outer_joins(:schedule, :person_medication)
+               .where(schedules: { person_id: person_id })
+               .or(scope.left_outer_joins(:schedule, :person_medication)
+                        .where(person_medications: { person_id: person_id }))
+        end
+
+        def smart_medication_scope(scope, person_id)
+          scope.left_outer_joins(:schedules, :person_medications)
+               .where(schedules: { person_id: person_id })
+               .or(scope.left_outer_joins(:schedules, :person_medications)
+                        .where(person_medications: { person_id: person_id })).distinct
+        end
 
         def render_fhir_collection(scope, serializer, search: {})
           searched = apply_fhir_search(scope, search)

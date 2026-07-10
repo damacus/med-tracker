@@ -595,6 +595,9 @@ GEM
       sequel (>= 4)
     rodauth-model (0.5.0)
       rodauth (~> 2.28)
+    rodauth-oauth (1.6.4)
+      base64
+      rodauth (~> 2.0)
     rodauth-omniauth (0.6.2)
       omniauth (~> 2.0)
       rodauth (~> 2.36)
@@ -884,6 +887,7 @@ DEPENDENCIES
   pundit-matchers
   rack-attack
   rails (>= 8.0)
+  rodauth-oauth (~> 1.6)
   rodauth-omniauth
   rodauth-rails
   rotp

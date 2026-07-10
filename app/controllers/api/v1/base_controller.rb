@@ -60,6 +60,7 @@ module Api
       def valid_session?
         return false if @current_api_session.blank? || @current_api_session.revoked_at.present?
         return @current_api_session.access_expires_at.future? if @current_api_session.is_a?(ApiSession)
+        return @current_api_session.active_for_membership? if @current_api_session.is_a?(OauthGrant)
 
         @current_api_session.is_a?(ApiAppToken)
       end
@@ -133,7 +134,8 @@ module Api
 
       def lookup_api_credential
         token = bearer_token
-        ApiSession.lookup_by_access_token(token) || ApiAppToken.lookup_by_token(token)
+        ApiSession.lookup_by_access_token(token) || ApiAppToken.lookup_by_token(token) ||
+          OauthGrant.lookup_by_access_token(token)
       end
 
       def render_collection(scope, serializer:, includes: nil)

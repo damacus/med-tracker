@@ -92,21 +92,21 @@ person-level authorization.
 
 ## SMART on FHIR
 
-SMART on FHIR is deferred.
+MedTracker supports the SMART App Launch authorization-code flow for registered
+third-party clients. Public clients use PKCE with `S256`; confidential clients
+may use HTTP Basic or posted client credentials. Consent binds the grant to the
+signed-in account's active household membership and person, and FHIR reads must
+pass both the SMART resource scope and the existing policy scope.
 
-MedTracker supports FHIR R4 resource responses, but it does not yet support the
-full SMART app launch profile. Specifically, it does not currently provide:
+The discovery document is available at
+`/api/fhir/R4/.well-known/smart-configuration`. The FHIR `CapabilityStatement`
+advertises the authorization, token, and revocation endpoints. MedTracker does
+not advertise EHR launch because only standalone launch is implemented.
 
-- third-party app registration and redirect URI governance;
-- SMART launch context;
-- SMART scopes and consent;
-- external OAuth authorization-code issuance;
-- third-party refresh-token lifecycle;
-- `.well-known/smart-configuration` metadata.
-
-The FHIR `CapabilityStatement` should describe implemented FHIR resource
-behavior only. It must not imply SMART support until the SMART-specific contract
-is implemented and tested.
+Access tokens expire after 15 minutes. Refresh tokens expire after 30 days and
+rotate on use. Revoking either credential revokes the complete grant. Stored
+credentials are SHA-256 digests; raw authorization codes and tokens are not
+written to security audit metadata.
 
 ## Rejected Alternatives
 
