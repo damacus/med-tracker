@@ -104,6 +104,31 @@ RSpec.describe Audit::ObjectLock::S3Adapter do
     expect { adapter.write(entry) }.to raise_error(Audit::ObjectLock::IntegrityError, /retention is too short/)
   end
 
+  it 'verifies the exact delivered object version' do
+    serializer = Audit::ObjectLock::RecordSerializer.new(entry)
+    delivery = delivery_for(serializer)
+    allow(client).to receive_messages(
+      head_object: valid_head(serializer, version_id: 'version-1'),
+      list_object_versions: instance_double(
+        Aws::S3::Types::ListObjectVersionsOutput, versions: [object_version(serializer, 'version-1')]
+      )
+    )
+
+    expect(adapter.verify(entry, delivery:)).to be(true)
+  end
+
+  it 'rejects duplicate object versions' do
+    serializer = Audit::ObjectLock::RecordSerializer.new(entry)
+    delivery = delivery_for(serializer)
+    versions = [object_version(serializer, 'version-1'), object_version(serializer, 'version-2')]
+    allow(client).to receive_messages(
+      head_object: valid_head(serializer, version_id: 'version-1'),
+      list_object_versions: instance_double(Aws::S3::Types::ListObjectVersionsOutput, versions:)
+    )
+
+    expect { adapter.verify(entry, delivery:) }.to raise_error(Audit::ObjectLock::IntegrityError, /duplicate/)
+  end
+
   def stub_valid_bucket
     object_lock = instance_double(Aws::S3::Types::ObjectLockConfiguration, object_lock_enabled: 'Enabled')
     allow(client).to receive_messages(
@@ -136,5 +161,26 @@ RSpec.describe Audit::ObjectLock::S3Adapter do
       Aws::S3::Types::GetBucketEncryptionOutput,
       server_side_encryption_configuration: configuration
     )
+  end
+
+  def valid_head(serializer, version_id:)
+    instance_double(
+      Aws::S3::Types::HeadObjectOutput,
+      checksum_sha256: serializer.checksum_sha256_base64,
+      metadata: {}, object_lock_retain_until_date: entry.retain_until,
+      object_lock_mode: 'GOVERNANCE', version_id:
+    )
+  end
+
+  def delivery_for(serializer)
+    instance_double(
+      AuditExportDelivery,
+      object_key: serializer.object_key, checksum_sha256: serializer.checksum_sha256,
+      object_version_id: 'version-1', retention_mode: 'GOVERNANCE', retain_until: entry.retain_until
+    )
+  end
+
+  def object_version(serializer, version_id)
+    instance_double(Aws::S3::Types::ObjectVersion, key: serializer.object_key, version_id:)
   end
 end

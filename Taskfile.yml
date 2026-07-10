@@ -20,6 +20,8 @@ includes:
     taskfile: Taskfiles/docs.yml
   worktree:
     taskfile: Taskfiles/worktree.yml
+  audit:
+    taskfile: Taskfiles/audit.yml
 
 tasks:
   default:
