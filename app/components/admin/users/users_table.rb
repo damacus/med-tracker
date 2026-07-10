@@ -7,13 +7,13 @@ module Components
       class UsersTable < Components::Base
         include Phlex::Rails::Helpers::FormWith
 
-        attr_reader :users, :search_params, :current_user, :household
+        attr_reader :users, :search_params, :current_user, :access_summary
 
-        def initialize(users:, search_params: {}, current_user: nil, household: nil)
+        def initialize(users:, access_summary:, search_params: {}, current_user: nil)
           @users = users
+          @access_summary = access_summary
           @search_params = search_params
           @current_user = current_user
-          @household = household || Current.household
           super()
         end
 
@@ -139,8 +139,7 @@ module Components
               render Components::Admin::Users::UserRow.new(
                 user: user,
                 current_user: current_user,
-                household: household,
-                membership_role: membership_role_for(user)
+                access_summary: access_summary
               )
             end
           end
@@ -148,24 +147,9 @@ module Components
 
         def membership_role_for(user)
           account_id = user.person&.account_id
-          return no_membership_label unless household && account_id
+          return no_membership_label unless account_id
 
-          membership = memberships_by_account_id[account_id]
-          membership&.role&.titleize || no_membership_label
-        end
-
-        def memberships_by_account_id
-          return @memberships_by_account_id if defined?(@memberships_by_account_id)
-
-          account_ids = users.filter_map { |user| user.person&.account_id }.uniq
-          @memberships_by_account_id = if household && account_ids.any?
-                                         household.household_memberships
-                                                  .active
-                                                  .where(account_id: account_ids)
-                                                  .index_by(&:account_id)
-                                       else
-                                         {}
-                                       end
+          access_summary.membership_role_for(account_id)&.titleize || no_membership_label
         end
 
         def no_membership_label
@@ -173,38 +157,11 @@ module Components
         end
 
         def system_access_label_for(user)
-          if platform_admin_account_ids.include?(user.person&.account_id)
+          if access_summary.platform_admin?(user.person&.account_id)
             t('admin.users.table.system_administrator')
           else
             t('admin.users.table.household_user')
           end
-        end
-
-        def platform_admin_account_ids
-          return @platform_admin_account_ids if defined?(@platform_admin_account_ids)
-
-          @platform_admin_account_ids = if platform_admin_accounts_loaded?
-                                          preloaded_platform_admin_account_ids
-                                        else
-                                          PlatformAdmin.active
-                                                       .where(account_id: memberships_by_account_id.keys)
-                                                       .pluck(:account_id)
-                                                       .to_set
-                                        end
-        end
-
-        def platform_admin_accounts_loaded?
-          loaded_accounts.all? { |account| account.association(:platform_admin).loaded? }
-        end
-
-        def preloaded_platform_admin_account_ids
-          loaded_accounts.filter_map do |account|
-            account.id if account.platform_admin&.active?
-          end.to_set
-        end
-
-        def loaded_accounts
-          @loaded_accounts ||= users.filter_map { |user| user.person&.account }
         end
 
         def render_status_badge(user)

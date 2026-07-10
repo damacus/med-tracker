@@ -38,8 +38,9 @@ module Admin
     def show
       @version = policy_scope(PaperTrail::Version.all, policy_scope_class: AuditLogPolicy::Scope).find(params.expect(:id))
       authorize @version, policy_class: AuditLogPolicy
+      detail = Admin::AuditLogDetailQuery.new(version: @version).call
 
-      render Components::Admin::AuditLogs::ShowView.new(version: @version)
+      render Components::Admin::AuditLogs::ShowView.new(version: @version, detail: detail)
     end
 
     private

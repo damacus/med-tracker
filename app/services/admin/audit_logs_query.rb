@@ -81,4 +81,105 @@ module Admin
       scope.reorder(nil).where.not(column => [nil, '']).distinct.pluck(column)
     end
   end
+
+  class AuditLogDetailQuery
+    Result = Data.define(
+      :actor_name,
+      :medication_take,
+      :next_version,
+      :current_record,
+      :source_record,
+      :stock_source,
+      :stock_location
+    )
+
+    attr_reader :version
+
+    def initialize(version:)
+      @version = version
+    end
+
+    def call
+      medication_take = medication_take_record
+      object_data = parsed_object_data
+      next_version = following_version
+
+      Result.new(
+        actor_name: AuditActorResolver.new.name_for(version.whodunnit),
+        medication_take: medication_take,
+        next_version: next_version,
+        current_record: current_record(next_version),
+        source_record: source_record(medication_take, object_data),
+        stock_source: stock_source(medication_take, object_data),
+        stock_location: stock_location(medication_take, object_data)
+      )
+    end
+
+    private
+
+    def medication_take_record
+      return unless version.item_type == 'MedicationTake' && version.item_id.present?
+
+      MedicationTake.includes(
+        :taken_from_location,
+        taken_from_medication: :location,
+        schedule: [{ medication: :location }, :person],
+        person_medication: [{ medication: :location }, :person]
+      ).find_by(id: version.item_id)
+    end
+
+    def following_version
+      return if version.event == 'destroy'
+
+      PaperTrail::Version.where(item_type: version.item_type, item_id: version.item_id)
+                         .where('id > ?', version.id)
+                         .order(:id)
+                         .first
+    end
+
+    def current_record(next_version)
+      return if next_version&.object.present?
+
+      version.item_type.safe_constantize&.find_by(id: version.item_id)
+    rescue StandardError
+      nil
+    end
+
+    def source_record(medication_take, data)
+      return medication_take.source if medication_take&.source
+
+      schedule_id = data['schedule_id'].presence
+      return Schedule.includes(:medication, :person).find_by(id: schedule_id) if schedule_id
+
+      person_medication_id = data['person_medication_id'].presence
+      return unless person_medication_id
+
+      PersonMedication.includes(:medication, :person).find_by(id: person_medication_id)
+    end
+
+    def stock_source(medication_take, data)
+      inventory_medication = medication_take&.inventory_medication
+      return inventory_medication if inventory_medication
+
+      medication_id = data['taken_from_medication_id'].presence
+      Medication.find_by(id: medication_id) if medication_id
+    end
+
+    def stock_location(medication_take, data)
+      inventory_location = medication_take&.inventory_location
+      return inventory_location if inventory_location
+
+      location_id = data['taken_from_location_id'].presence
+      Location.find_by(id: location_id) if location_id
+    end
+
+    def parsed_object_data
+      return {} unless version.item_type == 'MedicationTake' && version.object.present?
+
+      data = YAML.safe_load(version.object, permitted_classes: ActiveRecord.yaml_column_permitted_classes)
+      data.is_a?(Hash) ? data.stringify_keys : {}
+    rescue StandardError
+      {}
+    end
+  end
 end

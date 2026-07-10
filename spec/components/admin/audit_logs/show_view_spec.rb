@@ -19,14 +19,15 @@ RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
 
   describe 'initialization' do
     it 'accepts a version' do
-      view = described_class.new(version: version)
+      view = view_for(version)
 
       expect(view.version).to eq(version)
+      expect(view.detail).to be_a(Admin::AuditLogDetailQuery::Result)
     end
   end
 
   describe 'helper methods' do
-    subject(:view) { described_class.new(version: version) }
+    subject(:view) { view_for(version) }
 
     describe '#user_name' do
       it 'returns the user name when whodunnit is present' do
@@ -207,20 +208,28 @@ RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
       expect(payload['logged_by_name']).to eq(admin.name)
     end
 
-    it 'looks up the logged-by user once per render' do
+    it 'does not look up the logged-by user while rendering' do
       version = medication_take_version
+      view = view_for(version)
 
-      expect(count_user_queries { render_inline(described_class.new(version: version)) }).to eq(1)
+      expect(count_user_queries { render_inline(view) }).to eq(0)
+    end
+
+    it 'does not execute SQL while rendering an audit detail' do
+      version = medication_take_version
+      view = view_for(version)
+
+      expect(count_queries { render_inline(view) }).to eq(0)
     end
 
     def medication_take_summary
-      rendered = render_inline(described_class.new(version: medication_take_version))
+      rendered = render_inline(view_for(medication_take_version))
 
       rendered.at_css('[data-testid="audit-log-medication-take-summary"]')
     end
 
     def medication_take_payload
-      rendered = render_inline(described_class.new(version: medication_take_version))
+      rendered = render_inline(view_for(medication_take_version))
       JSON.parse(rendered.css('pre code').last.text)
     end
 
@@ -237,5 +246,22 @@ RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
       ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
       count
     end
+
+    def count_queries(&)
+      count = 0
+      subscriber = lambda do |_name, _start, _finish, _id, payload|
+        next if payload[:cached] || payload[:name] == 'SCHEMA'
+
+        count += 1
+      end
+
+      ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
+      count
+    end
+  end
+
+  def view_for(version)
+    detail = Admin::AuditLogDetailQuery.new(version: version).call
+    described_class.new(version: version, detail: detail)
   end
 end
