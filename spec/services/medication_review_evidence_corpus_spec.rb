@@ -44,6 +44,18 @@ RSpec.describe MedicationReviewEvidenceCorpus do
     expect(matches).to be_empty
   end
 
+  it 'suppresses an explicit ingredient mention when the label requires no adjustment' do
+    evidence = evidence_record(
+      source_record_id: 'no-adjustment',
+      candidate_terms: ['metformin'],
+      evidence_text: 'No dosing adjustments required for ibuprofen coadministered with metformin.'
+    )
+
+    matches = described_class.new([evidence]).matches_for('Metformin', 'Ibuprofen')
+
+    expect(matches).to be_empty
+  end
+
   it 'preserves manually reviewed pair confidence while exposing a match reason' do
     evidence = evidence_record(
       source_record_id: 'reviewed-pair',

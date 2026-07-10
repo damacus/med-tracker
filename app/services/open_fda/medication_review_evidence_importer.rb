@@ -13,7 +13,8 @@ module OpenFda
     end
 
     def call(limit: nil, labels: nil)
-      (labels || client.labels(limit: limit)).map { |label| import_label(label) }
+      source_labels = labels || client.labels(limit: limit)
+      ActiveRecord::Base.transaction { source_labels.map { |label| import_label(label) } }
     end
 
     private

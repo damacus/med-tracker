@@ -33,6 +33,14 @@ RSpec.describe MedicationReviewSourceInstructionClassifier do
     expect(result).to have_attributes(instruction: 'unclassified', risk_level: 'unknown')
   end
 
+  it 'recognises explicit no-adjustment wording as no action required' do
+    text = 'No dosing adjustments required for ibuprofen.'
+
+    result = described_class.new(text, matched_term: 'ibuprofen').call
+
+    expect(result).to have_attributes(instruction: 'no_action_required', risk_level: 'low')
+  end
+
   it 'classifies only the sentence containing the matched medicine' do
     text = 'Use with phenelzine is contraindicated. Monitor INR when warfarin is used.'
 

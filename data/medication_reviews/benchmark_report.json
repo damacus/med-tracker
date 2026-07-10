@@ -1,28 +1,28 @@
 {
   "inventory": {
     "candidate_pair_count": 7140,
-    "matched_pair_count": 1152,
-    "match_count": 1423,
+    "matched_pair_count": 1134,
+    "match_count": 1403,
     "match_types": {
-      "class": 468,
-      "ingredient": 955
+      "class": 467,
+      "ingredient": 936
     },
     "source_instructions": {
       "avoid": 59,
-      "contraindicated": 109,
-      "monitor_or_adjust": 193,
+      "contraindicated": 103,
+      "monitor_or_adjust": 181,
       "possible_or_caution": 516,
-      "unclassified": 546
+      "unclassified": 544
     },
     "risk_levels": {
-      "high": 168,
+      "high": 162,
       "low": 516,
-      "moderate": 193,
-      "unknown": 546
+      "moderate": 181,
+      "unknown": 544
     },
     "match_confidences": {
-      "high": 955,
-      "moderate": 468
+      "high": 936,
+      "moderate": 467
     },
     "matched_pairs": [
       {
@@ -1013,20 +1013,6 @@
       },
       {
         "first": "warfarin",
-        "second": "oseltamivir",
-        "matches": [
-          {
-            "source_record_id": "c61bb5af-558f-4b32-b34d-8fdae480443c",
-            "matched_term": "warfarin",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "monitor_or_adjust",
-            "risk_level": "moderate"
-          }
-        ]
-      },
-      {
-        "first": "warfarin",
         "second": "selegiline",
         "matches": [
           {
@@ -1194,20 +1180,6 @@
             "match_confidence": "high",
             "source_instruction": "possible_or_caution",
             "risk_level": "low"
-          }
-        ]
-      },
-      {
-        "first": "apixaban",
-        "second": "clarithromycin",
-        "matches": [
-          {
-            "source_record_id": "a454cd24-0c6d-46e8-b1e4-197388606175",
-            "matched_term": "clarithromycin",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "monitor_or_adjust",
-            "risk_level": "moderate"
           }
         ]
       },
@@ -1939,20 +1911,6 @@
       },
       {
         "first": "aspirin",
-        "second": "oseltamivir",
-        "matches": [
-          {
-            "source_record_id": "c61bb5af-558f-4b32-b34d-8fdae480443c",
-            "matched_term": "aspirin",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "monitor_or_adjust",
-            "risk_level": "moderate"
-          }
-        ]
-      },
-      {
-        "first": "aspirin",
         "second": "probenecid",
         "matches": [
           {
@@ -2379,20 +2337,6 @@
       },
       {
         "first": "ibuprofen",
-        "second": "metformin",
-        "matches": [
-          {
-            "source_record_id": "7e41818c-60e9-4bcf-9586-7bb8d33d5e89",
-            "matched_term": "ibuprofen",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "monitor_or_adjust",
-            "risk_level": "moderate"
-          }
-        ]
-      },
-      {
-        "first": "ibuprofen",
         "second": "spironolactone",
         "matches": [
           {
@@ -2491,20 +2435,6 @@
       },
       {
         "first": "ibuprofen",
-        "second": "misoprostol",
-        "matches": [
-          {
-            "source_record_id": "c842c35f-6a64-4ecc-95a1-41b6d056047e",
-            "matched_term": "ibuprofen",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "unclassified",
-            "risk_level": "unknown"
-          }
-        ]
-      },
-      {
-        "first": "ibuprofen",
         "second": "pemetrexed",
         "matches": [
           {
@@ -2542,20 +2472,6 @@
             "match_confidence": "high",
             "source_instruction": "unclassified",
             "risk_level": "unknown"
-          }
-        ]
-      },
-      {
-        "first": "ibuprofen",
-        "second": "selegiline",
-        "matches": [
-          {
-            "source_record_id": "b891bd9f-fdb8-4862-89c5-ecdd700398a3",
-            "matched_term": "ibuprofen",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "monitor_or_adjust",
-            "risk_level": "moderate"
           }
         ]
       },
@@ -3125,20 +3041,6 @@
       },
       {
         "first": "diclofenac",
-        "second": "misoprostol",
-        "matches": [
-          {
-            "source_record_id": "c842c35f-6a64-4ecc-95a1-41b6d056047e",
-            "matched_term": "diclofenac",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "unclassified",
-            "risk_level": "unknown"
-          }
-        ]
-      },
-      {
-        "first": "diclofenac",
         "second": "pemetrexed",
         "matches": [
           {
@@ -3489,20 +3391,6 @@
       },
       {
         "first": "acetaminophen",
-        "second": "oseltamivir",
-        "matches": [
-          {
-            "source_record_id": "c61bb5af-558f-4b32-b34d-8fdae480443c",
-            "matched_term": "acetaminophen",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "monitor_or_adjust",
-            "risk_level": "moderate"
-          }
-        ]
-      },
-      {
-        "first": "acetaminophen",
         "second": "prilocaine",
         "matches": [
           {
@@ -3526,20 +3414,6 @@
             "match_confidence": "high",
             "source_instruction": "unclassified",
             "risk_level": "unknown"
-          }
-        ]
-      },
-      {
-        "first": "acetaminophen",
-        "second": "rilpivirine",
-        "matches": [
-          {
-            "source_record_id": "fb109de9-d88d-4405-8dd6-d458cbc387d1",
-            "matched_term": "acetaminophen",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "contraindicated",
-            "risk_level": "high"
           }
         ]
       },
@@ -6639,20 +6513,6 @@
       },
       {
         "first": "methadone",
-        "second": "rilpivirine",
-        "matches": [
-          {
-            "source_record_id": "fb109de9-d88d-4405-8dd6-d458cbc387d1",
-            "matched_term": "methadone",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "monitor_or_adjust",
-            "risk_level": "moderate"
-          }
-        ]
-      },
-      {
-        "first": "methadone",
         "second": "selegiline",
         "matches": [
           {
@@ -7932,20 +7792,6 @@
             "match_confidence": "moderate",
             "source_instruction": "unclassified",
             "risk_level": "unknown"
-          }
-        ]
-      },
-      {
-        "first": "alprazolam",
-        "second": "selegiline",
-        "matches": [
-          {
-            "source_record_id": "b891bd9f-fdb8-4862-89c5-ecdd700398a3",
-            "matched_term": "alprazolam",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "monitor_or_adjust",
-            "risk_level": "moderate"
           }
         ]
       },
@@ -12393,20 +12239,6 @@
       },
       {
         "first": "metformin",
-        "second": "furosemide",
-        "matches": [
-          {
-            "source_record_id": "7e41818c-60e9-4bcf-9586-7bb8d33d5e89",
-            "matched_term": "furosemide",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "monitor_or_adjust",
-            "risk_level": "moderate"
-          }
-        ]
-      },
-      {
-        "first": "metformin",
         "second": "verapamil",
         "matches": [
           {
@@ -12782,20 +12614,6 @@
             "match_confidence": "high",
             "source_instruction": "unclassified",
             "risk_level": "unknown"
-          }
-        ]
-      },
-      {
-        "first": "levothyroxine",
-        "second": "selegiline",
-        "matches": [
-          {
-            "source_record_id": "b891bd9f-fdb8-4862-89c5-ecdd700398a3",
-            "matched_term": "levothyroxine",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "monitor_or_adjust",
-            "risk_level": "moderate"
           }
         ]
       },
@@ -13272,20 +13090,6 @@
             "match_confidence": "moderate",
             "source_instruction": "unclassified",
             "risk_level": "unknown"
-          }
-        ]
-      },
-      {
-        "first": "atorvastatin",
-        "second": "rilpivirine",
-        "matches": [
-          {
-            "source_record_id": "fb109de9-d88d-4405-8dd6-d458cbc387d1",
-            "matched_term": "atorvastatin",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "contraindicated",
-            "risk_level": "high"
           }
         ]
       },
@@ -15148,14 +14952,6 @@
             "match_confidence": "high",
             "source_instruction": "contraindicated",
             "risk_level": "high"
-          },
-          {
-            "source_record_id": "fb109de9-d88d-4405-8dd6-d458cbc387d1",
-            "matched_term": "omeprazole",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "contraindicated",
-            "risk_level": "high"
           }
         ]
       },
@@ -15272,14 +15068,6 @@
             "match_confidence": "high",
             "source_instruction": "contraindicated",
             "risk_level": "high"
-          },
-          {
-            "source_record_id": "fb109de9-d88d-4405-8dd6-d458cbc387d1",
-            "matched_term": "pantoprazole",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "contraindicated",
-            "risk_level": "high"
           }
         ]
       },
@@ -15389,20 +15177,6 @@
         "matches": [
           {
             "source_record_id": "7fbea274-d6b5-4faa-bbf0-05fefab42114",
-            "matched_term": "sildenafil",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "contraindicated",
-            "risk_level": "high"
-          }
-        ]
-      },
-      {
-        "first": "sildenafil",
-        "second": "rilpivirine",
-        "matches": [
-          {
-            "source_record_id": "fb109de9-d88d-4405-8dd6-d458cbc387d1",
             "matched_term": "sildenafil",
             "match_type": "ingredient",
             "match_confidence": "high",
@@ -16421,20 +16195,6 @@
       },
       {
         "first": "ketoconazole",
-        "second": "selegiline",
-        "matches": [
-          {
-            "source_record_id": "b891bd9f-fdb8-4862-89c5-ecdd700398a3",
-            "matched_term": "ketoconazole",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "monitor_or_adjust",
-            "risk_level": "moderate"
-          }
-        ]
-      },
-      {
-        "first": "ketoconazole",
         "second": "voriconazole",
         "matches": [
           {
@@ -16940,20 +16700,6 @@
             "matched_term": "azathioprine",
             "match_type": "ingredient",
             "match_confidence": "high",
-            "source_instruction": "contraindicated",
-            "risk_level": "high"
-          }
-        ]
-      },
-      {
-        "first": "azathioprine",
-        "second": "rilpivirine",
-        "matches": [
-          {
-            "source_record_id": "fb109de9-d88d-4405-8dd6-d458cbc387d1",
-            "matched_term": "nucleoside",
-            "match_type": "class",
-            "match_confidence": "moderate",
             "source_instruction": "contraindicated",
             "risk_level": "high"
           }
@@ -18204,20 +17950,6 @@
             "match_confidence": "high",
             "source_instruction": "possible_or_caution",
             "risk_level": "low"
-          }
-        ]
-      },
-      {
-        "first": "oseltamivir",
-        "second": "rimantadine",
-        "matches": [
-          {
-            "source_record_id": "c61bb5af-558f-4b32-b34d-8fdae480443c",
-            "matched_term": "rimantadine",
-            "match_type": "ingredient",
-            "match_confidence": "high",
-            "source_instruction": "monitor_or_adjust",
-            "risk_level": "moderate"
           }
         ]
       },

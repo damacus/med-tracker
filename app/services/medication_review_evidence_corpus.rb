@@ -102,6 +102,8 @@ class MedicationReviewEvidenceCorpus
     classification = MedicationReviewSourceInstructionClassifier.new(
       record.evidence_text, matched_term: matched_term
     ).call
+    return if classification.instruction == 'no_action_required'
+
     Match.new(
       evidence: record,
       matched_term: matched_term,
