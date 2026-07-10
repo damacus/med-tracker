@@ -46,7 +46,7 @@ RSpec.describe SimpleCov do
   it 'pins the Lighthouse setup actions' do
     job = lighthouse_job
 
-    expect(job).to include('uses: browser-actions/setup-chrome@c785b87e244131f27c9f19c1a33e2ead956ab7ce')
+    expect(job).to include('uses: browser-actions/setup-chrome@2e1d749697dd1612b833dba4a722266286fbefcd')
     expect(job).to include('uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52')
   end
 
