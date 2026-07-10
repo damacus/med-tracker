@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.5.9](https://github.com/damacus/med-tracker/compare/v0.5.8...v0.5.9) (2026-07-10)
+
+
+### Features
+
+* **audit:** add tamper-evident ledger ([#1555](https://github.com/damacus/med-tracker/issues/1555)) ([e9b38ed](https://github.com/damacus/med-tracker/commit/e9b38ed5243a40210f8ae8e012ce2a62b61860c6))
+* **audit:** capture forensic request context ([#1552](https://github.com/damacus/med-tracker/issues/1552)) ([ee9809b](https://github.com/damacus/med-tracker/commit/ee9809bc17054bd75d735613de8d43c7d045a80e))
+* **audit:** export evidence to object lock ([#1558](https://github.com/damacus/med-tracker/issues/1558)) ([082d592](https://github.com/damacus/med-tracker/commit/082d59265668f98f968c80f78c0dc4a57ca5c31e))
+* **audit:** verify and export evidence ([#1562](https://github.com/damacus/med-tracker/issues/1562)) ([d5bf0e8](https://github.com/damacus/med-tracker/commit/d5bf0e8068b6585ddcad987f47cdf400a1efd3c0))
+* **client-tools:** add rust cli and mcp workspace ([#1536](https://github.com/damacus/med-tracker/issues/1536)) ([63c49aa](https://github.com/damacus/med-tracker/commit/63c49aac8c51e8f7e70fd05ca5904d277573134a))
+* **mcp:** add read-only agent context ([#1514](https://github.com/damacus/med-tracker/issues/1514)) ([3dc0be7](https://github.com/damacus/med-tracker/commit/3dc0be7e242c8f384110c06b4396204985a984e3))
+* **storage:** enforce durable production uploads ([#1569](https://github.com/damacus/med-tracker/issues/1569)) ([a358fc4](https://github.com/damacus/med-tracker/commit/a358fc451f3b8127302ce817c3386a1d5a72ae2a))
+
+
+### Bug Fixes
+
+* **API:** Harden API sync, exports, and session handling ([#1513](https://github.com/damacus/med-tracker/issues/1513)) ([646ae64](https://github.com/damacus/med-tracker/commit/646ae6467e133c54580149b0a612853e9de2b189))
+* **auth:** silence background passkey failures ([#1559](https://github.com/damacus/med-tracker/issues/1559)) ([6f0c28b](https://github.com/damacus/med-tracker/commit/6f0c28b1ea5bbb9b583e508ab62b3ef77cb56e04))
+* **build:** provide asset compilation URL ([#1566](https://github.com/damacus/med-tracker/issues/1566)) ([bb31561](https://github.com/damacus/med-tracker/commit/bb31561fd66ab928e933a38cf2f1714ea64c73f6))
+* **deploy:** separate migrations from seeds ([#1568](https://github.com/damacus/med-tracker/issues/1568)) ([b1000b9](https://github.com/damacus/med-tracker/commit/b1000b9bcb6a6e528935bf531cbd882c4ad852f6))
+* **exports:** audit downloads and prevent caching ([#1556](https://github.com/damacus/med-tracker/issues/1556)) ([31e9890](https://github.com/damacus/med-tracker/commit/31e9890bbd93aa9b845b6df482c547677605ebda))
+* **medications:** restore mobile wizard layout ([#1554](https://github.com/damacus/med-tracker/issues/1554)) ([3927f7b](https://github.com/damacus/med-tracker/commit/3927f7bc69780c0e03df7df1ba30c2e443710c33))
+* **security:** harden auth, imports, and reports ([28e5c3a](https://github.com/damacus/med-tracker/commit/28e5c3ab54af2a624437a132e61bb7ef3d0a5b03))
+* **security:** harden delegated medication boundaries ([54633e2](https://github.com/damacus/med-tracker/commit/54633e2cb52ad0ce24f2bb18ee9761cec877f775))
+* **security:** harden push, throttles, and hosts ([e04a0cf](https://github.com/damacus/med-tracker/commit/e04a0cff55d85fc8796cb1fc46c1a5085f3025df))
+* **security:** tighten delegated medication access ([f6d7014](https://github.com/damacus/med-tracker/commit/f6d7014c00ef10113b36e59df7bd91b8e74348c4))
+* **tooling:** align runtimes and serialize checks ([#1553](https://github.com/damacus/med-tracker/issues/1553)) ([1e804d3](https://github.com/damacus/med-tracker/commit/1e804d379dc749a388c85c372a918afa5e199698))
+
+
+### Performance Improvements
+
+* reuse health history events ([#1543](https://github.com/damacus/med-tracker/issues/1543)) ([209b75e](https://github.com/damacus/med-tracker/commit/209b75e293a0b3e7707cb6908bf943d7dcd7740e))
+
 ## [0.5.8](https://github.com/damacus/med-tracker/compare/v0.5.7...v0.5.8) (2026-07-07)
 
 
