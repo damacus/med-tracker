@@ -13,14 +13,25 @@ module PortableData
     end
 
     def call
-      envelope = Encryptor.encrypt(payload, passphrase: passphrase)
-      record_audit_event(payload)
+      export_payload = payload
+      envelope = Encryptor.encrypt(export_payload, passphrase: passphrase)
+      record_audit_event(export_payload, export_mode: 'encrypted_migration_bundle')
       envelope
     end
 
+    def export_unencrypted(export_mode:, event_type: 'portable_data.exported')
+      export_payload = payload
+      result = yield(export_payload)
+      record_audit_event(export_payload, event_type: event_type, encrypted: false, export_mode: export_mode)
+      result
+    end
+
     def mobile_snapshot
-      payload.tap do |export_payload|
-        record_audit_event(export_payload, event_type: 'portable_data.mobile_snapshot_read', encrypted: false)
+      export_unencrypted(
+        export_mode: 'mobile_snapshot',
+        event_type: 'portable_data.mobile_snapshot_read'
+      ) do |export_payload|
+        export_payload
       end
     end
 
@@ -141,7 +152,7 @@ module PortableData
                                                           .order(:id)
     end
 
-    def record_audit_event(payload, event_type: 'portable_data.exported', encrypted: true)
+    def record_audit_event(payload, export_mode:, event_type: 'portable_data.exported', encrypted: true)
       SecurityAuditEvent.create!(
         household: household,
         actor_account: membership.account,
@@ -151,7 +162,8 @@ module PortableData
         ip: request&.remote_ip,
         metadata: {
           record_counts: record_counts(payload),
-          encrypted: encrypted
+          encrypted: encrypted,
+          export_mode: export_mode
         }
       )
     end

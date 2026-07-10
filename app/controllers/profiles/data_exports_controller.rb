@@ -3,6 +3,7 @@
 module Profiles
   class DataExportsController < ApplicationController
     before_action :require_authentication
+    before_action :no_store
 
     def show
       result = export_service.call

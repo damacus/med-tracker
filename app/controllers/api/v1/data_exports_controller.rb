@@ -3,6 +3,8 @@
 module Api
   module V1
     class DataExportsController < BaseController
+      before_action :no_store
+
       def show
         render json: { data: export_service.call }
       rescue DataExports::ProfileExportService::Error, PortableData::Encryptor::Error => e
