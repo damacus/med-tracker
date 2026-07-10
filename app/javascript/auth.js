@@ -134,28 +134,26 @@ const initPasskeyLogin = () => {
   };
 
   const startConditionalAutofill = async () => {
-    if (typeof PublicKeyCredential.isConditionalMediationAvailable !== "function") {
-      return;
-    }
-
-    const conditionalAvailable = await PublicKeyCredential.isConditionalMediationAvailable();
-
-    if (!conditionalAvailable) {
-      return;
-    }
-
-    conditionalController =
-      typeof AbortController === "function" ? new AbortController() : null;
-
     try {
+      if (typeof PublicKeyCredential.isConditionalMediationAvailable !== "function") {
+        return;
+      }
+
+      const conditionalAvailable = await PublicKeyCredential.isConditionalMediationAvailable();
+
+      if (!conditionalAvailable) {
+        return;
+      }
+
+      conditionalController =
+        typeof AbortController === "function" ? new AbortController() : null;
+
       await requestCredential({
         mediation: "conditional",
         signal: conditionalController?.signal,
       });
-    } catch (error) {
-      if (!noopError(error)) {
-        setError(trigger.dataset.errorFailed);
-      }
+    } catch {
+      conditionalController = null;
     }
   };
 
@@ -178,9 +176,7 @@ const initPasskeyLogin = () => {
     }
   });
 
-  startConditionalAutofill().catch(() => {
-    setError(trigger.dataset.errorFailed);
-  });
+  startConditionalAutofill();
 
   form.dataset.passkeyInitialized = "true";
   return true;
