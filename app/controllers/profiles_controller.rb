@@ -12,7 +12,7 @@ class ProfilesController < ApplicationController
 
     respond_to do |format|
       format.html do
-        render Views::Profiles::Show.new(person: @person, account: @account)
+        render profile_view(person: @person, account: @account)
       end
     end
   end
@@ -44,7 +44,7 @@ class ProfilesController < ApplicationController
         flash.now[:notice] = t('.removed')
         render turbo_stream: [
           turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice])),
-          turbo_stream.replace('main-content', Views::Profiles::Show.new(person: @person, account: @account))
+          turbo_stream.replace('main-content', profile_view(person: @person, account: @account))
         ]
       end
     end
@@ -77,6 +77,12 @@ class ProfilesController < ApplicationController
 
   private
 
+  def profile_view(person:, account:)
+    person.association(:notification_preference).load_target
+    api_app_tokens = account.api_app_tokens.active.order(created_at: :desc).to_a
+    Views::Profiles::Show.new(person: person, account: account, api_app_tokens: api_app_tokens)
+  end
+
   def update_person_profile(attributes)
     if @person.update(attributes)
       respond_profile_updated(person: @person.reload, account: @account, close_modal: true)
@@ -100,7 +106,7 @@ class ProfilesController < ApplicationController
         flash.now[:notice] = t('profiles.updated')
         streams = [turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))]
         streams.unshift(turbo_stream.update('modal', '')) if close_modal
-        streams << turbo_stream.replace('main-content', Views::Profiles::Show.new(person: person, account: account))
+        streams << turbo_stream.replace('main-content', profile_view(person: person, account: account))
         render turbo_stream: streams
       end
     end

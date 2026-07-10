@@ -14,7 +14,7 @@ module Views
         super()
         @person = person
         @account = account
-        @api_app_tokens = api_app_tokens || account.api_app_tokens.active.order(created_at: :desc).to_a
+        @api_app_tokens = api_app_tokens || []
         @new_api_app_token = new_api_app_token
       end
 
