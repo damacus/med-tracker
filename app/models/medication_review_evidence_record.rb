@@ -17,6 +17,7 @@ class MedicationReviewEvidenceRecord < ApplicationRecord
   validate :reviewed_pair_has_terms
 
   scope :reviewable, -> { where(match_status: 'reviewed_pair') }
+  scope :detectable, -> { where(match_status: %w[unreviewed reviewed_pair]) }
 
   def match_pair?(candidate_name:, existing_name:)
     return false unless match_status == 'reviewed_pair'

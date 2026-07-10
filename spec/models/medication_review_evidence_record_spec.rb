@@ -47,7 +47,7 @@ RSpec.describe MedicationReviewEvidenceRecord do
     expect(record.match_pair?(candidate_name: 'Ibuprofen', existing_name: 'Warfarin sodium')).to be(true)
   end
 
-  it 'does not match an unreviewed imported label' do
+  it 'does not treat an unreviewed label as a manually curated pair' do
     record.match_status = 'unreviewed'
 
     expect(record.match_pair?(candidate_name: 'Warfarin', existing_name: 'Ibuprofen')).to be(false)

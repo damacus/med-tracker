@@ -21,7 +21,9 @@ module OpenFda
       source_record_id = label.fetch('set_id')
       record = MedicationReviewEvidenceRecord.find_or_initialize_by(source_record_id: source_record_id)
       record.assign_attributes(source_attributes(label, source_record_id))
-      record.assign_attributes(unreviewed_attributes) unless record.persisted? && record.match_status == 'reviewed_pair'
+      unless record.persisted? && record.match_status == 'reviewed_pair'
+        record.assign_attributes(automatic_attributes(label))
+      end
       record.save!
       record
     end
@@ -39,14 +41,23 @@ module OpenFda
       }
     end
 
-    def unreviewed_attributes
+    def automatic_attributes(label)
+      openfda = label.fetch('openfda', {})
       {
         risk_level: 'unknown',
         match_confidence: 'unknown',
         match_status: 'unreviewed',
-        candidate_terms: [],
+        candidate_terms: normalized_values(openfda, 'substance_name', 'generic_name'),
+        pharmacologic_classes: normalized_values(openfda, 'pharm_class_epc'),
         interacting_terms: []
       }
+    end
+
+    def normalized_values(hash, *keys)
+      keys.flat_map { |key| Array(hash[key]) }
+          .map { |value| MedicationReviewTermNormalizer.label(value) }
+          .compact_blank
+          .uniq
     end
 
     def first_value(hash, key)

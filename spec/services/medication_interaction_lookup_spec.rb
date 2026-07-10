@@ -23,6 +23,23 @@ RSpec.describe MedicationInteractionLookup do
     expect(result.hidden_count).to eq(0)
   end
 
+  it 'automatically uses an unreviewed imported label with an explicit ingredient match' do
+    MedicationReviewEvidenceRecord.create!(
+      source_name: 'DailyMed', source_record_id: 'automatic-imported-match',
+      source_url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=automatic-imported-match',
+      retrieved_on: Date.new(2026, 7, 10), product_name: 'Warfarin Sodium', active_ingredient: 'Warfarin sodium',
+      label_section: 'Drug Interactions', evidence_text: 'Concomitant use with aspirin may increase bleeding risk.',
+      risk_level: 'unknown', match_confidence: 'unknown', match_status: 'unreviewed',
+      candidate_terms: ['warfarin sodium'], pharmacologic_classes: [], interacting_terms: []
+    )
+
+    result = described_class.new(medication_scope: Medication.where(id: medications(:aspirin).id)).call(
+      dmd_result('Warfarin 1mg tablets')
+    )
+
+    expect(result.visible_prompts).to include(hash_including(source_checked_on: '2026-07-10'))
+  end
+
   it 'filters low-signal prompts while reporting how many were hidden' do
     create_low_signal_evidence
 
