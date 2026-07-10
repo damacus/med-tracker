@@ -10,6 +10,8 @@ module OpenFda
 
     def labels(limit:)
       available_labels = snapshot.fetch('labels')
+      return available_labels if limit.nil?
+
       requested_limit = Integer(limit)
       if requested_limit > available_labels.size
         raise ArgumentError, "snapshot contains #{available_labels.size} labels; requested #{requested_limit}"

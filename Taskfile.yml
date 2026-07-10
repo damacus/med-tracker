@@ -79,7 +79,7 @@ tasks:
           COMMAND: 'OWNER_EMAIL="{{ .OWNER_EMAIL }}" HOUSEHOLD_NAME="{{ .HOUSEHOLD_NAME }}" DRY_RUN="{{ .DRY_RUN }}" APPLY="{{ .APPLY }}" rails households:migrate_local'
 
   medication-review:snapshot:
-    desc: Regenerate the committed 80-label public evidence snapshot
+    desc: Regenerate the committed public evidence snapshot
     cmds:
       - task: internal:run
         vars:

@@ -16,9 +16,30 @@ RSpec.describe OpenFda::DrugLabelClient do
     expect(result.fetch('results').sole.fetch('set_id')).to eq('monotherapy')
   end
 
+  it 'requires every configured target in targeted interaction labels' do
+    response = {
+      'meta' => { 'last_updated' => '2026-07-10' },
+      'results' => [label('doxazosin-label', ['DOXAZOSIN MESYLATE'])]
+    }
+    client = client_with(response)
+    targeted_selection = [
+      { 'term' => 'doxazosin', 'interaction_targets' => %w[ibuprofen acetaminophen] }
+    ]
+
+    result = client.labels_for_targeted(targeted_selection)
+
+    expect(result.fetch('results').sole.fetch('set_id')).to eq('doxazosin-label')
+    expect(client.requested_entries).to eq(targeted_selection)
+  end
+
   def client_with(response)
     client_class = Class.new(described_class) do
-      define_method(:concurrent_responses) { |_terms| [response] }
+      attr_reader :requested_entries
+
+      define_method(:concurrent_responses) do |entries|
+        @requested_entries = entries
+        [response]
+      end
     end
     client_class.new
   end

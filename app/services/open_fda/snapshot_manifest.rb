@@ -20,6 +20,14 @@ module OpenFda
       data.fetch('selection')
     end
 
+    def targeted_selection
+      data.fetch('targeted_selection')
+    end
+
+    def all_selection
+      selection + targeted_selection.pluck('term')
+    end
+
     private
 
     attr_reader :data

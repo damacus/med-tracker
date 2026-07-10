@@ -1,5 +1,5 @@
 {
-  "selection_version": 1,
+  "selection_version": 2,
   "generated_on": "2026-07-10",
   "openfda_last_updated": "2026-07-10",
   "labels": [
@@ -2082,6 +2082,1166 @@
           "314167"
         ]
       }
+    },
+    {
+      "set_id": "514ad15b-d060-9d65-e063-6294a90a6188",
+      "id": "55ef1243-5180-4a66-e063-6394a90a24b5",
+      "effective_time": "20260706",
+      "version": "2",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS Heparin: Allow sufficient time for heparin’s effect on aPTT to decrease before initiating Argatroban Injection therapy ( 7.1 ) Warfarin: Concomitant use results in increased prolongation of PT and INR ( 7.2 ) Thrombolytic agents or glycoprotein IIb/IIIa antagonists: Safety and effectiveness of concomitant use with argatroban have not been established ( 7.4 , 7.5 ) 7.1 Heparin If argatroban is to be initiated after cessation of heparin therapy, allow sufficient time for heparin’s effect on the aPTT to decrease prior to initiation of argatroban therapy. 7.2 Oral Anticoagulant Agents Pharmacokinetic drug-drug interactions between argatroban and warfarin (7.5 mg single oral dose) have not been demonstrated. However, the concomitant use of argatroban and warfarin (5 to 7.5 mg initial oral dose, followed by 2.5 to 6 mg/day orally for 6 to 10 days) results in prolongation of the prothrombin time (PT) and International Normalized Ratio (INR) [see Dosage and Administration ( 2.5 ) and Clinical Pharmacology ( 12.2 )] . 7.3 Aspirin/Acetaminophen No drug-drug interactions have been demonstrated between argatroban and concomitantly administered aspirin or acetaminophen [see Clinical Pharmacology ( 12.3 )] . 7.4 Thrombolytic Agents The safety and effectiveness of argatroban with thrombolytic agents have not been established [see Adverse Reactions ( 6.1 )] . 7.5 Glycoprotein IIb/IIIa Antagonists The safety and effectiveness of argatroban with glycoprotein IIb/IIIa antagonists have not been established."
+      ],
+      "selection_term": "argatroban",
+      "openfda": {
+        "brand_name": [
+          "Argatroban"
+        ],
+        "generic_name": [
+          "ARGATROBAN"
+        ],
+        "substance_name": [
+          "ARGATROBAN"
+        ],
+        "pharm_class_epc": [
+          "Anti-coagulant [EPC]",
+          "Direct Thrombin Inhibitor [EPC]"
+        ],
+        "rxcui": [
+          "1804737"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "bb5a9e59-0f51-11df-8a39-0800200c9a66",
+      "id": "7dd52279-ea2e-4f8c-8e29-8172bc3ed882",
+      "effective_time": "20251212",
+      "version": "32",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS The toxic effects of local anesthetics are additive and concomitant use should be used with caution including monitoring for neurologic and cardiovascular effects related to local anesthetic systemic toxicity [see Dosage and Administration (2.2) , Warnings and Precautions (5.1) , and Overdosage (10) ] . Avoid additional use of local anesthetics within 96 hours following administration of EXPAREL. Patients who are administered local anesthetics, including EXPAREL, may be at increased risk of developing methemoglobinemia when concurrently exposed to the following drugs, which could include other local anesthetics: Class Examples Nitrates/Nitrites nitric oxide, nitroglycerin, nitroprusside, nitrous oxide Local anesthetics articaine, benzocaine, bupivacaine, lidocaine, mepivacaine, prilocaine, procaine, ropivacaine, tetracaine Antineoplastic agents cyclophosphamide, flutamide, hydroxyurea, ifosfamide, rasburicase Antibiotics dapsone, nitrofurantoin, para-aminosalicylic acid, sulfonamides Antimalarials chloroquine, primaquine Anticonvulsants Phenobarbital, phenytoin, sodium valproate Other drugs acetaminophen, metoclopramide, quinine, sulfasalazine Lidocaine or other non-bupivacaine local anesthetics : Do not admix with EXPAREL. EXPAREL may be administered at least 20 minutes or more following local administration of lidocaine ( 7 ). Bupivacaine HCl : Do not exceed a milligram dose of bupivacaine HCl solution to EXPAREL of 1:2 when admixing, as this may impact the pharmacokinetics and/or physicochemical properties of the drugs ( 7 ). Bupivacaine Bupivacaine HCl administered together with EXPAREL may impact the pharmacokinetic and/or physicochemical properties of EXPAREL, and this effect is concentration dependent. Therefore, bupivacaine HCl and EXPAREL may be administered simultaneously in the same syringe, and bupivacaine HCl may be injected immediately before EXPAREL as long as the ratio of the milligram dose of bupivacaine HCl solution to EXPAREL does not exceed 1:2. Non-Bupivacaine Local Anesthetics EXPAREL should not be admixed with local anesthetics other than bupivacaine. Non-bupivacaine based local anesthetics, including lidocaine, may cause an immediate release of bupivacaine from EXPAREL if administered together locally. The administration of EXPAREL may follow the administration of lidocaine after a delay of 20 minutes or more. There are no data to support administration of other local anesthetics prior to administration of EXPAREL. Other than bupivacaine as noted above, EXPAREL should not be admixed with other drugs prior to administration. Water and Hypotonic Agents Do not dilute EXPAREL with water or other hypotonic agents, as it will result in disruption of the liposomal particles."
+      ],
+      "selection_term": "bupivacaine",
+      "openfda": {
+        "brand_name": [
+          "EXPAREL"
+        ],
+        "generic_name": [
+          "BUPIVACAINE"
+        ],
+        "substance_name": [
+          "BUPIVACAINE"
+        ],
+        "pharm_class_epc": [
+          "Amide Local Anesthetic [EPC]"
+        ],
+        "rxcui": [
+          "1191508",
+          "1191513",
+          "1745061",
+          "1745062"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "18e90d65-4a3a-864e-e063-6294a90ae99d",
+      "id": "18e9092c-7992-80e0-e063-6294a90a73fb",
+      "effective_time": "20240515",
+      "version": "1",
+      "drug_interactions": [
+        "Drug Interactions Psychotropic Agents MAO inhibitors The use of monoamine oxidase inhibitors (MAOIs) intended to treat depression with buspirone or within 14 days of stopping treatment with buspirone is contraindicated because of an increased risk of serotonin syndrome and/or elevated blood pressure. The use of buspirone within 14 days of stopping an MAOI intended to treat depression is also contraindicated. Starting buspirone in a patient who is being treated with reversible MAOIs such as linezolid or intravenous methylene blue is also contraindicated because of an increased risk of serotonin syndrome (see WARNINGS , DOSAGE AND ADMINISTRATION AND CONCOMITANT DRUG ). Amitriptyline After addition of buspirone to the amitriptyline dose regimen, no statistically significant differences in the steady-state pharmacokinetic parameters (C max , AUC, and C min ) of amitriptyline or its metabolite nortriptyline were observed. Diazepam After addition of buspirone to the diazepam dose regimen, no statistically significant differences in the steady-state pharmacokinetic parameters (C max , AUC, and C min ) were observed for diazepam, but increases of about 15% were seen for nordiazepam, and minor adverse clinical effects (dizziness, headache, and nausea) were observed. Haloperidol In a study in normal volunteers, concomitant administration of buspirone and haloperidol resulted in increased serum haloperidol concentrations. The clinical significance of this finding is not clear. Nefazodone (See Inhibitors and Inducers of Cytochrome P450 3A4 (CYP3A4) .) Trazodone There is one report suggesting that the concomitant use of trazodone hydrochloride and buspirone may have caused 3 to 6 fold elevations on SGPT (ALT) in a few patients. In a similar study attempting to replicate this finding, no interactive effect on hepatic transaminases was identified. Triazolam/Flurazepam Coadministration of buspirone with either triazolam or flurazepam did not appear to prolong or intensify the sedative effects of either benzodiazepine. Other Psychotropics Because the effects of concomitant administration of buspirone with most other psychotropic drugs have not been studied, the concomitant use of buspirone with other CNS-active drugs should be approached with caution. Inhibitors and Inducers of Cytochrome P450 3A4 (CYP3A4) Buspirone has been shown in vitro to be metabolized by CYP3A4. This finding is consistent with the in vivo interactions observed between buspirone and the following: Diltiazem and Verapamil In a study of nine healthy volunteers, coadministration of buspirone (10 mg as a single dose) with verapamil (80 mg t.i.d.) or diltiazem (60 mg t.i.d.) increased plasma buspirone concentrations (verapamil increased AUC and C max of buspirone 3.4 fold while diltiazem increased AUC and C max 5.5 fold and 4 fold, respectively). Adverse events attributable to buspirone may be more likely during concomitant administration with either diltiazem or verapamil. Subsequent dose adjustment may be necessary and should be based on clinical assessment. Erythromycin In a study in healthy volunteers, coadministration of buspirone (10 mg as a single dose) with erythromycin (1.5 g/day for 4 days) increased plasma buspirone concentrations (5 fold increase in C max and 6 fold increase in AUC). These pharmacokinetic interactions were accompanied by an increased incidence of side effects attributable to buspirone. If the two drugs are to be used in combination, a low dose of buspirone (e.g., 2.5 mg b.i.d.) is recommended. Subsequent dose adjustment of either drug should be based on clinical assessment. Grapefruit Juice In a study in healthy volunteers, coadministration of buspirone (10 mg as a single dose) with grapefruit juice (200 mL double-strength t.i.d. for 2 days) increased plasma buspirone concentrations (4.3 fold increase in C max ; 9.2 fold increase in AUC). Patients receiving buspirone should be advised to avoid drinking such large amounts of grapefruit juice. Itraconazole In a study in healthy volunteers, coadministration of buspirone (10 mg as a single dose) with itraconazole (200 mg/day for 4 days) increased plasma buspirone concentrations (13 fold increase in C max and 19 fold increase in AUC). These pharmacokinetic interactions were accompanied by an increased incidence of side effects attributable to buspirone. If the two drugs are to be used in combination, a low dose of buspirone (e.g., 2.5 mg q.d.) is recommended. Subsequent dose adjustment of either drug should be based on clinical assessment. Nefazodone In a study of steady-state pharmacokinetics in healthy volunteers, coadministration of buspirone (2.5 or 5 mg b.i.d.) with nefazodone (250 mg b.i.d.) resulted in marked increases in plasma buspirone concentrations (increases up to 20 fold in C max and up to 50 fold in AUC) and statistically significant decreases (about 50%) in plasma concentrations of the buspirone metabolite 1-PP. With 5 mg b.i.d. doses of buspirone, slight increases in AUC were observed for nefazodone (23%) and its metabolites hydroxynefazodone (HO-NEF) (17%) and meta-chlorophenylpiperazine (9%). Slight increases in C max were observed for nefazodone (8%) and its metabolite HO-NEF (11%). Subjects receiving buspirone 5 mg b.i.d. and nefazodone 250 mg b.i.d. experienced lightheadedness, asthenia, dizziness, and somnolence, adverse events also observed with either drug alone. If the two drugs are to be used in combination, a low dose of buspirone (e.g., 2.5 mg q.d.) is recommended. Subsequent dose adjustment of either drug should be based on clinical assessment. Rifampin In a study in healthy volunteers, coadministration of buspirone (30 mg as a single dose) with rifampin (600 mg/day for 5 days) decreased the plasma concentrations (83.7% decrease in C max ; 89.6% decrease in AUC) and pharmacodynamic effects of buspirone. If the two drugs are to be used in combination, the dosage of buspirone may need adjusting to maintain anxiolytic effect. Other Inhibitors and Inducers of CYP3A4 Substances that inhibit CYP3A4, such as ketoconazole or ritonavir, may inhibit buspirone metabolism and increase plasma concentrations of buspirone while substances that induce CYP3A4, such as dexamethasone or certain anticonvulsants (phenytoin, phenobarbital, carbamazepine), may increase the rate of buspirone metabolism. If a patient has been titrated to a stable dosage on buspirone, a dose adjustment of buspirone may be necessary to avoid adverse events attributable to buspirone or diminished anxiolytic activity. Consequently, when administered with a potent inhibitor of CYP3A4, a low dose of buspirone used cautiously is recommended. When used in combination with a potent inducer of CYP3A4 the dosage of buspirone may need adjusting to maintain anxiolytic effect. Other Drugs Cimetidine Coadministration of buspirone with cimetidine was found to increase C max (40%) and T max (2 fold), but had minimal effects on the AUC of buspirone. Protein Binding In vitro , buspirone does not displace tightly bound drugs like phenytoin, propranolol, and warfarin from serum proteins. However, there has been one report of prolonged prothrombin time when buspirone was added to the regimen of a patient treated with warfarin. The patient was also chronically receiving phenytoin, phenobarbital, digoxin, and levothyroxine sodium. In vitro , buspirone may displace less firmly bound drugs like digoxin. The clinical significance of this property is unknown. Therapeutic levels of aspirin, desipramine, diazepam, flurazepam, ibuprofen, propranolol, thioridazine, and tolbutamide had only a limited effect on the extent of binding of buspirone to plasma proteins (see CLINICAL PHARMACOLOGY )."
+      ],
+      "selection_term": "buspirone",
+      "openfda": {
+        "brand_name": [
+          "Buspirone Hydrochloride"
+        ],
+        "generic_name": [
+          "BUSPIRONE"
+        ],
+        "substance_name": [
+          "BUSPIRONE HYDROCHLORIDE"
+        ],
+        "rxcui": [
+          "866083"
+        ]
+      },
+      "interaction_targets": [
+        "ibuprofen"
+      ]
+    },
+    {
+      "set_id": "5cb9d285-1803-4a99-946a-d0b239b32df6",
+      "id": "b281d2c1-122c-4a27-8a27-e222359c0fb9",
+      "effective_time": "20251020",
+      "version": "32",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS Drugs that decrease BUSULFEX clearance: Metronidazole, itraconazole, iron chelating agents, acetaminophen. ( 7.1 ) Drugs that increase BUSULFEX clearance: Phenytoin. ( 7.2 ) 7.1 Drugs that Decrease BUSULFEX Clearance Itraconazole decreases busulfan clearance by up to 25%. Metronidazole decreases the clearance of busulfan to a greater extent than does itraconazole; metronidazole coadministration has been associated with increased busulfan toxicity. Fluconazole (200 mg) has been used with BUSULFEX. Decreased clearance of busulfan was observed with concomitant use with deferasirox. The mechanism of this interaction is not fully elucidated. Discontinue iron chelating agents well in advance of administration of BUSULFEX to avoid increased exposure to busulfan. Because busulfan is eliminated from the body via conjugation with glutathione, use of acetaminophen prior to (less than 72 hours) or concurrent with BUSULFEX may result in reduced busulfan clearance based upon the known property of acetaminophen to decrease glutathione levels in the blood and tissues. 7.2 Drugs that Increase BUSULFEX Clearance Phenytoin increases the clearance of busulfan by 15% or more, possibly due to the induction of glutathione-S-transferase. Since the pharmacokinetics of BUSULFEX were studied in patients treated with phenytoin, the clearance of BUSULFEX at the recommended dose may be lower and exposure (AUC) higher in patients not treated with phenytoin."
+      ],
+      "selection_term": "busulfan",
+      "openfda": {
+        "brand_name": [
+          "BUSULFEX"
+        ],
+        "generic_name": [
+          "BUSULFAN"
+        ],
+        "substance_name": [
+          "BUSULFAN"
+        ],
+        "pharm_class_epc": [
+          "Alkylating Drug [EPC]"
+        ],
+        "rxcui": [
+          "253113",
+          "284425"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "44966a7e-d777-40fb-956f-d0f31f737848",
+      "id": "963405a6-8cd9-4d70-9de9-2afc6eab1488",
+      "effective_time": "20231025",
+      "version": "17",
+      "drug_interactions": [
+        "Drug Interactions Probenecid Probenecid is known to interact with the metabolism or renal tubular excretion of many drugs (e.g., acetaminophen, acyclovir, angiotensin-converting enzyme inhibitors, aminosalicylic acid, barbiturates, benzodiazepines, bumetanide, clofibrate, methotrexate, famotidine, furosemide, nonsteroidal anti-inflammatory agents, theophylline, and zidovudine). Concomitant medications should be carefully assessed. Zidovudine should either be temporarily discontinued or decreased by 50% when coadministered with probenecid on the day of cidofovir infusion. Nephrotoxic agents Concomitant administration of cidofovir injection and agents with nephrotoxic potential [e.g., intravenous aminoglycosides (e.g., tobramycin, gentamicin, and amikacin), amphotericin B, foscarnet, intravenous pentamidine, vancomycin, and nonsteroidal anti-inflammatory agents] is contraindicated. Such agents must be discontinued at least seven days prior to starting therapy with cidofovir injection."
+      ],
+      "selection_term": "cidofovir",
+      "openfda": {
+        "brand_name": [
+          "CIDOFOVIR DIHYDRATE"
+        ],
+        "generic_name": [
+          "CIDOFOVIR DIHYDRATE"
+        ],
+        "substance_name": [
+          "CIDOFOVIR"
+        ],
+        "rxcui": [
+          "199388"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "4fbbc5b6-7aac-34e5-e054-00144ff88e88",
+      "id": "522f6658-ed23-f634-e063-6294a90af0fe",
+      "effective_time": "20260519",
+      "version": "5",
+      "drug_interactions": [
+        "Drug Interactions Cyclobenzaprine HCl may have life-threatening interactions with MAO inhibitors. (See CONTRAINDICATIONS .) Postmarketing cases of serotonin syndrome have been reported during combined use of Cyclobenzaprine Hydrochloride and other drugs, such as SSRIs, SNRIs, TCAs, tramadol, bupropion, meperidine, verapamil, or MAO inhibitors. If concomitant treatment with Cyclobenzaprine Hydrochloride and other serotonergic drugs is clinically warranted, careful observation is advised, particularly during treatment initiation or dose increases (see WARNINGS ). Cyclobenzaprine HCl may enhance the effects of alcohol, barbiturates, and other CNS depressants. Tricyclic antidepressants may block the antihypertensive action of guanethidine and similarly acting compounds. Tricyclic antidepressants may enhance the seizure risk in patients taking tramadol. † † ULTRAM ® (tramadol hydrochloride tablets, Ortho-McNeil Pharmaceutical) † ULTRACET ® (tramadol hydrochloride and acetaminophen tablets, Ortho-McNeil Pharmaceutical)"
+      ],
+      "selection_term": "cyclobenzaprine",
+      "openfda": {
+        "brand_name": [
+          "Cyclobenzaprine Hydrochloride"
+        ],
+        "generic_name": [
+          "CYCLOBENZAPRINE"
+        ],
+        "substance_name": [
+          "CYCLOBENZAPRINE HYDROCHLORIDE"
+        ],
+        "rxcui": [
+          "828348"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "22058b7d-a578-4eaa-a476-ac982337f02a",
+      "id": "fee319ef-b2af-415e-8e91-32aaccc024da",
+      "effective_time": "20251023",
+      "version": "7",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS No formal drug-drug interaction studies were conducted with ACZONE Gel, 7.5%. Trimethoprim/sulfamethoxazole (TMP/SMX) increases the systemic level of dapsone and its metabolites ( 7.1 ). Topical benzoyl peroxide used at the same time as ACZONE Gel, 7.5% may result in temporary local yellow or orange skin discoloration ( 7.2 ). 7.1 Trimethoprim-Sulfamethoxazole A drug-drug interaction study evaluated the effect of the use of dapsone gel, 5% in combination with double strength (160 mg/800 mg) trimethoprim-sulfamethoxazole (TMP/SMX). During co-administration, systemic levels of TMP and SMX were essentially unchanged, however, levels of dapsone and its metabolites increased in the presence of TMP/SMX. The systemic exposure from ACZONE Gel, 7.5% is expected to be about 1% of that from the 100 mg oral dose, even when co-administered with TMP/SMX. 7.2 Topical Benzoyl Peroxide Topical application of dapsone gel followed by benzoyl peroxide in patients with acne vulgaris may result in a temporary local yellow or orange discoloration of the skin and facial hair. 7.3 Drug Interactions with Oral Dapsone Certain concomitant medications (such as rifampin, anticonvulsants, St. John’s wort) may increase the formation of dapsone hydroxylamine, a metabolite of dapsone associated with hemolysis. With oral dapsone treatment, folic acid antagonists such as pyrimethamine have been noted to possibly increase the likelihood of hematologic reactions. 7.4 Concomitant Use with Drugs that Induce Methemoglobinemia Concomitant use of ACZONE Gel, 7.5% with drugs that induce methemoglobinemia such as sulfonamides, acetaminophen, acetanilide, aniline dyes, benzocaine, chloroquine, dapsone, naphthalene, nitrates and nitrites, nitrofurantoin, nitroglycerin, nitroprusside, pamaquine, para‐aminosalicylic acid, phenacetin, phenobarbital, phenytoin, primaquine, and quinine may increase the risk for developing methemoglobinemia [see Warnings and Precautions ( 5.1 )] ."
+      ],
+      "selection_term": "dapsone",
+      "openfda": {
+        "brand_name": [
+          "Aczone"
+        ],
+        "generic_name": [
+          "DAPSONE"
+        ],
+        "substance_name": [
+          "DAPSONE"
+        ],
+        "pharm_class_epc": [
+          "Sulfone [EPC]"
+        ],
+        "rxcui": [
+          "1741905",
+          "1741907"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "d7a722be-4612-4b2e-827d-56fb5eef0aae",
+      "id": "d5395b92-79af-436c-82ac-a6b70cd3b139",
+      "effective_time": "20241122",
+      "version": "5",
+      "drug_interactions": [
+        "Drug Interactions ACE-inhibitors and Angiotensin II Anagonists Reports suggest that NSAIDs may diminish the antihypertensive effect of ACE-inhibitors and angiotensin II antagonists. These interactions should be given consideration in patients taking NSAIDs concomitantly with ACE-inhibitors or angiotensin II antagonists. In some patients with compromised renal function, the coadministration of an NSAID and an ACE-inhibitor or an angiotensin II antagonist may result in further deterioration of renal function, including possible acute renal failure, which is usually reversible. Acetaminophen In normal volunteers, concomitant administration of diflunisal and acetaminophen resulted in an approximate 50% increase in plasma levels of acetaminophen. Acetaminophen had no effect on plasma levels of diflunisal. Since acetaminophen in high doses has been associated with hepatotoxicity, concomitant administration of diflunisal tablets and acetaminophen should be used cautiously, with careful monitoring of patients. Concomitant administration of diflunisal and acetaminophen in dogs, but not in rats, at approximately 2 times the recommended maximum human therapeutic dose of each (40 to 52 mg/kg/day of diflunisal/acetaminophen), resulted in greater gastrointestinal toxicity than when either drug was administered alone. The clinical significance of these findings has not been established. Antacids Concomitant administration of antacids may reduce plasma levels of diflunisal. This effect is small with occasional doses of antacids, but may be clinically significant when antacids are used on a continuous schedule. Aspirin When diflunisal is administered with aspirin, its protein binding is reduced, although the clearance of free diflunisal is not altered. The clinical significance of this interaction is not known; however, as with other NSAIDs, concomitant administration of diflunisal tablets and aspirin is not generally recommended because of the potential of increased adverse effects. In normal volunteers, a small decrease in diflunisal levels was observed when multiple doses of diflunisal and aspirin were administered concomitantly. Cyclosporine Administration of non-steroidal anti-inflammatory drugs concomitantly with cyclosporine has been associated with an increase in cyclosporine-induced toxicity, possibly due to decreased synthesis of renal prostacyclin. NSAIDs should be used with caution in patients taking cyclosporine, and renal function should be carefully monitored. Diuretics Clinical studies, as well as postmarketing observations, have shown that diflunisal can reduce the natriuretic effect of furosemide and thiazides in some patients. This response has been attributed to inhibition of renal prostaglandin synthesis. In normal volunteers, concomitant administration of diflunisal and hydrochlorothiazide resulted in significantly increased plasma levels of hydrochlorothiazide. Diflunisal decreased the hyperuricemic effect of hydrochlorothiazide. During concomitant therapy with NSAIDs, the patient should be observed closely for signs of renal failure (see WARNINGS , Renal Effects ), as well as to assure diuretic efficacy. Lithium NSAIDs have produced an elevation of plasma lithium levels and a reduction in renal lithium clearance. The mean minimum lithium concentration increased 15% and the renal clearance was decreased by approximately 20%. These effects have been attributed to inhibition of renal prostaglandin synthesis by the NSAID. Thus, when NSAIDs and lithium are administered concurrently, subjects should be observed carefully for signs of lithium toxicity. Methotrexate NSAIDs have been reported to competitively inhibit methotrexate accumulation in rabbit kidney slices. This may indicate that they could enhance the toxicity of methotrexate. Caution should be used when NSAIDs are administered concomitantly with methotrexate. NSAIDs The administration of diflunisal to normal volunteers receiving indomethacin decreased the renal clearance and significantly increased the plasma levels of indomethacin. In some patients the combined use of indomethacin and diflunisal has been associated with fatal gastrointestinal hemorrhage. Therefore, indomethacin and diflunisal tablets should not be used concomitantly. The concomitant use of diflunisal tablets and other NSAIDs is not recommended due to the increased possibility of gastrointestinal toxicity, with little or no increase in efficacy. The following information was obtained from studies in normal volunteers. Sulindac The concomitant administration of diflunisal and sulindac in normal volunteers resulted in lowering of the plasma levels of the active sulindac sulfide metabolite by approximately one-third. Naproxen The concomitant administration of diflunisal and naproxen in normal volunteers had no effect on the plasma levels of naproxen, but significantly decreased the urinary excretion of naproxen and its glucuronide metabolite. Naproxen had no effect on plasma levels of diflunisal. Oral Anticoagulants In some normal volunteers, the concomitant administration of diflunisal and warfarin, acenocoumarol, or phenprocoumon resulted in prolongation of prothrombin time. This may occur because diflunisal competitively displaces coumarins from protein binding sites. Accordingly, when diflunisal tablets are administered with oral anticoagulants, the prothrombin time should be closely monitored during and for several days after concomitant drug administration. Adjustment of dosage of oral anticoagulants may be required. The effects of warfarin and NSAIDs on GI bleeding are synergistic, such that users of both drugs together have a risk of serious GI bleeding higher than users of either drug alone. Tolbutamide In diabetic patients receiving diflunisal and tolbutamide, no significant effects were seen on tolbutamide plasma levels or fasting blood glucose."
+      ],
+      "selection_term": "diflunisal",
+      "openfda": {
+        "brand_name": [
+          "Diflunisal"
+        ],
+        "generic_name": [
+          "DIFLUNISAL"
+        ],
+        "substance_name": [
+          "DIFLUNISAL"
+        ],
+        "pharm_class_epc": [
+          "Nonsteroidal Anti-inflammatory Drug [EPC]"
+        ],
+        "rxcui": [
+          "197603"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "41e32cd5-1393-4ef1-81cb-8e3795e30682",
+      "id": "544d8f87-38bd-4d78-e063-6294a90a2a67",
+      "effective_time": "20260615",
+      "version": "4",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS Hepatic enzyme-inducing drugs (e.g., phenytoin, carbamazepine, phenobarbital, primidone, rifampin) can increase valproate clearance, while enzyme inhibitors (e.g., felbamate) can decrease valproate clearance. Therefore increased monitoring of valproate and concomitant drug concentrations and dosage adjustment are indicated whenever enzyme-inducing or inhibiting drugs are introduced or withdrawn (7.1) Aspirin, carbapenem antibiotics, estrogen-containing hormonal contraceptives: Monitoring of valproate concentrations is recommended (7.1) Co-administration of valproate can affect the pharmacokinetics of other drugs (e.g., diazepam, ethosuximide, lamotrigine, phenytoin) by inhibiting their metabolism or protein binding displacement (7.2) Patients stabilized on rufinamide should begin valproate therapy at a low dose, and titrate to clinically effective dose ( 7.2 ) Dosage adjustment of amitriptyline/nortriptyline, propofol, warfarin, and zidovudine may be necessary if used concomitantly with divalproex sodium extended-release tablets (7.2) Topiramate: Hyperammonemia and encephalopathy (5.10 , 7.3) 7.1 Effects of Co-Administered Drugs on Valproate Clearance Drugs that affect the level of expression of hepatic enzymes, particularly those that elevate levels of glucuronosyltransferases (such as ritonavir), may increase the clearance of valproate. For example, phenytoin, carbamazepine, and phenobarbital (or primidone) can double the clearance of valproate. Thus, patients on monotherapy will generally have longer half-lives and higher concentrations than patients receiving polytherapy with antiepilepsy drugs. In contrast, drugs that are inhibitors of cytochrome P450 isozymes, e.g., antidepressants, may be expected to have little effect on valproate clearance because cytochrome P450 microsomal mediated oxidation is a relatively minor secondary metabolic pathway compared to glucuronidation and beta-oxidation. Because of these changes in valproate clearance, monitoring of valproate and concomitant drug concentrations should be increased whenever enzyme inducing drugs are introduced or withdrawn. The following list provides information about the potential for an influence of several commonly prescribed medications on valproate pharmacokinetics. The list is not exhaustive nor could it be, since new interactions are continuously being reported. Drugs for which a potentially important interaction has been observed Aspirin A study involving the co-administration of aspirin at antipyretic doses (11 to 16 mg/kg) with valproate to pediatric patients (n=6) revealed a decrease in protein binding and an inhibition of metabolism of valproate. Valproate free fraction was increased 4-fold in the presence of aspirin compared to valproate alone. The β-oxidation pathway consisting of 2-E-valproic acid, 3-OH-valproic acid, and 3­-keto valproic acid was decreased from 25% of total metabolites excreted on valproate alone to 8.3% in the presence of aspirin. Whether or not the interaction observed in this study applies to adults is unknown, but caution should be observed if valproate and aspirin are to be co-administered. Carbapenem Antibiotics A clinically significant reduction in serum valproic acid concentration has been reported in patients receiving carbapenem antibiotics (for example, ertapenem, imipenem, meropenem; this is not a complete list) and may result in loss of seizure control. The mechanism of this interaction is not well understood. Serum valproic acid concentrations should be monitored frequently after initiating carbapenem therapy. Alternative antibacterial or anticonvulsant therapy should be considered if serum valproic acid concentrations drop significantly or seizure control deteriorates [see Warnings and Precautions (5.13) ] . Estrogen-Containing Hormonal Contraceptives Estrogen-containing hormonal contraceptives may increase the clearance of valproate, which may result in decreased concentration of valproate and potentially increased seizure frequency. Prescribers should monitor serum valproate concentrations and clinical response when adding or discontinuing estrogen containing products. Felbamate A study involving the co-administration of 1,200 mg/day of felbamate with valproate to patients with epilepsy (n=10) revealed an increase in mean valproate peak concentration by 35% (from 86 to 115 mcg/mL) compared to valproate alone. Increasing the felbamate dose to 2,400 mg/day increased the mean valproate peak concentration to 133 mcg/mL (another 16% increase). A decrease in valproate dosage may be necessary when felbamate therapy is initiated. Rifampin A study involving the administration of a single dose of valproate (7 mg/kg) 36 hours after 5 nights of daily dosing with rifampin (600 mg) revealed a 40% increase in the oral clearance of valproate. Valproate dosage adjustment may be necessary when it is co-administered with rifampin. Drugs for which either no interaction or a likely clinically unimportant interaction has been observed Antacids A study involving the co-administration of valproate 500 mg with commonly administered antacids (Maalox, Trisogel, and Titralac - 160 mEq doses) did not reveal any effect on the extent of absorption of valproate. Chlorpromazine A study involving the administration of 100 to 300 mg/day of chlorpromazine to schizophrenic patients already receiving valproate (200 mg BID) revealed a 15% increase in trough plasma levels of valproate. Haloperidol A study involving the administration of 6 to 10 mg/day of haloperidol to schizophrenic patients already receiving valproate (200 mg BID) revealed no significant changes in valproate trough plasma levels. Cimetidine and Ranitidine Cimetidine and ranitidine do not affect the clearance of valproate. 7.2 Effects of Valproate on Other Drugs Valproate has been found to be a weak inhibitor of some P450 isozymes, epoxide hydrase, and glucuronosyltransferases. The following list provides information about the potential for an influence of valproate co-administration on the pharmacokinetics or pharmacodynamics of several commonly prescribed medications. The list is not exhaustive, since new interactions are continuously being reported. Drugs for which a potentially important valproate interaction has been observed Amitriptyline/Nortriptyline Administration of a single oral 50 mg dose of amitriptyline to 15 normal volunteers (10 males and 5 females) who received valproate (500 mg BID) resulted in a 21% decrease in plasma clearance of amitriptyline and a 34% decrease in the net clearance of nortriptyline. Rare postmarketing reports of concurrent use of valproate and amitriptyline resulting in an increased amitriptyline level have been received. Concurrent use of valproate and amitriptyline has rarely been associated with toxicity. Monitoring of amitriptyline levels should be considered for patients taking valproate concomitantly with amitriptyline. Consideration should be given to lowering the dose of amitriptyline/nortriptyline in the presence of valproate. Carbamazepine/carbamazepine-10,11-Epoxide Serum levels of carbamazepine (CBZ) decreased 17% while that of carbamazepine-10,11-epoxide (CBZ-E) increased by 45% upon co-administration of valproate and CBZ to epileptic patients. Clonazepam The concomitant use of valproate and clonazepam may induce absence status in patients with a history of absence type seizures. Diazepam Valproate displaces diazepam from its plasma albumin binding sites and inhibits its metabolism. Co-administration of valproate (1,500 mg daily) increased the free fraction of diazepam (10 mg) by 90% in healthy volunteers (n=6). Plasma clearance and volume of distribution for free diazepam were reduced by 25% and 20%, respectively, in the presence of valproate. The elimination half-life of diazepam remained unchanged upon addition of valproate. Ethosuximide Valproate inhibits the metabolism of ethosuximide. Administration of a single ethosuximide dose of 500 mg with valproate (800 to 1,600 mg/day) to healthy volunteers (n=6) was accompanied by a 25% increase in elimination half-life of ethosuximide and a 15% decrease in its total clearance as compared to ethosuximide alone. Patients receiving valproate and ethosuximide, especially along with other anticonvulsants, should be monitored for alterations in serum concentrations of both drugs. Lamotrigine In a steady-state study involving 10 healthy volunteers, the elimination half-life of lamotrigine increased from 26 to 70 hours with valproate co-administration (a 165% increase). The dose of lamotrigine should be reduced when co-administered with valproate. Serious skin reactions (such as Stevens-Johnson syndrome and toxic epidermal necrolysis) have been reported with concomitant lamotrigine and valproate administration. See lamotrigine package insert for details on lamotrigine dosing with concomitant valproate administration. Phenobarbital Valproate was found to inhibit the metabolism of phenobarbital. Co-administration of valproate (250 mg BID for 14 days) with phenobarbital to normal subjects (n=6) resulted in a 50% increase in half-life and a 30% decrease in plasma clearance of phenobarbital (60 mg single-dose). The fraction of phenobarbital dose excreted unchanged increased by 50% in presence of valproate. There is evidence for severe CNS depression, with or without significant elevations of barbiturate or valproate serum concentrations. All patients receiving concomitant barbiturate therapy should be closely monitored for neurological toxicity. Serum barbiturate concentrations should be obtained, if possible, and the barbiturate dosage decreased, if appropriate. Primidone, which is metabolized to a barbiturate, may be involved in a similar interaction with valproate. Phenytoin Valproate displaces phenytoin from its plasma albumin binding sites and inhibits its hepatic metabolism. Co-administration of valproate (400 mg TID) with phenytoin (250 mg) in normal volunteers (n=7) was associated with a 60% increase in the free fraction of phenytoin. Total plasma clearance and apparent volume of distribution of phenytoin increased 30% in the presence of valproate. Both the clearance and apparent volume of distribution of free phenytoin were reduced by 25%. In patients with epilepsy, there have been reports of breakthrough seizures occurring with the combination of valproate and phenytoin. The dosage of phenytoin should be adjusted as required by the clinical situation. Propofol The concomitant use of valproate and propofol may lead to increased blood levels of propofol. Reduce the dose of propofol when co-administering with valproate. Monitor patients closely for signs of increased sedation or cardiorespiratory depression. Rufinamide Based on a population pharmacokinetic analysis, rufinamide clearance was decreased by valproate. Rufinamide concentrations were increased by <16% to 70%, dependent on concentration of valproate (with the larger increases being seen in pediatric patients at high doses or concentrations of valproate). Patients stabilized on rufinamide before being prescribed valproate should begin valproate therapy at a low dose, and titrate to a clinically effective dose [see Dosage and Administration (2.6) ] . Similarly, patients on valproate should begin at a rufinamide dose lower than 10 mg/kg per day (pediatric patients) or 400 mg per day (adults). Tolbutamide From in vitro experiments, the unbound fraction of tolbutamide was increased from 20% to 50% when added to plasma samples taken from patients treated with valproate. The clinical relevance of this displacement is unknown. Warfarin In an in vitro study, valproate increased the unbound fraction of warfarin by up to 32.6%. The therapeutic relevance of this is unknown; however, coagulation tests should be monitored if valproate therapy is instituted in patients taking anticoagulants. Zidovudine In six patients who were seropositive for HIV, the clearance of zidovudine (100 mg q 8 h) was decreased by 38% after administration of valproate (250 or 500 mg q 8 h); the half-life of zidovudine was unaffected. Drugs for which either no interaction or a likely clinically unimportant interaction has been observed Acetaminophen Valproate had no effect on any of the pharmacokinetic parameters of acetaminophen when it was concurrently administered to three epileptic patients. Clozapine In psychotic patients (n=11), no interaction was observed when valproate was co-administered with clozapine. Lithium Co-administration of valproate (500 mg BID) and lithium carbonate (300 mg TID) to normal male volunteers (n=16) had no effect on the steady-state kinetics of lithium. Lorazepam Concomitant administration of valproate (500 mg BID) and lorazepam (1 mg BID) in normal male volunteers (n=9) was accompanied by a 17% decrease in the plasma clearance of lorazepam. Olanzapine No dose adjustment for olanzapine is necessary when olanzapine is administered concomitantly with valproate. Co-administration of valproate (500 mg BID) and olanzapine (5 mg) to healthy adults (n=10) caused 15% reduction in C max and 35% reduction in AUC of olanzapine. Oral Contraceptive Steroids Administration of a single-dose of ethinyloestradiol (50 mcg)/levonorgestrel (250 mcg) to 6 women on valproate (200 mg BID) therapy for 2 months did not reveal any pharmacokinetic interaction. 7.3 Topiramate Concomitant administration of valproate and topiramate has been associated with hyperammonemia with and without encephalopathy [see Contraindications (4) and Warnings and Precautions (5.6 , 5.9 , 5.10) ] . Concomitant administration of topiramate with valproate has also been associated with hypothermia in patients who have tolerated either drug alone. It may be prudent to examine blood ammonia levels in patients in whom the onset of hypothermia has been reported [see Warnings and Precautions (5.9 , 5.11) ] ."
+      ],
+      "selection_term": "divalproex",
+      "openfda": {
+        "brand_name": [
+          "Divalproex sodium"
+        ],
+        "generic_name": [
+          "DIVALPROEX SODIUM"
+        ],
+        "substance_name": [
+          "DIVALPROEX SODIUM"
+        ],
+        "rxcui": [
+          "1099569"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "89becb0c-da60-4f43-0a98-29ff7a9eca58",
+      "id": "f6a67673-07a7-44e4-b05c-1f7e63326f79",
+      "effective_time": "20260527",
+      "version": "19",
+      "drug_interactions": [
+        "Drug Interactions – Animal studies indicate that dobutamine may be ineffective if the patient has recently received a β-blocking drug. In such a case, the peripheral vascular resistance may increase. Preliminary studies indicate that the concomitant use of dobutamine and nitroprusside results in a higher cardiac output and, usually, a lower pulmonary wedge pressure than when either drug is used alone. There was no evidence of drug interactions in clinical studies in which dobutamine was administered concurrently with other drugs, including digitalis preparations, furosemide, spironolactone, lidocaine, nitroglycerin, isosorbide dinitrate, morphine, atropine, heparin, protamine, potassium chloride, folic acid, and acetaminophen."
+      ],
+      "selection_term": "dobutamine",
+      "openfda": {
+        "brand_name": [
+          "DOBUTAMINE"
+        ],
+        "generic_name": [
+          "DOBUTAMINE"
+        ],
+        "substance_name": [
+          "DOBUTAMINE HYDROCHLORIDE"
+        ],
+        "rxcui": [
+          "1812168"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "40e47e75-6a47-323b-e054-00144ff8d46c",
+      "id": "1fa6ba1c-3f81-2089-e063-6294a90a11c7",
+      "effective_time": "20240814",
+      "version": "6",
+      "drug_interactions": [
+        "Drug Interactions Most (98%) of plasma doxazosin is protein bound. In vitro data in human plasma indicate that doxazosin has no effect on protein binding of digoxin, warfarin, phenytoin, or indomethacin. There is no information on the effect of other highly plasma protein- bound drugs on doxazosin binding. Doxazosin has been administered without any evidence of an adverse drug interaction to patients receiving thiazide diuretics, beta-blocking agents, and nonsteroidal anti-inflammatory drugs. In a placebo-controlled trial in normal volunteers, the administration of a single 1 mg dose of doxazosin on day 1 of a four-day regimen of oral cimetidine (400 mg twice daily) resulted in a 10% increase in mean AUC of doxazosin (p=0.006), and a slight but not statistically significant increase in mean C max and mean half-life of doxazosin. The clinical significance of this increase in doxazosin AUC is unknown. In clinical trials, doxazosin tablets have been administered to patients on a variety of concomitant medications; while no formal interaction studies have been conducted, no interactions were observed. Doxazosin tablets have been used with the following drugs or drug classes: 1) analgesic/anti-inflammatory (e.g., acetaminophen, aspirin, codeine and codeine combinations, ibuprofen, indomethacin); 2) antibiotics (e.g., erythromycin, trimethoprim and sulfamethoxazole, amoxicillin); 3) antihistamines (e.g., chlorpheniramine); 4) cardiovascular agents (e.g., atenolol, hydrochlorothiazide, propranolol); 5) corticosteroids; 6) gastrointestinal agents (e.g., antacids); 7) hypoglycemics and endocrine drugs; 8) sedatives and tranquilizers (e.g., diazepam); 9) cold and flu remedies. Concomitant administration of doxazosin with a phosphodiesterase-5 (PDE-5) inhibitor can result in additive blood pressure lowering effects and symptomatic hypotension (see DOSAGE AND ADMINISTRATION )."
+      ],
+      "selection_term": "doxazosin",
+      "openfda": {
+        "brand_name": [
+          "Doxazosin"
+        ],
+        "generic_name": [
+          "DOXAZOSIN"
+        ],
+        "substance_name": [
+          "DOXAZOSIN MESYLATE"
+        ],
+        "rxcui": [
+          "197627"
+        ]
+      },
+      "interaction_targets": [
+        "ibuprofen",
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "e6cb5c8f-e97f-4a6a-95a4-939fd2393949",
+      "id": "2141c3ca-074a-4098-85da-1ef78ec4d4dc",
+      "effective_time": "20260527",
+      "version": "17",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS Table 6: Clinically Relevant Interactions with Exenatide Concomitant Use of Insulin Secretagogues or Insulin Clinical Impact Exenatide promotes insulin release from pancreatic beta-cells in the presence of elevated glucose concentrations. The risk of hypoglycemia is increased when exenatide is used in combination with insulin secretagogues (e.g., sulfonylureas) or insulin [see Warnings and Precautions (5.3) and Adverse Reactions (6) ] . Intervention When initiating exenatide, consider reducing the dose of concomitantly administered insulin secretagogue or insulin to reduce the risk of hypoglycemia. Warfarin Clinical Impact In a drug interaction study, exenatide did not have a significant effect on INR [see Clinical Pharmacology (12.3) ] . There have been post-marketing reports for exenatide of increased INR with concomitant use of warfarin, sometimes associated with bleeding [see Adverse Reactions (6.2) ] . Intervention In patients taking warfarin, the prothrombin time should be monitored more frequently after initiation or alteration of exenatide therapy. Once a stable prothrombin time has been documented, the prothrombin time can be monitored at the intervals recommended for patients taking warfarin. Orally Administered Drugs (e.g., acetaminophen) Clinical Impact Exenatide slows gastric emptying. Therefore, exenatide has the potential to reduce the rate of absorption of orally administered drugs [see Clinical Pharmacology (12.3) ]. Intervention Use caution when administering oral medications with exenatide where a slower rate of oral absorption may be clinically meaningful. For oral medications that are dependent on threshold concentrations for efficacy, such as contraceptives and antibiotics, patients should be advised to take those drugs at least 1 hour before exenatide injection. If such drugs are to be administered with food, patients should be advised to take them with a meal or snack when exenatide is not administered [see Clinical Pharmacology (12.3) ] . May impact absorption of orally administered medications. ( 7 ) Warfarin: Post-marketing reports of increased INR sometimes associated with bleeding. Monitor INR frequently until stable upon initiation or alteration of exenatide therapy. ( 7 )"
+      ],
+      "selection_term": "exenatide",
+      "openfda": {
+        "brand_name": [
+          "Exenatide"
+        ],
+        "generic_name": [
+          "EXENATIDE"
+        ],
+        "substance_name": [
+          "EXENATIDE"
+        ],
+        "pharm_class_epc": [
+          "GLP-1 Receptor Agonist [EPC]"
+        ],
+        "rxcui": [
+          "847910",
+          "847915"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "03429cec-c6b5-47fe-bb11-6b42f977df7e",
+      "id": "557cbf65-b40e-dc56-e063-6394a90a6a3e",
+      "effective_time": "20260630",
+      "version": "1",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS 7.1 Cytochrome P450-Linked Drug Metabolizing Enzyme System No drug interactions of clinical importance have been identified. Finasteride does not appear to affect the cytochrome P450-linked drug-metabolizing enzyme system. Compounds that have been tested in man include antipyrine, digoxin, propranolol, theophylline, and warfarin and no clinically meaningful interactions were found. 7.2 Other Concomitant Therapy Although specific interaction studies were not performed, finasteride doses of 1 mg or more were concomitantly used in clinical studies with acetaminophen, acetylsalicylic acid, α-blockers, analgesics, angiotensin-converting enzyme (ACE) inhibitors, anticonvulsants, benzodiazepines, beta blockers, calcium-channel blockers, cardiac nitrates, diuretics, H 2 antagonists, HMG-CoA reductase inhibitors, prostaglandin synthetase inhibitors (also referred to as NSAIDs), and quinolone anti-infectives without evidence of clinically significant adverse interactions."
+      ],
+      "selection_term": "finasteride",
+      "openfda": {
+        "brand_name": [
+          "Finasteride"
+        ],
+        "generic_name": [
+          "FINASTERIDE"
+        ],
+        "substance_name": [
+          "FINASTERIDE"
+        ],
+        "pharm_class_epc": [
+          "5-alpha Reductase Inhibitor [EPC]"
+        ],
+        "rxcui": [
+          "200172"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "e0cc5f44-9a67-4274-a48a-d6118e96d391",
+      "id": "9fd8df78-eada-4c9c-b300-e60542603a35",
+      "effective_time": "20260625",
+      "version": "20",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS Drugs that interfere with platelet aggregation: May induce bleeding ( 7.2 ) 7.1 Oral Anticoagulants Heparin sodium may prolong the one-stage prothrombin time. Therefore, when heparin sodium is given with dicumarol or warfarin sodium, a period of at least 5 hours after the last intravenous dose or 24 hours after the last subcutaneous dose should elapse before blood is drawn, if a valid prothrombin time is to be obtained. 7.2 Platelet Inhibitors Drugs such as NSAIDS (including salicylic acid, ibuprofen, indomethacin, and celecoxib), dextran, phenylbutazone, thienopyridines, dipyridamole, hydroxychloroquine, glycoprotein IIb/IIIa antagonists (including abciximab, eptifibatide, and tirofiban), and others that interfere with platelet-aggregation reactions (the main hemostatic defense of heparinized patients) may induce bleeding and should be used with caution in patients receiving heparin sodium. To reduce the risk of bleeding, a reduction in the dose of antiplatelet agent or heparin is recommended. 7.3 Other Interactions Digitalis, tetracyclines, nicotine or antihistamines may partially counteract the anticoagulant action of heparin sodium. Intravenous nitroglycerin administered to heparinized patients may result in a decrease of the partial thromboplastin time with subsequent rebound effect upon discontinuation of nitroglycerin. Careful monitoring of partial thromboplastin time and adjustment of heparin dosage are recommended during coadministration of heparin and intravenous nitroglycerin. Antithrombin III (human) – The anticoagulant effect of heparin is enhanced by concurrent treatment with antithrombin III (human) in patients with hereditary antithrombin III deficiency. To reduce the risk of bleeding, a reduced dosage of heparin is recommended during treatment with antithrombin III (human)."
+      ],
+      "selection_term": "heparin",
+      "openfda": {
+        "brand_name": [
+          "Heparin Sodium"
+        ],
+        "generic_name": [
+          "HEPARIN SODIUM"
+        ],
+        "substance_name": [
+          "HEPARIN SODIUM"
+        ],
+        "rxcui": [
+          "1361615"
+        ]
+      },
+      "interaction_targets": [
+        "ibuprofen"
+      ]
+    },
+    {
+      "set_id": "9131b2ce-752d-3a30-e053-2a95a90adaab",
+      "id": "54672a4f-8094-f02d-e063-6394a90a436c",
+      "effective_time": "20260616",
+      "version": "8",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS CYP3A4 inducers may decrease imatinib mesylate tablets Cmax and area under curve (AUC). ( 2.12 , 7.1 , 12.3 ) CYP3A4 inhibitors may increase imatinib mesylate tablets Cmax and AUC. ( 7.2 , 12.3 ) Imatinib mesylate tablets are an inhibitor of CYP3A4 and CYP2D6 which may increase the Cmax and AUC of other drugs. ( 7.3 , 7.4 , 12.3 ) Patients who require anticoagulation should receive low-molecular weight or standard heparin and not warfarin. ( 7.3 ) Imatinib mesylate tablets may delay the clearance of methotrexate when methotrexate is used at high doses (> 500 mg/m 2 ). ( 7.5 ) 7.1 Agents Inducing CYP3A Metabolism Concomitant administration of imatinib mesylate tablets and strong CYP3A4 inducers may reduce total exposure of imatinib; consider alternative agents [see Clinical Pharmacology (12.3) ] . 7.2 Agents Inhibiting CYP3A Metabolism Concomitant administration of imatinib mesylate tablets and strong CYP3A4 inhibitors may result in a significant imatinib exposure increase. Grapefruit juice may also increase plasma concentrations of imatinib; avoid grapefruit juice [see Clinical Pharmacology (12.3) ] . 7.3 Interactions With Drugs Metabolized by CYP3A4 Imatinib mesylate tablets will increase plasma concentration of CYP3A4 metabolized drugs (e.g., triazolobenzodiazepines, dihydropyridine calcium channel blockers, certain HMGCoA reductase inhibitors, etc.). Use caution when administering imatinib mesylate tablets with CYP3A4 substrates that have a narrow therapeutic window. Because warfarin is metabolized by CYP2C9 and CYP3A4, use low-molecular weight or standard heparin instead of warfarin in patients who require anticoagulation [see Clinical Pharmacology (12.3) ] . 7.4 Interactions With Drugs Metabolized by CYP2D6 Use caution when administering imatinib mesylate tablets with CYP2D6 substrates that have a narrow therapeutic window. 7.5 Interactions With Methotrexate Imatinib mesylate tablets may delay the clearance of methotrexate and result in sustained methotrexate concentrations when methotrexate is used at high doses (> 500 mg/m 2 ). Refer to the prescribing information for methotrexate injection for recommendations on management of methotrexate concentrations.",
+        "Drug Interactions Clinical Studies Agents Inducing CYP3A Metabolism Pretreatment of healthy volunteers with multiple doses of rifampin followed by a single dose of imatinib mesylate tablets, increased imatinib mesylate tablets oral-dose clearance by 3.8-fold, which significantly (p less than 0.05) decreased mean C max and AUC. Similar findings were observed in patients receiving 400 to 1200 mg/day imatinib mesylate tablets concomitantly with enzyme-inducing anti-epileptic drugs (EIAED) (e.g., carbamazepine, oxcarbamazepine, phenytoin, fosphenytoin, phenobarbital, and primidone). The mean dose normalized AUC for imatinib in the patients receiving EIAED’s decreased by 73% compared to patients not receiving EIAED. Concomitant administration of imatinib mesylate tablets and St. John’s Wort led to a 30% reduction in the AUC of imatinib. Consider alternative therapeutic agents with less enzyme induction potential in patients when rifampin or other CYP3A4 inducers are indicated. Imatinib mesylate tablets doses up to 1,200 mg/day (600 mg twice daily) have been given to patients receiving concomitant strong CYP3A4 inducers [see Dosage and Administration (2.12) ] . Agents Inhibiting CYP3A Metabolism There was a significant increase in exposure to imatinib (mean Cmax and AUC increased by 26% and 40%, respectively) in healthy subjects when imatinib mesylate tablets were coadministered with a single dose of ketoconazole (a CYP3A4 inhibitor). Caution is recommended when administering imatinib mesylate tablets with strong CYP3A4 inhibitors (e.g., ketoconazole, itraconazole, clarithromycin, atazanavir, indinavir, nefazodone, nelfinavir, ritonavir, saquinavir, telithromycin, and voriconazole). Grapefruit juice may also increase plasma concentrations of imatinib and should be avoided. Interactions with Drugs Metabolized by CYP3A4 Imatinib mesylate tablets increase the mean C max and AUC of simvastatin (CYP3A4 substrate) 2- and 3.5-fold, respectively, suggesting an inhibition of the CYP3A4 by imatinib mesylate tablets. Particular caution is recommended when administering imatinib mesylate tablets with CYP3A4 substrates that have a narrow therapeutic window (e.g., alfentanil, cyclosporine, diergotamine, ergotamine, fentanyl, pimozide, quinidine, sirolimus, or tacrolimus). Imatinib mesylate tablets will increase plasma concentration of other CYP3A4 metabolized drugs (e.g., triazolo-benzodiazepines, dihydropyridine calcium channel blockers, certain HMG-CoA reductase inhibitors, etc.). Because warfarin is metabolized by CYP2C9 and CYP3A4, patients who require anticoagulation should receive low-molecular weight or standard heparin instead of warfarin. Interactions with Drugs Metabolized by CYP2D6 Imatinib mesylate tablets increased the mean C max and AUC of metoprolol by approximately 23% suggesting that imatinib mesylate tablets have a weak inhibitory effect on CYP2D6-mediated metabolism. No dose adjustment is necessary, however, caution is recommended when administering imatinib mesylate tablets with CYP2D6 substrates that have a narrow therapeutic window. Interactions with Acetaminophen Coadministration of imatinib mesylate tablets (400 mg/day for 8 days) with acetaminophen (1,000 mg single dose on Day 8) in patients with CML did not result in any changes in the pharmacokinetics of acetaminophen. Imatinib mesylate tablets pharmacokinetics were not altered in the presence of single-dose acetaminophen. There is no pharmacokinetic or safety data on the concomitant use of imatinib mesylate tablets at doses greater than 400 mg/day or the chronic use of concomitant acetaminophen and imatinib mesylate tablets. In Vitro Studies Cytochrome P450 (CYP450) Enzymes: Imatinib inhibits CYP2C9 and CYP2D6. Transporter Systems: Imatinib is a substrate of BCRP, P-gp, OATP1A2, OATP1B3, and OCT1. Imatinib inhibits BCRP, BSEP, P-gp, MATE1, MATE2-K, OCT1, and OCT2."
+      ],
+      "selection_term": "imatinib",
+      "openfda": {
+        "brand_name": [
+          "Imatinib Mesylate"
+        ],
+        "generic_name": [
+          "IMATINIB"
+        ],
+        "substance_name": [
+          "IMATINIB MESYLATE"
+        ],
+        "rxcui": [
+          "403878",
+          "403879"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "93252cc8-c8d4-401b-bde5-ca8a3b57651e",
+      "id": "5070b8f5-b2f4-8d89-e063-6294a90adf72",
+      "effective_time": "20260427",
+      "version": "4",
+      "drug_interactions": [
+        "Drug Interactions Food Isoniazid should not be administered with food. Studies have shown that the bioavailability of isoniazid is reduced significantly when administered with food. Tyramine-and histamine-containing foods should be avoided in patients receiving isoniazid. Because isoniazid has some monoamine oxidase inhibiting activity, an interaction with tyramine-containing foods (cheese, red wine) may occur. Diamine oxidase may also be inhibited, causing exaggerated response (e.g., headache, sweating, palpitations, flushing, hypotension) to foods containing histamine (e.g., skipjack, tuna, other tropical fish). Acetaminophen A report of severe acetaminophen toxicity was reported in a patient receiving isoniazid. It is believed that the toxicity may have resulted from a previously unrecognized interaction between isoniazid and acetaminophen and a molecular basis for this interaction has been proposed. However, current evidence suggests that isoniazid does induce P-450IIE1, a mixed-function oxidase enzyme that appears to generate the toxic metabolites, in the liver. Furthermore it has been proposed that isoniazid resulted in induction of P-450IIE1 in the patient's liver which, in turn, resulted in a greater proportion of the ingested acetaminophen being converted to the toxic metabolites. Studies have demonstrated that pretreatment with isoniazid potentiates acetaminophen hepatotoxicity in rats 1,2 . Carbamazepine Isoniazid is known to slow the metabolism of carbamazepine and increase its serum levels. Carbamazepine levels should be determined prior to concurrent administration with isoniazid, signs and symptoms of carbamazepine toxicity should be monitored closely, and appropriate dosage adjustment of the anticonvulsant should be made 3 . Ketoconazole Potential interaction of ketoconazole and isoniazid may exist. When ketoconazole is given in combination with isoniazid and rifampin the AUC of ketoconazole is decreased by as much as 88% after 5 months of concurrent isoniazid and rifampin therapy 4 . Phenytoin Isoniazid may increase serum levels of phenytoin. To avoid phenytoin intoxication, appropriate adjustment of the anticonvulsant should be made 5,6 . Theophylline A recent study has shown that concomitant administration of isoniazid and theophylline may cause elevated plasma levels of theophylline, and in some instances a slight decrease in the elimination of isoniazid. Since the therapeutic range of theophylline is narrow, theophylline serum levels should be monitored closely, and appropriate dosage adjustments of theophylline should be made 7 . Valproate A recent case study has shown a possible increase in the plasma level of valproate when co-administered with isoniazid. Plasma valproate concentration should be monitored when isoniazid and valproate are co-administered and appropriate dosage adjustments of valproate should be made 5 ."
+      ],
+      "selection_term": "isoniazid",
+      "openfda": {
+        "brand_name": [
+          "isoniazid"
+        ],
+        "generic_name": [
+          "ISONIAZID"
+        ],
+        "substance_name": [
+          "ISONIAZID"
+        ],
+        "pharm_class_epc": [
+          "Antimycobacterial [EPC]"
+        ],
+        "rxcui": [
+          "197832"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "2d552135-bde5-5fe9-e063-6394a90af433",
+      "id": "557a0112-2577-699f-e063-6394a90aa8b9",
+      "effective_time": "20260630",
+      "version": "3",
+      "drug_interactions": [
+        "Drug Interactions Ketorolac is highly bound to human plasma protein (mean 99.2%). There is no evidence in animal or human studies that ketorolac tromethamine induces or inhibits hepatic enzymes capable of metabolizing itself or other drugs. Warfarin, Digoxin, Salicylate, and Heparin The in vitro binding of warfarin to plasma proteins is only slightly reduced by ketorolac tromethamine (99.5% control vs 99.3%) when ketorolac plasma concentrations reach 5 mcg/mL to 10 mcg/mL. Ketorolac does not alter digoxin protein binding. In vitro studies indicate that, at therapeutic concentrations of salicylate (300 mcg/mL), the binding of ketorolac was reduced from approximately 99.2% to 97.5%, representing a potential twofold increase in unbound ketorolac plasma levels. Therapeutic concentrations of digoxin , warfarin , ibuprofen , naproxen , piroxicam , acetaminophen , phenytoin and tolbutamide did not alter ketorolac tromethamine protein binding. In a study involving 12 adult volunteers, ketorolac tromethamine tablets were co-administered with a single dose of 25 mg warfarin , causing no significant changes in pharmacokinetics or pharmacodynamics of warfarin. In another study, ketorolac tromethamine dosed intravenous or intramuscular was given with two doses of 5,000 U of heparin to 11 healthy volunteers, resulting in a mean template bleeding time of 6.4 minutes (3.2 min to 11.4 min) compared to a mean of 6 minutes (3.4 min to 7.5 min) for heparin alone and 5.1 minutes (3.5 min to 8.5 min) for placebo. Although these results do not indicate a significant interaction between ketorolac tromethamine and warfarin or heparin, the administration of ketorolac tromethamine to patients taking anticoagulants should be done extremely cautiously, and patients should be closely monitored (see WARNINGS and PRECAUTIONS , Hematologic Effect ). The effects of warfarin and NSAIDs, in general, on GI bleeding are synergistic, such that the users of both drugs together have a risk of serious GI bleeding higher than the users of either drug alone. Aspirin When ketorolac tromethamine is administered with aspirin, its protein binding is reduced, although the clearance of free ketorolac tromethamine is not altered. The clinical significance of this interaction is not known; however, as with other NSAIDs, concomitant administration of ketorolac tromethamine and aspirin is not generally recommended because of the potential of increased adverse effects. Diuretics Clinical studies, as well as post marketing observations, have shown that ketorolac tromethamine can reduce the natriuretic effect of furosemide and thiazides in some patients. This response has been attributed to inhibition of renal prostaglandin synthesis. During concomitant therapy with NSAIDs, the patient should be observed closely for signs of renal failure (see WARNINGS , Renal Effects ), as well as to assure diuretic efficacy. Probenecid Concomitant administration of ketorolac tromethamine tablets and probenecid resulted in decreased clearance and volume of distribution of ketorolac and significant increases in ketorolac plasma levels (total AUC increased approximately threefold from 5.4 mcg/h/mL to 17.8 mcg/h/mL) and terminal half-life increased approximately twofold from 6.6 hours to 15.1 hours. Therefore, concomitant use of ketorolac tromethamine and probenecid is contraindicated. Lithium NSAIDs have produced an elevation of plasma lithium levels and a reduction in renal lithium clearance. The mean minimum lithium concentration increased 15% and the renal clearance was decreased by approximately 20%. These effects have been attributed to inhibition of renal prostaglandin synthesis by the NSAID. Thus, when NSAIDs and lithium are administered concurrently, subjects should be observed carefully for signs of lithium toxicity. Methotrexate NSAIDs have been reported to competitively inhibit methotrexate accumulation in rabbit kidney slices. This may indicate that they could enhance the toxicity of methotrexate. Caution should be used when NSAIDs are administered concomitantly with methotrexate. ACE Inhibitors/Angiotensin II Receptor Antagonists Concomitant use of ACE inhibitors and/or angiotensin II receptor antagonists may increase the risk of renal impairment, particularly in volume-depleted patients. Reports suggest that NSAIDs may diminish the antihypertensive effect of ACE inhibitors and/or angiotensin II receptor antagonists. This interaction should be given consideration in patients taking NSAIDs concomitantly with ACE inhibitors and/or angiotensin II receptor antagonists. Antiepileptic Drugs Sporadic cases of seizures have been reported during concomitant use of ketorolac tromethamine and antiepileptic drugs (phenytoin, carbamazepine). Psychoactive Drugs Hallucinations have been reported when ketorolac tromethamine was used in patients taking psychoactive drugs (fluoxetine, thiothixene, alprazolam). Pentoxifylline When ketorolac tromethamine is administered concurrently with pentoxifylline, there is an increased tendency to bleeding. Nondepolarizing Muscle Relaxants In post marketing experience there have been reports of a possible interaction between ketorolac tromethamine intravenous/intramuscular and nondepolarizing muscle relaxants that resulted in apnea. The concurrent use of ketorolac tromethamine with muscle relaxants has not been formally studied. Selective Serotonin Reuptake Inhibitors (SSRIs) There is an increased risk of gastrointestinal bleeding when selective serotonin reuptake inhibitors (SSRIs) are combined with NSAIDs. Caution should be used when NSAIDs are administered concomitantly with SSRIs."
+      ],
+      "selection_term": "ketorolac",
+      "openfda": {
+        "brand_name": [
+          "Ketorolac Tromethamine"
+        ],
+        "generic_name": [
+          "KETOROLAC TROMETHAMINE"
+        ],
+        "substance_name": [
+          "KETOROLAC TROMETHAMINE"
+        ],
+        "rxcui": [
+          "834022"
+        ]
+      },
+      "interaction_targets": [
+        "ibuprofen",
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "9dc3059c-3a3d-5810-e053-2a95a90ab0ba",
+      "id": "550c3738-4bd8-2fa6-e063-6294a90aa0bd",
+      "effective_time": "20260620",
+      "version": "3",
+      "drug_interactions": [
+        "Drug Interactions Antiarrhythmic Drugs LIDOCAINE PATCH 5% should be used with caution in patients receiving Class I antiarrhythmic drugs (such as tocainide and mexiletine) since the toxic effects are additive and potentially synergistic. Local Anesthetics When LIDOCAINE PATCH 5% is used concomitantly with other products containing local anesthetic agents, the amount absorbed from all formulations must be considered. Drugs That May Cause Methemoglobinemia When Used with LIDOCAINE PATCH 5% Patients who are administered local anesthetics are at increased risk of developing methemoglobinemia when concurrently exposed to the following drugs, which could include other local anesthetics: Examples of Drugs Associated with Methemoglobinemia: Class Examples Nitrates/Nitrites nitric oxide, nitroglycerin, nitroprusside, nitrous oxide Local anesthetics articaine, benzocaine, bupivacaine, lidocaine, mepivacaine, prilocaine, procaine, ropivacaine, tetracaine Antineoplastic agents cyclophosphamide, flutamide, hydroxyurea, ifosfamide, rasburicase Antibiotics dapsone, nitrofurantoin, para-aminosalicylic acid, sulfonamides Antimalarials chloroquine, primaquine Anticonvulsants Phenobarbital, phenytoin, sodium valproate Other drugs acetaminophen, metoclopramide, quinine, sulfasalazine"
+      ],
+      "selection_term": "lidocaine",
+      "openfda": {
+        "brand_name": [
+          "Lidocaine"
+        ],
+        "generic_name": [
+          "LIDOCAINE"
+        ],
+        "substance_name": [
+          "LIDOCAINE"
+        ],
+        "pharm_class_epc": [
+          "Amide Local Anesthetic [EPC]",
+          "Antiarrhythmic [EPC]"
+        ],
+        "rxcui": [
+          "1745091"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "af6ff5f6-7221-421b-9b7c-8fcee4a47772",
+      "id": "104f9a5f-ec7b-4caa-b357-ff7cc18cfc90",
+      "effective_time": "20250529",
+      "version": "6",
+      "drug_interactions": [
+        "Clinically Significant Drug Interactions: Patients who are administered local anesthetics are at increased risk of developing methemoglobinemia when concurrently exposed to the following drugs, which could include other local anesthetics: EXAMPLES OF DRUGS ASSOCIATED WITH METHEMOGLOBINEMIA: Class Examples Nitrates/Nitrites nitric oxide, nitroglycerin, nitroprusside, nitrous oxide Local anesthetics articaine, benzocaine, bupivacaine, lidocaine, mepivacaine, prilocaine, procaine, ropivacaine, tetracaine Antineoplastic Agents cyclophosphamide, flutamide, hydroxyurea, ifosfamide, rasburicase Antibiotics dapsone, nitrofurantoin, para-aminosalicylic acid, sulfonamides Antimalarials chloroquine, primaquine Anticonvulsants phenobarbital, phenytoin, sodium valproate Other drugs acetaminophen, metoclopramide, quinine, sulfasalazine MEPIVACAINE SHOULD BE USED WITH CAUTION IN PATIENTS WITH KNOWN DRUG ALLERGIES AND SENSITIVITIES. A thorough history of the patient’s prior experience with mepivacaine or other local anesthetics as well as concomitant or recent drug use should be taken (see CONTRAINDICATIONS ). Patients allergic to methylparaben or para-aminobenzoic acid derivatives (procaine, tetracaine, benzocaine, etc.) have not shown cross-sensitivity to agents of the amide type such as mepivacaine. Since mepivacaine is metabolized in the liver and excreted by the kidneys, it should be used cautiously in patients with liver and renal disease."
+      ],
+      "selection_term": "mepivacaine",
+      "openfda": {
+        "brand_name": [
+          "Scandonest 3% Plain"
+        ],
+        "generic_name": [
+          "MEPIVACAINE HYDROCHLORIDE"
+        ],
+        "substance_name": [
+          "MEPIVACAINE HYDROCHLORIDE"
+        ],
+        "rxcui": [
+          "1012762",
+          "1305263"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "146803a1-199d-4789-b128-e974bdd03322",
+      "id": "ba0bb71a-9eae-4e98-8841-bb1d7e231164",
+      "effective_time": "20260520",
+      "version": "9",
+      "drug_interactions": [
+        "Drug Interactions The effects of metoclopramide on gastrointestinal motility are antagonized by anticholinergic drugs and narcotic analgesics. Additive sedative effects can occur when metoclopramide is given with alcohol, sedatives, hypnotics, narcotics or tranquilizers. The finding that metoclopramide releases catecholamines in patients with essential hypertension suggests that it should be used cautiously, if at all, in patients receiving monoamine oxidase inhibitors. Absorption of drugs from the stomach may be diminished (e.g., digoxin) by metoclopramide, whereas the rate and/or extent of absorption of drugs from the small bowel may be increased (e.g., acetaminophen, tetracycline, levodopa, ethanol, cyclosporine). Gastroparesis (gastric stasis) may be responsible for poor diabetic control in some patients. Exogenously administered insulin may begin to act before food has left the stomach and lead to hypoglycemia. Because the action of metoclopramide will influence the delivery of food to the intestines and thus the rate of absorption, insulin dosage or timing of dosage may require adjustment."
+      ],
+      "selection_term": "metoclopramide",
+      "openfda": {
+        "brand_name": [
+          "Metoclopramide"
+        ],
+        "generic_name": [
+          "METOCLOPRAMIDE"
+        ],
+        "substance_name": [
+          "METOCLOPRAMIDE HYDROCHLORIDE"
+        ],
+        "rxcui": [
+          "311670"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "4046b167-7a46-8f4a-e063-6394a90a147f",
+      "id": "522c880b-4112-b33c-e063-6294a90aa12a",
+      "effective_time": "20260519",
+      "version": "3",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS Anticonvulsants, psychotropic, hormone preparations, corticosteroids, antithyroid agents, cyproheptadine: may affect the results of the metyrapone test. ( 7.1 ) Acetaminophen: Avoid concomitant use with Metopirone. ( 7.2 ) 7.1 Effect of Other Drugs on Metopirone Anticonvulsants, psychotropic drugs, hormone preparations, corticosteroids, antithyroid agents and cyproheptadine may affect the results of the Metopirone test. If these drugs cannot be withdrawn, the necessity of carrying out the Metopirone test should be reviewed. 7.2 Effect of Metopirone on Other Drugs Acetaminophen Metopirone inhibits the glucuronidation of acetaminophen, which may decrease elimination of acetaminophen and lead to increased risk of adverse reactions related to acetaminophen. Avoid concomitant use of Metopirone with acetaminophen."
+      ],
+      "selection_term": "metyrapone",
+      "openfda": {
+        "brand_name": [
+          "Metopirone"
+        ],
+        "generic_name": [
+          "METYRAPONE"
+        ],
+        "substance_name": [
+          "METYRAPONE"
+        ],
+        "pharm_class_epc": [
+          "Adrenal Steroid Synthesis Inhibitor [EPC]"
+        ],
+        "rxcui": [
+          "105450",
+          "199772"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "c842c35f-6a64-4ecc-95a1-41b6d056047e",
+      "id": "e3b5ce1e-3a29-480b-98a1-4f7bb0af7ad7",
+      "effective_time": "20260630",
+      "version": "102",
+      "drug_interactions": [
+        "Drug interactions See Clinical Pharmacology . Misoprostol has not been shown to interfere with the beneficial effects of aspirin on signs and symptoms of rheumatoid arthritis. Misoprostol does not exert clinically significant effects on the absorption, blood levels, and antiplatelet effects of therapeutic doses of aspirin. Misoprostol has no clinically significant effect on the kinetics of diclofenac or ibuprofen. Prostaglandins such as misoprostol may augment the activity of oxytocic agents, especially when given less than 4 hours prior to initiating oxytocin treatment. Concomitant use is not recommended."
+      ],
+      "selection_term": "misoprostol",
+      "openfda": {
+        "brand_name": [
+          "misoprostol"
+        ],
+        "generic_name": [
+          "MISOPROSTOL"
+        ],
+        "substance_name": [
+          "MISOPROSTOL"
+        ],
+        "pharm_class_epc": [
+          "Prostaglandin E1 Analog [EPC]"
+        ],
+        "rxcui": [
+          "311727"
+        ]
+      },
+      "interaction_targets": [
+        "ibuprofen"
+      ]
+    },
+    {
+      "set_id": "acb7d02d-249b-4645-ac1b-8ff9a56dd244",
+      "id": "33997044-c41d-481b-b724-15463f892bd1",
+      "effective_time": "20250529",
+      "version": "19",
+      "drug_interactions": [
+        "Drug Interactions The extent of absorption and peak plasma concentration is slightly reduced in patients with the common cold/rhinitis. In addition, the time to peak concentration is prolonged. The use of a nasal vasoconstrictor such as xylometazoline in patients with rhinitis will further prolong the time to peak (See PHARMACOKINETICS ). Smoking cessation, with or without nicotine replacement, may alter the pharmacokinetics of certain concomitant medications. May Require a Decrease in Dose at Cessation of Smoking Possible Mechanism Acetaminophen, caffeine, imipramine, oxazepam, pentazocine, propranolol, or other beta-blockers, theophylline Deinduction of hepatic enzymes on smoking cessation. Insulin Increase of subcutaneous insulin absorption with smoking cessation. Adrenergic antagonists (e.g. prazosin, labetalol) Decrease in circulating catecholamines with smoking cessation. May Require an Increase in Dose at Cessation of Smoking Possible Mechanism Adrenergic agonists (e.g. isoproterenol, phenylephrine) Decrease in circulating catecholamines with smoking cessation."
+      ],
+      "selection_term": "nicotine",
+      "openfda": {
+        "brand_name": [
+          "Nicotrol"
+        ],
+        "generic_name": [
+          "NICOTINE"
+        ],
+        "substance_name": [
+          "NICOTINE"
+        ],
+        "pharm_class_epc": [
+          "Cholinergic Nicotinic Agonist [EPC]"
+        ],
+        "rxcui": [
+          "1797886",
+          "1797888"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "c61bb5af-558f-4b32-b34d-8fdae480443c",
+      "id": "487151fd-29d3-da81-e063-6394a90a2d8f",
+      "effective_time": "20260115",
+      "version": "10",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS Live attenuated influenza vaccine (LAIV), intranasal: Avoid administration of LAIV within 2 weeks before or 48 hours after oseltamivir phosphate use, unless medically indicated. (7) 7.1 Influenza Vaccines Live Attenuated Influenza Vaccine The concurrent use of oseltamivir phosphate with live attenuated influenza vaccine (LAIV) intranasal has not been evaluated. However, because of the potential for oseltamivir phosphate to inhibit replication of live vaccine virus and possibly reduce the efficacy of LAIV, avoid administration of LAIV within 2 weeks before or 48 hours after oseltamivir phosphate administration, unless medically indicated. Inactivated Influenza Vaccine Inactivated influenza vaccine can be administered at any time relative to use of oseltamivir phosphate. 7.2 Drugs Without Clinically Significant Drug Interaction with Oseltamivir Phosphate No dose adjustments are needed for either oseltamivir or the concomitant drug when co-administering oseltamivir with amoxicillin, acetaminophen, aspirin, cimetidine, antacids (magnesium and aluminum hydroxides and calcium carbonates), rimantadine, amantadine, or warfarin [see Clinical Pharmacology (12.3) ]."
+      ],
+      "selection_term": "oseltamivir",
+      "openfda": {
+        "brand_name": [
+          "Oseltamivir Phosphate"
+        ],
+        "generic_name": [
+          "OSELTAMIVIR"
+        ],
+        "substance_name": [
+          "OSELTAMIVIR PHOSPHATE"
+        ],
+        "rxcui": [
+          "312122",
+          "728109"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "caef07ce-066b-4c48-98dc-974b05ebbbe0",
+      "id": "49baf2a0-c1bf-49a8-a2f9-176cae0b7410",
+      "effective_time": "20260618",
+      "version": "2",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS Ibuprofen: Modify the ibuprofen dosage as recommended for patients with a creatinine clearance between 45 mL/min and 79 mL/min. ( 2.5 , 5.6 , 7 ) 7.1 Effect of Other Drugs on Pemetrexed Ibuprofen Ibuprofen increases exposure (AUC) of pemetrexed [see Clinical Pharmacology ( 12.3 )] . In patients with creatinine clearance between 45 mL/min and 79 mL/min: Avoid administration of ibuprofen for 2 days before, the day of, and 2 days following administration of PEMFEXY [see Dosage and Administration ( 2.5 )] . Monitor patients more frequently for myelosuppression, renal, and gastrointestinal toxicity, if concomitant administration of ibuprofen cannot be avoided."
+      ],
+      "selection_term": "pemetrexed",
+      "openfda": {
+        "brand_name": [
+          "Pemfexy"
+        ],
+        "generic_name": [
+          "PEMETREXED"
+        ],
+        "substance_name": [
+          "PEMETREXED MONOHYDRATE"
+        ],
+        "rxcui": [
+          "2590672",
+          "2590677"
+        ]
+      },
+      "interaction_targets": [
+        "ibuprofen"
+      ]
+    },
+    {
+      "set_id": "6272ccac-b543-404d-9938-8583bb59ed2c",
+      "id": "83bbaf17-9d8e-494a-8e76-361550296b5e",
+      "effective_time": "20260415",
+      "version": "17",
+      "drug_interactions": [
+        "Drug Interactions Pilocarpine should be administered with caution to patients taking beta-adrenergic antagonists because of the possibility of conduction disturbances. Drugs with parasympathomimetic effects administered concurrently with pilocarpine would be expected to result in additive pharmacologic effects. Pilocarpine might antagonize the anticholinergic effects of drugs used concomitantly. These effects should be considered when anticholinergic properties may be contributing to the therapeutic effect of concomitant medication (e.g., atropine, inhaled ipratropium). While no formal drug interaction studies have been performed, the following concomitant drugs were used in at least 10% of patients in either or both Sjogren’s efficacy studies: acetylsalicylic acid, artificial tears, calcium, conjugated estrogens, hydroxychloroquine sulfate, ibuprofen, levothyroxine sodium, medroxyprogesterone acetate, methotrexate, multivitamins, naproxen, omeprazole, paracetamol, and prednisone."
+      ],
+      "selection_term": "pilocarpine",
+      "openfda": {
+        "brand_name": [
+          "Pilocarpine Hydrochloride"
+        ],
+        "generic_name": [
+          "PILOCARPINE HYDROCHLORIDE"
+        ],
+        "substance_name": [
+          "PILOCARPINE HYDROCHLORIDE"
+        ],
+        "rxcui": [
+          "1000913"
+        ]
+      },
+      "interaction_targets": [
+        "ibuprofen"
+      ]
+    },
+    {
+      "set_id": "db23a56f-1e41-4843-9220-1b2e3059db41",
+      "id": "14eaeca2-d602-48eb-a384-eee02a9a1b04",
+      "effective_time": "20211110",
+      "version": "8",
+      "drug_interactions": [
+        "Clinically Significant Drug Interactions Patients who are administered local anesthetics are at increased risk of developing methemoglobinemia when concurrently exposed to the following drugs, which could include other local anesthetics: EXAMPLES OF DRUGS ASSOCIATED WITH METHEMOGLOBINEMIA: Class Examples Nitrates/Nitrites nitric oxide, nitroglycerin, nitroprusside, nitrous oxide Local anesthetics articaine, benzocaine, bupivacaine, lidocaine, mepivacaine, prilocaine, procaine, ropivacaine, tetracaine Antineoplastic Agents cyclophosphamide, flutamide, hydroxyurea, ifosfamide, rasburicase Antibiotics dapsone, nitrofurantoin, para-aminosalicylic acid, sulfonamides Antimalarials chloroquine, primaquine Anticonvulsants Phenobarbital, phenytoin, sodium valproate Other drugs acetaminophen, metoclopramide, quinine, sulfasalazine Concurrent administration of vasopressor drugs and ergot-type oxytocic drugs may cause severe, persistent hypertension or cerebrovascular accidents."
+      ],
+      "selection_term": "prilocaine",
+      "openfda": {
+        "brand_name": [
+          "Citanest Plain"
+        ],
+        "generic_name": [
+          "PRILOCAINE HYDROCHLORIDE"
+        ],
+        "substance_name": [
+          "PRILOCAINE HYDROCHLORIDE"
+        ],
+        "rxcui": [
+          "1012706",
+          "1595048"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "65b4888c-d49a-433f-9bfd-17880ae40069",
+      "id": "5098c53d-d892-0c71-e063-6394a90a9d27",
+      "effective_time": "20260429",
+      "version": "1",
+      "drug_interactions": [
+        "Drug Interactions When probenecid is used to elevate plasma concentrations of penicillin or other beta-lactams, or when such drugs are given to patients taking probenecid therapeutically, high plasma concentrations of the other drug may increase the incidence of adverse reactions associated with that drug. In the case of penicillin or other beta-lactams, psychic disturbances have been reported. The use of salicylates antagonizes the uricosuric action of probenecid (see WARNINGS ). The uricosuric action of probenecid is also antagonized by pyrazinamide. Probenecid produces an insignificant increase in free sulfonamide plasma concentrations but a significant increase in total sulfonamide plasma levels. Since probenecid decreases the renal excretion of conjugated sulfonamides, plasma concentrations of the latter should be determined from time to time when a sulfonamide and probenecid are coadministered for prolonged periods. Probenecid may prolong or enhance the action of oral sulfonylureas and thereby increase the risk of hypoglycemia. It has been reported that patients receiving probenecid require significantly less thiopental for induction of anesthesia. In addition, ketamine and thiopental anesthesia were significantly prolonged in rats receiving probenecid. The concomitant administration of probenecid increases the mean plasma elimination half-life of a number of drugs which can lead to increased plasma concentrations. These include agents such as indomethacin, acetaminophen, naproxen, ketoprofen, meclofenamate, lorazepam, and rifampin. Although the clinical significance of this observation has not been established, a lower dosage of the drug may be required to produce a therapeutic effect, and increases in dosage of the drug in question should be made cautiously and in small increments when probenecid is being co-administered. Although specific instances of toxicity due to this potential interaction have not been observed to date, physicians should be alert to this possibility. Probenecid given concomitantly with sulindac had only a slight effect on plasma sulfide levels, while plasma levels of sulindac and sulfone were increased. Sulindac was shown to produce a modest reduction in the uricosuric action of probenecid, which probably is not significant under most circumstances. In animals and in humans, probenecid has been reported to increase plasma concentrations of methotrexate (see WARNINGS ). Falsely high readings for theophylline have been reported in an in vitro study, using the Schack and Waxler technique, when therapeutic concentrations of theophylline and probenecid were added to human plasma."
+      ],
+      "selection_term": "probenecid",
+      "openfda": {
+        "brand_name": [
+          "Probenecid"
+        ],
+        "generic_name": [
+          "PROBENECID"
+        ],
+        "substance_name": [
+          "PROBENECID"
+        ],
+        "rxcui": [
+          "198152"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "fb109de9-d88d-4405-8dd6-d458cbc387d1",
+      "id": "8d833cc1-60b6-4e31-aff3-2958b8f93d1f",
+      "effective_time": "20260205",
+      "version": "1",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS Rilpivirine is primarily metabolized by cytochrome P450 (CYP)3A, and drugs that induce or inhibit CYP3A may thus affect the clearance of rilpivirine. Coadministration of rilpivirine tablets and drugs that induce CYP3A may result in decreased plasma concentrations of rilpivirine and loss of virologic response and possible resistance to rilpivirine or to the class of NNRTIs. Coadministration of rilpivirine tablets and drugs that inhibit CYP3A may result in increased plasma concentrations of rilpivirine. Coadministration of rilpivirine tablets with drugs that increase gastric pH may result in decreased plasma concentrations of rilpivirine and loss of virologic response and possible resistance to rilpivirine or to the class of NNRTIs. Rilpivirine tablets at the recommended doses are not likely to have a clinically relevant effect on the exposure of drugs metabolized by CYP enzymes. Table 6 shows the established and other potentially significant drug interactions based on which alterations in dose or regimen of rilpivirine tablets and/or coadministered drug may be recommended. Drugs that are not recommended for coadministration with rilpivirine tablets are also included in Table 6. [see Dosage and Administration ( 2 ), Contraindications ( 4 ), and Clinical Pharmacology ( 12.3 )]. Table 6: Established and Other Potentially Significant Drug Interactions: Alterations in Dose or Regimen May Be Recommended Based on Drug Interaction Studies or Predicted Interaction [see Clinical Pharmacology (12.3)] ↑=increase, ↓=decrease, ↔=no change * The interaction between rilpivirine tablets and the drug was evaluated in a clinical study. All other drug-drug interactions shown are predicted. † This interaction study has been performed with a dose higher than the recommended dose for rilpivirine tablets assessing the maximal effect on the coadministered drug. The dosing recommendation is applicable to the recommended doses of rilpivirine once daily. Concomitant Drug Class: Drug Name Effect on Concentration of Rilpivirine or Concomitant Drug Clinical Comment Antacids: antacids (e.g., aluminum or magnesium hydroxide, calcium carbonate) ↔ rilpivirine (antacids taken at least 2 hours before or at least 4 hours after rilpivirine) ↓ rilpivirine (concomitant intake) The combination of rilpivirine tablets and antacids should be used with caution as coadministration may cause significant decreases in rilpivirine plasma concentrations (increase in gastric pH). Antacids should only be administered either at least 2 hours before or at least 4 hours after rilpivirine tablets. Anticonvulsants: carbamazepine oxcarbazepine phenobarbital phenytoin ↓ rilpivirine Coadministration is contraindicated with rilpivirine tablets [see Contraindications (4) ] Antimycobacterials: rifampin rifapentine ↓ rilpivirine Coadministration is contraindicated with rilpivirine tablets [see Contraindications (4) ] Antimycobacterials: rifabutin * ↓ rilpivirine Concomitant use of rilpivirine tablets with rifabutin may cause a decrease in the plasma concentrations of rilpivirine (induction of CYP3A enzymes). Throughout coadministration of rilpivirine tablets with rifabutin, the rilpivirine tablets dose should be increased from 25 mg once daily to 50 mg once daily. When rifabutin coadministration is stopped, the rilpivirine tablets dose should be decreased to 25 mg once daily. Azole Antifungal Agents: fluconazole itraconazole ketoconazole *† posaconazole voriconazole ↑ rilpivirine ↓ ketoconazole Concomitant use of rilpivirine tablets with azole antifungal agents may cause an increase in the plasma concentrations of rilpivirine (inhibition of CYP3A enzymes). No rilpivirine dose adjustment is required when rilpivirine tablets are coadministered with azole antifungal agents. Clinically monitor for breakthrough fungal infections when azole antifungals are coadministered with rilpivirine tablets. Glucocorticoid (systemic): dexamethasone (more than a single-dose treatment) ↓ rilpivirine Coadministration is contraindicated with rilpivirine tablets [see Contraindications (4) ] H 2 -Receptor Antagonists: cimetidine famotidine *† nizatidine ranitidine ↔ rilpivirine (famotidine taken 12 hours before rilpivirine or 4 hours after rilpivirine) ↓ rilpivirine (famotidine taken 2 hours before rilpivirine) The combination of rilpivirine tablets and H 2 -receptor antagonists should be used with caution as coadministration may cause significant decreases in rilpivirine plasma concentrations (increase in gastric pH). H 2 -receptor antagonists should only be administered at least 12 hours before or at least 4 hours after rilpivirine tablets. Herbal Products: St. John's wort (Hypericum perforatum) ↓ rilpivirine Coadministration is contraindicated with rilpivirine tablets [see Contraindications (4) ] HIV-Antiviral Agents: Non-nucleoside Reverse Transcriptase Inhibitors (NNRTIs) NNRTI (delavirdine) Other NNRTIs (efavirenz, etravirine, nevirapine) ↑ rilpivirine ↔ delavirdine ↓ rilpivirine ↔ other NNRTIs It is not recommended to coadminister rilpivirine tablets with delavirdine and other NNRTIs. HIV-Antiviral Agents: Nucleoside Reverse Transcriptase Inhibitors (NRTIs) didanosine *† ↔ rilpivirine ↔ didanosine No dose adjustment is required when rilpivirine tablets are coadministered with didanosine. Didanosine is to be administered on an empty stomach and at least two hours before or at least four hours after rilpivirine tablets (which should be administered with a meal). HIV-Antiviral Agents: Protease Inhibitors (PIs)-Boosted (i.e., with coadministration of low-dose ritonavir) or Unboosted (i.e., without coadministration of low-dose ritonavir) darunavir/ritonavir *† ↑ rilpivirine ↔ boosted darunavir Concomitant use of rilpivirine tablets with darunavir/ritonavir may cause an increase in the plasma concentrations of rilpivirine (inhibition of CYP3A enzymes). No dose adjustment is required when rilpivirine tablets are coadministered with darunavir/ritonavir. Lopinavir/ritonavir *† ↑ rilpivirine ↔ boosted lopinavir Concomitant use of rilpivirine tablets with lopinavir/ritonavir may cause an increase in the plasma concentrations of rilpivirine (inhibition of CYP3A enzymes). No dose adjustment is required when rilpivirine tablets are coadministered with lopinavir/ritonavir. Other boosted PIs (atazanavir/ritonavir, fosamprenavir/ritonavir, saquinavir/ritonavir, tipranavir/ritonavir) ↑ rilpivirine ↔ boosted PI Concomitant use of rilpivirine tablets with boosted PIs may cause an increase in the plasma concentrations of rilpivirine (inhibition of CYP3A enzymes). Rilpivirine tablets are not expected to affect the plasma concentrations of coadministered PIs. Unboosted PIs (atazanavir, fosamprenavir, indinavir, nelfinavir) ↑ rilpivirine ↔ unboosted PI Concomitant use of rilpivirine tablets with unboosted PIs may cause an increase in the plasma concentrations of rilpivirine (inhibition of CYP3A enzymes). Rilpivirine tablets are not expected to affect the plasma concentrations of coadministered PIs. Macrolide or ketolide antibiotics: azithromycin clarithromycin erythromycin ↑ rilpivirine ↔ azithromycin ↔ clarithromycin ↔ erythromycin Macrolides are expected to increase concentrations of rilpivirine and are associated with a risk of Torsade de Pointes [Warnings and Precautions (5.4) ] . Where possible, consider alternatives, such as azithromycin, which increases rilpivirine concentrations less than other macrolides Narcotic Analgesics: methadone * ↓ R(-) methadone ↓ S(+) methadone No dose adjustments are required when initiating coadministration of methadone with rilpivirine tablets. However, clinical monitoring is recommended as methadone maintenance therapy may need to be adjusted in some patients. Proton Pump Inhibitors: e.g., esomeprazole lansoprazole omeprazole pantoprazole rabeprazole ↓ rilpivirine Coadministration is contraindicated with rilpivirine tablets [see Contraindications (4) ] In addition to the drugs included in Table 6, the interaction between rilpivirine tablets and the following drugs was evaluated in clinical studies and no dose adjustment is needed for either drug [see Clinical Pharmacology ( 12.3 )] : acetaminophen, atorvastatin, chlorzoxazone, cabotegravir, ethinylestradiol, norethindrone, raltegravir, sildenafil, simeprevir and tenofovir disoproxil fumarate. Rilpivirine did not have a clinically significant effect on the pharmacokinetics of digoxin or metformin. No clinically relevant drug-drug interaction is expected when rilpivirine tablets are coadministered with maraviroc, ribavirin or the NRTIs abacavir, emtricitabine, lamivudine, stavudine and zidovudine. QT Prolonging Drugs There is limited information available on the potential for a pharmacodynamic interaction between rilpivirine and drugs that prolong the QTc interval of the electrocardiogram. In a study of healthy subjects, 75 mg once daily and 300 mg once daily (3 times and 12 times the dose in rilpivirine tablets) have been shown to prolong the QTc interval of the electrocardiogram [see Clinical Pharmacology ( 12.2 )] . Consider alternatives to rilpivirine tablets when coadministered with a drug with a known risk of torsade de pointes. Consider alternatives to rilpivirine tablets when coadministered with drugs with a known risk of torsade de pointes. ( 5 . 4 ) Rilpivirine tablets should not be used in combination with NNRTIs. ( 4 , 7 ) Coadministration of rilpivirine tablets with drugs that induce or inhibit CYP3A may affect the plasma concentrations of rilpivirine. ( 4 , 7 ) Coadministration of rilpivirine tablets with drugs that increase gastric pH may decrease plasma concentrations of rilpivirine. ( 4 , 7 ) Refer to the Full Prescribing Information for other drugs that should not be coadministered with rilpivirine tablets and for other drugs that may require a change in dose or regimen. ( 7 )"
+      ],
+      "selection_term": "rilpivirine",
+      "openfda": {
+        "brand_name": [
+          "Rilpivirine"
+        ],
+        "generic_name": [
+          "RILPIVIRINE"
+        ],
+        "substance_name": [
+          "RILPIVIRINE HYDROCHLORIDE"
+        ],
+        "rxcui": [
+          "1102273"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "49f7d69a-820b-4c75-a31d-b2104c019c12",
+      "id": "b5f5cd6c-3874-4507-bbd4-72e8c5bfe17f",
+      "effective_time": "20231231",
+      "version": "10",
+      "drug_interactions": [
+        "Drug Interactions Acetaminophen: Rimantadine hydrochloride, 100 mg, was given twice daily for 13 days to 12 healthy volunteers. On day 11, acetaminophen (650 mg four times daily) was started and continued for 8 days. The pharmacokinetics of rimantadine were assessed on days 11 and 13. Co-administration with acetaminophen reduced the peak concentration and AUC values for rimantadine by approximately 11%. Aspirin: Rimantadine hydrochloride, 100 mg, was given twice daily for 13 days to 12 healthy volunteers. On day 11, aspirin (650 mg, four times daily) was started and continued for 8 days. The pharmacokinetics of rimantadine were assessed on days 11 and 13. Peak plasma concentrations and AUC of rimantadine were reduced approximately 10% in the presence of aspirin. Cimetidine: When a single 100 mg dose of rimantadine hydrochloride was administered with steady-state cimetidine (300 mg four times a day), there were no statistically significant differences in rimantadine C max or AUC between rimantadine hydrochloride alone and rimantadine hydrochloride in the presence of cimetdine. Live Attenuated Influenza Vaccine (LAIV): The concurrent use of rimantadine hydrochloride with live attenuated intranasal influenza vaccine has not been evaluated. However, because of potential interference between these products, the live attenuated intranasal influenza vaccine should not be administered until 48 hours after cessation of rimantadine hydrochloride and rimantadine hydrochloride should not be administered until two weeks after the administration of live attenuated intranasal influenza vaccine unless medically indicated. The concern about potential interference arises principally from the potential for antiviral drugs to inhibit replication of live vaccine virus."
+      ],
+      "selection_term": "rimantadine",
+      "openfda": {
+        "brand_name": [
+          "Rimantadine Hydrochloride"
+        ],
+        "generic_name": [
+          "RIMANTADINE HYDROCHLORIDE"
+        ],
+        "substance_name": [
+          "RIMANTADINE HYDROCHLORIDE"
+        ],
+        "rxcui": [
+          "856605"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "0030ffac-183a-472c-95b8-f93b4195de04",
+      "id": "0030ffac-183a-472c-95b8-f93b4195de04",
+      "effective_time": "20260706",
+      "version": "1",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS • Inhibitors or inducers of CYP1A2: May alter the clearance of ropinirole; dose adjustment of ropinirole may be required. ( 7.1 , 12.3) • Hormone replacement therapy (HRT): Starting or stopping HRT may require dose adjustment of ropinirole. ( 7.2 , 12.3 ) • Dopamine antagonists (e.g., neuroleptics, metoclopramide): May reduce efficacy of ropinirole. ( 7.3 ) 7.1 Cytochrome P450 1A2 Inhibitors and Inducers In vitro metabolism studies showed that cytochrome P450 1A2 (CYP1A2) is the major enzyme responsible for the metabolism of ropinirole. There is thus the potential for inducers or inhibitors of this enzyme to alter the clearance of ropinirole. Therefore, if therapy with a drug known to be a potent inducer or inhibitor of CYP1A2 is stopped or started during treatment with ropinirole, adjustment of the dose of ropinirole may be required. Coadministration of ciprofloxacin, an inhibitor of CYP1A2, increases the AUC and C max of ropinirole [ see Clinical Pharmacology ( 12.3 ) ]. Cigarette smoking is expected to increase the clearance of ropinirole since CYP1A2 is known to be induced by smoking hormone replacement therapy [ see Clinical Pharmacology ( 12.3 ) ]. 7.2 Estrogens Population pharmacokinetic analysis revealed that higher doses of estrogens (usually associated with hormone replacement therapy) reduced the clearance of ropinirole. Starting or stopping may require adjustment of dosage of ropinirole [see Clinical Pharmacology ( 12.3 )] . 7.3 Dopamine Antagonists Because ropinirole is a dopamine agonist, it is possible that dopamine antagonists such as neuroleptics (e.g., phenothiazines, butyrophenones, thioxanthenes) or metoclopramide may reduce the efficacy of ropinirole.",
+        "Drug Interaction Studies Digoxin: Coadministration of ropinirole (2 mg 3 times daily) with digoxin (0.125 to 0.25 mg once daily) did not alter the steady-state pharmacokinetics of digoxin in 10 patients. Theophylline: Administration of theophylline (300 mg twice daily), a substrate of CYP1A2, did not alter the steady-state pharmacokinetics of ropinirole (2 mg 3 times daily) in 12 patients with Parkinson’s disease. Ropinirole (2 mg 3 times daily) did not alter the pharmacokinetics of theophylline (5 mg/kg intravenously) in 12 patients with Parkinson’s disease. Ciprofloxacin: Coadministration of ciprofloxacin (500 mg twice daily), an inhibitor of CYP1A2, with ropinirole (2 mg 3 times daily) increased ropinirole AUC by 84% on average and C max by 60% (n = 12 patients). Estrogens: Population pharmacokinetic analysis revealed that estrogens (mainly ethinylestradiol: intake 0.6 to 3 mg over 4-month to 23-year period) reduced the oral clearance of ropinirole by 36% in 16 patients. L-dopa : Coadministration of carbidopa + L-dopa (10/100 mg twice daily) with ropinirole (2 mg 3 times daily) had no effect on the steady-state pharmacokinetics of ropinirole (n = 28 patients). Oral administration of ropinirole 2 mg 3 times daily increased mean steady-state C max of L-dopa by 20%, but its AUC was unaffected (n = 23 patients). Commonly Administered Drugs: Population analysis showed that commonly administered drugs (e.g., selegiline, amantadine, tricyclic antidepressants, benzodiazepines, ibuprofen, thiazides, antihistamines, anticholinergics) did not affect the clearance of ropinirole. An in vitro study indicates that ropinirole is not a substrate for P-glycoprotein. Ropinirole and its circulating metabolites do not inhibit or induce P450 enzymes; therefore, ropinirole is unlikely to affect the pharmacokinetics of other drugs by a P450 mechanism."
+      ],
+      "selection_term": "ropinirole",
+      "openfda": {
+        "brand_name": [
+          "ropinirole"
+        ],
+        "generic_name": [
+          "ROPINIROLE"
+        ],
+        "substance_name": [
+          "ROPINIROLE HYDROCHLORIDE"
+        ]
+      },
+      "interaction_targets": [
+        "ibuprofen"
+      ]
+    },
+    {
+      "set_id": "3849f5ce-d077-4318-935d-294be6948142",
+      "id": "3a56f3c1-048a-4c4e-954a-94d8cd04985a",
+      "effective_time": "20260520",
+      "version": "1",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS Patients who are administered local anesthetics are at increased risk of developing methemoglobinemia when concurrently exposed to the following drugs, which could include other local anesthetics [see Warnings and Precautions (5.4)] : Examples of Drugs Associated with Methemoglobinemia Class Examples Nitrates/Nitrites nitric oxide, nitroglycerin, nitroprusside, nitrous oxide Local anesthetics articaine, benzocaine, bupivacaine, lidocaine, mepivacaine, prilocaine, procaine, ropivacaine, tetracaine Antineoplastic agents cyclophosphamide, flutamide, hydroxyurea, ifosfamide, rasburicase Antibiotics dapsone, nitrofurantoin, para-aminosalicylic acid, sulfonamides Antimalarials chloroquine, primaquine Anticonvulsants Phenobarbital, phenytoin, sodium valproate Other drugs acetaminophen, metoclopramide, quinine, sulfasalazine Ropivacaine hydrochloride should be used with caution in patients receiving other local anesthetics or agents structurally related to amide-type local anesthetics, since the toxic effects of these drugs are additive. Cytochrome P4501A2 is involved in the formation of 3-hydroxy ropivacaine, the major metabolite. In vivo , the plasma clearance of ropivacaine was reduced by 70% during coadministration of fluvoxamine (25 mg bid for 2 days), a selective and potent CYP1A2 inhibitor. Thus strong inhibitors of cytochrome P4501A2, such as fluvoxamine, given concomitantly during administration of Ropivacaine hydrochloride, can interact with Ropivacaine Hydrochloride leading to increased ropivacaine plasma levels. Caution should be exercised when CYP1A2 inhibitors are coadministered. Possible interactions with drugs known to be metabolized by CYP1A2 via competitive inhibition such as theophylline and imipramine may also occur. Coadministration of a selective and potent inhibitor of CYP3A4, ketoconazole (100 mg bid for 2 days with ropivacaine infusion administered 1 hour after ketoconazole) caused a 15% reduction in in vivo plasma clearance of ropivacaine. Specific trials studying the interaction between ropivacaine and class III antiarrhythmic drugs (e.g., amiodarone) have not been performed, but caution is advised [see Warnings and Precautions (5.13)]. • Agents structurally related to amide-type local anesthetics: Concurrent use may cause additive effects. (7)"
+      ],
+      "selection_term": "ropivacaine",
+      "openfda": {
+        "brand_name": [
+          "Ropivacaine Hydrochloride"
+        ],
+        "generic_name": [
+          "ROPIVACAINE HYDROCHLORIDE"
+        ],
+        "substance_name": [
+          "ROPIVACAINE HYDROCHLORIDE"
+        ],
+        "rxcui": [
+          "1734475"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "b891bd9f-fdb8-4862-89c5-ecdd700398a3",
+      "id": "97cc8813-9de7-42f5-89dd-c46f8b6730fa",
+      "effective_time": "20200515",
+      "version": "17",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS 7.1 Serotonergic Drugs Serious, sometimes fatal, central nervous system (CNS) toxicity referred to as the “serotonin syndrome” has been reported with the combination of nonselective MAOIs and serotonergic drugs. Use of EMSAM with these drugs is contraindicated [see Contraindications (4) and Warnings and Precautions (5.2) ] . 7.2 Tyramine EMSAM has the capacity to inhibit intestinal MAO, which is responsible for the catabolism of tyramine in food and beverages. As a result of this inhibition, large amounts of tyramine may enter the systemic circulation and precipitate a sudden, large rise in blood pressure or hypertensive crisis [see Warnings and Precautions (5.3) and Clinical Pharmacology (12.2) ] . A diet low in tyramine content may be necessary to avoid this interaction. Studies to evaluate the potential for EMSAM to inhibit tyramine metabolism have been conducted and, overall, the data for EMSAM 6 mg per 24 hours support a recommendation that a modified diet is not required at this dose. Due to the more limited data available for EMSAM 9 mg per 24 hours and the results from the Phase I tyramine challenge study in fed volunteers administered EMSAM 12 mg per 24 hours, patients receiving these doses should follow Dietary Modifications Required for Patients Taking EMSAM 9 mg per 24 hours and 12 mg per 24 hours below [see Clinical Pharmacology (12.2) ] . Dietary Modifications Required for Patients Taking EMSAM 9 mg per 24 hours and 12 mg per 24 hours The foods and beverages listed in Table 5 should be avoided beginning on the first day of EMSAM 9 mg per 24 hours or 12 mg per 24 hours treatment, and should continue to be avoided for 2 weeks after a dose reduction to EMSAM 6 mg per 24 hours or following the discontinuation of EMSAM 9 mg per 24 hours or 12 mg per 24 hours. Table 5. Food and Beverages to Avoid and Those which are Acceptable [see References (15) ] Class of Food and Beverage Tyramine-Rich Foods and Beverages to Avoid Acceptable Foods and Drinks, Containing No or Little Tyramine Meat, Poultry, and Fish Air dried, aged and fermented meats, sausages and salamis (including cacciatore, hard salami and mortadella); pickled herring; and any spoiled or improperly stored meat, poultry, and fish (e.g., foods that have undergone changes in coloration, odor, or become moldy); spoiled or improperly stored animal livers Fresh meat, poultry, and fish, including fresh processed meats (e.g., lunch meats, hot dogs, breakfast sausage, and cooked sliced ham) Vegetables Broad bean pods (fava bean pods) All other vegetables Dairy Aged cheeses Processed cheeses, mozzarella, ricotta cheese, cottage cheese, and yogurt Beverages All varieties of tap beer and beers that have not been pasteurized so as to allow for ongoing fermentation Concomitant use of alcohol with EMSAM is not recommended. (Bottled and canned beers and wines contain little or no tyramine.) Miscellaneous Concentrated yeast extract (e.g., Marmite), sauerkraut, most soybean products (including soy sauce and tofu), OTC supplements containing tyramine Brewer’s yeast, baker’s yeast, soy milk, commercial chain restaurant pizzas prepared with cheeses low in tyramine 7.3 Sympathomimetic Amines and Buspirone The use of EMSAM with sympathomimetic amines or buspirone may produce substantial elevations in blood pressure. Therefore, monitor blood pressure if EMSAM is used with any of the following drugs: buspirone, amphetamines, and cold products or weight-reducing preparations that contain sympathomimetic amines (e.g., pseudoephedrine, phenylephrine, phenylpropanolamine, and ephedrine). 7.4 Effect of Other Drugs on EMSAM Carbamazepine is contraindicated with MAOIs, including selegiline [see Contraindications (4) , Warnings and Precautions (5.3) and Clinical Pharmacology (12.3) ] . No dose adjustment for EMSAM is needed when EMSAM is used concomitantly with alcohol, alprazolam, ibuprofen, olanzapine, risperidone, levothyroxine, and CYP3A4 inhibitors (e.g., ketoconazole). No clinically meaningful change in selegiline exposure was seen when EMSAM was co-administered with alcohol, alprazolam, ibuprofen, olanzapine, risperidone, levothyroxine, and ketoconazole [see Clinical Pharmacology (12.3) ] . 7.5 Effect of EMSAM on Other Drugs Use of alcohol while taking EMSAM is not recommended, even though EMSAM has not been shown to increase the impairment of mental and motor skills caused by alcohol (0.75 mg per kg) [see Clinical Pharmacology (12.3) ] . Monitor blood pressure if sympathomimetic agents (e.g., phenylpropanolamine (PPA) or pseudoephedrine) are used with EMSAM, even though selegiline does not appear to affect the pharmacokinetics of PPA or pseudoephedrine [see Clinical Pharmacology (12.3) ] . No dose adjustment of alprazolam, ibuprofen, levothyroxine, olanzapine, risperidone, warfarin, or strong CYP3A4 inhibitors (e.g., ketoconazole) is necessary when these drugs are used in combination with EMSAM. EMSAM had no clinically relevant effect on pharmacokinetics of these drugs."
+      ],
+      "selection_term": "selegiline",
+      "openfda": {
+        "brand_name": [
+          "EMSAM"
+        ],
+        "generic_name": [
+          "SELEGILINE"
+        ],
+        "substance_name": [
+          "SELEGILINE"
+        ],
+        "pharm_class_epc": [
+          "Monoamine Oxidase Inhibitor [EPC]",
+          "Monoamine Oxidase Type B Inhibitor [EPC]"
+        ],
+        "rxcui": [
+          "865206",
+          "865208",
+          "865210",
+          "865212",
+          "865214",
+          "865216"
+        ]
+      },
+      "interaction_targets": [
+        "ibuprofen"
+      ]
+    },
+    {
+      "set_id": "6041acc2-5e8a-4d3c-bf50-7e9447748e2b",
+      "id": "4b79e8cf-aa02-4ef9-b1fd-62d80bd37dc8",
+      "effective_time": "20260508",
+      "version": "16",
+      "drug_interactions": [
+        "Drug Interactions ACE-Inhibitors and Angiotensin II Antagonists Reports suggest that NSAIDs may diminish the antihypertensive effect of ACE-inhibitors and angiotensin II antagonists. These interactions should be given consideration in patients taking NSAIDs concomitantly with ACE-inhibitors or angiotensin II antagonists. In some patients with compromised renal function (e.g., elderly patients or patients who are volume-depleted, including those on diuretic therapy) who are being treated with non-steroidal anti-inflammatory drugs, the co-administration of an NSAID and an ACE-inhibitor or an angiotensin II antagonist may result in further deterioration of renal function, including possible acute renal failure, which is usually reversible. Therefore, monitor renal function periodically in patients receiving ACEIs or AIIAs and NSAIDs in combination therapy. Acetaminophen Acetaminophen had no effect on the plasma levels of sulindac or its sulfide metabolite. Aspirin The concomitant administration of aspirin with sulindac significantly depressed the plasma levels of the active sulfide metabolite. A double-blind study compared the safety and efficacy of sulindac 300 or 400 mg daily given alone or with aspirin 2.4 g/day for the treatment of osteoarthritis. The addition of aspirin did not alter the types of clinical or laboratory adverse experiences for sulindac; however, the combination showed an increase in the incidence of gastrointestinal adverse experiences. Since the addition of aspirin did not have a favorable effect on the therapeutic response to sulindac, the combination is not recommended. Cyclosporine Administration of non-steroidal anti-inflammatory drugs concomitantly with cyclosporine has been associated with an increase in cyclosporine-induced toxicity, possibly due to decreased synthesis of renal prostacyclin. NSAIDs should be used with caution in patients taking cyclosporine, and renal function should be carefully monitored. Diflunisal The concomitant administration of sulindac and diflunisal in normal volunteers resulted in lowering of the plasma levels of the active sulindac sulfide metabolite by approximately one-third. Diuretics Clinical studies, as well as post marketing observations, have shown that sulindac can reduce the natriuretic effect of furosemide and thiazides in some patients. This response has been attributed to inhibition of renal prostaglandin synthesis. During concomitant therapy with NSAIDs, the patient should be observed closely for signs of renal failure (see WARNINGS,Renal Effects ), as well as to assure diuretic efficacy. DMSO DMSO should not be used with sulindac. Concomitant administration has been reported to reduce the plasma levels of the active sulfide metabolite and potentially reduce efficacy. In addition, this combination has been reported to cause peripheral neuropathy. Lithium NSAIDs have produced an elevation of plasma lithium levels and a reduction in renal lithium clearance. The mean minimum lithium concentration increased 15% and the renal clearance was decreased by approximately 20%. These effects have been attributed to inhibition of renal prostaglandin synthesis by the NSAID. Thus, when NSAIDs and lithium are administered concurrently, subjects should be observed carefully for signs of lithium toxicity. Methotrexate NSAIDs have been reported to competitively inhibit methotrexate accumulation in rabbit kidney slices. This may indicate that they could enhance the toxicity of methotrexate. Caution should be used when NSAIDs are administered concomitantly with methotrexate. NSAIDs The concomitant use of sulindac with other NSAIDs is not recommended due to the increased possibility of gastrointestinal toxicity, with little or no increase in efficacy. Oral anticoagulants Although sulindac and its sulfide metabolite are highly bound to protein, studies in which sulindac was given at a dose of 400 mg daily have shown no clinically significant interaction with oral anticoagulants. However, patients should be monitored carefully until it is certain that no change in their anticoagulant dosage is required. Special attention should be paid to patients taking higher doses than those recommended and to patients with renal impairment or other metabolic defects that might increase sulindac blood levels. The effects of warfarin and NSAIDs on GI bleeding are synergistic, such that users of both drugs together have a risk of serious GI bleeding higher than users of either drug alone. Oral hypoglycemic agents Although sulindac and its sulfide metabolite are highly bound to protein, studies in which sulindac was given at a dose of 400 mg daily, have shown no clinically significant interaction with oral hypoglycemic agents. However, patients should be monitored carefully until it is certain that no change in their hypoglycemic dosage is required. Special attention should be paid to patients taking higher doses than those recommended and to patients with renal impairment or other metabolic defects that might increase sulindac blood levels. Probenecid Probenecid given concomitantly with sulindac had only a slight effect on plasma sulfide levels, while plasma levels of sulindac and sulfone were increased. Sulindac was shown to produce a modest reduction in the uricosuric action of probenecid, which probably is not significant under most circumstances. Propoxyphene hydrochloride Propoxyphene hydrochloride had no effect on the plasma levels of sulindac or its sulfide metabolite."
+      ],
+      "selection_term": "sulindac",
+      "openfda": {
+        "brand_name": [
+          "SULINDAC"
+        ],
+        "generic_name": [
+          "SULINDAC"
+        ],
+        "substance_name": [
+          "SULINDAC"
+        ],
+        "pharm_class_epc": [
+          "Nonsteroidal Anti-inflammatory Drug [EPC]"
+        ],
+        "rxcui": [
+          "198239"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "593a53a4-91bc-4e4a-aeff-08fc2efe3dd4",
+      "id": "8de923a7-5488-4e04-8c58-37a3d5355d00",
+      "effective_time": "20200601",
+      "version": "4",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS Aliskiren: Do not co-administer aliskiren with telmisartan in patients with diabetes. Avoid use of aliskiren with telmisartan in patients with renal impairment (GFR <60 mL/min). Digoxin: When telmisartan was co-administered with digoxin, median increases in digoxin peak plasma concentration (49%) and in trough concentration (20%) were observed. Therefore, monitor digoxin levels when initiating, adjusting, and discontinuing telmisartan for the purpose of keeping the digoxin level within the therapeutic range. Lithium: Reversible increases in serum lithium concentrations and toxicity have been reported during concomitant administration of lithium with angiotensin II receptor antagonists including telmisartan. Therefore, monitor serum lithium levels during concomitant use. Non-Steroidal Anti-Inflammatory Agents including Selective Cyclooxygenase-2 Inhibitors (COX-2 Inhibitors): In patients who are elderly, volume-depleted (including those on diuretic therapy), or with compromised renal function, co-administration of NSAIDs, including selective COX-2 inhibitors, with angiotensin II receptor antagonists, including telmisartan, may result in deterioration of renal function, including possible acute renal failure. These effects are usually reversible. Monitor renal function periodically in patients receiving telmisartan and NSAID therapy. The antihypertensive effect of angiotensin II receptor antagonists, including telmisartan may be attenuated by NSAIDs including selective COX-2 inhibitors. Ramipril and Ramiprilat: Co-administration of telmisartan 80 mg once daily and ramipril 10 mg once daily to healthy subjects increases steady-state Cmax and AUC of ramipril 2.3- and 2.1-fold, respectively, and Cmax and AUC of ramiprilat 2.4- and 1.5-fold, respectively. In contrast, Cmax and AUC of telmisartan decrease by 31% and 16%, respectively. When co-administering telmisartan and ramipril, the response may be greater because of the possibly additive pharmacodynamic effects of the combined drugs, and also because of the increased exposure to ramipril and ramiprilat in the presence of telmisartan. Concomitant use of telmisartan and ramipril is not recommended. Other Drugs: Co-administration of telmisartan did not result in a clinically significant interaction with acetaminophen, amlodipine, glyburide, simvastatin, hydrochlorothiazide, warfarin, or ibuprofen. Telmisartan is not metabolized by the cytochrome P450 system and had no effects in vitro on cytochrome P450 enzymes, except for some inhibition of CYP2C19. Telmisartan is not expected to interact with drugs that inhibit cytochrome P450 enzymes; it is also not expected to interact with drugs metabolized by cytochrome P450 enzymes, except for possible inhibition of the metabolism of drugs metabolized by CYP2C19. • NSAID : Increased risk of renal impairment and loss of anti-hypertensive effect ( 7 ) • Do not co-administer aliskiren with telmisartan in patients with diabetes ( 7 )"
+      ],
+      "selection_term": "telmisartan",
+      "openfda": {
+        "brand_name": [
+          "telmisartan"
+        ],
+        "generic_name": [
+          "TELMISARTAN"
+        ],
+        "substance_name": [
+          "TELMISARTAN"
+        ],
+        "pharm_class_epc": [
+          "Angiotensin 2 Receptor Blocker [EPC]"
+        ],
+        "rxcui": [
+          "205305"
+        ]
+      },
+      "interaction_targets": [
+        "ibuprofen",
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "b77a4a38-edb1-412e-97af-d49e862b32c1",
+      "id": "12aa9f2d-da1f-43cf-a446-65c90c0503df",
+      "effective_time": "20260521",
+      "version": "1",
+      "drug_interactions": [
+        "Drug Interactions In controlled trials, terazosin has been added to diuretics, and several beta-adrenergic blockers; no unexpected interactions were observed. Terazosin has also been used in patients on a variety of concomitant therapies; while these were not formal interaction studies, no interactions were observed. Terazosin has been used concomitantly in at least 50 patients on the following drugs or drug classes: 1) analgesic/anti-inflammatory (e.g., acetaminophen, aspirin, codeine, ibuprofen, indomethacin). 2) antibiotics (e.g., erythromycin, trimethoprim and sulfamethoxazole). 3) anticholinergic/sympathomimetics (e.g., phenylephrine hydrochloride, phenylpropanolamine hydrochloride, pseudoephedrine hydrochloride). 4) antigout (e.g., allopurinol). 5) antihistamines (e.g., chlorpheniramine). 6) cardiovascular agents (e.g., atenolol, hydrochlorothiazide, methyclothiazide, propranolol). 7) corticosteroids. 8) gastrointestinal agents (e.g., antacids). 9) hypoglycemics. 10) sedatives and tranquilizers (e.g., diazepam). Use with Other Drugs In a study (n = 24) where terazosin and verapamil were administered concomitantly, terazosin's mean AUC 0-24 increased 11% after the first verapamil dose and after 3 weeks of verapamil treatment it increased by 24% with associated increases in C max (25%) and C min (32%) means. Terazosin mean T max decreased from 1.3 hours to 0.8 hours after 3 weeks of verapamil treatment. Statistically significant differences were not found in the verapamil level with and without terazosin. In a study (n = 6) where terazosin and captopril were administered concomitantly, plasma disposition of captopril was not influenced by concomitant administration of terazosin and terazosin maximum plasma concentrations increased linearly with dose at steady-state after administration of terazosin plus captopril (see DOSAGE AND ADMINISTRATION ). Carcinogenesis, Mutagenesis, Impairment of Fertility Terazosin was devoid of mutagenic potential when evaluated in vivo and in vitro (the Ames test, in vivo cytogenetics, the dominant lethal test in mice, in vivo Chinese hamster chromosome aberration test and V79 forward mutation assay). Terazosin, administered in the feed to rats at doses of 8 mg/kg/day, 40 mg/kg/day, and 250 mg/kg/day (70 mg/m 2 /day, 350 mg/m 2 /day, and 2,100 mg/m 2 /day), for two years, was associated with a statistically significant increase in benign adrenal medullary tumors of male rats exposed to the 250 mg/kg dose. This dose is 175 times the maximum recommended human dose of 20 mg (12 mg/m 2 ). Female rats were unaffected. Terazosin was not oncogenic in mice when administered in feed for 2 years at a maximum tolerated dose of 32 mg/kg/day (110 mg/m 2 ; 9 times the maximum recommended human dose). The absence of mutagenicity in a battery of tests, of tumorigenicity of any cell type in the mouse carcinogenicity assay, of increased total tumor incidence in either species, and of proliferative adrenal lesions in female rats, suggests a male rat species-specific event. Numerous other diverse pharmaceutical and chemical compounds have also been associated with benign adrenal medullary tumors in male rats without supporting evidence for carcinogenicity in man. The effect of terazosin on fertility was assessed in a standard fertility/reproductive performance study in which male and female rats were administered oral doses of 8 mg/kg/day, 30 mg/kg/day and 120 mg/kg/day. Four of 20 male rats given 30 mg/kg (240 mg/m 2 ; 20 times the maximum recommended human dose) and five of 19 male rats given 120 mg/kg (960 mg/m 2 ; 80 times the maximum recommended human dose) failed to sire a litter. Testicular weights and morphology were unaffected by treatment. Vaginal smears at 30 mg/kg/day and 120 mg/kg/day, however, appeared to contain less sperm than smears from control matings and good correlation was reported between sperm count and subsequent pregnancy. Oral administration of terazosin for one or two years elicited a statistically significant increase in the incidence of testicular atrophy in rats exposed to 40 mg/kg/day and 250 mg/kg/day (29 times and 175 times the maximum recommended human dose), but not in rats exposed to 8 mg/kg/day (> 6 times the maximum recommended human dose). Testicular atrophy was also observed in dogs dosed with 300 mg/kg/day (> 500 times the maximum recommended human dose) for three months but not after one year when dosed with 20 mg/kg/day (38 times the maximum recommended human dose). This lesion has also been seen with prazosin hydrochloride, another (marketed) selective-alpha-1 blocking agent."
+      ],
+      "selection_term": "terazosin",
+      "openfda": {
+        "brand_name": [
+          "Terazosin"
+        ],
+        "generic_name": [
+          "TERAZOSIN"
+        ],
+        "substance_name": [
+          "TERAZOSIN HYDROCHLORIDE"
+        ],
+        "rxcui": [
+          "313219"
+        ]
+      },
+      "interaction_targets": [
+        "ibuprofen",
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "cbc31ab1-a80f-4b50-a3b1-39910b0fb609",
+      "id": "78a0b514-481a-4ea9-8ec6-8b60acdf2158",
+      "effective_time": "20260414",
+      "version": "32",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS 7.1 Bosentan In a human pharmacokinetic study conducted with bosentan (250 mg/day) and an oral formulation of treprostinil (treprostinil diolamine), no pharmacokinetic interactions between treprostinil and bosentan were observed. 7.2 Sildenafil In a human pharmacokinetic study conducted with sildenafil (60 mg/day) and an oral formulation of treprostinil (treprostinil diolamine), no pharmacokinetic interactions between treprostinil and sildenafil were observed. 7.3 Effect of Cytochrome P450 Inhibitors and Inducers In vitro studies of human hepatic microsomes showed that treprostinil does not inhibit cytochrome P450 (CYP) isoenzymes CYP1A2, CYP2A6, CYP2C8, CYP2C9, CYP2C19, CYP2D6, CYP2E1, and CYP3A. Additionally, treprostinil does not induce cytochrome P450 isoenzymes CYP1A2, CYP2B6, CYP2C9, CYP2C19, and CYP3A. Human pharmacokinetic studies with an oral formulation of treprostinil (treprostinil diolamine) indicated that co-administration of the cytochrome P450 (CYP) 2C8 enzyme inhibitor, gemfibrozil, increases exposure (both C max and AUC) to treprostinil. Co-administration of the CYP2C8 enzyme inducer, rifampin, decreases exposure to treprostinil. It is unclear if the safety and efficacy of treprostinil by the inhalation route are altered by inhibitors or inducers of CYP2C8 [see Warnings and Precautions (5.3) ] . 7.4 Effect of Other Drugs on Treprostinil Drug interaction studies have been carried out with treprostinil (oral or subcutaneous) co-administered with acetaminophen (4 g/day), warfarin (25 mg/day), and fluconazole (200 mg/day), respectively, in healthy volunteers. These studies did not show a clinically significant effect on the pharmacokinetics of treprostinil. Treprostinil does not affect the pharmacokinetics or pharmacodynamics of warfarin. The pharmacokinetics of R- and S- warfarin and the international normalized ratio (INR) in healthy subjects given a single 25 mg dose of warfarin were unaffected by continuous subcutaneous infusion of treprostinil at an infusion rate of 10 ng/kg/min."
+      ],
+      "selection_term": "treprostinil",
+      "openfda": {
+        "brand_name": [
+          "TYVASO"
+        ],
+        "generic_name": [
+          "TREPROSTINIL"
+        ],
+        "substance_name": [
+          "TREPROSTINIL"
+        ],
+        "pharm_class_epc": [
+          "Prostacycline Vasodilator [EPC]"
+        ],
+        "rxcui": [
+          "857795",
+          "857799"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "78b5235b-ed77-49ae-960b-e1c0145237db",
+      "id": "41b01e12-6a3b-b34c-e063-6394a90a98e3",
+      "effective_time": "20251022",
+      "version": "2",
+      "drug_interactions": [
+        "Drugs That May Cause Methemoglobinemia When Used with Salicor™ Patients who are administered local anesthetics are at increased risk of developing methemoglobinemia when concurrently exposed to the following drugs, which could include other local anesthetics: Examples of Drugs Associated with Methemoglobinemia Class: Nitrates/Nitrites: Local anesthetics: Antineoplastic agents: Antibiotics: Antimalarials: Anticonvulsants: Other drugs: Examples: nitric oxide, nitroglycerin, nitroprusside, nitrous oxide articaine, benzocaine, bupivacaine, lidocaine, mepivacaine, prilocaine, procaine, ropivacaine, tetracaine cyclophosphamide, flutamide, hydroxyurea, ifosfamide, rasburicase dapsone, nitrofurantoin, para-aminosalicylic acid, sulfonamides chloroquine, primaquine phenobarbital, phenytoin, sodium valproate acetaminophen, metoclopramide, quinine, sulfasalazine carcinogenesis, mutagenesis"
+      ],
+      "selection_term": "triethanolamine salicylate",
+      "openfda": {
+        "brand_name": [
+          "Salicor"
+        ],
+        "generic_name": [
+          "TRIETHANOLAMINE SALICYLATE"
+        ],
+        "substance_name": [
+          "TEA-SALICYLATE"
+        ],
+        "rxcui": [
+          "2722418",
+          "2722423"
+        ]
+      },
+      "interaction_targets": [
+        "acetaminophen"
+      ]
+    },
+    {
+      "set_id": "d962d459-254f-4b78-ae28-7d9ec5d4e4d5",
+      "id": "31aa6291-2e48-4530-94ff-a736b3bffe58",
+      "effective_time": "20260629",
+      "version": "10",
+      "drug_interactions": [
+        "7 DRUG INTERACTIONS Voriconazole is metabolized by cytochrome P450 isoenzymes, CYP2C19, CYP2C9, and CYP3A4. Therefore, inhibitors or inducers of these isoenzymes may increase or decrease voriconazole plasma concentrations, respectively. Voriconazole is a strong inhibitor of CYP3A4, and also inhibits CYP2C19 and CYP2C9. Therefore, voriconazole may increase the plasma concentrations of substances metabolized by these CYP450 isoenzymes. Table 10 and Table 11 provide listings of clinically significant drug interactions, including contraindicated drugs [see Contraindications ( 4 )] . Drugs listed in Table 10 and Table 11 are a guide and not considered a comprehensive list of all possible drugs and herbal products that are contraindicated or may interact with voriconazole. Table 10: Effect of Other Drugs on Voriconazole Pharmacokinetics [see Clinical Pharmacology ( 12.3 )] * Results based on in vivo clinical studies generally following repeat oral dosing with 200 mg every 12 hours voriconazole to healthy subjects ** Results based on in vivo clinical study following repeat oral dosing with 400 mg every 12 hours for 1 day, then 200 mg every 12 hours for at least 2 days voriconazole to healthy subjects *** Non-Nucleoside Reverse Transcriptase Inhibitors Drug/Drug Class (Mechanism of Interaction by the Drug) Voriconazole Plasma Exposure (C max and AUC τ after 200 mg every 12 hours) Prevention or Management Recommendations Rifampin* and Rifabutin* (CYP450 Induction) Significantly Reduced Contraindicated Efavirenz (400 mg every 24 hours)** (CYP450 Induction) Efavirenz (300 mg every 24 hours)** (CYP450 Induction) Significantly Reduced Slight Decrease in AUC τ Contraindicated When voriconazole is concomitantly administered with efavirenz, voriconazole oral maintenance dose should be increased to 400 mg every 12 hours and efavirenz should be decreased to 300 mg every 24 hours. High-dose Ritonavir (400 mg every 12 hours)** (CYP450 Induction) Low-dose Ritonavir (100 mg every 12 hours)** (CYP450 Induction) Significantly Reduced Reduced Contraindicated Concomitant administration of voriconazole and low-dose ritonavir (100 mg every 12 hours) should be avoided, unless an assessment of the benefit/risk to the patient justifies the use of voriconazole. Carbamazepine (CYP450 Induction) Not Studied In Vivo or In Vitro , but Likely to Result in Significant Reduction Contraindicated Long Acting Barbiturates (e.g., phenobarbital, mephobarbital) (CYP450 Induction) Not Studied In Vivo or In Vitro , but Likely to Result in Significant Reduction Contraindicated Phenytoin* (CYP450 Induction) Significantly Reduced Increase voriconazole maintenance dose from 4 mg/kg to 5 mg/kg IV every 12 hours or from 200 mg to 400 mg orally every 12 hours (100 mg to 200 mg orally every 12 hours in patients weighing less than 40 kg). Letermovir (CYP2C9/2C19 Induction) Reduced If concomitant administration of voriconazole with letermovir cannot be avoided, monitor for reduced effectiveness of voriconazole. St. John's Wort (CYP450 inducer; P-gp inducer) Significantly Reduced Contraindicated Oral Contraceptives** containing ethinyl estradiol and norethindrone (CYP2C19 Inhibition) Increased Monitoring for adverse reactions and toxicity related to voriconazole is recommended for concomitant administration with oral contraceptives. Fluconazole** (CYP2C9, CYP2C19 and CYP3A4 Inhibition) Significantly Increased Avoid concomitant administration of voriconazole and fluconazole. Monitoring for adverse reactions and toxicity related to voriconazole is started within 24 hours after the last dose of fluconazole. Other HIV Protease Inhibitors (CYP3A4 Inhibition) In Vivo Studies Showed No Significant Effects of Indinavir on Voriconazole Exposure In Vitro Studies Demonstrated Potential for Inhibition of Voriconazole Metabolism (Increased Plasma Exposure) No dosage adjustment in the voriconazole dosage needed for concomitant administration with indinavir. Frequent monitoring for adverse reactions and toxicity related to voriconazole for concomitant administration with other HIV protease inhibitors. Other NNRTIs*** (CYP3A4 Inhibition or CYP450 Induction) In Vitro Studies Demonstrated Potential for Inhibition of Voriconazole Metabolism by Delavirdine and Other NNRTIs (Increased Plasma Exposure) A Voriconazole-Efavirenz Drug Interaction Study Demonstrated the Potential for the Metabolism of Voriconazole to be Induced by Efavirenz and Other NNRTIs (Decreased Plasma Exposure) Frequent monitoring for adverse reactions and toxicity related to voriconazole. Careful assessment of voriconazole effectiveness. Table 11: Effect of Voriconazole on Pharmacokinetics of Other Drugs [see Clinical Pharmacology ( 12.3 )] * Results based on in vivo clinical studies generally following repeat oral dosing with 200 mg BID voriconazole to healthy subjects ** Results based on in vivo clinical study following repeat oral dosing with 400 mg every 12 hours for 1 day, then 200 mg every 12 hours for at least 2 days voriconazole to healthy subjects *** Results based on in vivo clinical study following repeat oral dosing with 400 mg every 12 hours for 1 day, then 200 mg every 12 hours for 4 days voriconazole to subjects receiving a methadone maintenance dose (30-100 mg every 24 hours) **** Non-Steroidal Anti-Inflammatory Drug ***** Non-Nucleoside Reverse Transcriptase Inhibitors Drug/Drug Class (Mechanism of Interaction by Voriconazole) Drug Plasma Exposure (C max and AUC τ ) Prevention or Management Recommendations Sirolimus* (CYP3A4 Inhibition) Significantly Increased Contraindicated Rifabutin* (CYP3A4 Inhibition) Significantly Increased Contraindicated Efavirenz (400 mg every 24 hours)** (CYP3A4 Inhibition) Efavirenz (300 mg every 24 hours)** (CYP3A4 Inhibition) Significantly Increased Slight Increase in AUC τ Contraindicated When voriconazole is concomitantly administered with efavirenz, voriconazole oral maintenance dose should be increased to 400 mg every 12 hours and efavirenz should be decreased to 300 mg every 24 hours. High-dose Ritonavir (400 mg every 12 hours)**(CYP3A4 Inhibition) Low-dose Ritonavir (100 mg every 12 hours)** No Significant Effect of Voriconazole on Ritonavir C max or AUC τ Slight Decrease in Ritonavir C max and AUC τ Contraindicated because of significant reduction of voriconazole C max and AUC τ . Concomitant administration of voriconazole and low-dose ritonavir (100 mg every 12 hours) should be avoided (due to the reduction in voriconazole C max and AUC τ ) unless an assessment of the benefit/risk to the patient justifies the use of voriconazole. Pimozide, Quinidine, Ivabradine (CYP3A4 Inhibition) Not Studied In Vivo or In Vitro , but Drug Plasma Exposure Likely to be Increased Contraindicated because of potential for QT prolongation and rare occurrence of torsade de pointes. Ergot Alkaloids (CYP450 Inhibition) Not Studied In Vivo or In Vitro , but Drug Plasma Exposure Likely to be Increased Contraindicated Naloxegol (CYP3A4 Inhibition) Not Studied In Vivo or In Vitro , but Drug Plasma Exposure Likely to be Increased which may Increase the Risk of Adverse Reactions Contraindicated Tolvaptan (CYP3A4 Inhibition) Although Not Studied Clinically, Voriconazole is Likely to Significantly Increase the Plasma Concentrations of Tolvaptan Contraindicated Lurasidone (CYP3A4 Inhibition) Not Studied In Vivo or In Vitro , but Voriconazole is Likely to Significantly Increase the Plasma Concentrations of Lurasidone Contraindicated Finerenone (CYP3A4 Inhibition) Not Studied In Vivo or In Vitro , but Voriconazole is Likely to Significantly Increase the Plasma Concentrations of Finerenone Contraindicated Eplerenone (CYP3A4 Inhibition) Not Studied In Vivo or In Vitro , but Voriconazole is Likely to Significantly Increase the Plasma Concentrations of Eplerenone Contraindicated Voclosporin (CYP3A4 Inhibition) Not Studied In Vivo or In Vitro , but Voriconazole is Likely to Significantly Increase the Plasma Concentrations of Voclosporin Contraindicated Venetoclax (CYP3A4 Inhibition) Not Studied In Vivo or In Vitro , but Venetoclax Plasma Exposure Likely to be Significantly Increased Concomitant administration of voriconazole is contraindicated at initiation and during the ramp-up phase in patients with chronic lymphocytic leukemia (CLL) or small lymphocytic lymphoma (SLL). Refer to the venetoclax labeling for safety monitoring and dose reduction in the steady daily dosing phase in CLL/SLL patients. For patients with acute myeloid leukemia (AML), dose reduction and safety monitoring are recommended across all dosing phases when concomitantly administered voriconazole with venetoclax. Refer to the venetoclax prescribing information for dosing instructions. Lemborexant (CYP3A4 Inhibition) Not Studied In Vivo or In Vitro , but Drug Plasma Exposure Likely to be Increased Avoid concomitant use of voriconazole with lemborexant. Glasdegib (CYP3A4 Inhibition) Not Studied In Vivo or In Vitro , but Drug Plasma Exposure Likely to be Increased Consider alternative therapies. If concomitant use cannot be avoided, monitor patients for increased risk of adverse reactions including QTc interval prolongation. Tyrosine kinase inhibitors (including but not limited to axitinib, bosutinib, cabozantinib, ceritinib, cobimetinib, dabrafenib, dasatinib, nilotinib, sunitinib, ibrutinib, ribociclib) (CYP3A4 Inhibition) Not Studied In Vivo or In Vitro , but Drug Plasma Exposure Likely to be Increased Avoid concomitant use of voriconazole. If concomitant use cannot be avoided, dose reduction of the tyrosine kinase inhibitor is recommended. Refer to the prescribing information for the relevant product. Cyclosporine* (CYP3A4 Inhibition) AUC τ Significantly Increased; No Significant Effect on C max When initiating therapy with voriconazole in patients already receiving cyclosporine, reduce the cyclosporine dose to one-half of the starting dose and follow with frequent monitoring of cyclosporine blood levels. Increased cyclosporine levels have been associated with nephrotoxicity. When voriconazole is discontinued, cyclosporine concentrations must be frequently monitored and the dose increased as necessary. Methadone*** (CYP3A4 Inhibition) Increased Increased plasma concentrations of methadone have been associated with toxicity including QT prolongation. Frequent monitoring for adverse reactions and toxicity related to methadone is recommended when concomitantly administered with voriconazole. Dose reduction of methadone may be needed. Fentanyl (CYP3A4 Inhibition) Increased Reduction in the dose of fentanyl and other long-acting opiates metabolized by CYP3A4 should be considered when concomitantly administered with voriconazole. Extended and frequent monitoring for opiate-associated adverse reactions may be necessary. Alfentanil (CYP3A4 Inhibition) Significantly Increased An increase in the incidence of delayed and persistent alfentanil-associated nausea and vomiting were observed when concomitantly administered with voriconazole. Reduction in the dose of alfentanil and other opiates metabolized by CYP3A4 (e.g., sufentanil) should be considered when concomitantly administered with voriconazole. A longer period for monitoring respiratory and other opiate-associated adverse reactions may be necessary. Oxycodone (CYP3A4 Inhibition) Significantly Increased Increased visual effects (heterophoria and miosis) of oxycodone were observed when concomitantly administered with voriconazole. Reduction in the dose of oxycodone and other long-acting opiates metabolized by CYP3A4 should be considered when concomitantly administered with voriconazole. Extended and frequent monitoring for opiate-associated adverse reactions may be necessary. NSAIDs**** including. ibuprofen and diclofenac (CYP2C9 Inhibition) Increased Frequent monitoring for adverse reactions and toxicity related to NSAIDs. Dose reduction of NSAIDs may be needed. Tacrolimus* (CYP3A4 Inhibition) Significantly Increased When initiating therapy with voriconazole in patients already receiving tacrolimus, reduce the tacrolimus dose to one-third of the starting dose and follow with frequent monitoring of tacrolimus blood levels. Increased tacrolimus levels have been associated with nephrotoxicity. When voriconazole is discontinued, tacrolimus concentrations must be frequently monitored and the dose increased as necessary. Phenytoin* (CYP2C9 Inhibition) Significantly Increased Frequent monitoring of phenytoin plasma concentrations and frequent monitoring of adverse effects related to phenytoin. Oral Contraceptives containing ethinyl estradiol and norethindrone (CYP3A4 Inhibition)** Increased Monitoring for adverse reactions related to oral contraceptives is recommended during concomitant administration. Prednisolone and other corticosteroids (CYP3A4 Inhibition) In Vivo Studies Showed No Significant Effects of Voriconazole on Prednisolone Exposure Not Studied In Vitro or In Vivo for Other Corticosteroids, but Drug Exposure Likely to be Increased No dosage adjustment for prednisolone when concomitantly administered with voriconazole [see Clinical Pharmacology (12.3) ] . Monitor for potential adrenal dysfunction when voriconazole is administered with other corticosteroids [see Warnings and Precautions (5.8) ] . Warfarin* (CYP2C9 Inhibition) Other Oral Coumarin Anticoagulants (CYP2C9/3A4 Inhibition) Prothrombin Time Significantly Increased Not Studied In Vivo or In Vitro for other Oral Coumarin Anticoagulants, but Drug Plasma Exposure Likely to be Increased If patients receiving coumarin preparations are treated simultaneously with voriconazole, the prothrombin time or other suitable anticoagulation tests should be monitored at close intervals and the dosage of anticoagulants adjusted accordingly. Ivacaftor (CYP3A4 Inhibition) Not Studied In Vivo or In Vitro , but Drug Plasma Exposure Likely to be Increased which may Increase the Risk of Adverse Reactions Dose reduction of ivacaftor is recommended. Refer to the prescribing information for ivacaftor. Eszopiclone (CYP3A4 Inhibition) Not Studied In Vivo or In Vitro , but Drug Plasma Exposure Likely to be Increased which may Increase the Sedative Effect of Eszopiclone Dose reduction of eszopiclone is recommended. Refer to the prescribing information for eszopiclone. Mavacamten (CYP2C19/3A4/2C9 Inhibition) Not Studied In Vivo or In Vitro , but Mavacamten Drug Plasma Exposure Likely to be Increased which may Increase the Risk of Heart Failure Refer to the prescribing information for mavacamten. Omeprazole* (CYP2C19/3A4 Inhibition) Significantly Increased When initiating therapy with voriconazole in patients already receiving omeprazole doses of 40 mg or greater, reduce the omeprazole dose by one-half. The metabolism of other proton pump inhibitors that are CYP2C19 substrates may also be inhibited by voriconazole and may result in increased plasma concentrations of other proton pump inhibitors. Other HIV Protease Inhibitors (CYP3A4 Inhibition) In Vivo Studies Showed No Significant Effects on Indinavir Exposure In Vitro Studies Demonstrated Potential for Voriconazole to Inhibit Metabolism (Increased Plasma Exposure) No dosage adjustment for indinavir when concomitantly administered with voriconazole. Frequent monitoring for adverse reactions and toxicity related to other HIV protease inhibitors. Other NNRTIs***** (CYP3A4 Inhibition) A Voriconazole-Efavirenz Drug Interaction Study Demonstrated the Potential for Voriconazole to Inhibit Metabolism of Other NNRTIs (Increased Plasma Exposure) Frequent monitoring for adverse reactions and toxicity related to NNRTI. Tretinoin (CYP3A4 Inhibition) Although Not Studied, Voriconazole may Increase Tretinoin Concentrations and Increase the Risk of Adverse Reactions Frequent monitoring for signs and symptoms of pseudotumor cerebri or hypercalcemia. Midazolam (CYP3A4 Inhibition) Other benzodiazepines including triazolam and alprazolam (CYP3A4 Inhibition) Significantly Increased In Vitro Studies Demonstrated Potential for Voriconazole to Inhibit Metabolism (Increased Plasma Exposure) Increased plasma exposures may increase the risk of adverse reactions and toxicities related to benzodiazepines. Refer to drug-specific labeling for details. HMG-CoA Reductase Inhibitors (Statins) (CYP3A4 Inhibition) In Vitro Studies Demonstrated Potential for Voriconazole to Inhibit Metabolism (Increased Plasma Exposure) Frequent monitoring for adverse reactions and toxicity related to statins. Increased statin concentrations in plasma have been associated with rhabdomyolysis. Adjustment of the statin dosage may be needed. Dihydropyridine Calcium Channel Blockers (CYP3A4 Inhibition) In Vitro Studies Demonstrated Potential for Voriconazole to Inhibit Metabolism (Increased Plasma Exposure) Frequent monitoring for adverse reactions and toxicity related to calcium channel blockers. Adjustment of calcium channel blocker dosage may be needed. Sulfonylurea Oral Hypoglycemics (CYP2C9 Inhibition) Not Studied In Vivo or In Vitro , but Drug Plasma Exposure Likely to be Increased Frequent monitoring of blood glucose and for signs and symptoms of hypoglycemia. Adjustment of oral hypoglycemic drug dosage may be needed. Vinca Alkaloids (CYP3A4 Inhibition) Not Studied In Vivo or In Vitro , but Drug Plasma Exposure Likely to be Increased Frequent monitoring for adverse reactions and toxicity (i.e., neurotoxicity) related to vinca alkaloids. Reserve azole antifungals, including voriconazole, for patients receiving a vinca alkaloid who have no alternative antifungal treatment options. Everolimus (CYP3A4 Inhibition) Not Studied In Vivo or In Vitro , but Drug Plasma Exposure Likely to be Increased Concomitant administration of voriconazole and everolimus is not recommended. CYP3A4, CYP2C9, and CYP2C19 inhibitors and inducers: Adjust voriconazole dosage and monitor for adverse reactions or lack of efficacy ( 4 , 7 ) Voriconazole may increase the concentrations and activity of drugs that are CYP3A4, CYP2C9 and CYP2C19 substrates. Reduce dosage of these other drugs and monitor for adverse reactions ( 4 , 7 ) Phenytoin or Efavirenz: With coadministration, increase maintenance oral and intravenous dosage of voriconazole ( 2.3 , 2.7 , 7 )"
+      ],
+      "selection_term": "voriconazole",
+      "openfda": {
+        "brand_name": [
+          "Voriconazole"
+        ],
+        "generic_name": [
+          "VORICONAZOLE"
+        ],
+        "substance_name": [
+          "VORICONAZOLE"
+        ],
+        "pharm_class_epc": [
+          "Azole Antifungal [EPC]"
+        ],
+        "rxcui": [
+          "351209"
+        ]
+      },
+      "interaction_targets": [
+        "ibuprofen"
+      ]
+    },
+    {
+      "set_id": "a1277ef5-6072-43ff-a6ce-0a7cea58b7cb",
+      "id": "415d7fa5-73ac-93e7-e063-6294a90a02a3",
+      "effective_time": "20251017",
+      "version": "14",
+      "drug_interactions": [
+        "Drug Interactions As with all drugs, the potential exists for interaction with other drugs by a variety of mechanisms. CNS-Active Drugs: Ethanol: Zaleplon 10 mg potentiated the CNS-impairing effects of ethanol 0.75 g/kg on balance testing and reaction time for 1 hour after ethanol administration and on the digit symbol substitution test (DSST), symbol copying test, and the variability component of the divided attention test for 2.5 hours after ethanol administration. The potentiation resulted from a CNS pharmacodynamic interaction; zaleplon did not affect the pharmacokinetics of ethanol. Imipramine: Co-administration of single doses of zaleplon 20 mg and imipramine 75 mg produced additive effects on decreased alertness and impaired psychomotor performance for 2 to 4 hours after administration. The interaction was pharmacodynamic with no alteration of the pharmacokinetics of either drug. Paroxetine: Co-administration of a single dose of zaleplon 20 mg and paroxetine 20 mg daily for 7 days did not produce any interaction on psychomotor performance. Additionally, paroxetine did not alter the pharmacokinetics of zaleplon, reflecting the absence of a role of CYP2D6 in zaleplon’s metabolism. Thioridazine: Co-administration of single doses of zaleplon 20 mg and thioridazine 50 mg produced additive effects on decreased alertness and impaired psychomotor performance for 2 to 4 hours after administration. The interaction was pharmacodynamic with no alteration of the pharmacokinetics of either drug. Venlafaxine: Co-administration of a single dose of zaleplon 10 mg and multiple doses of venlafaxine ER (extended release) 150 mg did not result in any significant changes in the pharmacokinetics of either zaleplon or venlafaxine. In addition, there was no pharmacodynamic interaction as a result of co-administration of zaleplon and venlafaxine ER. Promethazine: Co-administration of a single dose of zaleplon and promethazine (10 and 25 mg, respectively) resulted in a 15% decrease in maximal plasma concentrations of zaleplon, but no change in the area under the plasma concentration-time curve. However, the pharmacodynamics of co-administration of zaleplon and promethazine have not been evaluated. Caution should be exercised when these 2 agents are co-administered. Drugs That Induce CYP3A4: Rifampin: CYP3A4 is ordinarily a minor metabolizing enzyme of zaleplon. Multiple-dose administration of the potent CYP3A4 inducer rifampin (600 mg every 24 hours, q24h, for 14 days), however, reduced zaleplon C max and AUC by approximately 80%. The co-administration of a potent CYP3A4 enzyme inducer, although not posing a safety concern, thus could lead to ineffectiveness of zaleplon. An alternative non-CYP3A4 substrate hypnotic agent may be considered in patients taking CYP3A4 inducers such as rifampin, phenytoin, carbamazepine and phenobarbital. Drugs That Inhibit CYP3A4: CYP3A4 is a minor metabolic pathway for the elimination of zaleplon because the sum of desethylzaleplon (formed via CYP3A4 in vitro ) and its metabolites, 5-oxo-desethylzaleplon and 5-oxo-desethylzaleplon glucuronide, accounts for only 9% of the urinary recovery of a zaleplon dose. Co-administration of single, oral doses of zaleplon with erythromycin (10 mg and 800 mg, respectively), a strong, selective CYP3A4 inhibitor, produced a 34% increase in zaleplon's maximal plasma concentrations and a 20% increase in the area under the plasma concentration time curve. The magnitude of interaction with multiple doses of erythromycin is unknown. Other strong selective CYP3A4 inhibitors such as ketoconazole can also be expected to increase the exposure of zaleplon. A routine dosage adjustment of zaleplon is not considered necessary. Drugs That Inhibit Aldehyde Oxidase: The aldehyde oxidase enzyme system is less well studied than the cytochrome P450 enzyme system. Diphenhydramine: Diphenhydramine is reported to be a weak inhibitor of aldehyde oxidase in rat liver, but its inhibitory effects in human liver are not known. There is no pharmacokinetic interaction between zaleplon and diphenhydramine following the administration of a single dose (10 mg and 50 mg, respectively) of each drug. However, because both of these compounds have CNS effects, an additive pharmacodynamic effect is possible. Drugs That Inhibit Both Aldehyde Oxidase and CYP3A4: Cimetidine: Cimetidine inhibits both aldehyde oxidase (in vitro) and CYP3A4 (in vitro and in vivo), the primary and secondary enzymes, respectively, responsible for zaleplon metabolism. Concomitant administration of zaleplon (10 mg) and cimetidine (800 mg) produced an 85% increase in the mean C max and AUC of zaleplon. An initial dose of 5 mg should be given to patients who are concomitantly being treated with cimetidine (see DOSAGE AND ADMINISTRATION ). Drugs Highly Bound to Plasma Protein: Zaleplon is not highly bound to plasma proteins (fraction bound 60%±15%); therefore, the disposition of zaleplon is not expected to be sensitive to alterations in protein binding. In addition, administration of zaleplon to a patient taking another drug that is highly protein bound should not cause transient increase in free concentrations of the other drug. Drugs with a Narrow Therapeutic Index: Digoxin: Zaleplon (10 mg) did not affect the pharmacokinetic or pharmacodynamic profile of digoxin (0.375 mg q24h for 8 days). Warfarin : Multiple oral doses of zaleplon (20 mg q24h for 13 days) did not affect the pharmacokinetics of warfarin (R+)- or (S-)-enantiomers or the pharmacodynamics (prothrombin time) following a single 25 mg oral dose of warfarin. Drugs That Alter Renal Excretion: Ibuprofen: Ibuprofen is known to affect renal function and, consequently, alter the renal excretion of other drugs. There was no apparent pharmacokinetic interaction between zaleplon and ibuprofen following single dose administration (10 mg and 600 mg, respectively) of each drug. This was expected because zaleplon is primarily metabolized and renal excretion of unchanged zaleplon accounts for less than 1% of the administered dose."
+      ],
+      "selection_term": "zaleplon",
+      "openfda": {
+        "brand_name": [
+          "Zaleplon"
+        ],
+        "generic_name": [
+          "ZALEPLON"
+        ],
+        "substance_name": [
+          "ZALEPLON"
+        ],
+        "pharm_class_epc": [
+          "gamma-Aminobutyric Acid A Receptor Agonist [EPC]"
+        ],
+        "rxcui": [
+          "313761"
+        ]
+      },
+      "interaction_targets": [
+        "ibuprofen"
+      ]
     }
   ]
 }

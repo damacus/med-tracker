@@ -1,4 +1,4 @@
-version: 1
+version: 2
 source: openFDA drug label API
 selection:
   - warfarin
@@ -81,3 +81,128 @@ selection:
   - ramelteon
   - ergotamine
   - procarbazine
+targeted_selection:
+  - term: argatroban
+    interaction_targets:
+      - acetaminophen
+  - term: bupivacaine
+    interaction_targets:
+      - acetaminophen
+  - term: buspirone
+    interaction_targets:
+      - ibuprofen
+  - term: busulfan
+    interaction_targets:
+      - acetaminophen
+  - term: cidofovir
+    interaction_targets:
+      - acetaminophen
+  - term: cyclobenzaprine
+    interaction_targets:
+      - acetaminophen
+  - term: dapsone
+    interaction_targets:
+      - acetaminophen
+  - term: diflunisal
+    interaction_targets:
+      - acetaminophen
+  - term: divalproex
+    interaction_targets:
+      - acetaminophen
+  - term: dobutamine
+    interaction_targets:
+      - acetaminophen
+  - term: doxazosin
+    interaction_targets:
+      - ibuprofen
+      - acetaminophen
+  - term: exenatide
+    interaction_targets:
+      - acetaminophen
+  - term: finasteride
+    interaction_targets:
+      - acetaminophen
+  - term: heparin
+    interaction_targets:
+      - ibuprofen
+  - term: imatinib
+    interaction_targets:
+      - acetaminophen
+  - term: isoniazid
+    interaction_targets:
+      - acetaminophen
+  - term: ketorolac
+    interaction_targets:
+      - ibuprofen
+      - acetaminophen
+  - term: lidocaine
+    interaction_targets:
+      - acetaminophen
+  - term: mepivacaine
+    interaction_targets:
+      - acetaminophen
+  - term: metoclopramide
+    interaction_targets:
+      - acetaminophen
+  - term: metyrapone
+    interaction_targets:
+      - acetaminophen
+  - term: misoprostol
+    interaction_targets:
+      - ibuprofen
+  - term: nicotine
+    interaction_targets:
+      - acetaminophen
+  - term: oseltamivir
+    interaction_targets:
+      - acetaminophen
+  - term: pemetrexed
+    interaction_targets:
+      - ibuprofen
+  - term: pilocarpine
+    interaction_targets:
+      - ibuprofen
+  - term: prilocaine
+    interaction_targets:
+      - acetaminophen
+  - term: probenecid
+    interaction_targets:
+      - acetaminophen
+  - term: rilpivirine
+    interaction_targets:
+      - acetaminophen
+  - term: rimantadine
+    interaction_targets:
+      - acetaminophen
+  - term: ropinirole
+    interaction_targets:
+      - ibuprofen
+  - term: ropivacaine
+    interaction_targets:
+      - acetaminophen
+  - term: selegiline
+    interaction_targets:
+      - ibuprofen
+  - term: sulindac
+    interaction_targets:
+      - acetaminophen
+  - term: telmisartan
+    interaction_targets:
+      - ibuprofen
+      - acetaminophen
+  - term: terazosin
+    interaction_targets:
+      - ibuprofen
+      - acetaminophen
+  - term: treprostinil
+    interaction_targets:
+      - acetaminophen
+  - term: triethanolamine salicylate
+    interaction_targets:
+      - acetaminophen
+  - term: voriconazole
+    interaction_targets:
+      - ibuprofen
+  - term: zaleplon
+    interaction_targets:
+      - ibuprofen
