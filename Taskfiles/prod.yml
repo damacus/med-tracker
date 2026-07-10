@@ -89,6 +89,23 @@ tasks:
           ENVIRONMENT: prod
           COMMAND: 'rails runner ''load Rails.root.join("db/seeds/seed_users.rb")'''
 
+  verify-storage-restore:
+    desc: Verify a restored production attachment and its stored blob
+    summary: |
+      Verify that an Active Storage attachment restored in PostgreSQL has a
+      readable, checksum-valid object on the mounted production volume.
+      Uses the owner-capable database role because the isolated recovery check
+      must select a restored attachment before tenant context is established.
+      Usage: task prod:verify-storage-restore
+      Usage: task prod:verify-storage-restore ATTACHMENT_ID=123
+    vars:
+      attachment_id: '{{ .ATTACHMENT_ID | default "" }}'
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner ATTACHMENT_ID="{{ .attachment_id }}" rails med_tracker:storage:verify_restore'
+
   import-dmd-barcodes:
     desc: Import NHS dm+d GTIN barcode mappings from CSV
     summary: |

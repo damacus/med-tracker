@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'active_support/core_ext/integer/time'
+require Rails.root.join('lib/production_storage')
 
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
@@ -24,7 +25,8 @@ Rails.application.configure do
   # config.asset_host = "http://assets.example.com"
 
   # Store uploaded files on the local file system (see config/storage.yml for options).
-  config.active_storage.service = :local
+  storage = ProductionStorage.resolve
+  config.active_storage.service = storage.service
 
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.
   config.assume_ssl = true
