@@ -11,7 +11,7 @@ vars:
   COMPOSE_PROJECT:
     sh: |
       base=$(basename "$PWD")
-      hash=$(git rev-parse --path-format=absolute --git-common-dir | git hash-object --stdin | cut -c1-8)
+      hash=$(pwd -P | git hash-object --stdin | cut -c1-8)
       printf '%s-%s\n' "$base" "$hash"
   GIT_COMMON_DIR:
     sh: git rev-parse --path-format=absolute --git-common-dir
