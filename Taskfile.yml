@@ -78,6 +78,46 @@ tasks:
           ENVIRONMENT: dev
           COMMAND: 'OWNER_EMAIL="{{ .OWNER_EMAIL }}" HOUSEHOLD_NAME="{{ .HOUSEHOLD_NAME }}" DRY_RUN="{{ .DRY_RUN }}" APPLY="{{ .APPLY }}" rails households:migrate_local'
 
+  medication-review:snapshot:
+    desc: Regenerate the committed 80-label public evidence snapshot
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: dev
+          COMMAND: 'bin/rails medication_review_evidence:snapshot'
+
+  medication-review:terminology-snapshot:
+    desc: Regenerate the committed no-license NLM RxClass terminology snapshot
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: dev
+          COMMAND: 'bin/rails medication_review_evidence:terminology_snapshot'
+
+  medication-review:import:
+    desc: Import the committed public evidence snapshot into the development database
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: dev
+          COMMAND: 'bin/rails medication_review_evidence:import'
+
+  medication-review:benchmark:
+    desc: Measure automatic detection against the committed public evidence snapshot
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: dev
+          COMMAND: 'bin/rails medication_review_evidence:benchmark'
+
+  medication-review:refresh:
+    desc: Refresh public medication-review evidence and report source changes
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: dev
+          COMMAND: 'bin/rails medication_review_evidence:refresh'
+
   stop-all:
     desc: Stop all services for this worktree (dev, test, prod)
     summary: |

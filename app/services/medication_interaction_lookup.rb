@@ -47,30 +47,37 @@ class MedicationInteractionLookup
 
   def prompts_for(candidate_name)
     active_medications.flat_map do |medication|
-      evidence_corpus.matches_for(candidate_name, medication.display_name).map do |evidence|
-        prompt_metadata(medication, evidence).merge(evidence_metadata(evidence))
+      evidence_corpus.matches_for(candidate_name, medication.display_name).map do |match|
+        prompt_metadata(medication, match).merge(evidence_metadata(match))
       end
     end
   end
 
-  def prompt_metadata(medication, evidence)
+  def prompt_metadata(medication, match)
     {
-      evidence_record_id: evidence.id,
-      risk_level: evidence.risk_level,
-      risk_level_label: self.class.risk_level_label(evidence.risk_level),
-      match_confidence: evidence.match_confidence,
-      match_confidence_label: self.class.match_confidence_label(evidence.match_confidence),
+      evidence_record_id: match.evidence.id,
+      risk_level: match.risk_level,
+      risk_level_label: self.class.risk_level_label(match.risk_level),
+      match_confidence: match.match_confidence,
+      match_confidence_label: self.class.match_confidence_label(match.match_confidence),
+      matched_term: match.matched_term,
+      match_type: match.match_type,
+      source_instruction: match.source_instruction,
+      match_reason: match.reason,
       interacting_medication_name: medication.display_name,
       description: review_description
     }
   end
 
-  def evidence_metadata(evidence)
+  def evidence_metadata(match)
+    evidence = match.evidence
     {
       source_name: evidence.source_name,
       source_checked_on: evidence.retrieved_on.iso8601,
+      source_version: evidence.source_version,
+      source_effective_on: evidence.source_effective_on&.iso8601,
       source_url: evidence.source_url,
-      evidence_text: evidence.evidence_text.truncate(500)
+      evidence_text: match.evidence_excerpt.truncate(500)
     }
   end
 

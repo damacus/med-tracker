@@ -1596,6 +1596,21 @@ pt:
     evidence_excerpt: Evidência pública do rótulo
     checked_on: Evidência verificada em %{date}
     confidence: Confiança de correspondência %{value}
+    match_explanation: Por que razão o MedTracker incluiu isto
+    matched_term: "Termo correspondente: %{term} (correspondência de %{type})"
+    source_instruction: "Categoria de instrução da fonte: %{value}"
+    label_version: Versão do rótulo %{version}, em vigor em %{date}
+    match_types:
+      ingredient: ingrediente
+      class: classe pública
+      curated: curada
+      legacy: legada
+    source_instructions:
+      contraindicated: O rótulo diz contraindicado
+      avoid: O rótulo diz evitar
+      monitor_or_adjust: O rótulo diz monitorizar ou ajustar
+      possible_or_caution: O rótulo descreve uma possível preocupação ou precaução
+      unclassified: Nenhuma categoria de instrução atribuída
     recorded_outcome: Esta combinação foi revista com %{name} (%{role}) em %{date}.
     updated: Registo de revisão atualizado.
     risk_levels:

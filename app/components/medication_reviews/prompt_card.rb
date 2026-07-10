@@ -12,7 +12,7 @@ module Components
         article(class: 'overflow-hidden rounded-shape-lg border border-border bg-surface-container-lowest ' \
                        'shadow-elevation-1',
                 data: { review_prompt_id: prompt.id }) do
-          div(class: 'grid gap-6 p-5 md:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)] md:p-6') do
+          div(class: 'medication-review-layout grid gap-6 p-5 md:p-6') do
             render_evidence
             render_review_form
           end
@@ -42,12 +42,35 @@ module Components
             end
             p(class: 'mt-2 text-sm leading-6 text-foreground') { prompt.evidence_text }
           end
+          render_match_explanation
           div(class: 'mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-on-surface-variant') do
             a(href: prompt.evidence_source_url, target: '_blank', rel: 'noopener noreferrer',
               class: 'font-bold text-primary underline underline-offset-2') { prompt.evidence_source_name }
             span { t('medication_reviews.checked_on', date: I18n.l(prompt.evidence_source_checked_on)) }
           end
           render_recorded_outcome if prompt.practitioner_review_status?
+        end
+      end
+
+      def render_match_explanation
+        div(class: 'mt-4 border-y border-border py-4') do
+          m3_text(variant: :label_medium, class: 'block font-bold text-on-surface-variant') do
+            t('medication_reviews.match_explanation')
+          end
+          p(class: 'mt-2 text-sm leading-6 text-foreground') { prompt.match_reason }
+          div(class: 'mt-2 grid gap-1 text-xs text-on-surface-variant') do
+            span do
+              t('medication_reviews.matched_term', term: prompt.matched_term, type: match_type_label)
+            end
+            span do
+              t('medication_reviews.source_instruction', value: source_instruction_label)
+            end
+            span do
+              t('medication_reviews.label_version', version: prompt.evidence_source_version,
+                                                    date: I18n.l(prompt.evidence_source_effective_on,
+                                                                 format: '%-d %B %Y'))
+            end
+          end
         end
       end
 
@@ -66,7 +89,7 @@ module Components
       end
 
       def render_review_form
-        render ReviewForm.new(prompt: prompt)
+        div(class: 'medication-review-form min-w-0') { render ReviewForm.new(prompt: prompt) }
       end
 
       def risk_badge_variant
@@ -83,6 +106,14 @@ module Components
 
       def status_label
         t("medication_reviews.statuses.#{prompt.status}")
+      end
+
+      def match_type_label
+        t("medication_reviews.match_types.#{prompt.match_type}")
+      end
+
+      def source_instruction_label
+        t("medication_reviews.source_instructions.#{prompt.source_instruction}")
       end
     end
   end

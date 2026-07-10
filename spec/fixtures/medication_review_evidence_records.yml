@@ -1,6 +1,8 @@
 warfarin_nsaids:
   source_name: DailyMed
   source_record_id: 0cbce382-9c88-4f58-ae0f-532a841e8f95
+  source_version: "4"
+  source_effective_on: 2026-07-01
   source_url: https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=0cbce382-9c88-4f58-ae0f-532a841e8f95
   retrieved_on: 2026-07-09
   product_name: Warfarin Sodium

@@ -3,6 +3,10 @@ production:
     class: ScheduleDailyRemindersJob
     schedule: every day at midnight
     queue: default
+  refresh_medication_review_evidence:
+    class: MedicationReviewEvidenceRefreshJob
+    schedule: every Sunday at 3am
+    queue: default
 
 # production:
 #   periodic_cleanup:

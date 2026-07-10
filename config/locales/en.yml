@@ -1731,6 +1731,21 @@ en:
     evidence_excerpt: Public label evidence
     checked_on: Evidence checked on %{date}
     confidence: "%{value} match confidence"
+    match_explanation: Why MedTracker included this
+    matched_term: "Matched term: %{term} (%{type} match)"
+    source_instruction: "Source instruction category: %{value}"
+    label_version: Label version %{version}, effective %{date}
+    match_types:
+      ingredient: ingredient
+      class: public class
+      curated: curated
+      legacy: legacy
+    source_instructions:
+      contraindicated: Label says contraindicated
+      avoid: Label says avoid
+      monitor_or_adjust: Label says monitor or adjust
+      possible_or_caution: Label describes a possible concern or caution
+      unclassified: No instruction category assigned
     recorded_outcome: This medicine combination was reviewed with %{name} (%{role}) on %{date}.
     updated: Medicine review record updated.
     risk_levels:

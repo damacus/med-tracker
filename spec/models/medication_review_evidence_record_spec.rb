@@ -9,6 +9,8 @@ RSpec.describe MedicationReviewEvidenceRecord do
     {
       source_name: 'DailyMed',
       source_record_id: 'evidence-record-model-spec',
+      source_version: '4',
+      source_effective_on: Date.new(2026, 7, 1),
       source_url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=evidence-record-model-spec',
       retrieved_on: Date.new(2026, 7, 9),
       product_name: 'Warfarin Sodium',
