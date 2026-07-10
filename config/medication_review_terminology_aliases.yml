@@ -1,0 +1,15 @@
+version: 1
+aliases:
+  - canonical_class: monoamine oxidase inhibitor
+    terms:
+      - monoamine oxidase a inhibitor
+      - mao inhibitor
+      - mao a inhibitor
+      - maoi
+    sources:
+      - set_id: e90b0eea-c424-4f00-98da-6ed6e80de1f6
+        version: "5"
+        effective_time: "20260529"
+      - set_id: c1179269-00b5-48ea-972d-31e614e99b7e
+        version: "15"
+        effective_time: "20260506"

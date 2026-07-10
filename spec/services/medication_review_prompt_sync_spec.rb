@@ -43,17 +43,22 @@ RSpec.describe MedicationReviewPromptSync do
     end.to change(MedicationReviewPrompt, :count).by(1)
 
     prompt = MedicationReviewPrompt.last
-    expect(prompt).to have_attributes(
-      household: household,
-      person: person,
-      primary_medication: warfarin,
+    expect(prompt).to have_attributes(expected_snapshot_attributes)
+  end
+
+  def expected_snapshot_attributes
+    {
+      household: household, person: person, primary_medication: warfarin,
       interacting_medication: medications(:ibuprofen),
-      status: 'needs_review',
-      risk_level: 'high',
-      match_confidence: 'high',
+      status: 'needs_review', risk_level: 'high', match_confidence: 'high',
       evidence_source_name: 'DailyMed',
-      evidence_source_checked_on: Date.new(2026, 7, 9)
-    )
+      evidence_source_checked_on: Date.new(2026, 7, 9),
+      evidence_source_version: '4',
+      evidence_source_effective_on: Date.new(2026, 7, 1),
+      matched_term: 'ibuprofen', match_type: 'curated',
+      source_instruction: 'unclassified',
+      match_reason: 'A reviewed rule identifies ibuprofen as the interacting medicine.'
+    }
   end
 
   it 'does not duplicate or reset an existing prompt' do
@@ -77,6 +82,7 @@ RSpec.describe MedicationReviewPromptSync do
   def create_low_confidence_evidence
     MedicationReviewEvidenceRecord.create!(
       source_name: 'DailyMed', source_record_id: 'low-confidence-sync-spec',
+      source_version: '4', source_effective_on: Date.new(2026, 7, 1),
       source_url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=low-confidence-sync-spec',
       retrieved_on: Date.new(2026, 7, 9), product_name: 'Warfarin Sodium', label_section: 'Drug Interactions',
       evidence_text: 'Test-only low-confidence pairing.', risk_level: 'unknown', match_confidence: 'low',

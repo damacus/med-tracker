@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_10_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_10_130200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -575,9 +575,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_120000) do
     t.string "product_name", null: false
     t.date "retrieved_on", null: false
     t.string "risk_level", default: "unknown", null: false
+    t.date "source_effective_on"
     t.string "source_name", null: false
     t.string "source_record_id", null: false
     t.string "source_url", null: false
+    t.string "source_version"
     t.datetime "updated_at", null: false
     t.index ["candidate_terms"], name: "index_medication_review_evidence_records_on_candidate_terms", using: :gin
     t.index ["interacting_terms"], name: "index_medication_review_evidence_records_on_interacting_terms", using: :gin
@@ -586,17 +588,38 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_120000) do
     t.index ["source_record_id"], name: "index_medication_review_evidence_records_on_source_record_id", unique: true
   end
 
+  create_table "medication_review_evidence_refresh_runs", force: :cascade do |t|
+    t.jsonb "change_summary", default: {}, null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.integer "created_count", default: 0, null: false
+    t.text "error_message"
+    t.integer "label_count", default: 0, null: false
+    t.integer "missing_count", default: 0, null: false
+    t.date "source_last_updated"
+    t.datetime "started_at"
+    t.integer "status", default: 0, null: false
+    t.integer "unchanged_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.integer "updated_count", default: 0, null: false
+  end
+
   create_table "medication_review_prompts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "evidence_record_id", null: false
     t.date "evidence_source_checked_on", null: false
+    t.date "evidence_source_effective_on", null: false
     t.string "evidence_source_name", null: false
     t.string "evidence_source_url", null: false
+    t.string "evidence_source_version", null: false
     t.text "evidence_text", null: false
     t.bigint "household_id", null: false
     t.bigint "interacting_medication_id", null: false
     t.string "interacting_medication_name", null: false
     t.string "match_confidence", null: false
+    t.text "match_reason", null: false
+    t.string "match_type", null: false
+    t.string "matched_term", null: false
     t.bigint "person_id", null: false
     t.string "practitioner_name"
     t.string "practitioner_role"
@@ -606,6 +629,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_120000) do
     t.bigint "reviewed_by_membership_id"
     t.date "reviewed_on"
     t.string "risk_level", null: false
+    t.string "source_instruction", null: false
     t.string "status", default: "needs_review", null: false
     t.datetime "updated_at", null: false
     t.index ["evidence_record_id"], name: "index_medication_review_prompts_on_evidence_record_id"

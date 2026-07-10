@@ -27,8 +27,9 @@ RSpec.describe MedicationInteractionLookup do
     MedicationReviewEvidenceRecord.create!(
       source_name: 'DailyMed', source_record_id: 'automatic-imported-match',
       source_url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=automatic-imported-match',
+      source_version: '4', source_effective_on: Date.new(2026, 7, 1),
       retrieved_on: Date.new(2026, 7, 10), product_name: 'Warfarin Sodium', active_ingredient: 'Warfarin sodium',
-      label_section: 'Drug Interactions', evidence_text: 'Concomitant use with aspirin may increase bleeding risk.',
+      label_section: 'Drug Interactions', evidence_text: 'Monitor patients receiving aspirin for bleeding.',
       risk_level: 'unknown', match_confidence: 'unknown', match_status: 'unreviewed',
       candidate_terms: ['warfarin sodium'], pharmacologic_classes: [], interacting_terms: []
     )

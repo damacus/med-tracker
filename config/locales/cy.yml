@@ -1489,6 +1489,21 @@ cy:
     evidence_excerpt: Tystiolaeth gyhoeddus y label
     checked_on: Gwiriwyd y dystiolaeth ar %{date}
     confidence: Hyder cyfateb %{value}
+    match_explanation: Pam y cynhwysodd MedTracker hyn
+    matched_term: "Term cyfatebol: %{term} (cyfatebiad %{type})"
+    source_instruction: "Categori cyfarwyddyd y ffynhonnell: %{value}"
+    label_version: Fersiwn label %{version}, yn effeithiol %{date}
+    match_types:
+      ingredient: cynhwysyn
+      class: dosbarth cyhoeddus
+      curated: wedi'i guradu
+      legacy: etifeddol
+    source_instructions:
+      contraindicated: Mae'r label yn dweud ei fod wedi'i wrthgymeradwyo
+      avoid: Mae'r label yn dweud i osgoi
+      monitor_or_adjust: Mae'r label yn dweud i fonitro neu addasu
+      possible_or_caution: Mae'r label yn disgrifio pryder neu rybudd posibl
+      unclassified: Ni neilltuwyd categori cyfarwyddyd
     recorded_outcome: Adolygwyd y cyfuniad hwn gyda %{name} (%{role}) ar %{date}.
     updated: Diweddarwyd cofnod yr adolygiad.
     risk_levels:

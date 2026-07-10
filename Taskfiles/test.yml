@@ -47,6 +47,10 @@ tasks:
       - task: :internal:run
         vars:
           ENVIRONMENT: test
+          COMMAND: "rails tailwindcss:build"
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: test
           COMMAND: '{{ .CMD }}'
 
   portless:

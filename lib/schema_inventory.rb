@@ -55,6 +55,7 @@ class SchemaInventory
     carer_relationships
     households
     medication_review_evidence_records
+    medication_review_evidence_refresh_runs
     native_device_tokens
     nhs_dmd_barcodes
     nhs_dmd_imports

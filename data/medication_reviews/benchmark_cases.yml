@@ -1,0 +1,152 @@
+version: 1
+cases:
+  - id: warfarin-ibuprofen
+    first: warfarin
+    second: ibuprofen
+    expected_match: true
+    annotation: The warfarin label explicitly names ibuprofen.
+  - id: warfarin-fluconazole
+    first: warfarin
+    second: fluconazole
+    expected_match: true
+    annotation: A selected label explicitly names the other ingredient.
+  - id: apixaban-rifampin
+    first: apixaban
+    second: rifampin
+    expected_match: true
+    annotation: The apixaban label explicitly names rifampin.
+  - id: rivaroxaban-ketoconazole
+    first: rivaroxaban
+    second: ketoconazole
+    expected_match: true
+    annotation: A selected label explicitly names the other ingredient.
+  - id: dabigatran-verapamil
+    first: dabigatran
+    second: verapamil
+    expected_match: true
+    annotation: A selected label explicitly names the other ingredient.
+  - id: aspirin-ibuprofen
+    first: aspirin
+    second: ibuprofen
+    expected_match: true
+    annotation: A selected label explicitly names the other ingredient.
+  - id: tramadol-fluoxetine
+    first: tramadol
+    second: fluoxetine
+    expected_match: true
+    annotation: A selected label explicitly names the other ingredient.
+  - id: citalopram-linezolid
+    first: citalopram
+    second: linezolid
+    expected_match: true
+    annotation: A selected label explicitly names the other ingredient.
+  - id: simvastatin-clarithromycin
+    first: simvastatin
+    second: clarithromycin
+    expected_match: true
+    annotation: A selected label explicitly names the other ingredient.
+  - id: omeprazole-atazanavir
+    first: omeprazole
+    second: atazanavir
+    expected_match: true
+    annotation: A selected label explicitly names the other ingredient.
+  - id: clarithromycin-ergotamine
+    first: clarithromycin
+    second: ergotamine
+    expected_match: true
+    annotation: A selected label explicitly names the other ingredient.
+  - id: ketoconazole-irinotecan
+    first: ketoconazole
+    second: irinotecan
+    expected_match: true
+    annotation: A selected label explicitly names the other ingredient.
+  - id: azathioprine-febuxostat
+    first: azathioprine
+    second: febuxostat
+    expected_match: true
+    annotation: A selected label explicitly names the other ingredient.
+  - id: tizanidine-fluvoxamine
+    first: tizanidine
+    second: fluvoxamine
+    expected_match: true
+    annotation: A selected label explicitly names the other ingredient.
+  - id: fluvoxamine-ramelteon
+    first: fluvoxamine
+    second: ramelteon
+    expected_match: true
+    annotation: A selected label explicitly names the other ingredient.
+  - id: sildenafil-nitroglycerin
+    first: sildenafil
+    second: nitroglycerin
+    expected_match: true
+    annotation: The sildenafil label explicitly names the nitrate class; nitroglycerin is a nitrate.
+  - id: phenelzine-amphetamine
+    first: phenelzine
+    second: amphetamine
+    expected_match: true
+    annotation: The amphetamine label explicitly names monoamine oxidase inhibitors; phenelzine is an MAOI.
+  - id: phenelzine-sumatriptan
+    first: phenelzine
+    second: sumatriptan
+    expected_match: true
+    annotation: The sumatriptan label explicitly names MAO-A inhibitors; phenelzine is an MAOI.
+  - id: amitriptyline-phenelzine
+    first: amitriptyline
+    second: phenelzine
+    expected_match: true
+    annotation: The amitriptyline label explicitly names monoamine oxidase inhibitors; phenelzine is an MAOI.
+  - id: morphine-phenelzine
+    first: morphine
+    second: phenelzine
+    expected_match: false
+    annotation: The selected morphine interaction section does not explicitly name phenelzine or its class.
+  - id: lorazepam-metformin
+    first: lorazepam
+    second: metformin
+    expected_match: false
+    annotation: Neither selected interaction section explicitly names the other ingredient or class.
+  - id: levothyroxine-sildenafil
+    first: levothyroxine
+    second: sildenafil
+    expected_match: false
+    annotation: Neither selected interaction section explicitly names the other ingredient or class.
+  - id: insulin-glargine-pantoprazole
+    first: insulin glargine
+    second: pantoprazole
+    expected_match: false
+    annotation: Neither selected interaction section explicitly names the other ingredient or class.
+  - id: diazepam-semaglutide
+    first: diazepam
+    second: semaglutide
+    expected_match: false
+    annotation: Neither selected interaction section explicitly names the other ingredient or class.
+  - id: tadalafil-allopurinol
+    first: tadalafil
+    second: allopurinol
+    expected_match: false
+    annotation: Neither selected interaction section explicitly names the other ingredient or class.
+  - id: lamotrigine-omeprazole
+    first: lamotrigine
+    second: omeprazole
+    expected_match: false
+    annotation: Neither selected interaction section explicitly names the other ingredient or class.
+  - id: apixaban-levothyroxine
+    first: apixaban
+    second: levothyroxine
+    expected_match: false
+    annotation: Neither selected interaction section explicitly names the other ingredient or class.
+  - id: furosemide-sumatriptan
+    first: furosemide
+    second: sumatriptan
+    expected_match: false
+    annotation: Neither selected interaction section explicitly names the other ingredient or class.
+  - id: clonazepam-metformin
+    first: clonazepam
+    second: metformin
+    expected_match: false
+    annotation: Neither selected interaction section explicitly names the other ingredient or class.
+  - id: methotrexate-amlodipine
+    first: methotrexate
+    second: amlodipine
+    expected_match: false
+    annotation: Neither selected interaction section explicitly names the other ingredient or class.

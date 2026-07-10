@@ -95,6 +95,10 @@ tasks:
       - task: :internal:run
         vars:
           ENVIRONMENT: dev
+          COMMAND: "rails tailwindcss:build"
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: dev
           COMMAND: "find public/assets -mindepth 1 -maxdepth 1 -exec rm -rf {} +"
       - task: :internal:run
         vars:

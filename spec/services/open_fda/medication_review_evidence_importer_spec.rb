@@ -8,6 +8,7 @@ RSpec.describe OpenFda::MedicationReviewEvidenceImporter do
     {
       'set_id' => 'importer-spec-record',
       'effective_time' => '20250617',
+      'version' => '4',
       'drug_interactions' => ['Narrative interaction evidence from the public label.'],
       'openfda' => {
         'brand_name' => ['Warfarin Sodium'],
@@ -40,6 +41,7 @@ RSpec.describe OpenFda::MedicationReviewEvidenceImporter do
     {
       source_name: 'openFDA / DailyMed SPL',
       source_record_id: 'importer-spec-record',
+      source_version: '4', source_effective_on: Date.new(2025, 6, 17),
       product_name: 'Warfarin Sodium', active_ingredient: 'WARFARIN SODIUM', label_section: 'Drug Interactions',
       risk_level: 'unknown', match_confidence: 'unknown', match_status: 'unreviewed',
       candidate_terms: ['warfarin sodium'], pharmacologic_classes: ['vitamin k antagonist'], interacting_terms: []

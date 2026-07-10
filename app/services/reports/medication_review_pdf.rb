@@ -6,6 +6,7 @@ require 'prawn/table'
 module Reports
   class MedicationReviewPdf
     include OpeningSections
+    include MatchEvidenceSections
 
     COLORS = {
       ink: '17211F',
@@ -92,6 +93,7 @@ module Reports
       render_continuation_heading(prompt) if document.cursor < 200
       render_prompt_heading(prompt)
       render_evidence(prompt)
+      render_match_explanation(prompt)
       render_source(prompt)
       render_review_outcome(prompt)
       document.move_down 14
@@ -143,15 +145,6 @@ module Reports
       document.move_down 4
       document.text prompt.evidence_text.to_s.truncate(620), size: 9, leading: 2, color: COLORS.fetch(:ink)
       document.move_down 7
-    end
-
-    def render_source(prompt)
-      document.text "Source: #{prompt.evidence_source_name}", size: 8, style: :bold,
-                                                              color: COLORS.fetch(:forest)
-      document.text "Checked: #{date(prompt.evidence_source_checked_on)}", size: 8, color: COLORS.fetch(:muted)
-      document.text prompt.evidence_source_url, size: 7, color: COLORS.fetch(:muted),
-                                                link: prompt.evidence_source_url
-      document.move_down 8
     end
 
     def render_review_outcome(prompt)

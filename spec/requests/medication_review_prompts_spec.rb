@@ -34,11 +34,16 @@ RSpec.describe 'Medication review prompts' do
     expect(response.body).to include('Warfarin 1mg tablets')
     expect(response.body).to include('Ibuprofen')
     expect(response.body).to include('Public medicine-label evidence')
+    expect(response.body).to include('A reviewed rule identifies ibuprofen as the interacting medicine.')
+    expect(response.body).to include('Matched term: ibuprofen (curated match)')
+    expect(response.body).to include('Source instruction category: No instruction category assigned')
+    expect(response.body).to include('Label version 4, effective 1 July 2026')
     expect(response.body).not_to include('interaction warning')
 
     rendered_page = Capybara.string(response.body)
     expect(rendered_page).to have_css('main', count: 1)
     expect(rendered_page).to have_link('Export review PDF', href: medication_review_report_path)
+    expect(rendered_page.find('[data-review-prompt-id] > div')[:class]).to include('medication-review-layout')
   end
 
   it 'discloses filtered noise and reveals it only when requested' do
@@ -112,6 +117,9 @@ RSpec.describe 'Medication review prompts' do
     expected_filename = "medtracker-medication-review-#{Date.current.iso8601}.pdf"
     expect(response.headers['Content-Disposition']).to include(expected_filename)
     expect(response.body).to start_with('%PDF')
+    text_fragments = response.body.scan(/<([0-9A-Fa-f]+)>/).flatten.map { |hex| [hex].pack('H*') }.join
+    expect(text_fragments).to include('Matched term: ibuprofen (curated match)')
+    expect(text_fragments).to include('Label version: 4')
   end
 
   it 'does not export an inaccessible person filter' do

@@ -20,6 +20,12 @@ RSpec.describe MedicationReviewPrompt do
       evidence_source_name: 'DailyMed',
       evidence_source_url: evidence_record.source_url,
       evidence_source_checked_on: Date.new(2026, 7, 9),
+      evidence_source_version: '4',
+      evidence_source_effective_on: Date.new(2026, 7, 1),
+      matched_term: 'ibuprofen',
+      match_type: 'curated',
+      source_instruction: 'unclassified',
+      match_reason: 'A reviewed rule identifies ibuprofen as the interacting medicine.',
       evidence_text: evidence_record.evidence_text
     )
   end
@@ -28,6 +34,8 @@ RSpec.describe MedicationReviewPrompt do
     MedicationReviewEvidenceRecord.create!(
       source_name: 'DailyMed',
       source_record_id: 'warfarin-nsaids-model-spec',
+      source_version: '4',
+      source_effective_on: Date.new(2026, 7, 1),
       source_url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=test',
       retrieved_on: Date.new(2026, 7, 9),
       product_name: 'Warfarin Sodium',

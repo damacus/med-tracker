@@ -22,6 +22,12 @@ class MedicationReviewPrompt < ApplicationRecord
     evidence_source_name
     evidence_source_url
     evidence_source_checked_on
+    evidence_source_version
+    evidence_source_effective_on
+    matched_term
+    match_type
+    source_instruction
+    match_reason
     evidence_text
   ].freeze
 
@@ -37,7 +43,8 @@ class MedicationReviewPrompt < ApplicationRecord
   validates :risk_level, inclusion: { in: MedicationReviewEvidenceRecord::RISK_LEVELS }
   validates :match_confidence, inclusion: { in: MedicationReviewEvidenceRecord::MATCH_CONFIDENCES }
   validates :primary_medication_name, :interacting_medication_name, :evidence_source_name, :evidence_source_url,
-            :evidence_source_checked_on, :evidence_text, presence: true
+            :evidence_source_checked_on, :evidence_source_version, :evidence_source_effective_on, :matched_term,
+            :match_type, :source_instruction, :match_reason, :evidence_text, presence: true
   validates :practitioner_name, :practitioner_role, :reviewed_on, presence: true, if: :practitioner_review_status?
   validate :associations_belong_to_household
   validate :evidence_snapshot_is_immutable, on: :update

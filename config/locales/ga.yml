@@ -1467,6 +1467,21 @@ ga:
     evidence_excerpt: Fianaise phoiblí lipéid
     checked_on: Fianaise seiceáilte ar %{date}
     confidence: Muinín mheaitseála %{value}
+    match_explanation: An fáth ar chuir MedTracker é seo san áireamh
+    matched_term: "Téarma comhoiriúnaithe: %{term} (comhoiriúnú %{type})"
+    source_instruction: "Catagóir treorach na foinse: %{value}"
+    label_version: Leagan lipéid %{version}, éifeachtach %{date}
+    match_types:
+      ingredient: comhábhar
+      class: aicme phoiblí
+      curated: coimeádta
+      legacy: oidhreachta
+    source_instructions:
+      contraindicated: Deir an lipéad go bhfuil sé fritásctha
+      avoid: Deir an lipéad é a sheachaint
+      monitor_or_adjust: Deir an lipéad monatóireacht nó coigeartú a dhéanamh
+      possible_or_caution: Déanann an lipéad cur síos ar ábhar imní nó rabhadh féideartha
+      unclassified: Níor sannadh catagóir treorach
     recorded_outcome: Athbhreithníodh an teaglaim seo le %{name} (%{role}) ar %{date}.
     updated: Nuashonraíodh taifead an athbhreithnithe.
     risk_levels:
