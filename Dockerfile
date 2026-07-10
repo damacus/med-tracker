@@ -30,6 +30,15 @@ USER ruby
 
 FROM gem_builder AS development
 
+USER root
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends curl \
+  && rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man \
+  && apt-get clean
+
+USER ruby
+
 ENV RAILS_ENV=development \
   NODE_ENV=development \
   BUNDLE_WITHOUT="test:production:tools" \
