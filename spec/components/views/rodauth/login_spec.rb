@@ -103,6 +103,16 @@ RSpec.describe Views::Rodauth::Login, type: :component do
     )
   end
 
+  it 'keeps responsive medication illustrations within the login asset budget' do
+    assets = Components::Auth::MedicationIllustration::LIGHT_ASSETS.values +
+             Components::Auth::MedicationIllustration::DARK_ASSETS.values
+    asset_paths = assets.map { |asset| Rails.root.join('app/assets/images', asset) }
+
+    expect(assets).to all(end_with('.webp'))
+    expect(asset_paths).to all(exist)
+    expect(asset_paths.sum { |path| File.size(path) }).to be < 400.kilobytes
+  end
+
   it 'renders the login benefits from the storyboard reference' do
     rendered = render_inline(described_class.new)
     benefit_list = rendered.at_css('[data-login-benefits]')

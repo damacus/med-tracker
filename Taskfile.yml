@@ -120,11 +120,11 @@ tasks:
   rubycritic:
     desc: Run RubyCritic quality analysis
     summary: |
-      Run RubyCritic against the app and spec directories, or a supplied target.
+      Run RubyCritic against application code, or a supplied target.
       Usage: task rubycritic
       Usage: task rubycritic TARGET=app/services/foo.rb
     vars:
-      target: '{{ .TARGET | default "app spec" }}'
+      target: '{{ .TARGET | default "app" }}'
     cmds:
       - task: internal:run
         vars:

@@ -3,6 +3,13 @@
 module Components
   module Layouts
     class AuthLayout < Components::Base
+      AUTH_FONT_PATHS = %w[
+        /fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-regular.woff2
+        /fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-500.woff2
+        /fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-600.woff2
+        /fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-700.woff2
+      ].freeze
+
       include Phlex::Rails::Helpers::CSPMetaTag
       include Phlex::Rails::Helpers::CSRFMetaTags
       include Phlex::Rails::Helpers::JavaScriptIncludeTag
@@ -24,6 +31,7 @@ module Components
             meta(name: 'theme-color', content: '#f8fafc')
             csp_meta_tag
             csrf_meta_tags
+            render_font_preloads
 
             javascript_include_tag 'appearance_boot', 'data-turbo-track': 'reload'
             stylesheet_link_tag 'tailwind', 'data-turbo-track': 'reload'
@@ -42,6 +50,12 @@ module Components
       end
 
       private
+
+      def render_font_preloads
+        AUTH_FONT_PATHS.each do |path|
+          link(rel: 'preload', href: path, as: 'font', type: 'font/woff2', crossorigin: 'anonymous')
+        end
+      end
 
       def flash
         view_context.flash

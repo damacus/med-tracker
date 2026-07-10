@@ -30,11 +30,11 @@ Rails.application.configure do
     policy.worker_src  :self
   end
 
-  # Generate session nonces for permitted importmap and inline scripts.
+  # Generate request nonces for permitted importmap and inline scripts.
   # Note: style-src is intentionally excluded from nonce directives because
   # Turbo injects inline styles at runtime (progress bar, drive transitions)
   # without access to the nonce, causing CSP violations.
-  config.content_security_policy_nonce_generator = ->(request) { request.session.id.to_s }
+  config.content_security_policy_nonce_generator = ->(_request) { SecureRandom.base64(16) }
   config.content_security_policy_nonce_directives = %w[script-src]
 
   # Report violations without enforcing the policy in development

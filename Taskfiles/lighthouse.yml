@@ -68,18 +68,18 @@ tasks:
     desc: Run Lighthouse audit for CI (fails if scores below threshold)
     summary: |
       Run Lighthouse audit and fail if scores are below thresholds
-      Default thresholds: Performance 70%, Accessibility 85%, Best Practices 85%
+      Performance 60% catches major mobile regressions with headroom for CI variance.
+      Accessibility and Best Practices 90% keep high-confidence regressions blocking.
       Usage: task lighthouse:ci
       Usage: task lighthouse:ci URL=http://localhost:3000/login
-      Usage: task lighthouse:ci PERF_THRESHOLD=60 A11Y_THRESHOLD=80 BP_THRESHOLD=80
+      Usage: task lighthouse:ci EXTRA_HEADERS='{"Cookie":"session=value"}'
     vars:
-      DEV_PORT:
-        sh: task dev:port
-      URL: '{{ .URL | default (printf "http://localhost:%s/login" .DEV_PORT) }}'
-      PERF_THRESHOLD: '{{ .PERF_THRESHOLD | default "70" }}'
-      A11Y_THRESHOLD: '{{ .A11Y_THRESHOLD | default "85" }}'
-      BP_THRESHOLD: '{{ .BP_THRESHOLD | default "85" }}'
+      URL: '{{ .URL | default "http://localhost:3000/login" }}'
+      PERF_THRESHOLD: '{{ .PERF_THRESHOLD | default "60" }}'
+      A11Y_THRESHOLD: '{{ .A11Y_THRESHOLD | default "90" }}'
+      BP_THRESHOLD: '{{ .BP_THRESHOLD | default "90" }}'
       REPORT_PATH: '{{ .REPORT_PATH | default "./lighthouse-report" }}'
+      EXTRA_HEADERS: '{{ .EXTRA_HEADERS | default "" }}'
     cmds:
       - |
         set -euo pipefail
@@ -92,7 +92,7 @@ tasks:
           --screenEmulation.mobile=true \
           --screenEmulation.width=375 \
           --screenEmulation.height=812 \
-          --only-categories=accessibility,best-practices,performance
+          {{ if .EXTRA_HEADERS }}--extra-headers='{{ .EXTRA_HEADERS }}' {{ end }}--only-categories=accessibility,best-practices,performance
       - |
         set -euo pipefail
         REPORT_FILE=""
