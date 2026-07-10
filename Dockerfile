@@ -63,7 +63,7 @@ RUN bundle install
 
 COPY --chown=ruby:ruby . .
 
-RUN SECRET_KEY_BASE_DUMMY=1 rails assets:precompile
+RUN APP_URL=https://assets-build.invalid SECRET_KEY_BASE_DUMMY=1 rails assets:precompile
 
 ENTRYPOINT ["/app/bin/docker-entrypoint-web"]
 CMD ["rails", "server", "-b", "0.0.0.0"]

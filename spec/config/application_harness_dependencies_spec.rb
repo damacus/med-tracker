@@ -56,6 +56,20 @@ RSpec.describe ApplicationHarnessDependencies do
     expect(dockerfile).to include('BUNDLE_WITH')
   end
 
+  it 'limits the dummy application URL to production asset compilation' do
+    assets_stage = docker_stage('assets')
+    app_stage = docker_stage('app')
+
+    expect(assets_stage).to include(
+      'RUN APP_URL=https://assets-build.invalid SECRET_KEY_BASE_DUMMY=1 rails assets:precompile'
+    )
+    expect(app_stage).not_to include('APP_URL=')
+  end
+
+  it 'provides an overridable URL to the production-style Compose environment' do
+    expect(compose_yaml).to include('APP_URL: ${APP_URL:-http://localhost}')
+  end
+
   it 'keeps Debian package installs out of the shared Docker base stage' do
     base_stage = docker_stage('base')
 
