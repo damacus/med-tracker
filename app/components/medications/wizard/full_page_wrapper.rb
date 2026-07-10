@@ -16,11 +16,11 @@ module Components
         end
 
         def view_template
-          div(class: 'container mx-auto px-4 py-12 max-w-2xl') do
+          div(class: 'container mx-auto max-w-2xl px-3 py-6 sm:px-4 sm:py-12') do
             render_header
 
             m3_card(variant: :elevated, class: 'overflow-visible border-none shadow-elevation-3 rounded-shape-xl') do
-              div(class: 'p-10') do
+              div(class: 'p-5 sm:p-10') do
                 render StepContent.new(
                   medication: medication,
                   locations: locations,
@@ -36,10 +36,10 @@ module Components
         private
 
         def render_header
-          div(class: 'text-center mb-10 space-y-2') do
+          div(class: 'mb-6 space-y-2 text-center sm:mb-10') do
             div(
               class: 'mx-auto w-16 h-16 rounded-shape-xl bg-primary/10 flex items-center justify-center ' \
-                     'text-primary shadow-inner mb-6'
+                     'text-primary shadow-inner mb-4 sm:mb-6'
             ) do
               render Components::Shared::MedicationIcon.new(medication: medication, size: 32)
             end

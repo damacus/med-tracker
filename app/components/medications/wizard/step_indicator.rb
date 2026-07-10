@@ -12,8 +12,8 @@ module Components
         ].freeze
 
         def view_template
-          nav(class: 'mb-10', aria_label: t('forms.medications.wizard.progress_label')) do
-            ol(class: 'flex items-center justify-between max-w-xl mx-auto') do
+          nav(class: 'mb-8 sm:mb-10', aria_label: t('forms.medications.wizard.progress_label')) do
+            ol(class: 'mx-auto flex max-w-xl items-center justify-between') do
               STEPS.each_with_index do |step, index|
                 render_step_indicator(step, index)
               end
@@ -25,7 +25,7 @@ module Components
 
         def render_step_indicator(step, index)
           li(
-            class: 'flex-1 flex flex-col items-center relative',
+            class: 'relative flex min-w-0 flex-1 flex-col items-center',
             data: { wizard_target: 'indicator' }
           ) do
             render_connecting_line if index.positive?
@@ -55,7 +55,8 @@ module Components
         end
 
         def render_label(step, index)
-          base = 'mt-2 text-[10px] font-bold uppercase tracking-widest transition-colors duration-300'
+          base = 'mt-2 whitespace-nowrap text-[9px] font-bold uppercase tracking-wide transition-colors duration-300 ' \
+                 'min-[360px]:text-[10px] min-[360px]:tracking-widest'
           color = index.zero? ? 'text-primary' : 'text-on-surface-variant'
 
           m3_text(variant: :label_small, class: "#{base} #{color}", data: { indicator_label: true }) do
