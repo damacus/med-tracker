@@ -222,7 +222,7 @@ services:
       service: rails
     profiles: [prod]
     networks: [prod]
-    command: bin/rails db:prepare
+    command: bin/rails db:migrate
     depends_on:
       db-prod:
         condition: service_healthy

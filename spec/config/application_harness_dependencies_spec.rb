@@ -70,6 +70,15 @@ RSpec.describe ApplicationHarnessDependencies do
     expect(compose_yaml).to include('APP_URL: ${APP_URL:-http://localhost}')
   end
 
+  it 'migrates a new production database without loading tenant seeds' do
+    production_services = compose_yaml.split('  # === Production (profile: prod) ===', 2).last
+    migrate_service = production_services.split("  migrate-prod:\n", 2).last.split("  web-prod:\n", 2).first
+
+    expect(migrate_service).to include('command: bin/rails db:migrate')
+    expect(migrate_service).not_to include('db:prepare')
+    expect(compose_yaml.scan('command: bin/rails db:prepare').size).to eq(2)
+  end
+
   it 'keeps Debian package installs out of the shared Docker base stage' do
     base_stage = docker_stage('base')
 
