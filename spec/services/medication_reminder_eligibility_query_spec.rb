@@ -7,6 +7,8 @@ RSpec.describe MedicationReminderEligibilityQuery do
   let(:now) { Time.zone.local(2026, 6, 9, 10, 0, 0) }
   let(:today) { now.to_date }
 
+  before { travel_to(now) }
+
   def build_query(scheduled_time: nil)
     described_class.new(person: person, scheduled_time: scheduled_time, now: now)
   end
