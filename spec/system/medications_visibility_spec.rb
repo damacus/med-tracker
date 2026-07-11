@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'MedicationsVisibility' do
+RSpec.describe 'MedicationsVisibility', :browser do
   fixtures :accounts, :people, :users, :locations, :location_memberships
 
   # admin is at Home location (admin_home fixture)

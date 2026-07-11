@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Dashboard' do
+RSpec.describe 'Dashboard', :browser do
   fixtures :accounts, :users, :locations, :medications, :dosages, :schedules, :people,
            :carer_relationships, :person_medications, :medication_takes
 

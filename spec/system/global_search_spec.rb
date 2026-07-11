@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Global search command palette' do
+RSpec.describe 'Global search command palette', :browser do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :dosages,
            :schedules, :carer_relationships, :person_medications
 

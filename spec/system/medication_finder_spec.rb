@@ -29,7 +29,7 @@ RSpec.describe 'MedicationFinder' do
     end
   end
 
-  it 'opens a restock confirmation modal for an existing medication result' do
+  it 'opens a restock confirmation modal for an existing medication result', :browser do
     driven_by(:playwright)
     login_as(user)
     medication = medications(:vitamin_c)
@@ -50,7 +50,7 @@ RSpec.describe 'MedicationFinder' do
     expect(medication.reload.current_supply).to eq(40)
   end
 
-  it 'expands structured details for an external medicine result' do
+  it 'expands structured details for an external medicine result', :browser do
     driven_by(:playwright)
     login_as(user)
     stub_medication_finder_payload(
@@ -80,7 +80,7 @@ RSpec.describe 'MedicationFinder' do
     expect(page).to have_text('Do not exceed the stated dose')
   end
 
-  it 'sends the selected strength with a search' do
+  it 'sends the selected strength with a search', :browser do
     driven_by(:playwright)
     login_as(user)
     stub_medication_finder_payload(results: [], permissions: { can_create: true, can_restock: true })
@@ -96,7 +96,7 @@ RSpec.describe 'MedicationFinder' do
     expect(request_url).to include('q=paracetamol', 'strength=500mg')
   end
 
-  it 'shows when lower-confidence review items were filtered' do
+  it 'shows when lower-confidence review items were filtered', :browser do
     driven_by(:playwright)
     login_as(user)
     stub_medication_finder_payload(

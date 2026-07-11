@@ -30,18 +30,7 @@ Rails.root.glob('spec/support/**/*.rb').sort_by(&:to_s).each { |f| require f }
 ActiveRecord::Migration.maintain_test_schema!
 
 RSpec.configure do |config|
-  # Auto-tag specs that require a browser based on directory or type.
-  # This allows CI to split tests with `--tag browser` / `--tag ~browser`
-  # instead of maintaining brittle path patterns.
-  config.define_derived_metadata(file_path: %r{/spec/(system|features|views)/}) do |metadata|
-    metadata[:browser] = true
-  end
-
-  config.define_derived_metadata(type: :system) do |metadata|
-    metadata[:browser] = true
-  end
-
-  config.define_derived_metadata(type: :feature) do |metadata|
+  config.define_derived_metadata(js: true) do |metadata|
     metadata[:browser] = true
   end
 

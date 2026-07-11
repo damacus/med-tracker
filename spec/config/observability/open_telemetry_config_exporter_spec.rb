@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'OTEL-011: OTLP exporter configuration' do
+RSpec.describe OpenTelemetryConfig do
   context 'when configuring the OpenTelemetry SDK' do
     it 'configures OpenTelemetry with service name medtracker-test' do
       expect(OpenTelemetry.tracer_provider).to be_a(OpenTelemetry::SDK::Trace::TracerProvider)
@@ -71,17 +71,17 @@ RSpec.describe 'OTEL-011: OTLP exporter configuration' do
         'x-custom-header' => 'value'
       }
 
-      result = OpenTelemetryConfig.parse_otlp_headers(headers_string)
+      result = described_class.parse_otlp_headers(headers_string)
       expect(result).to eq(expected)
     end
 
     it 'handles empty headers string' do
-      result = OpenTelemetryConfig.parse_otlp_headers('')
+      result = described_class.parse_otlp_headers('')
       expect(result).to eq({})
     end
 
     it 'handles nil headers string' do
-      result = OpenTelemetryConfig.parse_otlp_headers(nil)
+      result = described_class.parse_otlp_headers(nil)
       expect(result).to eq({})
     end
 
@@ -92,7 +92,7 @@ RSpec.describe 'OTEL-011: OTLP exporter configuration' do
         'noequals' => ''
       }
 
-      result = OpenTelemetryConfig.parse_otlp_headers(headers_string)
+      result = described_class.parse_otlp_headers(headers_string)
       expect(result).to eq(expected)
     end
   end

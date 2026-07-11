@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Medication Lookup', type: :system do
+RSpec.describe 'Medication Lookup', :browser, type: :system do
   fixtures :accounts, :people, :locations, :medications, :users
 
   let(:admin) { users(:admin) }

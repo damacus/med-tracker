@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Nurse shift medication recording' do
+RSpec.describe 'Nurse shift medication recording', :browser do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :dosages, :schedules,
            :carer_relationships
 

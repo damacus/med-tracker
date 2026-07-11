@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Appearance mode' do
+RSpec.describe 'Appearance mode', :browser do
   fixtures :accounts, :people, :users
 
   let(:user) { users(:damacus) }

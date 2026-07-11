@@ -2,7 +2,10 @@
 
 require 'rails_helper'
 
-RSpec.describe 'PASSKEY-001: WebAuthn/Passkey configuration' do
+module PasskeyConfiguration
+end
+
+RSpec.describe PasskeyConfiguration do
   fixtures :accounts
   scenario 'WebAuthn key timestamps default to current timestamp' do
     columns = ActiveRecord::Base.connection.columns('account_webauthn_keys')

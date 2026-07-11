@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Medication reorder workflow' do
+RSpec.describe 'Medication reorder workflow', :browser do
   fixtures :all
 
   let(:admin) { users(:admin) }

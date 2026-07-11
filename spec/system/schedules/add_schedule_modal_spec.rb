@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Add schedule modal flow' do
+RSpec.describe 'Add schedule modal flow', :browser do
   fixtures :accounts, :users, :people, :locations, :medications, :dosages
 
   before do

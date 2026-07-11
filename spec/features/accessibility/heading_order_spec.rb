@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Heading Order Accessibility', type: :system do
+RSpec.describe 'Heading Order Accessibility', :browser, type: :system do
   fixtures :accounts, :people, :users
 
   let(:user) { users(:carer) }

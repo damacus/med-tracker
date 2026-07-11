@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Admin Audit Logs', type: :system do
+RSpec.describe 'Admin Audit Logs', :browser, type: :system do
   fixtures :all
 
   let(:admin) { users(:admin) }

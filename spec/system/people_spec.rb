@@ -87,7 +87,7 @@ RSpec.describe 'People' do
       expect(page).to have_link('Cancel', href: people_path)
     end
 
-    it 'does not leave a blank page when cancelling add medication from the people list' do
+    it 'does not leave a blank page when cancelling add medication from the people list', :browser do
       driven_by(:playwright)
       login_as(user)
       person = people(:john)

@@ -5,10 +5,6 @@ require 'rails_helper'
 RSpec.describe 'Carer Access Authorization' do
   fixtures :accounts, :people, :users, :carer_relationships
 
-  before do
-    driven_by(:playwright)
-  end
-
   let(:carer) { users(:carer) }
   let(:assigned_patient) { people(:child_patient) }
   let(:unrelated_person) { people(:john) }

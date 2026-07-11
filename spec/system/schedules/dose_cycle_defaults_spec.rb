@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Schedule dose cycle defaults' do
+RSpec.describe 'Schedule dose cycle defaults', :browser do
   fixtures :accounts, :users, :locations
 
   before do

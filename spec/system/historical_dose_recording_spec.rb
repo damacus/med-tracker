@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Historical dose recording' do
+RSpec.describe 'Historical dose recording', :browser do
   fixtures :accounts, :people, :locations, :medications, :users, :dosages
 
   let(:person) { people(:jane) }
