@@ -336,6 +336,25 @@ RSpec.describe 'Admin create and update turbo flows' do
       expect(users(:jane).person.reload.name).to eq('Jane Turbo Update')
     end
 
+    it 'returns unprocessable content on validation failure' do
+      patch admin_user_path(users(:jane)),
+            params: {
+              user: {
+                email_address: '',
+                person_attributes: {
+                  id: users(:jane).person.id,
+                  name: users(:jane).person.name,
+                  date_of_birth: users(:jane).person.date_of_birth.to_s
+                }
+              }
+            },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('id="user_email_address_error"')
+      expect(response.body).to include('aria-invalid')
+    end
+
     it 'does not add selected existing children through the generic user update' do
       parent = users(:parent)
       dependent = people(:child_patient)

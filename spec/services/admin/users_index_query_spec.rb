@@ -34,6 +34,13 @@ RSpec.describe Admin::UsersIndexQuery do
       expect(result).not_to include(users(:bob))
     end
 
+    it 'searches by email address' do
+      result = described_class.new(scope: scope, filters: { search: users(:jane).email_address }).call
+
+      expect(result).to include(users(:jane))
+      expect(result).not_to include(users(:bob))
+    end
+
     it 'filters by household membership role without using the user role' do
       household = users(:jane).person.household
       attach_user_to_household(users(:jane), household, :administrator)
