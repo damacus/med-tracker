@@ -90,6 +90,44 @@ RSpec.describe MedicationReviewEvidenceCorpus do
     )
   end
 
+  it 'reuses medicine identities and record ownership across pair checks' do
+    evidence = explicit_ingredient_evidence
+    terminology = instance_double(MedicationReviewTerminology)
+    allow(terminology).to receive(:identity_for).and_return(terms: [], classes: [])
+    corpus = described_class.new([evidence], terminology: terminology)
+
+    2.times { corpus.matches_for('Warfarin', 'Ibuprofen') }
+
+    expect(terminology).to have_received(:identity_for).with('Warfarin').once
+    expect(terminology).to have_received(:identity_for).with('Ibuprofen').once
+
+    ownership_evidence = explicit_ingredient_evidence
+    allow(ownership_evidence).to receive(:candidate_terms).and_call_original
+    ownership_corpus = described_class.new([ownership_evidence])
+
+    2.times { ownership_corpus.owner?(ownership_evidence, 'Warfarin') }
+
+    expect(ownership_evidence).to have_received(:candidate_terms).once
+  end
+
+  it 'does not evaluate evidence owned by neither medicine in the pair' do
+    relevant = explicit_ingredient_evidence
+    unrelated = evidence_record(source_record_id: 'unrelated', candidate_terms: ['acetaminophen'])
+    allow(unrelated).to receive(:match_pair?).and_call_original
+
+    described_class.new([relevant, unrelated]).matches_for('Warfarin', 'Ibuprofen')
+
+    expect(unrelated).not_to have_received(:match_pair?)
+  end
+
+  it 'returns no matches when a medicine name is blank' do
+    evidence = evidence_record(candidate_terms: ['ibuprofen'])
+
+    matches = described_class.new([evidence]).matches_for('', 'Ibuprofen')
+
+    expect(matches).to be_empty
+  end
+
   def evidence_record(**overrides)
     defaults = {
       source_record_id: 'evidence-record', candidate_terms: ['medicine'], evidence_text: 'Public label evidence.',
