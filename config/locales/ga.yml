@@ -32,6 +32,17 @@ ga:
             barcode:
               invalid: caithfidh sé a bheith ina GTIN 13 nó 14 digit
               taken: ceangailte cheana le cógas eile sa stórliosta
+  errors:
+    messages:
+      blank: ní féidir a bheith folamh
+      greater_than: ní mór a bheith níos mó ná %{count}
+      greater_than_or_equal_to: ní mór a bheith níos mó ná nó cothrom le %{count}
+      inclusion: níl sé san áireamh sa liosta
+      invalid: neamhbhailí
+      not_a_number: ní uimhir é
+      required: caithfidh sé a bheith ann
+      taken: in úsáid cheana féin
+      too_short: ró-ghearr (is é %{count} carachtar an t-íosmhéid)
   app:
     name: MedTracker
   global_search:
