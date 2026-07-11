@@ -767,17 +767,17 @@ pt:
         directions: Instruções
         warnings: Avisos
       review_prompt_summary:
-        one: "%{count} medication review prompt (%{risk_level})"
-        other: "%{count} medication review prompts (%{risk_level})"
+        one: "%{count} indicação de revisão de medicamentos (%{risk_level})"
+        other: "%{count} indicações de revisão de medicamentos (%{risk_level})"
       review_prompt_filtered:
         one: 1 item de revisão de menor confiança ocultado para reduzir o ruído
         other: "%{count} itens de revisão de menor confiança ocultados para reduzir o ruído"
-      review_prompt_details_button: View Review Prompt Details
-      review_prompt_details: Review Prompt Details
-      review_prompt_risk_level: Risk level
-      review_prompt_source: Evidence source
-      review_prompt_checked_on: Evidence checked on
-      review_prompt_description: Review with a practitioner
+      review_prompt_details_button: Ver detalhes da revisão
+      review_prompt_details: Detalhes da revisão
+      review_prompt_risk_level: Nível de risco
+      review_prompt_source: Fonte da evidência
+      review_prompt_checked_on: Evidência verificada em
+      review_prompt_description: Rever com um profissional
       update_stock: Atualizar stock
       confirm_restock: Confirme que pretende adicionar %{quantity} unidades a %{medication}.
       confirm_restock_without_quantity: Confirme quantas unidades pretende adicionar
@@ -1588,11 +1588,39 @@ pt:
     hidden_count:
       one: 1 item de revisão de menor confiança ocultado para reduzir o ruído
       other: "%{count} itens de revisão de menor confiança ocultados para reduzir o ruído"
+    included_count:
+      one: 1 item de revisão de menor confiança incluído
+      other: "%{count} itens de revisão de menor confiança incluídos"
     show_hidden: Mostrar itens filtrados
     hide_hidden: Ocultar itens filtrados
     empty_title: Não há revisões de medicamentos para mostrar
     empty_description: Nenhum par de evidências revisto corresponde aos medicamentos ativos nos registos do agregado selecionado.
     review_reason: A evidência pública do rótulo sugere que esta combinação pode merecer revisão com um farmacêutico, enfermeiro, médico de família ou prescritor.
+    view_evidence: Ver evidência
+    summaries:
+      contraindicated: O rótulo do medicamento recomenda cuidados adicionais quando estes medicamentos são tomados em conjunto.
+      avoid: O rótulo do medicamento recomenda cuidados adicionais quando estes medicamentos são tomados em conjunto.
+      monitor_or_adjust: O rótulo do medicamento recomenda a monitorização ou o ajuste do tratamento quando estes medicamentos são tomados em conjunto.
+      possible_or_caution: O rótulo do medicamento descreve uma possível preocupação quando estes medicamentos são tomados em conjunto.
+      unclassified: O rótulo do medicamento menciona estes medicamentos em conjunto, mas não fornece uma instrução clara.
+    filters:
+      priority: Prioridade
+      include_filtered: Incluir itens filtrados
+      apply: Aplicar filtros
+      review_statuses:
+        needs_review: Precisam de revisão
+        reviewed: Revistos
+        all: Todos
+      priorities:
+        all: Todas
+        discuss_soon: Falar em breve
+        ask_when_convenient: Perguntar quando for conveniente
+        low_confidence: Confiança baixa
+      short_priorities:
+        all: Todas
+        discuss_soon: Em breve
+        ask_when_convenient: Quando for conveniente
+        low_confidence: Confiança baixa
     evidence_excerpt: Evidência pública do rótulo
     checked_on: Evidência verificada em %{date}
     confidence: Confiança de correspondência %{value}

@@ -769,17 +769,17 @@ es:
         directions: Instrucciones
         warnings: Advertencias
       review_prompt_summary:
-        one: "%{count} medication review prompt (%{risk_level})"
-        other: "%{count} medication review prompts (%{risk_level})"
+        one: "%{count} indicación de revisión de medicamentos (%{risk_level})"
+        other: "%{count} indicaciones de revisión de medicamentos (%{risk_level})"
       review_prompt_filtered:
         one: 1 elemento de revisión de menor confianza oculto para reducir el ruido
         other: "%{count} elementos de revisión de menor confianza ocultos para reducir el ruido"
-      review_prompt_details_button: View Review Prompt Details
-      review_prompt_details: Review Prompt Details
-      review_prompt_risk_level: Risk level
-      review_prompt_source: Evidence source
-      review_prompt_checked_on: Evidence checked on
-      review_prompt_description: Review with a practitioner
+      review_prompt_details_button: Ver detalles de la revisión
+      review_prompt_details: Detalles de la revisión
+      review_prompt_risk_level: Nivel de riesgo
+      review_prompt_source: Fuente de la evidencia
+      review_prompt_checked_on: Evidencia consultada el
+      review_prompt_description: Revisar con un profesional
       update_stock: Actualizar stock
       confirm_restock: Confirme que desea añadir %{quantity} unidades a %{medication}.
       confirm_restock_without_quantity: Confirme cuántas unidades desea añadir a
@@ -1459,11 +1459,39 @@ es:
     hidden_count:
       one: 1 elemento de revisión de menor confianza oculto para reducir el ruido
       other: "%{count} elementos de revisión de menor confianza ocultos para reducir el ruido"
+    included_count:
+      one: 1 elemento de revisión de menor confianza incluido
+      other: "%{count} elementos de revisión de menor confianza incluidos"
     show_hidden: Mostrar elementos filtrados
     hide_hidden: Ocultar elementos filtrados
     empty_title: No hay revisiones de medicamentos que mostrar
     empty_description: Ningún par de evidencias revisado coincide con los medicamentos activos de los registros del hogar seleccionado.
     review_reason: La evidencia pública de las etiquetas sugiere que puede ser útil revisar esta combinación con un farmacéutico, enfermero, médico de cabecera o prescriptor.
+    view_evidence: Ver evidencia
+    summaries:
+      contraindicated: La etiqueta del medicamento recomienda extremar la precaución al tomar estos medicamentos juntos.
+      avoid: La etiqueta del medicamento recomienda extremar la precaución al tomar estos medicamentos juntos.
+      monitor_or_adjust: La etiqueta del medicamento recomienda supervisar o ajustar el tratamiento al tomar estos medicamentos juntos.
+      possible_or_caution: La etiqueta del medicamento describe un posible motivo de preocupación al tomar estos medicamentos juntos.
+      unclassified: La etiqueta del medicamento menciona estos medicamentos juntos, pero no proporciona una indicación clara.
+    filters:
+      priority: Prioridad
+      include_filtered: Incluir elementos filtrados
+      apply: Aplicar filtros
+      review_statuses:
+        needs_review: Pendientes de revisión
+        reviewed: Revisados
+        all: Todos
+      priorities:
+        all: Todas
+        discuss_soon: Consultar pronto
+        ask_when_convenient: Consultar cuando sea conveniente
+        low_confidence: Confianza baja
+      short_priorities:
+        all: Todas
+        discuss_soon: Pronto
+        ask_when_convenient: Cuando convenga
+        low_confidence: Confianza baja
     evidence_excerpt: Evidencia pública de la etiqueta
     checked_on: Evidencia consultada el %{date}
     confidence: Confianza de coincidencia %{value}

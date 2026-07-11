@@ -761,17 +761,17 @@ cy:
         directions: Cyfarwyddiadau
         warnings: Rhybuddion
       review_prompt_summary:
-        one: "%{count} medication review prompt (%{risk_level})"
-        other: "%{count} medication review prompts (%{risk_level})"
+        one: "%{count} eitem adolygu meddyginiaeth (%{risk_level})"
+        other: "%{count} eitem adolygu meddyginiaeth (%{risk_level})"
       review_prompt_filtered:
         one: 1 eitem adolygu llai hyderus wedi'i chuddio i leihau sŵn
         other: "%{count} eitem adolygu llai hyderus wedi'u cuddio i leihau sŵn"
-      review_prompt_details_button: View Review Prompt Details
-      review_prompt_details: Review Prompt Details
-      review_prompt_risk_level: Risk level
-      review_prompt_source: Evidence source
-      review_prompt_checked_on: Evidence checked on
-      review_prompt_description: Review with a practitioner
+      review_prompt_details_button: Gweld manylion yr eitem adolygu
+      review_prompt_details: Manylion yr eitem adolygu
+      review_prompt_risk_level: Lefel risg
+      review_prompt_source: Ffynhonnell y dystiolaeth
+      review_prompt_checked_on: Gwiriwyd y dystiolaeth ar
+      review_prompt_description: Adolygu gydag ymarferydd
       update_stock: Diweddaru stoc
       confirm_restock: Cadarnhewch eich bod am ychwanegu %{quantity} uned at %{medication}.
       confirm_restock_without_quantity: Cadarnhewch faint o unedau rydych am eu hychwanegu
@@ -1481,11 +1481,39 @@ cy:
     hidden_count:
       one: 1 eitem adolygu llai hyderus wedi'i chuddio i leihau sŵn
       other: "%{count} eitem adolygu llai hyderus wedi'u cuddio i leihau sŵn"
+    included_count:
+      one: 1 eitem adolygu llai hyderus wedi'i chynnwys
+      other: "%{count} eitem adolygu llai hyderus wedi'u cynnwys"
     show_hidden: Dangos eitemau wedi'u hidlo
     hide_hidden: Cuddio eitemau wedi'u hidlo
     empty_title: Dim adolygiadau meddyginiaeth i'w dangos
     empty_description: Nid oes unrhyw bâr tystiolaeth a adolygwyd yn cyfateb i'r meddyginiaethau gweithredol yng nghofnodion yr aelwyd a ddewiswyd.
     review_reason: Mae tystiolaeth gyhoeddus y label yn awgrymu y gallai fod yn werth adolygu'r cyfuniad hwn gyda fferyllydd, nyrs, meddyg teulu neu ragnodydd.
+    view_evidence: Gweld y dystiolaeth
+    summaries:
+      contraindicated: Mae label y feddyginiaeth yn argymell gofal ychwanegol pan gymerir y rhain gyda'i gilydd.
+      avoid: Mae label y feddyginiaeth yn argymell gofal ychwanegol pan gymerir y rhain gyda'i gilydd.
+      monitor_or_adjust: Mae label y feddyginiaeth yn argymell monitro neu addasu'r driniaeth pan gymerir y rhain gyda'i gilydd.
+      possible_or_caution: Mae label y feddyginiaeth yn disgrifio pryder posibl pan gymerir y rhain gyda'i gilydd.
+      unclassified: Mae label y feddyginiaeth yn enwi'r meddyginiaethau hyn gyda'i gilydd ond nid yw'n rhoi cyfarwyddyd clir.
+    filters:
+      priority: Blaenoriaeth
+      include_filtered: Cynnwys eitemau wedi'u hidlo
+      apply: Defnyddio hidlwyr
+      review_statuses:
+        needs_review: Angen adolygiad
+        reviewed: Wedi'u hadolygu
+        all: Pob un
+      priorities:
+        all: Pob un
+        discuss_soon: Trafod yn fuan
+        ask_when_convenient: Gofyn pan fo'n gyfleus
+        low_confidence: Hyder isel
+      short_priorities:
+        all: Pob un
+        discuss_soon: Yn fuan
+        ask_when_convenient: Cyfleus
+        low_confidence: Hyder isel
     evidence_excerpt: Tystiolaeth gyhoeddus y label
     checked_on: Gwiriwyd y dystiolaeth ar %{date}
     confidence: Hyder cyfateb %{value}

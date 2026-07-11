@@ -764,17 +764,17 @@ ga:
         directions: Treoracha
         warnings: Rabhaidh
       review_prompt_summary:
-        one: "%{count} medication review prompt (%{risk_level})"
-        other: "%{count} medication review prompts (%{risk_level})"
+        one: "%{count} mhír athbhreithnithe cógais (%{risk_level})"
+        other: "%{count} mír athbhreithnithe cógais (%{risk_level})"
       review_prompt_filtered:
         one: 1 mhír athbhreithnithe ar mhuinín níos ísle i bhfolach chun torann a laghdú
         other: "%{count} mír athbhreithnithe ar mhuinín níos ísle i bhfolach chun torann a laghdú"
-      review_prompt_details_button: View Review Prompt Details
-      review_prompt_details: Review Prompt Details
-      review_prompt_risk_level: Risk level
-      review_prompt_source: Evidence source
-      review_prompt_checked_on: Evidence checked on
-      review_prompt_description: Review with a practitioner
+      review_prompt_details_button: Féach ar shonraí na míre athbhreithnithe
+      review_prompt_details: Sonraí na míre athbhreithnithe
+      review_prompt_risk_level: Leibhéal riosca
+      review_prompt_source: Foinse na fianaise
+      review_prompt_checked_on: Fianaise seiceáilte ar
+      review_prompt_description: Athbhreithnigh le cleachtóir
       update_stock: Nuashonraigh stoc
       confirm_restock: Deimhnigh gur mian leat %{quantity} aonad a chur le %{medication}.
       confirm_restock_without_quantity: Deimhnigh cé mhéad aonad is mian leat a chur
@@ -1459,11 +1459,39 @@ ga:
     hidden_count:
       one: 1 mhír athbhreithnithe ar mhuinín níos ísle i bhfolach chun torann a laghdú
       other: "%{count} mír athbhreithnithe ar mhuinín níos ísle i bhfolach chun torann a laghdú"
+    included_count:
+      one: 1 mhír athbhreithnithe ar mhuinín níos ísle san áireamh
+      other: "%{count} mír athbhreithnithe ar mhuinín níos ísle san áireamh"
     show_hidden: Taispeáin míreanna scagtha
     hide_hidden: Folaigh míreanna scagtha
     empty_title: Níl aon athbhreithniú cógas le taispeáint
     empty_description: Ní mheaitseálann aon phéire fianaise athbhreithnithe na cógais ghníomhacha sna taifid teaghlaigh roghnaithe.
     review_reason: Tugann fianaise phoiblí lipéid le fios gur fiú an teaglaim seo a athbhreithniú le cógaiseoir, altra, dochtúir teaghlaigh nó oideasóir.
+    view_evidence: Féach ar an bhfianaise
+    summaries:
+      contraindicated: Molann lipéad an chógais cúram breise nuair a thógtar iad seo le chéile.
+      avoid: Molann lipéad an chógais cúram breise nuair a thógtar iad seo le chéile.
+      monitor_or_adjust: Molann lipéad an chógais monatóireacht nó coigeartú a dhéanamh ar an gcóireáil nuair a thógtar iad seo le chéile.
+      possible_or_caution: Déanann lipéad an chógais cur síos ar ábhar imní féideartha nuair a thógtar iad seo le chéile.
+      unclassified: Ainmníonn lipéad an chógais na cógais seo le chéile ach ní thugann sé treoir shoiléir.
+    filters:
+      priority: Tosaíocht
+      include_filtered: Cuir míreanna scagtha san áireamh
+      apply: Cuir scagairí i bhfeidhm
+      review_statuses:
+        needs_review: Athbhreithniú de dhíth
+        reviewed: Athbhreithnithe
+        all: Gach ceann
+      priorities:
+        all: Gach ceann
+        discuss_soon: Pléigh go luath
+        ask_when_convenient: Fiafraigh nuair atá sé áisiúil
+        low_confidence: Muinín íseal
+      short_priorities:
+        all: Gach ceann
+        discuss_soon: Go luath
+        ask_when_convenient: Áisiúil
+        low_confidence: Muinín íseal
     evidence_excerpt: Fianaise phoiblí lipéid
     checked_on: Fianaise seiceáilte ar %{date}
     confidence: Muinín mheaitseála %{value}
