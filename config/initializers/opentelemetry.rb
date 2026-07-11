@@ -110,6 +110,7 @@ if Rails.env.test?
   ENV['OTEL_TRACES_EXPORTER'] = 'none'
 
   require 'opentelemetry/sdk'
+  require 'opentelemetry/instrumentation/active_job'
   require 'opentelemetry/instrumentation/active_record'
   require 'opentelemetry/instrumentation/pg'
   require 'opentelemetry/instrumentation/rack'
@@ -120,6 +121,11 @@ if Rails.env.test?
     c.service_version = 'test'
 
     c.use('OpenTelemetry::Instrumentation::Rails')
+    c.use(
+      'OpenTelemetry::Instrumentation::ActiveJob',
+      propagation_style: :link,
+      span_naming: :job_class
+    )
     c.use('OpenTelemetry::Instrumentation::ActiveRecord')
     c.use(
       'OpenTelemetry::Instrumentation::Rack',
@@ -142,6 +148,7 @@ if Rails.env.test?
 elsif Rails.env.production? || ENV['OTEL_EXPORTER_OTLP_ENDPOINT'].present?
   require 'opentelemetry/sdk'
   require 'opentelemetry/exporter/otlp'
+  require 'opentelemetry/instrumentation/active_job'
   require 'opentelemetry/instrumentation/active_record'
   require 'opentelemetry/instrumentation/net/http'
   require 'opentelemetry/instrumentation/pg'
@@ -178,6 +185,11 @@ elsif Rails.env.production? || ENV['OTEL_EXPORTER_OTLP_ENDPOINT'].present?
     end
 
     c.use('OpenTelemetry::Instrumentation::Rails')
+    c.use(
+      'OpenTelemetry::Instrumentation::ActiveJob',
+      propagation_style: :link,
+      span_naming: :job_class
+    )
     c.use('OpenTelemetry::Instrumentation::ActiveRecord')
     c.use(
       'OpenTelemetry::Instrumentation::Rack',
