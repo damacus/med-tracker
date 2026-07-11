@@ -28,15 +28,15 @@ class MedicationFinderSearchResponder
 
   def successful_response(query:, result:, form:, strength:, permissions:)
     normalized_form = NhsDmd::DosageFormFilter.normalize(form)
-    results = NhsDmd::DosageFormFilter.filter(result.results, form)
     normalized_strength = NhsDmd::StrengthFilter.normalize(strength)
-    results = NhsDmd::StrengthFilter.filter(results, strength)
+    results = filtered_results(result.results, form:, strength:)
 
     Result.new(
       body: {
         results: results.map { |search_result| result_payload(search_result, result.barcode) },
         query: result.resolved_query.presence || query,
         barcode: result.barcode,
+        barcode_resolution: barcode_resolution(result),
         form: normalized_form,
         strength: normalized_strength,
         permissions: permissions
@@ -50,6 +50,17 @@ class MedicationFinderSearchResponder
       body: { results: [], error: 'Medication search is temporarily unavailable.' },
       status: :service_unavailable
     )
+  end
+
+  def barcode_resolution(result)
+    return if result.barcode.blank?
+
+    { status: 'resolved', source: result.barcode_source }
+  end
+
+  def filtered_results(results, form:, strength:)
+    results = NhsDmd::DosageFormFilter.filter(results, form)
+    NhsDmd::StrengthFilter.filter(results, strength)
   end
 
   def result_payload(search_result, barcode)

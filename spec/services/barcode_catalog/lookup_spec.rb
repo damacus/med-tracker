@@ -206,5 +206,11 @@ RSpec.describe BarcodeCatalog::Lookup do
         display: 'Ibuprofen 400mg tablets (Tesco Stores Ltd)'
       )
     end
+
+    it 'returns source metadata for every successful adapter outcome' do
+      create_external_entry
+
+      expect(lookup.lookup(gtin)).to include(source: a_string_matching(/\S/))
+    end
   end
 end
