@@ -57,4 +57,14 @@ RSpec.describe 'Admin users index' do
     expect(response.body).to include(soft_deleted_user.email_address)
     expect(response.body).not_to include(users(:jane).email_address)
   end
+
+  it 'filters the list to inactive users' do
+    users(:jane).deactivate!
+
+    get admin_users_path, params: { status: 'inactive' }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(users(:jane).email_address)
+    expect(response.body).not_to include(admin.email_address)
+  end
 end
