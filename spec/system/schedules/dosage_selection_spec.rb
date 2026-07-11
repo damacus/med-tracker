@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Schedule dosage selection' do
+RSpec.describe 'Schedule dosage selection', :browser do
   fixtures :accounts, :users, :people, :locations, :medications, :dosages
 
   before do

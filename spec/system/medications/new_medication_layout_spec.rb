@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'MedicationNewLayout' do
+RSpec.describe 'MedicationNewLayout', :browser do
   fixtures :accounts, :people, :users, :locations, :medications
 
   before do

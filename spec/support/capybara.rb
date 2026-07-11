@@ -23,14 +23,20 @@ Capybara.register_driver :playwright do |app|
 end
 
 RSpec.configure do |config|
-  config.before(:each, type: :system) do
-    driven_by :playwright, using: :chromium, screen_size: [1400, 1400], options: {
-      args: PLAYWRIGHT_BROWSER_ARGS
-    }
+  config.before(:each, type: :system) do |example|
+    driver = example.metadata[:browser] ? :playwright : :rack_test
+
+    if driver == :playwright
+      driven_by driver, using: :chromium, screen_size: [1400, 1400], options: {
+        args: PLAYWRIGHT_BROWSER_ARGS
+      }
+    else
+      driven_by driver
+    end
   end
 
   # Disable CSS animations and transitions for faster tests
-  config.before(:each, type: :system) do
+  config.before(:each, :browser, type: :system) do
     page.driver.with_playwright_page do |playwright_page|
       playwright_page.add_init_script(script: <<~JS)
         const style = document.createElement('style');

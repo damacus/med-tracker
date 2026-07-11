@@ -115,7 +115,7 @@ RSpec.describe 'BarcodeScanner' do
     end
   end
 
-  context 'with JavaScript (Playwright)' do
+  context 'with JavaScript (Playwright)', :browser do
     before do
       driven_by(:playwright)
       login_as(user)

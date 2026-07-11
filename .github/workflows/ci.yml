@@ -202,8 +202,8 @@ jobs:
       - name: Run browser tests (shard ${{ matrix.shard }}/2)
         shell: bash
         run: |
-          # Get all browser test files and split them for this shard
-          mapfile -t file_array < <(find spec/features spec/system -name '*_spec.rb' | sort)
+          # Get all spec files and split tagged browser examples for this shard
+          mapfile -t file_array < <(find spec -name '*_spec.rb' | sort)
           total_shards=2
           shard=${{ matrix.shard }}
 
@@ -217,7 +217,7 @@ jobs:
 
           if [ ${#shard_files[@]} -gt 0 ]; then
             echo "Running tests for shard $shard: ${shard_files[*]}"
-            bundle exec rspec --format RSpec::Github::Formatter --format documentation "${shard_files[@]}"
+            bundle exec rspec --tag browser --format RSpec::Github::Formatter --format documentation "${shard_files[@]}"
           else
             echo "No files for this shard"
           fi

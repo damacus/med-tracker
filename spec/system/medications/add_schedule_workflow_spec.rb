@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Inventory add schedule workflow' do
+RSpec.describe 'Inventory add schedule workflow', :browser do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :dosages
 
   before do

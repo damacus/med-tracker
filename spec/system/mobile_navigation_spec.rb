@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Mobile Navigation' do
+RSpec.describe 'Mobile Navigation', :browser do
   fixtures :accounts, :people, :users
 
   let(:user) { users(:bob) }

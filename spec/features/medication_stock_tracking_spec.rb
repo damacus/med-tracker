@@ -51,7 +51,7 @@ RSpec.describe 'Medication Stock Tracking', type: :system do
     end
   end
 
-  it 'deducts stock when taking a dose via the dashboard' do
+  it 'deducts stock when taking a dose via the dashboard', :browser do
     visit dashboard_path(dashboard_person_id: DashboardPresenter::ALL_FAMILY_PERSON_ID)
 
     # Ensure the task is available on the dashboard

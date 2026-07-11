@@ -5,10 +5,6 @@ require 'rails_helper'
 RSpec.describe 'Medication Takes Authorization' do
   fixtures :all
 
-  before do
-    driven_by(:playwright)
-  end
-
   let(:admin) { users(:admin) }
   let(:doctor) { users(:doctor) }
   let(:nurse) { users(:nurse) }

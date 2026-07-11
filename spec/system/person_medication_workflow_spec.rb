@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Person medication workflow' do
+RSpec.describe 'Person medication workflow', :browser do
   fixtures :accounts, :people, :locations, :location_memberships, :medications, :dosages, :users,
            :person_medications, :carer_relationships
 

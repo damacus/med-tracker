@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Medication dose options editor' do
+RSpec.describe 'Medication dose options editor', :browser do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :dosages
 
   before do

@@ -32,7 +32,7 @@ RSpec.describe 'Admin Dashboard' do
       visit admin_root_path
 
       within '[data-testid="metric-total-users"]' do
-        expect(page).to have_text('TOTAL USERS')
+        expect(page).to have_text('Total Users')
         expect(page).to have_css('[data-metric-value]')
       end
     end

@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Refill medication inventory' do
+RSpec.describe 'Refill medication inventory', :browser do
   fixtures :accounts, :people, :users, :locations, :medications
 
   let(:admin) { users(:admin) }
