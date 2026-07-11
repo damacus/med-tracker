@@ -106,6 +106,12 @@ RSpec.describe ApplicationHarnessDependencies do
     expect(development_stage).not_to include('COPY --chown=ruby:ruby . .')
   end
 
+  it 'installs the health-check client in the development Docker image' do
+    development_stage = docker_stage('development')
+
+    expect(development_stage).to include('apt-get install -y --no-install-recommends curl')
+  end
+
   it 'keeps the OpenTelemetry SDK available to development boot' do
     dependency = gemfile_dependencies.fetch('opentelemetry-sdk')
 
