@@ -7,7 +7,7 @@ RSpec.describe BarcodeCatalog::Resolver do
 
   let(:lookup) { instance_double(BarcodeCatalog::Lookup, lookup: nil) }
 
-  it 'returns a resolved outcome with normalized barcode and source metadata', :aggregate_failures do
+  it 'returns a resolved outcome with normalized barcode and source metadata' do
     allow(lookup).to receive(:lookup).with('5016298210989').and_return(
       display: 'Laxido Orange oral powder sachets',
       source: 'nhs_dmd'
@@ -19,9 +19,9 @@ RSpec.describe BarcodeCatalog::Resolver do
       status: :resolved,
       barcode: '5016298210989',
       source: 'nhs_dmd',
-      error: nil
+      error: nil,
+      match: a_hash_including(display: 'Laxido Orange oral powder sachets')
     )
-    expect(result.match).to include(display: 'Laxido Orange oral powder sachets')
   end
 
   it 'returns a not-found outcome for a valid unmapped barcode' do
