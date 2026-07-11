@@ -35,6 +35,16 @@ RSpec.describe 'OTEL-011: OTLP exporter configuration' do
       expect(instrumentation.installed?).to be(true)
     end
 
+    it 'enables Active Job instrumentation with linked trace propagation' do
+      instrumentation = OpenTelemetry::Instrumentation::ActiveJob::Instrumentation.instance
+
+      expect(instrumentation).to be_installed
+      expect(instrumentation.instance_variable_get(:@config)).to include(
+        propagation_style: :link,
+        span_naming: :job_class
+      )
+    end
+
     it 'enables Rack instrumentation with untraced endpoints' do
       instrumentation = OpenTelemetry::Instrumentation::Rack::Instrumentation.instance
       expect(instrumentation).not_to be_nil
