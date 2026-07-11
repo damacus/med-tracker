@@ -6,10 +6,12 @@ RSpec.describe 'Authenticated no-household chrome' do
   fixtures :accounts, :people, :users
 
   it 'renders the login page without authenticated mobile chrome after a no-household redirect', :js do
+    account = accounts(:damacus)
+    account.household_memberships.active.find_each { |membership| membership.update!(status: :revoked) }
     page.current_window.resize_to(390, 844)
 
     visit '/login'
-    fill_in 'Email address', with: users(:damacus).email_address
+    fill_in 'Email address', with: account.email
     fill_in 'Password', with: 'password'
     click_button 'Sign In to Dashboard'
 

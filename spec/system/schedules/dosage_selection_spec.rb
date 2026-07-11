@@ -5,10 +5,6 @@ require 'rails_helper'
 RSpec.describe 'Schedule dosage selection', :browser do
   fixtures :accounts, :users, :people, :locations, :medications, :dosages
 
-  before do
-    driven_by(:playwright)
-  end
-
   let(:admin) { users(:admin) }
   let(:person) { people(:one) }
 
@@ -23,10 +19,8 @@ RSpec.describe 'Schedule dosage selection', :browser do
     find('[role="option"]', text: 'Ibuprofen', wait: 10).click
 
     expect(page).to have_text('Change')
-    sleep 1.0 # Wait for dosage cards to render after medication selection
-
     expect(page).to have_no_css('[name="schedule[dose_option_key]"]:checked', visible: :hidden)
-    expect(page).to have_text('Add Plan') # Button might be disabled, have_content is safer
+    expect(page).to have_text('Add Plan')
     find('label', text: '400 mg', wait: 10).click
 
     fill_in 'Frequency', with: 'Once daily'
