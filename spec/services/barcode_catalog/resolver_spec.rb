@@ -30,7 +30,7 @@ RSpec.describe BarcodeCatalog::Resolver do
   it 'returns a not-found outcome for a valid unmapped barcode' do
     allow(lookup).to receive(:lookup).with('5016298210989').and_return(nil)
 
-    expect(resolver.call('5016298210989')).to have_attributes(
+    expect(resolver.call('5016298210989').to_h).to eq(
       status: :not_found,
       barcode: '5016298210989',
       match: nil,
@@ -40,7 +40,7 @@ RSpec.describe BarcodeCatalog::Resolver do
   end
 
   it 'returns an invalid outcome without invoking adapters' do
-    expect(resolver.call('not-a-barcode')).to have_attributes(
+    expect(resolver.call('not-a-barcode').to_h).to eq(
       status: :invalid,
       barcode: '',
       match: nil,
@@ -56,7 +56,7 @@ RSpec.describe BarcodeCatalog::Resolver do
 
     result = resolver.call('5016298210989')
 
-    expect(result).to have_attributes(
+    expect(result.to_h).to eq(
       status: :error,
       barcode: '5016298210989',
       match: nil,
