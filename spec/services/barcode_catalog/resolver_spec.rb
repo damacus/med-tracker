@@ -15,12 +15,15 @@ RSpec.describe BarcodeCatalog::Resolver do
 
     result = resolver.call(' 5016-2982-10989 ')
 
-    expect(result).to have_attributes(
+    expect(result.to_h).to eq(
       status: :resolved,
       barcode: '5016298210989',
       source: 'nhs_dmd',
       error: nil,
-      match: a_hash_including(display: 'Laxido Orange oral powder sachets')
+      match: {
+        display: 'Laxido Orange oral powder sachets',
+        source: 'nhs_dmd'
+      }
     )
   end
 
