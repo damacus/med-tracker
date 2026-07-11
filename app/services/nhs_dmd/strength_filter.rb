@@ -12,7 +12,8 @@ module NhsDmd
       'litre' => 'l', 'litres' => 'l', 'liter' => 'l', 'liters' => 'l', 'l' => 'l'
     }.freeze
     UNIT_PATTERN = UNIT_ALIASES.keys.sort_by { |unit| -unit.length }.join('|')
-    STRENGTH_PATTERN = /\d[\d,.]*(?:\.\d+)?\s*(?:#{UNIT_PATTERN})(?:\s*\/\s*\d[\d,.]*(?:\.\d+)?\s*(?:#{UNIT_PATTERN}))?/i
+    NUMBER_PATTERN = '\\d[\\d,.]*(?:\\.\\d+)?'
+    STRENGTH_PATTERN = %r{#{NUMBER_PATTERN}\s*(?:#{UNIT_PATTERN})(?:\s*/\s*#{NUMBER_PATTERN}\s*(?:#{UNIT_PATTERN}))?}i
     COMPONENT_PATTERN = /\A(\d+(?:\.\d+)?)\s*(#{UNIT_PATTERN})\z/i
 
     def self.normalize(value)
