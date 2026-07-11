@@ -16,13 +16,16 @@ class MedicationReviewEvidenceCorpus
   def initialize(records, terminology: MedicationReviewTerminology.new)
     @records = records
     @terminology = terminology
+    @identities = {}
+    @ownership = {}
+    @records_by_medication = {}
   end
 
   def matches_for(first_name, second_name)
     first_identity = identity_for(first_name)
     second_identity = identity_for(second_name)
 
-    records.filter_map do |record|
+    pair_records(first_name, second_name).filter_map do |record|
       curated_match(record, first_name, second_name) ||
         automatic_match(record, first_name, first_identity, second_identity) ||
         automatic_match(record, second_name, second_identity, first_identity)
@@ -31,21 +34,32 @@ class MedicationReviewEvidenceCorpus
 
   def owner?(record, medication_name)
     medication_term = MedicationReviewTermNormalizer.medication(medication_name)
-    record.candidate_terms.any? { |term| overlapping_terms?(medication_term, normalize(term)) }
+    key = [record.object_id, medication_term]
+
+    ownership.fetch(key) do
+      ownership[key] = record.candidate_terms.any? { |term| overlapping_terms?(medication_term, normalize(term)) }
+    end
   end
 
   private
 
-  attr_reader :records, :terminology
+  attr_reader :records, :terminology, :identities, :ownership, :records_by_medication
 
   def identity_for(medication_name)
-    medication_term = MedicationReviewTermNormalizer.medication(medication_name)
-    identity_records = records.select { |record| owner?(record, medication_name) }
-    terminology_identity = terminology.identity_for(medication_name)
-    Identity.new(
-      terms: identity_terms(medication_term, identity_records, terminology_identity),
-      classes: identity_classes(identity_records, terminology_identity)
-    )
+    identities.fetch(medication_name) do
+      medication_term = MedicationReviewTermNormalizer.medication(medication_name)
+      identity_records = records.select { |record| owner?(record, medication_name) }
+      records_by_medication[medication_name] = identity_records
+      terminology_identity = terminology.identity_for(medication_name)
+      identities[medication_name] = Identity.new(
+        terms: identity_terms(medication_term, identity_records, terminology_identity),
+        classes: identity_classes(identity_records, terminology_identity)
+      )
+    end
+  end
+
+  def pair_records(first_name, second_name)
+    (records_by_medication.fetch(first_name) + records_by_medication.fetch(second_name)).uniq
   end
 
   def identity_terms(medication_term, identity_records, terminology_identity)
