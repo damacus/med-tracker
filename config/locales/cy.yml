@@ -27,6 +27,14 @@ cy:
           self: Hunan
     errors:
       models:
+        health_event:
+          attributes:
+            ended_on:
+              on_or_after_start_date: rhaid iddo fod ar neu ar ôl y dyddiad dechrau
+        health_event_medication:
+          attributes:
+            medication_id:
+              linked_to_health_event: eisoes wedi'i gysylltu â'r digwyddiad iechyd hwn
         medication:
           attributes:
             barcode:
@@ -43,6 +51,47 @@ cy:
       required: rhaid iddo fodoli
       taken: eisoes wedi'i gymryd
       too_short: yn rhy fyr (yr isafswm yw %{count} nod)
+      linked_to_health_event: eisoes wedi'i gysylltu â'r digwyddiad iechyd hwn
+      on_or_after_start_date: rhaid iddo fod ar neu ar ôl y dyddiad dechrau
+  health_events:
+    created: Cofnodwyd y digwyddiad iechyd.
+    updated: Diweddarwyd y digwyddiad iechyd.
+    deleted: Dilëwyd y digwyddiad iechyd.
+    invalid_medication_link: Dewiswch feddyginiaethau sydd wedi'u neilltuo i'r person hwn yn unig.
+    kinds:
+      illness: Salwch nodedig
+      suspected_side_effect: Sgil-effaith a amheuir
+    severities:
+      mild: Ysgafn
+      moderate: Cymedrol
+      severe: Difrifol
+    actions:
+      record_illness: Cofnodi salwch nodedig
+      record_suspected_side_effect: Cofnodi sgil-effaith a amheuir
+      edit: Golygu
+      delete: Dileu
+      cancel: Canslo
+      save: Cadw
+    index:
+      title: Digwyddiadau iechyd %{person}
+      subtitle: Cofnodwch afiechydon nodedig a sgil-effeithiau a amheuir heb wneud honiadau clinigol.
+      empty: Nid oes digwyddiadau iechyd wedi'u cofnodi eto.
+      ongoing_from: Yn parhau ers %{started_on}
+      date_range: "%{started_on} i %{ended_on}"
+    form:
+      new_title: Cofnodi %{kind}
+      edit_title: Golygu %{kind}
+      subtitle: Cofnodwch ffeithiau a gofnodwyd gan y teulu neu'r gofalwr.
+      title: Teitl
+      started_on: Dyddiad dechrau
+      ended_on: Dyddiad gorffen
+      ongoing: Yn parhau
+      severity: Difrifoldeb
+      no_severity: Heb ei nodi
+      suspected_medications: Meddyginiaethau a amheuir
+      notes: Nodiadau
+      action_taken: Camau a gymerwyd
+      medical_help_sought: Ceisiwyd cymorth meddygol
   app:
     name: MedTracker
   global_search:
@@ -404,6 +453,9 @@ cy:
         all: Pawb
         clear: Clirio
       table:
+        system_access: Mynediad system
+        system_administrator: Gweinyddwr system
+        household_user: Defnyddiwr aelwyd
         activation: Actifadu
         verification: Dilysu
         actions: Gweithredoedd
@@ -568,6 +620,8 @@ cy:
         invitations_title: Gwahoddiadau
         invitations_description: Gwahodd defnyddwyr newydd i ymuno
         manage_people_title: Rheoli pobl
+        household_settings_title: Gosodiadau aelwyd
+        household_settings_description: Ailenwi'r aelwyd hon
         manage_people_description: Gweld a rheoli cofnodion pobl
         audit_trail_title: Llwybr archwilio
         audit_trail_description: Gweld logiau archwilio'r system
@@ -642,6 +696,12 @@ cy:
         platfform.
       update_submit: Diweddaru Rôl
       updated: Rôl aelodaeth wedi'i diweddaru.
+    households:
+      updated: Aelwyd wedi'i chadw
+      title: Gosodiadau aelwyd
+      subtitle: Ailenwch yr aelwyd bresennol a chadwch label yr aelwyd yn adnabyddadwy i bawb sydd â mynediad.
+      name: Enw'r aelwyd
+      save: Cadw'r aelwyd
   platform:
     settings:
       title: Gosodiadau platfform
@@ -649,6 +709,17 @@ cy:
     support_access_sessions:
       created: Mynediad cymorth wedi'i agor.
       ended: Mynediad cymorth wedi dod i ben.
+    users:
+      title: Gweinyddwyr system
+      subtitle: Adolygwch rolau aelwydydd a chaniatáu mynediad gweinyddol ar draws y platfform.
+      settings: Gosodiadau platfform
+      household_role: Rôl aelwyd
+      system_access: Mynediad system
+      system_administrator: Gweinyddwr system
+      household_user: Defnyddiwr aelwyd
+      grant_system_access: Caniatáu mynediad system
+      remove_system_access: Dileu mynediad system
+      updated: Mynediad system wedi'i ddiweddaru
   authentication:
     login_required: Mewngofnodwch i barhau
     privileged_mfa_required:
@@ -891,6 +962,10 @@ cy:
       edit_dosage: Golygu
       mark_as_ordered: Archebu
       mark_as_received: Derbyn
+      order_details: Manylion archeb
+      order_supplier: Cyflenwr
+      order_quantity: Nifer
+      expected_arrival: Cyrraedd disgwyliedig
       refill_inventory: Ail-stocio
       complete_refill: Ail-stocio
       reorder_at_label: Ail-archebu am
@@ -940,9 +1015,9 @@ cy:
       otc_description: Taken as needed without a fixed schedule
     show:
       edit_person: Golygu Person
-      add_schedule: Amserlen
       add_medication: Ychwanegu Meddyginiaeth
       manage_parents: Rheoli rhieni
+      health_events: Digwyddiadau iechyd
       back: Yn ôl
       born: 'Ganwyd:'
       age: 'Oedran:'
@@ -956,10 +1031,6 @@ cy:
       add_first_medication: Ychwanegu Meddyginiaeth Gyntaf
       no_any_medications: Dim meddyginiaethau eto.
       add_first_any_medication: Ychwanegu Meddyginiaeth
-      mark_as_ordered: Archebu
-      mark_as_received: Derbyniwyd
-      refill_inventory: Ail-stocio
-      complete_refill: Ail-stocio
     carer_relationships:
       created: Rhiant neu ofalwr wedi'i aseinio.
       invited: Anfonwyd gwahoddiad gyda'r dibynnydd hwn wedi'i atodi.
@@ -1015,6 +1086,8 @@ cy:
     created: Ychwanegwyd y feddyginiaeth yn llwyddiannus.
     updated: Diweddarwyd y feddyginiaeth yn llwyddiannus.
     deleted: Tynnwyd y feddyginiaeth yn llwyddiannus.
+    paused: Oedwyd y feddyginiaeth.
+    resumed: Ailddechreuwyd y feddyginiaeth.
     medication_taken: Cymerwyd y feddyginiaeth yn llwyddiannus.
     invalid_dose_configured: Dos annilys wedi'i ffurfweddu. Diweddarwch ddos y feddyginiaeth
       cyn cymryd.
@@ -1023,6 +1096,7 @@ cy:
       edit_title: Golygu Meddyginiaeth ar gyfer %{person}
       subtitle: Ychwanegu meddyginiaeth reolaidd neu yn ôl yr angen
     card:
+      paused: Wedi'i oedi
       notes: 'Nodiadau:'
       timing_restrictions: 'Cyfyngiadau Amseru:'
       max_doses_per_day: Uchafswm %{count} dos(au) y dydd
@@ -1034,6 +1108,11 @@ cy:
       give: Rhoi
       out_of_stock: Allan o Stoc
       invalid_dose: Dos Annilys Wedi'i Ffurfweddu
+      actions: Gweithredoedd
+      move_up: Symud i fyny
+      move_down: Symud i lawr
+      pause: Oedi'r feddyginiaeth
+      resume: Ailddechrau'r feddyginiaeth
       move_up_aria_label: Symud meddyginiaeth i fyny
       move_down_aria_label: Symud meddyginiaeth i lawr
       delete_aria_label: Dileu meddyginiaeth
@@ -1139,6 +1218,8 @@ cy:
     created: Crëwyd y presgripsiwn yn llwyddiannus.
     updated: Diweddarwyd y presgripsiwn yn llwyddiannus.
     deleted: Dilëwyd y presgripsiwn yn llwyddiannus.
+    paused: Oedwyd y presgripsiwn.
+    resumed: Ailddechreuwyd y presgripsiwn.
     medication_taken: Cymerwyd y feddyginiaeth yn llwyddiannus.
     invalid_dose_configured: Dos annilys wedi'i ffurfweddu. Diweddarwch ddos y presgripsiwn
       cyn cymryd.
@@ -1147,6 +1228,7 @@ cy:
       edit_title: Golygu Presgripsiwn ar gyfer %{person}
       subtitle: Ychwanegu manylion meddyginiaeth ac amserlen
     card:
+      paused: Wedi'i oedi
       started: 'Dechreuodd:'
       ends: 'Yn gorffen:'
       notes: 'Nodiadau:'
@@ -1161,8 +1243,11 @@ cy:
       delete_aria_label: Dileu meddyginiaeth
       ready_now: Yn Barod Nawr
       waiting: Yn Aros
+      actions: Gweithredoedd
       edit: Golygu
       delete: Dileu
+      pause: Oedi'r presgripsiwn
+      resume: Ailddechrau'r presgripsiwn
       invalid_dose: Dos Annilys Wedi'i Ffurfweddu
       delete_dialog:
         title: Dileu Presgripsiwn
@@ -1307,12 +1392,26 @@ cy:
     json_success: Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus.
     invalid_taken_at: Dewiswch amser dos dilys.
     future_taken_at: Ni all amser y dos fod fwy nag awr yn y dyfodol.
+    paused: 'Methu cymryd meddyginiaeth: wedi''i hoedi'
+    overlapping_prescription_restriction: 'Methu cymryd meddyginiaeth: mae presgripsiwn gweithredol arall ar gyfer y feddyginiaeth hon yn gosod terfyn amser llymach.'
   profiles:
     updated: Diweddarwyd y proffil yn llwyddiannus.
     email_change_requires_verification: Defnyddiwch y llif newid e-bost wedi'i ddilysu
       i ddiweddaru eich e-bost mewngofnodi.
     no_changes: Dim newidiadau i'w cadw.
     profile_update_failed: 'Methwyd â diweddaru''r proffil: %{errors}'
+    api_tokens:
+      title: Tocynnau API
+      description: Creu tocynnau y gellir eu dirymu ar gyfer sgriptiau ac integreiddiadau dibynadwy.
+      created_title: Copïwch y tocyn hwn nawr. Ni chaiff ei ddangos eto.
+      name_label: Enw'r tocyn
+      create: Creu tocyn
+      empty: Dim tocynnau API eto.
+      last_used_at: 'Defnyddiwyd ddiwethaf: %{time}'
+      revoke: Dirymu
+      revoked: Tocyn API wedi'i ddirymu.
+      locked: Mae eich cyfrif wedi'i gloi. Ni ellir newid tocynnau API ar hyn o bryd.
+      mfa_required: Cwblhewch ddilysiad dau ffactor cyn creu tocyn API.
     appearance:
       title: Ymddangosiad
       description: Dewiswch sut mae MedTracker yn edrych ar draws sgriniau wedi'u
@@ -1691,7 +1790,6 @@ cy:
       title: Rhestr Stoc
       left: "%{count} ar ôl"
       order_refills: Archebu ail-lenwadau
-    medication_schedule: Amserlen Meddyginiaeth
     no_active_schedules: Dim presgripsiynau gweithredol wedi'u canfod
     add_schedules_hint: Ychwanegwch bresgripsiynau i'w gweld yma
     dose_taken_at: "%{person} • Cymerwyd am %{time}"
@@ -1793,7 +1891,47 @@ cy:
     updated: Cedwir y gosodiadau hysbysiadau.
     update_failed: Methwyd â chadw'r gosodiadau hysbysiadau.
   reports:
+    invalid_date: Darparwyd fformat dyddiad annilys.
     date_range_too_large: Ni chaiff ystod dyddiadau'r adroddiad fod yn fwy na 180 diwrnod.
+    health_history:
+      title: Adroddiad hanes iechyd MedTracker
+      people: "Pobl: %{people}"
+      no_people: Dim pobl awdurdodedig
+      date_range: "Ystod dyddiadau: %{start_date} i %{end_date}"
+      generated_at: "Cynhyrchwyd: %{timestamp}"
+      empty_section: Dim cofnodion yn yr adran hon.
+      ongoing_from: Yn parhau ers %{started_on}
+      event_date_range: "%{started_on} i %{ended_on}"
+      sources:
+        scheduled: Wedi'i amserlennu
+        as_needed: Yn ôl yr angen/uniongyrchol
+      medication_takes:
+        title: Rhoi meddyginiaethau
+        time: Amser
+        person: Person
+        medication: Meddyginiaeth
+        dose: Dos
+        source: Ffynhonnell
+        location: Lleoliad
+      suspected_side_effects:
+        title: Sgil-effeithiau a amheuir
+      notable_illnesses:
+        title: Afiechydon nodedig
+      events:
+        title: Teitl
+        dates: Dyddiadau
+        severity: Difrifoldeb
+        medications: Meddyginiaethau a amheuir
+        notes: Nodiadau
+        action: Camau a gymerwyd
+      illness_patterns:
+        title: Patrymau salwch a gofnodwyd
+        summary: Cofnodwyd %{count} achos o "%{title}" rhwng %{first} a %{last}. Yr egwyl gyfartalog rhwng dechrau achosion oedd %{interval} diwrnod.
+      disclaimer:
+        title: Ymwadiad
+        entered_information: Mae'r adroddiad hwn yn adlewyrchu gwybodaeth a gofnodwyd yn MedTracker.
+        causation: Nid yw cysylltiadau â sgil-effeithiau a amheuir yn profi achosiaeth.
+        medical_advice: Nid diagnosis yw'r adroddiad hwn ac nid yw'n disodli cyngor meddygol proffesiynol.
     index:
       eyebrow: Dadansoddeg Lles
       title: Adroddiad Iechyd

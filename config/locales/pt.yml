@@ -27,6 +27,14 @@ pt:
           self: Próprio
     errors:
       models:
+        health_event:
+          attributes:
+            ended_on:
+              on_or_after_start_date: deve ser igual ou posterior à data de início
+        health_event_medication:
+          attributes:
+            medication_id:
+              linked_to_health_event: já foi associado a este evento de saúde
         medication:
           attributes:
             barcode:
@@ -43,6 +51,47 @@ pt:
       required: deve existir
       taken: já está em uso
       too_short: é muito curto (mínimo de %{count} caracteres)
+      linked_to_health_event: já foi associado a este evento de saúde
+      on_or_after_start_date: deve ser igual ou posterior à data de início
+  health_events:
+    created: Evento de saúde registado.
+    updated: Evento de saúde atualizado.
+    deleted: Evento de saúde eliminado.
+    invalid_medication_link: Selecione apenas medicamentos atribuídos a esta pessoa.
+    kinds:
+      illness: Doença relevante
+      suspected_side_effect: Suspeita de efeito secundário
+    severities:
+      mild: Ligeira
+      moderate: Moderada
+      severe: Grave
+    actions:
+      record_illness: Registar doença relevante
+      record_suspected_side_effect: Registar suspeita de efeito secundário
+      edit: Editar
+      delete: Eliminar
+      cancel: Cancelar
+      save: Guardar
+    index:
+      title: Eventos de saúde de %{person}
+      subtitle: Registe doenças relevantes e suspeitas de efeitos secundários sem fazer afirmações clínicas.
+      empty: Ainda não existem eventos de saúde registados.
+      ongoing_from: Em curso desde %{started_on}
+      date_range: "%{started_on} a %{ended_on}"
+    form:
+      new_title: Registar %{kind}
+      edit_title: Editar %{kind}
+      subtitle: Registe factos introduzidos pela família ou pelo cuidador.
+      title: Título
+      started_on: Data de início
+      ended_on: Data de fim
+      ongoing: Em curso
+      severity: Gravidade
+      no_severity: Não especificada
+      suspected_medications: Medicamentos suspeitos
+      notes: Notas
+      action_taken: Medida tomada
+      medical_help_sought: Foi procurada ajuda médica
   app:
     name: MedTracker
   global_search:
@@ -411,6 +460,9 @@ pt:
         all: Todos
         clear: Limpar
       table:
+        system_access: Acesso ao sistema
+        system_administrator: Administrador do sistema
+        household_user: Utilizador do agregado
         activation: Ativação
         verification: Verificação
         actions: Ações
@@ -574,6 +626,8 @@ pt:
         manage_users_description: Ver e gerir contas de utilizador
         invitations_title: Convites
         invitations_description: Convidar novos utilizadores a aderir
+        household_settings_title: Definições do agregado
+        household_settings_description: Alterar o nome deste agregado
         manage_people_title: Gerir pessoas
         manage_people_description: Ver e gerir registos de pessoas
         audit_trail_title: Registo de auditoria
@@ -649,6 +703,12 @@ pt:
         da plataforma.
       update_submit: Atualizar função
       updated: Função de associação atualizada.
+    households:
+      updated: Agregado guardado
+      title: Definições do agregado
+      subtitle: Altere o nome do agregado atual e mantenha-o reconhecível para todas as pessoas com acesso.
+      name: Nome do agregado
+      save: Guardar agregado
   platform:
     settings:
       title: Definições da plataforma
@@ -656,6 +716,17 @@ pt:
     support_access_sessions:
       created: Acesso de suporte aberto.
       ended: Acesso de suporte terminado.
+    users:
+      title: Administradores do sistema
+      subtitle: Reveja as funções do agregado e conceda acesso de administração a toda a plataforma.
+      settings: Definições da plataforma
+      household_role: Função no agregado
+      system_access: Acesso ao sistema
+      system_administrator: Administrador do sistema
+      household_user: Utilizador do agregado
+      grant_system_access: Conceder acesso ao sistema
+      remove_system_access: Remover acesso ao sistema
+      updated: Acesso ao sistema atualizado
   authentication:
     login_required: Por favor, inicie sessão para continuar
     privileged_mfa_required:
@@ -897,6 +968,10 @@ pt:
       edit_dosage: Editar
       mark_as_ordered: Encomendar
       mark_as_received: Recebido
+      order_details: Detalhes da encomenda
+      order_supplier: Fornecedor
+      order_quantity: Quantidade
+      expected_arrival: Chegada prevista
       refill_inventory: Reabastecer
       complete_refill: Reabastecer
       reorder_at_label: Reordenar Em
@@ -943,9 +1018,9 @@ pt:
       otc_description: Taken as needed without a fixed schedule
     show:
       edit_person: Editar Pessoa
-      add_schedule: Adicionar Receita
       add_medication: Adicionar Medicamento
       manage_parents: Gerir pais
+      health_events: Eventos de saúde
       back: Voltar
       born: 'Nascido:'
       age: 'Idade:'
@@ -1017,6 +1092,8 @@ pt:
     created: Medicamento adicionado com sucesso.
     updated: Medicamento atualizado com sucesso.
     deleted: Medicamento removido com sucesso.
+    paused: Medicamento pausado.
+    resumed: Medicamento retomado.
     medication_taken: Medicamento tomado com sucesso.
     invalid_dose_configured: Dose inválida configurada. Atualize a dose do medicamento
       antes de administrar.
@@ -1025,6 +1102,7 @@ pt:
       edit_title: Editar Medicamento para %{person}
       subtitle: Adicionar uma medicação de rotina ou conforme necessário
     card:
+      paused: Em pausa
       notes: 'Notas:'
       timing_restrictions: 'Restrições de Tempo:'
       max_doses_per_day: Máximo %{count} dose(s) por dia
@@ -1036,6 +1114,11 @@ pt:
       give: Dar
       out_of_stock: Sem Stock
       invalid_dose: Dose inválida configurada
+      actions: Ações
+      move_up: Mover para cima
+      move_down: Mover para baixo
+      pause: Pausar medicamento
+      resume: Retomar medicamento
       move_up_aria_label: Mover medicamento para cima
       move_down_aria_label: Mover medicamento para baixo
       delete_aria_label: Excluir medicamento
@@ -1112,6 +1195,8 @@ pt:
     created: Receita criada com sucesso.
     updated: Receita atualizada com sucesso.
     deleted: Receita eliminada com sucesso.
+    paused: Receita pausada.
+    resumed: Receita retomada.
     medication_taken: Medicamento tomado com sucesso.
     invalid_dose_configured: Dose inválida configurada. Atualize a dose da receita
       antes de administrar.
@@ -1120,6 +1205,7 @@ pt:
       edit_title: Editar Receita para %{person}
       subtitle: Adicione os detalhes da medicação e da receita
     card:
+      paused: Em pausa
       started: 'Iniciado:'
       ends: 'Termina:'
       notes: 'Notas:'
@@ -1134,8 +1220,11 @@ pt:
       delete_aria_label: Excluir medicamento
       ready_now: Pronto Agora
       waiting: A aguardar
+      actions: Ações
       edit: Editar
       delete: Eliminar
+      pause: Pausar receita
+      resume: Retomar receita
       invalid_dose: Dose inválida configurada
       delete_dialog:
         title: Eliminar Receita
@@ -1280,6 +1369,8 @@ pt:
     json_success: Toma de medicamento registada com sucesso.
     invalid_taken_at: Escolha uma hora de dose válida.
     future_taken_at: A hora da dose não pode ser mais de uma hora no futuro.
+    paused: 'Não é possível tomar o medicamento: está em pausa'
+    overlapping_prescription_restriction: 'Não é possível tomar o medicamento: outra receita ativa para este medicamento define um limite de tempo mais rigoroso.'
   barcode_scanner:
     title: Ler Código de Barras
     start: Iniciar Leitor
@@ -1300,7 +1391,47 @@ pt:
     updated: Definições de notificação guardadas.
     update_failed: Falha ao guardar as definições de notificação.
   reports:
+    invalid_date: Foi fornecido um formato de data inválido.
     date_range_too_large: O intervalo de datas do relatorio nao pode exceder 180 dias.
+    health_history:
+      title: Relatório do historial de saúde do MedTracker
+      people: "Pessoas: %{people}"
+      no_people: Não existem pessoas autorizadas
+      date_range: "Intervalo de datas: %{start_date} a %{end_date}"
+      generated_at: "Gerado: %{timestamp}"
+      empty_section: Não existem registos nesta secção.
+      ongoing_from: Em curso desde %{started_on}
+      event_date_range: "%{started_on} a %{ended_on}"
+      sources:
+        scheduled: Agendado
+        as_needed: Conforme necessário/direto
+      medication_takes:
+        title: Administrações de medicamentos
+        time: Hora
+        person: Pessoa
+        medication: Medicamento
+        dose: Dose
+        source: Origem
+        location: Localização
+      suspected_side_effects:
+        title: Suspeitas de efeitos secundários
+      notable_illnesses:
+        title: Doenças relevantes
+      events:
+        title: Título
+        dates: Datas
+        severity: Gravidade
+        medications: Medicamentos suspeitos
+        notes: Notas
+        action: Medida tomada
+      illness_patterns:
+        title: Padrões de doença registados
+        summary: Foram registados %{count} episódios de "%{title}" entre %{first} e %{last}. O intervalo médio entre o início dos episódios foi de %{interval} dias.
+      disclaimer:
+        title: Aviso
+        entered_information: Este relatório reflete informações introduzidas no MedTracker.
+        causation: As associações a suspeitas de efeitos secundários não estabelecem causalidade.
+        medical_advice: Este relatório não é um diagnóstico nem substitui aconselhamento médico profissional.
     index:
       eyebrow: Análises de Bem-estar
       title: Relatório de Saúde
@@ -1419,6 +1550,18 @@ pt:
       para atualizar o email de início de sessão.
     no_changes: Sem alterações a guardar.
     profile_update_failed: 'Falha ao atualizar perfil: %{errors}'
+    api_tokens:
+      title: Tokens de API
+      description: Crie tokens revogáveis para scripts e integrações de confiança.
+      created_title: Copie este token agora. Não voltará a ser apresentado.
+      name_label: Nome do token
+      create: Criar token
+      empty: Ainda não existem tokens de API.
+      last_used_at: 'Última utilização: %{time}'
+      revoke: Revogar
+      revoked: Token de API revogado.
+      locked: A sua conta está bloqueada. Os tokens de API não podem ser alterados agora.
+      mfa_required: Conclua a autenticação de dois fatores antes de criar um token de API.
     appearance:
       title: Aspeto
       description: Escolha como o MedTracker aparece em ecrãs autenticados e públicos.
@@ -1441,7 +1584,6 @@ pt:
         tech_indigo: Índigo Tecnológico
         soft_rose: Rosa Suave
         minty_fresh: Menta Fresca
-        minimalist_monochrome: Minimalista
     show:
       eyebrow: Definições do perfil
       title: O Meu Perfil
@@ -1886,7 +2028,6 @@ pt:
     overdue_alert: 'Atrasado: %{medication} para %{person} (agendado às %{time})'
     out_of_stock_alert: 'Sem stock: %{medication}. Não é possível registar doses para
       %{person}.'
-    medication_schedule: Horário de Medicamentos
     no_active_schedules: Nenhuma prescrição ativa encontrada
     add_schedules_hint: Adicione prescrições para vê-las aqui
     dose_taken_at: "%{person} • Tomado às %{time}"

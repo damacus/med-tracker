@@ -27,6 +27,14 @@ ga:
           self: Féin
     errors:
       models:
+        health_event:
+          attributes:
+            ended_on:
+              on_or_after_start_date: caithfidh sé a bheith ar an dáta tosaithe nó ina dhiaidh
+        health_event_medication:
+          attributes:
+            medication_id:
+              linked_to_health_event: ceangailte leis an imeacht sláinte seo cheana
         medication:
           attributes:
             barcode:
@@ -43,6 +51,47 @@ ga:
       required: caithfidh sé a bheith ann
       taken: in úsáid cheana féin
       too_short: ró-ghearr (is é %{count} carachtar an t-íosmhéid)
+      linked_to_health_event: ceangailte leis an imeacht sláinte seo cheana
+      on_or_after_start_date: caithfidh sé a bheith ar an dáta tosaithe nó ina dhiaidh
+  health_events:
+    created: Taifeadadh an t-imeacht sláinte.
+    updated: Nuashonraíodh an t-imeacht sláinte.
+    deleted: Scriosadh an t-imeacht sláinte.
+    invalid_medication_link: Ná roghnaigh ach cógais a sannadh don duine seo.
+    kinds:
+      illness: Tinneas suntasach
+      suspected_side_effect: Fo-iarmhairt amhrasta
+    severities:
+      mild: Éadrom
+      moderate: Measartha
+      severe: Tromchúiseach
+    actions:
+      record_illness: Taifead tinneas suntasach
+      record_suspected_side_effect: Taifead fo-iarmhairt amhrasta
+      edit: Cuir in eagar
+      delete: Scrios
+      cancel: Cealaigh
+      save: Sábháil
+    index:
+      title: Imeachtaí sláinte %{person}
+      subtitle: Taifead tinnis shuntasacha agus fo-iarmhairtí amhrasta gan éilimh chliniciúla a dhéanamh.
+      empty: Níl aon imeachtaí sláinte taifeadta fós.
+      ongoing_from: Ar siúl ó %{started_on}
+      date_range: "%{started_on} go %{ended_on}"
+    form:
+      new_title: Taifead %{kind}
+      edit_title: Cuir %{kind} in eagar
+      subtitle: Taifead fíricí a chuir an teaghlach nó an cúramóir isteach.
+      title: Teideal
+      started_on: Dáta tosaithe
+      ended_on: Dáta deiridh
+      ongoing: Ar siúl
+      severity: Déine
+      no_severity: Gan sonrú
+      suspected_medications: Cógais amhrasta
+      notes: Nótaí
+      action_taken: Gníomh a rinneadh
+      medical_help_sought: Lorgaíodh cabhair leighis
   app:
     name: MedTracker
   global_search:
@@ -187,6 +236,9 @@ ga:
         all: Gach ceann
         clear: Glan
       table:
+        system_access: Rochtain chórais
+        system_administrator: Riarthóir córais
+        household_user: Úsáideoir teaghlaigh
         activation: Gníomhachtú
         verification: Fíorú
         actions: Gníomhartha
@@ -350,6 +402,8 @@ ga:
         manage_users_description: Féach agus bainistigh cuntais úsáideoirí
         invitations_title: Cuirí
         invitations_description: Tabhair cuireadh d'úsáideoirí nua páirt a ghlacadh
+        household_settings_title: Socruithe teaghlaigh
+        household_settings_description: Athainmnigh an teaghlach seo
         manage_people_title: Bainistigh daoine
         manage_people_description: Féach agus bainistigh taifid daoine
         audit_trail_title: Conair iniúchta
@@ -424,6 +478,12 @@ ga:
       owner_rejected: Teastaíonn tacaíocht riarthóra ardáin chun ardú go húinéir.
       update_submit: Nuashonraigh Ról
       updated: Nuashonraíodh ról ballraíochta.
+    households:
+      updated: Sábháladh an teaghlach
+      title: Socruithe teaghlaigh
+      subtitle: Athainmnigh an teaghlach reatha agus coinnigh lipéad an teaghlaigh so-aitheanta do gach duine a bhfuil rochtain aige.
+      name: Ainm an teaghlaigh
+      save: Sábháil an teaghlach
   platform:
     settings:
       title: Socruithe ardáin
@@ -431,6 +491,17 @@ ga:
     support_access_sessions:
       created: Osclaíodh rochtain tacaíochta.
       ended: Cuireadh deireadh le rochtain tacaíochta.
+    users:
+      title: Riarthóirí córais
+      subtitle: Athbhreithnigh róil teaghlaigh agus deonaigh rochtain riaracháin ar fud an ardáin.
+      settings: Socruithe ardáin
+      household_role: Ról teaghlaigh
+      system_access: Rochtain chórais
+      system_administrator: Riarthóir córais
+      household_user: Úsáideoir teaghlaigh
+      grant_system_access: Deonaigh rochtain chórais
+      remove_system_access: Bain rochtain chórais
+      updated: Nuashonraíodh rochtain chórais
   authentication:
     login_required: Logáil isteach le leanúint
     privileged_mfa_required:
@@ -886,6 +957,10 @@ ga:
       edit_dosage: Cuir in Eagar
       mark_as_ordered: Ordaigh
       mark_as_received: Faighte
+      order_details: Sonraí ordaithe
+      order_supplier: Soláthraí
+      order_quantity: Cainníocht
+      expected_arrival: Teacht ionchais
       refill_inventory: Athstocáil
       complete_refill: Athstocáil
       reorder_at_label: Athordaigh Ag
@@ -942,9 +1017,9 @@ ga:
       otc_description: Tógtar de réir mar is gá é gan sceideal seasta
     show:
       edit_person: Cuir Duine in Eagar
-      add_schedule: Cuir Oideas Leigheasanna Leis
       add_medication: Cuir Leigheas Leis
       manage_parents: Bainistigh tuismitheoirí
+      health_events: Imeachtaí sláinte
       back: Ar Ais
       born: 'Rugtha:'
       age: 'Aois:'
@@ -1017,6 +1092,8 @@ ga:
     created: Cuireadh an leigheas leis go rathúil.
     updated: Nuashonraíodh an leigheas go rathúil.
     deleted: Baineadh an leigheas go rathúil.
+    paused: Cuireadh an leigheas ar sos.
+    resumed: Atosaíodh an leigheas.
     medication_taken: Tógadh an leigheas go rathúil.
     invalid_dose_configured: Tá dáileog neamhbhailí cumraithe. Nuashonraigh dáileog
       an leighis sula dtógtar í.
@@ -1025,6 +1102,7 @@ ga:
       edit_title: Cuir Leigheas in Eagar do %{person}
       subtitle: Cuir cógas rialta nó de réir mar is gá leis
     card:
+      paused: Ar sos
       notes: 'Nótaí:'
       timing_restrictions: 'Srianta Ama:'
       max_doses_per_day: Uasmhéid %{count} dáileog in aghaidh an lae
@@ -1036,6 +1114,11 @@ ga:
       give: Tabhair
       out_of_stock: As Stoc
       invalid_dose: Dáileog Neamhbhailí
+      actions: Gníomhartha
+      move_up: Bog suas
+      move_down: Bog síos
+      pause: Cuir an leigheas ar sos
+      resume: Atosaigh an leigheas
       move_up_aria_label: Bog leigheas suas
       move_down_aria_label: Bog leigheas síos
       delete_aria_label: Scrios leigheas
@@ -1112,6 +1195,8 @@ ga:
     created: Cruthaíodh an sceideal go rathúil.
     updated: Nuashonraíodh an sceideal go rathúil.
     deleted: Scriosadh an sceideal go rathúil.
+    paused: Cuireadh an sceideal ar sos.
+    resumed: Atosaíodh an sceideal.
     medication_taken: Tógadh an leigheas go rathúil.
     invalid_dose_configured: Tá dáileog neamhbhailí cumraithe. Nuashonraigh dáileog
       an sceidil sula dtógtar í.
@@ -1120,6 +1205,7 @@ ga:
       edit_title: Cuir Sceideal in Eagar do %{person}
       subtitle: Cuir sonraí leigheas agus sceideal leis
     card:
+      paused: Ar sos
       started: 'Tosaíodh:'
       ends: 'Críochnaíonn:'
       notes: 'Nótaí:'
@@ -1135,8 +1221,11 @@ ga:
       delete_aria_label: Scrios an leigheas
       ready_now: Réidh Anois
       waiting: Ag Fanacht
+      actions: Gníomhartha
       edit: Cuir in Eagar
       delete: Scrios
+      pause: Cuir an sceideal ar sos
+      resume: Atosaigh an sceideal
       delete_dialog:
         title: Scrios Sceideal
         confirm: An bhfuil tú cinnte gur mhaith leat an sceideal %{medication} a scrios?
@@ -1283,12 +1372,26 @@ ga:
     invalid_taken_at: Roghnaigh am dáileoige bailí.
     future_taken_at: Ní féidir am na dáileoige a bheith níos mó ná uair an chloig
       sa todhchaí.
+    paused: 'Ní féidir an leigheas a thógáil: ar sos'
+    overlapping_prescription_restriction: 'Ní féidir an leigheas a thógáil: leagann oideas gníomhach eile don leigheas seo teorainn ama níos déine síos.'
   profiles:
     updated: Nuashonraíodh an phróifíl go rathúil.
     email_change_requires_verification: Úsáid an sreabhadh fíoraithe athraithe ríomhphoist
       chun do ríomhphost sínithe isteach a nuashonrú.
     no_changes: Gan athruithe le sábháil.
     profile_update_failed: 'Theip ar nuashonrú na próifíle: %{errors}'
+    api_tokens:
+      title: Comharthaí API
+      description: Cruthaigh comharthaí inchúlghairthe do scripteanna agus do chomhtháthuithe iontaofa.
+      created_title: Cóipeáil an comhartha seo anois. Ní thaispeánfar arís é.
+      name_label: Ainm an chomhartha
+      create: Cruthaigh comhartha
+      empty: Níl aon chomharthaí API ann fós.
+      last_used_at: 'Úsáideadh go deireanach: %{time}'
+      revoke: Cúlghair
+      revoked: Cúlghaireadh an comhartha API.
+      locked: Tá do chuntas glasáilte. Ní féidir comharthaí API a athrú anois.
+      mfa_required: Críochnú fíordheimhniú dhá fhachtóir sula gcruthaítear comhartha API.
     appearance:
       title: Cuma
       description: Roghnaigh conas a fheictear MedTracker ar scáileáin shínithe isteach
@@ -1312,7 +1415,6 @@ ga:
         tech_indigo: Teicneolaíocht Indigo
         soft_rose: Rós Bog
         minty_fresh: Úr Mionna
-        minimalist_monochrome: Íosmhéideach
     show:
       eyebrow: Socruithe próifíle
       title: Mo Phróifíl
@@ -1538,7 +1640,47 @@ ga:
       review_note: Nóta athbhreithnithe
       save: Sábháil taifead an athbhreithnithe
   reports:
+    invalid_date: Soláthraíodh formáid dáta neamhbhailí.
     date_range_too_large: Ni feidir le raon datai na tuarascola dul thar 180 la.
+    health_history:
+      title: Tuarascáil staire sláinte MedTracker
+      people: "Daoine: %{people}"
+      no_people: Níl aon daoine údaraithe
+      date_range: "Raon dátaí: %{start_date} go %{end_date}"
+      generated_at: "Gineadh: %{timestamp}"
+      empty_section: Níl aon taifid sa rannán seo.
+      ongoing_from: Ar siúl ó %{started_on}
+      event_date_range: "%{started_on} go %{ended_on}"
+      sources:
+        scheduled: Sceidealaithe
+        as_needed: De réir mar is gá/díreach
+      medication_takes:
+        title: Riaracháin leighis
+        time: Am
+        person: Duine
+        medication: Leigheas
+        dose: Dáileog
+        source: Foinse
+        location: Suíomh
+      suspected_side_effects:
+        title: Fo-iarmhairtí amhrasta
+      notable_illnesses:
+        title: Tinnis shuntasacha
+      events:
+        title: Teideal
+        dates: Dátaí
+        severity: Déine
+        medications: Cógais amhrasta
+        notes: Nótaí
+        action: Gníomh a rinneadh
+      illness_patterns:
+        title: Patrúin tinnis taifeadta
+        summary: Taifeadadh %{count} eachtra de "%{title}" idir %{first} agus %{last}. Ba é %{interval} lá an meán-eatramh idir tús na n-eachtraí.
+      disclaimer:
+        title: Séanadh
+        entered_information: Léiríonn an tuarascáil seo faisnéis a cuireadh isteach in MedTracker.
+        causation: Ní chruthaíonn naisc le fo-iarmhairtí amhrasta cúisíocht.
+        medical_advice: Ní diagnóis í an tuarascáil seo agus ní ghlacann sí áit comhairle leighis ghairmiúil.
     index:
       eyebrow: Anailís Folláine
       title: Tuarascáil Sláinte
@@ -1773,7 +1915,6 @@ ga:
       all_family: An Teaghlach Uile
       all_family_initials: TU
       more_people: Tuilleadh daoine
-    medication_schedule: Sceideal Leigheasanna
     as_needed:
       title: Glac de réir mar is gá
     overdue_alert: 'Dul thar am: %{medication} do %{person} (sceidealaithe ag %{time})'
