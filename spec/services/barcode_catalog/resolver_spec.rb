@@ -7,7 +7,7 @@ RSpec.describe BarcodeCatalog::Resolver do
 
   let(:lookup) { instance_double(BarcodeCatalog::Lookup, lookup: nil) }
 
-  it 'returns a resolved outcome with normalized barcode and source metadata' do
+  it 'returns a resolved outcome with normalized barcode and source metadata', :aggregate_failures do
     allow(lookup).to receive(:lookup).with('5016298210989').and_return(
       display: 'Laxido Orange oral powder sachets',
       source: 'nhs_dmd'
