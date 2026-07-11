@@ -99,6 +99,14 @@ RSpec.describe 'GET /medication-finder/search' do
         expect(response.parsed_body['form']).to eq('tablet')
       end
 
+      it 'passes the strength filter to the responder' do
+        get medication_finder_search_path(format: :json), params: { q: 'aspirin', strength: '0.3 g' }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body['strength']).to eq('300mg')
+        expect(response.parsed_body['results'].first['display']).to eq('Aspirin 300mg tablets')
+      end
+
       it 'includes interaction warnings for matching accessible medication stock' do
         search = instance_double(
           NhsDmd::Search,

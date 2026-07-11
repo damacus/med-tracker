@@ -8,6 +8,7 @@ module Api
         response = MedicationFinderSearchResponder.new(medication_scope: policy_scope(Medication)).call(
           query: params[:q],
           form: params[:form],
+          strength: params[:strength],
           permissions: {
             can_create: policy(Medication).create?,
             can_update: false

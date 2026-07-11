@@ -757,6 +757,8 @@ en:
       pil_link: Patient information leaflet
       spc_link: Summary of Product Characteristics
       form_filter_label: Dosage form
+      strength_filter_label: Strength
+      strength_filter_placeholder: e.g. 500mg or 250mg/5ml
       all_forms: All forms
       forms:
         tablet: Tablets

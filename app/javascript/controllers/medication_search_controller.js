@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["input", "formFilter", "results", "idle", "submitButton"]
+  static targets = ["input", "formFilter", "strengthFilter", "results", "idle", "submitButton"]
   static values = { translations: Object, searchUrl: String, newMedicationUrl: String }
 
   barcodeDecoded(event) {
@@ -28,6 +28,7 @@ export default class extends Controller {
       const url = new URL(this.searchUrl, window.location.origin)
       url.searchParams.set("q", query)
       if (this.selectedForm) url.searchParams.set("form", this.selectedForm)
+      if (this.selectedStrength) url.searchParams.set("strength", this.selectedStrength)
 
       const response = await fetch(url.toString(), {
         headers: { "Accept": "application/json" }
@@ -57,6 +58,10 @@ export default class extends Controller {
 
   get selectedForm() {
     return this.hasFormFilterTarget ? this.formFilterTarget.value : ""
+  }
+
+  get selectedStrength() {
+    return this.hasStrengthFilterTarget ? this.strengthFilterTarget.value.trim() : ""
   }
 
   showLoading() {

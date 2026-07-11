@@ -106,12 +106,19 @@ module Components
               ) { t('medications.finder.search_button') }
             end
           end
+          render_filters
+        end
+      end
+
+      def render_filters
+        div(class: 'mt-4 grid gap-4 sm:grid-cols-2') do
           render_form_filter
+          render_strength_filter
         end
       end
 
       def render_form_filter
-        div(class: 'mt-4 max-w-xs') do
+        div do
           label(
             for: 'medication-form-filter',
             class: 'mb-2 block text-sm font-medium text-on-surface-variant'
@@ -127,6 +134,24 @@ module Components
               option(value: value) { t("medications.finder.forms.#{value}") }
             end
           end
+        end
+      end
+
+      def render_strength_filter
+        div do
+          label(
+            for: 'medication-strength-filter',
+            class: 'mb-2 block text-sm font-medium text-on-surface-variant'
+          ) { t('medications.finder.strength_filter_label') }
+          input(
+            type: 'text',
+            id: 'medication-strength-filter',
+            name: 'strength',
+            placeholder: t('medications.finder.strength_filter_placeholder'),
+            autocomplete: 'off',
+            data: { medication_search_target: 'strengthFilter' },
+            class: 'block w-full rounded-shape-sm border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/5'
+          )
         end
       end
 

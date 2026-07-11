@@ -163,6 +163,7 @@ class MedicationsController < ApplicationController
     response = medication_finder_search_responder.call(
       query: params[:q],
       form: params[:form],
+      strength: params[:strength],
       permissions: medication_finder_permissions
     )
 

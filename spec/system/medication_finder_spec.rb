@@ -20,6 +20,7 @@ RSpec.describe 'MedicationFinder' do
         expect(page).to have_text('Medication Finder')
         expect(page).to have_field('medication-search-input')
         expect(page).to have_select('medication-form-filter')
+        expect(page).to have_field('medication-strength-filter')
         expect(page).to have_button('Search')
         expected_text = 'Search NHS dm+d and supported product sources to add medication or restock existing inventory.'
         expect(page).to have_text(expected_text)
@@ -79,6 +80,22 @@ RSpec.describe 'MedicationFinder' do
     expect(page).to have_text('Do not exceed the stated dose')
   end
 
+  it 'sends the selected strength with a search' do
+    driven_by(:playwright)
+    login_as(user)
+    stub_medication_finder_payload(results: [], permissions: { can_create: true, can_restock: true })
+
+    visit medication_finder_path
+    fill_in 'medication-search-input', with: 'paracetamol'
+    fill_in 'medication-strength-filter', with: '500mg'
+    click_on 'Search'
+
+    request_url = page.driver.with_playwright_page do |playwright_page|
+      playwright_page.evaluate('window.medicationFinderRequestUrl')
+    end
+    expect(request_url).to include('q=paracetamol', 'strength=500mg')
+  end
+
   def stub_medication_finder_search(medication)
     stub_medication_finder_payload(**medication_finder_payload(medication))
   end
@@ -88,7 +105,10 @@ RSpec.describe 'MedicationFinder' do
     page.driver.with_playwright_page do |playwright_page|
       playwright_page.add_init_script(
         script: "window.medicationFinderPayload = #{payload.to_json};" \
-                'window.fetch = async () => ({ ok: true, json: async () => window.medicationFinderPayload });'
+                'window.fetch = async (url) => {' \
+                'window.medicationFinderRequestUrl = String(url);' \
+                'return { ok: true, json: async () => window.medicationFinderPayload };' \
+                '};'
       )
     end
   end

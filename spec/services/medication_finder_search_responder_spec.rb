@@ -140,6 +140,19 @@ RSpec.describe MedicationFinderSearchResponder do
         )
         expect(result.body[:form]).to eq('liquid')
       end
+
+      it 'filters results by normalized strength when requested' do
+        standard = make_search_result(name: 'Paracetamol 500mg tablets', display: 'Paracetamol 500mg tablets')
+        stronger = make_search_result(name: 'Paracetamol 1g tablets', display: 'Paracetamol 1g tablets')
+        allow(search).to receive(:call).and_return(successful_nhs_result(results: [standard, stronger]))
+
+        result = responder.call(query: 'paracetamol', strength: '0.5 g')
+
+        expect(result.body[:results]).to contain_exactly(
+          a_hash_including(display: 'Paracetamol 500mg tablets')
+        )
+        expect(result.body[:strength]).to eq('500mg')
+      end
     end
 
     context 'when search raises an error' do
