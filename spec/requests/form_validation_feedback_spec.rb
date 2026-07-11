@@ -76,10 +76,10 @@ RSpec.describe 'Form inline validation feedback' do
       expect(response.body).to include('ni all fod yn wag')
     end
 
-    it 'falls back to the English validation message when a locale key is missing' do
+    it 'renders the date validation message in Spanish' do
       message = I18n.with_locale(:es) { I18n.t('errors.messages.on_or_after_start_date') }
 
-      expect(message).to eq('must be on or after the start date')
+      expect(message).to eq('debe ser igual o posterior a la fecha de inicio')
     end
   end
 end
