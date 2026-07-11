@@ -742,6 +742,8 @@ ga:
       pil_link: Bileog eolais don othar
       spc_link: Achoimre ar Shaintréithe an Táirge
       form_filter_label: Foirm dáileoige
+      strength_filter_label: Neart
+      strength_filter_placeholder: m.sh. 500mg nó 250mg/5ml
       all_forms: Gach foirm
       forms:
         tablet: Táibléid

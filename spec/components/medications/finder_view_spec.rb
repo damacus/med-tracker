@@ -3,6 +3,13 @@
 require 'rails_helper'
 
 RSpec.describe Components::Medications::FinderView, type: :component do
+  it 'renders dosage form and strength filter controls' do
+    rendered = render_inline(described_class.new)
+
+    expect(rendered.at_css('select#medication-form-filter')).to be_present
+    expect(rendered.at_css('input#medication-strength-filter[type="text"]')).to be_present
+  end
+
   it 'renders medication search translations for the Stimulus controller' do
     payload = finder_translations_payload
 

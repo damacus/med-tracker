@@ -739,6 +739,8 @@ cy:
       pil_link: Taflen wybodaeth i gleifion
       spc_link: Crynodeb o Nodweddion y Cynnyrch
       form_filter_label: Ffurf dos
+      strength_filter_label: Cryfder
+      strength_filter_placeholder: e.e. 500mg neu 250mg/5ml
       all_forms: Pob ffurf
       forms:
         tablet: Tabledi

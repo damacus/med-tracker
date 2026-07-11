@@ -747,6 +747,8 @@ es:
       pil_link: Prospecto para el paciente
       spc_link: Resumen de las Características del Producto
       form_filter_label: Forma farmacéutica
+      strength_filter_label: Concentración
+      strength_filter_placeholder: p. ej., 500mg o 250mg/5ml
       all_forms: Todas las formas
       forms:
         tablet: Comprimidos

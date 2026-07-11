@@ -386,13 +386,19 @@ RSpec.describe 'API v1 domain parity' do
       .and_return(responder)
 
     get api_v1_household_medication_lookup_path(household_id),
-        params: { q: 'calpol' },
+        params: { q: 'calpol', form: 'liquid', strength: '250mg/5ml' },
         headers: headers,
         as: :json
 
     expect(response).to have_http_status(:ok)
     expect(response.parsed_body.dig('results', 0, 'name')).to eq('Calpol Six Plus')
     expect(MedicationFinderSearchResponder).to have_received(:new)
+    expect(responder).to have_received(:call).with(
+      query: 'calpol',
+      form: 'liquid',
+      strength: '250mg/5ml',
+      permissions: { can_create: true, can_update: false }
+    )
   end
 
   it 'returns AI medication suggestions through the API when the feature is enabled' do

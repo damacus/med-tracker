@@ -745,6 +745,8 @@ pt:
       pil_link: Folheto informativo do doente
       spc_link: Resumo das Características do Medicamento
       form_filter_label: Forma farmacêutica
+      strength_filter_label: Dosagem
+      strength_filter_placeholder: por ex., 500mg ou 250mg/5ml
       all_forms: Todas as formas
       forms:
         tablet: Comprimidos
