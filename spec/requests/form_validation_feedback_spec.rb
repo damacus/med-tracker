@@ -55,5 +55,31 @@ RSpec.describe 'Form inline validation feedback' do
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include('must be greater than 0')
     end
+
+    it 'renders validation messages in Spanish' do
+      I18n.with_locale(:es) do
+        post medications_path,
+             params: { medication: { name: '', description: 'Prueba', dose_amount: 10, dose_unit: 'mg' } }
+      end
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('no puede estar en blanco')
+    end
+
+    it 'renders validation messages in Welsh' do
+      I18n.with_locale(:cy) do
+        post medications_path,
+             params: { medication: { name: '', description: 'Prawf', dose_amount: 10, dose_unit: 'mg' } }
+      end
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('ni all fod yn wag')
+    end
+
+    it 'falls back to the English validation message when a locale key is missing' do
+      message = I18n.with_locale(:es) { I18n.t('errors.messages.on_or_after_start_date') }
+
+      expect(message).to eq('must be on or after the start date')
+    end
   end
 end

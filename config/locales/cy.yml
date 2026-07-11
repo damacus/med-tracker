@@ -32,6 +32,17 @@ cy:
             barcode:
               invalid: rhaid iddo fod yn GTIN 13 neu 14 digid
               taken: eisoes wedi'i gysylltu â meddyginiaeth arall yn y rhestr
+  errors:
+    messages:
+      blank: ni all fod yn wag
+      greater_than: rhaid bod yn fwy na %{count}
+      greater_than_or_equal_to: rhaid bod yn fwy na neu'n hafal i %{count}
+      inclusion: nid yw wedi'i gynnwys yn y rhestr
+      invalid: yn annilys
+      not_a_number: nid yw'n rhif
+      required: rhaid iddo fodoli
+      taken: eisoes wedi'i gymryd
+      too_short: yn rhy fyr (yr isafswm yw %{count} nod)
   app:
     name: MedTracker
   global_search:

@@ -32,6 +32,17 @@ es:
             barcode:
               invalid: debe ser un GTIN de 13 o 14 dígitos
               taken: ya está vinculado a otro medicamento en el inventario
+  errors:
+    messages:
+      blank: no puede estar en blanco
+      greater_than: debe ser mayor que %{count}
+      greater_than_or_equal_to: debe ser mayor o igual que %{count}
+      inclusion: no está incluido en la lista
+      invalid: no es válido
+      not_a_number: no es un número
+      required: debe existir
+      taken: ya está en uso
+      too_short: es demasiado corto (mínimo %{count} caracteres)
   app:
     name: MedTracker
   global_search:

@@ -54,6 +54,7 @@ module MedTracker
     # in config/environments, which are processed later.
     #
     config.time_zone = ENV.fetch('TZ', 'UTC')
+    config.i18n.fallbacks = true
     config.active_storage.draw_routes = false
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
