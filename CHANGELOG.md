@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.5.10](https://github.com/damacus/med-tracker/compare/v0.5.9...v0.5.10) (2026-07-11)
+
+
+### Features
+
+* **fhir:** add SMART third-party authorization ([#1580](https://github.com/damacus/med-tracker/issues/1580)) ([bcce4de](https://github.com/damacus/med-tracker/commit/bcce4de15f3d6220362714f23a42ca6e6296ab1a))
+
+
+### Bug Fixes
+
+* **dev:** install health-check client ([#1575](https://github.com/damacus/med-tracker/issues/1575)) ([630996a](https://github.com/damacus/med-tracker/commit/630996a58fef465e4208c60ccee926bac57a625d))
+* **dev:** isolate Docker test preflight by worktree ([#1576](https://github.com/damacus/med-tracker/issues/1576)) ([5813e56](https://github.com/damacus/med-tracker/commit/5813e5623d8f317b448d84fd73d8543b03d1d73e))
+
+
+### Performance Improvements
+
+* **profile:** keep queries outside view rendering ([#1579](https://github.com/damacus/med-tracker/issues/1579)) ([d4f1fd5](https://github.com/damacus/med-tracker/commit/d4f1fd50803708b055984fea68dd5198d759e260))
+
 ## [0.5.9](https://github.com/damacus/med-tracker/compare/v0.5.8...v0.5.9) (2026-07-10)
 
 
