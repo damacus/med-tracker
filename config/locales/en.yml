@@ -1723,11 +1723,39 @@ en:
     hidden_count:
       one: 1 lower-confidence review item hidden to reduce noise
       other: "%{count} lower-confidence review items hidden to reduce noise"
+    included_count:
+      one: 1 lower-confidence review item included
+      other: "%{count} lower-confidence review items included"
     show_hidden: Show filtered items
     hide_hidden: Hide filtered items
     empty_title: No medicine reviews to show
     empty_description: No reviewed evidence pairs match the active medicines in the selected household records.
     review_reason: Public medicine-label evidence suggests this combination may be worth reviewing with a pharmacist, nurse, GP, or prescriber.
+    view_evidence: View evidence
+    summaries:
+      contraindicated: The medicine label recommends extra care when these are taken together.
+      avoid: The medicine label recommends extra care when these are taken together.
+      monitor_or_adjust: The medicine label recommends monitoring or adjusting treatment when these are taken together.
+      possible_or_caution: The medicine label describes a possible concern when these are taken together.
+      unclassified: The medicine label names these medicines together but does not give a clear instruction.
+    filters:
+      priority: Priority
+      include_filtered: Include filtered items
+      apply: Apply filters
+      review_statuses:
+        needs_review: Needs review
+        reviewed: Reviewed
+        all: All
+      priorities:
+        all: All
+        discuss_soon: Discuss soon
+        ask_when_convenient: Ask when convenient
+        low_confidence: Low confidence
+      short_priorities:
+        all: All
+        discuss_soon: Soon
+        ask_when_convenient: Convenient
+        low_confidence: Low confidence
     evidence_excerpt: Public label evidence
     checked_on: Evidence checked on %{date}
     confidence: "%{value} match confidence"

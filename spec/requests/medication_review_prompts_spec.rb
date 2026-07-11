@@ -43,7 +43,7 @@ RSpec.describe 'Medication review prompts' do
     rendered_page = Capybara.string(response.body)
     expect(rendered_page).to have_css('main', count: 1)
     expect(rendered_page).to have_link('Export review PDF', href: medication_review_report_path)
-    expect(rendered_page.find('[data-review-prompt-id] > div')[:class]).to include('medication-review-layout')
+    expect(rendered_page).to have_css('[data-review-prompt-id]')
   end
 
   it 'discloses filtered noise and reveals it only when requested' do
@@ -57,6 +57,62 @@ RSpec.describe 'Medication review prompts' do
     get medication_review_prompts_path, params: { show_hidden: '1' }
 
     expect(response.body).to include('Test-only lower-confidence evidence')
+  end
+
+  it 'renders concise review cards with RubyUI filters and collapsed detail' do
+    get medication_review_prompts_path
+
+    prompt = MedicationReviewPrompt.visible_by_default.sole
+    page = Capybara.string(response.body)
+
+    expect(page).to have_css('[data-controller="ruby-ui--tabs"]')
+    expect(page).to have_css('[data-controller="ruby-ui--toggle-group"]')
+    expect(page).to have_field('show_hidden', type: :checkbox)
+    expect(page).to have_no_field('show_hidden', type: :hidden)
+    expect(page).to have_css('[role="switch"][aria-label="Include filtered items"]')
+    expect(page).to have_button('View evidence')
+    expect(page).to have_css("[data-testid='prompt-evidence-#{prompt.id}'].hidden")
+    expect(page).to have_css(
+      "[data-testid='prompt-evidence-#{prompt.id}'].hidden [data-testid='prompt-review-form-#{prompt.id}']"
+    )
+    expect(page).to have_no_css('.medication-review-layout')
+  end
+
+  it 'filters medicine reviews by review state' do
+    get medication_review_prompts_path
+    prompt = MedicationReviewPrompt.visible_by_default.sole
+    prompt.update!(status: 'not_relevant')
+
+    get medication_review_prompts_path, params: { review_status: 'needs_review' }
+
+    expect(response.body).not_to include('Warfarin 1mg tablets')
+
+    get medication_review_prompts_path, params: { review_status: 'reviewed' }
+
+    expect(response.body).to include('Warfarin 1mg tablets')
+  end
+
+  it 'filters medicine reviews by plain-language priority' do
+    get medication_review_prompts_path, params: { priority: 'discuss_soon' }
+
+    expect(response.body).to include('Warfarin 1mg tablets')
+
+    get medication_review_prompts_path, params: { priority: 'ask_when_convenient' }
+
+    expect(response.body).not_to include('Warfarin 1mg tablets')
+  end
+
+  it 'keeps active filters when lower-confidence items are included' do
+    create_low_confidence_evidence
+
+    get medication_review_prompts_path,
+        params: { review_status: 'all', priority: 'low_confidence', show_hidden: '1' }
+
+    page = Capybara.string(response.body)
+    expect(page).to have_text('Test-only lower-confidence evidence')
+    expect(page).to have_field('review_status', type: :hidden, with: 'all')
+    expect(page).to have_field('priority', type: :hidden, with: 'low_confidence')
+    expect(page).to have_field('show_hidden', type: :checkbox, checked: true)
   end
 
   it 'records who reviewed the evidence and the practitioner outcome' do
