@@ -10,7 +10,7 @@ module Components
 
       def view_template
         form_with(model: prompt, url: medication_review_prompt_path(prompt), method: :patch,
-                  class: 'space-y-4 border-t border-border pt-5 md:border-l md:border-t-0 md:pl-6 md:pt-0') do
+                  class: 'space-y-4') do
           m3_heading(level: 4, size: '4', class: 'font-bold') { t('medication_reviews.form.title') }
           render_errors
           render_status_field
