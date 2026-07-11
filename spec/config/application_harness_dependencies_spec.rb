@@ -23,6 +23,12 @@ RSpec.describe ApplicationHarnessDependencies do
     expect(gemfile).to include("gem 'opentelemetry-instrumentation-net_http'")
   end
 
+  it 'includes the OpenTelemetry metrics API, SDK, and OTLP exporter' do
+    expect(gemfile).to include("gem 'opentelemetry-metrics-api'")
+    expect(gemfile).to include("gem 'opentelemetry-metrics-sdk'")
+    expect(gemfile).to include("gem 'opentelemetry-exporter-otlp-metrics'")
+  end
+
   it 'removes unused local test tooling from the bundle' do
     expect(gemfile).not_to include("gem 'parallel_tests'")
     expect(gemfile).not_to include("gem 'rails-controller-testing'")
@@ -116,6 +122,11 @@ RSpec.describe ApplicationHarnessDependencies do
     dependency = gemfile_dependencies.fetch('opentelemetry-sdk')
 
     expect(dependency.groups).to include(:default)
+  end
+
+  it 'keeps the OpenTelemetry metrics API and SDK available to development boot' do
+    expect(gemfile_dependencies.fetch('opentelemetry-metrics-api').groups).to include(:default)
+    expect(gemfile_dependencies.fetch('opentelemetry-metrics-sdk').groups).to include(:default)
   end
 
   it 'copies only required Rails and test paths into the test Docker image' do

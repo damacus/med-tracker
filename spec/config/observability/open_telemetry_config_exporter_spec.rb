@@ -61,6 +61,11 @@ RSpec.describe OpenTelemetryConfig do
 
       expect(span_processors).to be_empty
     end
+
+    it 'installs database pool timeout instrumentation' do
+      expect(ActiveRecord::ConnectionAdapters::ConnectionPool).to be < Otel::ConnectionPoolTimeoutInstrumentation
+      expect(Otel::DatabaseConnectionPoolMetrics.current).to be_present
+    end
   end
 
   context 'when parsing OTLP headers' do

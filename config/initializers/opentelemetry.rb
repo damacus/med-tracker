@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
 require 'opentelemetry-api'
+require 'opentelemetry-metrics-api'
 require 'otel/allowlisted_span_exporter'
 require 'otel/critical_path_sampler'
+require 'otel/database_connection_pool_metrics'
 require 'otel/exception_recorder'
 require 'otel/log_correlation'
 
@@ -39,6 +41,13 @@ module OpenTelemetryConfig
         hash[key.strip] = ''
       end
     end
+  end
+
+  def install_database_pool_metrics
+    meter = OpenTelemetry.meter_provider.meter('medtracker.database_pool')
+    Otel::DatabaseConnectionPoolMetrics.new(pool: ActiveRecord::Base.connection_pool, meter:).install
+    pool_class = ActiveRecord::ConnectionAdapters::ConnectionPool
+    pool_class.prepend(Otel::ConnectionPoolTimeoutInstrumentation) unless pool_class < Otel::ConnectionPoolTimeoutInstrumentation
   end
 
   def trace_sampler(environment: Rails.env, env: ENV)
@@ -106,10 +115,14 @@ module OpenTelemetryConfig
   end
 end
 
+Rails.application.config.after_initialize { OpenTelemetryConfig.install_database_pool_metrics }
+
 if Rails.env.test?
   ENV['OTEL_TRACES_EXPORTER'] = 'none'
+  ENV['OTEL_METRICS_EXPORTER'] = 'none'
 
   require 'opentelemetry/sdk'
+  require 'opentelemetry-metrics-sdk'
   require 'opentelemetry/instrumentation/active_job'
   require 'opentelemetry/instrumentation/active_record'
   require 'opentelemetry/instrumentation/pg'
@@ -148,6 +161,8 @@ if Rails.env.test?
 elsif Rails.env.production? || ENV['OTEL_EXPORTER_OTLP_ENDPOINT'].present?
   require 'opentelemetry/sdk'
   require 'opentelemetry/exporter/otlp'
+  require 'opentelemetry-exporter-otlp-metrics'
+  require 'opentelemetry-metrics-sdk'
   require 'opentelemetry/instrumentation/active_job'
   require 'opentelemetry/instrumentation/active_record'
   require 'opentelemetry/instrumentation/net/http'
@@ -213,5 +228,11 @@ elsif Rails.env.production? || ENV['OTEL_EXPORTER_OTLP_ENDPOINT'].present?
       'host.name' => Socket.gethostname,
       'process.pid' => Process.pid.to_s
     )
+  end
+
+  if otlp_endpoint.present?
+    metric_exporter = OpenTelemetry::Exporter::OTLP::Metrics::MetricsExporter.new
+    metric_reader = OpenTelemetry::SDK::Metrics::Export::PeriodicMetricReader.new(exporter: metric_exporter)
+    OpenTelemetry.meter_provider.add_metric_reader(metric_reader)
   end
 end

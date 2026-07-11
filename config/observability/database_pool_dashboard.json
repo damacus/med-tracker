@@ -1,0 +1,44 @@
+{
+  "title": "MedTracker Database Connection Pool",
+  "uid": "medtracker-db-pool",
+  "schemaVersion": 41,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Pool utilization",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "100 * sum(medtracker_db_connection_pool_in_use) / sum(medtracker_db_connection_pool_size)", "legendFormat": "utilization %" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 } }
+    },
+    {
+      "id": 2,
+      "title": "Connections by state",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(medtracker_db_connection_pool_size)", "legendFormat": "size" },
+        { "expr": "sum(medtracker_db_connection_pool_in_use)", "legendFormat": "in use" },
+        { "expr": "sum(medtracker_db_connection_pool_idle)", "legendFormat": "idle" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Waiting threads",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(medtracker_db_connection_pool_waiting)", "legendFormat": "waiting" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Checkout timeouts",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(rate(medtracker_db_connection_pool_timeouts_total[5m]))", "legendFormat": "timeouts / second" }
+      ]
+    }
+  ]
+}
