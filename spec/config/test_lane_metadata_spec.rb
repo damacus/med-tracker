@@ -42,4 +42,14 @@ RSpec.describe TestLaneMetadata do
 
     expect(offenders).to be_empty
   end
+
+  it 'does not allow arbitrary sleeps in browser-capable specs' do
+    offenders = Rails.root.glob('spec/{features,system,views}/**/*_spec.rb').select do |path|
+      path.readlines.reject { |line| line.lstrip.start_with?('#') }.any? do |line|
+        line.match?(/\bsleep(?:\s|\()/)
+      end
+    end
+
+    expect(offenders).to be_empty
+  end
 end

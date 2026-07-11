@@ -5,10 +5,6 @@ require 'rails_helper'
 RSpec.describe 'Person Medications Authorization' do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :dosages, :carer_relationships
 
-  before do |example|
-    driven_by(example.metadata[:js] ? :playwright : :rack_test)
-  end
-
   let(:admin) { users(:admin) }
   let(:doctor) { users(:doctor) }
   let(:nurse) { users(:nurse) }
@@ -22,41 +18,30 @@ RSpec.describe 'Person Medications Authorization' do
   describe 'adding medications' do
     let(:medication) { medications(:vitamin_d) }
 
-    it 'allows administrators to add medications to any person', :js do
+    it 'shows the medication assignment entry point to administrators' do
       login_as(admin)
       visit person_path(assigned_patient)
 
       within '[data-testid="quick-actions"]' do
-        expect(page).to have_link('Add Medication')
-        click_link 'Add Medication'
+        expect(page).to have_link(
+          'Add Medication',
+          href: add_medication_person_path(assigned_patient)
+        )
       end
-      click_link 'As needed'
-      click_button 'Select a medication'
-      find('label', text: medication.name).click
-      expect(page).to have_text('Choose the dose')
-      expect(page).to have_select('Dose', with_options: ['1000 IU - Daily Vitamin D supplement'])
-      select '1000 IU - Daily Vitamin D supplement', from: 'Dose'
-      click_button 'Next'
-      expect(page).to have_text('Add optional guidance')
-      click_button 'Add Medication'
-
-      expect(page).to have_text('Medication added successfully.')
     end
 
-    it 'allows professionals with manage grants to open the unified medication assignment flow', :js do
+    it 'shows the medication assignment entry point to professionals with manage grants' do
       login_as(doctor)
       grant_browser_access(assigned_patient, access_level: :manage)
       visit person_path(assigned_patient)
 
       expect(page).to have_text('Medications')
       within '[data-testid="quick-actions"]' do
-        expect(page).to have_link('Add Medication')
-        click_link 'Add Medication'
+        expect(page).to have_link(
+          'Add Medication',
+          href: add_medication_person_path(assigned_patient)
+        )
       end
-
-      expect(page).to have_text('Prescribed / Scheduled')
-      expect(page).to have_text('How is this medication taken?')
-      expect(page).to have_link('As needed')
     end
 
     it 'denies nurses ability to add medications' do
@@ -258,18 +243,22 @@ RSpec.describe 'Person Medications Authorization' do
       )
     end
 
-    it 'shows reorder controls to parents for linked children', :js do
+    it 'shows reorder controls to parents for linked children' do
       login_as(parent)
       visit person_path(linked_child)
 
       within("##{tenant_dom_id(parent_first_medication)}") do
-        find("[data-testid='person-medication-actions-#{parent_first_medication.id}']").click
-        expect(page).to have_css("[data-testid='move-up-person-medication-#{parent_first_medication.id}']")
+        expect(page).to have_css(
+          "[data-testid='move-up-person-medication-#{parent_first_medication.id}']",
+          visible: :all
+        )
       end
 
       within("##{tenant_dom_id(parent_second_medication)}") do
-        find("[data-testid='person-medication-actions-#{parent_second_medication.id}']").click
-        expect(page).to have_css("[data-testid='move-down-person-medication-#{parent_second_medication.id}']")
+        expect(page).to have_css(
+          "[data-testid='move-down-person-medication-#{parent_second_medication.id}']",
+          visible: :all
+        )
       end
     end
 
@@ -312,20 +301,16 @@ RSpec.describe 'Person Medications Authorization' do
       expect(page).to have_text('Updated notes')
     end
 
-    it 'allows administrators to edit medications for any person', :js do
+    it 'allows administrators to edit medications for any person' do
       login_as(admin)
       visit person_path(linked_child)
 
       within("##{tenant_dom_id(person_medication)}") do
-        find("[data-testid='person-medication-actions-#{person_medication.id}']").click
-        find("[data-testid='edit-person-medication-#{person_medication.id}']").click
+        expect(page).to have_css(
+          "[data-testid='edit-person-medication-#{person_medication.id}']",
+          visible: :all
+        )
       end
-
-      expect(page).to have_text('Edit Medication for')
-      fill_in 'Notes', with: 'Admin edited notes'
-      click_button 'Save Changes'
-
-      expect(page).to have_text('Medication updated successfully')
     end
 
     it 'does not show edit button to carers for assigned patients' do

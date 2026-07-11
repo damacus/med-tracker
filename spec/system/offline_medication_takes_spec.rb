@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'timeout'
 
 RSpec.describe 'Offline medication takes', :js do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :schedules,
@@ -43,10 +42,7 @@ RSpec.describe 'Offline medication takes', :js do
 
     page.execute_script('window.dispatchEvent(new Event("online"))')
 
-    Timeout.timeout(5) do
-      sleep 0.1 until MedicationTake.where(schedule: schedule).where.not(client_uuid: nil).exists?
-    end
-
     expect(page).to have_css('[data-offline-shell-target="pendingCount"]', text: '0')
+    expect(MedicationTake.where(schedule: schedule).where.not(client_uuid: nil).exists?).to be(true)
   end
 end

@@ -12,7 +12,7 @@ RSpec.describe 'Global search command palette', :browser do
 
   scenario 'opens as a left-anchored dropdown with Ctrl+K and Cmd+K, searches, navigates, and closes' do
     visit root_path
-    sleep 0.5
+    expect(page).to have_css('body[data-global-search-connected="true"]', visible: :all)
 
     page.execute_script("document.querySelector('a[href=\"#{people_path}\"]').focus()")
     expect(page.evaluate_script('document.activeElement.getAttribute("href")')).to eq(people_path)
@@ -33,8 +33,6 @@ RSpec.describe 'Global search command palette', :browser do
     open_global_search_shortcut
     find_by_id('global_search_query').send_keys(:escape)
     find('aside button[aria-label="Open global search"]').click
-    expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
-    sleep 0.2
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
     find_by_id('global_search_query').send_keys(:escape)
     page.execute_script("document.querySelector('a[href=\"#{people_path}\"]').focus()")
@@ -64,7 +62,6 @@ RSpec.describe 'Global search command palette', :browser do
 
     expect(page).to have_css('body[data-global-search-connected="true"]', visible: :all)
     expect(page).to have_css('button[aria-label="Open global search"]')
-    wait_for_global_search_controller
     open_global_search_shortcut
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
 
@@ -75,7 +72,7 @@ RSpec.describe 'Global search command palette', :browser do
   scenario 'opens from the mobile trigger' do
     page.current_window.resize_to(375, 667)
     visit root_path
-    sleep 0.5
+    expect(page).to have_css('body[data-global-search-connected="true"]', visible: :all)
 
     find('button[aria-label="Open global search"]').click
 
@@ -128,17 +125,5 @@ RSpec.describe 'Global search command palette', :browser do
         new KeyboardEvent("keydown", { key: "k", #{modifier_key}: true, bubbles: true })
       )
     JS
-  end
-
-  def wait_for_global_search_controller
-    Timeout.timeout(Capybara.default_max_wait_time) do
-      loop do
-        break if page.evaluate_script(
-          'Boolean(window.Stimulus?.getControllerForElementAndIdentifier(document.body, "global-search"))'
-        )
-
-        sleep 0.05
-      end
-    end
   end
 end

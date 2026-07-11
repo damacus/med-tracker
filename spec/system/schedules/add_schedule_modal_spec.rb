@@ -5,10 +5,6 @@ require 'rails_helper'
 RSpec.describe 'Add schedule modal flow', :browser do
   fixtures :accounts, :users, :people, :locations, :medications, :dosages
 
-  before do
-    driven_by(:playwright)
-  end
-
   let(:admin) { users(:admin) }
   let(:person) { people(:child_patient) }
 
@@ -22,7 +18,6 @@ RSpec.describe 'Add schedule modal flow', :browser do
     find_by_id('medication_trigger').click
     find('[role="option"]', text: 'Ibuprofen', wait: 10).click
 
-    sleep 1.0 # Wait for dosage cards to render
     find('label', text: /Standard child dose \(6-12 years\)/, wait: 10).click
 
     fill_in 'Frequency', with: 'Twice daily'
