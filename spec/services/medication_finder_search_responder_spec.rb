@@ -25,13 +25,14 @@ RSpec.describe MedicationFinderSearchResponder do
     end
   end
 
-  def successful_nhs_result(results: [], resolved_query: nil, barcode: nil)
+  def successful_nhs_result(results: [], resolved_query: nil, barcode: nil, barcode_source: nil)
     instance_double(
       NhsDmd::Search::Result,
       success?: true,
       results: results,
       resolved_query: resolved_query,
-      barcode: barcode
+      barcode: barcode,
+      barcode_source: barcode_source
     )
   end
 
@@ -129,12 +130,18 @@ RSpec.describe MedicationFinderSearchResponder do
       end
 
       it 'includes barcode from the search result' do
-        barcoded = successful_nhs_result(results: [], resolved_query: nil, barcode: '5000168511017')
+        barcoded = successful_nhs_result(
+          results: [],
+          resolved_query: nil,
+          barcode: '5000168511017',
+          barcode_source: 'nhs_dmd'
+        )
         allow(search).to receive(:call).and_return(barcoded)
 
         result = responder.call(query: '5000168511017')
 
         expect(result.body[:barcode]).to eq('5000168511017')
+        expect(result.body[:barcode_resolution]).to eq(status: 'resolved', source: 'nhs_dmd')
       end
 
       it 'includes permissions in the response body' do

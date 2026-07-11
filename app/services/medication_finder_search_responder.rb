@@ -37,6 +37,7 @@ class MedicationFinderSearchResponder
         results: results.map { |search_result| result_payload(search_result, result.barcode) },
         query: result.resolved_query.presence || query,
         barcode: result.barcode,
+        barcode_resolution: barcode_resolution(result),
         form: normalized_form,
         strength: normalized_strength,
         permissions: permissions
@@ -50,6 +51,12 @@ class MedicationFinderSearchResponder
       body: { results: [], error: 'Medication search is temporarily unavailable.' },
       status: :service_unavailable
     )
+  end
+
+  def barcode_resolution(result)
+    return unless result.barcode.present?
+
+    { status: 'resolved', source: result.barcode_source }
   end
 
   def result_payload(search_result, barcode)

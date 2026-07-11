@@ -2,7 +2,7 @@
 
 module NhsDmd
   class Search # rubocop:disable Metrics/ClassLength
-    Result = Struct.new(:results, :error, :resolved_query, :barcode, keyword_init: true) do
+    Result = Struct.new(:results, :error, :resolved_query, :barcode, :barcode_source, keyword_init: true) do
       def success?
         error.nil?
       end
@@ -13,7 +13,7 @@ module NhsDmd
                    open_food_facts_search: OpenFoodFacts::Search.new,
                    audit_logger: ExternalLookup::AuditLogger.new)
       @client = client
-      @barcode_lookup = barcode_lookup
+      @barcode_resolver = BarcodeCatalog::Resolver.new(lookup: barcode_lookup)
       @open_food_facts_lookup = open_food_facts_lookup
       @open_food_facts_search = open_food_facts_search
       @audit_logger = audit_logger
@@ -46,10 +46,13 @@ module NhsDmd
     end
 
     def local_barcode_result(query)
-      barcode_match = @barcode_lookup.lookup(query)
-      return nil unless barcode_match
+      return nil unless BarcodeLookup.barcode_query?(query)
 
-      barcode_result(query, barcode_match)
+      resolution = @barcode_resolver.call(query)
+      return failed_result(resolution.error) if resolution.error?
+      return nil unless resolution.resolved?
+
+      barcode_result(query, resolution.match, source: resolution.source)
     end
 
     def remote_result(query)
@@ -155,14 +158,15 @@ module NhsDmd
       }
     end
 
-    def barcode_result(query, barcode_match)
+    def barcode_result(query, barcode_match, source: barcode_match[:source])
       translated_query = barcode_match[:display]
 
       Result.new(
         results: build_results(barcode_items(translated_query, barcode_match)),
         error: nil,
         resolved_query: translated_query,
-        barcode: NhsDmdBarcode.normalize_gtin(query)
+        barcode: NhsDmdBarcode.normalize_gtin(query),
+        barcode_source: source
       )
     end
 
@@ -261,7 +265,12 @@ module NhsDmd
       results = nhs_items(query)
       return nil if results.empty?
 
-      Result.new(results: build_results(results), error: nil, barcode: NhsDmdBarcode.normalize_gtin(query))
+      Result.new(
+        results: build_results(results),
+        error: nil,
+        barcode: NhsDmdBarcode.normalize_gtin(query),
+        barcode_source: 'nhs_dmd_api'
+      )
     end
 
     def dedupe_items(items)

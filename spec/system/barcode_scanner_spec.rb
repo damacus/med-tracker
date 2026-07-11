@@ -216,5 +216,24 @@ RSpec.describe 'BarcodeScanner' do
       expect(page.evaluate_script('window.__barcodeScannerGetCamerasCalls')).to eq(2)
       expect(page).to have_no_button('Start Scanner')
     end
+
+    it 'resolves a decoded barcode and continues into medication lookup' do
+      NhsDmdBarcode.create!(
+        gtin: '05016298210989',
+        code: '13629411000001105',
+        display: 'Laxido Orange oral powder sachets (Galen Ltd)',
+        system: 'https://dmd.nhs.uk',
+        concept_class: 'AMPP'
+      )
+      visit medication_finder_path
+
+      within '[data-testid="barcode-scanner"]' do
+        fill_in 'manual-barcode', with: '5016298210989'
+        click_button 'Submit'
+      end
+
+      expect(page).to have_text('Laxido Orange oral powder sachets')
+      expect(page).to have_text('5016298210989')
+    end
   end
 end

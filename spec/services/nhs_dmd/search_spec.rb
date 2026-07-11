@@ -91,7 +91,8 @@ RSpec.describe NhsDmd::Search do
           code: '13629411000001105',
           display: 'Laxido Orange oral powder sachets (Galen Ltd)',
           system: 'https://dmd.nhs.uk',
-          concept_class: 'AMPP'
+          concept_class: 'AMPP',
+          source: 'nhs_dmd'
         }
         translated_results = [
           {
@@ -118,6 +119,7 @@ RSpec.describe NhsDmd::Search do
         expect(result).to be_success
         expect(result.resolved_query).to eq('Laxido Orange oral powder sachets (Galen Ltd)')
         expect(result.barcode).to eq('5016298210989')
+        expect(result.barcode_source).to eq('nhs_dmd')
         expect(result.results.map(&:to_h)).to contain_exactly(
           a_hash_including(
             code: '13629411000001105',
