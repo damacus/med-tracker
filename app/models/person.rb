@@ -62,6 +62,7 @@ class Person < ApplicationRecord
                     format: { with: URI::MailTo::EMAIL_REGEXP, allow_blank: true },
                     uniqueness: { allow_blank: true }
   validate :carer_required_when_lacking_capacity
+  validate :person_type_matches_age
   validate :avatar_must_be_supported_image
   validate :avatar_must_be_smaller_than_five_megabytes
 
@@ -168,6 +169,16 @@ class Person < ApplicationRecord
     return if active_carer_relationship?
 
     errors.add(:base, 'A person without capacity must have at least one carer assigned')
+  end
+
+  def person_type_matches_age
+    return if date_of_birth.blank? || person_type.blank?
+
+    if age < 18 && person_type == 'dependent_adult'
+      errors.add(:person_type, 'must be minor or adult for people under 18')
+    elsif age >= 18 && person_type == 'minor'
+      errors.add(:person_type, 'must be adult or dependent adult for people aged 18 or over')
+    end
   end
 
   def active_carer_relationship?

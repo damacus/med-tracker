@@ -232,6 +232,58 @@ RSpec.describe Person do
     end
   end
 
+  describe 'person type transitions' do
+    it 'rejects a minor type once the person is 18' do
+      person = described_class.new(
+        name: 'Adult Age Minor',
+        date_of_birth: 18.years.ago.to_date,
+        person_type: :minor
+      )
+
+      expect(person).not_to be_valid
+      expect(person.errors[:person_type]).to include('must be adult or dependent adult for people aged 18 or over')
+    end
+
+    it 'rejects a dependent adult type for people under 18' do
+      person = described_class.new(
+        name: 'Minor Age Dependent Adult',
+        date_of_birth: 12.years.ago.to_date,
+        person_type: :dependent_adult
+      )
+
+      expect(person).not_to be_valid
+      expect(person.errors[:person_type]).to include('must be minor or adult for people under 18')
+    end
+
+    it 'allows a minor to transition to adult at 18' do
+      carer = described_class.create!(name: 'Adult Transition Carer', date_of_birth: 40.years.ago.to_date)
+      person = described_class.new(
+        name: 'Transitioning Adult',
+        date_of_birth: 17.years.ago.to_date,
+        person_type: :minor
+      )
+      person.carer_relationships.build(carer: carer, relationship_type: :family_member)
+      person.save!
+
+      expect(person.update(date_of_birth: 18.years.ago.to_date, person_type: :adult)).to be true
+      expect(person).to be_adult
+    end
+
+    it 'allows an adult to transition to dependent adult with a carer' do
+      carer = described_class.create!(name: 'Transition Carer', date_of_birth: 40.years.ago.to_date)
+      person = described_class.create!(
+        name: 'Transitioning Dependent',
+        date_of_birth: 30.years.ago.to_date,
+        person_type: :adult
+      )
+      person.assign_carer!(carer)
+
+      expect(person.update(person_type: :dependent_adult)).to be true
+      expect(person).to be_dependent_adult
+      expect(person.has_capacity).to be false
+    end
+  end
+
   describe '#adult?' do
     it 'returns true for person 18 years or older with adult person_type' do
       adult = described_class.new(

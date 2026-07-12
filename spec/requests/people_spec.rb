@@ -216,6 +216,21 @@ RSpec.describe 'People' do
 
         expect(Person.last.household.slug).to eq(default_url_options.fetch(:household_slug))
       end
+
+      it 'rejects a dependent adult type for a person under 18' do
+        expect do
+          post people_path, params: {
+            person: {
+              name: 'Invalid Dependent Adult',
+              date_of_birth: 12.years.ago.to_date,
+              person_type: 'dependent_adult'
+            }
+          }
+        end.not_to change(Person, :count)
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include('must be minor or adult for people under 18')
+      end
     end
   end
 
@@ -323,6 +338,25 @@ RSpec.describe 'People' do
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
       expect(response.body).to include('target="modal"')
       expect(response.body).to include('person_form')
+    end
+  end
+
+  describe 'PATCH /people/:id person type transitions' do
+    before { sign_in(users(:admin)) }
+
+    it 'requires a minor who has reached 18 to transition type' do
+      person = people(:child_patient)
+
+      patch person_path(person), params: {
+        person: {
+          date_of_birth: 18.years.ago.to_date,
+          person_type: 'minor'
+        }
+      }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('must be adult or dependent adult for people aged 18 or over')
+      expect(person.reload.person_type).to eq('minor')
     end
   end
 
