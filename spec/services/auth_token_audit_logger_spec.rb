@@ -163,6 +163,17 @@ RSpec.describe AuthTokenAuditLogger do
       expect(version.request_id).to eq('req-explicit')
     end
 
+    it 'stores a bounded verification outcome' do
+      audit_logger.record(
+        account: account,
+        token_type: 'webauthn_verification',
+        action: 'failed',
+        metadata: { outcome: 'failure' }
+      )
+
+      expect(version_data['outcome']).to eq('failure')
+    end
+
     it 'does not raise when called without PaperTrail request context' do
       PaperTrail.request.whodunnit = nil
       PaperTrail.request.controller_info = {}

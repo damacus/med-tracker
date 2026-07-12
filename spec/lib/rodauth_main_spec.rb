@@ -71,6 +71,28 @@ RSpec.describe RodauthMain do
     end
   end
 
+  describe 'WebAuthn verification auditing' do
+    let(:auth) { RodauthApp.rodauth.allocate }
+
+    before { allow(auth).to receive(:audit_auth_token) }
+
+    it 'records successful user verification' do
+      auth.send(:before_webauthn_auth)
+
+      expect(auth).to have_received(:audit_auth_token).with(
+        'webauthn_verification', 'succeeded', outcome: 'success'
+      )
+    end
+
+    it 'records failed user verification' do
+      auth.send(:after_webauthn_auth_failure)
+
+      expect(auth).to have_received(:audit_auth_token).with(
+        'webauthn_verification', 'failed', outcome: 'failure'
+      )
+    end
+  end
+
   describe 'Zitadel professional title helpers' do
     it 'returns an empty role list when Zitadel roles are absent' do
       auth = RodauthApp.rodauth.allocate
