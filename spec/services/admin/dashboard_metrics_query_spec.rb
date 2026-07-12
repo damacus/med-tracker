@@ -64,7 +64,10 @@ RSpec.describe Admin::DashboardMetricsQuery do
       HouseholdInvitation.delete_all
       NhsDmdImport.delete_all
       PaperTrail::Version.delete_all
-      Person.find_each { |person| person.update!(has_capacity: true) }
+      Person.adult.find_each { |person| person.update!(has_capacity: true) }
+      household.people.needing_carer_assignment.find_each do |person|
+        person.carer_relationships.create!(carer: people(:jane), relationship_type: :guardian)
+      end
     end
 
     it 'returns pending and expired invitation counts' do

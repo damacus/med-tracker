@@ -151,7 +151,6 @@ class Person < ApplicationRecord
 
   def set_capacity_from_person_type
     return unless minor? || dependent_adult?
-    return unless active_carer_relationship?
 
     self.has_capacity = false
   end

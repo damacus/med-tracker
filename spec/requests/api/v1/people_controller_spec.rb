@@ -56,24 +56,37 @@ RSpec.describe Api::V1::PeopleController do
       household = user.person.household
       other_household = Household.create!(name: 'Other API Household', slug: 'other-api-household')
 
-      granted_person = Person.create!(
+      household_carer = people(:jane)
+      other_household_carer = Person.create!(
+        household: other_household,
+        name: 'Other Household Carer',
+        date_of_birth: 40.years.ago.to_date,
+        person_type: :adult
+      )
+      granted_person = Person.new(
         household: household,
         name: 'Granted Alex',
         date_of_birth: 8.years.ago.to_date,
         person_type: :minor
       )
-      hidden_person = Person.create!(
+      granted_person.carer_relationships.build(carer: household_carer, relationship_type: :parent)
+      granted_person.save!
+      hidden_person = Person.new(
         household: household,
         name: 'Hidden Alex',
         date_of_birth: 9.years.ago.to_date,
         person_type: :minor
       )
-      other_household_person = Person.create!(
+      hidden_person.carer_relationships.build(carer: household_carer, relationship_type: :parent)
+      hidden_person.save!
+      other_household_person = Person.new(
         household: other_household,
         name: 'Other Alex',
         date_of_birth: 10.years.ago.to_date,
         person_type: :minor
       )
+      other_household_person.carer_relationships.build(carer: other_household_carer, relationship_type: :parent)
+      other_household_person.save!
       membership = household.household_memberships.find_or_initialize_by(account: account).tap do |record|
         record.person = people(:jane)
         record.role = :owner
