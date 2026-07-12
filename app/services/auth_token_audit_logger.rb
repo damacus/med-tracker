@@ -66,6 +66,7 @@ class AuthTokenAuditLogger
     hashed_metadata(data).merge(device_name_metadata(data))
                          .merge(optional_value(data, :platform))
                          .merge(optional_value(data, :credential_nickname))
+                         .merge(optional_value(data, :outcome))
                          .merge(expires_at_metadata(data))
   end
 

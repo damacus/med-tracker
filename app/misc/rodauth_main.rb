@@ -424,6 +424,12 @@ class RodauthMain < Rodauth::Rails::Auth
     after_two_factor_authentication do
       set_session_value(:privileged_action_mfa_verified_at, Time.current.to_i)
     end
+    before_webauthn_auth do
+      audit_auth_token('webauthn_verification', 'succeeded', outcome: 'success')
+    end
+    after_webauthn_auth_failure do
+      audit_auth_token('webauthn_verification', 'failed', outcome: 'failure')
+    end
     before_otp_setup_route do
       # Allow OTP setup if user has no 2FA methods configured yet
       # Only require 2FA auth if they already have a method set up
