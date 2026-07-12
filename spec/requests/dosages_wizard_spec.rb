@@ -297,13 +297,14 @@ RSpec.describe 'Medication wizard dose option follow-up' do
     sign_in(users(:admin))
     household = Household.find_by!(slug: default_request_household_slug)
     membership = household.household_memberships.find_by!(account: users(:admin).person.account)
-    dependent = Person.create!(
+    dependent = Person.new(
       name: 'Dependent Adult Patient',
       date_of_birth: 50.years.ago.to_date,
       person_type: :dependent_adult,
-      has_capacity: true,
       household: household
     )
+    dependent.carer_relationships.build(carer: users(:admin).person, relationship_type: :guardian)
+    dependent.save!
     household.person_access_grants.create!(
       household_membership: membership,
       person: dependent,

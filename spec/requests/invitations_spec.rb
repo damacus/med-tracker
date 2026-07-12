@@ -207,19 +207,14 @@ RSpec.describe 'Invitations' do
   end
 
   def create_dependent(household:, name:, carer:)
-    dependent = Person.create!(
+    dependent = Person.new(
       household: household,
       name: name,
       date_of_birth: 8.years.ago.to_date,
-      person_type: :minor,
-      has_capacity: true
+      person_type: :minor
     )
-    CarerRelationship.create!(
-      carer: carer,
-      patient: dependent,
-      relationship_type: :parent
-    )
-    dependent.update!(has_capacity: false)
+    dependent.carer_relationships.build(carer: carer, relationship_type: :parent)
+    dependent.save!
     dependent
   end
 end

@@ -775,7 +775,7 @@ RSpec.describe Person do
       expect(adult.has_capacity).to be true
     end
 
-    it 'does not force has_capacity for minors without a carer (self-signup)' do
+    it 'auto-sets has_capacity to false for minors without a carer' do
       minor = described_class.new(
         name: 'Self-Signup Minor',
         date_of_birth: 10.years.ago,
@@ -784,7 +784,19 @@ RSpec.describe Person do
       )
       minor.valid?
 
-      expect(minor.has_capacity).to be true
+      expect(minor.has_capacity).to be false
+    end
+
+    it 'auto-sets has_capacity to false for dependent adults without a carer' do
+      dependent = described_class.new(
+        name: 'Unassigned Dependent',
+        date_of_birth: 70.years.ago,
+        person_type: :dependent_adult,
+        has_capacity: true
+      )
+      dependent.valid?
+
+      expect(dependent.has_capacity).to be false
     end
   end
 
