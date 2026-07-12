@@ -125,7 +125,7 @@ module Components
         end
 
         def render_page_numbers
-          pagy_obj.series.each do |item|
+          page_series.each do |item|
             case item
             when Integer
               Link(
@@ -140,6 +140,30 @@ module Components
               span(class: gap_class) { '…' }
             end
           end
+        end
+
+        def page_series
+          return page_range(1) if pagy_obj.pages <= 7
+
+          start_page = (pagy_obj.page - 3).clamp(1, pagy_obj.pages - 6)
+          series = (start_page...(start_page + 7)).to_a
+          series[0] = 1
+          series[-1] = pagy_obj.pages
+          add_series_gaps(series)
+          series.map { |page| page_item(page) }
+        end
+
+        def page_range(start_page)
+          (start_page..pagy_obj.pages).map { |page| page_item(page) }
+        end
+
+        def add_series_gaps(series)
+          series[1] = :gap unless series[1] == 2
+          series[-2] = :gap unless series[-2] == pagy_obj.pages - 1
+        end
+
+        def page_item(page)
+          page == pagy_obj.page ? page.to_s : page
         end
 
         def page_url(page)
