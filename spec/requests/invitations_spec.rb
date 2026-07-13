@@ -52,6 +52,13 @@ RSpec.describe 'Invitations' do
       expect(Account.exists?(email: 'invited.email@example.com')).to be(true)
       expect(Account.exists?(email: 'attacker.supplied@example.com')).to be(false)
       expect(invitation.reload.accepted_at).to be_present
+      account = Account.find_by!(email: 'invited.email@example.com')
+      membership = household.household_memberships.find_by!(account: account)
+      event = SecurityAuditEvent.where(event_type: 'household_access.membership_created').order(:id).last
+      expect(event.metadata).to include(
+        'target_membership_id' => membership.id,
+        'new_state' => include('permissions_version' => 1)
+      )
     end
 
     it 'rejects accepted invitation tokens without creating another account' do

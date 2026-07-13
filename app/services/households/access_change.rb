@@ -28,6 +28,14 @@ module Households
       Membership.new(**context, membership: membership, attributes: attributes).call
     end
 
+    def create_membership(household:, **attributes)
+      MembershipCreation.new(**context, household: household, attributes: attributes).call
+    end
+
+    def create_membership!(household:, **attributes)
+      successful_record!(create_membership(household: household, **attributes))
+    end
+
     def promote_owner(membership)
       update_membership(membership, role: :owner)
     end

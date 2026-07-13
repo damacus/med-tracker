@@ -249,7 +249,12 @@ class RodauthMain < Rodauth::Rails::Auth
       end
 
       def create_owner_membership(household, account_record, person)
-        household.household_memberships.create!(
+        Households::AccessChange.new(
+          actor_account: account_record,
+          actor_membership: nil,
+          request: rails_controller_instance&.request
+        ).create_membership!(
+          household: household,
           account: account_record,
           person: person,
           role: :owner,
@@ -268,7 +273,8 @@ class RodauthMain < Rodauth::Rails::Auth
       end
 
       def accept_household_invitation!(account_record, person, invitation)
-        membership = invitation.household.household_memberships.create!(
+        membership = household_access_change(invitation.invited_by_membership).create_membership!(
+          household: invitation.household,
           account: account_record,
           person: person,
           role: invitation.membership_role,

@@ -220,6 +220,12 @@ RSpec.describe 'API v1 household administration' do
     target_login = api_login(users(:jane), household_id: household_id)
     target_session = ApiSession.lookup_by_access_token(target_login.fetch('access_token'))
     target_membership = target_session.household_membership
+    target_app_token, target_app_token_value = ApiAppToken.issue_for(
+      account: target_session.account,
+      household_membership: target_membership,
+      name: 'Before API grant creation'
+    )
+    target_oauth_grant, target_oauth_token = issue_oauth_grant(target_membership)
 
     post api_v1_household_admin_person_access_grants_path(household_id),
          params: {
@@ -234,16 +240,31 @@ RSpec.describe 'API v1 household administration' do
          as: :json
 
     expect(response).to have_http_status(:created)
+    grant_id = response.parsed_body.dig('data', 'id')
     expect(target_membership.reload.permissions_version).to eq(target_session.permissions_version + 1)
     expect(target_session.reload).not_to be_active_for_membership
+    expect(target_app_token.reload).not_to be_active_for_membership
+    expect(target_oauth_grant.reload).not_to be_active_for_membership
+    expect_rejected_api_tokens(target_login.fetch('access_token'), target_app_token_value, target_oauth_token)
 
-    fresh_session, = ApiSession.issue_for(account: target_session.account, household_membership: target_membership)
-    grant_id = response.parsed_body.dig('data', 'id')
+    fresh_session, fresh_session_token = ApiSession.issue_for(
+      account: target_session.account,
+      household_membership: target_membership
+    )
+    fresh_app_token, fresh_app_token_value = ApiAppToken.issue_for(
+      account: target_session.account,
+      household_membership: target_membership,
+      name: 'Before API grant revocation'
+    )
+    fresh_oauth_grant, fresh_oauth_token = issue_oauth_grant(target_membership)
     delete api_v1_household_admin_person_access_grant_path(household_id, grant_id), headers: headers, as: :json
 
     expect(response).to have_http_status(:no_content)
     expect(target_membership.reload.permissions_version).to eq(fresh_session.permissions_version + 1)
     expect(fresh_session.reload).not_to be_active_for_membership
+    expect(fresh_app_token.reload).not_to be_active_for_membership
+    expect(fresh_oauth_grant.reload).not_to be_active_for_membership
+    expect_rejected_api_tokens(fresh_session_token, fresh_app_token_value, fresh_oauth_token)
   end
 
   it 'rejects person grants targeting a membership in another household' do
@@ -377,6 +398,13 @@ RSpec.describe 'API v1 household administration' do
       token_hash: OauthGrant.digest(raw_token)
     )
     [grant, raw_token]
+  end
+
+  def expect_rejected_api_tokens(*tokens)
+    tokens.each do |token|
+      get api_v1_household_me_path(household_id), headers: api_auth_headers(token), as: :json
+      expect(response).to have_http_status(:unauthorized)
+    end
   end
 
   def oauth_application(membership)

@@ -58,7 +58,12 @@ class Household < ApplicationRecord
     end
 
     def create_owner_membership(household, owner_account, person)
-      household.household_memberships.create!(
+      Households::AccessChange.new(
+        actor_account: owner_account,
+        actor_membership: nil,
+        request: nil
+      ).create_membership!(
+        household: household,
         account: owner_account,
         person: person,
         role: :owner,

@@ -36,6 +36,11 @@ RSpec.describe Household do
 
       expect(membership).to have_attributes(account: account, role: 'owner', status: 'active')
       expect(membership.person).to have_attributes(account: account, household: household, name: 'Alex')
+      event = SecurityAuditEvent.where(event_type: 'household_access.membership_created').order(:id).last
+      expect(event.metadata).to include(
+        'target_membership_id' => membership.id,
+        'new_state' => include('permissions_version' => 1)
+      )
     end
 
     it 'creates the owner self grant' do

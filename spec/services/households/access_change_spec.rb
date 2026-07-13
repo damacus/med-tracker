@@ -16,6 +16,59 @@ RSpec.describe Households::AccessChange do
     )
   end
 
+  describe '#create_membership' do
+    it 'creates a membership at the initial permissions version and audits the change' do
+      service
+      new_person
+
+      expect do
+        result = new_membership_result
+        expect(result).to be_success
+        expect(result.record.permissions_version).to eq(1)
+      end.to change(HouseholdMembership, :count).by(1)
+                                                .and change(creation_events, :count).by(1)
+
+      expect_creation_event(outcome: 'success', account: new_account, permissions_version: 1)
+    end
+
+    it 'rolls back membership creation when audit persistence fails' do
+      service
+      new_person
+      allow(Audit::Event).to receive(:record!).and_raise(ActiveRecord::RecordInvalid.new(SecurityAuditEvent.new))
+      original_count = HouseholdMembership.count
+
+      expect { new_membership_result }.to raise_error(ActiveRecord::RecordInvalid)
+
+      expect(HouseholdMembership.count).to eq(original_count)
+    end
+
+    it 'rejects actors and people from another household with a PHI-free audit event' do
+      foreign_household = create_household('Foreign Membership Creation')
+      foreign_owner = create_membership(foreign_household, accounts(:damacus), :owner)
+      foreign_service = described_class.for(foreign_owner)
+
+      expect do
+        result = new_membership_result(foreign_service)
+        expect(result).not_to be_success
+      end.not_to change(HouseholdMembership, :count)
+
+      expect_creation_event(outcome: 'rejected', account: new_account)
+    end
+
+    it 'allows the creator to bootstrap the first active owner' do
+      membership = bootstrap_owner_membership
+
+      expect(membership).to have_attributes(role: 'owner', status: 'active', permissions_version: 1)
+    end
+
+    it 'rejects owner creation outside the bootstrap path' do
+      result = new_membership_result(role: :owner)
+
+      expect(result).not_to be_success
+      expect(result.record.errors[:base]).to include('Owner memberships must use the governed promotion path')
+    end
+  end
+
   describe '#update_membership' do
     it 'advances permissions exactly once for a role change' do
       expect_membership_change(role: :administrator)
@@ -176,6 +229,54 @@ RSpec.describe Households::AccessChange do
 
   def create_household(label)
     Household.create!(name: "#{label} #{SecureRandom.hex(4)}", slug: "#{label.parameterize}-#{SecureRandom.hex(4)}")
+  end
+
+  def new_account
+    accounts(:bob_smith)
+  end
+
+  def new_person
+    @new_person ||= create_person(household, new_account, 'New Household Member')
+  end
+
+  def new_membership_result(change_service = service, role: :member)
+    change_service.create_membership(
+      household: household,
+      account: new_account,
+      person: new_person,
+      role: role,
+      status: :active
+    )
+  end
+
+  def creation_events
+    SecurityAuditEvent.where(event_type: 'household_access.membership_created')
+  end
+
+  def expect_creation_event(outcome:, account:, permissions_version: nil)
+    metadata = creation_events.order(:id).last.metadata
+    expect(metadata).to include(creation_event_expectations(outcome, account, permissions_version))
+    expect(metadata.keys).not_to include('person_name', 'email', 'notes')
+  end
+
+  def creation_event_expectations(outcome, account, permissions_version)
+    expected = { 'outcome' => outcome, 'target_account_id' => account.id }
+    expected['new_state'] = include('permissions_version' => permissions_version) if permissions_version
+    expected
+  end
+
+  def bootstrap_owner_membership
+    owner_account = accounts(:damacus)
+    owner_household = Household.create!(name: 'Bootstrap Owner', created_by_account: owner_account)
+    owner_person = create_person(owner_household, owner_account, 'Bootstrap Owner')
+    change_service = described_class.new(actor_account: owner_account, actor_membership: nil, request: nil)
+    change_service.create_membership!(
+      household: owner_household,
+      account: owner_account,
+      person: owner_person,
+      role: :owner,
+      status: :active
+    )
   end
 
   def expect_membership_change(attributes)
