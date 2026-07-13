@@ -78,6 +78,17 @@ tasks:
           ENVIRONMENT: dev
           COMMAND: 'OWNER_EMAIL="{{ .OWNER_EMAIL }}" HOUSEHOLD_NAME="{{ .HOUSEHOLD_NAME }}" DRY_RUN="{{ .DRY_RUN }}" APPLY="{{ .APPLY }}" rails households:migrate_local'
 
+  support-access:expire:
+    desc: Record natural support-access expiry events exactly once
+    summary: |
+      Process naturally expired support sessions using the forced-RLS application role.
+      Usage: task support-access:expire
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_app rails support_access:expire'
+
   medication-review:snapshot:
     desc: Regenerate the committed public evidence snapshot
     cmds:

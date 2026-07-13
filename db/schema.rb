@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_13_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_13_190100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -996,6 +996,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_150000) do
   create_table "support_access_sessions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "ended_at"
+    t.datetime "expired_at"
     t.datetime "expires_at", null: false
     t.bigint "household_id", null: false
     t.string "ip"
@@ -1005,6 +1006,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_150000) do
     t.string "request_id"
     t.datetime "starts_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["ended_at", "expired_at", "expires_at"], name: "index_support_access_sessions_for_expiry_processing"
     t.index ["household_id", "expires_at"], name: "index_support_access_sessions_on_household_id_and_expires_at"
     t.index ["household_id"], name: "index_support_access_sessions_on_household_id"
     t.index ["platform_admin_id", "ended_at"], name: "idx_on_platform_admin_id_ended_at_0c69293a2c"
@@ -1210,6 +1212,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_150000) do
     AS $$
       SELECT NULLIF(current_setting('med_tracker.current_membership_id', true), '')::bigint;
     $$;
+
+    CREATE OR REPLACE FUNCTION med_tracker.current_invitation_token_digest()
+    RETURNS text
+    LANGUAGE sql
+    STABLE
+    AS $$
+      SELECT NULLIF(current_setting('med_tracker.current_invitation_token_digest', true), '');
+    $$;
+    GRANT EXECUTE ON FUNCTION med_tracker.current_invitation_token_digest() TO med_tracker_app;
   SQL
 
   %w[
@@ -1248,6 +1259,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_150000) do
         USING (
           household_id = med_tracker.current_household_id()
           OR account_id = med_tracker.current_account_id()
+        )
+        WITH CHECK (household_id = med_tracker.current_household_id());
+      SQL
+    elsif table_name == 'household_invitations'
+      execute <<~SQL
+        CREATE POLICY household_tenant_isolation ON #{quoted_table}
+        USING (
+          household_id = med_tracker.current_household_id()
+          OR (
+            token_digest = med_tracker.current_invitation_token_digest()
+            AND accepted_at IS NULL
+            AND revoked_at IS NULL
+            AND expires_at > CURRENT_TIMESTAMP
+          )
         )
         WITH CHECK (household_id = med_tracker.current_household_id());
       SQL

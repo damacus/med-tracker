@@ -526,8 +526,7 @@ class RodauthMain < Rodauth::Rails::Auth
 
       # Validate invitation token if present and lock down email
       if (token = param_or_nil('invitation_token'))
-        digest = HouseholdInvitation.digest(token)
-        @invitation = HouseholdInvitation.pending.find_by(token_digest: digest)
+        @invitation = HouseholdInvitations::TokenResolver.call(token)
         throw_error_status(422, 'invitation_token', 'is invalid or expired') unless @invitation
         request.params[login_param] = @invitation.email
         account[login_column] = @invitation.email
@@ -564,28 +563,34 @@ class RodauthMain < Rodauth::Rails::Auth
           name: "#{param('name')} Household",
           created_by_account: account_record
         )
-        person = Person.create!(
+        TenantContext.with(
           account: account_record,
-          name: param('name'),
-          date_of_birth: date_of_birth,
-          email: account[:email],
-          person_type: person_type,
-          household: household
-        )
+          household: household,
+          request_id: rails_controller_instance&.request&.request_id
+        ) do
+          person = Person.create!(
+            account: account_record,
+            name: param('name'),
+            date_of_birth: date_of_birth,
+            email: account[:email],
+            person_type: person_type,
+            household: household
+          )
 
-        User.create!(
-          person: person,
-          email_address: account[:email],
-          active: true
-        )
+          User.create!(
+            person: person,
+            email_address: account[:email],
+            active: true
+          )
 
-        if @invitation
-          accept_household_invitation!(account_record, person, @invitation)
-        else
-          create_household_for_account!(account_record, person, household: household)
+          if @invitation
+            accept_household_invitation!(account_record, person, @invitation)
+          else
+            create_household_for_account!(account_record, person, household: household)
+          end
+
+          @invitation&.update!(accepted_at: Time.current)
         end
-
-        @invitation&.update!(accepted_at: Time.current)
       end
     end
 

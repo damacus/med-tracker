@@ -113,7 +113,13 @@ also runs `task test TEST_FILE=spec/lib/schema_inventory_spec.rb`,
 4. The audit event records support-session start/end without raw health data or the free-text reason.
 5. Support mode is visually and technically distinct from household membership.
 6. Platform admin cannot browse health or medicine data outside an active support access session.
-7. Explicit support access end is audited; expiry audit automation remains a hosted hardening gap.
+7. Explicit support access end records `support_access_session.ended`; it never doubles as natural expiry evidence.
+8. Run `task support-access:expire` on the deployment scheduler and after any scheduler outage. The command uses
+   `DATABASE_ROLE=med_tracker_app`, is safe to retry, and records each natural expiry exactly once.
+9. Retain the sanitized JSON output containing `event_type`, `outcome`, and `processed_count`. A successful run reports
+   `support_access_session.expired`, `success`, and a non-negative count; the corresponding audit metadata contains only
+   the support access session identifier, expiry timestamp, and outcome. It excludes the reason, account email, tokens,
+   and health data.
 
 ## Export and purge
 

@@ -124,6 +124,39 @@ RSpec.describe 'Platform support access sessions' do
     expect(flash[:alert]).to include('Set up MFA or a passkey')
   end
 
+  it 'denies support-mode access at the exact expiry boundary' do
+    timestamp = Time.current.change(usec: 0)
+    SupportAccessSession.create!(
+      platform_admin: platform_admin,
+      household: target_household,
+      reason: 'Investigate invitation delivery failure',
+      mfa_verified_at: timestamp,
+      starts_at: 30.minutes.ago,
+      expires_at: timestamp
+    )
+
+    travel_to(timestamp) do
+      get admin_root_path(household_slug: target_household.slug)
+    end
+
+    expect(response).to have_http_status(:redirect)
+  end
+
+  it 'does not use a support session for a different household' do
+    authenticate_with_totp
+    SupportAccessSession.create!(
+      platform_admin: platform_admin,
+      household: target_household,
+      reason: 'Investigate invitation delivery failure',
+      mfa_verified_at: Time.current
+    )
+    other_household = Household.create!(name: 'Other Supported Household', slug: 'other-supported-household')
+
+    get admin_root_path(household_slug: other_household.slug)
+
+    expect(response).to have_http_status(:redirect)
+  end
+
   it 'ends support access and records an audit event' do
     authenticate_with_totp
     support_session = SupportAccessSession.create!(
@@ -147,6 +180,66 @@ RSpec.describe 'Platform support access sessions' do
       event_type: 'support_access_session.ended'
     )
     expect(audit_event.metadata).to include('support_access_session_id' => support_session.id)
+  end
+
+  it 'records explicit support access end only once' do
+    authenticate_with_totp
+    support_session = SupportAccessSession.create!(
+      platform_admin: platform_admin,
+      household: target_household,
+      reason: 'Investigate invitation delivery failure',
+      mfa_verified_at: Time.current
+    )
+
+    2.times { delete platform_support_access_session_path(support_session) }
+
+    expect(SecurityAuditEvent.where(event_type: 'support_access_session.ended', household: target_household).count)
+      .to eq(1)
+  end
+
+  it 'does not record explicit end after natural expiry was processed' do
+    authenticate_with_totp
+    support_session = SupportAccessSession.create!(
+      platform_admin: platform_admin,
+      household: target_household,
+      reason: 'Investigate invitation delivery failure',
+      mfa_verified_at: 1.hour.ago,
+      starts_at: 1.hour.ago,
+      expires_at: 30.minutes.ago
+    )
+    SupportAccessSessions::ExpiryProcessor.call
+
+    expect do
+      delete platform_support_access_session_path(support_session)
+    end.not_to(
+      change { SecurityAuditEvent.where(event_type: 'support_access_session.ended', household: target_household).count }
+    )
+
+    expect(support_session.reload).to have_attributes(ended_at: nil)
+    expect(support_session.expired_at).to be_present
+    expect(SecurityAuditEvent.where(event_type: 'support_access_session.expired', household: target_household).count)
+      .to eq(1)
+  end
+
+  it 'records natural expiry instead of explicit end when an expired session is closed late' do
+    authenticate_with_totp
+    support_session = SupportAccessSession.create!(
+      platform_admin: platform_admin,
+      household: target_household,
+      reason: 'Investigate invitation delivery failure',
+      mfa_verified_at: 1.hour.ago,
+      starts_at: 1.hour.ago,
+      expires_at: 30.minutes.ago
+    )
+
+    delete platform_support_access_session_path(support_session)
+
+    expect(support_session.reload).to have_attributes(ended_at: nil)
+    expect(support_session.expired_at).to be_present
+    expect(SecurityAuditEvent.where(event_type: 'support_access_session.expired', household: target_household).count)
+      .to eq(1)
+    expect(SecurityAuditEvent.where(event_type: 'support_access_session.ended', household: target_household))
+      .to be_empty
   end
 
   def authenticate_with_totp

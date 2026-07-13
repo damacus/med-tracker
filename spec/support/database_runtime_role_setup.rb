@@ -14,6 +14,7 @@ module DatabaseRuntimeRoleSetup
     db/migrate/20260709143000_configure_audit_object_lock_exporter.rb
     db/migrate/20260709143100_enforce_recent_household_row_level_security.rb
     db/migrate/20260709150000_configure_audit_verifier_role.rb
+    db/migrate/20260713190100_allow_invitation_token_rls_bootstrap.rb
   ].freeze
 
   def self.call
@@ -47,6 +48,7 @@ module DatabaseRuntimeRoleSetup
     PartitionActiveStorageAttachmentsByHousehold.new.send(:enable_attachment_rls)
     ConfigureDatabaseRuntimeRoles.new.up
     AllowAccountLinkedPersonRlsLoginLookup.new.up
+    AllowInvitationTokenRlsBootstrap.new.up
   end
 
   def self.install_audit_ledger_database_objects

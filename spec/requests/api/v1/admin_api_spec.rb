@@ -108,11 +108,42 @@ RSpec.describe 'API v1 household administration' do
     expect(response).to have_http_status(:created)
     invitation_id = response.parsed_body.dig('data', 'id')
     expect(response.parsed_body['data'].to_json).not_to include('token')
+    expect(SecurityAuditEvent.order(:id).last.metadata.to_json).not_to include('token')
 
     delete api_v1_household_admin_invitation_path(household_id, invitation_id), headers: headers, as: :json
 
     expect(response).to have_http_status(:no_content)
     expect(HouseholdInvitation.find(invitation_id)).to be_revoked
+  end
+
+  it 'cannot read or revoke another household invitation' do
+    api_session.update!(oidc_mfa_verified: true, mfa_verified_at: Time.current)
+    other_account = Account.create!(email: 'api.other.invitation.owner@example.test', status: :verified)
+    other_household = Household.create_with_owner!(
+      name: 'API Other Invitation Household',
+      owner_account: other_account,
+      owner_person_attributes: {
+        name: 'API Other Invitation Owner',
+        date_of_birth: 30.years.ago.to_date,
+        person_type: :adult,
+        has_capacity: true
+      }
+    )
+    foreign_invitation = other_household.household_invitations.create!(
+      invited_by_membership: other_household.household_memberships.sole,
+      email: 'api.foreign.invitation@example.test',
+      membership_role: :member
+    )
+
+    get api_v1_household_admin_invitations_path(household_id), headers: headers, as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch('data').pluck('id')).not_to include(foreign_invitation.id)
+
+    delete api_v1_household_admin_invitation_path(household_id, foreign_invitation.id), headers: headers, as: :json
+
+    expect(response).to have_http_status(:not_found)
+    expect(foreign_invitation.reload.revoked_at).to be_nil
   end
 
   it 'returns validation errors for invalid invitations and lists revoked timestamps' do
