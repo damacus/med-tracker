@@ -1,20 +1,4 @@
-## 2026-03-17 - Prevent Symbol Exhaustion
-**Vulnerability:** Symbol exhaustion vulnerability caused by using `.to_sym` on user-provided parameter strings, even if validated.
-**Learning:** Ruby symbols are not garbage collected in older versions, and even in newer versions (Ruby 2.2+), creating many dynamic symbols from user input is risky and can lead to DoS. In this codebase, `.to_sym` was used on validated `sort_direction` input.
-**Prevention:** Always use a static Hash mapping (e.g., `{ 'asc' => :asc, 'desc' => :desc }[direction]`) when converting string parameters to symbols for query building or method calls.
-## 2026-03-17 - Unvalidated Data Exposure via `to_unsafe_h`
-**Vulnerability:** Unvalidated Data Exposure bypassing Strong Parameters by using `.to_unsafe_h` on ActionController::Parameters in view components to generate URLs.
-**Learning:** Using `params.slice` followed by `.to_unsafe_h` only filters keys but does not ensure the values are scalar strings. An attacker could pass hashes or arrays via URL query parameters, potentially causing 500 server errors or subtle injection issues when these unvalidated values are rendered into pagination links or forms.
-**Prevention:** Always use explicitly permitted parameters `params.permit(:key)` at the controller level before passing them to views or components, which allows the safe use of `.to_h` instead of `.to_unsafe_h`.
-## 2025-02-27 - Prevent Open Redirect via `return_to` Parameters
-**Vulnerability:** Open redirect vulnerabilities occur when a user-controlled parameter (like `return_to`) is passed directly to `redirect_to`, allowing an attacker to construct URLs that send authenticated users to a malicious site.
-**Learning:** In Rails, `redirect_to` will follow absolute URLs provided in parameters. Checking for presence (`params[:return_to].presence`) does not prevent redirecting to external domains.
-**Prevention:** Always use Rails's built-in `url_from` method (or a wrapper like `safe_redirect_path`) to ensure the provided path is relative to the application and not an external URL. If `url_from` cannot parse it as an internal URL, it will return `nil`, allowing a safe fallback like `|| @resource`.
-## 2026-05-11 - Unvalidated Data Exposure via `to_unsafe_h`
-**Vulnerability:** Unvalidated Data Exposure bypassing Strong Parameters by using `.to_unsafe_h` on ActionController::Parameters when initializing scheduling.
-**Learning:** Using `to_unsafe_h` on `ActionController::Parameters` entirely disables parameter whitelisting for that nested hash, enabling a malicious user to construct arbitrary nested hashes which might trigger mass-assignment, logic bugs, or application crashes downstream when expecting a simple string hash.
-**Prevention:** Instead of using `.to_unsafe_h`, explicitly permit all expected keys (including nested arrays and hashes) using a constant like `SCHEDULE_CONFIG_KEYS`, and then safely call `.permit(*SCHEDULE_CONFIG_KEYS).to_h`.
-
-**Vulnerability:** DOM-based Stored XSS in `app/javascript/controllers/schedule_form_controller.js`. User-controlled dosage properties were interpolated directly into a string mapped to an HTML payload which was then directly assigned to `element.innerHTML`, executing malicious inputs.
-**Learning:** Raw Javascript template literals injected into `.innerHTML` are dangerous. Even if the expected value is alphanumeric (like unit amounts), it must be treated as untrusted and safely escaped. When writing custom escape methods, ensure quotes (`"` and `'`) are covered so attribute injection attacks are also prevented.
-**Prevention:** Use a robust `escapeHtml` function that replaces `&, <, >, ", '` with their entity equivalents. Apply escaping strictly to the output context (HTML strings) while using raw values for logical internal state comparisons to avoid breaking app functionality.
+## 2024-05-18 - Fix DOM XSS via innerHTML in Stimulus controllers
+**Vulnerability:** Stimulus controllers (`offline_shell_controller.js`, `medication_search_controller.js`, `global_search_controller.js`) were using `document.createElement('div')`, `document.createTextNode(value)`, and returning `div.innerHTML` to escape HTML for display.
+**Learning:** While this pattern successfully escapes `<`, `>`, and `&`, it completely fails to escape single (`'`) and double (`"`) quotes. If this "escaped" string is subsequently placed into an HTML attribute within a template literal (e.g. `<a href="${escapeHtml(url)}">`), an attacker could easily inject a quote and break out of the attribute, creating a DOM-based XSS vulnerability.
+**Prevention:** Always use regex-based string replacement (or a dedicated sanitization library) that explicitly targets and escapes quotes (`"` and `'`) to HTML entities (`&quot;` and `&#039;`) in addition to `<, >, &` when writing custom HTML escaping functions, especially when the output will be used within template literals that generate attributes.
