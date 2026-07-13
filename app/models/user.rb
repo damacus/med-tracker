@@ -36,10 +36,23 @@ class User < ApplicationRecord
   delegate :name, :date_of_birth, :age, to: :person, allow_nil: true
 
   def deactivate!
-    update!(active: false)
+    transaction do
+      update!(active: false)
+      revoke_api_credentials!
+    end
   end
 
   def activate!
     update!(active: true)
+  end
+
+  private
+
+  def revoke_api_credentials!
+    account = person&.account
+    return unless account
+
+    account.api_sessions.active.find_each(&:revoke!)
+    account.api_app_tokens.active.find_each(&:revoke!)
   end
 end
