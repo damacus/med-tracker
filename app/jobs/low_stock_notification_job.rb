@@ -4,7 +4,7 @@ class LowStockNotificationJob < ApplicationJob
   queue_as :default
 
   def perform(household_id, medication_id, take_id)
-    household = Household.find_by(id: household_id)
+    household = Household.operational.find_by(id: household_id)
     return unless household
 
     TenantContext.with(account: nil, household: household) do

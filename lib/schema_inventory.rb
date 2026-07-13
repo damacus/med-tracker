@@ -25,6 +25,8 @@ class SchemaInventory
     medication_review_prompts
     security_audit_events
     active_storage_attachments
+    household_exports
+    household_retention_holds
   ].freeze
 
   GLOBAL_TABLES = %w[
@@ -54,6 +56,7 @@ class SchemaInventory
     audit_signing_keys
     barcode_catalog_entries
     households
+    household_purge_runs
     medication_review_evidence_records
     medication_review_evidence_refresh_runs
     native_device_tokens

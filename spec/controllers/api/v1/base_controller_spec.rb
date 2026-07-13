@@ -38,7 +38,7 @@ RSpec.describe Api::V1::BaseController do # rubocop:disable RSpec/MultipleMemoiz
   let(:account) { instance_double(Account, present?: true, verified?: true) }
   let(:user) { instance_double(User, id: 1, present?: true, active?: true) }
   let(:person) { instance_double(Person, user: user) }
-  let(:household) { instance_double(Household, id: 1) }
+  let(:household) { instance_double(Household, id: 1, operational?: true) }
   let(:membership) do
     instance_double(
       HouseholdMembership,

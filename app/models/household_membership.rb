@@ -34,10 +34,15 @@ class HouseholdMembership < ApplicationRecord
   end
 
   def removing_active_owner?
-    persisted? && role_in_database == 'owner' && status_in_database == 'active' &&
-      (will_save_change_to_role? || will_save_change_to_status?) &&
-      (role != 'owner' || status != 'active')
+    active_owner_in_database? && owner_access_changing? && !active_owner?
   end
+
+  def active_owner_in_database?
+    persisted? && household.operational? && role_in_database == 'owner' && status_in_database == 'active'
+  end
+
+  def owner_access_changing? = will_save_change_to_role? || will_save_change_to_status?
+  def active_owner? = role == 'owner' && status == 'active'
 
   def last_active_owner_cannot_be_removed
     return if household.household_memberships.owner.active.where.not(id: id).exists?

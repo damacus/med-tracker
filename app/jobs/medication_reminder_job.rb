@@ -11,7 +11,7 @@ class MedicationReminderJob < ApplicationJob
   }.freeze
 
   def perform(household_id, person_id, period, scheduled_time = nil)
-    household = Household.find_by(id: household_id)
+    household = Household.operational.find_by(id: household_id)
     return unless household
 
     TenantContext.with(account: nil, household: household) do

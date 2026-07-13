@@ -86,4 +86,37 @@ RSpec.describe SchemaInventory do
 
     expect(rls_tables).to match_array(described_class.household_owned_tables)
   end
+
+  context 'with hosted household lifecycle operations' do
+    let(:taskfile) { Rails.root.join('Taskfile.yml').read }
+    let(:runbook) { Rails.root.join('docs/operations/hosted-private-beta-runbook.md').read }
+
+    it 'exposes exact task-wrapper commands and required operator inputs' do
+      expect(taskfile).to include(
+        'household-lifecycle:export:',
+        'household-lifecycle:hold:',
+        'household-lifecycle:release-hold:',
+        'household-lifecycle:offboard:',
+        'household-lifecycle:purge:'
+      )
+      expect(runbook).to include(
+        'task household-lifecycle:export HOUSEHOLD_ID=',
+        'task household-lifecycle:hold HOUSEHOLD_ID=',
+        'task household-lifecycle:release-hold HOLD_ID=',
+        'task household-lifecycle:offboard HOUSEHOLD_ID=',
+        'task household-lifecycle:purge HOUSEHOLD_ID='
+      )
+    end
+
+    it 'documents safe retries, hold refusal, configurable retention, and sanitized evidence' do
+      expect(runbook).to include(
+        'HOUSEHOLD_EXPORT_RETENTION_DAYS',
+        'safe to retry',
+        'active retention hold',
+        'failure_code',
+        'last_completed_table',
+        'Never retain free-text reasons, attachment contents, credentials, or health data in command output.'
+      )
+    end
+  end
 end

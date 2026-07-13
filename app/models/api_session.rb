@@ -96,7 +96,8 @@ class ApiSession < ApplicationRecord
   def active_for_membership?
     return false if household_membership.blank?
 
-    household_membership.active? && permissions_version == household_membership.permissions_version
+    household_membership.active? && household_membership.household.operational? &&
+      permissions_version == household_membership.permissions_version
   end
 
   def rotate_tokens!(audit_context: nil)

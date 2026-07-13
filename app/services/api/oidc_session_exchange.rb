@@ -92,9 +92,18 @@ module Api
     end
 
     def membership_for(account)
-      scope = account.household_memberships.active.includes(:household).order(:id)
+      scope = operational_memberships(account)
       return scope.find_by(household_id: params[:household_id]) if params[:household_id].present?
 
+      sole_membership(scope)
+    end
+
+    def operational_memberships(account)
+      account.household_memberships.active.joins(:household).merge(Household.operational)
+             .includes(:household).order(:id)
+    end
+
+    def sole_membership(scope)
       memberships = scope.limit(2).to_a
       memberships.first if memberships.one?
     end

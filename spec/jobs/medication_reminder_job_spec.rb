@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe MedicationReminderJob do
+  include ActiveJob::TestHelper
+
   fixtures :accounts, :people, :locations, :medications, :dosages
 
   let(:person) { people(:john) }
@@ -185,6 +187,42 @@ RSpec.describe MedicationReminderJob do
     described_class.perform_now(household.id, person.id, :scheduled, '07:15')
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
+  end
+
+  context 'when the household lifecycle is unavailable' do
+    around do |example|
+      original_queue_adapter = ActiveJob::Base.queue_adapter
+      ActiveJob::Base.queue_adapter = :test
+      example.run
+    ensure
+      clear_enqueued_jobs
+      ActiveJob::Base.queue_adapter = original_queue_adapter
+    end
+
+    before do
+      create(:schedule, household: household, person: person, medication: medications(:vitamin_d),
+                        dosage: dosages(:vitamin_d_daily), schedule_type: :daily,
+                        schedule_config: { 'times' => ['07:15'] })
+    end
+
+    it 'does not deliver a queued reminder' do
+      allow(TenantContext).to receive(:with).and_call_original
+
+      %i[held offboarded purged].each do |state|
+        household.update!(lifecycle_state: state)
+        described_class.perform_now(household.id, person.id, :scheduled, '07:15')
+      end
+
+      expect(TenantContext).not_to have_received(:with)
+      expect(PushNotificationService).not_to have_received(:send_to_account)
+    end
+
+    it 'does not enqueue new reminders' do
+      %i[held offboarded purged].each do |state|
+        household.update!(lifecycle_state: state)
+        expect { ScheduleDailyRemindersJob.perform_now }.not_to have_enqueued_job(described_class)
+      end
+    end
   end
 
   def create_vitamin_schedule(time:)

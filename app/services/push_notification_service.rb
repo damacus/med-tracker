@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 class PushNotificationService
-  def self.send_to_account(account, title:, body:, path: '/')
+  def self.send_to_account(account, title:, body:, path: '/', household: Current.household)
+    return if household && !household.operational?
+
     send_web_push_to_account(account, title: title, body: body, path: path)
     send_native_push_to_account(account, title: title, body: body, path: path)
   end

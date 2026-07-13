@@ -6,7 +6,7 @@ class MissedDoseNotificationJob < ApplicationJob
   GRACE_PERIOD = 30.minutes
 
   def perform(household_id, person_id, scheduled_on, scheduled_time)
-    household = Household.find_by(id: household_id)
+    household = Household.operational.find_by(id: household_id)
     return unless household
 
     TenantContext.with(account: nil, household: household) do
