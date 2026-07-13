@@ -34,11 +34,18 @@ module Households
           export.with_lock do
             return export if export.expired?
 
-            destroy_artifact!(export)
-            export.update!(status: :expired, expired_at: Time.current)
-            record_event(export, actor_account, 'expired')
-            export
+            expire_export!(export, actor_account)
           end
+        end
+      end
+
+      def expire_due!(export:)
+        export.with_lock do
+          return false unless (export.ready? || export.downloaded?) && export.expires_at <= Time.current
+          return false if HouseholdRetentionHold.active.exists?(household: export.household)
+
+          expire_export!(export, nil)
+          true
         end
       end
 
@@ -76,13 +83,23 @@ module Households
       end
 
       def authorize_export_actor!(export, actor_account)
-        return if export.requested_by_account_id == actor_account&.id
-
-        platform_admin = actor_account&.platform_admin
-        return if platform_admin&.active? &&
-                  platform_admin.support_access_sessions.active.exists?(household: export.household)
+        authorized = TenantContext.with(account: actor_account, household: export.household) do
+          authorized_household_manager?(export.household, actor_account) ||
+            authorized_platform_operator?(export.household, actor_account)
+        end
+        return if authorized
 
         raise Pundit::NotAuthorizedError, 'Export access is not authorized'
+      end
+
+      def authorized_household_manager?(household, actor_account)
+        household.operational? && household.household_memberships.active
+                                            .where(account: actor_account, role: %i[owner administrator]).exists?
+      end
+
+      def authorized_platform_operator?(household, actor_account)
+        platform_admin = actor_account&.platform_admin
+        platform_admin&.active? && platform_admin.support_access_sessions.active.exists?(household: household)
       end
 
       def request_export(household, actor_account)
@@ -110,7 +127,7 @@ module Households
           household: export.household,
           membership: membership,
           passphrase: nil
-        ).payload
+        ).household_payload
       end
 
       def export_manifest(export, payload, attachments)
@@ -195,6 +212,13 @@ module Households
         blob = attachment.blob
         attachment.destroy!
         blob.destroy! unless ActiveStorage::Attachment.exists?(blob_id: blob.id)
+      end
+
+      def expire_export!(export, actor_account)
+        destroy_artifact!(export)
+        export.update!(status: :expired, expired_at: Time.current)
+        record_event(export, actor_account, 'expired')
+        export
       end
 
       def record_event(export, actor_account, action, metadata = {})

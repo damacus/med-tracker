@@ -103,11 +103,14 @@ tasks:
     desc: Place an audited household retention hold
     requires:
       vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID, REASON, REVIEW_ON]
+    env:
+      REASON: '{{ .REASON }}'
     cmds:
       - task: internal:run
         vars:
           ENVIRONMENT: prod
-          COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} REASON="{{ .REASON }}" REVIEW_ON={{ .REVIEW_ON }} rails household_lifecycle:hold'
+          DOCKER_RUN_ARGS: '-e REASON'
+          COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} REVIEW_ON={{ .REVIEW_ON }} rails household_lifecycle:hold'
 
   household-lifecycle:release-hold:
     desc: Release an audited household retention hold

@@ -225,5 +225,22 @@ RSpec.describe Households::RetentionHoldManager do
       expect(empty_household.reload).to be_offboarded
       expect(SecurityAuditEvent.where(household: empty_household, event_type: 'household.offboarded').count).to eq(1)
     end
+
+    it 'preserves account-scoped credentials when an account retains another operational household', :aggregate_failures do
+      shared_account = account('shared-offboard-member@example.test')
+      target_membership = owner_membership(household, shared_account)
+      other_household = create(:household)
+      other_membership = owner_membership(other_household, shared_account)
+      api_session = ApiSession.issue_for(account: shared_account, household_membership: target_membership).first
+      devices = create_devices(shared_account)
+
+      described_class.call(household: household, actor_account: operator)
+
+      expect(api_session.reload.revoked_at).to be_present
+      expect(other_membership.reload).to be_active
+      expect(PushSubscription.where(id: devices.fetch(:push_subscription).id)).to exist
+      expect(NativeDeviceToken.where(id: devices.fetch(:device_token).id)).to exist
+      expect(AccountActiveSessionKey.where(account_id: shared_account.id)).to exist
+    end
   end
 end

@@ -30,6 +30,28 @@ RSpec.describe Households::HostedExport do
     verify_export_zip(export, person)
   end
 
+  it 'exports every portable household collection including health-event medication joins' do
+    person = attach_avatar(household, 'complete-export-avatar-bytes', 'complete-export-avatar.png')
+    location = create(:location, household: household)
+    person.location_memberships.create!(household: household, location: location)
+    medication = create(:medication, household: household, location: location)
+    event = HealthEvent.create!(household: household, person: person, event_kind: :suspected_side_effect,
+                                title: 'Hosted export reaction', started_on: Date.current)
+    HealthEventMedication.create!(household: household, health_event: event, medication: medication)
+
+    export = described_class.generate!(household:, membership:, actor_account: operator)
+    payload = JSON.parse(export_zip_contents(export, person).fetch(:portable))
+
+    expect(payload.fetch('scope')).to eq('household')
+    expect(payload.fetch('records').keys.map(&:to_sym))
+      .to match_array(PortableData::ExportRecordSerializer::COLLECTIONS.keys)
+    expect(payload.dig('records', 'health_events').sole).to include(
+      'portable_id' => event.portable_id,
+      'medication_portable_ids' => [medication.portable_id]
+    )
+    expect(payload.dig('records', 'people').sole.fetch('location_portable_ids')).to include(location.portable_id)
+  end
+
   def attach_avatar(target_household, bytes, filename)
     person = create(:person, household: target_household)
     person.avatar.attach(io: StringIO.new(bytes), filename: filename, content_type: 'image/png')
@@ -128,6 +150,20 @@ RSpec.describe Households::HostedExport do
 
     expect do
       described_class.generate!(household:, membership: other_membership, actor_account: operator)
+    end.to raise_error(Pundit::NotAuthorizedError)
+  end
+
+  it 'rejects download and expiry by a requester whose household access was revoked during offboarding' do
+    requester = account('former-hosted-export-owner@example.test')
+    requester_membership = owner_membership(household, requester)
+    export = described_class.generate!(household:, membership: requester_membership, actor_account: requester)
+    Households::Offboarder.call(household: household, actor_account: operator)
+
+    expect do
+      described_class.download!(export: export, actor_account: requester)
+    end.to raise_error(Pundit::NotAuthorizedError)
+    expect do
+      described_class.expire!(export: export, actor_account: requester)
     end.to raise_error(Pundit::NotAuthorizedError)
   end
 end

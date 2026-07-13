@@ -32,7 +32,7 @@ tasks:
     cmds:
       - 'MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} ./scripts/with_compose_lock.rb
         "{{ .COMPOSE_PROJECT }}-{{ .ENVIRONMENT }}" docker compose -p {{ .COMPOSE_PROJECT }}
-        --profile {{ .ENVIRONMENT }} run --rm {{ .WEB_SERVICE }} {{ .COMMAND }}'
+        --profile {{ .ENVIRONMENT }} run --rm {{ .DOCKER_RUN_ARGS | default "" }} {{ .WEB_SERVICE }} {{ .COMMAND }}'
 
   # Build Docker images for specified environment
   # Required vars: ENVIRONMENT

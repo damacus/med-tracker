@@ -87,6 +87,14 @@ RSpec.describe SchemaInventory do
     expect(rls_tables).to match_array(described_class.household_owned_tables)
   end
 
+  it 'keeps immutable audit tables tenant-classified while excluding them from destructive purge' do
+    expect(described_class.immutable_audit_tables).to contain_exactly('security_audit_events', 'versions')
+    expect(described_class.household_owned_tables).to include('security_audit_events')
+    expect(described_class.global_tables).to include('versions')
+    expect(described_class.purgeable_household_owned_tables)
+      .to match_array(described_class.household_owned_tables - described_class.immutable_audit_tables)
+  end
+
   context 'with hosted household lifecycle operations' do
     let(:taskfile) { Rails.root.join('Taskfile.yml').read }
     let(:runbook) { Rails.root.join('docs/operations/hosted-private-beta-runbook.md').read }
@@ -117,6 +125,14 @@ RSpec.describe SchemaInventory do
         'last_completed_table',
         'Never retain free-text reasons, attachment contents, credentials, or health data in command output.'
       )
+    end
+
+    it 'keeps retention-hold reasons out of the rendered child command' do
+      hold_task = taskfile.match(/  household-lifecycle:hold:\n(?<body>.*?)(?=\n  \S)/m)[:body]
+      command = hold_task.match(/COMMAND: '(?<command>.*)'/)[:command]
+
+      expect(command).not_to include('REASON', '.REASON')
+      expect(hold_task).to include("DOCKER_RUN_ARGS: '-e REASON'", "REASON: '{{ .REASON }}'")
     end
   end
 end

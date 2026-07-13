@@ -34,6 +34,50 @@ RSpec.describe Households::Purger do
     end.to raise_error(Pundit::NotAuthorizedError)
   end
 
+  it 'retains immutable audit history and appends a non-PHI purge tombstone under the runtime role',
+     :aggregate_failures do
+    member_account = account('hosted-purge-audited-member@example.test')
+    actor_membership = household.household_memberships.create!(account: member_account, role: :member, status: :active)
+    retained_event = Audit::Event.record!(
+      household: household,
+      actor_account: member_account,
+      actor_membership: actor_membership,
+      event_type: 'purge.runtime.seed',
+      metadata: { outcome: 'success' }
+    )
+    retained_version = PaperTrail::Version.create!(
+      actor_membership_id: actor_membership.id,
+      audit_context: {},
+      event: 'update',
+      household_id: household.id,
+      item_id: 123_456,
+      item_type: 'Person',
+      object: '{}'
+    )
+
+    with_runtime_role do
+      expect_direct_audit_delete_denied
+      expect_direct_version_update_denied(retained_version)
+
+      run = described_class.call(household: household, actor_account: operator)
+
+      expect(run).to be_completed
+      expect(household.reload).to be_lifecycle_purged
+      set_runtime_household
+      expect(SecurityAuditEvent.where(id: retained_event.id, household: household)).to exist
+      expect(SecurityAuditEvent.find(retained_event.id).actor_membership_id).to eq(actor_membership.id)
+      expect(PaperTrail::Version.find(retained_version.id).actor_membership_id).to eq(actor_membership.id)
+      expect(HouseholdMembership.where(id: actor_membership.id)).not_to exist
+      expect(purge_tombstone.metadata).to eq(
+        'attempts' => 1,
+        'household_id' => household.id,
+        'last_completed_table' => 'people',
+        'outcome' => 'success',
+        'purge_run_id' => run.id
+      )
+    end
+  end
+
   it 'resumes after a partial failure and deletes every tenant inventory row and owned attachment only',
      :aggregate_failures do
     records = purge_records
@@ -89,10 +133,13 @@ RSpec.describe Households::Purger do
   end
 
   def verify_completed_purge(failed_run, records)
+    expect(described_class.call(household: household, actor_account: operator).id).to eq(failed_run.id)
     verify_completed_state(failed_run)
-    verify_inventory_empty
+    verify_purgeable_inventory_empty
     verify_storage(records)
     verify_uncached_attachment_check(records.fetch(:purged_blob))
+    expect(SecurityAuditEvent.where(household: household)).to exist
+    expect(SecurityAuditEvent.where(household: household, event_type: 'household.purge.completed').count).to eq(1)
     expect(ledger_events('household.purge.completed')).to exist
   end
 
@@ -105,8 +152,8 @@ RSpec.describe Households::Purger do
     expect(ActiveStorage::Attachment).to have_received(:exists?).with(blob_id: blob.id).at_least(:once)
   end
 
-  def verify_inventory_empty
-    SchemaInventory.household_owned_tables.each do |table_name|
+  def verify_purgeable_inventory_empty
+    SchemaInventory.purgeable_household_owned_tables.each do |table_name|
       expect(ActiveRecord::Base.connection.select_value(<<~SQL.squish)).to eq(0)
         SELECT COUNT(*) FROM #{ActiveRecord::Base.connection.quote_table_name(table_name)}
         WHERE household_id = #{household.id}
@@ -122,5 +169,43 @@ RSpec.describe Households::Purger do
 
   def ledger_events(event_type)
     AuditLedgerEntry.where(household: household).where("envelope ->> 'event_type' = ?", event_type)
+  end
+
+  def purge_tombstone
+    SecurityAuditEvent.where(household: household, event_type: 'household.purge.completed').sole
+  end
+
+  def with_runtime_role
+    ActiveRecord::Base.connection.transaction(requires_new: true) do
+      ActiveRecord::Base.connection.execute('SET LOCAL ROLE med_tracker_app')
+      yield
+      raise ActiveRecord::Rollback
+    end
+  end
+
+  def expect_direct_audit_delete_denied
+    expect do
+      ActiveRecord::Base.connection.transaction(requires_new: true) do
+        ActiveRecord::Base.connection.exec_delete(
+          "DELETE FROM security_audit_events WHERE household_id = #{household.id}"
+        )
+      end
+    end.to raise_error(ActiveRecord::StatementInvalid)
+  end
+
+  def expect_direct_version_update_denied(version)
+    expect do
+      ActiveRecord::Base.connection.transaction(requires_new: true) do
+        ActiveRecord::Base.connection.exec_update(
+          "UPDATE versions SET actor_membership_id = NULL WHERE id = #{version.id}"
+        )
+      end
+    end.to raise_error(ActiveRecord::StatementInvalid)
+  end
+
+  def set_runtime_household
+    ActiveRecord::Base.connection.execute(
+      "SELECT set_config('med_tracker.current_household_id', '#{household.id}', true)"
+    )
   end
 end

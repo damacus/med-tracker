@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_13_190200) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_13_210000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -1248,12 +1248,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_190200) do
   add_foreign_key "schedules", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_schedules_person_id_household"
   add_foreign_key "schedules", "people", deferrable: :deferred
   add_foreign_key "security_audit_events", "accounts", column: "actor_account_id"
-  add_foreign_key "security_audit_events", "household_memberships", column: "actor_membership_id"
   add_foreign_key "security_audit_events", "households"
   add_foreign_key "support_access_sessions", "households"
   add_foreign_key "support_access_sessions", "platform_admins"
   add_foreign_key "users", "people", deferrable: :deferred
-  add_foreign_key "versions", "household_memberships", column: "actor_membership_id"
   add_foreign_key "versions", "households"
 
   execute <<~SQL
