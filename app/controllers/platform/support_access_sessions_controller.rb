@@ -24,8 +24,13 @@ module Platform
       support_session = current_platform_admin.support_access_sessions.find(params.expect(:id))
       authorize support_session
       ActiveRecord::Base.transaction do
-        support_session.update!(ended_at: Time.current)
-        record_support_access_event(support_session, 'support_access_session.ended')
+        support_session.lock!
+        if support_session.expires_at <= Time.current
+          SupportAccessSessions::ExpiryProcessor.call(support_session: support_session)
+        elsif support_session.ended_at.nil? && support_session.expired_at.nil?
+          support_session.update!(ended_at: Time.current)
+          record_support_access_event(support_session, 'support_access_session.ended')
+        end
       end
 
       redirect_to platform_settings_path, notice: t('platform.support_access_sessions.ended')

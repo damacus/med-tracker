@@ -90,6 +90,13 @@ RSpec.describe 'Taskfiles' do
     )
   end
 
+  it 'runs support expiry processing with the forced-RLS application role' do
+    task = root_taskfile.dig('tasks', 'support-access:expire')
+    command = task.dig('cmds', 0, 'vars', 'COMMAND')
+
+    expect(command).to eq('env DATABASE_ROLE=med_tracker_app rails support_access:expire')
+  end
+
   def dev_taskfile
     YAML.safe_load(Rails.root.join('Taskfiles/dev.yml').read, aliases: true, permitted_classes: [Symbol])
   end

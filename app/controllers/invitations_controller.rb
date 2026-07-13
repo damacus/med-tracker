@@ -7,15 +7,16 @@ class InvitationsController < ApplicationController
 
   def accept
     token_value = params.expect(:token).to_s
-    digest = HouseholdInvitation.digest(token_value)
-    @invitation = HouseholdInvitation.pending.find_by(token_digest: digest)
+    @invitation = HouseholdInvitations::TokenResolver.call(token_value)
 
     unless @invitation
       render plain: 'This invitation link is invalid or has expired.', status: :not_found
       return
     end
 
-    view = Components::Invitations::AcceptView.new(invitation: @invitation, token: token_value)
-    render Components::Layouts::AuthLayout.new(title: 'Accept Invitation - MedTracker', component: view)
+    TenantContext.with(account: nil, household: @invitation.household, request_id: request.request_id) do
+      view = Components::Invitations::AcceptView.new(invitation: @invitation, token: token_value)
+      render Components::Layouts::AuthLayout.new(title: 'Accept Invitation - MedTracker', component: view)
+    end
   end
 end

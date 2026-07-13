@@ -11,10 +11,14 @@ class SupportAccessSession < ApplicationRecord
 
   before_validation :set_time_window
 
-  scope :active, -> { where(ended_at: nil).where(starts_at: ..Time.current, expires_at: Time.current..) }
+  scope :active, lambda {
+    where(ended_at: nil, expired_at: nil)
+      .where(starts_at: ..Time.current)
+      .where('expires_at > ?', Time.current)
+  }
 
   def active?
-    ended_at.nil? && starts_at <= Time.current && expires_at > Time.current
+    ended_at.nil? && expired_at.nil? && starts_at <= Time.current && expires_at > Time.current
   end
 
   private

@@ -46,6 +46,17 @@ RSpec.describe SupportAccessSession do
     expect(session).not_to be_active
   end
 
+  it 'excludes support sessions at the exact expiry boundary from the active scope' do
+    timestamp = Time.current.change(usec: 0)
+    session = build_support_access_session(starts_at: 30.minutes.ago, expires_at: timestamp)
+    session.save!
+
+    travel_to(timestamp) do
+      expect(described_class.active).not_to include(session)
+      expect(session).not_to be_active
+    end
+  end
+
   it 'defaults the support access time window before validation' do
     session = described_class.new(
       platform_admin: described_class_platform_admin,
@@ -60,7 +71,7 @@ RSpec.describe SupportAccessSession do
   end
 
   it 'requires expiry to be after the start time' do
-    timestamp = Time.current
+    timestamp = Time.current.change(usec: 0)
     session = build_support_access_session(starts_at: timestamp, expires_at: timestamp)
 
     expect(session).not_to be_valid

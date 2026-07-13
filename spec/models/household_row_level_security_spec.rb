@@ -63,6 +63,41 @@ RSpec.describe Household do
     described_class.create!(name: "RLS #{label} Household", slug: "rls-#{label.parameterize}")
   end
 
+  def invitation_membership(label)
+    _, membership = household_membership_for(
+      email: "rls-#{label.parameterize}@example.test",
+      household_name: "RLS #{label} Household",
+      person_name: "RLS #{label} Owner"
+    )
+    membership
+  end
+
+  def rls_invitation(membership, label)
+    HouseholdInvitation.create!(
+      household: membership.household,
+      invited_by_membership: membership,
+      email: "#{label.parameterize}@example.test",
+      membership_role: :member
+    )
+  end
+
+  def rls_invitation_grant(invitation, membership)
+    invitation.household_invitation_grants.create!(
+      household: membership.household,
+      person: membership.person,
+      access_level: :manage,
+      relationship_type: :self
+    )
+  end
+
+  def write_invitation_token_context(invitation)
+    connection.execute(
+      ActiveRecord::Base.sanitize_sql_array(
+        ['SELECT set_config(?, ?, true)', HouseholdInvitations::TokenResolver::SETTING_NAME, invitation.token_digest]
+      )
+    )
+  end
+
   it 'configures the runtime role without superuser or bypassrls' do
     role = connection.select_one(<<~SQL.squish)
       SELECT rolsuper, rolbypassrls
@@ -169,6 +204,38 @@ RSpec.describe Household do
     with_runtime_role(household: household) do
       expect(Location.where(id: [visible_location.id,
                                  hidden_location.id]).pluck(:id)).to contain_exactly(visible_location.id)
+    end
+  end
+
+  it 'isolates invitations and invitation grants by the current household' do
+    membership = invitation_membership('Invitation')
+    other_membership = invitation_membership('Other Invitation')
+    invitation = rls_invitation(membership, 'Visible Invitation')
+    other_invitation = rls_invitation(other_membership, 'Hidden Invitation')
+    grant = rls_invitation_grant(invitation, membership)
+    other_grant = rls_invitation_grant(other_invitation, other_membership)
+
+    with_runtime_role(household: membership.household) do
+      expect(HouseholdInvitation.where(id: [invitation.id, other_invitation.id]).pluck(:id))
+        .to contain_exactly(invitation.id)
+      expect(HouseholdInvitationGrant.where(id: [grant.id, other_grant.id]).pluck(:id))
+        .to contain_exactly(grant.id)
+    end
+  end
+
+  it 'allows token bootstrap to reveal only the matching pending invitation and no grants' do
+    membership = invitation_membership('Token')
+    other_membership = invitation_membership('Other Token')
+    invitation = rls_invitation(membership, 'Token Visible')
+    other_invitation = rls_invitation(other_membership, 'Token Hidden')
+    grant = rls_invitation_grant(invitation, membership)
+
+    with_runtime_role do
+      write_invitation_token_context(invitation)
+
+      expect(HouseholdInvitation.where(id: [invitation.id, other_invitation.id]).pluck(:id))
+        .to contain_exactly(invitation.id)
+      expect(HouseholdInvitationGrant.where(id: grant.id)).to be_empty
     end
   end
 

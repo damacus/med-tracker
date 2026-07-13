@@ -58,6 +58,11 @@ RSpec.describe SchemaInventory do
     expect(runbook_doc).to include('Export and purge')
     expect(runbook_doc).to include('Restore test')
     expect(runbook_doc).to include('DATABASE_ROLE=med_tracker_app')
+    expect(runbook_doc).to include('task support-access:expire')
+    expect(runbook_doc).to include('support_access_session.expired')
+    expect(runbook_doc).to include('processed_count')
+    expect(runbook_doc).to include('outcome')
+    expect(runbook_doc).not_to include('expiry audit automation remains a hosted hardening gap')
   end
 
   it 'publishes the pre-0.5 database upgrade runbook from the docs home page', :aggregate_failures do

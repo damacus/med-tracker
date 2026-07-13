@@ -25,6 +25,19 @@ RSpec.describe 'Invitations' do
       expect(response).to have_http_status(:not_found)
       expect(response.body).to include('This invitation link is invalid or has expired.')
     end
+
+    it 'renders a pending invitation while connected as the forced-RLS application role' do
+      household, membership = household_bundle(email: 'runtime-view-owner@example.test', name: 'Runtime View')
+      invitation = create(:household_invitation, household: household, invited_by_membership: membership)
+
+      use_runtime_role
+      get accept_invitation_path(token: invitation.token)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('Accept Invitation - MedTracker')
+      expect(ActiveRecord::Base.connection.select_value('SELECT current_user')).to eq('med_tracker_app')
+      expect(invitation_table_forces_rls?).to be(true)
+    end
   end
 
   describe 'POST /create-account with an invitation' do
@@ -61,6 +74,42 @@ RSpec.describe 'Invitations' do
       )
     end
 
+    it 'accepts a granted invitation as the forced-RLS application role without leaking the raw token' do
+      household, membership = household_bundle(email: 'runtime-owner@example.test', name: 'Runtime Acceptance')
+      dependent = create_dependent(household: household, name: 'Runtime Acceptance Child', carer: membership.person)
+      invitation = create_household_invitation_with_grant(
+        household: household,
+        membership: membership,
+        email: 'runtime.invitee@example.test',
+        dependent: dependent,
+        grant: { access_level: :manage, relationship_type: :parent }
+      )
+      raw_token = invitation.token
+
+      use_runtime_role
+      expect do
+        post create_account_path,
+             params: {
+               invitation_token: raw_token,
+               name: 'Runtime Invitee',
+               date_of_birth: '1985-05-15',
+               email: 'attacker.supplied@example.test',
+               password: 'SecureP@ssword123!',
+               'password-confirm': 'SecureP@ssword123!'
+             }
+      end.to change(Account, :count).by(1)
+
+      account = Account.find_by!(email: 'runtime.invitee@example.test')
+      set_runtime_context(account: account, household: household)
+      accepted_membership = household.household_memberships.find_by!(account: account)
+      expect(accepted_membership.person_access_grants.find_by!(person: dependent).access_level).to eq('manage')
+      expect(Account.exists?(email: 'attacker.supplied@example.test')).to be(false)
+      expect(invitation.reload.accepted_at).to be_present
+      expect(SecurityAuditEvent.where(household: household).pluck(:metadata).to_json).not_to include(raw_token)
+      expect(ActiveRecord::Base.connection.select_value('SELECT current_user')).to eq('med_tracker_app')
+      expect(invitation_table_forces_rls?).to be(true)
+    end
+
     it 'rejects accepted invitation tokens without creating another account' do
       household, membership = household_bundle(email: 'accepted-owner@example.test', name: 'Accepted Invitation')
       invitation = create(
@@ -85,6 +134,32 @@ RSpec.describe 'Invitations' do
 
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include('There was an error creating your account')
+    end
+
+    it 'rejects token reuse as the forced-RLS application role' do
+      household, membership = household_bundle(email: 'runtime-reuse-owner@example.test', name: 'Runtime Reuse')
+      invitation = create(
+        :household_invitation,
+        household: household,
+        invited_by_membership: membership,
+        email: 'runtime.reuse@example.test',
+        accepted_at: Time.current
+      )
+
+      use_runtime_role
+      expect do
+        post create_account_path,
+             params: {
+               invitation_token: invitation.token,
+               name: 'Runtime Reuse',
+               date_of_birth: '1985-05-15',
+               email: invitation.email,
+               password: 'SecureP@ssword123!',
+               'password-confirm': 'SecureP@ssword123!'
+             }
+      end.not_to change(Account, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
     end
 
     it 'rejects expired invitation tokens without creating an account' do
@@ -259,5 +334,23 @@ RSpec.describe 'Invitations' do
     dependent.carer_relationships.build(carer: carer, relationship_type: :parent)
     dependent.save!
     dependent
+  end
+
+  def use_runtime_role
+    ActiveRecord::Base.connection.execute('SET LOCAL ROLE med_tracker_app')
+  end
+
+  def set_runtime_context(account:, household:)
+    connection = ActiveRecord::Base.connection
+    connection.execute("SELECT set_config('med_tracker.current_account_id', '#{account.id}', true)")
+    connection.execute("SELECT set_config('med_tracker.current_household_id', '#{household.id}', true)")
+  end
+
+  def invitation_table_forces_rls?
+    ActiveRecord::Base.connection.select_value(<<~SQL.squish)
+      SELECT relforcerowsecurity
+      FROM pg_class
+      WHERE oid = 'household_invitations'::regclass
+    SQL
   end
 end
