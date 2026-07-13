@@ -32,7 +32,8 @@ module AiMedication
     end
 
     def source_valid?(source)
-      source['url'].present? && source['title'].present? && allowlist.allowed?(source['url'])
+      url = source['url']
+      url.present? && source['title'].present? && allowlist.allowed?(url)
     end
 
     def valid_dose?(dose)
@@ -45,11 +46,13 @@ module AiMedication
     end
 
     def dose_evidence_valid?(evidence)
-      evidence.is_a?(Hash) &&
-        evidence['url'].present? &&
+      return false unless evidence.is_a?(Hash)
+
+      url = evidence['url']
+      url.present? &&
         evidence['title'].present? &&
         evidence['text'].present? &&
-        allowlist.allowed?(evidence['url'])
+        allowlist.allowed?(url)
     end
 
     def positive_number?(value)
