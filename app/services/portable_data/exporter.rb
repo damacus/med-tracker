@@ -60,9 +60,9 @@ module PortableData
     def records_payload(include_health_events:)
       records = {
         people: people,
-        locations: locations,
-        medications: medications,
-        dosage_options: dosage_options,
+        locations: locations(include_health_events:),
+        medications: medications(include_health_events:),
+        dosage_options: dosage_options(include_health_events:),
         schedules: schedules,
         person_medications: person_medications,
         medication_takes: medication_takes,
@@ -99,36 +99,48 @@ module PortableData
       @person_id_values ||= people.pluck(:id)
     end
 
-    def location_id_values
-      @location_id_values ||= begin
+    def location_id_values(include_health_events:)
+      @location_id_values ||= {}
+      @location_id_values[include_health_events] ||= begin
         ids = LocationMembership.where(household: household, person_id: person_id_values).pluck(:location_id)
-        ids.concat(medications.pluck(:location_id))
+        ids.concat(medications(include_health_events:).pluck(:location_id))
         ids.concat(medication_takes.pluck(:taken_from_location_id))
         ids.compact.uniq
       end
     end
 
-    def medication_id_values
-      @medication_id_values ||= begin
+    def medication_id_values(include_health_events:)
+      @medication_id_values ||= {}
+      @medication_id_values[include_health_events] ||= begin
         ids = schedules.pluck(:medication_id)
         ids.concat(person_medications.pluck(:medication_id))
-        ids.concat(health_events.joins(:health_event_medications).pluck('health_event_medications.medication_id'))
+        if include_health_events
+          ids.concat(health_events.joins(:health_event_medications).pluck('health_event_medications.medication_id'))
+        end
         ids.compact.uniq
       end
     end
 
-    def locations
-      @locations ||= household.locations.where(id: location_id_values).order(:id)
+    def locations(include_health_events:)
+      @locations ||= {}
+      @locations[include_health_events] ||=
+        household.locations.where(id: location_id_values(include_health_events:)).order(:id)
     end
 
-    def medications
-      @medications ||= household.medications.where(id: medication_id_values).includes(:location).order(:id)
+    def medications(include_health_events:)
+      @medications ||= {}
+      @medications[include_health_events] ||=
+        household.medications.where(id: medication_id_values(include_health_events:))
+                 .includes(:location)
+                 .order(:id)
     end
 
-    def dosage_options
-      @dosage_options ||= MedicationDosageOption.where(household: household, medication_id: medication_id_values)
-                                                .includes(:medication)
-                                                .order(:id)
+    def dosage_options(include_health_events:)
+      @dosage_options ||= {}
+      @dosage_options[include_health_events] ||= MedicationDosageOption.where(
+        household: household,
+        medication_id: medication_id_values(include_health_events:)
+      ).includes(:medication).order(:id)
     end
 
     def schedules
