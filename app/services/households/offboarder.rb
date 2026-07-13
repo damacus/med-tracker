@@ -63,9 +63,15 @@ module Households
       end
 
       def destroy_device_credentials!(account_ids)
-        PushSubscription.where(account_id: account_ids).destroy_all
-        NativeDeviceToken.where(account_id: account_ids).destroy_all
-        AccountActiveSessionKey.where(account_id: account_ids).destroy_all
+        removable_account_ids = account_ids - operational_account_ids(account_ids)
+        PushSubscription.where(account_id: removable_account_ids).destroy_all
+        NativeDeviceToken.where(account_id: removable_account_ids).destroy_all
+        AccountActiveSessionKey.where(account_id: removable_account_ids).destroy_all
+      end
+
+      def operational_account_ids(account_ids)
+        HouseholdMembership.active.joins(:household).merge(Household.operational)
+                           .where(account_id: account_ids).distinct.pluck(:account_id)
       end
 
       def record_event(household, actor_account)

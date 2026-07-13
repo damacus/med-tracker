@@ -43,14 +43,18 @@ module PortableData
       export_payload(include_health_events: true)
     end
 
+    def household_payload
+      export_payload(include_health_events: true, scope: 'household')
+    end
+
     private
 
     attr_reader :household, :membership, :passphrase, :person_ids, :request
 
-    def export_payload(include_health_events: false)
+    def export_payload(include_health_events: false, scope: 'single_person')
       {
         format: FORMAT,
-        scope: 'single_person',
+        scope: scope,
         exported_at: Time.current.iso8601,
         source_instance_id: source_instance_id,
         records: records_payload(include_health_events: include_health_events)

@@ -76,7 +76,7 @@ module Households
         prepare_purge!(household, actor_account)
         purge_dependencies!(run, household, actor_account, after_table)
         purge_inventory!(run, household, actor_account, after_table)
-        complete_run!(run, household, actor_account, after_table)
+        complete_run!(run, household, actor_account)
       rescue StandardError => e
         run.reload.update!(status: :failed, failure_code: e.class.name, failed_at: Time.current)
         raise
@@ -116,14 +116,14 @@ module Households
         after_table&.call(table_name)
       end
 
-      def complete_run!(run, household, actor_account, after_table)
+      def complete_run!(run, household, actor_account)
         TenantContext.with(account: actor_account, household: household) do
-          record_completion(household, actor_account)
-          delete_household_rows('security_audit_events', household.id)
-          after_table&.call('security_audit_events')
-          ensure_inventory_empty!(household.id)
-          household.update!(lifecycle_state: :purged)
-          run.update!(status: :completed, completed_at: Time.current, failure_code: nil, failed_at: nil)
+          ActiveRecord::Base.transaction do
+            ensure_inventory_empty!(household.id)
+            household.update!(lifecycle_state: :purged)
+            run.update!(status: :completed, completed_at: Time.current, failure_code: nil, failed_at: nil)
+            record_completion(run, household, actor_account)
+          end
         end
       end
 
@@ -134,9 +134,6 @@ module Households
         ApiAppToken.where(household_membership_id: membership_ids).delete_all
         OauthGrant.where(household_membership_id: membership_ids).delete_all
         User.where(person_id: person_ids).delete_all
-        PaperTrail::Version.where(actor_membership_id: membership_ids).find_each do |version|
-          version.update!(actor_membership_id: nil)
-        end
       end
 
       def purge_attachments(household)
@@ -155,17 +152,23 @@ module Households
         )
       end
 
-      def record_completion(household, actor_account)
+      def record_completion(run, household, actor_account)
         Audit::Event.record!(
           household: household,
           actor_account: actor_account,
           event_type: 'household.purge.completed',
-          metadata: { household_id: household.id, outcome: 'success' }
+          metadata: {
+            attempts: run.attempts,
+            household_id: household.id,
+            last_completed_table: run.last_completed_table,
+            outcome: 'success',
+            purge_run_id: run.id
+          }
         )
       end
 
       def ensure_inventory_empty!(household_id)
-        remaining = SchemaInventory.household_owned_tables.select do |table_name|
+        remaining = SchemaInventory.purgeable_household_owned_tables.select do |table_name|
           household_row_count(table_name, household_id).positive?
         end
         return if remaining.empty?

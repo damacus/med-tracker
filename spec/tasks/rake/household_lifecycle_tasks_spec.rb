@@ -32,18 +32,24 @@ RSpec.describe HouseholdLifecycleTasks do
     expect { invoke('household_lifecycle:export') }.to output("#{expected}\n").to_stdout
   end
 
-  it 'requires explicit hold inputs and prints identifiers without the reason' do
+  it 'passes hostile hold reason text unchanged and prints identifiers without the reason' do
     stub_hold_task
+    reason = 'Preserve "urgent"; $(touch /tmp/medtracker-hold-injection) & review'
     ENV.update(
       'HOUSEHOLD_ID' => '41',
       'ACTOR_ACCOUNT_ID' => '42',
-      'REASON' => 'Preserve for legal review',
+      'REASON' => reason,
       'REVIEW_ON' => '2026-08-13'
     )
 
     expected = JSON.generate(event_type: 'household.retention_hold.placed', outcome: 'active', household_id: 41,
                              retention_hold_id: 61, review_on: '2026-08-13')
     expect { invoke('household_lifecycle:hold') }.to output("#{expected}\n").to_stdout
+    expect(Households::RetentionHoldManager).to have_received(:place!).with(
+      household: anything, actor_account: anything, reason: reason,
+      review_on: Date.new(2026, 8, 13)
+    )
+    expect(expected).not_to include(reason)
   end
 
   it 'prints resumable purge evidence' do

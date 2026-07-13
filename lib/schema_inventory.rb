@@ -29,6 +29,9 @@ class SchemaInventory
     household_retention_holds
   ].freeze
 
+  IMMUTABLE_AUDIT_TABLES = %w[security_audit_events versions].freeze
+  PURGEABLE_HOUSEHOLD_OWNED_TABLES = (HOUSEHOLD_OWNED_TABLES - IMMUTABLE_AUDIT_TABLES).freeze
+
   GLOBAL_TABLES = %w[
     account_active_session_keys
     account_identities
@@ -74,6 +77,14 @@ class SchemaInventory
   class << self
     def household_owned_tables
       HOUSEHOLD_OWNED_TABLES
+    end
+
+    def immutable_audit_tables
+      IMMUTABLE_AUDIT_TABLES
+    end
+
+    def purgeable_household_owned_tables
+      PURGEABLE_HOUSEHOLD_OWNED_TABLES
     end
 
     def global_tables

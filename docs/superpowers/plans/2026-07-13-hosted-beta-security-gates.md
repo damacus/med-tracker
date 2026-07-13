@@ -86,7 +86,7 @@ An authorized operator can create a complete household-scoped portable export wi
 - Add durable export lifecycle records for request/generation/download/expiry/failure and audit each transition with identifiers and outcomes only.
 - Add deployer-configurable retention policy plus explicit household retention holds containing reason, approver, review date, release state, and immutable audit evidence.
 - Add an idempotent offboarding service that atomically disables normal household access and revokes memberships, browser/API sessions, app tokens, OAuth grants, push subscriptions, and native device tokens.
-- Add a resumable purge workflow that respects holds, removes every `SchemaInventory` tenant-owned row and household-owned attachment/blob without touching another household, and records partial failure/retry state.
+- Add a resumable purge workflow that respects holds, removes every purgeable `SchemaInventory` tenant-owned row and household-owned attachment/blob without touching another household, retains immutable tenant audit history, appends a non-PHI completion tombstone, and records partial failure/retry state.
 - Enforce offboarded/held household exclusion at central web/API tenant selection, background jobs, notifications, and support-mode boundaries.
 - Expose narrowly authorized executable commands/endpoints for export, hold, offboard, and purge; update OpenAPI when an API contract changes.
 - Replace procedural runbook prose with exact `task` commands, required inputs, sanitized evidence fields, retry guidance, and safe failure behavior.
