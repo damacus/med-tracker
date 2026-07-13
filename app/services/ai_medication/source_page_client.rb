@@ -22,10 +22,11 @@ module AiMedication
       response = perform_request(uri)
       raise "Source returned #{response.code}" unless response.is_a?(Net::HTTPSuccess)
 
+      body = response.body
       SourcePage.new(
         url: url,
-        title: title_from(response.body),
-        text: text_from(response.body)
+        title: title_from(body),
+        text: text_from(body)
       )
     rescue URI::InvalidURIError, *NETWORK_ERRORS => e
       raise "Source fetch failed: #{e.message}"
