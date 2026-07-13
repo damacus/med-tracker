@@ -25,7 +25,6 @@ module Api
 
         return render_validation_errors(schedule) unless schedule.save
 
-        record_api_change(schedule, action: 'create')
         render_resource(schedule.reload, serializer: ScheduleSerializer, status: :created)
       end
 
@@ -39,7 +38,6 @@ module Api
 
         return render_validation_errors(schedule) unless schedule.update(attributes)
 
-        record_api_change(schedule, action: 'update')
         render_resource(schedule.reload, serializer: ScheduleSerializer)
       end
 
@@ -57,7 +55,6 @@ module Api
         schedule = find_api_record(policy_scope(Schedule).includes(:person, :medication), params.expect(:id))
         authorize schedule, :update?
         schedule.public_send(method_name)
-        record_api_change(schedule.reload, action: 'update')
         render_resource(schedule, serializer: ScheduleSerializer)
       end
 

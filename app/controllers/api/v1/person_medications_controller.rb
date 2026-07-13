@@ -26,7 +26,6 @@ module Api
 
         return render_validation_errors(person_medication) unless person_medication.save
 
-        record_api_change(person_medication, action: 'create')
         render_resource(person_medication.reload, serializer: PersonMedicationSerializer, status: :created)
       end
 
@@ -41,7 +40,6 @@ module Api
 
         return render_validation_errors(person_medication) unless person_medication.update(attributes)
 
-        record_api_change(person_medication, action: 'update')
         render_resource(person_medication.reload, serializer: PersonMedicationSerializer)
       end
 
@@ -61,7 +59,6 @@ module Api
           person_medication: person_medication,
           direction: params.expect(:direction)
         )
-        record_api_change(person_medication.reload, action: 'update')
         render_resource(person_medication, serializer: PersonMedicationSerializer)
       end
 
@@ -72,7 +69,6 @@ module Api
                                             params.expect(:id))
         authorize person_medication, :update?
         person_medication.public_send(method_name)
-        record_api_change(person_medication.reload, action: 'update')
         render_resource(person_medication, serializer: PersonMedicationSerializer)
       end
 

@@ -63,7 +63,10 @@ RSpec.describe 'Health events' do
              health_event: side_effect_params(title: 'Nausea', started_on: '2026-02-10'),
              medication_ids: [medication.id]
            }
-    end.to change(HealthEvent.suspected_side_effect, :count).by(1)
+    end.to(
+      change(HealthEvent.suspected_side_effect, :count).by(1)
+        .and(change { ApiChangeEvent.where(record_type: 'HealthEvent', action: 'update').count }.by(1))
+    )
 
     event = HealthEvent.suspected_side_effect.order(:id).last
     expect(event.health_event_medications.sole.medication_name).to eq('Paracetamol')

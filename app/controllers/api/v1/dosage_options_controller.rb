@@ -22,7 +22,6 @@ module Api
 
         return render_validation_errors(dosage_option) unless dosage_option.save
 
-        record_api_change(dosage_option, action: 'create')
         render_resource(dosage_option.reload, serializer: DosageOptionSerializer, status: :created)
       end
 
@@ -33,7 +32,6 @@ module Api
 
         return render_validation_errors(dosage_option) unless dosage_option.update(dosage_option_update_params)
 
-        record_api_change(dosage_option, action: 'update')
         render_resource(dosage_option.reload, serializer: DosageOptionSerializer)
       end
 

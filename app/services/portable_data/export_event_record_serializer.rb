@@ -13,14 +13,23 @@ module PortableData
                                                   .merge(notification_preference_times(preference))
     end
 
+    def health_event_payload(event)
+      sync_identity(event).merge(
+        person_portable_id: event.person.portable_id,
+        event_kind: event.event_kind,
+        severity: event.severity,
+        title: event.title,
+        notes: event.notes,
+        started_on: event.started_on&.iso8601,
+        ended_on: event.ended_on&.iso8601,
+        medication_portable_ids: event.medications.map(&:portable_id)
+      )
+    end
+
     private
 
     def medication_take_identity(take)
-      {
-        portable_id: take.portable_id,
-        client_uuid: take.client_uuid,
-        updated_at: take.updated_at.iso8601
-      }
+      sync_identity(take).merge(client_uuid: take.client_uuid)
     end
 
     def medication_take_source(take)
@@ -48,11 +57,7 @@ module PortableData
     end
 
     def notification_preference_identity(preference)
-      {
-        portable_id: preference.portable_id,
-        person_portable_id: preference.person.portable_id,
-        updated_at: preference.updated_at.iso8601
-      }
+      sync_identity(preference).merge(person_portable_id: preference.person.portable_id)
     end
 
     def notification_preference_flags(preference)
@@ -76,6 +81,14 @@ module PortableData
 
     def formatted_time(value)
       value&.strftime('%H:%M:%S')
+    end
+
+    def sync_identity(record)
+      {
+        portable_id: record.portable_id,
+        updated_at: record.updated_at.iso8601,
+        etag: Api::RecordEtag.for(record)
+      }
     end
   end
 end

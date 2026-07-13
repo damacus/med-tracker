@@ -8,11 +8,18 @@ class LocationMembership < ApplicationRecord
   belongs_to :person
 
   before_validation :assign_household
+  after_create :touch_sync_person
+  after_update :touch_sync_person
+  after_destroy :touch_sync_person
 
   validates :person_id, uniqueness: { scope: :location_id }
   validate :linked_records_must_belong_to_household, if: :household_id?
 
   private
+
+  def touch_sync_person
+    person.refresh_sync_version! unless destroyed_by_association || person.previously_new_record?
+  end
 
   def assign_household
     self.household ||= location&.household || person&.household

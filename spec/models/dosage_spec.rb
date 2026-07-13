@@ -44,5 +44,11 @@ RSpec.describe Dosage do
       end.to change { medication.reload.dose_amount }.from(500).to(nil)
       expect(medication.reload.dose_unit).to eq('mg')
     end
+
+    it 'records the medication representation change for sync clients' do
+      expect do
+        create(:dosage, medication: medication, amount: 10, unit: 'mg')
+      end.to change { ApiChangeEvent.where(record_type: 'Medication', action: 'update').count }.by(1)
+    end
   end
 end

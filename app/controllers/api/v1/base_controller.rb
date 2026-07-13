@@ -169,15 +169,6 @@ module Api
         false
       end
 
-      def record_api_change(record, action:)
-        Api::ChangeRecorder.new(
-          household: current_household,
-          credential: current_api_session,
-          membership: current_membership,
-          request: request
-        ).record(record, action: action)
-      end
-
       def apply_collection_filters(scope)
         filtered = scope.order(:id)
         return filtered unless params[:updated_since].present? && scope.klass.column_names.include?('updated_at')
@@ -245,7 +236,7 @@ module Api
       end
 
       def api_etag(record)
-        %("#{Digest::SHA256.hexdigest([record.class.name, record.id, record.updated_at.to_f].join(':'))}")
+        Api::RecordEtag.for(record)
       end
 
       def with_api_idempotency

@@ -61,7 +61,7 @@ class Medication < ApplicationRecord # :nodoc:
   validate :single_dose_switch_requires_no_schedules
   validate :nested_dosage_records_are_valid
   before_validation :assign_household
-  after_commit :sync_dosages, on: :update
+  after_update :sync_dosages
 
   enum :reorder_status, { ordered: 1, received: 2 }, prefix: :reorder
 
@@ -100,13 +100,7 @@ class Medication < ApplicationRecord # :nodoc:
     # When switching to single-dose mode (dose_amount is set),
     # remove all orphaned multi-dose records to prevent data pollution.
     # Uses SQL to comply with RuboCop and project standards.
-    binds = [ActiveRecord::Relation::QueryAttribute.new('medication_id', id, ActiveRecord::Type::BigInteger.new)]
-    ActiveRecord::Base.connection.exec_update(
-      'UPDATE person_medications SET source_dosage_option_id = NULL WHERE medication_id = $1',
-      'Sync Person Medication Dosage Sources',
-      binds
-    )
-    ActiveRecord::Base.connection.exec_delete('DELETE FROM dosages WHERE medication_id = $1', 'Sync Dosages', binds)
+    MedicationDoseModeSynchronizer.new(self).call
   end
 
   def restock!(quantity:) # rubocop:disable Naming/PredicateMethod

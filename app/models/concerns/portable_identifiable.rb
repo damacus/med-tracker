@@ -4,6 +4,8 @@ module PortableIdentifiable
   extend ActiveSupport::Concern
 
   included do
+    include SyncTrackable
+
     before_validation :assign_portable_id, on: :create
 
     validates :portable_id, presence: true, uniqueness: { scope: :household_id }

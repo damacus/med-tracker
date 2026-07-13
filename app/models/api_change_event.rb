@@ -2,8 +2,8 @@
 
 class ApiChangeEvent < ApplicationRecord
   belongs_to :household
-  belongs_to :account
-  belongs_to :household_membership
+  belongs_to :account, optional: true
+  belongs_to :household_membership, optional: true
 
   validates :record_type, :record_id, :action, :occurred_at, presence: true
 end

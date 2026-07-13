@@ -19,8 +19,7 @@ module PortableData
       envelope
     end
 
-    def export_unencrypted(export_mode:, event_type: 'portable_data.exported')
-      export_payload = payload
+    def export_unencrypted(export_mode:, event_type: 'portable_data.exported', export_payload: payload)
       result = yield(export_payload)
       record_audit_event(export_payload, event_type: event_type, encrypted: false, export_mode: export_mode)
       result
@@ -29,7 +28,8 @@ module PortableData
     def mobile_snapshot
       export_unencrypted(
         export_mode: 'mobile_snapshot',
-        event_type: 'portable_data.mobile_snapshot_read'
+        event_type: 'portable_data.mobile_snapshot_read',
+        export_payload: mobile_payload
       ) do |export_payload|
         export_payload
       end
@@ -39,22 +39,26 @@ module PortableData
       export_payload
     end
 
+    def mobile_payload
+      export_payload(include_health_events: true)
+    end
+
     private
 
     attr_reader :household, :membership, :passphrase, :person_ids, :request
 
-    def export_payload
+    def export_payload(include_health_events: false)
       {
         format: FORMAT,
         scope: 'single_person',
         exported_at: Time.current.iso8601,
         source_instance_id: source_instance_id,
-        records: records_payload
+        records: records_payload(include_health_events: include_health_events)
       }
     end
 
-    def records_payload
-      ExportRecordSerializer.new(
+    def records_payload(include_health_events:)
+      records = {
         people: people,
         locations: locations,
         medications: medications,
@@ -63,7 +67,9 @@ module PortableData
         person_medications: person_medications,
         medication_takes: medication_takes,
         notification_preferences: notification_preferences
-      ).as_json
+      }
+      records[:health_events] = health_events if include_health_events
+      ExportRecordSerializer.new(records).as_json
     end
 
     def source_instance_id
@@ -106,6 +112,7 @@ module PortableData
       @medication_id_values ||= begin
         ids = schedules.pluck(:medication_id)
         ids.concat(person_medications.pluck(:medication_id))
+        ids.concat(health_events.joins(:health_event_medications).pluck('health_event_medications.medication_id'))
         ids.compact.uniq
       end
     end
@@ -150,6 +157,12 @@ module PortableData
       @notification_preferences ||= NotificationPreference.where(household: household, person_id: person_id_values)
                                                           .includes(:person)
                                                           .order(:id)
+    end
+
+    def health_events
+      @health_events ||= HealthEvent.where(household: household, person_id: person_id_values)
+                                    .includes(:person, :medications)
+                                    .order(:id)
     end
 
     def record_audit_event(payload, export_mode:, event_type: 'portable_data.exported', encrypted: true)

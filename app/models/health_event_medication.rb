@@ -7,6 +7,9 @@ class HealthEventMedication < ApplicationRecord
 
   before_validation :assign_household
   before_validation :snapshot_medication_name
+  after_create :touch_sync_health_event
+  after_update :touch_sync_health_event
+  after_destroy :touch_sync_health_event
 
   validates :medication_name, presence: true
   validates :medication_id, uniqueness: {
@@ -15,6 +18,10 @@ class HealthEventMedication < ApplicationRecord
   }, allow_nil: true
 
   private
+
+  def touch_sync_health_event
+    health_event.refresh_sync_version! unless destroyed_by_association
+  end
 
   def assign_household
     self.household ||= health_event&.household

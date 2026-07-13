@@ -22,7 +22,6 @@ module Api
 
         return render_validation_errors(health_event) unless health_event.save
 
-        record_api_change(health_event, action: 'create')
         render_resource(health_event.reload, serializer: HealthEventSerializer, status: :created)
       end
 
@@ -33,7 +32,6 @@ module Api
 
         return render_validation_errors(health_event) unless health_event.update(health_event_update_params)
 
-        record_api_change(health_event, action: 'update')
         render_resource(health_event.reload, serializer: HealthEventSerializer)
       end
 

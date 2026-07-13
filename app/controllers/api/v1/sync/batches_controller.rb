@@ -5,6 +5,8 @@ module Api
     module Sync
       class BatchesController < Api::V1::BaseController
         class BatchError < StandardError; end
+        class PreconditionRequired < BatchError; end
+        class SyncConflict < BatchError; end
 
         def create
           results = []
@@ -15,6 +17,10 @@ module Api
           end
 
           render json: { data: { applied: true, results: results } }, status: :created
+        rescue PreconditionRequired => e
+          render_api_error(code: 'precondition_required', message: e.message, status: :precondition_required)
+        rescue SyncConflict => e
+          render_conflict(e.message, code: 'sync_conflict')
         rescue BatchError => e
           render_unprocessable(e.message)
         end
@@ -22,7 +28,7 @@ module Api
         private
 
         def operations
-          params.expect(batch: [{ operations: [[:action, :resource_type, :id, { attributes: {} }]] }])
+          params.expect(batch: [{ operations: [[:action, :resource_type, :id, :if_match, { attributes: {} }]] }])
                 .fetch(:operations)
         end
 
@@ -40,31 +46,42 @@ module Api
         def update_record(operation, index)
           record = find_batch_record(operation)
           authorize record, :update?
-          attributes = permitted_attributes_for(record, operation.fetch(:attributes, {}))
-          raise BatchError, "operation #{index} attributes are invalid" unless record.update(attributes)
+          record.with_lock do
+            validate_precondition!(record, operation, index)
+            attributes = permitted_attributes_for(record, operation.fetch(:attributes, {}))
+            raise BatchError, "operation #{index} attributes are invalid" unless record.update(attributes)
 
-          record_api_change(record, action: 'update')
-          { index: index, action: 'update', record_type: record.class.name, record_portable_id: record.portable_id }
+            batch_result(record, index, 'update').merge(etag: api_etag(record))
+          end
         end
 
         def delete_record(operation, index)
           record = find_batch_record(operation)
           authorize record, :destroy?
-          ensure_deletable!(record, index)
-          portable_id = record.portable_id
-          record_type = record.class.name
-          record.destroy!
-          ApiTombstone.create!(
-            household: current_household,
-            account: current_account,
-            household_membership: current_membership,
-            record_type: record_type,
-            record_portable_id: portable_id,
-            action: 'delete',
-            deleted_at: Time.current,
-            metadata: { record_type: record_type }
-          )
-          { index: index, action: 'delete', record_type: record_type, record_portable_id: portable_id }
+          record.with_lock do
+            validate_precondition!(record, operation, index)
+            ensure_deletable!(record, index)
+            result = batch_result(record, index, 'delete')
+            record.destroy!
+            result
+          end
+        end
+
+        def validate_precondition!(record, operation, index)
+          expected = operation[:if_match].to_s
+          raise PreconditionRequired, "operation #{index} if_match is required" if expected.blank?
+          return if ActiveSupport::SecurityUtils.secure_compare(expected, api_etag(record))
+
+          raise SyncConflict, "operation #{index} record has changed since it was last read"
+        end
+
+        def batch_result(record, index, action)
+          {
+            index: index,
+            action: action,
+            record_type: record.class.name,
+            record_portable_id: record.portable_id
+          }
         end
 
         def ensure_deletable!(record, index)

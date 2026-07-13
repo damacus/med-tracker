@@ -184,10 +184,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_130000) do
 
   create_table "api_change_events", force: :cascade do |t|
     t.string "action", null: false
-    t.bigint "account_id", null: false
+    t.bigint "account_id"
     t.datetime "created_at", null: false
     t.bigint "household_id", null: false
-    t.bigint "household_membership_id", null: false
+    t.bigint "household_membership_id"
     t.jsonb "metadata", default: {}, null: false
     t.datetime "occurred_at", null: false
     t.string "record_portable_id"
@@ -263,11 +263,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_130000) do
 
   create_table "api_tombstones", force: :cascade do |t|
     t.string "action", default: "delete", null: false
-    t.bigint "account_id", null: false
+    t.bigint "account_id"
     t.datetime "created_at", null: false
     t.datetime "deleted_at", null: false
     t.bigint "household_id", null: false
-    t.bigint "household_membership_id", null: false
+    t.bigint "household_membership_id"
     t.jsonb "metadata", default: {}, null: false
     t.string "record_portable_id", null: false
     t.string "record_type", null: false
