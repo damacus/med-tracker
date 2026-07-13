@@ -8,7 +8,7 @@ RSpec.describe SchemaInventory do
   let(:audit_doc) { audit_path.read }
   let(:runbook_doc) { runbook_path.read }
 
-  it 'maps every hosted hardening requirement to current evidence, gaps, tests, and beta status' do
+  it 'maps every hosted hardening requirement to current evidence, gaps, tests, and beta status', :aggregate_failures do
     expected_requirements.each do |requirement|
       expect(audit_doc).to include("| #{requirement} |")
     end
@@ -16,9 +16,12 @@ RSpec.describe SchemaInventory do
     expect(audit_doc).to include(
       '| Requirement | Current evidence | Gap / decision | Severity | Owner issue | Tests required | Beta status |'
     )
-    expect(audit_doc).to include('NO-GO')
+    expect(audit_doc).to include('Date: 2026-07-13')
+    expect(audit_doc).to include('**Current status: NO-GO**')
     expect(audit_doc).to include('Platform admin')
     expect(audit_doc).to include('export + purge')
+    expect(audit_doc).to include('## Review Process')
+    expect(audit_doc).not_to match(/HMT-\d{3}/)
   end
 
   it 'keeps every requirement row classified with evidence, gaps, owner issue, tests, and beta status',
@@ -27,22 +30,25 @@ RSpec.describe SchemaInventory do
       expect(columns.fetch(:evidence)).to be_present, "#{requirement} evidence is blank"
       expect(columns.fetch(:gap)).to be_present, "#{requirement} gap is blank"
       expect(columns.fetch(:severity)).to be_present, "#{requirement} severity is blank"
-      expect(columns.fetch(:owner_issue)).to match(/\AHMT-\d{3}\z/), "#{requirement} owner issue is invalid"
       expect(columns.fetch(:tests)).to be_present, "#{requirement} tests are blank"
-      if tenant_foundation_requirement?(requirement)
-        expect(columns.fetch(:gap)).to eq('Closed.'), "#{requirement} gap must be closed"
-        expect(columns.fetch(:beta_status)).to eq('GO'), "#{requirement} beta status must be GO"
+      if columns.fetch(:beta_status) == 'GO'
+        expect(columns.fetch(:gap)).to start_with('Closed:'), "#{requirement} closure decision is missing"
+        expect(columns.fetch(:owner_issue)).to eq('Closed'), "#{requirement} must not retain an open owner"
       else
         expect(columns.fetch(:beta_status)).to eq('NO-GO'), "#{requirement} beta status must remain NO-GO"
+        expect(columns.fetch(:gap)).to include('Launch impact:'), "#{requirement} launch impact is missing"
+        expect(columns.fetch(:owner_issue)).to match(github_issue_link), "#{requirement} owner issue is invalid"
       end
     end
   end
 
-  it 'records partial evidence for the current FR7-FR10 hosted hardening slices' do
-    expect(requirement_rows.fetch('FR7').fetch(:evidence)).to include('Admin::MembershipRolesController')
-    expect(requirement_rows.fetch('FR8').fetch(:evidence)).to include('Platform::SupportAccessSessionsController')
-    expect(requirement_rows.fetch('FR9').fetch(:evidence)).to include('invitation email')
-    expect(requirement_rows.fetch('FR10').fetch(:evidence)).to include('HostedPrivilegedActionMfa')
+  it 'classifies the controls against current main without overstating the hosted launch decision' do
+    expect(go_requirements).to contain_exactly(
+      'FR1', 'FR2', 'FR3', 'FR4', 'FR5', 'FR6', 'FR10', 'FR12', 'FR13', 'FR17', 'FR18', 'NFR1', 'NFR2'
+    )
+    expect(no_go_requirements).to contain_exactly(
+      'FR7', 'FR8', 'FR9', 'FR11', 'FR14', 'FR15', 'FR16', 'NFR3', 'NFR4'
+    )
   end
 
   it 'documents hosted beta onboarding, support access, export/offboarding, and restore checks', :aggregate_failures do
@@ -71,8 +77,20 @@ RSpec.describe SchemaInventory do
     (1..18).map { |number| "FR#{number}" } + (1..4).map { |number| "NFR#{number}" }
   end
 
-  def tenant_foundation_requirement?(requirement)
-    %w[FR1 FR2 FR3 FR4].include?(requirement)
+  def github_issue_link
+    %r{\[#\d+\]\(https://github\.com/damacus/med-tracker/issues/\d+\)}
+  end
+
+  def go_requirements
+    requirements_with_status('GO')
+  end
+
+  def no_go_requirements
+    requirements_with_status('NO-GO')
+  end
+
+  def requirements_with_status(status)
+    requirement_rows.filter_map { |requirement, columns| requirement if columns.fetch(:beta_status) == status }
   end
 
   def requirement_rows
