@@ -11,9 +11,11 @@ module Api
     def satisfied?
       return false unless credential.is_a?(ApiSession)
       return false unless credential.oidc_mfa_verified?
-      return false if credential.mfa_verified_at.blank?
 
-      credential.mfa_verified_at >= TTL.ago
+      mfa_verified_at = credential.mfa_verified_at
+      return false if mfa_verified_at.blank?
+
+      mfa_verified_at >= TTL.ago
     end
 
     private
