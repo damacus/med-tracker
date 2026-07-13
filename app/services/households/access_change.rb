@@ -67,7 +67,7 @@ module Households
     end
 
     def revoke_grant(grant)
-      update_grant(grant, revoked_at: grant.revoked_at || Time.current)
+      update_grant(grant, revoked_at: ->(locked_grant) { locked_grant.revoked_at || Time.current })
     end
 
     def revoke_grant!(grant)

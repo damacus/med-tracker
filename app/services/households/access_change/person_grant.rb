@@ -53,9 +53,15 @@ module Households
       end
 
       def assign_change!
-        grant.assign_attributes(attributes)
+        grant.assign_attributes(resolved_attributes)
         @affected_memberships = [@previous_membership, grant.household_membership].compact.uniq.sort_by(&:id)
         @affected_memberships.each(&:lock!)
+      end
+
+      def resolved_attributes
+        attributes.transform_values do |value|
+          value.respond_to?(:call) ? value.call(grant) : value
+        end
       end
 
       def persist_change!

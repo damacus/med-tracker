@@ -187,6 +187,23 @@ RSpec.describe Households::AccessChange do
       expect(grant.reload.revoked_at).to be_present
     end
 
+    it 'treats a stale repeat revocation as a locked-state no-op' do
+      grant = create_grant(member_membership, person, :view)
+      stale_grant = PersonAccessGrant.find(grant.id)
+      service.revoke_grant(grant)
+      revoked_at = grant.reload.revoked_at
+      permissions_version = member_membership.reload.permissions_version
+      success_count = successful_grant_events(grant).count
+
+      travel 1.minute do
+        expect(service.revoke_grant(stale_grant)).to have_attributes(success?: true, outcome: 'no_change')
+      end
+
+      expect(grant.reload.revoked_at).to eq(revoked_at)
+      expect(member_membership.reload.permissions_version).to eq(permissions_version)
+      expect(successful_grant_events(grant).count).to eq(success_count)
+    end
+
     it 'does not advance permissions when a grant change is a no-op' do
       grant = create_grant(member_membership, person, :view)
       original_version = member_membership.permissions_version
@@ -321,5 +338,11 @@ RSpec.describe Households::AccessChange do
       relationship_type: :family_member,
       granted_by_membership: owner_membership
     )
+  end
+
+  def successful_grant_events(grant)
+    SecurityAuditEvent.where(event_type: 'household_access.person_grant_changed')
+                      .where("metadata ->> 'target_grant_id' = ?", grant.id.to_s)
+                      .where("metadata ->> 'outcome' = 'success'")
   end
 end
