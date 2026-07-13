@@ -1,7 +1,13 @@
 # ADR 0002: Authentication and Authorization Strategy
 
-- Status: Accepted
+- Status: Accepted; six-role hierarchy, role-based policy examples, and obsolete
+  migration status superseded by [ADR 0009](0009-bounded-context-map.md)
 - Date: 2025-11-27
+
+ADR 0009 supersedes this ADR's six-role authorization hierarchy, role-based
+policy examples, and obsolete migration-status section. The Rodauth
+authentication, deny-by-default Pundit framework, and base PaperTrail audit
+decisions remain accepted.
 
 ## Context
 
