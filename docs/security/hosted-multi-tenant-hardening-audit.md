@@ -64,6 +64,10 @@ Decision recorded on 2026-07-13. Thirteen of twenty-two controls are `GO`. The h
 - [#1611](https://github.com/damacus/med-tracker/issues/1611) makes native notification delivery durable; current notification privacy is `GO`, while durable provider delivery remains a mobile launch dependency.
 - [#509](https://github.com/damacus/med-tracker/issues/509) tracks broader forensic audit hardening. Current chaining, signed checkpoint, WORM delivery, verifier separation, and redaction evidence is reflected above; the unimplemented hosted data-lifecycle events remain gated by #1620.
 
+### Hosted credential compatibility
+
+Credentials created before the hosted membership-version binding are not migrated into an implicitly trusted state. API sessions, app tokens, and OAuth grants must carry both a current household membership binding and the exact current `permissions_version`; a missing binding or version fails closed and requires the account to authenticate and issue a new credential. Every effective membership role, status, person reassignment, or person-access grant change advances the affected membership version atomically, so credentials issued before that change are rejected on their next web-adjacent API or direct API request.
+
 ## Go/No-Go Checklist
 
 - [x] Runtime app DB role is `NOBYPASSRLS`, is not an owner, and cannot create in `public`.

@@ -720,6 +720,9 @@ cy:
       grant_system_access: Caniatáu mynediad system
       remove_system_access: Dileu mynediad system
       updated: Mynediad system wedi'i ddiweddaru
+      promote_to_owner: Dyrchafu'n berchennog
+      owner_promoted: Perchennog yr aelwyd wedi'i ddyrchafu
+      owner_promotion_rejected: Gwrthodwyd dyrchafu perchennog yr aelwyd
   authentication:
     login_required: Mewngofnodwch i barhau
     privileged_mfa_required:

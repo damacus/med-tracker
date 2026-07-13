@@ -119,11 +119,21 @@ module Admin
         household_membership: membership,
         person: person
       )
-      grant.access_level = access_level
-      grant.relationship_type = relationship_type
-      grant.granted_by_membership ||= actor_membership || membership
-      grant.revoked_at = nil
-      grant.save!
+      attributes = {
+        household: household,
+        household_membership: membership,
+        person: person,
+        access_level: access_level,
+        relationship_type: relationship_type,
+        granted_by_membership: grant.granted_by_membership || actor_membership || membership,
+        revoked_at: nil
+      }
+      access_change(membership).upsert_grant!(grant, attributes)
+    end
+
+    def access_change(membership)
+      grantor = actor_membership || membership
+      Households::AccessChange.for(grantor)
     end
 
     def membership_role

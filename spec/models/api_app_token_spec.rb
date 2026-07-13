@@ -58,6 +58,17 @@ RSpec.describe ApiAppToken do
 
       expect(app_token).not_to be_active_for_membership
     end
+
+    it 'rejects pre-hosted tokens without a permissions version' do
+      app_token = described_class.issue_for(
+        account: account,
+        household_membership: membership,
+        name: 'Legacy token'
+      ).first
+      app_token.permissions_version = nil
+
+      expect(app_token).not_to be_active_for_membership
+    end
   end
 
   describe 'validations' do

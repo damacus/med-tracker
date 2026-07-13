@@ -502,6 +502,9 @@ ga:
       grant_system_access: Deonaigh rochtain chórais
       remove_system_access: Bain rochtain chórais
       updated: Nuashonraíodh rochtain chórais
+      promote_to_owner: Ardaigh go húinéir
+      owner_promoted: Ardaíodh úinéir an teaghlaigh
+      owner_promotion_rejected: Diúltaíodh ardú úinéir an teaghlaigh
   authentication:
     login_required: Logáil isteach le leanúint
     privileged_mfa_required:

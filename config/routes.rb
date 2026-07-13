@@ -185,6 +185,9 @@ Rails.application.routes.draw do
     resource :settings, only: %i[show update]
     resources :users, only: %i[index update]
     resources :support_access_sessions, only: %i[create destroy]
+    patch 'households/:household_id/memberships/:id/promote_owner',
+          to: 'household_memberships#promote_owner',
+          as: :promote_household_owner
   end
 
   scope 'households/:household_slug' do

@@ -39,6 +39,14 @@ RSpec.describe ApiSession do
     expect(session.active_for_membership?).to be(false)
   end
 
+  it 'treats a pre-hosted session without a permissions version as inactive' do
+    account, membership = household_bundle
+    session, = described_class.issue_for(account: account, household_membership: membership)
+    session.permissions_version = nil
+
+    expect(session).not_to be_active_for_membership
+  end
+
   it 'partitions token audit versions by household membership' do
     account, membership = household_bundle
 

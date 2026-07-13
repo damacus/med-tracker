@@ -458,6 +458,9 @@ en:
       grant_system_access: Grant system access
       remove_system_access: Remove system access
       updated: System access updated
+      promote_to_owner: Promote to owner
+      owner_promoted: Household owner promoted
+      owner_promotion_rejected: Household owner promotion was rejected
     settings:
       title: Platform Settings
       subtitle: Configure hosted application-wide settings.

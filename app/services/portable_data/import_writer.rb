@@ -74,10 +74,17 @@ module PortableData
                        .find_or_initialize_by(household_membership: membership, person: person)
       return if grant.carer_relationship && preserve_relationship_grant!(grant)
 
-      grant.access_level = :manage
-      grant.relationship_type ||= :family_member
-      grant.granted_by_membership ||= membership
-      grant.save!
+      attributes = {
+        household: household, household_membership: membership, person: person,
+        access_level: :manage,
+        relationship_type: grant.relationship_type || :family_member,
+        granted_by_membership: grant.granted_by_membership || membership
+      }
+      access_change.upsert_grant!(grant, attributes)
+    end
+
+    def access_change
+      @access_change ||= Households::AccessChange.for(membership)
     end
 
     def preserve_relationship_grant!(grant)

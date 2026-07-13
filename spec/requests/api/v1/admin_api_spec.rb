@@ -188,6 +188,101 @@ RSpec.describe 'API v1 household administration' do
     expect(grant.reload.revoked_at).to be_nil
   end
 
+  it 'invalidates target credentials after API membership changes' do
+    api_session.update!(oidc_mfa_verified: true, mfa_verified_at: Time.current)
+    target_login = api_login(users(:jane), household_id: household_id)
+    target_session = ApiSession.lookup_by_access_token(target_login.fetch('access_token'))
+    target_membership = target_session.household_membership
+    app_token, app_token_value = ApiAppToken.issue_for(
+      account: target_session.account,
+      household_membership: target_membership,
+      name: 'Before API membership change'
+    )
+    oauth_grant, oauth_token = issue_oauth_grant(target_membership)
+
+    patch api_v1_household_admin_membership_path(household_id, target_membership.id),
+          params: { household_membership: { role: 'administrator' } },
+          headers: headers,
+          as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(target_membership.reload.permissions_version).to eq(target_session.permissions_version + 1)
+    expect(app_token.reload).not_to be_active_for_membership
+    expect(oauth_grant.reload).not_to be_active_for_membership
+    [target_login.fetch('access_token'), app_token_value, oauth_token].each do |token|
+      get api_v1_household_me_path(household_id), headers: api_auth_headers(token), as: :json
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  it 'invalidates target credentials after API grant creation and revocation' do
+    api_session.update!(oidc_mfa_verified: true, mfa_verified_at: Time.current)
+    target_login = api_login(users(:jane), household_id: household_id)
+    target_session = ApiSession.lookup_by_access_token(target_login.fetch('access_token'))
+    target_membership = target_session.household_membership
+
+    post api_v1_household_admin_person_access_grants_path(household_id),
+         params: {
+           person_access_grant: {
+             household_membership_id: target_membership.id,
+             person_id: people(:john).id,
+             access_level: 'manage',
+             relationship_type: 'carer'
+           }
+         },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:created)
+    expect(target_membership.reload.permissions_version).to eq(target_session.permissions_version + 1)
+    expect(target_session.reload).not_to be_active_for_membership
+
+    fresh_session, = ApiSession.issue_for(account: target_session.account, household_membership: target_membership)
+    grant_id = response.parsed_body.dig('data', 'id')
+    delete api_v1_household_admin_person_access_grant_path(household_id, grant_id), headers: headers, as: :json
+
+    expect(response).to have_http_status(:no_content)
+    expect(target_membership.reload.permissions_version).to eq(fresh_session.permissions_version + 1)
+    expect(fresh_session.reload).not_to be_active_for_membership
+  end
+
+  it 'rejects person grants targeting a membership in another household' do
+    api_session.update!(oidc_mfa_verified: true, mfa_verified_at: Time.current)
+    foreign_household = Household.create!(name: 'Foreign API Access', slug: "foreign-api-#{SecureRandom.hex(4)}")
+    foreign_account = Account.create!(email: "foreign-api-#{SecureRandom.hex(4)}@example.test", status: :verified)
+    foreign_person = foreign_household.people.create!(
+      account: foreign_account,
+      name: 'Foreign API Person',
+      date_of_birth: 30.years.ago.to_date,
+      person_type: :adult,
+      has_capacity: true
+    )
+    foreign_membership = foreign_household.household_memberships.create!(
+      account: foreign_account,
+      person: foreign_person,
+      role: :owner,
+      status: :active
+    )
+
+    expect do
+      post api_v1_household_admin_person_access_grants_path(household_id),
+           params: {
+             person_access_grant: {
+               household_membership_id: foreign_membership.id,
+               person_id: people(:john).id,
+               access_level: 'manage',
+               relationship_type: 'carer'
+             }
+           },
+           headers: headers,
+           as: :json
+    end.not_to(change { foreign_membership.reload.permissions_version })
+
+    expect(response).to have_http_status(:unprocessable_content)
+    event = SecurityAuditEvent.where(event_type: 'household_access.person_grant_changed').order(:id).last
+    expect(event.metadata).to include('outcome' => 'rejected', 'target_membership_id' => foreign_membership.id)
+  end
+
   it 'returns validation errors for invalid person access grants and lists revoked timestamps' do
     api_session.update!(oidc_mfa_verified: true, mfa_verified_at: Time.current)
 
@@ -267,5 +362,30 @@ RSpec.describe 'API v1 household administration' do
         as: :json
 
     expect(response).to have_http_status(:forbidden)
+  end
+
+  def issue_oauth_grant(membership)
+    raw_token = "oauth-#{SecureRandom.hex(24)}"
+    grant = OauthGrant.create!(
+      account: membership.account,
+      oauth_application: oauth_application(membership),
+      household_membership: membership,
+      person: membership.person,
+      permissions_version: membership.permissions_version,
+      expires_in: 1.hour.from_now,
+      scopes: 'patient/*.rs',
+      token_hash: OauthGrant.digest(raw_token)
+    )
+    [grant, raw_token]
+  end
+
+  def oauth_application(membership)
+    OauthApplication.create!(
+      account: membership.account,
+      name: 'API access change client',
+      client_id: "api-access-change-#{SecureRandom.hex(8)}",
+      redirect_uri: 'https://client.example/callback',
+      scopes: 'patient/*.rs'
+    )
   end
 end

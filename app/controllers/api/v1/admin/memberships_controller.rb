@@ -13,17 +13,17 @@ module Api
 
         def update
           membership = find_membership
-          return render_validation_errors(membership) unless membership.update(membership_params)
+          result = access_change.update_membership(membership, membership_params)
+          return render_validation_errors(result.record) unless result.success?
 
-          audit_admin_action!(event_type: 'api/admin/membership/updated', target: membership, outcome: 'success')
           render json: { data: membership_payload(membership.reload) }
         end
 
         def destroy
           membership = find_membership
-          membership.update!(status: :revoked, revoked_at: Time.current,
-                             permissions_version: membership.permissions_version + 1)
-          audit_admin_action!(event_type: 'api/admin/membership/revoked', target: membership, outcome: 'success')
+          result = access_change.update_membership(membership, status: :revoked, revoked_at: Time.current)
+          return render_validation_errors(result.record) unless result.success?
+
           head :no_content
         end
 
@@ -35,6 +35,14 @@ module Api
 
         def membership_params
           params.expect(household_membership: %i[role status person_id])
+        end
+
+        def access_change
+          @access_change ||= Households::AccessChange.new(
+            actor_account: current_account,
+            actor_membership: current_membership,
+            request: request
+          )
         end
 
         def membership_payload(membership)

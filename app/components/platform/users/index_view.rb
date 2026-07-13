@@ -75,7 +75,7 @@ module Components
             render(RubyUI::TableCell.new { user.email_address })
             render(RubyUI::TableCell.new { household_role_for(user) })
             render(RubyUI::TableCell.new { render_platform_access_badge(user) })
-            render RubyUI::TableCell.new(class: 'text-right') { render_platform_access_form(user) }
+            render RubyUI::TableCell.new(class: 'text-right') { render_user_actions(user) }
           end
         end
 
@@ -96,6 +96,27 @@ module Components
             )
             m3_button(type: :submit, variant: platform_admin?(user) ? :destructive_outline : :filled, size: :sm) do
               platform_admin?(user) ? t('platform.users.remove_system_access') : t('platform.users.grant_system_access')
+            end
+          end
+        end
+
+        def render_user_actions(user)
+          div(class: 'flex flex-wrap justify-end gap-2') do
+            render_platform_access_form(user)
+            access_summary.promotable_memberships_for(user.person&.account_id).each do |membership|
+              render_owner_promotion_form(membership)
+            end
+          end
+        end
+
+        def render_owner_promotion_form(membership)
+          form_with(
+            url: platform_promote_household_owner_path(membership.household, membership),
+            method: :patch,
+            class: 'inline-block'
+          ) do
+            render RubyUI::Button.new(variant: :outline, type: :submit, class: 'min-h-[44px]') do
+              t('platform.users.promote_to_owner')
             end
           end
         end

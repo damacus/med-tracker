@@ -202,10 +202,11 @@ RSpec.describe 'API v1 write resources' do
     expect(response).to have_http_status(:created)
     person_id = response.parsed_body.dig('data', 'id')
     expect(response.parsed_body.dig('data', 'has_capacity')).to be(false)
+    fresh_login = api_login(user, household_id: household_id)
 
     patch api_v1_household_person_path(household_id, person_id),
           params: { person: { name: 'API Child Updated' } },
-          headers: headers,
+          headers: api_auth_headers(fresh_login.fetch('access_token')),
           as: :json
 
     expect(response).to have_http_status(:ok)
