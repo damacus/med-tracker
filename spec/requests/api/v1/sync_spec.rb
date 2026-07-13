@@ -112,6 +112,35 @@ RSpec.describe 'API v1 sync' do
     expect(HealthEvent.exists?(event.id)).to be(false)
   end
 
+  it 'rejects medication batch deletion when administration history must be retained' do
+    household = Household.find(household_id)
+    medication = create(:medication, household: household, location: locations(:home))
+    schedule = create(:schedule, household: household, person: people(:john), medication: medication)
+    take = create(:medication_take, :for_schedule, household: household, schedule: schedule)
+
+    expect do
+      post api_v1_household_sync_batches_path(household_id),
+           params: {
+             batch: {
+               operations: [
+                 { action: 'delete', resource_type: 'medication', id: medication.portable_id, attributes: {} }
+               ]
+             }
+           },
+           headers: headers,
+           as: :json
+    end.not_to change(ApiTombstone, :count)
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body.fetch('error')).to include(
+      'code' => 'unprocessable_content',
+      'message' => 'operation 0 delete conflicts with retained administration history'
+    )
+    expect(Medication.exists?(medication.id)).to be(true)
+    expect(Schedule.exists?(schedule.id)).to be(true)
+    expect(MedicationTake.exists?(take.id)).to be(true)
+  end
+
   it 'updates health events in batch mutations' do
     event = HealthEvent.create!(
       household_id: household_id,

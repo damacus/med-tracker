@@ -346,6 +346,20 @@ RSpec.describe PortableData::Importer do
     expect(take.schedule.portable_id).to eq('schedule-portable-1')
   end
 
+  it 'round-trips medication take timestamps with microseconds idempotently' do
+    household = create(:household)
+    membership = owner_membership(household)
+    _person, schedule, = retired_source_graph(household)
+    taken_at = Time.zone.parse('2026-02-01T08:30:00Z').change(usec: 123_456)
+    take = create(:medication_take, :for_schedule, household: household, schedule: schedule, taken_at: taken_at)
+    payload = PortableData::Exporter.new(household: household, membership: membership, passphrase: nil).payload
+
+    result = import_result(household: household, membership: membership, payload: payload, dry_run: false)
+
+    expect(result).to be_applied
+    expect(take.reload.taken_at).to eq(taken_at)
+  end
+
   it 'rejects conflicting changes to an imported medication take' do
     household = create(:household)
     membership = owner_membership(household)
