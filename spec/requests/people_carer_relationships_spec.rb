@@ -8,6 +8,10 @@ RSpec.describe 'People carer relationships' do
   describe 'POST /people/:person_id/carer_relationships' do
     it 'allows an admin to assign an existing adult with a selected relationship type' do
       sign_in(users(:admin))
+      household = Household.find_by!(slug: default_request_household_slug)
+      existing_membership = household.household_memberships.find_by(account: users(:jane).person.account)
+      existing_membership&.person_access_grants&.delete_all
+      existing_membership&.destroy!
 
       expect do
         post person_carer_relationships_path(people(:child_user_person)),
@@ -25,6 +29,11 @@ RSpec.describe 'People carer relationships' do
       membership = relationship.household.household_memberships.find_by!(account: relationship.carer.account)
       expect(membership.person_access_grants.find_by!(person: relationship.patient).carer_relationship)
         .to eq(relationship)
+      event = SecurityAuditEvent.where(event_type: 'household_access.membership_created').order(:id).last
+      expect(event.metadata).to include(
+        'target_membership_id' => membership.id,
+        'new_state' => include('permissions_version' => 1)
+      )
       expect(response).to redirect_to(person_path(people(:child_user_person)))
     end
 

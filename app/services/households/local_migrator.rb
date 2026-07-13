@@ -163,18 +163,20 @@ module Households
     end
 
     def create_memberships(household, owner)
-      Account.includes(person: :user).find_each do |account|
-        person = account.person
-        backfill_household(person, household) if person
-        migrate_professional_title(person)
+      LocalMembershipMigrator.new(
+        household: household,
+        owner: owner,
+        accounts: Account.includes(person: :user),
+        prepare_person: ->(person) { prepare_membership_person(person, household) },
+        role_for: ->(account) { membership_role_for(account, owner) }
+      ).call
+    end
 
-        membership = HouseholdMembership.find_or_initialize_by(household: household, account: account)
-        membership.person = person if person
-        membership.role = membership_role_for(account, owner)
-        membership.status ||= :active
-        membership.joined_at ||= Time.current
-        membership.save!
-      end
+    def prepare_membership_person(person, household)
+      return unless person
+
+      backfill_household(person, household) if person
+      migrate_professional_title(person)
     end
 
     def migrate_professional_title(person)

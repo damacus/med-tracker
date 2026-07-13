@@ -148,6 +148,21 @@ RSpec.describe Households::LocalMigrator do
     stub_legacy_role(user, role)
   end
 
+  def create_audited_local_owner
+    owner = Account.create!(email: 'audited-local-owner@example.test', status: :verified)
+    household = Household.create!(name: 'Audited Local Household', created_by_account: owner)
+    person = Person.create!(
+      household: household,
+      account: owner,
+      name: 'Audited Local Owner',
+      date_of_birth: 30.years.ago.to_date,
+      person_type: :adult,
+      has_capacity: true
+    )
+    User.create!(person: person, email_address: owner.email, active: true)
+    [owner, household]
+  end
+
   def write_raw_column(record, column_name, value)
     connection = record.class.connection
     table_name = connection.quote_table_name(record.class.table_name)
@@ -345,6 +360,21 @@ RSpec.describe Households::LocalMigrator do
     expect(result.before_counts.fetch('people')).to be >= 1
     expect(result.after_counts).to eq(result.before_counts)
     expect(Household.exists?(name: 'Dry Run Household')).to be(false)
+  end
+
+  it 'creates the migrated owner through the audited membership boundary' do
+    owner, household = create_audited_local_owner
+    stub_account_enumeration(owner)
+    migrator = described_class.new(owner_email: owner.email, household_name: household.name, apply: true)
+
+    migrator.send(:create_memberships, household, owner)
+
+    membership = household.household_memberships.find_by!(account: owner)
+    event = SecurityAuditEvent.where(event_type: 'household_access.membership_created').order(:id).last
+    expect(event.metadata).to include(
+      'target_membership_id' => membership.id,
+      'new_state' => include('permissions_version' => 1)
+    )
   end
 
   it 'fails unless exactly one verified owner account matches the email' do

@@ -83,6 +83,17 @@ RSpec.describe Admin::UserProvisioner do
     expect(user.errors[:dependent_access_level]).to include('is not included in the list')
   end
 
+  it 'audits membership creation at the initial permissions version' do
+    result
+
+    membership = household.household_memberships.find_by!(account: user.person.account)
+    event = SecurityAuditEvent.where(event_type: 'household_access.membership_created').order(:id).last
+    expect(event.metadata).to include(
+      'target_membership_id' => membership.id,
+      'new_state' => include('permissions_version' => 1)
+    )
+  end
+
   it 'rejects duplicate accounts without writing partial records' do
     user.email_address = users(:jane).email_address
 

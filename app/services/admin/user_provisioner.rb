@@ -85,7 +85,8 @@ module Admin
     def create_membership!(account)
       return unless household
 
-      household.household_memberships.create!(
+      Households::AccessChange.for(actor_membership).create_membership!(
+        household: household,
         account: account,
         person: user.person,
         role: membership_role,

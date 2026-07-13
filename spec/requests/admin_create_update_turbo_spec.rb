@@ -437,6 +437,9 @@ RSpec.describe 'Admin create and update turbo flows' do
     it 'keeps membership role separate from relationship access grants' do
       doctor = users(:doctor)
       patient = create(:person, household: household, name: 'Professional Grant Patient')
+      existing_membership = household.household_memberships.find_by(account: doctor.person.account)
+      existing_membership&.person_access_grants&.delete_all
+      existing_membership&.destroy!
 
       post admin_carer_relationships_path,
            params: {
@@ -452,6 +455,11 @@ RSpec.describe 'Admin create and update turbo flows' do
       grant = household.person_access_grants.find_by!(household_membership: membership, person: patient)
       expect(membership.role).to eq('member')
       expect(grant).to have_attributes(access_level: 'record', relationship_type: 'professional')
+      event = SecurityAuditEvent.where(event_type: 'household_access.membership_created').order(:id).last
+      expect(event.metadata).to include(
+        'target_membership_id' => membership.id,
+        'new_state' => include('permissions_version' => 1)
+      )
     end
   end
 

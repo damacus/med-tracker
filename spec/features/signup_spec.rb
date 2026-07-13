@@ -41,6 +41,12 @@ RSpec.describe 'User Signup', type: :system do
       expect(person.date_of_birth).to eq(Date.new(1990, 1, 15))
       expect(person.email).to eq('newuser@example.com')
       expect(person.person_type).to eq('adult')
+      membership = person.household.household_memberships.find_by!(account: account)
+      event = SecurityAuditEvent.where(event_type: 'household_access.membership_created').order(:id).last
+      expect(event.metadata).to include(
+        'target_membership_id' => membership.id,
+        'new_state' => include('permissions_version' => 1)
+      )
     end
 
     it 'shows validation errors when name is missing' do
