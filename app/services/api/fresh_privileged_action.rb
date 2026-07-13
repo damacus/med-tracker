@@ -11,6 +11,7 @@ module Api
     def satisfied?
       return false unless credential.is_a?(ApiSession)
       return false unless credential.oidc_mfa_verified?
+
       mfa_verified_at = credential.mfa_verified_at
       return false if mfa_verified_at.blank?
 
