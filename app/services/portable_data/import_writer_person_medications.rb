@@ -40,6 +40,7 @@ module PortableData
         notes: row[:notes]
       }
       attributes[:position] = row[:position] if row.key?(:position) && !row[:position].nil?
+      attributes[:retired_at] = row[:retired_at] if row.key?(:retired_at)
       attributes
     end
   end

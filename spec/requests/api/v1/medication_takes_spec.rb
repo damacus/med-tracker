@@ -117,7 +117,6 @@ RSpec.describe 'API v1 medication takes' do
       login_data = api_login(user)
       household_id = login_data.dig('household', 'id')
       existing_take = medication_takes(:jane_morning_ibuprofen)
-      existing_take.update!(client_uuid: SecureRandom.uuid)
 
       post api_v1_household_medication_takes_path(household_id),
            params: {

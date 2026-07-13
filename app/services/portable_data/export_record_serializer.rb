@@ -149,6 +149,7 @@ module PortableData
       {
         portable_id: schedule.portable_id,
         source_dosage_option_portable_id: schedule.source_dosage_option&.portable_id,
+        retired_at: schedule.retired_at&.iso8601,
         updated_at: schedule.updated_at.iso8601
       }
     end
@@ -192,6 +193,7 @@ module PortableData
       {
         portable_id: person_medication.portable_id,
         source_dosage_option_portable_id: person_medication.source_dosage_option&.portable_id,
+        retired_at: person_medication.retired_at&.iso8601,
         updated_at: person_medication.updated_at.iso8601
       }
     end
@@ -222,9 +224,7 @@ module PortableData
       }
     end
 
-    def event_medication_take_payload(take)
-      event_record_serializer.medication_take_payload(take)
-    end
+    def event_medication_take_payload(take) = event_record_serializer.medication_take_payload(take)
 
     def event_notification_preference_payload(preference)
       event_record_serializer.notification_preference_payload(preference)

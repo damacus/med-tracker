@@ -351,14 +351,14 @@ RSpec.describe Schedule do
 
   describe 'associations' do
     it { is_expected.to belong_to(:person) }
-    it { is_expected.to have_many(:medication_takes).dependent(:destroy) }
+    it { is_expected.to have_many(:medication_takes).dependent(:restrict_with_error) }
 
-    it 'destroys medication takes when destroyed' do
+    it 'retains medication takes when retired' do
       schedule = create(:schedule)
       take = create(:medication_take, :for_schedule, schedule: schedule)
 
-      expect { schedule.destroy! }
-        .to change { MedicationTake.exists?(take.id) }.from(true).to(false)
+      expect { schedule.retire! }.to change { schedule.reload.retired_at }.from(nil)
+      expect(MedicationTake.exists?(take.id)).to be(true)
     end
   end
 

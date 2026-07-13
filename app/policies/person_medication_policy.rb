@@ -58,7 +58,7 @@ class PersonMedicationPolicy < ApplicationPolicy
     def household_person_medication_scope
       return scope.none unless active_membership?
 
-      scope.where(household: household, person_id: granted_person_ids_for(:view))
+      scope.current.where(household: household, person_id: granted_person_ids_for(:view))
     end
   end
 end

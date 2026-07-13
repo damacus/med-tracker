@@ -52,7 +52,7 @@ class PersonMedicationsController < ApplicationController
 
   def destroy
     authorize @person_medication
-    @person_medication.destroy
+    @person_medication.retire!
     render_person_medication_destroy_success
   end
 
@@ -93,7 +93,7 @@ class PersonMedicationsController < ApplicationController
   end
 
   def set_person_medication
-    @person_medication = @person.person_medications.find(params.expect(:id))
+    @person_medication = @person.person_medications.current.find(params.expect(:id))
   end
 
   def prepare_new_person_medication

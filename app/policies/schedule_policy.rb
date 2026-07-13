@@ -55,7 +55,7 @@ class SchedulePolicy < ApplicationPolicy
     def household_schedule_scope
       return scope.none unless active_membership?
 
-      scope.where(household: household, person_id: granted_person_ids_for(:view))
+      scope.current.where(household: household, person_id: granted_person_ids_for(:view))
     end
   end
 end

@@ -381,6 +381,21 @@ RSpec.describe 'People' do
 
       expect(response).to have_http_status(:no_content)
     end
+
+    it 'preserves medication history and renders a Turbo validation error when deletion is restricted' do
+      person = create_managed_person_for(users(:admin), 'Retained History')
+      medication = create(:medication, household: person.household)
+      schedule = create(:schedule, household: person.household, person: person, medication: medication)
+      create(:medication_take, :for_schedule, household: person.household, schedule: schedule)
+
+      delete person_path(person), headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(Person.exists?(person.id)).to be(true)
+      expect(Schedule.exists?(schedule.id)).to be(true)
+      expect(response.body).to include('target="flash"')
+    end
   end
 
   describe 'GET /people/:id/add_medication' do

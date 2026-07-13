@@ -119,12 +119,7 @@ class PeopleController < ApplicationController
   # DELETE /people/1 or /people/1.json
   def destroy
     authorize @person
-    @person.destroy!
-
-    respond_to do |format|
-      format.html { redirect_to people_path, status: :see_other, notice: t('people.deleted') }
-      format.json { head :no_content }
-    end
+    destroy_person
   end
 
   def add_medication
@@ -140,6 +135,20 @@ class PeopleController < ApplicationController
   end
 
   private
+
+  def destroy_person
+    if MedicationAdministrationHistory.exists_for?(@person)
+      @person.errors.add(:base, 'Person cannot be deleted while administration history exists')
+      return render_destroy_failure
+    end
+
+    return render_destroy_failure unless @person.destroy
+
+    respond_to do |format|
+      format.html { redirect_to people_path, status: :see_other, notice: t('people.deleted') }
+      format.json { head :no_content }
+    end
+  end
 
   def set_person
     @person = policy_scope(Person).find(params.expect(:id))
@@ -182,5 +191,20 @@ class PeopleController < ApplicationController
 
   def auto_assign_created_person_carer_relationship?
     current_membership&.person.present? && (@person.minor? || @person.dependent_adult?)
+  end
+
+  def render_destroy_failure
+    message = @person.errors.full_messages.to_sentence.presence || 'Person could not be deleted'
+    respond_to do |format|
+      format.html { redirect_to @person, alert: message, status: :see_other }
+      format.turbo_stream do
+        flash.now[:alert] = message
+        render turbo_stream: turbo_stream.update(
+          'flash',
+          Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert])
+        ), status: :unprocessable_content
+      end
+      format.json { render json: @person.errors, status: :unprocessable_content }
+    end
   end
 end

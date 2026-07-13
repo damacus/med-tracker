@@ -7,6 +7,7 @@ class Schedule < ApplicationRecord
   include ScheduleDoseAvailability
   include HouseholdAssignable
   include Pausable
+  include RetirableAdministrationSource
 
   WEEKDAY_INDEXES = Date::DAYNAMES.each_with_index.with_object({}) do |(name, index), indexes|
     indexes[name.downcase] = index
@@ -32,9 +33,7 @@ class Schedule < ApplicationRecord
     tapering: 5, every_other_day: 6
   }, prefix: :schedule_type
 
-  has_many :medication_takes, dependent: :destroy
-
-  scope :active, -> { where(active: true).where('start_date <= ? AND end_date >= ?', Time.zone.today, Time.zone.today) }
+  scope :active, -> { current.where(active: true).where(start_date: ..Date.current, end_date: Date.current..) }
 
   validates :start_date, :end_date, presence: true
   validates :dose_amount, presence: true, numericality: { greater_than: 0 }

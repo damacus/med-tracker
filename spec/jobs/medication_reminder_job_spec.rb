@@ -9,6 +9,8 @@ RSpec.describe MedicationReminderJob do
   let(:household) { person.household }
 
   before do
+    MedicationTake.where(schedule_id: person.schedules.select(:id)).delete_all
+    MedicationTake.where(person_medication_id: person.person_medications.select(:id)).delete_all
     person.schedules.destroy_all
     person.person_medications.destroy_all
     person.create_notification_preference!(enabled: true, dose_due_enabled: true, private_text_enabled: false)

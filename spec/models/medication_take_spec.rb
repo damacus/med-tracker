@@ -60,6 +60,28 @@ RSpec.describe MedicationTake do
     it { is_expected.to belong_to(:taken_from_location).class_name('Location').optional }
   end
 
+  describe 'immutability' do
+    it 'rejects updates after the administration is recorded' do
+      take = create(:medication_take, :for_schedule, schedule: schedule)
+
+      expect { take.update!(dose_amount: take.dose_amount + 1) }
+        .to raise_error(ActiveRecord::ReadOnlyRecord)
+    end
+
+    it 'rejects deletion after the administration is recorded' do
+      take = create(:medication_take, :for_schedule, schedule: schedule)
+
+      expect { take.destroy! }.to raise_error(ActiveRecord::ReadOnlyRecord)
+    end
+
+    it 'rejects deletion that bypasses callbacks after the administration is recorded' do
+      take = create(:medication_take, :for_schedule, schedule: schedule)
+
+      expect { take.delete }.to raise_error(ActiveRecord::ReadOnlyRecord)
+      expect(described_class.exists?(take.id)).to be(true)
+    end
+  end
+
   describe '#source_type' do
     it 'returns schedule for scheduled doses' do
       expect(described_class.new(schedule: schedule).source_type).to eq('schedule')
@@ -540,7 +562,7 @@ RSpec.describe MedicationTake do
       expect(version.item_type).to eq('MedicationTake')
     end
 
-    it 'creates version on medication take update' do
+    it 'does not create a version when an update is rejected' do
       take = described_class.create!(
         schedule: schedule,
         taken_at: Time.current,
@@ -548,15 +570,11 @@ RSpec.describe MedicationTake do
       )
 
       expect do
-        take.update!(dose_amount: 10.0)
-      end.to change(PaperTrail::Version, :count).by(1)
-
-      version = take.versions.last
-      expect(version.event).to eq('update')
-      expect(version.object).to be_present
+        expect { take.update!(dose_amount: 10.0) }.to raise_error(ActiveRecord::ReadOnlyRecord)
+      end.not_to change(PaperTrail::Version, :count)
     end
 
-    it 'tracks time changes for medication takes' do
+    it 'preserves the original administration time when an update is rejected' do
       original_time = 2.hours.ago
       take = described_class.create!(
         schedule: schedule,
@@ -565,11 +583,9 @@ RSpec.describe MedicationTake do
       )
 
       new_time = 1.hour.ago
-      take.update!(taken_at: new_time)
+      expect { take.update!(taken_at: new_time) }.to raise_error(ActiveRecord::ReadOnlyRecord)
 
-      version = take.versions.last
-      reified = version.reify
-      expect(reified.taken_at.to_i).to eq(original_time.to_i)
+      expect(take.reload.taken_at.to_i).to eq(original_time.to_i)
     end
 
     it 'associates version with current user' do

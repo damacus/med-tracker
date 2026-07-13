@@ -15,7 +15,7 @@ RSpec.describe 'Medication Stock Tracking', type: :system do
     medication.update!(current_supply: 10, reorder_threshold: 5)
 
     # Clear any fixture medication_takes to avoid cooldown interference
-    schedule.medication_takes.delete_all
+    MedicationTake.where(schedule: schedule).delete_all
 
     # Login as admin using helper that clears 2FA
     login_as(admin)

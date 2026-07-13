@@ -215,7 +215,7 @@ module PortableData
     end
 
     def schedule_timing_attributes(row)
-      {
+      attributes = {
         schedule_type: row[:schedule_type].presence || :daily,
         schedule_config: row[:schedule_config] || {},
         start_date: row[:start_date],
@@ -223,6 +223,8 @@ module PortableData
         active: row.fetch(:active, true),
         notes: row[:notes]
       }
+      attributes[:retired_at] = row[:retired_at] if row.key?(:retired_at)
+      attributes
     end
   end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_10_130200) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_13_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -780,6 +780,53 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_130200) do
     t.index ["person_id"], name: "index_notification_preferences_on_person_id", unique: true
   end
 
+  create_table "oauth_applications", force: :cascade do |t|
+    t.bigint "account_id"
+    t.string "client_id", null: false
+    t.string "client_secret"
+    t.string "client_secret_hash"
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.string "redirect_uri", null: false
+    t.string "scopes", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_oauth_applications_on_account_id"
+    t.index ["client_id"], name: "index_oauth_applications_on_client_id", unique: true
+  end
+
+  create_table "oauth_grants", force: :cascade do |t|
+    t.string "access_type", default: "offline", null: false
+    t.bigint "account_id", null: false
+    t.string "code"
+    t.string "code_challenge"
+    t.string "code_challenge_method"
+    t.datetime "created_at", null: false
+    t.datetime "expires_in", null: false
+    t.bigint "household_membership_id", null: false
+    t.datetime "last_used_at"
+    t.bigint "oauth_application_id", null: false
+    t.integer "permissions_version", null: false
+    t.bigint "person_id", null: false
+    t.string "redirect_uri"
+    t.string "refresh_token"
+    t.string "refresh_token_hash"
+    t.datetime "revoked_at"
+    t.string "scopes", null: false
+    t.string "token"
+    t.string "token_hash"
+    t.string "type"
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_oauth_grants_on_account_id"
+    t.index ["household_membership_id"], name: "index_oauth_grants_on_household_membership_id"
+    t.index ["oauth_application_id", "code"], name: "index_oauth_grants_on_oauth_application_id_and_code", unique: true
+    t.index ["oauth_application_id"], name: "index_oauth_grants_on_oauth_application_id"
+    t.index ["person_id"], name: "index_oauth_grants_on_person_id"
+    t.index ["refresh_token"], name: "index_oauth_grants_on_refresh_token", unique: true
+    t.index ["refresh_token_hash"], name: "index_oauth_grants_on_refresh_token_hash", unique: true
+    t.index ["token"], name: "index_oauth_grants_on_token", unique: true
+    t.index ["token_hash"], name: "index_oauth_grants_on_token_hash", unique: true
+  end
+
   create_table "notification_events", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "event_key", null: false
@@ -853,6 +900,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_130200) do
     t.bigint "person_id", null: false
     t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
     t.integer "position", null: false
+    t.datetime "retired_at"
     t.bigint "source_dosage_option_id"
     t.datetime "updated_at", null: false
     t.index ["active"], name: "index_person_medications_on_active"
@@ -861,9 +909,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_130200) do
     t.index ["household_id"], name: "index_person_medications_on_household_id"
     t.index ["id", "household_id"], name: "index_person_medications_on_id_and_household_id", unique: true
     t.index ["medication_id"], name: "index_person_medications_on_medication_id"
-    t.index ["person_id", "medication_id"], name: "index_person_medications_on_person_id_and_medication_id", unique: true
+    t.index ["person_id", "medication_id"], name: "index_person_medications_on_person_id_and_medication_id", unique: true, where: "(retired_at IS NULL)"
     t.index ["person_id", "position"], name: "index_person_medications_on_person_id_and_position"
     t.index ["person_id"], name: "index_person_medications_on_person_id"
+    t.index ["retired_at"], name: "index_person_medications_on_retired_at"
     t.index ["source_dosage_option_id"], name: "index_person_medications_on_source_dosage_option_id"
   end
 
@@ -902,6 +951,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_130200) do
     t.text "notes"
     t.bigint "person_id", null: false
     t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
+    t.datetime "retired_at"
     t.jsonb "schedule_config", default: {}, null: false
     t.integer "schedule_type", default: 0, null: false
     t.bigint "source_dosage_option_id"
@@ -913,6 +963,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_130200) do
     t.index ["id", "household_id"], name: "index_schedules_on_id_and_household_id", unique: true
     t.index ["medication_id"], name: "index_schedules_on_medication_id"
     t.index ["person_id"], name: "index_schedules_on_person_id"
+    t.index ["retired_at"], name: "index_schedules_on_retired_at"
     t.index ["schedule_config"], name: "index_schedules_on_schedule_config", using: :gin
     t.index ["schedule_type"], name: "index_schedules_on_schedule_type"
     t.index ["source_dosage_option_id"], name: "index_schedules_on_source_dosage_option_id"
@@ -1085,6 +1136,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_130200) do
   add_foreign_key "notification_preferences", "households"
   add_foreign_key "notification_preferences", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_notification_preferences_person_id_household"
   add_foreign_key "notification_preferences", "people", deferrable: :deferred
+  add_foreign_key "oauth_applications", "accounts"
+  add_foreign_key "oauth_grants", "accounts"
+  add_foreign_key "oauth_grants", "household_memberships"
+  add_foreign_key "oauth_grants", "oauth_applications"
+  add_foreign_key "oauth_grants", "people"
   add_foreign_key "people", "accounts", deferrable: :deferred
   add_foreign_key "people", "households"
   add_foreign_key "person_access_grants", "household_memberships"

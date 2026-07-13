@@ -211,9 +211,15 @@ class MedicationsController < ApplicationController
   end
 
   def destroy_medication
+    if MedicationAdministrationHistory.exists_for?(@medication)
+      @medication.errors.add(:base, 'Medication cannot be deleted while administration history exists')
+      return render_destroy_failure
+    end
+
     medication_id = @medication.id
-    @medication.destroy
-    render_destroy_success(medication_id)
+    return render_destroy_success(medication_id) if @medication.destroy
+
+    render_destroy_failure
   end
 
   def render_destroy_success(medication_id)
@@ -232,6 +238,20 @@ class MedicationsController < ApplicationController
       turbo_stream.remove(tenant_dom_target("medication_show_#{medication_id}")),
       turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
     ]
+  end
+
+  def render_destroy_failure
+    message = @medication.errors.full_messages.to_sentence.presence || 'Medication could not be deleted'
+    respond_to do |format|
+      format.html { redirect_to @medication, alert: message, status: :see_other }
+      format.turbo_stream do
+        flash.now[:alert] = message
+        render turbo_stream: turbo_stream.update(
+          'flash',
+          Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert])
+        ), status: :unprocessable_content
+      end
+    end
   end
 
   def build_medication_from_request
