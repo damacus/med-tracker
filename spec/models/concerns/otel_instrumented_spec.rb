@@ -5,6 +5,18 @@ require 'rails_helper'
 # Tested through MedicationTake, which includes OtelInstrumented.
 RSpec.describe OtelInstrumented do
   let(:schedule) { create(:schedule) }
+  let(:mutable_record_class) do
+    stub_const('OtelMutableTestRecord', Class.new(ApplicationRecord) do
+      self.table_name = 'locations'
+      include OtelInstrumented
+    end)
+  end
+  let(:mutable_record) do
+    mutable_record_class.create!(
+      name: 'Mutable telemetry record',
+      household_id: create(:household).id
+    )
+  end
 
   describe '.otel_tracer' do
     it 'returns a tracer named after the model' do
@@ -26,16 +38,36 @@ RSpec.describe OtelInstrumented do
   end
 
   describe 'after-update callback (trace_update)' do
-    it 'does not raise when a record is updated' do
-      take = create(:medication_take, :for_schedule, schedule: schedule)
-      expect { take.update!(dose_amount: take.dose_amount + 1) }.not_to raise_error
+    it 'traces an update on a mutable instrumented record' do
+      tracer = instance_double(OpenTelemetry::Trace::Tracer)
+      span = instance_double(OpenTelemetry::Trace::Span, add_event: nil)
+      allow(mutable_record_class).to receive(:otel_tracer).and_return(tracer)
+      allow(tracer).to receive(:in_span).and_yield(span)
+
+      mutable_record.update!(name: 'Updated telemetry record')
+
+      expect(tracer).to have_received(:in_span).with(
+        'otel_mutable_test_record.update',
+        attributes: { 'model.name' => 'OtelMutableTestRecord', 'model.operation' => 'update' },
+        kind: :internal
+      )
     end
   end
 
   describe 'after-destroy callback (trace_destroy)' do
-    it 'does not raise when a record is destroyed' do
-      take = create(:medication_take, :for_schedule, schedule: schedule)
-      expect { take.destroy! }.not_to raise_error
+    it 'traces destruction of a mutable instrumented record' do
+      tracer = instance_double(OpenTelemetry::Trace::Tracer)
+      span = instance_double(OpenTelemetry::Trace::Span, add_event: nil)
+      allow(mutable_record_class).to receive(:otel_tracer).and_return(tracer)
+      allow(tracer).to receive(:in_span).and_yield(span)
+
+      mutable_record.destroy!
+
+      expect(tracer).to have_received(:in_span).with(
+        'otel_mutable_test_record.destroy',
+        attributes: { 'model.name' => 'OtelMutableTestRecord', 'model.operation' => 'destroy' },
+        kind: :internal
+      )
     end
   end
 

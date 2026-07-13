@@ -3,15 +3,44 @@
 require 'rails_helper'
 
 RSpec.describe PersonMedication do
-  describe 'associations' do
-    it { is_expected.to have_many(:medication_takes).dependent(:destroy) }
+  describe 'current assignment uniqueness' do
+    it 'allows a medication to be assigned again after the previous assignment is retired' do
+      retired_assignment = create(:person_medication)
+      retired_assignment.retire!
 
-    it 'destroys medication takes when destroyed' do
+      replacement = build(
+        :person_medication,
+        household: retired_assignment.household,
+        person: retired_assignment.person,
+        medication: retired_assignment.medication
+      )
+
+      expect { replacement.save! }.to change(described_class, :count).by(1)
+    end
+
+    it 'rejects two current assignments for the same person and medication' do
+      assignment = create(:person_medication)
+      duplicate = build(
+        :person_medication,
+        household: assignment.household,
+        person: assignment.person,
+        medication: assignment.medication
+      )
+
+      expect(duplicate).not_to be_valid
+      expect(duplicate.errors[:person_id]).to include('has already been taken')
+    end
+  end
+
+  describe 'associations' do
+    it { is_expected.to have_many(:medication_takes).dependent(:restrict_with_error) }
+
+    it 'retains medication takes when retired' do
       person_medication = create(:person_medication)
       take = create(:medication_take, :for_person_medication, person_medication: person_medication)
 
-      expect { person_medication.destroy! }
-        .to change { MedicationTake.exists?(take.id) }.from(true).to(false)
+      expect { person_medication.retire! }.to change { person_medication.reload.retired_at }.from(nil)
+      expect(MedicationTake.exists?(take.id)).to be(true)
     end
   end
 

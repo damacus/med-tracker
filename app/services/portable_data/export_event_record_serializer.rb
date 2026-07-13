@@ -34,7 +34,7 @@ module PortableData
 
     def medication_take_event(take)
       {
-        taken_at: take.taken_at&.iso8601,
+        taken_at: take.taken_at&.iso8601(6),
         dose_amount: take.dose_amount,
         dose_unit: take.dose_unit
       }

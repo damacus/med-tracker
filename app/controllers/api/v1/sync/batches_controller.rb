@@ -50,6 +50,7 @@ module Api
         def delete_record(operation, index)
           record = find_batch_record(operation)
           authorize record, :destroy?
+          ensure_deletable!(record, index)
           portable_id = record.portable_id
           record_type = record.class.name
           record.destroy!
@@ -64,6 +65,13 @@ module Api
             metadata: { record_type: record_type }
           )
           { index: index, action: 'delete', record_type: record_type, record_portable_id: portable_id }
+        end
+
+        def ensure_deletable!(record, index)
+          return unless record.is_a?(Medication)
+          return unless MedicationAdministrationHistory.exists_for?(record)
+
+          raise BatchError, "operation #{index} delete conflicts with retained administration history"
         end
 
         def find_batch_record(operation)

@@ -16,6 +16,7 @@ john_afternoon_paracetamol:
 jane_morning_ibuprofen:
   household: fixture_household
   schedule: jane_ibuprofen
+  client_uuid: 123e4567-e89b-12d3-a456-426614174000
   taken_at: <%= Time.current.beginning_of_day + 8.hours %>
   dose_amount: 400.0
   dose_unit: mg

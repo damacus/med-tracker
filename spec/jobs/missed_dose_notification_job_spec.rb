@@ -11,6 +11,8 @@ RSpec.describe MissedDoseNotificationJob do
   let(:scheduled_time) { '07:15' }
 
   before do
+    MedicationTake.where(schedule_id: person.schedules.select(:id)).delete_all
+    MedicationTake.where(person_medication_id: person.person_medications.select(:id)).delete_all
     person.schedules.destroy_all
     person.person_medications.destroy_all
     PushSubscription.create!(

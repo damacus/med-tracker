@@ -2,45 +2,7 @@
 
 module PortableData
   module ImportWriterRecords
-    def import_medication_takes
-      records(:medication_takes).each do |row|
-        take = find_or_initialize(MedicationTake, row)
-        take.skip_stock_mutation = true
-        take.assign_attributes(medication_take_attributes(row))
-        take.save!
-      end
-    end
-
-    def medication_take_attributes(row)
-      medication_take_source_attributes(row).merge(medication_take_event_attributes(row))
-                                            .merge(medication_take_inventory_attributes(row))
-    end
-
-    def medication_take_source_attributes(row)
-      source_type = row.fetch(:source_type)
-      source = source_record(source_type, row.fetch(:source_portable_id))
-
-      {
-        schedule: source_type == 'schedule' ? source : nil,
-        person_medication: source_type == 'person_medication' ? source : nil
-      }
-    end
-
-    def medication_take_event_attributes(row)
-      {
-        client_uuid: row[:client_uuid],
-        taken_at: row[:taken_at],
-        dose_amount: row[:dose_amount],
-        dose_unit: row[:dose_unit]
-      }
-    end
-
-    def medication_take_inventory_attributes(row)
-      {
-        taken_from_medication: medication_by_portable_id(row[:taken_from_medication_portable_id]),
-        taken_from_location: location_by_portable_id(row[:taken_from_location_portable_id])
-      }
-    end
+    include ImportWriterMedicationTakes
 
     def import_notification_preferences
       records(:notification_preferences).each do |row|

@@ -270,6 +270,54 @@ RSpec.describe PortableData::Importer do
     expect(portable_record_counts).to eq(before_counts.transform_values { |count| count + 1 })
   end
 
+  def retired_source_graph(household)
+    location = create(:location, household: household)
+    person = create(:person, household: household, email: nil)
+    person.location_memberships.create!(household: household, location: location)
+    medication = create(:medication, household: household, location: location)
+    dosage = create(:dosage, household: household, medication: medication)
+    schedule = create(:schedule, household: household, person: person, medication: medication, dosage: dosage)
+    person_medication = create(
+      :person_medication,
+      household: household,
+      person: person,
+      medication: medication,
+      dosage: dosage
+    )
+    [person, schedule, person_medication]
+  end
+
+  def retired_source_export
+    household = create(:household)
+    membership = owner_membership(household)
+    person, schedule, person_medication = retired_source_graph(household)
+    create(:medication_take, :for_schedule, household: household, schedule: schedule)
+    create(:medication_take, :for_person_medication, household: household, person_medication: person_medication)
+    schedule.retire!
+    person_medication.retire!
+    payload = PortableData::Exporter.new(household: household, membership: membership, passphrase: nil).payload
+
+    { payload: payload, schedule: schedule, person_medication: person_medication, person: person }
+  end
+
+  def imported_retired_sources(source, household)
+    schedule = Schedule.find_by!(household: household, portable_id: source.fetch(:schedule).portable_id)
+    person_medication = PersonMedication.find_by!(
+      household: household,
+      portable_id: source.fetch(:person_medication).portable_id
+    )
+    [schedule, person_medication]
+  end
+
+  def apply_retired_source_export(source, household)
+    membership = household.household_memberships.create!(
+      account: account('portable-import-target-owner@example.test'),
+      role: :owner,
+      status: :active
+    )
+    import_result(household: household, membership: membership, payload: source.fetch(:payload), dry_run: false)
+  end
+
   it 'dry-runs without writing records and returns record counts' do
     household = create(:household)
     membership = owner_membership(household)
@@ -296,6 +344,54 @@ RSpec.describe PortableData::Importer do
     take = MedicationTake.find_by!(portable_id: 'take-portable-1')
     expect(medication.current_supply).to eq(12)
     expect(take.schedule.portable_id).to eq('schedule-portable-1')
+  end
+
+  it 'round-trips medication take timestamps with microseconds idempotently' do
+    household = create(:household)
+    membership = owner_membership(household)
+    _person, schedule, = retired_source_graph(household)
+    taken_at = Time.zone.parse('2026-02-01T08:30:00Z').change(usec: 123_456)
+    take = create(:medication_take, :for_schedule, household: household, schedule: schedule, taken_at: taken_at)
+    payload = PortableData::Exporter.new(household: household, membership: membership, passphrase: nil).payload
+
+    result = import_result(household: household, membership: membership, payload: payload, dry_run: false)
+
+    expect(result).to be_applied
+    expect(take.reload.taken_at).to eq(taken_at)
+  end
+
+  it 'rejects conflicting changes to an imported medication take' do
+    household = create(:household)
+    membership = owner_membership(household)
+    import_result(household: household, membership: membership, dry_run: false)
+    take = MedicationTake.find_by!(household: household, portable_id: 'take-portable-1')
+    conflicting_payload = portable_payload.deep_dup
+    conflicting_payload[:records][:medication_takes].first[:dose_amount] = 7
+
+    expect do
+      import_result(
+        household: household,
+        membership: membership,
+        payload: conflicting_payload,
+        dry_run: false
+      )
+    end.to raise_error(PortableData::Importer::Error, /immutable medication take/)
+
+    expect(take.reload.dose_amount).to eq(5)
+  end
+
+  it 'round-trips retired administration sources without making them current again' do
+    source = retired_source_export
+    target_household = create(:household)
+    result = apply_retired_source_export(source, target_household)
+    imported_schedule, imported_person_medication = imported_retired_sources(source, target_household)
+    imported_person = Person.find_by!(household: target_household, portable_id: source.fetch(:person).portable_id)
+    show_data = PersonShowQuery.new(person: imported_person).call
+    expect(result).to be_applied
+    expect(imported_schedule.retired_at.iso8601).to eq(source.fetch(:schedule).retired_at.iso8601)
+    expect(imported_person_medication.retired_at.iso8601).to eq(source.fetch(:person_medication).retired_at.iso8601)
+    expect(show_data.schedules).not_to include(imported_schedule)
+    expect(show_data.person_medications).not_to include(imported_person_medication)
   end
 
   it 'grants the importing membership manage access to imported people' do

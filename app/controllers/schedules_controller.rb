@@ -72,7 +72,7 @@ class SchedulesController < ApplicationController
 
   def destroy
     authorize @schedule
-    @schedule.destroy
+    @schedule.retire!
     render_schedule_destroy_success
   end
 

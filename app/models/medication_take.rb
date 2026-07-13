@@ -38,6 +38,16 @@ class MedicationTake < ApplicationRecord
   after_create :decrement_medication_stock, unless: :skip_stock_mutation
   after_commit :publish_low_stock_threshold_reached, on: :create
 
+  def readonly?
+    persisted? || super
+  end
+
+  def delete
+    raise ActiveRecord::ReadOnlyRecord, "#{self.class} is marked as readonly" if persisted?
+
+    super
+  end
+
   # Delegate to get the source (schedule or person_medication)
   def dose_source
     MedicationDoseSource.for(self)

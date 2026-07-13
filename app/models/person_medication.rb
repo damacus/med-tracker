@@ -8,13 +8,12 @@ class PersonMedication < ApplicationRecord
   include TimingRestrictions
   include HouseholdAssignable
   include Pausable
+  include RetirableAdministrationSource
 
   belongs_to :household, optional: true
   belongs_to :person
   belongs_to :medication
   belongs_to :source_dosage_option, class_name: 'MedicationDosageOption', optional: true
-  has_many :medication_takes, dependent: :destroy
-
   enum :dose_cycle, { daily: 0, weekly: 1, monthly: 2 }, prefix: :dose
   enum :administration_kind, { routine: 0, as_needed: 1 }
 
@@ -23,7 +22,7 @@ class PersonMedication < ApplicationRecord
   # @see docs/audit-trail.md
   has_paper_trail
 
-  scope :active, -> { where(active: true) }
+  scope :active, -> { current.where(active: true) }
   scope :ordered, -> { order(:position, :id) }
 
   before_validation :assign_household
@@ -31,7 +30,9 @@ class PersonMedication < ApplicationRecord
   before_validation :clear_routine_default_interval
   before_validation :assign_position, on: :create
 
-  validates :person_id, uniqueness: { scope: :medication_id }
+  validates :person_id,
+            uniqueness: { scope: :medication_id, conditions: -> { where(retired_at: nil) } },
+            if: -> { retired_at.nil? }
   validates :dose_amount, presence: true, numericality: { greater_than: 0 },
                           unless: :legacy_record_without_resolvable_dose?
   validates :dose_unit, presence: true, inclusion: { in: Medication::DOSAGE_UNITS },

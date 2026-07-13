@@ -18,8 +18,10 @@ Keep `MedicationTake` as the single dose administration record and make the sour
 
 The aggregate ownership remains:
 
-- `Schedule` owns scheduled dose records.
-- `PersonMedication` owns ad hoc dose records.
+- `Schedule` is the retained source for scheduled dose records.
+- `PersonMedication` is the retained source for ad hoc dose records.
+
+Persisted `MedicationTake` rows are immutable. Deleting an administration source from normal product flows retires the source instead of deleting it, so historical administrations keep their concrete source, household foreign keys, and portable-data references.
 
 ## Rationale
 
@@ -43,11 +45,14 @@ The check constraint enforces the invariant for every writer. The value object g
 - Domain code can depend on one explicit source object.
 - Existing reporting and API queries keep their concrete joins.
 - Household composite foreign keys remain intact.
+- Normal source deletion flows preserve administration history and source references.
 
 ### Negative
 
 - Callers still need two concrete joins when querying across both source tables.
 - The application still carries two nullable foreign keys, but the nullability is now constrained as a pair.
+- Retired sources remain stored and must be excluded explicitly from current-plan query surfaces.
+- Relation-level bulk deletion and direct SQL remain infrastructure risks until the application database role is hardened.
 
 ## Follow-up
 

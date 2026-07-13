@@ -65,15 +65,25 @@ class LocationsController < ApplicationController
 
   def destroy
     authorize @location
+    destroy_location
+  end
+
+  private
+
+  def destroy_location
+    if MedicationAdministrationHistory.exists_for?(@location)
+      @location.errors.add(:base, 'Location cannot be deleted while administration history exists')
+      return render_destroy_failure
+    end
+
     location_id = @location.id
-    @location.destroy
+    return render_destroy_failure unless @location.destroy
+
     respond_to do |format|
       format.html { redirect_to locations_url, notice: t('locations.deleted') }
       format.turbo_stream { render_destroy_stream(location_id) }
     end
   end
-
-  private
 
   def set_location
     @location = locations_query.find(id: params.expect(:id))
@@ -142,6 +152,20 @@ class LocationsController < ApplicationController
       turbo_stream.remove(tenant_dom_target("location_show_#{location_id}")),
       turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
     ]
+  end
+
+  def render_destroy_failure
+    message = @location.errors.full_messages.to_sentence.presence || 'Location could not be deleted'
+    respond_to do |format|
+      format.html { redirect_to @location, alert: message, status: :see_other }
+      format.turbo_stream do
+        flash.now[:alert] = message
+        render turbo_stream: turbo_stream.update(
+          'flash',
+          Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert])
+        ), status: :unprocessable_content
+      end
+    end
   end
 
   def render_error(form)

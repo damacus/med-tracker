@@ -218,6 +218,22 @@ RSpec.describe 'Locations' do
         expect(response.body).to include("target=\"#{household_dom_target("location_show_#{location.id}")}\"")
         expect(response.body).to include('target="flash"')
       end
+
+      it 'preserves medication history and renders a Turbo validation error when deletion is restricted' do
+        medication = create(:medication, household: location.household, location: location)
+        schedule = create(:schedule, household: location.household, medication: medication)
+        create(:medication_take, :for_schedule, household: location.household, schedule: schedule)
+
+        delete location_path(location), headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+        expect(Location.exists?(location.id)).to be(true)
+        expect(Medication.exists?(medication.id)).to be(true)
+        expect(Schedule.exists?(schedule.id)).to be(true)
+        expect(response.body).to include('target="flash"')
+        expect(response.body).not_to include("target=\"#{household_dom_target("location_#{location.id}")}\"")
+      end
     end
 
     context 'when authenticated as doctor (unauthorized to delete)' do
