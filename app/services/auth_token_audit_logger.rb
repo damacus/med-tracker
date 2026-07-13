@@ -5,13 +5,15 @@ class AuthTokenAuditLogger
   HASHED_FIELDS = %i[endpoint user_agent].freeze
 
   def record(account:, token_type:, action:, metadata: {}, context: nil)
-    # rubocop:disable Rails/SkipsModelValidations, Lint/RedundantCopDisableDirective
-    Audit::VersionEvent.record!(**version_attrs(account:, token_type:, action:, metadata:, context:))
-    # rubocop:enable Rails/SkipsModelValidations, Lint/RedundantCopDisableDirective
-    security_event_attrs = security_event_attrs(account:, token_type:, action:, metadata:, context:)
-    return if security_event_attrs[:household_id].blank?
-
-    Audit::Event.record!(**security_event_attrs, audit_context: context.to_h)
+    ActiveRecord::Base.transaction(requires_new: true) do
+      # rubocop:disable Rails/SkipsModelValidations, Lint/RedundantCopDisableDirective
+      Audit::VersionEvent.record!(**version_attrs(account:, token_type:, action:, metadata:, context:))
+      # rubocop:enable Rails/SkipsModelValidations, Lint/RedundantCopDisableDirective
+      security_event_attrs = security_event_attrs(account:, token_type:, action:, metadata:, context:)
+      if security_event_attrs[:household_id].present?
+        Audit::Event.record!(**security_event_attrs, audit_context: context.to_h)
+      end
+    end
   rescue StandardError => e
     Rails.logger.error("AuthTokenAuditLogger failed: #{e.class}: #{e.message}")
   end
