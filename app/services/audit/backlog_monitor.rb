@@ -13,8 +13,9 @@ module Audit
 
     def call
       ages = deliveries.map { |delivery| [(now - delivery.created_at).to_i, 0].max }
-      result = Result.new(severity: severity(ages.max.to_i), pending_count: ages.size,
-                          oldest_age_seconds: ages.max.to_i)
+      oldest_age_seconds = ages.max.to_i
+      result = Result.new(severity: severity(oldest_age_seconds), pending_count: ages.size,
+                          oldest_age_seconds: oldest_age_seconds)
       ActiveSupport::Notifications.instrument('audit_delivery_backlog.med_tracker', notification_payload(result))
       result
     end
