@@ -72,10 +72,18 @@ module PortableData
       grant = household.person_access_grants
                        .where(revoked_at: nil)
                        .find_or_initialize_by(household_membership: membership, person: person)
+      return if grant.carer_relationship && preserve_relationship_grant!(grant)
+
       grant.access_level = :manage
       grant.relationship_type ||= :family_member
       grant.granted_by_membership ||= membership
       grant.save!
+    end
+
+    def preserve_relationship_grant!(grant)
+      return true if grant.manage? && grant.expires_at.nil?
+
+      raise Importer::Error, 'relationship-owned access grant conflicts with imported manage access'
     end
 
     def import_location_memberships

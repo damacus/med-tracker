@@ -55,9 +55,7 @@ module Households
 
     attr_reader :owner_email, :household_name, :apply
 
-    def dry_run_result(before_counts)
-      Result.new(applied: false, household: nil, before_counts: before_counts, after_counts: before_counts)
-    end
+    def dry_run_result(before_counts) = Result.new(false, nil, before_counts, before_counts)
 
     def validate_inputs!
       raise Error, 'OWNER_EMAIL is required' if owner_email.blank?
@@ -226,7 +224,8 @@ module Households
           person: relationship.patient,
           access_level: access_level_for_relationship(relationship),
           relationship_type: relationship_type_for_grant(relationship),
-          granted_by_membership: household.household_memberships.owner.active.first
+          granted_by_membership: household.household_memberships.owner.active.first,
+          carer_relationship: relationship
         )
       end
     end
@@ -240,17 +239,73 @@ module Households
       :family_member
     end
 
-    def upsert_grant(membership:, person:, access_level:, relationship_type:, granted_by_membership:)
-      grant = PersonAccessGrant.find_or_initialize_by(
-        household: membership.household,
-        household_membership: membership,
-        person: person,
-        revoked_at: nil
-      )
-      grant.access_level = access_level
-      grant.relationship_type = relationship_type
-      grant.granted_by_membership = granted_by_membership
-      grant.save!
+    def upsert_grant(membership:, person:, **attributes)
+      GrantReconciler.new(membership: membership, person: person, attributes: attributes).call
+    end
+
+    class GrantReconciler
+      def initialize(membership:, person:, attributes:)
+        @membership = membership
+        @person = person
+        @attributes = attributes
+      end
+
+      def call
+        grant = current_grant
+        return persist_new_grant!(grant, attributes) if grant.new_record?
+        return preserve_manual_grant!(grant, attributes) if grant.carer_relationship_id.nil?
+        return reconcile_relationship_grant!(grant, attributes) if same_relationship_source?(grant, attributes)
+
+        raise LocalMigrator::Error, 'existing grant belongs to another relationship'
+      end
+
+      private
+
+      attr_reader :membership, :person, :attributes
+
+      def current_grant
+        PersonAccessGrant.find_or_initialize_by(
+          household: membership.household,
+          household_membership: membership,
+          person: person,
+          revoked_at: nil
+        )
+      end
+
+      def persist_new_grant!(grant, attributes)
+        grant.assign_attributes(
+          authority_attributes(attributes).merge(
+            granted_by_membership: attributes[:granted_by_membership],
+            carer_relationship: attributes[:carer_relationship]
+          )
+        )
+        grant.save!
+        grant
+      end
+
+      def preserve_manual_grant!(grant, attributes)
+        return grant if grant.cover_access?(attributes[:access_level]) && grant.cover_expiry?(attributes[:expires_at])
+
+        raise LocalMigrator::Error, 'existing manual grant does not cover the migrated relationship access'
+      end
+
+      def reconcile_relationship_grant!(grant, attributes)
+        grant.assign_attributes(authority_attributes(attributes))
+        grant.save! if grant.changed?
+        grant
+      end
+
+      def same_relationship_source?(grant, attributes)
+        attributes[:carer_relationship] && grant.carer_relationship_id == attributes[:carer_relationship].id
+      end
+
+      def authority_attributes(attributes)
+        {
+          access_level: attributes[:access_level],
+          relationship_type: attributes[:relationship_type],
+          expires_at: attributes[:expires_at]
+        }
+      end
     end
   end
 end

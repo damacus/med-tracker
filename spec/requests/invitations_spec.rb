@@ -136,8 +136,40 @@ RSpec.describe 'Invitations' do
       expect(relationship.relationship_type).to eq('parent')
       expect(relationship.active).to be true
       expect(accepted_membership.role).to eq('member')
-      expect(grant).to have_attributes(access_level: 'manage', relationship_type: 'parent')
+      expect(grant).to have_attributes(
+        access_level: 'manage',
+        relationship_type: 'parent',
+        carer_relationship: relationship
+      )
       expect(invitation.reload.accepted_at).to be_present
+    end
+
+    it 'preserves the access level selected for an accepted invitation' do
+      household, membership = household_bundle(email: 'view-owner@example.test', name: 'View Invitation')
+      dependent = create_dependent(household: household, name: 'View Invitation Child', carer: membership.person)
+      invitation = create_household_invitation_with_grant(
+        household: household,
+        membership: membership,
+        email: 'view.invitee@example.com',
+        dependent: dependent,
+        grant: { access_level: :view, relationship_type: :family_member }
+      )
+
+      post create_account_path,
+           params: {
+             invitation_token: invitation.token,
+             name: 'View Invitee',
+             date_of_birth: '1985-05-15',
+             email: 'view.invitee@example.com',
+             password: 'SecureP@ssword123!',
+             'password-confirm': 'SecureP@ssword123!'
+           }
+
+      invitee = Person.find_by!(email: 'view.invitee@example.com')
+      relationship = CarerRelationship.find_by!(carer: invitee, patient: dependent)
+      accepted_membership = household.household_memberships.find_by!(account: invitee.account)
+      expect(relationship.person_access_grants.find_by!(household_membership: accepted_membership))
+        .to have_attributes(access_level: 'view', relationship_type: 'family_member')
     end
 
     it 'links accepted carer invitations to selected existing dependents' do
@@ -170,7 +202,11 @@ RSpec.describe 'Invitations' do
       expect(relationship.relationship_type).to eq('professional_carer')
       expect(relationship.active).to be true
       expect(accepted_membership.role).to eq('member')
-      expect(grant).to have_attributes(access_level: 'record', relationship_type: 'professional')
+      expect(grant).to have_attributes(
+        access_level: 'record',
+        relationship_type: 'professional',
+        carer_relationship: relationship
+      )
       expect(invitation.reload.accepted_at).to be_present
     end
   end

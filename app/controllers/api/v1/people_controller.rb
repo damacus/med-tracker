@@ -19,11 +19,9 @@ module Api
         person = Person.new(person_params)
         person.household = current_household
         authorize person
-        assign_created_person_carer_relationship(person)
 
-        return render_validation_errors(person) unless person.save
+        return render_validation_errors(person) unless persist_created_person(person)
 
-        grant_created_person_access(person)
         render_resource(person.reload, serializer: PersonSerializer, status: :created)
       end
 
@@ -53,14 +51,31 @@ module Api
         end
       end
 
-      def assign_created_person_carer_relationship(person)
-        return unless current_membership&.person.present? && (person.minor? || person.dependent_adult?)
+      def persist_created_person(person)
+        ActiveRecord::Base.transaction do
+          if auto_assign_created_person_carer_relationship?(person)
+            CareDelegation::Assign.new(
+              carer: current_membership.person,
+              patient: person,
+              relationship_type: :family_member,
+              granted_by_membership: current_membership
+            ).call
+          else
+            person.save!
+            grant_created_person_access(person)
+          end
+        end
+        true
+      rescue ActiveRecord::RecordInvalid => e
+        person.errors.merge!(e.record.errors) unless e.record == person
+        false
+      rescue CareDelegation::Assign::Error => e
+        person.errors.add(:base, e.message)
+        false
+      end
 
-        person.carer_relationships.build(
-          carer: current_membership.person,
-          relationship_type: :family_member,
-          active: true
-        )
+      def auto_assign_created_person_carer_relationship?(person)
+        current_membership&.person.present? && (person.minor? || person.dependent_adult?)
       end
     end
   end

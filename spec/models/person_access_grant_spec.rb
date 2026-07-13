@@ -69,6 +69,17 @@ RSpec.describe PersonAccessGrant do
     expect(grant.cover_access?(:manage)).to be(false)
   end
 
+  it 'treats an indefinite expiry as the only coverage for indefinite authority' do
+    household, membership = household_bundle
+    grant = create_grant_for(household, membership, 'Expiry Target')
+
+    expect(grant.cover_expiry?(nil)).to be(true)
+    grant.expires_at = 2.days.from_now
+    expect(grant.cover_expiry?(nil)).to be(false)
+    expect(grant.cover_expiry?(1.day.from_now)).to be(true)
+    expect(grant.cover_expiry?(3.days.from_now)).to be(false)
+  end
+
   it 'excludes revoked and expired grants from active authorization' do
     household, membership = household_bundle
     active = create_grant_for(household, membership, 'Active Target')
@@ -102,5 +113,38 @@ RSpec.describe PersonAccessGrant do
 
     valid_grant = build_grant(household: household, membership: membership, person: person, grantor: nil)
     expect(valid_grant).to be_valid
+  end
+
+  it 'binds delegation-owned grants to the relationship carer and patient' do
+    household, membership, relationship = delegation_fixture
+    patient = grant_target_person(household, name: 'Delegated Patient')
+    other_patient = grant_target_person(household, name: 'Other Patient')
+    relationship.update!(patient: patient)
+    other_membership = other_carer_membership(household)
+
+    wrong_patient = build_grant(household: household, membership: membership, person: other_patient)
+    wrong_patient.carer_relationship = relationship
+    wrong_carer = build_grant(household: household, membership: other_membership, person: patient)
+    wrong_carer.carer_relationship = relationship
+
+    expect(wrong_patient).not_to be_valid
+    expect(wrong_patient.errors[:person]).to include('must match the delegated patient')
+    expect(wrong_carer).not_to be_valid
+    expect(wrong_carer.errors[:household_membership]).to include('must belong to the delegated carer')
+  end
+
+  def delegation_fixture
+    household, membership, carer = household_bundle
+    patient = grant_target_person(household, name: 'Initial Delegated Patient')
+    relationship = CarerRelationship.create!(household: household, carer: carer, patient: patient,
+                                             relationship_type: :parent)
+    [household, membership, relationship]
+  end
+
+  def other_carer_membership(household)
+    other_carer = grant_target_person(household, name: 'Other Carer')
+    account = Account.create!(email: "other-carer-#{SecureRandom.hex(4)}@example.test", status: :verified)
+    other_carer.update!(account: account)
+    household.household_memberships.create!(account: account, person: other_carer, role: :member, status: :active)
   end
 end

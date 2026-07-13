@@ -125,6 +125,7 @@ RSpec.describe 'People' do
         grant = created_person.person_access_grants.find_by(household_membership: current_membership)
 
         expect(grant.access_level).to eq('manage')
+        expect(grant.carer_relationship).to eq(relationship)
       end
 
       it 'creates a dependent adult and auto-links carer relationship' do

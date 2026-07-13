@@ -1,13 +1,15 @@
 # frozen_string_literal: true
 
 class DependentRelationshipAssigner
-  attr_reader :carer, :dependent_ids, :relationship_type, :scope
+  attr_reader :carer, :dependent_ids, :relationship_type, :access_level, :scope, :granted_by_membership
 
-  def initialize(carer:, dependent_ids:, relationship_type:, scope:)
+  def initialize(carer:, dependent_ids:, relationship_type:, scope:, **options)
     @carer = carer
     @dependent_ids = dependent_ids
     @relationship_type = relationship_type
+    @access_level = options[:access_level]
     @scope = scope
+    @granted_by_membership = options[:granted_by_membership]
   end
 
   def call
@@ -29,11 +31,13 @@ class DependentRelationshipAssigner
   end
 
   def assign(dependent)
-    relationship = CarerRelationship.find_or_initialize_by(carer: carer, patient: dependent)
-    relationship.relationship_type = resolved_relationship_type
-    relationship.active = true
-    relationship.save! if relationship.new_record? || relationship.changed?
-    relationship
+    CareDelegation::Assign.new(
+      carer: carer,
+      patient: dependent,
+      relationship_type: resolved_relationship_type,
+      access_level: access_level,
+      granted_by_membership: granted_by_membership
+    ).call
   end
 
   def resolved_relationship_type

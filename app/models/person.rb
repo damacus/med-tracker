@@ -104,22 +104,18 @@ class Person < ApplicationRecord
   end
 
   def assign_carer!(carer, relationship_type: nil)
-    transaction do
-      relationship = carer_relationships.find_or_initialize_by(carer: carer)
-      relationship.relationship_type = relationship_type.presence ||
-                                       relationship.relationship_type.presence ||
-                                       'family_member'
-      relationship.active = true
-      relationship.save!
-
-      relationship
-    end
+    existing_relationship = carer_relationships.find_by(carer: carer)
+    CareDelegation::Assign.new(
+      carer: carer,
+      patient: self,
+      relationship_type: relationship_type.presence || existing_relationship&.relationship_type || 'family_member'
+    ).call
   end
 
   def remove_carer!(carer)
     transaction do
       relationship = carer_relationships.find_by!(carer: carer, active: true)
-      relationship.deactivate!
+      CareDelegation::Revoke.new(relationship: relationship).call
       carer_relationships.reset
       active_carer_relationships.reset
       validate!
