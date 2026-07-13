@@ -66,8 +66,13 @@ module Households
       end
 
       def authorized_owner_change?
-        active_owner? ? platform_actor? : actor_owner?
+        return platform_actor? if active_owner?
+        return actor_owner? || platform_actor? if previous_active_owner?
+
+        actor_owner?
       end
+
+      def previous_active_owner? = previous_state.fetch('role') == 'owner' && previous_state.fetch('status') == 'active'
 
       def owner_change_error
         return 'Owner promotion requires an active platform administrator' if active_owner?

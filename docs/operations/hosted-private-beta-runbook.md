@@ -123,15 +123,68 @@ also runs `task test TEST_FILE=spec/lib/schema_inventory_spec.rb`,
 
 ## Export and purge
 
-Hosted beta uses configurable retention with export + purge as the default deployer
-policy unless an explicit retention hold exists.
+Set `HOUSEHOLD_EXPORT_RETENTION_DAYS` in the deployed web and task environment to
+the approved export retention period. The value is clamped to 1-365 days and
+defaults to 30 days. Retention holds override the normal export-and-purge schedule.
 
-1. Verify the requester is an active owner of the household or an authorized platform admin in support mode.
-2. Generate household export from household-scoped queries only.
-3. Audit export request, generation, download, and expiry without storing raw medication names or dose notes in the audit metadata.
-4. Revoke household memberships, API sessions, API app tokens, push subscriptions, and native device tokens during offboarding.
-5. If no retention hold exists, purge tenant-owned rows and tenant-owned attachments.
-6. If a retention hold exists, archive the household, disable access, document the hold reason and review date, and keep data out of normal household flows.
+Generate the complete portable export before offboarding. `MEMBERSHIP_ID` must be
+an active owner or administrator membership for the target household.
+`ACTOR_ACCOUNT_ID` must identify that membership's account, or an active platform
+administrator inside an active audited support session for the target household.
+
+```fish
+task household-lifecycle:export HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456 MEMBERSHIP_ID=789
+```
+
+Retain the sanitized JSON fields `event_type`, `outcome`, `household_id`,
+`export_id`, and `attachment_count`. The export lifecycle record and immutable
+audit ledger preserve request, generation, ready, download, expiry, and failure
+transitions. Attachment entries use identifiers, byte counts, archive paths, and
+SHA-256 checksums; verify the artifact checksum before transferring it.
+
+Place a retention hold only from an approved records-governance request. The
+reason is stored in the protected hold record but excluded from command and audit
+metadata:
+
+```fish
+task household-lifecycle:hold HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456 REASON="Approved legal preservation" REVIEW_ON=2026-08-13
+```
+
+Release the hold only after approval, using the same household context so forced
+RLS remains effective:
+
+```fish
+task household-lifecycle:release-hold HOLD_ID=321 HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456
+```
+
+Offboarding immediately disables normal and support access and revokes household
+memberships, browser/API sessions, app tokens, OAuth grants, web push
+subscriptions, and native device tokens. The command is safe to retry and emits
+one successful offboarding audit event:
+
+```fish
+task household-lifecycle:offboard HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456
+```
+
+Start or resume purge only after the export has been verified and offboarding has
+completed:
+
+```fish
+task household-lifecycle:purge HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456
+```
+
+Purge refuses an active retention hold before deleting anything. It is safe to
+retry after interruption: the durable purge run increments `attempts`, reports
+`last_completed_table`, repeats idempotent deletions, and finishes only after every
+`SchemaInventory` tenant table and household-owned attachment is empty. It never
+deletes another household's attachment or a blob still referenced elsewhere.
+Successful evidence contains `event_type`, `outcome`, `household_id`,
+`purge_run_id`, `attempts`, and `last_completed_table`. Failed commands emit
+`event_type`, `outcome`, and `failure_code`, exit non-zero, and do not claim
+completion. Investigate the application exception telemetry, correct the cause,
+then run the identical task command again.
+
+Never retain free-text reasons, attachment contents, credentials, or health data in command output.
 
 ## Restore test
 

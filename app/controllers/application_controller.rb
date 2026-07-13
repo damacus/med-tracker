@@ -60,7 +60,7 @@ class ApplicationController < ActionController::Base
     household_slug = request.path_parameters[:household_slug]
     return yield if household_slug.blank?
 
-    @current_household = Household.find_by!(slug: household_slug)
+    @current_household = Household.operational.find_by!(slug: household_slug)
     TenantContext.with(account: current_account, household: @current_household, request_id: request.request_id) do
       @current_membership = active_household_membership
 
@@ -92,6 +92,7 @@ class ApplicationController < ActionController::Base
   def active_support_access_session
     return @active_support_access_session if defined?(@active_support_access_session)
     return unless current_account&.platform_admin
+    return unless @current_household&.operational?
 
     @active_support_access_session =
       current_account.platform_admin.support_access_sessions.active.find_by(household: @current_household)

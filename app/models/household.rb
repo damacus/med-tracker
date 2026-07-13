@@ -3,6 +3,9 @@
 class Household < ApplicationRecord
   enum :status, { active: 'active', archived: 'archived' }, validate: true
   enum :subscription_plan, { free: 'free', family_plus: 'family_plus' }, validate: true
+  enum :lifecycle_state, {
+    active: 'active', held: 'held', offboarded: 'offboarded', purging: 'purging', purged: 'purged'
+  }, prefix: :lifecycle, validate: true
 
   belongs_to :created_by_account, class_name: 'Account', optional: true
 
@@ -25,6 +28,9 @@ class Household < ApplicationRecord
   has_many :audit_ledger_entries, dependent: :restrict_with_error
   has_many :audit_chain_heads, dependent: :restrict_with_error
   has_many :audit_checkpoints, dependent: :restrict_with_error
+  has_many :household_exports, dependent: :restrict_with_error
+  has_many :household_retention_holds, dependent: :restrict_with_error
+  has_many :household_purge_runs, dependent: :restrict_with_error
 
   before_validation :assign_timezone, :assign_slug
 
@@ -33,6 +39,10 @@ class Household < ApplicationRecord
   validate :must_have_active_owner, if: :active_owner_validation_required?
 
   class << self
+    def operational
+      where(lifecycle_state: :active, status: :active)
+    end
+
     def create_with_owner!(name:, owner_account:, owner_person_attributes:, timezone: Time.zone.name)
       transaction do
         household = create_owner_household(name, owner_account, timezone)
@@ -88,6 +98,15 @@ class Household < ApplicationRecord
     end
   end
 
+  def operational?
+    active? && lifecycle_active?
+  end
+
+  def held? = lifecycle_held?
+  def offboarded? = lifecycle_offboarded?
+  def purging? = lifecycle_purging?
+  def purged? = lifecycle_purged?
+
   private
 
   def assign_timezone
@@ -102,7 +121,7 @@ class Household < ApplicationRecord
   end
 
   def active_owner_validation_required?
-    persisted? && household_memberships.exists?
+    persisted? && active? && lifecycle_active? && household_memberships.exists?
   end
 
   def must_have_active_owner

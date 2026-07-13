@@ -73,6 +73,8 @@ module Api
         return if params[:household_id].blank?
 
         @current_household = Household.find(params.expect(:household_id))
+        return render_forbidden unless @current_household.operational?
+
         @current_membership = @current_api_session.household_membership
         return render_forbidden unless @current_membership&.active?
         return render_forbidden unless @current_membership.household_id == @current_household.id
@@ -88,6 +90,8 @@ module Api
         return render_unauthorized('Authentication required') unless @current_api_session.active_for_membership?
 
         @current_household = @current_membership&.household
+        return render_forbidden unless @current_household&.operational?
+
         Current.household = @current_household
         Current.membership = @current_membership
         TenantContext.set_household!(@current_household)

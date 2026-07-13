@@ -173,7 +173,7 @@ module Api
         end
 
         def membership_for_requested_household(account)
-          household = Household.find_by(id: params.expect(:household_id))
+          household = Household.operational.find_by(id: params.expect(:household_id))
           return unless household
 
           TenantContext.with(account: account, household: household, request_id: request.request_id) do
@@ -183,7 +183,8 @@ module Api
 
         def sole_active_membership(account)
           TenantContext.with(account: account, household: nil, request_id: request.request_id) do
-            memberships = HouseholdMembership.active.where(account: account).limit(2).to_a
+            memberships = HouseholdMembership.active.joins(:household).merge(Household.operational)
+                                             .where(account: account).limit(2).to_a
             memberships.first if memberships.one?
           end
         end
@@ -199,7 +200,8 @@ module Api
         end
 
         def household_memberships_payload(account)
-          account.household_memberships.active.includes(:household).order(:id).map do |membership|
+          account.household_memberships.active.joins(:household).merge(Household.operational)
+                 .includes(:household).order(:id).map do |membership|
             household_payload(membership.household).merge(
               role: membership.role,
               membership_id: membership.id

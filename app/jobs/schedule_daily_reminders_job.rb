@@ -6,7 +6,7 @@ class ScheduleDailyRemindersJob < ApplicationJob
   PERIODS = NotificationPreference::PERIODS
 
   def perform
-    Household.active.find_each do |household|
+    Household.operational.find_each do |household|
       TenantContext.with(account: nil, household: household) do
         schedule_household_reminders(household)
       end

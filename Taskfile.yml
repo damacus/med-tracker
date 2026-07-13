@@ -89,6 +89,56 @@ tasks:
           ENVIRONMENT: prod
           COMMAND: 'env DATABASE_ROLE=med_tracker_app rails support_access:expire'
 
+  household-lifecycle:export:
+    desc: Generate a complete hosted household export
+    requires:
+      vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID, MEMBERSHIP_ID]
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} MEMBERSHIP_ID={{ .MEMBERSHIP_ID }} rails household_lifecycle:export'
+
+  household-lifecycle:hold:
+    desc: Place an audited household retention hold
+    requires:
+      vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID, REASON, REVIEW_ON]
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} REASON="{{ .REASON }}" REVIEW_ON={{ .REVIEW_ON }} rails household_lifecycle:hold'
+
+  household-lifecycle:release-hold:
+    desc: Release an audited household retention hold
+    requires:
+      vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID, HOLD_ID]
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} HOLD_ID={{ .HOLD_ID }} rails household_lifecycle:release_hold'
+
+  household-lifecycle:offboard:
+    desc: Disable a household and revoke every hosted access surface
+    requires:
+      vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID]
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} rails household_lifecycle:offboard'
+
+  household-lifecycle:purge:
+    desc: Resume or start a held-safe household purge
+    requires:
+      vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID]
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} rails household_lifecycle:purge'
+
   medication-review:snapshot:
     desc: Regenerate the committed public evidence snapshot
     cmds:

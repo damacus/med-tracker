@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_13_190100) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_13_190200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -489,6 +489,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_190100) do
     t.index ["person_id"], name: "index_household_invitation_grants_on_person_id"
   end
 
+  create_table "household_exports", force: :cascade do |t|
+    t.bigint "artifact_byte_size"
+    t.string "artifact_checksum_sha256"
+    t.datetime "created_at", null: false
+    t.datetime "downloaded_at"
+    t.datetime "expired_at"
+    t.datetime "expires_at"
+    t.datetime "failed_at"
+    t.string "failure_code"
+    t.datetime "generation_started_at"
+    t.bigint "household_id", null: false
+    t.jsonb "manifest", default: {}, null: false
+    t.datetime "ready_at"
+    t.datetime "requested_at", null: false
+    t.bigint "requested_by_account_id", null: false
+    t.string "status", default: "requested", null: false
+    t.datetime "updated_at", null: false
+    t.index ["expires_at"], name: "index_household_exports_on_expires_at"
+    t.index ["household_id", "status"], name: "index_household_exports_on_household_id_and_status"
+    t.index ["household_id"], name: "index_household_exports_on_household_id"
+    t.index ["id", "household_id"], name: "index_household_exports_on_id_and_household_id", unique: true
+    t.index ["requested_by_account_id"], name: "index_household_exports_on_requested_by_account_id"
+  end
+
   create_table "household_invitations", force: :cascade do |t|
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
@@ -525,16 +549,55 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_190100) do
     t.index ["person_id"], name: "index_household_memberships_on_person_id", unique: true, where: "(person_id IS NOT NULL)"
   end
 
+  create_table "household_purge_runs", force: :cascade do |t|
+    t.integer "attempts", default: 0, null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "failed_at"
+    t.string "failure_code"
+    t.bigint "household_id", null: false
+    t.string "last_completed_table"
+    t.bigint "requested_by_account_id", null: false
+    t.datetime "started_at"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.index ["household_id", "status"], name: "index_household_purge_runs_on_household_id_and_status"
+    t.index ["household_id"], name: "index_household_purge_runs_on_household_id"
+    t.index ["requested_by_account_id"], name: "index_household_purge_runs_on_requested_by_account_id"
+  end
+
+  create_table "household_retention_holds", force: :cascade do |t|
+    t.bigint "approved_by_account_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "household_id", null: false
+    t.datetime "placed_at", null: false
+    t.text "reason", null: false
+    t.datetime "released_at"
+    t.bigint "released_by_account_id"
+    t.date "review_on", null: false
+    t.string "status", default: "active", null: false
+    t.datetime "updated_at", null: false
+    t.index ["approved_by_account_id"], name: "index_household_retention_holds_on_approved_by_account_id"
+    t.index ["household_id"], name: "idx_one_active_retention_hold_per_household", unique: true, where: "((status)::text = 'active'::text)"
+    t.index ["household_id"], name: "index_household_retention_holds_on_household_id"
+    t.index ["id", "household_id"], name: "index_household_retention_holds_on_id_and_household_id", unique: true
+    t.index ["released_by_account_id"], name: "index_household_retention_holds_on_released_by_account_id"
+    t.index ["status", "review_on"], name: "index_household_retention_holds_on_status_and_review_on"
+  end
+
   create_table "households", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "created_by_account_id"
+    t.string "lifecycle_state", default: "active", null: false
     t.string "name", null: false
+    t.datetime "offboarded_at"
     t.string "slug", null: false
     t.string "status", default: "active", null: false
     t.string "subscription_plan", default: "free", null: false
     t.string "timezone", null: false
     t.datetime "updated_at", null: false
     t.index ["created_by_account_id"], name: "index_households_on_created_by_account_id"
+    t.index ["lifecycle_state"], name: "index_households_on_lifecycle_state"
     t.index ["slug"], name: "index_households_on_slug", unique: true
   end
 
@@ -1097,6 +1160,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_190100) do
   add_foreign_key "health_events", "households"
   add_foreign_key "health_events", "people"
   add_foreign_key "health_events", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_health_events_person_id_household"
+  add_foreign_key "household_exports", "accounts", column: "requested_by_account_id"
+  add_foreign_key "household_exports", "households", deferrable: :deferred
   add_foreign_key "household_invitation_grants", "household_invitations"
   add_foreign_key "household_invitation_grants", "household_invitations", column: ["household_invitation_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_household_invitation_grants_invitation_household"
   add_foreign_key "household_invitation_grants", "households"
@@ -1108,6 +1173,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_190100) do
   add_foreign_key "household_memberships", "households"
   add_foreign_key "household_memberships", "people"
   add_foreign_key "household_memberships", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_household_memberships_person_id_household"
+  add_foreign_key "household_purge_runs", "accounts", column: "requested_by_account_id"
+  add_foreign_key "household_purge_runs", "households", deferrable: :deferred
+  add_foreign_key "household_retention_holds", "accounts", column: "approved_by_account_id"
+  add_foreign_key "household_retention_holds", "accounts", column: "released_by_account_id"
+  add_foreign_key "household_retention_holds", "households", deferrable: :deferred
   add_foreign_key "households", "accounts", column: "created_by_account_id"
   add_foreign_key "location_memberships", "households"
   add_foreign_key "location_memberships", "locations", column: ["location_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_location_memberships_location_id_household"
@@ -1247,6 +1317,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_190100) do
     medication_review_prompts
     security_audit_events
     active_storage_attachments
+    household_exports
+    household_retention_holds
   ].each do |table_name|
     quoted_table = quote_table_name(table_name)
     execute "ALTER TABLE #{quoted_table} ENABLE ROW LEVEL SECURITY;"
