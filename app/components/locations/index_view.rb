@@ -132,7 +132,7 @@ module Components
                    'bg-card hover:bg-tertiary-container text-on-surface-variant',
             aria_label: t('locations.index.edit', default: 'Edit location')
           ) do
-            render Icons::Pencil.new(size: 16)
+            render Icons::Pencil.new(size: 16, aria_hidden: 'true')
           end
           render_delete_dialog(location)
         end
@@ -145,7 +145,7 @@ module Components
                       class: 'text-on-surface-variant ' \
                              'hover:text-destructive hover:bg-destructive/5',
                       aria_label: t('locations.index.delete', default: 'Delete location')) do
-              render Icons::Trash.new(size: 18)
+              render Icons::Trash.new(size: 18, aria_hidden: 'true')
             end
           end
           AlertDialogContent(class: 'rounded-[2rem] border-none shadow-2xl') do

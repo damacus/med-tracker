@@ -94,4 +94,13 @@ RSpec.describe Components::Medications::ListItemComponent, type: :component do
     expect(fill['style']).to start_with('transform: translateX(')
     expect(rendered.css('progress.supply-progress')).to be_empty
   end
+
+  it 'hides icons inside labelled medication action controls', :aggregate_failures do
+    medication = medications(:paracetamol)
+
+    rendered = render_inline(described_class.new(medication: medication, can_update: true, can_destroy: true))
+
+    expect(rendered.at_css('a[aria-label="Edit medication"] svg[aria-hidden="true"]')).to be_present
+    expect(rendered.at_css('button[aria-label="Delete medication"] svg[aria-hidden="true"]')).to be_present
+  end
 end

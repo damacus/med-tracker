@@ -78,10 +78,10 @@ module Views
         button(
           type: 'button',
           class: 'p-2.5 rounded-xl bg-surface-container-highest text-primary transition-all hover:scale-110 active:scale-95',
-          title: t('rodauth.views.otp_setup.copy_to_clipboard'),
+          aria: { label: t('rodauth.views.otp_setup.copy_to_clipboard') },
           data: { action: 'click->clipboard#copy', clipboard_text_param: text }
         ) do
-          render Icons::Copy.new(size: 18)
+          render Icons::Copy.new(size: 18, aria_hidden: 'true')
         end
       end
 

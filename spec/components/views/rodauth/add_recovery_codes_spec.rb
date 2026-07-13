@@ -21,6 +21,17 @@ RSpec.describe Views::Rodauth::AddRecoveryCodes, type: :component do
     expect(rendered.text).to include('Store these codes somewhere safe.')
   end
 
+  it 'gives copy buttons an accessible name and hides their icons' do
+    rodauth = recovery_codes_auth(can_add: true, codes: ['alpha-code'])
+    allow(controller).to receive_messages(rodauth: rodauth, form_authenticity_token: 'token')
+
+    rendered = render_inline(described_class.new)
+    copy_button = rendered.at_css('button[aria-label="Copy to clipboard"]')
+
+    expect(copy_button).to be_present
+    expect(copy_button.at_css('svg[aria-hidden="true"]')).to be_present
+  end
+
   def recovery_codes_auth(can_add:, codes:, button: 'View Authentication Recovery Codes')
     RodauthApp.rodauth.allocate.tap do |rodauth|
       allow(rodauth).to receive_messages(

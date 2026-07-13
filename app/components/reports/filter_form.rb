@@ -22,7 +22,7 @@ module Components
             class: 'rounded-xl shadow-elevation-1',
             'aria-label': translate('apply_filters_aria_label')
           ) do
-            render Icons::ChevronRight.new(size: 20)
+            render Icons::ChevronRight.new(size: 20, aria_hidden: 'true')
           end
         end
       end

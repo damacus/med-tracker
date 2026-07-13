@@ -11,7 +11,7 @@ module RubyUI
     private
 
     def icon
-      render ::Components::Icons::ChevronRight.new(size: 16)
+      render ::Components::Icons::ChevronRight.new(size: 16, aria_hidden: 'true')
     end
 
     def default_attrs

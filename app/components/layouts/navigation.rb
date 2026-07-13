@@ -64,7 +64,7 @@ module Components
             aria: { label: t('global_search.open'), expanded: 'false', controls: 'global_search_panel' },
             data: { action: 'global-search#open', global_search_target: 'trigger' }
           ) do
-            render Icons::Search.new(size: 22)
+            render Icons::Search.new(size: 22, aria_hidden: 'true')
           end
         end
 

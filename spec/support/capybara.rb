@@ -2,6 +2,8 @@
 
 require 'capybara/rspec'
 
+Capybara.enable_aria_label = true
+
 # Performance-optimized browser args for CI and local testing
 PLAYWRIGHT_BROWSER_ARGS = [
   '--disable-blink-features=AutomationControlled',

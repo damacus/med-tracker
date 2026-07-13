@@ -20,6 +20,16 @@ RSpec.describe Components::Locations::IndexView, type: :component do
     expect(action_classes.flatten).not_to include('h-10')
   end
 
+  it 'hides icons inside labelled location action controls', :aggregate_failures do
+    rendered = render_inline(described_class.new(locations: [locations(:home)]))
+
+    edit_link = rendered.at_css('a[aria-label="Edit location"]')
+    delete_button = rendered.at_css('button[aria-label="Delete location"]')
+
+    expect(edit_link.at_css('svg[aria-hidden="true"]')).to be_present
+    expect(delete_button.at_css('svg[aria-hidden="true"]')).to be_present
+  end
+
   def include_touch_target_class
     satisfy { |classes| classes.include?('min-h-11') || classes.include?('min-h-[44px]') }
   end
