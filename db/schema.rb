@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_13_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_13_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -401,12 +401,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_090000) do
     t.boolean "active", default: true, null: false
     t.bigint "carer_id", null: false
     t.datetime "created_at", null: false
+    t.bigint "household_id", null: false
     t.bigint "patient_id", null: false
     t.string "relationship_type"
     t.datetime "updated_at", null: false
     t.index ["active"], name: "index_carer_relationships_on_active"
-    t.index ["carer_id", "patient_id"], name: "index_carer_relationships_on_carer_id_and_patient_id", unique: true
     t.index ["carer_id"], name: "index_carer_relationships_on_carer_id"
+    t.index ["household_id", "carer_id", "patient_id"], name: "index_carer_relationships_on_household_carer_patient", unique: true
+    t.index ["household_id"], name: "index_carer_relationships_on_household_id"
+    t.index ["id", "household_id"], name: "index_carer_relationships_on_id_and_household_id", unique: true
     t.index ["patient_id"], name: "index_carer_relationships_on_patient_id"
   end
 
@@ -1074,8 +1077,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_090000) do
   add_foreign_key "audit_export_deliveries", "audit_checkpoints"
   add_foreign_key "audit_export_deliveries", "audit_ledger_entries"
   add_foreign_key "audit_ledger_entries", "households"
+  add_foreign_key "carer_relationships", "households", name: "fk_carer_relationships_household"
   add_foreign_key "carer_relationships", "people", column: "carer_id", deferrable: :deferred
   add_foreign_key "carer_relationships", "people", column: "patient_id", deferrable: :deferred
+  add_foreign_key "carer_relationships", "people", column: ["carer_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_carer_relationships_carer_household"
+  add_foreign_key "carer_relationships", "people", column: ["patient_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_carer_relationships_patient_household"
   add_foreign_key "dosages", "households"
   add_foreign_key "dosages", "medications", column: ["medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dosages_medication_id_household"
   add_foreign_key "dosages", "medications", deferrable: :deferred
@@ -1216,6 +1222,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_090000) do
     health_events
     health_event_medications
     notification_events
+    carer_relationships
     household_memberships
     person_access_grants
     household_invitations

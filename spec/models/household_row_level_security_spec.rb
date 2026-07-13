@@ -51,6 +51,18 @@ RSpec.describe Household do
     )
   end
 
+  def carer_relationship_for(household, prefix:)
+    CarerRelationship.create!(
+      carer: household.people.create!(name: "#{prefix} Carer", date_of_birth: 30.years.ago.to_date),
+      patient: household.people.create!(name: "#{prefix} Patient", date_of_birth: 10.years.ago.to_date),
+      relationship_type: 'parent'
+    )
+  end
+
+  def rls_household(label)
+    described_class.create!(name: "RLS #{label} Household", slug: "rls-#{label.parameterize}")
+  end
+
   it 'configures the runtime role without superuser or bypassrls' do
     role = connection.select_one(<<~SQL.squish)
       SELECT rolsuper, rolbypassrls
@@ -157,6 +169,56 @@ RSpec.describe Household do
     with_runtime_role(household: household) do
       expect(Location.where(id: [visible_location.id,
                                  hidden_location.id]).pluck(:id)).to contain_exactly(visible_location.id)
+    end
+  end
+
+  it 'isolates carer relationships by current household' do
+    household = described_class.create!(name: 'RLS Relationship Household', slug: 'rls-relationship-household')
+    other_household = described_class.create!(name: 'RLS Hidden Relationship Household',
+                                              slug: 'rls-hidden-relationship-household')
+    visible_relationship = carer_relationship_for(household, prefix: 'Visible')
+    hidden_relationship = carer_relationship_for(other_household, prefix: 'Hidden')
+
+    with_runtime_role(household: household) do
+      expect(CarerRelationship.where(id: [visible_relationship.id, hidden_relationship.id]).pluck(:id))
+        .to contain_exactly(visible_relationship.id)
+    end
+  end
+
+  it 'rejects inserting a relationship for another household through the runtime role' do
+    household = rls_household('Insert')
+    other_household = rls_household('Foreign Insert')
+    foreign_relationship = carer_relationship_for(other_household, prefix: 'Foreign Insert')
+
+    with_runtime_role(household: household) do
+      expect do
+        connection.execute(<<~SQL.squish)
+          INSERT INTO carer_relationships
+            (household_id, carer_id, patient_id, relationship_type, active, created_at, updated_at)
+          VALUES
+            (#{foreign_relationship.household_id}, #{foreign_relationship.carer_id},
+             #{foreign_relationship.patient_id}, 'parent', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        SQL
+      end.to raise_error(ActiveRecord::StatementInvalid, /row-level security policy/)
+    end
+  end
+
+  it 'rejects moving a visible relationship to another household through the runtime role' do
+    household = rls_household('Update')
+    other_household = rls_household('Foreign Update')
+    visible_relationship = carer_relationship_for(household, prefix: 'Visible Update')
+    foreign_relationship = carer_relationship_for(other_household, prefix: 'Foreign Update')
+
+    with_runtime_role(household: household) do
+      expect do
+        connection.execute(<<~SQL.squish)
+          UPDATE carer_relationships
+          SET household_id = #{foreign_relationship.household_id},
+              carer_id = #{foreign_relationship.carer_id},
+              patient_id = #{foreign_relationship.patient_id}
+          WHERE id = #{visible_relationship.id}
+        SQL
+      end.to raise_error(ActiveRecord::StatementInvalid, /row-level security policy/)
     end
   end
 
