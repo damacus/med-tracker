@@ -60,8 +60,7 @@ module Components
           data_action: 'click->ruby-ui--sheet-content#close',
           aria: { label: t('layouts.mobile_menu.close_menu') }
         ) do
-          render Icons::X.new(size: 22)
-          span(class: 'sr-only') { t('layouts.mobile_menu.close_menu') }
+          render Icons::X.new(size: 22, aria_hidden: 'true')
         end
       end
 

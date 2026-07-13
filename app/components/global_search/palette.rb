@@ -63,7 +63,7 @@ module Components
               aria: { label: t('global_search.close') },
               data: { action: 'global-search#close' }
             ) do
-              render Icons::X.new(size: 20)
+              render Icons::X.new(size: 20, aria_hidden: 'true')
             end
           end
         end

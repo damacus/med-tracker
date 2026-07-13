@@ -108,7 +108,7 @@ module Components
               data: { turbo_frame: '_top' },
               aria_label: t('medications.index.edit', default: 'Edit medication')
             ) do
-              render Icons::Pencil.new(size: 16)
+              render Icons::Pencil.new(size: 16, aria_hidden: 'true')
             end
           end
           if can_refill
@@ -138,7 +138,7 @@ module Components
                       class: 'rounded-shape-full w-11 h-11 p-0 text-on-surface-variant ' \
                              'hover:text-destructive hover:bg-destructive/5',
                       aria_label: t('medications.index.delete', default: 'Delete medication')) do
-              render Icons::Trash.new(size: 18)
+              render Icons::Trash.new(size: 18, aria_hidden: 'true')
             end
           end
           AlertDialogContent(class: 'rounded-[2rem] border-none shadow-2xl') do

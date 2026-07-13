@@ -26,7 +26,7 @@ RSpec.describe Components::Layouts::MobileRail, type: :component do
     Nokogiri::HTML::DocumentFragment.parse(html)
   end
 
-  it 'renders icon-only navigation with aria labels and no logout action' do
+  it 'renders icon-only navigation with aria labels and no logout action', :aggregate_failures do
     rendered = render_rail(user: admin_user)
 
     expect(rendered.css('aside[data-testid="mobile-rail"]')).to be_present
@@ -34,6 +34,7 @@ RSpec.describe Components::Layouts::MobileRail, type: :component do
     expect(rendered.css('a[aria-label="Inventory"]')).to be_present
     expect(rendered.css('a[aria-label="Profile"]')).to be_present
     expect(rendered.css('button[aria-label="Sign Out"]')).to be_empty
+    expect(rendered.css('a[aria-label] svg')).to all(satisfy { |icon| icon['aria-hidden'] == 'true' })
   end
 
   it 'renders the inventory item with the inventory icon' do

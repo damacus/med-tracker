@@ -80,8 +80,11 @@ RSpec.describe Components::Layouts::MobileMenu, type: :component do
     it 'renders close button with aria-label' do
       rendered = render_inline(described_class.new)
 
-      close_button = rendered.css('button[aria-label="Close menu"]')
+      close_button = rendered.at_css('button[aria-label="Close menu"]')
+
       expect(close_button).to be_present
+      expect(close_button.at_css('svg[aria-hidden="true"]')).to be_present
+      expect(close_button.css('.sr-only')).to be_empty
     end
 
     it 'renders close button with 44px minimum touch target' do
@@ -90,12 +93,6 @@ RSpec.describe Components::Layouts::MobileMenu, type: :component do
       close_button = rendered.css('button[aria-label="Close menu"]').first
       expect(close_button['class']).to include('min-h-[44px]')
       expect(close_button['class']).to include('min-w-[44px]')
-    end
-
-    it 'renders sr-only text for close button' do
-      rendered = render_inline(described_class.new)
-
-      expect(rendered.css('.sr-only').map(&:text)).to include('Close menu')
     end
   end
 

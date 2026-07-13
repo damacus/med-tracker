@@ -19,7 +19,7 @@ RSpec.describe 'Inventory add schedule workflow', :browser do
 
     expect(page).to have_text('Who is this medication for?')
 
-    click_on 'Close'
+    click_button I18n.t('ruby_ui.common.close')
 
     expect(page).to have_current_path(medications_path)
     expect(page).to have_text('Inventory')

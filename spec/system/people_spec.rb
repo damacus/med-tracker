@@ -100,7 +100,7 @@ RSpec.describe 'People' do
 
       expect(page).to have_text('How is this medication taken?')
 
-      click_button 'Close'
+      click_button I18n.t('ruby_ui.common.close')
 
       expect(page).to have_current_path(people_path)
       expect(page).to have_text('People')

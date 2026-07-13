@@ -76,10 +76,10 @@ module Views
         button(
           type: 'button',
           class: 'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-surface-container-highest text-primary transition-all hover:scale-105 active:scale-95',
-          title: t('rodauth.views.add_recovery_codes.copy_to_clipboard'),
+          aria: { label: t('rodauth.views.add_recovery_codes.copy_to_clipboard') },
           data: { action: 'click->clipboard#copy', clipboard_text_param: recovery_code }
         ) do
-          render Icons::Copy.new(size: 18)
+          render Icons::Copy.new(size: 18, aria_hidden: 'true')
         end
       end
 

@@ -44,10 +44,10 @@ module RubyUI
       button(
         type: 'button',
         class: 'absolute end-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-tertiary-container data-[state=open]:text-on-surface-variant',
-        data_action: 'click->ruby-ui--dialog#dismiss'
+        data_action: 'click->ruby-ui--dialog#dismiss',
+        aria: { label: I18n.t('ruby_ui.common.close') }
       ) do
-        render ::Components::Icons::X.new(size: 16)
-        span(class: 'sr-only') { I18n.t('ruby_ui.common.close') }
+        render ::Components::Icons::X.new(size: 16, aria_hidden: 'true')
       end
     end
 

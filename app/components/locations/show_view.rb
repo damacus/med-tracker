@@ -181,7 +181,7 @@ module Components
                      'hover:text-destructive',
               aria_label: t('locations.show.remove_member.aria_label', default: 'Remove member')
             ) do
-              render Icons::X.new(size: 14)
+              render Icons::X.new(size: 14, aria_hidden: 'true')
             end
           end
 
@@ -218,7 +218,7 @@ module Components
                 class: 'text-on-surface-variant hover:text-primary h-8 w-8 p-0 flex items-center justify-center',
                 aria_label: t('locations.show.edit_details', default: 'Edit location details')
               ) do
-                render Icons::Pencil.new(size: 16)
+                render Icons::Pencil.new(size: 16, aria_hidden: 'true')
               end
             end
           end
@@ -241,7 +241,7 @@ module Components
                      'hover:text-primary hover:bg-primary/5',
               aria_label: t('locations.show.add_member.aria_label', default: 'Add member')
             ) do
-              render Icons::Plus.new(size: 16)
+              render Icons::Plus.new(size: 16, aria_hidden: 'true')
             end
           end
 

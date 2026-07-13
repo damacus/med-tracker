@@ -50,7 +50,7 @@ module Components
                         'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
                       end}"
           ) do
-            render item[:icon].new(size: 24)
+            render item[:icon].new(size: 24, aria_hidden: 'true')
           end
         end
       end

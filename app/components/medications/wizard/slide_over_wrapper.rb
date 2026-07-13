@@ -23,7 +23,7 @@ module Components
               href: medications_path,
               class: 'fixed inset-0 z-50 bg-foreground/10 backdrop-blur-[1.5px]',
               data: { turbo_frame: '_top' },
-              aria_label: 'Close'
+              aria: { label: I18n.t('ruby_ui.common.close') }
             )
 
             # Slide-over panel
@@ -56,10 +56,10 @@ module Components
                    'rounded-shape-full border border-outline-variant/30 ' \
                    'bg-surface-container-highest/90 text-on-surface-variant ' \
                    'shadow-elevation-1 transition-all hover:bg-secondary-container hover:text-on-secondary-container',
-            data: { turbo_frame: '_top' }
+            data: { turbo_frame: '_top' },
+            aria: { label: I18n.t('ruby_ui.common.close') }
           ) do
-            render Icons::X.new(size: 18)
-            span(class: 'sr-only') { 'Close' }
+            render Icons::X.new(size: 18, aria_hidden: 'true')
           end
         end
 
