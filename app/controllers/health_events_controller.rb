@@ -106,6 +106,7 @@ class HealthEventsController < ApplicationController
       }
     end
     HealthEventMedication.insert_all!(records) # rubocop:disable Rails/SkipsModelValidations
+    @health_event.refresh_sync_version!
   end
 
   def health_event_params

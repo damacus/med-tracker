@@ -5,8 +5,7 @@ module Api
     module Sync
       class FeedsController < Api::V1::BaseController
         def snapshot
-          payload = exporter.payload.merge(format: 'medtracker.portable.v2', cursor: Time.current.iso8601)
-          render json: { data: payload }
+          render json: { data: Api::SyncSnapshot.new(household: current_household, exporter: exporter).payload }
         end
 
         def changes
@@ -28,11 +27,13 @@ module Api
         end
 
         def changes_payload(since)
-          {
-            cursor: Time.current.iso8601,
-            changes: change_events_since(since).map { |event| change_payload(event) },
-            tombstones: tombstones_since(since).map { |tombstone| tombstone_payload(tombstone) }
-          }
+          Api::ConsistentSyncRead.new(household: current_household).call do |cursor|
+            {
+              cursor: cursor,
+              changes: change_events_since(since).map { |event| change_payload(event) },
+              tombstones: tombstones_since(since).map { |tombstone| tombstone_payload(tombstone) }
+            }
+          end
         end
 
         def change_events_since(since)

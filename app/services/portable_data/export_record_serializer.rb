@@ -10,7 +10,8 @@ module PortableData
       schedules: :schedule_payload,
       person_medications: :person_medication_payload,
       medication_takes: :event_medication_take_payload,
-      notification_preferences: :event_notification_preference_payload
+      notification_preferences: :event_notification_preference_payload,
+      health_events: :event_health_event_payload
     }.freeze
 
     def initialize(records)
@@ -18,8 +19,9 @@ module PortableData
     end
 
     def as_json
-      COLLECTIONS.to_h do |record_type, serializer_method|
-        [record_type, records.fetch(record_type).map { |record| send(serializer_method, record) }]
+      records.to_h do |record_type, collection|
+        serializer_method = COLLECTIONS.fetch(record_type)
+        [record_type, collection.map { |record| send(serializer_method, record) }]
       end
     end
 
@@ -32,10 +34,7 @@ module PortableData
     end
 
     def person_identity(person)
-      {
-        portable_id: person.portable_id,
-        updated_at: person.updated_at.iso8601
-      }
+      sync_identity(person)
     end
 
     def person_profile(person)
@@ -56,12 +55,10 @@ module PortableData
     end
 
     def location_payload(location)
-      {
-        portable_id: location.portable_id,
+      sync_identity(location).merge(
         name: location.name,
-        description: location.description,
-        updated_at: location.updated_at.iso8601
-      }
+        description: location.description
+      )
     end
 
     def medication_payload(medication)
@@ -71,15 +68,13 @@ module PortableData
     end
 
     def medication_identity(medication)
-      {
-        portable_id: medication.portable_id,
+      sync_identity(medication).merge(
         location_portable_id: medication.location&.portable_id,
         name: medication.name,
         friendly_name: medication.friendly_name,
         category: medication.category,
-        description: medication.description,
-        updated_at: medication.updated_at.iso8601
-      }
+        description: medication.description
+      )
     end
 
     def medication_dose(medication)
@@ -111,15 +106,13 @@ module PortableData
     end
 
     def dosage_identity(dosage)
-      {
-        portable_id: dosage.portable_id,
+      sync_identity(dosage).merge(
         medication_portable_id: dosage.medication.portable_id,
         amount: dosage.amount,
         unit: dosage.unit,
         frequency: dosage.frequency,
-        description: dosage.description,
-        updated_at: dosage.updated_at.iso8601
-      }
+        description: dosage.description
+      )
     end
 
     def dosage_defaults(dosage)
@@ -146,12 +139,10 @@ module PortableData
     end
 
     def schedule_identity(schedule)
-      {
-        portable_id: schedule.portable_id,
+      sync_identity(schedule).merge(
         source_dosage_option_portable_id: schedule.source_dosage_option&.portable_id,
-        retired_at: schedule.retired_at&.iso8601,
-        updated_at: schedule.updated_at.iso8601
-      }
+        retired_at: schedule.retired_at&.iso8601
+      )
     end
 
     def schedule_subjects(schedule)
@@ -190,12 +181,10 @@ module PortableData
     end
 
     def person_medication_identity(person_medication)
-      {
-        portable_id: person_medication.portable_id,
+      sync_identity(person_medication).merge(
         source_dosage_option_portable_id: person_medication.source_dosage_option&.portable_id,
-        retired_at: person_medication.retired_at&.iso8601,
-        updated_at: person_medication.updated_at.iso8601
-      }
+        retired_at: person_medication.retired_at&.iso8601
+      )
     end
 
     def person_medication_subjects(person_medication)
@@ -228,6 +217,18 @@ module PortableData
 
     def event_notification_preference_payload(preference)
       event_record_serializer.notification_preference_payload(preference)
+    end
+
+    def event_health_event_payload(event)
+      event_record_serializer.health_event_payload(event)
+    end
+
+    def sync_identity(record)
+      {
+        portable_id: record.portable_id,
+        updated_at: record.updated_at.iso8601,
+        etag: Api::RecordEtag.for(record)
+      }
     end
 
     def event_record_serializer

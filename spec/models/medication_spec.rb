@@ -627,6 +627,23 @@ RSpec.describe Medication do
           medication.update!(dose_amount: 500, dose_unit: 'mg')
         end.to change { medication.dosages.count }.from(2).to(0)
       end
+
+      it 'records relationship changes for sync clients' do
+        create(
+          :person_medication,
+          medication: medication,
+          source_dosage_option: medication.dosage_records.first
+        )
+
+        TenantContext.with(account: nil, household: medication.household) do
+          expect do
+            medication.update!(dose_amount: 500, dose_unit: 'mg')
+          end.to(
+            change { ApiTombstone.where(record_type: 'MedicationDosageOption').count }.by(2)
+              .and(change { ApiChangeEvent.where(record_type: 'PersonMedication', action: 'update').count }.by(1))
+          )
+        end
+      end
     end
 
     context 'when schedules still use the dosage options' do

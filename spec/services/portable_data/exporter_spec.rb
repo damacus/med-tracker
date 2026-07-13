@@ -46,6 +46,19 @@ RSpec.describe PortableData::Exporter do
                                     passphrase: passphrase)
   end
 
+  def create_health_event_medication(household:)
+    person = create(:person, household: household)
+    medication = create(:medication, household: household, name: 'Health Event Medicine')
+    event = HealthEvent.create!(
+      person: person,
+      event_kind: :suspected_side_effect,
+      title: 'Nausea',
+      started_on: Date.new(2026, 7, 13)
+    )
+    HealthEventMedication.create!(health_event: event, medication: medication)
+    [event, medication]
+  end
+
   it 'exports an encrypted bundle for every person an owner can manage' do
     household = create(:household)
     owner = membership(household: household, role: :owner, email: 'owner@example.test')
@@ -62,6 +75,21 @@ RSpec.describe PortableData::Exporter do
     expect(payload.dig('records', 'people').pluck('portable_id')).to contain_exactly(person.portable_id)
     expect(payload.dig('records', 'medications').pluck('name')).to contain_exactly('Quiet Medicine')
     expect(payload.dig('records', 'medications').pluck('location_portable_id')).to all(be_present)
+  end
+
+  it 'excludes medications referenced only by health events from encrypted bundles' do
+    household = create(:household)
+    owner = membership(household: household, role: :owner, email: 'health-event-owner@example.test')
+    event, medication = create_health_event_medication(household: household)
+
+    exporter = described_class.new(household: household, membership: owner, passphrase: passphrase)
+    payload = exporter.payload
+    mobile_payload = exporter.mobile_payload
+
+    expect(payload.dig(:records, :health_events)).to be_nil
+    expect(payload.dig(:records, :medications)).to be_empty
+    expect(mobile_payload.dig(:records, :health_events).pluck(:portable_id)).to contain_exactly(event.portable_id)
+    expect(mobile_payload.dig(:records, :medications).pluck(:portable_id)).to contain_exactly(medication.portable_id)
   end
 
   it 'limits member exports to people with manage grants' do

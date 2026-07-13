@@ -92,6 +92,7 @@ class MedicationDosageOption < ApplicationRecord
       ActiveRecord::Relation::QueryAttribute.new('id', medication_id, ActiveRecord::Type::BigInteger.new)
     ]
     ActiveRecord::Base.connection.exec_update(stmt, 'Sync Medication Dosage', binds)
+    medication.refresh_sync_version!
   end
 
   def sync_medication_inventory

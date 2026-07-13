@@ -19,8 +19,7 @@ module PortableData
       envelope
     end
 
-    def export_unencrypted(export_mode:, event_type: 'portable_data.exported')
-      export_payload = payload
+    def export_unencrypted(export_mode:, event_type: 'portable_data.exported', export_payload: payload)
       result = yield(export_payload)
       record_audit_event(export_payload, event_type: event_type, encrypted: false, export_mode: export_mode)
       result
@@ -29,7 +28,8 @@ module PortableData
     def mobile_snapshot
       export_unencrypted(
         export_mode: 'mobile_snapshot',
-        event_type: 'portable_data.mobile_snapshot_read'
+        event_type: 'portable_data.mobile_snapshot_read',
+        export_payload: mobile_payload
       ) do |export_payload|
         export_payload
       end
@@ -39,31 +39,37 @@ module PortableData
       export_payload
     end
 
+    def mobile_payload
+      export_payload(include_health_events: true)
+    end
+
     private
 
     attr_reader :household, :membership, :passphrase, :person_ids, :request
 
-    def export_payload
+    def export_payload(include_health_events: false)
       {
         format: FORMAT,
         scope: 'single_person',
         exported_at: Time.current.iso8601,
         source_instance_id: source_instance_id,
-        records: records_payload
+        records: records_payload(include_health_events: include_health_events)
       }
     end
 
-    def records_payload
-      ExportRecordSerializer.new(
+    def records_payload(include_health_events:)
+      records = {
         people: people,
-        locations: locations,
-        medications: medications,
-        dosage_options: dosage_options,
+        locations: locations(include_health_events:),
+        medications: medications(include_health_events:),
+        dosage_options: dosage_options(include_health_events:),
         schedules: schedules,
         person_medications: person_medications,
         medication_takes: medication_takes,
         notification_preferences: notification_preferences
-      ).as_json
+      }
+      records[:health_events] = health_events if include_health_events
+      ExportRecordSerializer.new(records).as_json
     end
 
     def source_instance_id
@@ -93,35 +99,48 @@ module PortableData
       @person_id_values ||= people.pluck(:id)
     end
 
-    def location_id_values
-      @location_id_values ||= begin
+    def location_id_values(include_health_events:)
+      @location_id_values ||= {}
+      @location_id_values[include_health_events] ||= begin
         ids = LocationMembership.where(household: household, person_id: person_id_values).pluck(:location_id)
-        ids.concat(medications.pluck(:location_id))
+        ids.concat(medications(include_health_events:).pluck(:location_id))
         ids.concat(medication_takes.pluck(:taken_from_location_id))
         ids.compact.uniq
       end
     end
 
-    def medication_id_values
-      @medication_id_values ||= begin
+    def medication_id_values(include_health_events:)
+      @medication_id_values ||= {}
+      @medication_id_values[include_health_events] ||= begin
         ids = schedules.pluck(:medication_id)
         ids.concat(person_medications.pluck(:medication_id))
+        if include_health_events
+          ids.concat(health_events.joins(:health_event_medications).pluck('health_event_medications.medication_id'))
+        end
         ids.compact.uniq
       end
     end
 
-    def locations
-      @locations ||= household.locations.where(id: location_id_values).order(:id)
+    def locations(include_health_events:)
+      @locations ||= {}
+      @locations[include_health_events] ||=
+        household.locations.where(id: location_id_values(include_health_events:)).order(:id)
     end
 
-    def medications
-      @medications ||= household.medications.where(id: medication_id_values).includes(:location).order(:id)
+    def medications(include_health_events:)
+      @medications ||= {}
+      @medications[include_health_events] ||=
+        household.medications.where(id: medication_id_values(include_health_events:))
+                 .includes(:location)
+                 .order(:id)
     end
 
-    def dosage_options
-      @dosage_options ||= MedicationDosageOption.where(household: household, medication_id: medication_id_values)
-                                                .includes(:medication)
-                                                .order(:id)
+    def dosage_options(include_health_events:)
+      @dosage_options ||= {}
+      @dosage_options[include_health_events] ||= MedicationDosageOption.where(
+        household: household,
+        medication_id: medication_id_values(include_health_events:)
+      ).includes(:medication).order(:id)
     end
 
     def schedules
@@ -150,6 +169,12 @@ module PortableData
       @notification_preferences ||= NotificationPreference.where(household: household, person_id: person_id_values)
                                                           .includes(:person)
                                                           .order(:id)
+    end
+
+    def health_events
+      @health_events ||= HealthEvent.where(household: household, person_id: person_id_values)
+                                    .includes(:person, :medications)
+                                    .order(:id)
     end
 
     def record_audit_event(payload, export_mode:, event_type: 'portable_data.exported', encrypted: true)

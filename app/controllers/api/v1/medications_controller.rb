@@ -24,7 +24,6 @@ module Api
 
         return render_validation_errors(medication) unless medication.save
 
-        record_api_change(medication, action: 'create')
         render_resource(medication.reload, serializer: MedicationSerializer, status: :created)
       end
 
@@ -37,7 +36,6 @@ module Api
 
         return render_validation_errors(medication) unless medication.update(medication_params)
 
-        record_api_change(medication, action: 'update')
         render_resource(medication.reload, serializer: MedicationSerializer)
       end
 
@@ -51,7 +49,6 @@ module Api
         )
         return render_unprocessable(result.error.to_s) unless result.success?
 
-        record_api_change(medication.reload, action: 'update')
         render_resource(medication, serializer: MedicationSerializer)
       end
 
@@ -73,7 +70,6 @@ module Api
           status: status,
           order_details: order_details_params
         )
-        record_api_change(medication.reload, action: 'update')
         render_resource(medication, serializer: MedicationSerializer)
       end
 
