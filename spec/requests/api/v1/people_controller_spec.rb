@@ -74,6 +74,32 @@ RSpec.describe Api::V1::PeopleController do
       grant = person.person_access_grants.find_by!(household_membership: relationship.carer.household_membership)
       expect(grant.carer_relationship).to eq(relationship)
     end
+
+    it 'returns nested delegation validation errors without creating the dependent' do
+      login_data = api_login(user)
+      household_id = login_data.dig('household', 'id')
+      invalid_grant = PersonAccessGrant.new
+      invalid_grant.errors.add(:base, 'Delegated access is invalid')
+      assignment = instance_double(CareDelegation::Assign)
+      allow(CareDelegation::Assign).to receive(:new).and_return(assignment)
+      allow(assignment).to receive(:call).and_raise(ActiveRecord::RecordInvalid.new(invalid_grant))
+
+      expect do
+        post api_v1_household_people_path(household_id),
+             params: {
+               person: {
+                 name: 'Invalid API Dependent',
+                 date_of_birth: 8.years.ago.to_date,
+                 person_type: 'minor'
+               }
+             },
+             headers: api_auth_headers(login_data.fetch('access_token')),
+             as: :json
+      end.not_to change(Person, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body.dig('error', 'errors', 'base')).to include('Delegated access is invalid')
+    end
   end
 
   describe 'GET /api/v1/households/:household_id/people household grants' do
