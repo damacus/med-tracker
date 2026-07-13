@@ -23,9 +23,10 @@ class ApiLoginFailureRecorder
 
     account.with_lock do
       failure = AccountLoginFailure.find_or_initialize_by(account: account)
-      failure.number = failure.new_record? ? 1 : failure.number.to_i + 1
+      failure_count = failure.new_record? ? 1 : failure.number.to_i + 1
+      failure.number = failure_count
       failure.save!
-      lock_account! if failure.number >= MAX_INVALID_LOGINS
+      lock_account! if failure_count >= MAX_INVALID_LOGINS
     end
   end
 
