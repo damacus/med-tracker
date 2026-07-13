@@ -11,6 +11,15 @@ RSpec.describe CarerRelationshipPolicy, type: :policy do
   let(:relationship) do
     CarerRelationship.create!(patient: patient, carer: carer, relationship_type: :carer)
   end
+  let(:other_household) { create(:household) }
+  let(:foreign_relationship) do
+    CarerRelationship.new(
+      household: other_household,
+      patient: household_policy_person(other_household, person_type: :minor, has_capacity: false),
+      carer: household_policy_person(other_household),
+      relationship_type: :carer
+    )
+  end
 
   it 'allows household managers to administer relationships in their household' do
     expect(policy_results(owner.fetch(:context), relationship,
@@ -21,6 +30,17 @@ RSpec.describe CarerRelationshipPolicy, type: :policy do
                             destroy?: true,
                             activate?: true,
                             assign_dependent?: true
+                          )
+  end
+
+  it 'allows only creation checks for a class-level relationship authorization' do
+    expect(policy_results(owner.fetch(:context), CarerRelationship,
+                          %i[create? new? update? destroy? activate?])).to eq(
+                            create?: true,
+                            new?: true,
+                            update?: false,
+                            destroy?: false,
+                            activate?: false
                           )
   end
 
@@ -40,6 +60,18 @@ RSpec.describe CarerRelationshipPolicy, type: :policy do
     expect(described_class.new(member.fetch(:context), relationship).destroy?).to be(false)
   end
 
+  it 'rejects records whose household ownership differs from the active household' do
+    expect(policy_results(owner.fetch(:context), foreign_relationship,
+                          %i[show? create? update? destroy? activate? assign_dependent?])).to eq(
+                            show?: false,
+                            create?: false,
+                            update?: false,
+                            destroy?: false,
+                            activate?: false,
+                            assign_dependent?: false
+                          )
+  end
+
   it 'scopes relationships to managers or granted patients' do
     relationship
     other = CarerRelationship.create!(
@@ -54,6 +86,22 @@ RSpec.describe CarerRelationshipPolicy, type: :policy do
 
     expect(manager_scope).to include(relationship, other)
     expect(member_scope).to contain_exactly(relationship)
+  end
+
+  it 'excludes relationships owned by another household from every scope' do
+    other_household = create(:household)
+    foreign_relationship = CarerRelationship.create!(
+      household: other_household,
+      patient: household_policy_person(other_household, person_type: :minor, has_capacity: false),
+      carer: household_policy_person(other_household),
+      relationship_type: :carer
+    )
+
+    manager_scope = described_class::Scope.new(owner.fetch(:context), CarerRelationship.all).resolve
+    member_scope = described_class::Scope.new(member.fetch(:context), CarerRelationship.all).resolve
+
+    expect(manager_scope).not_to include(foreign_relationship)
+    expect(member_scope).not_to include(foreign_relationship)
   end
 
   def policy_results(context, record, actions)

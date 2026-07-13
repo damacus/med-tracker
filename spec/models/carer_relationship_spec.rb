@@ -3,14 +3,54 @@
 require 'rails_helper'
 
 RSpec.describe CarerRelationship do
+  let(:household) { create(:household) }
+
   describe 'associations' do
+    it { is_expected.to belong_to(:household) }
     it { is_expected.to belong_to(:carer).class_name('Person') }
     it { is_expected.to belong_to(:patient).class_name('Person') }
   end
 
+  describe 'factory' do
+    it 'builds both endpoints in one derived household by default' do
+      relationship = build(:carer_relationship)
+
+      expect(relationship.patient.household).to eq(relationship.carer.household)
+      expect(relationship).to be_valid
+      expect(relationship.household).to eq(relationship.patient.household)
+    end
+
+    it 'builds both endpoints in an explicitly selected household' do
+      relationship = build(:carer_relationship, household: household)
+
+      expect(relationship.patient.household).to eq(household)
+      expect(relationship.carer.household).to eq(household)
+      expect(relationship).to be_valid
+    end
+
+    it 'preserves explicit same-household endpoint overrides' do
+      patient = create(:person, household: household)
+      carer = create(:person, household: household)
+      relationship = build(:carer_relationship, patient: patient, carer: carer)
+
+      expect(relationship).to have_attributes(patient: patient, carer: carer)
+      expect(relationship).to be_valid
+      expect(relationship.household).to eq(household)
+    end
+
+    it 'does not hide explicit cross-household endpoint overrides' do
+      patient = create(:person, household: household)
+      carer = create(:person, household: create(:household))
+      relationship = build(:carer_relationship, patient: patient, carer: carer)
+
+      expect(relationship).not_to be_valid
+      expect(relationship.errors[:carer]).to include('must belong to the relationship household')
+    end
+  end
+
   describe 'validations' do
     let(:carer) do
-      Person.create!(
+      household.people.create!(
         name: 'Carer Person',
         date_of_birth: 30.years.ago,
         person_type: :adult
@@ -18,7 +58,7 @@ RSpec.describe CarerRelationship do
     end
 
     let(:patient) do
-      Person.create!(
+      household.people.create!(
         name: 'Patient Person',
         date_of_birth: 5.years.ago,
         person_type: :adult,
@@ -52,11 +92,46 @@ RSpec.describe CarerRelationship do
       expect(relationship).not_to be_valid
       expect(relationship.errors[:relationship_type]).to include("can't be blank")
     end
+
+    it 'derives household ownership from the patient' do
+      relationship = described_class.create!(
+        carer: carer,
+        patient: patient,
+        relationship_type: 'parent'
+      )
+
+      expect(relationship.household).to eq(household)
+    end
+
+    it 'rejects carers from another household' do
+      other_carer = create(:person, household: create(:household))
+      relationship = described_class.new(
+        household: household,
+        carer: other_carer,
+        patient: patient,
+        relationship_type: 'parent'
+      )
+
+      expect(relationship).not_to be_valid
+      expect(relationship.errors[:carer]).to include('must belong to the relationship household')
+    end
+
+    it 'rejects a household that differs from the patient household' do
+      relationship = described_class.new(
+        household: create(:household),
+        carer: carer,
+        patient: patient,
+        relationship_type: 'parent'
+      )
+
+      expect(relationship).not_to be_valid
+      expect(relationship.errors[:patient]).to include('must belong to the relationship household')
+    end
   end
 
   describe 'scopes' do
     let(:carer) do
-      Person.create!(
+      household.people.create!(
         name: 'Carer Person',
         date_of_birth: 30.years.ago,
         person_type: :adult
@@ -64,7 +139,7 @@ RSpec.describe CarerRelationship do
     end
 
     let(:patient) do
-      Person.create!(
+      household.people.create!(
         name: 'Patient Person',
         date_of_birth: 5.years.ago,
         person_type: :adult
@@ -81,7 +156,7 @@ RSpec.describe CarerRelationship do
 
       inactive_relationship = described_class.create!(
         carer: carer,
-        patient: Person.create!(name: 'Another Patient', date_of_birth: 10.years.ago),
+        patient: household.people.create!(name: 'Another Patient', date_of_birth: 10.years.ago),
         relationship_type: 'guardian',
         active: false
       )
@@ -94,8 +169,8 @@ RSpec.describe CarerRelationship do
   describe '#deactivate!' do
     it 'sets active to false' do
       relationship = described_class.create!(
-        carer: Person.create!(name: 'Carer', date_of_birth: 30.years.ago, person_type: :adult),
-        patient: Person.create!(name: 'Patient', date_of_birth: 5.years.ago, person_type: :adult),
+        carer: household.people.create!(name: 'Carer', date_of_birth: 30.years.ago, person_type: :adult),
+        patient: household.people.create!(name: 'Patient', date_of_birth: 5.years.ago, person_type: :adult),
         relationship_type: 'parent',
         active: true
       )
@@ -109,8 +184,8 @@ RSpec.describe CarerRelationship do
   describe '#activate!' do
     it 'sets active to true' do
       relationship = described_class.create!(
-        carer: Person.create!(name: 'Carer', date_of_birth: 30.years.ago, person_type: :adult),
-        patient: Person.create!(name: 'Patient', date_of_birth: 5.years.ago, person_type: :adult),
+        carer: household.people.create!(name: 'Carer', date_of_birth: 30.years.ago, person_type: :adult),
+        patient: household.people.create!(name: 'Patient', date_of_birth: 5.years.ago, person_type: :adult),
         relationship_type: 'parent',
         active: false
       )

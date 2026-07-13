@@ -3,6 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe Household do
+  describe 'associations' do
+    it { is_expected.to have_many(:carer_relationships).dependent(:restrict_with_error) }
+  end
+
   describe '.create_with_owner!' do
     subject(:household) do
       described_class.create_with_owner!(

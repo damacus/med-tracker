@@ -14,6 +14,7 @@ class SchemaInventory
     health_events
     health_event_medications
     notification_events
+    carer_relationships
     household_memberships
     person_access_grants
     household_invitations
@@ -52,7 +53,6 @@ class SchemaInventory
     audit_ledger_entries
     audit_signing_keys
     barcode_catalog_entries
-    carer_relationships
     households
     medication_review_evidence_records
     medication_review_evidence_refresh_runs

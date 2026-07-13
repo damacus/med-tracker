@@ -6,16 +6,21 @@ class CarerRelationshipPolicy < ApplicationPolicy
   end
 
   def show?
-    household_manager? || person_grant_allows?(record.patient, :view)
+    relationship_in_household? && (household_manager? || person_grant_allows?(record.patient, :view))
   end
 
   def create?
-    return true if household_manager?
+    return household_manager? if class_record?
+
+    relationship_in_household? && (household_manager? || assign_dependent?)
+  end
+
+  def new?
+    return household_manager? if class_record?
+    return household_manager? if record.patient.nil? && record.carer.nil?
 
     assign_dependent?
   end
-
-  alias new? create?
 
   def update?
     household_manager? && relationship_in_household?
@@ -32,7 +37,8 @@ class CarerRelationshipPolicy < ApplicationPolicy
   end
 
   def assign_dependent?
-    dependent_patient? && (household_manager? || person_grant_allows?(record.patient, :manage))
+    relationship_in_household? && dependent_patient? &&
+      (household_manager? || person_grant_allows?(record.patient, :manage))
   end
 
   private
@@ -44,7 +50,22 @@ class CarerRelationshipPolicy < ApplicationPolicy
   end
 
   def relationship_in_household?
-    household.present? && record.patient&.household_id == household.id && record.carer&.household_id == household.id
+    return false if household.blank?
+    return false if class_record?
+
+    record_household_id == household.id && carer_in_household?
+  end
+
+  def record_household_id
+    record.household_id || record.patient&.household_id
+  end
+
+  def carer_in_household?
+    record.carer.nil? || record.carer.household_id == household.id
+  end
+
+  def class_record?
+    !record.respond_to?(:household_id)
   end
 
   class Scope < ApplicationPolicy::Scope
@@ -58,8 +79,7 @@ class CarerRelationshipPolicy < ApplicationPolicy
     private
 
     def household_relationship_scope
-      person_ids = Person.where(household: household).select(:id)
-      scope.where(patient_id: person_ids, carer_id: person_ids)
+      scope.where(household: household)
     end
   end
 end

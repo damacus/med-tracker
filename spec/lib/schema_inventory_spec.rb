@@ -16,6 +16,7 @@ RSpec.describe SchemaInventory do
       health_events
       health_event_medications
       notification_events
+      carer_relationships
       household_memberships
       person_access_grants
       household_invitations
@@ -30,7 +31,6 @@ RSpec.describe SchemaInventory do
       api_app_tokens
       api_sessions
       barcode_catalog_entries
-      carer_relationships
       households
       medication_review_evidence_records
       native_device_tokens
@@ -78,5 +78,12 @@ RSpec.describe SchemaInventory do
     end
 
     expect(nullable).to be_empty
+  end
+
+  it 'keeps every household-owned table in the fresh-schema RLS installer' do
+    schema_source = Rails.root.join('db/schema.rb').read
+    rls_tables = schema_source.match(/%w\[(?<tables>.*?)\]\.each do \|table_name\|/m)[:tables].split
+
+    expect(rls_tables).to match_array(described_class.household_owned_tables)
   end
 end

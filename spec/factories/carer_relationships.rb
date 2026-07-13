@@ -2,8 +2,9 @@
 
 FactoryBot.define do
   factory :carer_relationship do
-    carer { association :person }
-    patient { association :person }
+    household { nil }
+    patient { association :person, household: household || association(:household) }
+    carer { association :person, household: household || patient.household }
     relationship_type { 'family_member' }
     active { true }
   end

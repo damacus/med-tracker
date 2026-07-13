@@ -1,5 +1,6 @@
 ---
 jane_cares_for_child:
+  household: fixture_household
   carer: jane
   patient: child_patient
   relationship_type: parent
@@ -8,6 +9,7 @@ jane_cares_for_child:
   updated_at: <%= Time.current %>
 
 nurse_cares_for_john:
+  household: fixture_household
   carer: nurse_smith
   patient: john
   relationship_type: professional_carer
@@ -16,6 +18,7 @@ nurse_cares_for_john:
   updated_at: <%= Time.current %>
 
 adult_patient_self_care:
+  household: fixture_household
   carer: adult_patient_person
   patient: adult_patient_person
   relationship_type: 0  # self
@@ -23,6 +26,7 @@ adult_patient_self_care:
   updated_at: <%= Time.current %>
 
 parent_cares_for_child:
+  household: fixture_household
   carer: parent_person
   patient: child_user_person
   relationship_type: parent
@@ -31,6 +35,7 @@ parent_cares_for_child:
   updated_at: <%= Time.current %>
 
 carer_cares_for_patient:
+  household: fixture_household
   carer: carer_person
   patient: child_patient
   relationship_type: professional_carer
@@ -39,6 +44,7 @@ carer_cares_for_patient:
   updated_at: <%= Time.current %>
 
 carer_cares_for_child_user:
+  household: fixture_household
   carer: carer_person
   patient: child_user_person
   relationship_type: professional_carer
@@ -47,6 +53,7 @@ carer_cares_for_child_user:
   updated_at: <%= Time.current %>
 
 inactive_relationship:
+  household: fixture_household
   carer: bob
   patient: john
   relationship_type: family_member
