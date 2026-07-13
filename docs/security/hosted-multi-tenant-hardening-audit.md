@@ -59,7 +59,7 @@ Decision recorded on 2026-07-13. Thirteen of twenty-two controls are `GO`. The h
 
 ## Related Non-Gate Work
 
-- [#1608](https://github.com/damacus/med-tracker/issues/1608) makes mobile sync authoritative and conflict-safe; [PR #1616](https://github.com/damacus/med-tracker/pull/1616) is open and is required before native clients rely on offline sync, but it does not close a hosted security row here.
+- [#1608](https://github.com/damacus/med-tracker/issues/1608) made mobile sync authoritative and conflict-safe in merged [PR #1616](https://github.com/damacus/med-tracker/pull/1616). It closes a mobile launch dependency without changing a hosted security row here.
 - [#1609](https://github.com/damacus/med-tracker/issues/1609) completes native MFA and multi-household authentication; it is a mobile launch dependency rather than this hosted web beta gate.
 - [#1611](https://github.com/damacus/med-tracker/issues/1611) makes native notification delivery durable; current notification privacy is `GO`, while durable provider delivery remains a mobile launch dependency.
 - [#509](https://github.com/damacus/med-tracker/issues/509) tracks broader forensic audit hardening. Current chaining, signed checkpoint, WORM delivery, verifier separation, and redaction evidence is reflected above; the unimplemented hosted data-lifecycle events remain gated by #1620.
