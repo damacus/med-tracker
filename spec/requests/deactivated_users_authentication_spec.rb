@@ -27,4 +27,44 @@ RSpec.describe 'Deactivated user authentication' do
     expect(response).to redirect_to(login_path)
     expect(session[:account_id]).to be_blank
   end
+
+  it 'revokes API credentials when a user is deactivated' do
+    household = ensure_api_household_for(user)
+    membership = household.household_memberships.find_by!(account: account)
+    api_session, = ApiSession.issue_for(account: account, household_membership: membership)
+    api_app_token, raw_token = ApiAppToken.issue_for(
+      account: account,
+      household_membership: membership,
+      name: 'Deactivation regression token'
+    )
+
+    user.deactivate!
+
+    expect(api_session.reload.revoked_at).to be_present
+    expect(api_app_token.reload.revoked_at).to be_present
+
+    get api_v1_auth_households_path, headers: api_auth_headers(raw_token), as: :json
+
+    expect(response).to have_http_status(:unauthorized)
+  end
+
+  it 'deactivates and revokes API credentials when token audit persistence fails' do
+    household = ensure_api_household_for(user)
+    membership = household.household_memberships.find_by!(account: account)
+    api_session, = ApiSession.issue_for(account: account, household_membership: membership)
+    api_app_token, = ApiAppToken.issue_for(
+      account: account,
+      household_membership: membership,
+      name: 'Audit failure regression token'
+    )
+    allow(Audit::VersionEvent).to receive(:record!) do
+      ActiveRecord::Base.connection.execute('SELECT missing_audit_column FROM users')
+    end
+
+    expect { user.deactivate! }.not_to raise_error
+
+    expect(user.reload).not_to be_active
+    expect(api_session.reload.revoked_at).to be_present
+    expect(api_app_token.reload.revoked_at).to be_present
+  end
 end
