@@ -101,6 +101,32 @@ RSpec.describe 'Admin user mutation boundary' do
     )
   end
 
+  it 'rejects API sessions, app tokens, and OAuth grants issued before a web role change' do
+    member = users(:jane)
+    membership = household.household_memberships.find_by!(account: member.person.account)
+    api_session, session_token, = ApiSession.issue_for(
+      account: member.person.account,
+      household_membership: membership
+    )
+    app_token, app_token_value = ApiAppToken.issue_for(
+      account: member.person.account,
+      household_membership: membership,
+      name: 'Pre-role-change token'
+    )
+    oauth_grant, oauth_token = issue_oauth_grant(membership)
+
+    patch membership_role_admin_user_path(member), params: { membership: { role: 'administrator' } }
+
+    expect(membership.reload.permissions_version).to eq(api_session.permissions_version + 1)
+    expect(api_session.reload).not_to be_active_for_membership
+    expect(app_token.reload).not_to be_active_for_membership
+    expect(oauth_grant.reload).not_to be_active_for_membership
+    [session_token, app_token_value, oauth_token].each do |token|
+      get api_v1_household_me_path(household.id), headers: { 'Authorization' => "Bearer #{token}" }, as: :json
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
   it 'rolls back the membership role when audit recording fails' do
     member = users(:jane)
     membership = household.household_memberships.find_by!(account: member.person.account)
@@ -231,5 +257,30 @@ RSpec.describe 'Admin user mutation boundary' do
         location_ids: [locations(:home).id]
       }
     }
+  end
+
+  def issue_oauth_grant(membership)
+    raw_token = "oauth-#{SecureRandom.hex(24)}"
+    grant = OauthGrant.create!(
+      account: membership.account,
+      oauth_application: oauth_application(membership),
+      household_membership: membership,
+      person: membership.person,
+      permissions_version: membership.permissions_version,
+      expires_in: 1.hour.from_now,
+      scopes: 'patient/*.rs',
+      token_hash: OauthGrant.digest(raw_token)
+    )
+    [grant, raw_token]
+  end
+
+  def oauth_application(membership)
+    OauthApplication.create!(
+      account: membership.account,
+      name: 'Access change spec client',
+      client_id: "access-change-#{SecureRandom.hex(8)}",
+      redirect_uri: 'https://client.example/callback',
+      scopes: 'patient/*.rs'
+    )
   end
 end

@@ -109,13 +109,21 @@ module Admin
   end
 
   class UserAccessSummaryQuery
-    Result = Data.define(:membership_roles_by_account_id, :platform_admin_account_ids) do
+    Result = Data.define(
+      :membership_roles_by_account_id,
+      :platform_admin_account_ids,
+      :promotable_memberships_by_account_id
+    ) do
       def membership_role_for(account_id)
         membership_roles_by_account_id[account_id]
       end
 
       def platform_admin?(account_id)
         platform_admin_account_ids.include?(account_id)
+      end
+
+      def promotable_memberships_for(account_id)
+        promotable_memberships_by_account_id.fetch(account_id, [])
       end
     end
 
@@ -129,7 +137,8 @@ module Admin
     def call
       Result.new(
         membership_roles_by_account_id: membership_roles_by_account_id,
-        platform_admin_account_ids: platform_admin_account_ids
+        platform_admin_account_ids: platform_admin_account_ids,
+        promotable_memberships_by_account_id: promotable_memberships_by_account_id
       )
     end
 
@@ -140,12 +149,18 @@ module Admin
     end
 
     def membership_scope
-      scope = household ? household.household_memberships : HouseholdMembership.all
-      scope.active.where(account_id: account_ids).order(:id)
+      @membership_scope ||= begin
+        scope = household ? household.household_memberships : HouseholdMembership.all
+        scope.active.where(account_id: account_ids).includes(:household).order(:id).to_a
+      end
     end
 
     def platform_admin_account_ids
       PlatformAdmin.active.where(account_id: account_ids).pluck(:account_id).to_set
+    end
+
+    def promotable_memberships_by_account_id
+      membership_scope.reject(&:owner?).group_by(&:account_id)
     end
 
     def account_ids

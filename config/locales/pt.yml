@@ -727,6 +727,9 @@ pt:
       grant_system_access: Conceder acesso ao sistema
       remove_system_access: Remover acesso ao sistema
       updated: Acesso ao sistema atualizado
+      promote_to_owner: Promover a proprietário
+      owner_promoted: Proprietário do agregado promovido
+      owner_promotion_rejected: A promoção a proprietário do agregado foi rejeitada
   authentication:
     login_required: Por favor, inicie sessão para continuar
     privileged_mfa_required:

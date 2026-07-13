@@ -726,6 +726,9 @@ es:
       grant_system_access: Conceder acceso al sistema
       remove_system_access: Retirar acceso al sistema
       updated: Acceso al sistema actualizado
+      promote_to_owner: Promover a propietario
+      owner_promoted: Propietario del hogar promovido
+      owner_promotion_rejected: Se rechazó la promoción a propietario del hogar
   authentication:
     login_required: Por favor, inicie sesión para continuar
     privileged_mfa_required:

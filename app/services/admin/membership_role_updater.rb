@@ -19,12 +19,10 @@ module Admin
       failure = validation_failure
       return failure if failure
 
-      previous_role = membership.role
-      ActiveRecord::Base.transaction do
-        membership.update!(role: role)
-        record_audit_event(previous_role)
-      end
-      Result.new(true, I18n.t('admin.membership_roles.updated'))
+      result = access_change.update_membership(membership, role: role)
+      return Result.new(true, I18n.t('admin.membership_roles.updated')) if result.success?
+
+      Result.new(false, access_change_error_message)
     end
 
     private
@@ -36,37 +34,27 @@ module Admin
     end
 
     def validation_failure
-      return Result.new(false, I18n.t('admin.membership_roles.owner_rejected')) if role == OWNER_ROLE
-      return Result.new(false, I18n.t('admin.membership_roles.invalid_role')) unless allowed_role?
+      return if allowed_role? || role == OWNER_ROLE
 
-      Result.new(false, I18n.t('admin.membership_roles.owner_demotion_rejected')) unless owner_change_allowed?
+      Result.new(false, I18n.t('admin.membership_roles.invalid_role'))
     end
 
-    def owner_change_allowed?
-      owner_governance.can_change_owner_membership?(membership)
-    end
-
-    def owner_governance
-      @owner_governance ||= OwnerGovernance.new(
-        household: membership.household,
-        actor_membership: actor_membership
-      )
-    end
-
-    def record_audit_event(previous_role)
-      Audit::Event.record!(
-        household: membership.household,
+    def access_change
+      @access_change ||= Households::AccessChange.new(
         actor_account: actor_account,
         actor_membership: actor_membership,
-        event_type: 'household_membership.role_updated',
-        request: request,
-        metadata: {
-          target_account_id: membership.account_id,
-          target_membership_id: membership.id,
-          previous_role: previous_role,
-          new_role: membership.role
-        }
+        request: request
       )
+    end
+
+    def access_change_error_message
+      if role == OWNER_ROLE
+        I18n.t('admin.membership_roles.owner_rejected')
+      elsif membership.role_before_last_save == OWNER_ROLE || membership.role_in_database == OWNER_ROLE
+        I18n.t('admin.membership_roles.owner_demotion_rejected')
+      else
+        membership.errors.full_messages.to_sentence
+      end
     end
   end
 end

@@ -193,14 +193,22 @@ class PeopleController < ApplicationController
   def grant_created_person_access
     return unless current_household && current_membership
 
-    current_household.person_access_grants.find_or_create_by!(
+    access_change.create_grant!(
+      household: current_household,
       household_membership: current_membership,
-      person: @person
-    ) do |grant|
-      grant.access_level = :manage
-      grant.relationship_type = :family_member
-      grant.granted_by_membership = current_membership
-    end
+      person: @person,
+      access_level: :manage,
+      relationship_type: :family_member,
+      granted_by_membership: current_membership
+    )
+  end
+
+  def access_change
+    @access_change ||= Households::AccessChange.new(
+      actor_account: current_account,
+      actor_membership: current_membership,
+      request: request
+    )
   end
 
   def auto_assign_created_person_carer_relationship?

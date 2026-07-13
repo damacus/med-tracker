@@ -68,7 +68,12 @@ class Household < ApplicationRecord
     end
 
     def create_owner_grant(household, membership, person)
-      household.person_access_grants.create!(
+      Households::AccessChange.new(
+        actor_account: membership.account,
+        actor_membership: membership,
+        request: nil
+      ).create_grant!(
+        household: household,
         household_membership: membership,
         person: person,
         access_level: :manage,

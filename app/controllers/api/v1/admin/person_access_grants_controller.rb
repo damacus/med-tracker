@@ -13,13 +13,15 @@ module Api
         end
 
         def create
-          grant = PersonAccessGrant.new(grant_params)
-          grant.household = current_household
-          grant.granted_by_membership = current_membership
+          result = access_change.create_grant(
+            grant_params.to_h.merge(
+              household: current_household,
+              granted_by_membership: current_membership
+            )
+          )
+          grant = result.record
+          return render_validation_errors(grant) unless result.success?
 
-          return render_validation_errors(grant) unless grant.save
-
-          audit_admin_action!(event_type: 'api/admin/person_access_grant/created', target: grant, outcome: 'success')
           render json: { data: grant_payload(grant) }, status: :created
         end
 
@@ -30,8 +32,9 @@ module Api
             return render_validation_errors(grant)
           end
 
-          grant.update!(revoked_at: Time.current)
-          audit_admin_action!(event_type: 'api/admin/person_access_grant/revoked', target: grant, outcome: 'success')
+          result = access_change.revoke_grant(grant)
+          return render_validation_errors(result.record) unless result.success?
+
           head :no_content
         end
 
@@ -46,6 +49,14 @@ module Api
               relationship_type
               expires_at
             ]
+          )
+        end
+
+        def access_change
+          @access_change ||= Households::AccessChange.new(
+            actor_account: current_account,
+            actor_membership: current_membership,
+            request: request
           )
         end
 
