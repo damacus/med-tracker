@@ -20,6 +20,9 @@ module Admin
     rescue ActiveRecord::RecordInvalid => e
       copy_account_email_errors(e.record)
       Result.new(false, user, :invalid_record)
+    rescue CareDelegation::Assign::InvalidAccessLevel
+      user.errors.add(:dependent_access_level, :inclusion)
+      Result.new(false, user, :invalid_access_level)
     end
 
     private
@@ -61,7 +64,7 @@ module Admin
         save_user!(account)
         membership = create_membership!(account)
         grant_person_access!(membership, user.person, :manage, :self)
-        assign_dependents!(membership)
+        assign_dependents!
       end
     end
 
@@ -90,18 +93,17 @@ module Admin
       )
     end
 
-    def assign_dependents!(membership)
+    def assign_dependents!
       return if carer_relationship_type.blank?
 
-      relationships = DependentRelationshipAssigner.new(
+      DependentRelationshipAssigner.new(
         carer: user.person,
         dependent_ids: user.dependent_ids,
         relationship_type: carer_relationship_type,
-        scope: dependent_assignment_scope
+        access_level: user.dependent_access_level,
+        scope: dependent_assignment_scope,
+        granted_by_membership: actor_membership
       ).call
-      relationships.each do |relationship|
-        grant_person_access!(membership, relationship.patient, dependent_access_level, dependent_relationship_type)
-      end
     end
 
     def dependent_assignment_scope
@@ -129,13 +131,6 @@ module Admin
       return requested_role if MembershipRoleUpdater::ALLOWED_ROLES.include?(requested_role)
 
       requested_role || 'member'
-    end
-
-    def dependent_access_level
-      requested_level = user.dependent_access_level.presence
-      return requested_level if PersonAccessGrant.access_levels.key?(requested_level)
-
-      dependent_relationship_type == 'parent' ? :manage : :record
     end
 
     def dependent_relationship_type

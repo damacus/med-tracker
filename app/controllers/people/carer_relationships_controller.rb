@@ -20,6 +20,8 @@ module People
       else
         create_parent_assignment
       end
+    rescue CareDelegation::Assign::Error => e
+      render_invalid_assignment(e.message)
     end
 
     private
@@ -35,13 +37,13 @@ module People
         return
       end
 
-      relationships = DependentRelationshipAssigner.new(
+      DependentRelationshipAssigner.new(
         carer: carer,
         dependent_ids: [@patient.id],
         relationship_type: admin_assignment_params[:relationship_type],
-        scope: @patient.household.people
+        scope: @patient.household.people,
+        granted_by_membership: current_membership
       ).call
-      grant_assignment_access(carer.user, relationships, admin_assignment_params[:relationship_type])
       redirect_to @patient, notice: t('people.carer_relationships.created')
     end
 
@@ -58,13 +60,13 @@ module People
     end
 
     def assign_existing_user(user)
-      relationships = DependentRelationshipAssigner.new(
+      DependentRelationshipAssigner.new(
         carer: user.person,
         dependent_ids: [@patient.id],
         relationship_type: 'parent',
-        scope: @patient.household.people
+        scope: @patient.household.people,
+        granted_by_membership: current_membership
       ).call
-      grant_assignment_access(user, relationships, 'parent')
       redirect_to @patient, notice: t('people.carer_relationships.created')
     end
 
@@ -151,62 +153,6 @@ module People
     rescue ActiveRecord::RecordInvalid => e
       invitation.errors.merge!(e.record.errors) unless e.record == invitation
       false
-    end
-
-    def grant_assignment_access(user, relationships, legacy_relationship_type)
-      person = assignment_person_for(user)
-      return unless person
-
-      membership = assignment_membership_for(user, person)
-      grant_access(membership, person, :manage, :self)
-      relationships.each do |relationship|
-        grant_access(
-          membership,
-          relationship.patient,
-          access_level_for(legacy_relationship_type),
-          grant_relationship_type_for(legacy_relationship_type)
-        )
-      end
-    end
-
-    def assignment_person_for(user)
-      return unless current_household && user&.person&.account
-
-      person = user.person
-      person.update!(household: current_household) if person.household_id.blank?
-      person if person.household_id == current_household.id
-    end
-
-    def assignment_membership_for(_user, person)
-      membership = current_household.household_memberships.find_or_initialize_by(account: person.account)
-      membership.person = person
-      membership.role = :member if membership.new_record?
-      membership.status = :active
-      membership.save!
-      membership
-    end
-
-    def grant_access(membership, person, access_level, relationship_type)
-      grant = current_household.person_access_grants.find_or_initialize_by(
-        household_membership: membership,
-        person: person
-      )
-      grant.access_level = access_level
-      grant.relationship_type = relationship_type
-      grant.granted_by_membership = current_membership || membership
-      grant.revoked_at = nil
-      grant.save!
-    end
-
-    def access_level_for(legacy_relationship_type)
-      legacy_relationship_type == 'professional_carer' ? :record : :manage
-    end
-
-    def grant_relationship_type_for(legacy_relationship_type)
-      return :professional if legacy_relationship_type == 'professional_carer'
-      return :parent if legacy_relationship_type == 'parent'
-
-      :family_member
     end
 
     def parent_user_by_email

@@ -51,17 +51,8 @@ class PeopleController < ApplicationController
     authorize @person
     @person.primary_location = primary_location
 
-    if auto_assign_created_person_carer_relationship?
-      @person.carer_relationships.build(
-        carer: current_membership.person,
-        relationship_type: :family_member,
-        active: true
-      )
-    end
-
     respond_to do |format|
-      if @person.save
-        grant_created_person_access
+      if persist_created_person
         format.html { redirect_to @person, notice: t('people.created') }
         format.turbo_stream do
           flash.now[:notice] = t('people.created')
@@ -135,6 +126,29 @@ class PeopleController < ApplicationController
   end
 
   private
+
+  def persist_created_person
+    ActiveRecord::Base.transaction do
+      if auto_assign_created_person_carer_relationship?
+        CareDelegation::Assign.new(
+          carer: current_membership.person,
+          patient: @person,
+          relationship_type: :family_member,
+          granted_by_membership: current_membership
+        ).call
+      else
+        @person.save!
+        grant_created_person_access
+      end
+    end
+    true
+  rescue ActiveRecord::RecordInvalid => e
+    @person.errors.merge!(e.record.errors) unless e.record == @person
+    false
+  rescue CareDelegation::Assign::Error => e
+    @person.errors.add(:base, e.message)
+    false
+  end
 
   def destroy_person
     if MedicationAdministrationHistory.exists_for?(@person)

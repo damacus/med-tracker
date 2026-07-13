@@ -559,7 +559,7 @@ RSpec.describe Person do
 
       it 'reactivates an existing inactive relationship' do
         relationship = patient.carer_relationships.find_by!(carer: carer)
-        relationship.deactivate!
+        relationship.update!(active: false)
 
         patient.assign_carer!(carer)
 

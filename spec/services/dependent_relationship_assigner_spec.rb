@@ -36,10 +36,7 @@ RSpec.describe DependentRelationshipAssigner do
         ).call
       end.not_to change(CarerRelationship, :count)
 
-      expect(relationship.reload).to have_attributes(
-        relationship_type: 'parent',
-        active: true
-      )
+      expect_reactivated_assignment(relationship, carer, dependent)
     end
 
     it 'ignores adults and unrelated ids' do
@@ -77,6 +74,13 @@ RSpec.describe DependentRelationshipAssigner do
         )
       end.to raise_error(ArgumentError, /scope/)
     end
+  end
+
+  def expect_reactivated_assignment(relationship, carer, dependent)
+    expect(relationship.reload).to have_attributes(relationship_type: 'parent', active: true)
+    membership = carer.household.household_memberships.find_by!(account: carer.account)
+    grant = membership.person_access_grants.find_by!(person: dependent, carer_relationship: relationship)
+    expect(grant).to have_attributes(access_level: 'manage', relationship_type: 'parent', revoked_at: nil)
   end
 
   def inactive_relationship(carer, dependent)

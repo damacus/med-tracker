@@ -436,7 +436,7 @@ RSpec.describe 'Admin create and update turbo flows' do
 
     it 'keeps membership role separate from relationship access grants' do
       doctor = users(:doctor)
-      patient = people(:child_patient)
+      patient = create(:person, household: household, name: 'Professional Grant Patient')
 
       post admin_carer_relationships_path,
            params: {

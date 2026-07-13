@@ -280,28 +280,33 @@ class RodauthMain < Rodauth::Rails::Auth
 
       def apply_household_invitation_grants!(membership, person, invitation)
         invitation.household_invitation_grants.find_each do |grant|
-          invitation.household.person_access_grants.create!(
-            household_membership: membership,
-            person: grant.person,
-            access_level: grant.access_level,
-            relationship_type: grant.relationship_type,
-            expires_at: grant.expires_at,
-            granted_by_membership: invitation.invited_by_membership
-          )
-          assign_invited_dependent_relationship!(person, grant)
+          apply_household_invitation_grant!(membership, person, invitation, grant)
         end
       end
 
-      def assign_invited_dependent_relationship!(person, grant)
+      def apply_household_invitation_grant!(membership, person, invitation, grant)
         relationship_type = carer_relationship_type_for_invitation_grant(grant.relationship_type)
-        return unless relationship_type
+        return create_invitation_manual_grant!(membership, invitation, grant) unless relationship_type
 
-        DependentRelationshipAssigner.new(
+        CareDelegation::Assign.new(
           carer: person,
-          dependent_ids: [grant.person_id],
+          patient: grant.person,
           relationship_type: relationship_type,
-          scope: grant.household.people
+          access_level: grant.access_level,
+          expires_at: grant.expires_at,
+          granted_by_membership: invitation.invited_by_membership
         ).call
+      end
+
+      def create_invitation_manual_grant!(membership, invitation, grant)
+        invitation.household.person_access_grants.create!(
+          household_membership: membership,
+          person: grant.person,
+          access_level: grant.access_level,
+          relationship_type: grant.relationship_type,
+          expires_at: grant.expires_at,
+          granted_by_membership: invitation.invited_by_membership
+        )
       end
 
       def carer_relationship_type_for_invitation_grant(relationship_type)

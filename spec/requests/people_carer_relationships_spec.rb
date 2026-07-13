@@ -22,6 +22,9 @@ RSpec.describe 'People carer relationships' do
       relationship = CarerRelationship.find_by!(carer: users(:jane).person, patient: people(:child_user_person))
       expect(relationship.relationship_type).to eq('family_member')
       expect(relationship.active).to be true
+      membership = relationship.household.household_memberships.find_by!(account: relationship.carer.account)
+      expect(membership.person_access_grants.find_by!(person: relationship.patient).carer_relationship)
+        .to eq(relationship)
       expect(response).to redirect_to(person_path(people(:child_user_person)))
     end
 
@@ -35,6 +38,39 @@ RSpec.describe 'People carer relationships' do
 
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include('Select an adult user to assign')
+    end
+
+    it 'preserves a weaker manual grant when an admin assignment conflicts with it' do
+      sign_in(users(:admin))
+      household = Household.find_by!(slug: default_request_household_slug)
+      admin_membership = household.household_memberships.find_by!(account: users(:admin).person.account)
+      jane = users(:jane).person
+      jane_membership = household.household_memberships.find_or_create_by!(account: jane.account, person: jane)
+      manual_grant = household.person_access_grants.create!(
+        household_membership: jane_membership,
+        person: people(:child_user_person),
+        access_level: :view,
+        relationship_type: :professional,
+        granted_by_membership: admin_membership
+      )
+
+      expect do
+        post person_carer_relationships_path(people(:child_user_person)),
+             params: {
+               carer_relationship: {
+                 carer_id: jane.id,
+                 relationship_type: 'family_member'
+               }
+             }
+      end.not_to change(CarerRelationship, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(manual_grant.reload).to have_attributes(
+        access_level: 'view',
+        relationship_type: 'professional',
+        carer_relationship_id: nil,
+        revoked_at: nil
+      )
     end
 
     it 'allows an existing parent to link another parent by email for their child' do
@@ -85,11 +121,10 @@ RSpec.describe 'People carer relationships' do
       post person_carer_relationships_path(people(:child_user_person)),
            params: { carer_relationship: { email: users(:jane).email_address } }
 
-      expect(grant.reload).to have_attributes(
-        revoked_at: nil,
-        access_level: 'manage',
-        relationship_type: 'parent'
-      )
+      relationship = CarerRelationship.find_by!(carer: jane, patient: people(:child_user_person))
+      expect(grant.reload.revoked_at).to be_present
+      expect(relationship.person_access_grants.sole)
+        .to have_attributes(access_level: 'manage', relationship_type: 'parent', revoked_at: nil)
     end
 
     it 'creates a parent invitation when the second parent does not have an account' do

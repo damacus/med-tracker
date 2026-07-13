@@ -167,6 +167,37 @@ RSpec.describe PortableData::Importer do
     )
   end
 
+  def imported_person_delegation(household, access_level:)
+    membership = owner_membership(household)
+    carer = create(:person, household: household, account: membership.account)
+    membership.update!(person: carer)
+    person = create(:person, household: household, portable_id: 'person-portable-1')
+    relationship = create_import_relationship(household, carer, person)
+    grant = create_import_grant(household, membership, person, relationship, access_level)
+    [membership, person, relationship, grant]
+  end
+
+  def create_import_relationship(household, carer, person)
+    CarerRelationship.create!(
+      household: household,
+      carer: carer,
+      patient: person,
+      relationship_type: :professional_carer,
+      active: true
+    )
+  end
+
+  def create_import_grant(household, membership, person, relationship, access_level)
+    household.person_access_grants.create!(
+      household_membership: membership,
+      person: person,
+      access_level: access_level,
+      relationship_type: :professional,
+      granted_by_membership: membership,
+      carer_relationship: relationship
+    )
+  end
+
   def payload_with_unmanaged_schedule_reference(household:, manageable_person:, unmanaged_person:)
     medication = create(:medication, household: household, portable_id: 'existing-medication-portable')
     payload = solo_person_payload_for(manageable_person)
@@ -410,6 +441,42 @@ RSpec.describe PortableData::Importer do
         access_level: :manage
       )
     ).to be(true)
+  end
+
+  it 'preserves a relationship-owned grant that already provides imported authority' do
+    household = create(:household)
+    membership, person, relationship, grant = imported_person_delegation(household, access_level: :manage)
+    original_attributes = grant.attributes
+
+    result = import_result(
+      household: household,
+      membership: membership,
+      payload: solo_person_payload_for(person),
+      dry_run: false
+    )
+
+    expect(result).to be_applied
+    expect(grant.reload.attributes).to eq(original_attributes)
+    expect(grant.carer_relationship).to eq(relationship)
+  end
+
+  it 'rejects imported authority that would overwrite a relationship-owned grant' do
+    household = create(:household)
+    membership, person, _relationship, grant = imported_person_delegation(household, access_level: :record)
+    original_grant_attributes = grant.attributes
+    original_person_attributes = person.attributes
+
+    expect do
+      import_result(
+        household: household,
+        membership: membership,
+        payload: solo_person_payload_for(person),
+        dry_run: false
+      )
+    end.to raise_error(PortableData::Importer::Error, /relationship-owned access grant/)
+
+    expect(grant.reload.attributes).to eq(original_grant_attributes)
+    expect(person.reload.attributes).to eq(original_person_attributes)
   end
 
   it 'rejects member imports that reference unmanaged household people outside the top-level people array' do

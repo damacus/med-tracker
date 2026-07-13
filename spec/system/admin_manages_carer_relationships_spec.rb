@@ -39,11 +39,24 @@ RSpec.describe 'AdminManagesCarerRelationships' do
       click_button 'Create Relationship'
 
       expect(page).to have_text('Carer relationship was successfully created')
+      relationship = CarerRelationship.find_by!(carer: jane, patient: people(:john))
+      expect(relationship.person_access_grants.sole).to have_attributes(
+        access_level: 'manage',
+        relationship_type: 'family_member'
+      )
     end
 
     it 'allows admin to deactivate a carer relationship', :js do
-      relationship = carer_relationships(:jane_cares_for_child)
       login_as(admin)
+      household = admin.person.household
+      actor_membership = household.household_memberships.find_by!(account: admin.person.account)
+      relationship = CareDelegation::Assign.new(
+        carer: carer.person,
+        patient: people(:john),
+        relationship_type: :family_member,
+        granted_by_membership: actor_membership
+      ).call
+      grant = relationship.person_access_grants.sole
 
       visit admin_carer_relationships_path
 
@@ -57,6 +70,8 @@ RSpec.describe 'AdminManagesCarerRelationships' do
       end
 
       expect(page).to have_text('Carer relationship has been deactivated')
+      expect(relationship.reload).not_to be_active
+      expect(grant.reload.revoked_at).to be_present
     end
 
     it 'allows admin to reactivate a deactivated carer relationship' do
@@ -71,6 +86,7 @@ RSpec.describe 'AdminManagesCarerRelationships' do
       end
 
       expect(page).to have_text('Carer relationship has been activated')
+      expect(relationship.reload.person_access_grants.sole.carer_relationship).to eq(relationship)
 
       within "[data-relationship-id='#{relationship.id}']" do
         expect(page).to have_text('Active')

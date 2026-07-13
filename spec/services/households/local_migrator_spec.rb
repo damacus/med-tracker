@@ -171,6 +171,116 @@ RSpec.describe Households::LocalMigrator do
     expect(migrator.send(:legacy_user_role, legacy_user)).to eq(:doctor)
   end
 
+  it 'links relationship grants through the public migration transaction' do
+    household, owner, patient, relationship = local_delegation_fixture
+    stub_account_enumeration(owner)
+
+    result = run_migration(owner, household.name)
+
+    membership = household.household_memberships.find_by!(account: owner)
+    expect(result).to be_applied
+    expect(household.person_access_grants.find_by!(household_membership: membership, person: patient))
+      .to have_attributes(carer_relationship: relationship, access_level: 'manage', relationship_type: 'parent')
+  end
+
+  it 'preserves an existing manual grant through the public migration transaction' do
+    household, owner, patient, relationship = local_delegation_fixture
+    membership = create_local_membership(household, owner, relationship.carer)
+    grant = household.person_access_grants.create!(
+      household_membership: membership,
+      person: patient,
+      access_level: :manage,
+      relationship_type: :parent,
+      granted_by_membership: membership
+    )
+    original_attributes = grant.attributes
+    stub_account_enumeration(owner)
+
+    run_migration(owner, household.name)
+
+    expect(grant.reload.attributes).to eq(original_attributes)
+  end
+
+  it 'preserves an existing self grant through the public migration transaction' do
+    household, owner, _patient, relationship = local_delegation_fixture
+    membership = create_local_membership(household, owner, relationship.carer)
+    CarerRelationship.create!(household: household, carer: relationship.carer, patient: relationship.carer,
+                              relationship_type: :self, active: true)
+    grant = household.person_access_grants.create!(
+      household_membership: membership,
+      person: relationship.carer,
+      access_level: :manage,
+      relationship_type: :self,
+      granted_by_membership: membership
+    )
+    original_attributes = grant.attributes
+    stub_account_enumeration(owner)
+
+    run_migration(owner, household.name)
+
+    expect(grant.reload.attributes).to eq(original_attributes)
+  end
+
+  it 'rejects insufficient manual access through the public migration transaction' do
+    household, owner, patient, relationship = local_delegation_fixture
+    membership = create_local_membership(household, owner, relationship.carer)
+    grant = create_local_grant(household, membership, patient, access_level: :view)
+
+    expect_public_migration_conflict(household, owner, grant, /manual grant does not cover/)
+  end
+
+  it 'rejects expired manual access through the public migration transaction' do
+    household, owner, patient, relationship = local_delegation_fixture
+    membership = create_local_membership(household, owner, relationship.carer)
+    grant = create_local_grant(household, membership, patient, access_level: :manage, expires_at: 1.minute.ago)
+
+    expect_public_migration_conflict(household, owner, grant, /manual grant does not cover/)
+  end
+
+  it 'rejects time-limited manual access for an indefinite relationship' do
+    household, owner, patient, relationship = local_delegation_fixture
+    membership = create_local_membership(household, owner, relationship.carer)
+    grant = create_local_grant(household, membership, patient, access_level: :manage, expires_at: 1.day.from_now)
+
+    expect_public_migration_conflict(household, owner, grant, /manual grant does not cover/)
+  end
+
+  it 'reconciles authority already owned by the same relationship without changing provenance' do
+    household, owner, patient, relationship = local_delegation_fixture
+    membership = create_local_membership(household, owner, relationship.carer)
+    grant = create_owned_local_grant(household, membership, patient, relationship)
+    stub_account_enumeration(owner)
+
+    run_migration(owner, household.name)
+
+    expect(grant.reload).to have_attributes(
+      access_level: 'manage',
+      relationship_type: 'parent',
+      expires_at: nil,
+      carer_relationship: relationship
+    )
+  end
+
+  it 'rejects a grant sourced to another relationship without stealing provenance' do
+    household, owner, patient, relationship = local_delegation_fixture
+    membership = create_local_membership(household, owner, relationship.carer)
+    grant = create_foreign_sourced_grant(household, membership, patient, relationship)
+
+    expect_public_migration_conflict(household, owner, grant, /another relationship/)
+  end
+
+  it 'rolls back memberships and grants when relationship migration fails' do
+    household, owner, = local_delegation_fixture
+    stub_account_enumeration(owner)
+    migrator = described_class.new(owner_email: owner.email, household_name: household.name, apply: true)
+    allow(migrator).to receive(:migrate_carer_relationship_grants).and_raise(described_class::Error, 'failed')
+
+    expect { migrator.call }.to raise_error(described_class::Error, 'failed')
+
+    expect(household.household_memberships.where(account: owner)).to be_empty
+    expect(household.person_access_grants).to be_empty
+  end
+
   it 'dry-runs without mutating data and reports counts' do
     owner, = create_legacy_account(
       email: 'dry-run-owner@example.test',
@@ -210,5 +320,86 @@ RSpec.describe Households::LocalMigrator do
     expect do
       described_class.new(owner_email: 'owner@example.test', household_name: ' ', apply: false).call
     end.to raise_error(described_class::Error, /HOUSEHOLD_NAME/)
+  end
+
+  def local_delegation_fixture
+    account = Account.create!(email: 'source-owner@example.test', status: :verified)
+    household = Household.create!(name: 'Source', created_by_account: account)
+    owner = create(:person, household: household, account: account)
+    patient = create(:person, household: household)
+    relationship = CarerRelationship.create!(household: household, carer: owner, patient: patient,
+                                             relationship_type: :parent, active: true)
+    [household, account, patient, relationship]
+  end
+
+  def create_local_membership(household, account, person)
+    household.household_memberships.create!(
+      account: account,
+      person: person,
+      role: :owner,
+      status: :active
+    )
+  end
+
+  def create_local_grant(household, membership, person, **attributes)
+    household.person_access_grants.create!(
+      {
+        household_membership: membership,
+        person: person,
+        access_level: :manage,
+        relationship_type: :parent,
+        granted_by_membership: membership
+      }.merge(attributes)
+    )
+  end
+
+  def create_owned_local_grant(household, membership, person, relationship)
+    create_local_grant(
+      household,
+      membership,
+      person,
+      access_level: :view,
+      expires_at: 1.day.from_now,
+      carer_relationship: relationship
+    )
+  end
+
+  def create_foreign_sourced_grant(household, membership, patient, relationship)
+    other_patient = create(:person, household: household)
+    other_relationship = CarerRelationship.create!(
+      household: household,
+      carer: relationship.carer,
+      patient: other_patient,
+      relationship_type: :parent
+    )
+    grant = create_local_grant(household, membership, patient, carer_relationship: relationship)
+    write_raw_column(grant, :carer_relationship_id, other_relationship.id)
+    grant
+  end
+
+  def expect_public_migration_conflict(household, owner, grant, message)
+    additional_account = rollback_account
+    original_attributes = grant.reload.attributes
+    stub_account_enumeration(owner, additional_account)
+
+    expect_migration_error(household, owner, message)
+    expect_grant_unchanged(grant, original_attributes)
+    expect_membership_rolled_back(household, additional_account)
+  end
+
+  def expect_migration_error(household, owner, message)
+    expect { run_migration(owner, household.name) }.to raise_error(described_class::Error, message)
+  end
+
+  def expect_grant_unchanged(grant, original_attributes)
+    expect(grant.reload.attributes).to eq(original_attributes)
+  end
+
+  def expect_membership_rolled_back(household, account)
+    expect(household.household_memberships.where(account: account)).to be_empty
+  end
+
+  def rollback_account
+    Account.create!(email: "rollback-member-#{SecureRandom.hex(4)}@example.test", status: :verified)
   end
 end

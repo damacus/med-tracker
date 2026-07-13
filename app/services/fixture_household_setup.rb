@@ -78,7 +78,8 @@ module FixtureHouseholdSetup
     person.active_patient_relationships.find_each do |relationship|
       grant_access(household: household, membership: membership, person: relationship.patient,
                    access_level: access_level_for_relationship(relationship),
-                   relationship_type: grant_relationship_type_for(relationship), grantor: owner_membership)
+                   relationship_type: grant_relationship_type_for(relationship), grantor: owner_membership,
+                   carer_relationship: relationship)
     end
   end
 
@@ -101,9 +102,13 @@ module FixtureHouseholdSetup
     person = attributes.fetch(:person)
 
     grant = household.person_access_grants.find_or_initialize_by(household_membership: membership, person: person)
-    grant.access_level = attributes.fetch(:access_level)
-    grant.relationship_type = attributes.fetch(:relationship_type)
-    grant.granted_by_membership = attributes.fetch(:grantor)
+    carer_relationship = attributes[:carer_relationship] if grant.new_record?
+    grant.assign_attributes(
+      access_level: attributes.fetch(:access_level),
+      relationship_type: attributes.fetch(:relationship_type),
+      granted_by_membership: attributes.fetch(:grantor),
+      carer_relationship: carer_relationship || grant.carer_relationship
+    )
     grant.save!
   end
 

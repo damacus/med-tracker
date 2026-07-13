@@ -58,8 +58,29 @@ RSpec.describe Admin::UserProvisioner do
     expect(membership).to have_attributes(person: user.person, role: 'administrator', status: 'active')
     expect(grant_for(membership, user.person))
       .to have_attributes(access_level: 'manage', relationship_type: 'self')
+    relationship = CarerRelationship.find_by!(carer: user.person, patient: dependent)
     expect(grant_for(membership, dependent))
-      .to have_attributes(access_level: 'manage', relationship_type: 'parent')
+      .to have_attributes(access_level: 'manage', relationship_type: 'parent', carer_relationship: relationship)
+  end
+
+  it 'preserves the selected dependent access level' do
+    user.dependent_access_level = 'view'
+
+    expect(result).to be_success
+
+    membership = household.household_memberships.find_by!(account: user.person.account)
+    relationship = CarerRelationship.find_by!(carer: user.person, patient: dependent)
+    expect(grant_for(membership, dependent))
+      .to have_attributes(access_level: 'view', relationship_type: 'parent', carer_relationship: relationship)
+  end
+
+  it 'rejects an unsupported dependent access level without writing partial records' do
+    user.dependent_access_level = 'unsupported'
+
+    expect { result }.not_to(change { provisioned_record_counts })
+
+    expect(result).to have_attributes(success?: false, error: :invalid_access_level, user: user)
+    expect(user.errors[:dependent_access_level]).to include('is not included in the list')
   end
 
   it 'rejects duplicate accounts without writing partial records' do
@@ -88,5 +109,9 @@ RSpec.describe Admin::UserProvisioner do
 
   def grant_for(membership, person)
     household.person_access_grants.find_by!(household_membership: membership, person: person)
+  end
+
+  def provisioned_record_counts
+    [Account, User, HouseholdMembership, PersonAccessGrant, CarerRelationship].map(&:count)
   end
 end

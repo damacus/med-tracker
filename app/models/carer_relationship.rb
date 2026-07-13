@@ -8,6 +8,7 @@ class CarerRelationship < ApplicationRecord
   belongs_to :household
   belongs_to :carer, class_name: 'Person', inverse_of: :patient_relationships
   belongs_to :patient, class_name: 'Person', inverse_of: :carer_relationships
+  has_many :person_access_grants, dependent: :destroy
 
   # Audit trail for carer assignments and removals
   # Important for safeguarding: tracks who has access to patient records
@@ -22,14 +23,6 @@ class CarerRelationship < ApplicationRecord
   validate :endpoints_belong_to_household
 
   scope :active, -> { where(active: true) }
-
-  def deactivate!
-    update!(active: false)
-  end
-
-  def activate!
-    update!(active: true)
-  end
 
   private
 

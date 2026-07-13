@@ -9,6 +9,7 @@ RSpec.describe CarerRelationship do
     it { is_expected.to belong_to(:household) }
     it { is_expected.to belong_to(:carer).class_name('Person') }
     it { is_expected.to belong_to(:patient).class_name('Person') }
+    it { is_expected.to have_many(:person_access_grants).dependent(:destroy) }
   end
 
   describe 'factory' do
@@ -166,33 +167,12 @@ RSpec.describe CarerRelationship do
     end
   end
 
-  describe '#deactivate!' do
-    it 'sets active to false' do
-      relationship = described_class.create!(
-        carer: household.people.create!(name: 'Carer', date_of_birth: 30.years.ago, person_type: :adult),
-        patient: household.people.create!(name: 'Patient', date_of_birth: 5.years.ago, person_type: :adult),
-        relationship_type: 'parent',
-        active: true
-      )
+  describe 'lifecycle mutation boundary' do
+    it 'does not expose direct activation helpers' do
+      relationship = described_class.new
 
-      relationship.deactivate!
-
-      expect(relationship.reload.active).to be false
-    end
-  end
-
-  describe '#activate!' do
-    it 'sets active to true' do
-      relationship = described_class.create!(
-        carer: household.people.create!(name: 'Carer', date_of_birth: 30.years.ago, person_type: :adult),
-        patient: household.people.create!(name: 'Patient', date_of_birth: 5.years.ago, person_type: :adult),
-        relationship_type: 'parent',
-        active: false
-      )
-
-      relationship.activate!
-
-      expect(relationship.reload.active).to be true
+      expect(relationship).not_to respond_to(:activate!)
+      expect(relationship).not_to respond_to(:deactivate!)
     end
   end
 
@@ -250,7 +230,7 @@ RSpec.describe CarerRelationship do
       )
 
       expect do
-        relationship.deactivate!
+        relationship.update!(active: false)
       end.to change(PaperTrail::Version, :count).by(1)
 
       version = relationship.versions.last

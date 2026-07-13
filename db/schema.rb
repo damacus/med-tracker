@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_13_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_13_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -880,6 +880,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_130000) do
     t.string "relationship_type", null: false
     t.datetime "revoked_at"
     t.datetime "updated_at", null: false
+    t.bigint "carer_relationship_id"
+    t.index ["carer_relationship_id", "household_id"], name: "idx_person_access_grants_on_delegation_household"
     t.index ["granted_by_membership_id"], name: "index_person_access_grants_on_granted_by_membership_id"
     t.index ["household_id"], name: "index_person_access_grants_on_household_id"
     t.index ["household_membership_id", "person_id"], name: "idx_on_household_membership_id_person_id_6ddc5a2882", unique: true, where: "(revoked_at IS NULL)"
@@ -1149,6 +1151,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_130000) do
   add_foreign_key "oauth_grants", "people"
   add_foreign_key "people", "accounts", deferrable: :deferred
   add_foreign_key "people", "households"
+  add_foreign_key "person_access_grants", "carer_relationships", column: ["carer_relationship_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_person_access_grants_carer_relationship_household"
   add_foreign_key "person_access_grants", "household_memberships"
   add_foreign_key "person_access_grants", "household_memberships", column: "granted_by_membership_id"
   add_foreign_key "person_access_grants", "household_memberships", column: ["granted_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_person_access_grants_granted_by_membership_id_household"

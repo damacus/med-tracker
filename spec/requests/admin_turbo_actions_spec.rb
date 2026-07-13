@@ -7,7 +7,10 @@ RSpec.describe 'Admin turbo actions' do
 
   let(:admin) { users(:admin) }
 
-  before { sign_in(admin) }
+  before do
+    FixtureHouseholdSetup.apply!
+    sign_in(admin)
+  end
 
   describe 'POST /admin/users/:id/activate' do
     it 'returns turbo_stream and updates the user row and flash' do
@@ -104,11 +107,52 @@ RSpec.describe 'Admin turbo actions' do
       expect(response.body).to include('target="flash"')
       expect(relationship.reload).to be_active
     end
+
+    it 'returns unprocessable content when a manual grant conflicts with activation' do
+      relationship = carer_relationships(:inactive_relationship)
+      membership = relationship.household.household_memberships.find_by!(person: relationship.carer)
+      relationship.household.person_access_grants.where(
+        household_membership: membership,
+        person: relationship.patient
+      ).delete_all
+      grant = relationship.household.person_access_grants.create!(
+        household_membership: membership,
+        person: relationship.patient,
+        access_level: :view,
+        relationship_type: :family_member,
+        granted_by_membership: membership
+      )
+
+      post activate_admin_carer_relationship_path(relationship), headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('target="flash"')
+      expect(response.body).to include('existing manual grant')
+      expect(relationship.reload).not_to be_active
+      expect(grant.reload).to have_attributes(access_level: 'view', revoked_at: nil)
+    end
+
+    it 'returns unprocessable content for an unsupported legacy relationship type' do
+      relationship = carer_relationships(:inactive_relationship)
+      relationship.update!(relationship_type: 'guardian')
+
+      post activate_admin_carer_relationship_path(relationship), headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('target="flash"')
+      expect(response.body).to include('unsupported carer relationship type')
+      expect(relationship.reload).not_to be_active
+    end
   end
 
   describe 'DELETE /admin/carer_relationships/:id' do
     it 'returns turbo_stream and updates the relationship row and flash' do
       relationship = carer_relationships(:jane_cares_for_child)
+      membership = relationship.household.household_memberships.find_by!(person: relationship.carer)
+      relationship.household.person_access_grants.find_by!(
+        household_membership: membership,
+        person: relationship.patient
+      ).update!(carer_relationship: relationship)
 
       delete admin_carer_relationship_path(relationship), headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
@@ -117,6 +161,24 @@ RSpec.describe 'Admin turbo actions' do
       expect(response.body).to include("target=\"carer_relationship_#{relationship.id}\"")
       expect(response.body).to include('target="flash"')
       expect(relationship.reload).not_to be_active
+    end
+
+    it 'returns unprocessable content without revoking an unowned grant' do
+      relationship = carer_relationships(:jane_cares_for_child)
+      membership = relationship.household.household_memberships.find_by!(person: relationship.carer)
+      manual_grant = relationship.household.person_access_grants.find_by!(
+        household_membership: membership,
+        person: relationship.patient
+      )
+      manual_grant.update!(carer_relationship: nil)
+
+      delete admin_carer_relationship_path(relationship), headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('target="flash"')
+      expect(response.body).to include('unowned grant')
+      expect(relationship.reload).to be_active
+      expect(manual_grant.reload.revoked_at).to be_nil
     end
   end
 end

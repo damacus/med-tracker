@@ -25,6 +25,11 @@ module Api
 
         def destroy
           grant = PersonAccessGrant.where(household: current_household).find(params.expect(:id))
+          if grant.carer_relationship
+            grant.errors.add(:base, 'Relationship-owned grants must be revoked through their carer relationship')
+            return render_validation_errors(grant)
+          end
+
           grant.update!(revoked_at: Time.current)
           audit_admin_action!(event_type: 'api/admin/person_access_grant/revoked', target: grant, outcome: 'success')
           head :no_content

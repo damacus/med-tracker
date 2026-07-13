@@ -166,6 +166,28 @@ RSpec.describe 'API v1 household administration' do
     expect(PersonAccessGrant.find(grant_id)).to be_revoked_at
   end
 
+  it 'refuses to revoke relationship-owned person access grants' do
+    api_session.update!(oidc_mfa_verified: true, mfa_verified_at: Time.current)
+    household = Household.find(household_id)
+    carer_account = Account.create!(email: 'api.delegated.carer@example.test', status: :verified)
+    carer = create(:person, household: household, account: carer_account)
+    relationship = CareDelegation::Assign.new(
+      carer: carer,
+      patient: people(:john),
+      relationship_type: :parent,
+      granted_by_membership: api_session.household_membership
+    ).call
+    grant = relationship.person_access_grants.sole
+
+    delete api_v1_household_admin_person_access_grant_path(household_id, grant.id), headers: headers, as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body.dig('error', 'errors', 'base'))
+      .to include('Relationship-owned grants must be revoked through their carer relationship')
+    expect(relationship.reload).to be_active
+    expect(grant.reload.revoked_at).to be_nil
+  end
+
   it 'returns validation errors for invalid person access grants and lists revoked timestamps' do
     api_session.update!(oidc_mfa_verified: true, mfa_verified_at: Time.current)
 
