@@ -19,11 +19,11 @@ impl ApiClient {
     ) -> Result<Value, ApiError> {
         self.require_capability("sync change feed", &["sync", "change_feed"])
             .await?;
-        let suffix = since.map_or_else(String::new, |value| format!("?cursor={value}"));
-        self.get_data(&format!(
-            "/api/v1/households/{household_id}/sync/changes{suffix}"
-        ))
-        .await
+        let path = format!("/api/v1/households/{household_id}/sync/changes");
+        match since {
+            Some(cursor) => self.get_data_with_query(&path, &[("cursor", cursor)]).await,
+            None => self.get_data(&path).await,
+        }
     }
 
     pub async fn sync_batch(
@@ -58,7 +58,7 @@ mod tests {
         mount_sync_capabilities(&server).await;
         Mock::given(method("GET"))
             .and(path("/api/v1/households/household-1/sync/changes"))
-            .and(query_param("cursor", "2026-07-14T12:00:00Z"))
+            .and(query_param("cursor", "2026-07-14T12:00:00+05:00"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "data": { "cursor": "next", "changes": [], "tombstones": [] }
             })))
@@ -67,7 +67,7 @@ mod tests {
 
         let client = ApiClient::new(server.uri(), Some("test-token".to_string())).unwrap();
         let result = client
-            .sync_changes("household-1", Some("2026-07-14T12:00:00Z"))
+            .sync_changes("household-1", Some("2026-07-14T12:00:00+05:00"))
             .await;
 
         assert!(result.is_ok());
