@@ -47,6 +47,8 @@ tasks:
     vars:
       NO_CACHE: '{{ .NO_CACHE | default "" }}'
       WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
+    env:
+      APP_IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:local-production-build" }}'
     cmds:
       - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} build {{ if .NO_CACHE }}--no-cache{{ end }} {{ .WEB_SERVICE }}"
 

@@ -4,6 +4,7 @@ module HostedRestore
   class VerificationError < StandardError; end
 
   class RuntimeVerifier
+    RUNTIME_IMAGE_PATH = Pathname.new('/app/.runtime-image-ref')
     TABLES = %w[people security_audit_events active_storage_attachments].freeze
     MODELS = {
       clinical: Person,
@@ -11,11 +12,11 @@ module HostedRestore
       attachments: ActiveStorage::Attachment
     }.freeze
 
-    def initialize(household_ids:, runtime_image: ENV.fetch('RUNTIME_APP_IMAGE'),
+    def initialize(household_ids:, runtime_image_path: RUNTIME_IMAGE_PATH,
                    connection: ActiveRecord::Base.connection, storage_verifier: Storage::RestoreVerifier,
                    models: MODELS)
       @household_ids = household_ids.map { |value| canonical_integer(value) }
-      @runtime_image = runtime_image
+      @runtime_image_path = Pathname.new(runtime_image_path)
       @connection = connection
       @storage_verifier = storage_verifier
       @models = models
@@ -41,7 +42,7 @@ module HostedRestore
 
     private
 
-    attr_reader :household_ids, :runtime_image, :connection, :storage_verifier, :models
+    attr_reader :household_ids, :runtime_image_path, :connection, :storage_verifier, :models
 
     def verify_role!
       role = connection.select_value('SELECT current_user')
@@ -55,11 +56,17 @@ module HostedRestore
     end
 
     def verify_runtime_image!
-      valid = !runtime_image.end_with?(':latest') &&
+      valid = runtime_image.present? && !runtime_image.end_with?(':latest') &&
               runtime_image.match?(
                 %r{\A[a-zA-Z0-9][a-zA-Z0-9._/-]*(?::[a-zA-Z0-9][a-zA-Z0-9._-]*|@sha256:[a-f0-9]{64})\z}
               )
       raise VerificationError, 'runtime_app_image_invalid' unless valid
+    end
+
+    def runtime_image
+      @runtime_image ||= runtime_image_path.read.strip
+    rescue Errno::ENOENT, Errno::EACCES
+      raise VerificationError, 'runtime_app_image_invalid'
     end
 
     def verify_forced_rls!

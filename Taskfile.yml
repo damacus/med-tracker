@@ -161,7 +161,7 @@ tasks:
       Verify an isolated database and attachment restore without performing the restore itself.
       The evidence destination must be an absolute, non-existing directory on durable storage.
       WORM_HEADS_JSON must contain the latest signed external checkpoint for sample_a and sample_b.
-      RUNTIME_APP_IMAGE must be injected by the deployment environment and exactly match APP_IMAGE.
+      APP_IMAGE must match the immutable image reference baked into the production image at build time.
     requires:
       vars:
         - DATABASE_BACKUP_ID

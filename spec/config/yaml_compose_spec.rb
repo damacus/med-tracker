@@ -7,6 +7,8 @@ RSpec.describe YAML do
     described_class.safe_load(Rails.root.join('compose.yaml').read, aliases: true)
   end
   let(:init_roles_sql) { Rails.root.join('compose/init-roles.sql').read }
+  let(:dockerfile) { Rails.root.join('Dockerfile').read }
+  let(:deploy_config) { Rails.root.join('config/deploy.yml').read }
 
   it 'isolates public assets in development web container' do
     expect(compose_config.dig('services', 'web-dev', 'tmpfs')).to include('/app/public/assets:uid=1000,gid=1000')
@@ -88,6 +90,20 @@ RSpec.describe YAML do
       .to eq('${MIGRATION_DATABASE_ROLE:-med_tracker_owner}')
     expect(compose_config.dig('services', 'web-prod', 'environment', 'DATABASE_ROLE'))
       .to eq('${DATABASE_ROLE:-med_tracker_app}')
+  end
+
+  it 'bakes the exact tagged production image reference without exposing a runtime override', :aggregate_failures do
+    expected_image = '${APP_IMAGE_REF:-med-tracker:local-production-build}'
+
+    %w[migrate-prod web-prod audit-exporter-prod audit-verifier-prod].each do |service_name|
+      service = compose_config.dig('services', service_name)
+      expect(service.fetch('image')).to eq(expected_image)
+      expect(service.dig('build', 'args', 'APP_IMAGE_REF')).to eq(expected_image)
+      expect(service.fetch('environment')).not_to include('RUNTIME_APP_IMAGE')
+    end
+    expect(dockerfile).to include('ARG APP_IMAGE_REF', '/app/.runtime-image-ref')
+    expect(dockerfile).not_to include('ENV RUNTIME_APP_IMAGE')
+    expect(deploy_config).to include('APP_IMAGE_REF: <%= ENV.fetch("APP_IMAGE_REF") %>')
   end
 
   it 'runs the audit exporter with isolated database and WORM credentials' do
