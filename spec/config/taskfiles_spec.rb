@@ -97,6 +97,20 @@ RSpec.describe 'Taskfiles' do
     expect(command).to eq('env DATABASE_ROLE=med_tracker_app rails support_access:expire')
   end
 
+  it 'passes export destinations as environment data instead of command text' do
+    task = root_taskfile.dig('tasks', 'household-lifecycle:download') || {}
+    command = task.dig('cmds', 0, 'vars', 'COMMAND')
+
+    expect(task.dig('requires', 'vars') || []).to include('DESTINATION')
+    expect(task.fetch('env', {})).to eq('DESTINATION' => '{{ .DESTINATION }}')
+    expect(task.dig('cmds', 0, 'vars', 'DOCKER_RUN_ARGS')).to eq('-e DESTINATION')
+    expect(command).to eq(
+      'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ' \
+      'ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} EXPORT_ID={{ .EXPORT_ID }} rails household_lifecycle:download'
+    )
+    expect(command).not_to include('DESTINATION')
+  end
+
   def dev_taskfile
     YAML.safe_load(Rails.root.join('Taskfiles/dev.yml').read, aliases: true, permitted_classes: [Symbol])
   end

@@ -7,13 +7,14 @@ module Households
     class << self
       def call(household:, actor_account:)
         authorize_operator!(actor_account)
+        preserved_account_ids = accounts_with_other_operational_household(household, actor_account)
         TenantContext.with(account: actor_account, household: household) do
           ActiveRecord::Base.transaction do
             household.lock!
             return household if household.offboarded? || household.purging? || household.purged?
 
             household.update!(status: :archived, lifecycle_state: :offboarded, offboarded_at: Time.current)
-            revoke_access!(household, actor_account)
+            revoke_access!(household, actor_account, preserved_account_ids)
             record_event(household, actor_account)
             household
           end
@@ -22,7 +23,7 @@ module Households
 
       private
 
-      def revoke_access!(household, actor_account)
+      def revoke_access!(household, actor_account, preserved_account_ids)
         memberships = household.household_memberships.to_a
         access_change = AccessChange.new(actor_account: actor_account, actor_membership: nil, request: nil)
 
@@ -30,7 +31,7 @@ module Households
         revoke_credentials!(memberships)
         end_support_sessions!(household)
         revoke_memberships!(memberships, access_change)
-        destroy_device_credentials!(memberships.map(&:account_id))
+        destroy_device_credentials!(memberships.map(&:account_id), preserved_account_ids)
       end
 
       def revoke_person_grants!(household, access_change)
@@ -62,16 +63,33 @@ module Households
         end
       end
 
-      def destroy_device_credentials!(account_ids)
-        removable_account_ids = account_ids - operational_account_ids(account_ids)
+      def destroy_device_credentials!(account_ids, preserved_account_ids)
+        removable_account_ids = account_ids - preserved_account_ids
         PushSubscription.where(account_id: removable_account_ids).destroy_all
         NativeDeviceToken.where(account_id: removable_account_ids).destroy_all
         AccountActiveSessionKey.where(account_id: removable_account_ids).destroy_all
       end
 
-      def operational_account_ids(account_ids)
-        HouseholdMembership.active.joins(:household).merge(Household.operational)
-                           .where(account_id: account_ids).distinct.pluck(:account_id)
+      def accounts_with_other_operational_household(household, actor_account)
+        account_ids = target_account_ids(household, actor_account)
+        accounts = Account.where(id: account_ids).index_by(&:id)
+
+        account_ids.select do |account_id|
+          other_operational_household?(household, accounts.fetch(account_id))
+        end
+      end
+
+      def target_account_ids(household, actor_account)
+        TenantContext.with(account: actor_account, household: household) do
+          HouseholdMembership.where(household: household).distinct.pluck(:account_id)
+        end
+      end
+
+      def other_operational_household?(household, account)
+        TenantContext.with(account: account, household: household) do
+          HouseholdMembership.active.joins(:household).merge(Household.operational)
+                             .where(account: account).where.not(household: household).exists?
+        end
       end
 
       def record_event(household, actor_account)

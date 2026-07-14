@@ -33,17 +33,20 @@ module Households
       medications
       locations
     ].freeze
+    LOCK_NAMESPACE = 'med_tracker.household_purge'
 
     class << self
       def call(household:, actor_account:, after_table: nil)
         authorize_operator!(actor_account)
-        refuse_active_hold!(household, actor_account)
-        Offboarder.call(household: household, actor_account: actor_account)
-        run = purge_run(household, actor_account)
-        return run if run.completed?
+        with_purge_lock(household) do
+          refuse_active_hold!(household, actor_account)
+          Offboarder.call(household: household, actor_account: actor_account)
+          run = purge_run(household, actor_account)
+          next run if run.completed?
 
-        execute_purge!(run, household, actor_account, after_table)
-        run
+          execute_purge!(run, household, actor_account, after_table)
+          run
+        end
       end
 
       private
@@ -56,9 +59,37 @@ module Households
       end
 
       def purge_run(household, actor_account)
-        HouseholdPurgeRun.find_or_create_by!(household: household) do |run|
-          run.requested_by_account = actor_account
-        end
+        HouseholdPurgeRun.acquire!(household: household, requested_by_account: actor_account)
+      end
+
+      def with_purge_lock(household)
+        connection = ActiveRecord::Base.connection
+        lock_key = "#{LOCK_NAMESPACE}:#{household.id}"
+        acquire_purge_lock(connection, lock_key)
+        yield
+      ensure
+        release_purge_lock(connection, lock_key) if connection && lock_key
+      end
+
+      def acquire_purge_lock(connection, lock_key)
+        connection.select_value(
+          ActiveRecord::Base.sanitize_sql_array(
+            [
+              'WITH lock_acquired AS MATERIALIZED (' \
+              'SELECT pg_advisory_lock(hashtextextended(?, 0))' \
+              ') SELECT 1 FROM lock_acquired',
+              lock_key
+            ]
+          )
+        )
+      end
+
+      def release_purge_lock(connection, lock_key)
+        connection.select_value(
+          ActiveRecord::Base.sanitize_sql_array(
+            ['SELECT pg_advisory_unlock(hashtextextended(?, 0))', lock_key]
+          )
+        )
       end
 
       def start_run!(run)

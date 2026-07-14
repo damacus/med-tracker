@@ -5,11 +5,27 @@ require 'rails_helper'
 RSpec.describe SupportAccessSessionPolicy, type: :policy do
   it 'permits active platform admins to create and destroy support sessions' do
     account = Account.create!(email: 'active-platform-admin@example.test', status: :verified)
-    PlatformAdmin.create!(account: account)
-    policy = described_class.new(platform_context(account), SupportAccessSession)
+    platform_admin = PlatformAdmin.create!(account: account)
+    support_session = build_support_session(platform_admin, 'active-support-policy-household')
+    policy = described_class.new(platform_context(account), support_session)
 
     expect(policy.create?).to be(true)
     expect(policy.destroy?).to be(true)
+  end
+
+  it 'denies support-session creation for non-operational households' do
+    account = Account.create!(email: 'unavailable-support-policy-admin@example.test', status: :verified)
+    platform_admin = PlatformAdmin.create!(account: account)
+
+    %i[held offboarded purging purged].each do |lifecycle_state|
+      support_session = build_support_session(
+        platform_admin,
+        "#{lifecycle_state}-support-policy-household",
+        lifecycle_state: lifecycle_state
+      )
+
+      expect(described_class.new(platform_context(account), support_session).create?).to be(false)
+    end
   end
 
   it 'denies disabled, missing, and nil platform admin contexts' do
@@ -55,9 +71,13 @@ RSpec.describe SupportAccessSessionPolicy, type: :policy do
   end
 
   def create_support_session(platform_admin, slug)
-    SupportAccessSession.create!(
+    build_support_session(platform_admin, slug).tap(&:save!)
+  end
+
+  def build_support_session(platform_admin, slug, lifecycle_state: :active)
+    SupportAccessSession.new(
       platform_admin: platform_admin,
-      household: Household.create!(name: slug.titleize, slug: slug),
+      household: Household.create!(name: slug.titleize, slug: slug, lifecycle_state: lifecycle_state),
       reason: 'Investigate support access policy',
       mfa_verified_at: Time.current,
       starts_at: 1.minute.ago,

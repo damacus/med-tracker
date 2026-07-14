@@ -243,5 +243,40 @@ RSpec.describe Households::RetentionHoldManager do
       expect(NativeDeviceToken.where(id: devices.fetch(:device_token).id)).to exist
       expect(AccountActiveSessionKey.where(account_id: shared_account.id)).to exist
     end
+
+    it 'preserves shared-account credentials through offboarding under the forced-RLS application role',
+       :aggregate_failures do
+      shared_account = account('forced-rls-shared-offboard-member@example.test')
+      target_membership = owner_membership(household, shared_account)
+      other_household = create(:household)
+      other_membership = owner_membership(other_household, shared_account)
+      devices = create_devices(shared_account)
+
+      with_runtime_role do
+        described_class.call(household: household, actor_account: operator)
+        configure_runtime_household_context(household)
+
+        expect(target_membership.reload).to be_revoked
+        expect(PushSubscription.where(id: devices.fetch(:push_subscription).id)).to exist
+        expect(NativeDeviceToken.where(id: devices.fetch(:device_token).id)).to exist
+        expect(AccountActiveSessionKey.where(account_id: shared_account.id)).to exist
+      end
+
+      expect(other_membership.reload).to be_active
+    end
+
+    def with_runtime_role
+      ActiveRecord::Base.connection.transaction(requires_new: true) do
+        ActiveRecord::Base.connection.execute('SET LOCAL ROLE med_tracker_app')
+        yield
+        raise ActiveRecord::Rollback
+      end
+    end
+
+    def configure_runtime_household_context(target_household)
+      ActiveRecord::Base.connection.execute(
+        "SELECT set_config('med_tracker.current_household_id', '#{target_household.id}', true)"
+      )
+    end
   end
 end

@@ -2,7 +2,7 @@
 
 class SupportAccessSessionPolicy < ApplicationPolicy
   def create?
-    platform_admin?
+    platform_admin? && record.respond_to?(:household) && record.household&.operational?
   end
 
   def destroy?

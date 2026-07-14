@@ -8,6 +8,7 @@ class SupportAccessSession < ApplicationRecord
 
   validates :reason, :mfa_verified_at, :starts_at, :expires_at, presence: true
   validate :expires_after_start
+  validate :household_operational
 
   before_validation :set_time_window
 
@@ -32,5 +33,11 @@ class SupportAccessSession < ApplicationRecord
     return if starts_at.blank? || expires_at.blank? || expires_at > starts_at
 
     errors.add(:expires_at, 'must be after starts at')
+  end
+
+  def household_operational
+    return if household.blank? || household.operational?
+
+    errors.add(:household, 'must be operational')
   end
 end

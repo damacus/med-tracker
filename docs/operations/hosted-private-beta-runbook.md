@@ -146,6 +146,22 @@ audit ledger preserve request, generation, ready, download, expiry, and failure
 transitions. Attachment entries use identifiers, byte counts, archive paths, and
 SHA-256 checksums; verify the artifact checksum before transferring it.
 
+Set `HOUSEHOLD_EXPORT_OUTPUT_ROOT` to the protected persistent directory used for
+operator export transfers; it defaults to `/app/storage/exports`. Create any
+destination subdirectory before running the command. Download refuses paths whose
+resolved parent is outside that root and never overwrites an existing file.
+
+```fish
+task household-lifecycle:download HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456 EXPORT_ID=654 DESTINATION=/app/storage/exports/household-123.zip
+```
+
+The destination is passed to the container as environment data, never interpolated
+into the command. The file is written with mode `0600` only after the authorized
+download succeeds and its byte count and SHA-256 checksum match the generated
+artifact record. Retain the sanitized `event_type`, `outcome`, `household_id`,
+`export_id`, `artifact_byte_size`, and `artifact_checksum_sha256` fields. Command
+output never includes the destination or export contents.
+
 Place a retention hold only from an approved records-governance request. The
 reason is stored in the protected hold record but excluded from command and audit
 metadata:

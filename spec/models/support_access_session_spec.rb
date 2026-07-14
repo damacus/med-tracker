@@ -78,9 +78,25 @@ RSpec.describe SupportAccessSession do
     expect(session.errors[:expires_at]).to include('must be after starts at')
   end
 
+  it 'rejects support access for every non-operational household lifecycle state' do
+    %i[held offboarded purging purged].each do |lifecycle_state|
+      household = Household.create!(
+        name: "Unavailable Support Household #{lifecycle_state}",
+        slug: "unavailable-support-household-#{lifecycle_state}",
+        lifecycle_state: lifecycle_state
+      )
+      session = build_support_access_session(household: household)
+
+      expect(session).not_to be_valid
+      expect(session.errors[:household]).to include('must be operational')
+    end
+  end
+
   def described_class_platform_admin
-    account = Account.create!(email: 'support-admin@example.test', status: :verified)
-    PlatformAdmin.create!(account: account)
+    @described_class_platform_admin ||= begin
+      account = Account.create!(email: 'support-admin@example.test', status: :verified)
+      PlatformAdmin.create!(account: account)
+    end
   end
 
   def build_support_access_session(attributes = {})

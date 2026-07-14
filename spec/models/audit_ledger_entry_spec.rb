@@ -110,10 +110,14 @@ RSpec.describe AuditLedgerEntry do
   end
 
   it 'prevents household deletion from removing retained security evidence' do
-    create_security_event('audit.retained')
+    event = create_security_event('audit.retained')
+    entry = described_class.find_by!(source_table: 'security_audit_events', source_id: event.id)
 
-    expect { household.destroy }.to raise_error(ActiveRecord::InvalidForeignKey)
+    expect(household.destroy).to be(false)
+    expect(household.errors).to be_present
     expect(household.reload).to be_persisted
+    expect(SecurityAuditEvent.where(id: event.id)).to exist
+    expect(described_class.where(id: entry.id)).to exist
   end
 
   it 'exposes only the active household through the runtime read view' do
