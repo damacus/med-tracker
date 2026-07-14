@@ -1,5 +1,65 @@
 # Changelog
 
+## [0.5.11](https://github.com/damacus/med-tracker/compare/v0.5.10...v0.5.11) (2026-07-14)
+
+
+### Features
+
+* **barcodes:** add deterministic resolution contract ([#1590](https://github.com/damacus/med-tracker/issues/1590)) ([e5298be](https://github.com/damacus/med-tracker/commit/e5298bea1cd1f2135f0d331abd3b1c01f6cb5470))
+* **care:** centralize delegation workflows ([#1623](https://github.com/damacus/med-tracker/issues/1623)) ([e9312f4](https://github.com/damacus/med-tracker/commit/e9312f4ac71d64295be7c63df460692da9ab970a))
+* **care:** enforce household relationships ([#1617](https://github.com/damacus/med-tracker/issues/1617)) ([d1b17e2](https://github.com/damacus/med-tracker/commit/d1b17e29a58ef04b8574ab1f5e1f7c3b2234c385))
+* **medication-finder:** filter results by strength ([#1584](https://github.com/damacus/med-tracker/issues/1584)) ([3e02d4f](https://github.com/damacus/med-tracker/commit/3e02d4fcb64a8d15a0140b9feff83f671fb13844))
+* **medication-reviews:** add evidence-backed review workflow ([c32680a](https://github.com/damacus/med-tracker/commit/c32680ad180c471fab32df60a5351932c24bd452))
+* **medication-reviews:** add targeted public label fixtures ([25faa68](https://github.com/damacus/med-tracker/commit/25faa689e3077384cc28f8cf9e8536258f6d2bc3))
+* **medication-reviews:** automate public label detection ([535c15c](https://github.com/damacus/med-tracker/commit/535c15c4510efa0bae820d7cee9c38001e97fea8))
+* **medication-reviews:** detect explicit label interactions ([d5881f1](https://github.com/damacus/med-tracker/commit/d5881f17036a6a794079dbeefe006a3e7ee85625))
+* **medicine-reviews:** simplify interaction review ([314ac9f](https://github.com/damacus/med-tracker/commit/314ac9f55185da2b31d8d88a4fe47839a8f1c1a1))
+* **observability:** export database pool metrics ([#1591](https://github.com/damacus/med-tracker/issues/1591)) ([938c5b3](https://github.com/damacus/med-tracker/commit/938c5b33ce8198b219db41929288f28f689c5ac8))
+* **operations:** add hosted restore rehearsal gate ([472aa13](https://github.com/damacus/med-tracker/commit/472aa1349a6e159d0531d46432acdaf72dbec9eb))
+* **security:** enforce hosted household lifecycle ([3e7a3aa](https://github.com/damacus/med-tracker/commit/3e7a3aae1779c43bd639d236f7c2467f03c84363))
+
+
+### Bug Fixes
+
+* **a11y:** standardize icon-only controls ([#1600](https://github.com/damacus/med-tracker/issues/1600)) ([d86ad96](https://github.com/damacus/med-tracker/commit/d86ad962645b85727b5a4bac0cd0fee160595db7))
+* **administration:** preserve dose history ([#1615](https://github.com/damacus/med-tracker/issues/1615)) ([ec13c21](https://github.com/damacus/med-tracker/commit/ec13c2195859fa8a571e2f1b6a176e817c0e2bd4))
+* **admin:** restore large user pagination ([#1594](https://github.com/damacus/med-tracker/issues/1594)) ([4d6e1b9](https://github.com/damacus/med-tracker/commit/4d6e1b9cb05ad729eee6634e62cf88b892226b09))
+* **api:** make mobile sync authoritative ([#1616](https://github.com/damacus/med-tracker/issues/1616)) ([98d18ba](https://github.com/damacus/med-tracker/commit/98d18bacf91c99007c5d65ef839c7f8fd8b59e6e))
+* **auth:** audit passkey verification ([#1595](https://github.com/damacus/med-tracker/issues/1595)) ([595a1dc](https://github.com/damacus/med-tracker/commit/595a1dcb98ecfa0131a3afa0c714d8021b038efa))
+* **auth:** revoke API credentials on deactivation ([#1603](https://github.com/damacus/med-tracker/issues/1603)) ([70722a2](https://github.com/damacus/med-tracker/commit/70722a2811a828f75147ebbcbf85c91298b2f56b))
+* **ci:** support fresh database schema loading ([b2b03dc](https://github.com/damacus/med-tracker/commit/b2b03dc3906b27c1cc51d57ee5e256ba86693aea))
+* **client-tools:** align sync requests with Rails ([198cedf](https://github.com/damacus/med-tracker/commit/198cedfba42db0558a5f91549eb1e1742728b98e))
+* **client-tools:** encode sync cursor query ([15bbbad](https://github.com/damacus/med-tracker/commit/15bbbade06b3aff31c861d978d750b050b0500f3))
+* **i18n:** complete medication review translations ([#1588](https://github.com/damacus/med-tracker/issues/1588)) ([dd2f95b](https://github.com/damacus/med-tracker/commit/dd2f95b9cb6fd8be254f7ac9c94c260d646195d6))
+* **i18n:** restore locale tree parity ([#1589](https://github.com/damacus/med-tracker/issues/1589)) ([3341681](https://github.com/damacus/med-tracker/commit/3341681130cbed65d86b8d9aa673bfd567dae60e))
+* **i18n:** translate validation messages ([#1581](https://github.com/damacus/med-tracker/issues/1581)) ([27ffd44](https://github.com/damacus/med-tracker/commit/27ffd44f0cb0510d127382cca298343affd48947))
+* **medication-lookup:** reframe interactions as review prompts ([faea7e9](https://github.com/damacus/med-tracker/commit/faea7e9f3b01fe9933f6d777439013ffef2d1fb9))
+* **medication-reviews:** avoid migration version collision ([77d773c](https://github.com/damacus/med-tracker/commit/77d773cc500c8747fd4338387cbac738309a02b0))
+* **medication-reviews:** suppress no-action label evidence ([4f036fb](https://github.com/damacus/med-tracker/commit/4f036fba88519c3e98b2c92d471337c6a237d59a))
+* **migrations:** backfill portable ids ([#1678](https://github.com/damacus/med-tracker/issues/1678)) ([b81cea9](https://github.com/damacus/med-tracker/commit/b81cea9eebb99679f9b07d04c5bce36649d69622))
+* **observability:** trace background jobs ([#1583](https://github.com/damacus/med-tracker/issues/1583)) ([8ef1790](https://github.com/damacus/med-tracker/commit/8ef1790b19512c369c1998d3f06b34e110d9590f))
+* **operations:** close restore rehearsal integrity gaps ([2fd47cd](https://github.com/damacus/med-tracker/commit/2fd47cd31f4db5ba781e7a63e818d37e19a765c7))
+* **operations:** harden hosted restore rehearsal gate ([100660b](https://github.com/damacus/med-tracker/commit/100660bb7a87acf65730308ba13afd5c4aa83c08))
+* **people:** enforce dependent capacity ([#1592](https://github.com/damacus/med-tracker/issues/1592)) ([e293ff4](https://github.com/damacus/med-tracker/commit/e293ff4005bea24b71e05ddb9a5dfdc6569a203e))
+* **people:** validate age transitions ([#1593](https://github.com/damacus/med-tracker/issues/1593)) ([4222c27](https://github.com/damacus/med-tracker/commit/4222c2792bb45c1b1b1b0ff8b27b18c7d4bba75f))
+* **runtime:** complete Ruby 4.0.6 upgrade ([0cd0659](https://github.com/damacus/med-tracker/commit/0cd06592f750eb5ec6d60e94694e054c0496b08c))
+* **security:** audit membership creation ([674594f](https://github.com/damacus/med-tracker/commit/674594f2766c70921a00cd353d1dbd6a39a0b89f))
+* **security:** close access invalidation gaps ([7746abc](https://github.com/damacus/med-tracker/commit/7746abc58513df7d97f158d922a0e696af2f9dad))
+* **security:** close hosted export race gaps ([3935cdb](https://github.com/damacus/med-tracker/commit/3935cdb95f612131fd41eb2f9f05c7e86932b902))
+* **security:** close hosted lifecycle operational gaps ([c5c03d4](https://github.com/damacus/med-tracker/commit/c5c03d4f1eb4cb5780feccba0fc4e7ff7d056922))
+* **security:** close hosted lifecycle release blockers ([cfc98e6](https://github.com/damacus/med-tracker/commit/cfc98e6669472a3a65ad94c42e8abdfe72bb3f4b))
+* **security:** close hosted lifecycle review gaps ([ccc343c](https://github.com/damacus/med-tracker/commit/ccc343c9433220346d41e75178c09f6d9c774cf9))
+* **security:** close invitation and support expiry gaps ([b653903](https://github.com/damacus/med-tracker/commit/b653903a2c4228f5ba2eea4d5244079c7e8b90da))
+* **security:** invalidate credentials on access changes ([e11872a](https://github.com/damacus/med-tracker/commit/e11872a90d08d475333cc98c7b58d9faafc6854f))
+* **security:** make grant revocation idempotent ([44ce434](https://github.com/damacus/med-tracker/commit/44ce4343f54543c76bc651f6398395226d7ae5c5))
+* **security:** preserve access invalidation after rebase ([0ddd192](https://github.com/damacus/med-tracker/commit/0ddd1926465fc57087fdc1644b4fd6137ce36807))
+* **security:** serialize support access creation ([9e273a8](https://github.com/damacus/med-tracker/commit/9e273a87e4b57e95a6cf197b937e3e820f8ebcc0))
+
+
+### Performance Improvements
+
+* cache medication review evidence matching ([6c9679d](https://github.com/damacus/med-tracker/commit/6c9679def504413eec6b0f48dda7a1e67cbc6d77))
+
 ## [0.5.10](https://github.com/damacus/med-tracker/compare/v0.5.9...v0.5.10) (2026-07-11)
 
 
