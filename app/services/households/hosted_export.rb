@@ -30,9 +30,10 @@ module Households
             raise ActiveRecord::RecordNotFound if export.expires_at <= Time.current
 
             bytes = export.artifact.download
+            result = block_given? ? yield(bytes) : bytes
             export.update!(status: :downloaded, downloaded_at: Time.current)
             record_event(export, actor_account, 'downloaded')
-            bytes
+            result
           end
         end
       end

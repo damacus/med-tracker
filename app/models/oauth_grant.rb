@@ -21,7 +21,8 @@ class OauthGrant < ApplicationRecord
   end
 
   def active_for_membership?
-    household_membership&.active? && permissions_version == household_membership.permissions_version
+    household_membership&.active? && household_membership.household&.operational? &&
+      permissions_version == household_membership.permissions_version
   end
 
   def touch_last_used!

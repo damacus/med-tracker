@@ -69,6 +69,20 @@ RSpec.describe ApiAppToken do
 
       expect(app_token).not_to be_active_for_membership
     end
+
+    it 'rejects tokens for every non-operational household lifecycle state' do
+      app_token = described_class.issue_for(
+        account: account,
+        household_membership: membership,
+        name: 'Hosted lifecycle token'
+      ).first
+
+      %i[held offboarded purging purged].each do |lifecycle_state|
+        membership.household.update_columns(lifecycle_state: lifecycle_state)
+
+        expect(app_token.reload).not_to be_active_for_membership
+      end
+    end
   end
 
   describe 'validations' do

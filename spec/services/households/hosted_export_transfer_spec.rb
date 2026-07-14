@@ -57,6 +57,69 @@ RSpec.describe Households::HostedExportTransfer do
     end
   end
 
+  it 'removes the destination and leaves no download transition when checksum verification fails' do
+    with_output_destination('checksum-failure.zip') do |destination|
+      export.update!(artifact_checksum_sha256: 'invalid-checksum')
+
+      expect do
+        described_class.call(export: export, actor_account: actor, destination: destination)
+      end.to raise_error(ActiveStorage::IntegrityError)
+
+      expect_failed_transfer(destination)
+    end
+  end
+
+  it 'removes the destination and leaves no download transition when durable write fails' do
+    with_output_destination('fsync-failure.zip') do |destination|
+      allow(File).to receive(:open).and_wrap_original do |original, *arguments, &block|
+        original.call(*arguments) do |file|
+          allow(file).to receive(:fsync).and_raise(IOError, 'fsync failed')
+          block.call(file)
+        end
+      end
+
+      expect do
+        described_class.call(export: export, actor_account: actor, destination: destination)
+      end.to raise_error(IOError, 'fsync failed')
+
+      expect_failed_transfer(destination)
+    end
+  end
+
+  it 'removes the destination and leaves no download transition after a partial write' do
+    with_output_destination('partial-write.zip') do |destination|
+      allow(File).to receive(:open).and_wrap_original do |original, *arguments, &block|
+        original.call(*arguments) do |file|
+          allow(file).to receive(:write).and_return(1)
+          block.call(file)
+        end
+      end
+
+      expect do
+        described_class.call(export: export, actor_account: actor, destination: destination)
+      end.to raise_error(IOError, 'Hosted export write incomplete')
+
+      expect_failed_transfer(destination)
+    end
+  end
+
+  def with_output_destination(filename)
+    Dir.mktmpdir('hosted-export-transfer') do |output_root|
+      previous_root = ENV.fetch('HOUSEHOLD_EXPORT_OUTPUT_ROOT', nil)
+      ENV['HOUSEHOLD_EXPORT_OUTPUT_ROOT'] = output_root
+      yield File.join(output_root, filename)
+    ensure
+      restore_output_root(previous_root)
+    end
+  end
+
+  def expect_failed_transfer(destination)
+    expect(File).not_to exist(destination)
+    expect(export.reload).to be_ready
+    expect(export.downloaded_at).to be_nil
+    expect(SecurityAuditEvent.where(household: household, event_type: 'household.export.downloaded')).to be_empty
+  end
+
   def restore_output_root(previous_root)
     if previous_root
       ENV['HOUSEHOLD_EXPORT_OUTPUT_ROOT'] = previous_root

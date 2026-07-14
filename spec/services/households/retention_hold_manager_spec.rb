@@ -226,6 +226,21 @@ RSpec.describe Households::RetentionHoldManager do
       expect(SecurityAuditEvent.where(household: empty_household, event_type: 'household.offboarded').count).to eq(1)
     end
 
+    it 'ends an active support session while offboarding the household' do
+      support_session = SupportAccessSession.create!(
+        platform_admin: operator.platform_admin,
+        household: household,
+        reason: 'Investigate hosted household',
+        mfa_verified_at: Time.current
+      )
+
+      expect do
+        described_class.call(household: household, actor_account: operator)
+      end.to change { support_session.reload.ended_at }.from(nil)
+
+      expect(household.reload).to be_offboarded
+    end
+
     it 'preserves account-scoped credentials when an account retains another operational household',
        :aggregate_failures do
       shared_account = account('shared-offboard-member@example.test')
