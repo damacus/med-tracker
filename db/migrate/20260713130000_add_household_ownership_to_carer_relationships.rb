@@ -5,8 +5,10 @@ class AddHouseholdOwnershipToCarerRelationships < ActiveRecord::Migration[8.1]
 
   def up
     add_reference :carer_relationships, :household, index: false
-    verify_legacy_relationships!
-    backfill_households
+    with_people_rls_relaxed do
+      verify_legacy_relationships!
+      backfill_households
+    end
     change_column_null :carer_relationships, :household_id, false
     add_indexes
     add_foreign_keys
@@ -21,6 +23,22 @@ class AddHouseholdOwnershipToCarerRelationships < ActiveRecord::Migration[8.1]
   end
 
   private
+
+  def with_people_rls_relaxed
+    forced = people_forced_row_level_security?
+    execute 'ALTER TABLE people NO FORCE ROW LEVEL SECURITY' if forced
+    yield
+  ensure
+    execute 'ALTER TABLE people FORCE ROW LEVEL SECURITY' if forced
+  end
+
+  def people_forced_row_level_security?
+    select_value(<<~SQL.squish)
+      SELECT relforcerowsecurity
+      FROM pg_class
+      WHERE oid = 'people'::regclass
+    SQL
+  end
 
   def verify_legacy_relationships!
     mismatches = legacy_relationship_mismatches

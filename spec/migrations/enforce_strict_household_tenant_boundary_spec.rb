@@ -41,6 +41,32 @@ RSpec.describe EnforceStrictHouseholdTenantBoundary do
 
   describe AddHouseholdOwnershipToCarerRelationships do
     describe 'legacy data verification' do
+      it 'reads valid endpoints while migrating as the forced-RLS table owner' do
+        migration = described_class.new
+
+        connection.execute('SET LOCAL ROLE med_tracker_owner')
+        connection.execute("SELECT set_config('med_tracker.current_household_id', '', true)")
+
+        migration.send(:with_people_rls_relaxed) do
+          expect(migration.send(:legacy_relationship_mismatches)).to be_empty
+        end
+      end
+
+      it 'restores forced people RLS when legacy verification fails' do
+        migration = described_class.new
+
+        expect do
+          migration.send(:with_people_rls_relaxed) { raise ActiveRecord::MigrationError }
+        end.to raise_error(ActiveRecord::MigrationError)
+
+        forced = connection.select_value(<<~SQL.squish)
+          SELECT relforcerowsecurity
+          FROM pg_class
+          WHERE oid = 'people'::regclass
+        SQL
+        expect(forced).to be(true)
+      end
+
       it 'aborts with the invalid relationship ids before backfilling' do
         migration = described_class.new
         allow(migration).to receive(:legacy_relationship_mismatches).and_return(
