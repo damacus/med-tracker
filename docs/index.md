@@ -23,6 +23,7 @@ ensuring medications are given on time and safely.
 - [Testing Guide](testing.md): run the RSpec and Capybara/Playwright test suites.
 - [Design & Architecture](design.md): explore the domain model and safety guardrails.
 - [Bounded Context Map](adrs/0009-bounded-context-map.md): see present domain ownership and dependency direction in the Rails modular monolith.
+- [Record lifecycle contract](operations/record-lifecycle.md): define safe retirement and explicit reactivation for medication, person, and location records.
 - [Audit & Compliance](audit-trail.md): details on versioning and data history.
 - [MCP Integration](mcp.md): set up the hosted MCP server and connect Codex,
   Claude Code, or VS Code to read medication context.

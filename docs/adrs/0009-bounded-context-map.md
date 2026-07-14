@@ -122,6 +122,10 @@ Household Access binds the authenticated account to an active
 `HouseholdMembership` and establishes `AuthorizationContext` and
 `TenantContext`. Session and app-token records retain the membership and its
 permissions version, but grant evaluation remains owned by Household Access.
+Household authority can suspend or revoke only its selected membership; it does
+not authorize global Account deactivation. Identity-level authority owns that
+global transition and coordinates its separately audited effects across every
+affected household before credentials are revoked.
 
 ### Interoperability and Audit
 
@@ -148,6 +152,20 @@ Notifications own person preferences, subscription and delivery mechanics,
 delivery deduplication, and push transport. Reminder and stock notification
 jobs consume domain outcomes; they do not own the administration or inventory
 rules that trigger delivery.
+
+### Record lifecycle ownership
+
+[Record lifecycle operational contract](../operations/record-lifecycle.md)
+defines retirement and reactivation as lifecycle and visibility transitions for
+Medication, Person, and Location roots. Medication Catalogue owns the
+Medication root lifecycle; Medication Administration owns only the retirement
+of its `Schedule` and `PersonMedication` child sources while preserving
+`MedicationTake` history. People and Care Delegation owns Person lifecycle and
+outbound care-relationship changes, Identity owns linked-user account
+deactivation, Inventory owns Location availability and stock-placement
+preconditions, Household Access remains the authority source, Interoperability
+preserves retired identity across sync and import/restore, and Audit and
+Compliance records the immutable transition evidence.
 
 ## Dependency Direction
 

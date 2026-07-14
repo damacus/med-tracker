@@ -207,6 +207,35 @@ The persisted record of one completed administration event.
 - Avoid introducing a separate `DoseRecord` model name unless an ADR changes
   the persistence boundary.
 
+## Record Lifecycle Terms
+
+### Retirement
+
+An explicit, reversible lifecycle transition for a Medication, Person, or
+Location root.
+
+- Retirement moves a root to logical cold storage and excludes it from active
+  selectors and future activity while preserving authorized historical access.
+- Retirement must not cascade to dependent records beyond the root-specific
+  lifecycle rules in the [record lifecycle contract](operations/record-lifecycle.md).
+
+### Logical cold storage
+
+A lifecycle and visibility state for a retired root, not a separate database
+tier.
+
+- Retired roots remain resolvable to authorized historical, administrative,
+  reporting, sync, export/import, and restoration workflows with a retired
+  label.
+
+### Reactivation
+
+The explicit transition that returns one selected retired root to active state.
+
+- Reactivation changes only that root and must not cascade to dependent records.
+- It never silently restores schedules, assignments, stock placement,
+  memberships, or care relationships.
+
 ## Health and Medication Safety Terms
 
 ### HealthEvent
