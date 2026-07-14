@@ -128,6 +128,7 @@ RSpec.describe DomainGlossaryDocument do
     expect(contract).to include('The selected Medication becomes active')
     expect(contract).to include('Repeating a completed same-state transition is idempotent')
     expect(contract).to include('does not duplicate audit evidence')
+    expect(contract).to match(/stale or concurrent state returns the stable conflict envelope/)
     expect(contract).to include('No partial root, child, relationship, or audit writes')
   end
 
