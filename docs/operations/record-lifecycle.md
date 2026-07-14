@@ -22,7 +22,7 @@ implementation and acceptance tests.
 | --- | --- | --- |
 | Medication | Retires only that medication's active `Schedule` and `PersonMedication` rows. It never changes a `Person` lifecycle state. | Does not reactivate those sources. |
 | Person | Retires only that person's own future schedules and medication assignments. It never retires, deactivates, deletes, or otherwise changes another `Person`. | Does not recreate care relationships or medication assignments. |
-| Location | Is blocked while it is primary or holds active stock; reassign first. | Does not restore prior placement or memberships. |
+| Location | Location retirement is blocked while it is primary or holds active stock; reassign first. | Does not restore prior placement or memberships. |
 
 If the retiring Person or a deactivated linked user is a carer, end only that
 carer's outbound active care relationships. Before confirmation, warn when a
