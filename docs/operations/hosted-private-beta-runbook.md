@@ -224,10 +224,11 @@ for each sample from the independent Object Lock evidence store. Supply the samp
 as process inputs; the evidence bundle records them as `sample_a` and `sample_b` and never
 records real tenant identifiers.
 
-The deployment environment must inject `RUNTIME_APP_IMAGE` from the image actually running
-the rehearsal. The operator-provided `APP_IMAGE` is an expected immutable tag or digest; the
-workflow fails before migrations unless it exactly matches the runtime-provided immutable
-image reference. Do not copy the operator value into `RUNTIME_APP_IMAGE` manually.
+The production build must receive `APP_IMAGE_REF` as a build argument matching the immutable
+tag or digest assigned to that image. The final image records that value in the read-only
+`/app/.runtime-image-ref` file outside runtime environment configuration. The operator-provided
+`APP_IMAGE` is the expected reference; runtime verification fails unless it exactly matches the
+baked image reference. Setting a runtime environment variable cannot override this comparison.
 
 ```fish
 set -lx DATABASE_BACKUP_ID database-snapshot-2026-07-14T010000Z
@@ -267,11 +268,17 @@ Household ids and WORM sequences must be canonical positive decimal integers, ch
 epochs must be canonical UUIDs, and the WORM JSON object must contain exactly `sample_a` and
 `sample_b` with only `chain_epoch`, `sequence`, and `entry_hash`. The evidence output is
 accepted only when its existing parent resolves by realpath below `EVIDENCE_ROOT`. Repository
-`tmp`, operating-system temporary directories, outside paths, and symlink escapes are refused.
+root and every directory below it, operating-system temporary directories, outside paths, and
+symlink aliases or escapes are refused.
 
 The destination must be a pre-approved durable mounted evidence repository, not the source
 tree or transient container filesystem. It receives mode-restricted `evidence.json` and
-`evidence.md` files. Link the durable evidence record from the NFR4 row in the hosted
+`evidence.md` files plus a checksum-bearing `complete.json` marker. The files are written and
+fsynced in a private staging directory before the complete bundle is atomically published;
+a partial write is cleaned up and cannot expose final evidence or a completion marker. The
+Markdown includes only whitelisted role, schema, baked image, RLS, default-denial, isolation,
+storage, audit-count, verified-head, WORM-comparison, and failure-code aggregates. Link the
+durable evidence record from the NFR4 row in the hosted
 hardening audit only after a second operator has inspected both files and confirmed the final
 outcome is `passed`. Never copy secrets, credentials, health data, real tenant identifiers,
 attachment contents, sensitive infrastructure paths, or raw command output into that link.

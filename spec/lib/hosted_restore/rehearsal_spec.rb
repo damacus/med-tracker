@@ -3,6 +3,22 @@
 require 'rails_helper'
 
 module HostedRestoreSpec
+  class FailOnSecondWrite
+    def initialize
+      @writes = 0
+    end
+
+    def call(path, content)
+      @writes += 1
+      raise IOError, 'simulated second write failure' if @writes == 2
+
+      File.open(path, File::WRONLY | File::CREAT | File::EXCL, 0o600) do |file|
+        file.write(content)
+        file.fsync
+      end
+    end
+  end
+
   class RecordingRunner
     attr_reader :command_ids
 
@@ -31,13 +47,14 @@ end
 RSpec.describe HostedRestore::Rehearsal do
   let(:durable_root) { Rails.root.join('storage/spec-hosted-restore-evidence') }
   let(:output) { durable_root.join('rehearsal-2026-q3') }
+  let(:fake_repository_root) { Rails.root.join('tmp/spec-fake-repository-root') }
   let(:environment) do
     {
       'DATABASE_BACKUP_ID' => 'database-snapshot-2026-07-14T010000Z',
       'ATTACHMENT_BACKUP_ID' => 'attachments-snapshot-2026-07-14T010000Z',
       'RESTORE_TARGET_ID' => 'isolated-restore-2026-q3',
       'APP_IMAGE' => 'ghcr.io/damacus/med-tracker:v0.5.0-rc1',
-      'RUNTIME_APP_IMAGE' => 'ghcr.io/damacus/med-tracker:v0.5.0-rc1',
+      'RUNTIME_APP_IMAGE' => 'attacker.example/med-tracker:forged',
       'TESTER' => 'restore-operator',
       'HOUSEHOLD_A_ID' => '910001',
       'HOUSEHOLD_B_ID' => '920002',
@@ -75,10 +92,10 @@ RSpec.describe HostedRestore::Rehearsal do
 
   after { FileUtils.rm_rf(durable_root) }
 
-  it 'runs owner migration before forced-RLS and combined audit verification' do
+  it 'runs owner migration before forced-RLS and combined audit verification', :aggregate_failures do
     runner = recording_runner(success_outputs)
 
-    result = described_class.new(environment:, runner:, clock: -> { Time.utc(2026, 7, 14, 9) }).call
+    result = build_rehearsal(runner:, clock: -> { Time.utc(2026, 7, 14, 9) }).call
 
     expect(result).to eq(0)
     expect(runner.command_ids).to eq(%w[owner.db_migrate runtime.restore_verify audit.combined_verify])
@@ -91,10 +108,12 @@ RSpec.describe HostedRestore::Rehearsal do
         'env DATABASE_ROLE=med_tracker_audit_verifier rails hosted_restore:verify_audit'
       ]
     )
+    expect(output.join('complete.json')).to exist
+    expect(HostedRestore::Rehearsal::COMMANDS.second.fetch(:argv).join(' ')).not_to include('RUNTIME_APP_IMAGE')
   end
 
   it 'writes sanitized machine-readable and human-readable evidence without tenant ids or paths' do
-    described_class.new(environment:, runner: recording_runner(success_outputs)).call
+    build_rehearsal(runner: recording_runner(success_outputs)).call
 
     json = output.join('evidence.json').read
     parsed = JSON.parse(json)
@@ -102,6 +121,11 @@ RSpec.describe HostedRestore::Rehearsal do
 
     expect(json).to include('database-snapshot-2026-07-14T010000Z', 'owner.db_migrate', 'worm_comparison')
     expect(markdown).to include('# Hosted restore rehearsal evidence', 'Final outcome: PASS')
+    expect(markdown).to include(
+      'database_role', 'schema_version', 'app_image', 'forced_rls', 'default_deny',
+      'isolation.clinical', 'isolation.audit', 'isolation.attachments', 'storage.samples_verified',
+      'checked_entries', 'checked_checkpoints', 'checked_objects', 'verified_heads', 'worm_comparison'
+    )
     expect(parsed.to_s).not_to include('910001', '920002', output.to_s, 'WORM_HEADS_JSON')
     expect(markdown).not_to include('910001', '920002', output.to_s)
   end
@@ -109,7 +133,7 @@ RSpec.describe HostedRestore::Rehearsal do
   it 'stops after a failed stage and records failure without claiming success' do
     runner = recording_runner(success_outputs, failure: 'runtime.restore_verify')
 
-    result = described_class.new(environment:, runner:).call
+    result = build_rehearsal(runner:).call
     evidence = JSON.parse(output.join('evidence.json').read)
 
     expect(result).to eq(1)
@@ -117,6 +141,7 @@ RSpec.describe HostedRestore::Rehearsal do
     expect(evidence).to include('outcome' => 'failed')
     expect(evidence.fetch('failures').sole).to include(
       'command_id' => 'runtime.restore_verify',
+      'failure_code' => 'verification_failed',
       'remediation' => 'correct the isolated restore or configuration and repeat the same rehearsal'
     )
   end
@@ -132,8 +157,19 @@ RSpec.describe HostedRestore::Rehearsal do
   it 'refuses to overwrite existing evidence' do
     FileUtils.mkdir_p(output)
     expect do
-      described_class.new(environment:, runner: recording_runner(success_outputs)).call
+      build_rehearsal(runner: recording_runner(success_outputs)).call
     end.to raise_error(HostedRestore::EvidenceWriter::AlreadyExists)
+  end
+
+  it 'publishes no final evidence when the second staged file write fails' do
+    writer = HostedRestore::EvidenceWriter.new(
+      root: durable_root, output:, file_writer: HostedRestoreSpec::FailOnSecondWrite.new
+    )
+    writer.ensure_available!
+
+    expect { writer.write(writer_evidence) }.to raise_error(IOError, 'simulated second write failure')
+    expect(output).not_to exist
+    expect(durable_root.children.map(&:basename).map(&:to_s)).to be_empty
   end
 
   it 'requires a durable-root-contained output and rejects temporary and symlink escapes' do
@@ -141,6 +177,15 @@ RSpec.describe HostedRestore::Rehearsal do
     expect_invalid_locations(unsafe_evidence_environments(outside))
   ensure
     FileUtils.rm_rf(outside)
+  end
+
+  it 'rejects every repository-contained evidence root, including nested and symlink aliases' do
+    repository_alias = Rails.root.join('storage/spec-repository-alias')
+    File.symlink(Rails.root, repository_alias)
+
+    expect_invalid_input_locations(repository_evidence_environments(repository_alias))
+  ensure
+    FileUtils.rm_f(repository_alias)
   end
 
   it 'parses only whitelisted structured failure JSON from stderr' do
@@ -180,7 +225,9 @@ RSpec.describe HostedRestore::Rehearsal do
 
   def run_invalid_stage(stage_outputs, index)
     invalid_environment = environment.merge('EVIDENCE_OUTPUT' => durable_root.join("invalid-#{index}").to_s)
-    result = described_class.new(environment: invalid_environment, runner: recording_runner(stage_outputs)).call
+    result = build_rehearsal(
+      environment: invalid_environment, runner: recording_runner(stage_outputs)
+    ).call
     evidence_path = Pathname.new(invalid_environment.fetch('EVIDENCE_OUTPUT')).join('evidence.json')
     [result, JSON.parse(evidence_path.read)]
   end
@@ -203,7 +250,6 @@ RSpec.describe HostedRestore::Rehearsal do
     [
       environment.except('DATABASE_BACKUP_ID'),
       environment.merge('APP_IMAGE' => 'ghcr.io/damacus/med-tracker:latest'),
-      environment.merge('RUNTIME_APP_IMAGE' => 'ghcr.io/damacus/med-tracker:v0.5.0-rc2'),
       environment.merge('HOUSEHOLD_A_ID' => '910001junk'),
       environment.merge('HOUSEHOLD_B_ID' => environment.fetch('HOUSEHOLD_A_ID')),
       environment.merge('WORM_HEADS_JSON' => invalid_worm_heads)
@@ -221,7 +267,7 @@ RSpec.describe HostedRestore::Rehearsal do
   def expect_inputs_rejected(invalid_inputs)
     invalid_inputs.each do |invalid|
       runner = recording_runner(success_outputs)
-      expect { described_class.new(environment: invalid, runner:).call }
+      expect { build_rehearsal(environment: invalid, runner:).call }
         .to raise_error(HostedRestore::Input::Invalid)
       expect(runner.command_ids).to be_empty
     end
@@ -238,8 +284,7 @@ RSpec.describe HostedRestore::Rehearsal do
     [
       temporary_evidence_environment,
       outside_evidence_environment(outside),
-      symlink_evidence_environment,
-      repository_tmp_environment
+      symlink_evidence_environment
     ]
   end
 
@@ -255,18 +300,58 @@ RSpec.describe HostedRestore::Rehearsal do
     environment.merge('EVIDENCE_OUTPUT' => durable_root.join('escape/evidence').to_s)
   end
 
-  def repository_tmp_environment
-    repository_tmp = Rails.root.join('tmp')
-    environment.merge(
-      'EVIDENCE_ROOT' => repository_tmp.to_s,
-      'EVIDENCE_OUTPUT' => repository_tmp.join('evidence').to_s
+  def expect_invalid_locations(invalid_inputs)
+    invalid_inputs.each do |invalid|
+      expect do
+        build_rehearsal(
+          environment: invalid, runner: recording_runner(success_outputs), temporary_roots: [Dir.tmpdir]
+        )
+      end
+        .to raise_error(HostedRestore::Input::Invalid)
+    end
+  end
+
+  def repository_evidence_environments(repository_alias)
+    [
+      repository_root_environment,
+      repository_storage_environment,
+      repository_alias_environment(repository_alias)
+    ]
+  end
+
+  def repository_root_environment
+    environment.merge('EVIDENCE_ROOT' => Rails.root.to_s, 'EVIDENCE_OUTPUT' => Rails.root.join('evidence').to_s)
+  end
+
+  def repository_storage_environment
+    repository_path_environment(Rails.root.join('storage'))
+  end
+
+  def repository_alias_environment(repository_alias)
+    repository_path_environment(repository_alias, output: repository_alias.join('storage/evidence'))
+  end
+
+  def repository_path_environment(root, output: root.join('evidence'))
+    environment.merge('EVIDENCE_ROOT' => root.to_s, 'EVIDENCE_OUTPUT' => output.to_s)
+  end
+
+  def expect_invalid_input_locations(invalid_inputs)
+    invalid_inputs.each do |invalid|
+      expect { HostedRestore::Input.new(invalid) }.to raise_error(HostedRestore::Input::Invalid)
+    end
+  end
+
+  def build_rehearsal(runner:, environment: self.environment, **options)
+    temporary_roots = options.delete(:temporary_roots) { [] }
+    described_class.new(
+      environment:, runner:, repository_root: fake_repository_root, temporary_roots:, **options
     )
   end
 
-  def expect_invalid_locations(invalid_inputs)
-    invalid_inputs.each do |invalid|
-      expect { described_class.new(environment: invalid, runner: recording_runner(success_outputs)) }
-        .to raise_error(HostedRestore::Input::Invalid)
-    end
+  def writer_evidence
+    {
+      performed_at: Time.utc(2026, 7, 14, 9).iso8601,
+      inputs: {}, commands: [], failures: [], outcome: 'passed'
+    }
   end
 end

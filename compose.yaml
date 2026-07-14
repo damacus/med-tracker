@@ -222,6 +222,11 @@ services:
       service: rails
     profiles: [prod]
     networks: [prod]
+    image: ${APP_IMAGE_REF:-med-tracker:local-production-build}
+    build:
+      target: app
+      args:
+        APP_IMAGE_REF: ${APP_IMAGE_REF:-med-tracker:local-production-build}
     command: bin/rails db:migrate
     depends_on:
       db-prod:
@@ -246,8 +251,11 @@ services:
       service: rails
     profiles: [prod]
     networks: [prod]
+    image: ${APP_IMAGE_REF:-med-tracker:local-production-build}
     build:
       target: app
+      args:
+        APP_IMAGE_REF: ${APP_IMAGE_REF:-med-tracker:local-production-build}
     depends_on:
       db-prod:
         condition: service_healthy
@@ -273,8 +281,11 @@ services:
       service: rails
     profiles: [prod]
     networks: [prod]
+    image: ${APP_IMAGE_REF:-med-tracker:local-production-build}
     build:
       target: app
+      args:
+        APP_IMAGE_REF: ${APP_IMAGE_REF:-med-tracker:local-production-build}
     command: bin/audit-exporter
     depends_on:
       db-prod:
@@ -313,8 +324,11 @@ services:
       service: rails
     profiles: [audit]
     networks: [prod]
+    image: ${APP_IMAGE_REF:-med-tracker:local-production-build}
     build:
       target: app
+      args:
+        APP_IMAGE_REF: ${APP_IMAGE_REF:-med-tracker:local-production-build}
     depends_on:
       db-prod:
         condition: service_healthy

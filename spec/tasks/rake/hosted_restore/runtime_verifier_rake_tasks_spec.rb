@@ -10,13 +10,12 @@ RSpec.describe HostedRestore::RuntimeVerifier do
     around do |example|
       ENV['HOUSEHOLD_A_ID'] = '101'
       ENV['HOUSEHOLD_B_ID'] = '202'
-      ENV['RUNTIME_APP_IMAGE'] = 'app:v1'
       example.run
     ensure
       ENV.delete('HOUSEHOLD_A_ID')
       ENV.delete('HOUSEHOLD_B_ID')
       ENV.delete('WORM_HEADS_JSON')
-      ENV.delete('RUNTIME_APP_IMAGE')
+      FileUtils.rm_f(Rails.root.join('tmp/runtime-image-ref'))
     end
 
     it 'emits sanitized runtime verification JSON' do
@@ -31,17 +30,27 @@ RSpec.describe HostedRestore::RuntimeVerifier do
         .to output(/"outcome":"passed".*"database_role":"med_tracker_app"/).to_stdout
     end
 
-    it 'reports the owner migration role and schema with an exact passing schema' do
-      connection = instance_double(ActiveRecord::ConnectionAdapters::PostgreSQLAdapter)
-      allow(connection).to receive(:select_value).with('SELECT current_user').and_return('med_tracker_owner')
-      allow(connection).to receive(:select_value)
-        .with('SELECT max(version) FROM schema_migrations').and_return('20260714090000')
-      allow(ActiveRecord::Base).to receive(:connection).and_return(connection)
+    it 'checks the owner role before running migrations and reporting the schema' do
+      order = stub_successful_owner_migration
 
       expect { reenabled_task('hosted_restore:migrate').execute }
         .to output(
           /"outcome":"passed","database_role":"med_tracker_owner","schema_version":"20260714090000"/
         ).to_stdout
+      expect(order).to eq(%i[role reenable migration schema])
+    end
+
+    it 'never invokes migrations when the database role is not the owner' do
+      connection = instance_double(ActiveRecord::ConnectionAdapters::PostgreSQLAdapter)
+      allow(connection).to receive(:select_value).with('SELECT current_user').and_return('med_tracker_app')
+      allow(ActiveRecord::Base).to receive(:connection).and_return(connection)
+      migration_task = instance_double(Rake::Task, reenable: nil, invoke: nil)
+      allow(Rake::Task).to receive(:[]).and_call_original
+      allow(Rake::Task).to receive(:[]).with('db:migrate').and_return(migration_task)
+
+      expect { reenabled_task('hosted_restore:migrate').execute }.to raise_error(SystemExit)
+        .and output(/"failure_code":"migration_owner_role_required"/).to_stderr
+      expect(migration_task).not_to have_received(:invoke)
     end
 
     it 'runs the real verifier with transaction-scoped tenant settings at the Rake boundary' do
@@ -52,7 +61,7 @@ RSpec.describe HostedRestore::RuntimeVerifier do
         attachments: HostedRestoreBoundaryFakes::Model.new(connection, 101 => 5, 202 => 6)
       }
       verifier = described_class.new(
-        household_ids: [101, 202], connection:, models:, runtime_image: 'app:v1',
+        household_ids: [101, 202], connection:, models:, runtime_image_path: runtime_image_path,
         storage_verifier: class_double(Storage::RestoreVerifier, call: true)
       )
       allow(described_class).to receive(:new).and_return(verifier)
@@ -83,6 +92,38 @@ RSpec.describe HostedRestore::RuntimeVerifier do
 
     def reenabled_task(name)
       Rake::Task[name].tap(&:reenable)
+    end
+
+    def stub_successful_owner_migration
+      order = []
+      allow(ActiveRecord::Base).to receive(:connection).and_return(owner_connection(order))
+      allow(Rake::Task).to receive(:[]).and_call_original
+      allow(Rake::Task).to receive(:[]).with('db:migrate').and_return(migration_task(order))
+      order
+    end
+
+    def owner_connection(order)
+      instance_double(ActiveRecord::ConnectionAdapters::PostgreSQLAdapter).tap do |connection|
+        allow(connection).to receive(:select_value).with('SELECT current_user') do
+          order << :role
+          'med_tracker_owner'
+        end
+        allow(connection).to receive(:select_value).with('SELECT max(version) FROM schema_migrations') do
+          order << :schema
+          '20260714090000'
+        end
+      end
+    end
+
+    def migration_task(order)
+      instance_double(Rake::Task).tap do |task|
+        allow(task).to receive(:reenable) { order << :reenable }
+        allow(task).to receive(:invoke) { order << :migration }
+      end
+    end
+
+    def runtime_image_path
+      Rails.root.join('tmp/runtime-image-ref').tap { |path| path.write("app:v1\n") }
     end
   end
 end

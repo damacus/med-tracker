@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'fileutils'
+require 'digest'
 require 'json'
 require 'open3'
 require 'securerandom'
@@ -14,7 +15,7 @@ module HostedRestore
     class Invalid < StandardError; end
 
     REQUIRED = %w[
-      DATABASE_BACKUP_ID ATTACHMENT_BACKUP_ID RESTORE_TARGET_ID APP_IMAGE RUNTIME_APP_IMAGE TESTER
+      DATABASE_BACKUP_ID ATTACHMENT_BACKUP_ID RESTORE_TARGET_ID APP_IMAGE TESTER
       HOUSEHOLD_A_ID HOUSEHOLD_B_ID WORM_REFERENCE WORM_HEADS_JSON EVIDENCE_ROOT EVIDENCE_OUTPUT
     ].freeze
     PLACEHOLDERS = %w[current latest todo tbd unknown].freeze
@@ -24,9 +25,11 @@ module HostedRestore
 
     attr_reader :values, :evidence_root, :evidence_output
 
-    def initialize(environment)
+    def initialize(environment, repository_root: File.expand_path('../..', __dir__), temporary_roots: nil)
       @values = {}
       REQUIRED.each { |name| @values[name] = environment[name].to_s.strip }
+      @repository_root = canonical_reference_path(repository_root)
+      @temporary_roots = temporary_roots&.map { |path| canonical_reference_path(path) }
       validate!
     end
 
@@ -50,7 +53,6 @@ module HostedRestore
       validate_presence!
       validate_content!
       validate_identifiers!
-      validate_image_binding!
       validate_worm_heads!
       validate_output!
     end
@@ -71,10 +73,6 @@ module HostedRestore
       raise Invalid, 'distinct_household_samples_required' unless valid_household_ids?
     end
 
-    def validate_image_binding!
-      raise Invalid, 'runtime_app_image_mismatch' unless self['APP_IMAGE'] == self['RUNTIME_APP_IMAGE']
-    end
-
     def placeholder_value?
       values.except('WORM_HEADS_JSON', 'EVIDENCE_OUTPUT').values.any? do |value|
         PLACEHOLDERS.include?(value.downcase)
@@ -82,9 +80,7 @@ module HostedRestore
     end
 
     def immutable_image?
-      [self['APP_IMAGE'], self['RUNTIME_APP_IMAGE']].all? do |image|
-        immutable_image_reference?(image)
-      end
+      immutable_image_reference?(self['APP_IMAGE'])
     end
 
     def immutable_image_reference?(image)
@@ -174,56 +170,76 @@ module HostedRestore
     end
 
     def reject_unsafe_root!
-      forbidden = temporary_roots + [repository_tmp].compact
+      forbidden = resolved_temporary_roots + [repository_root]
       unsafe = evidence_root.root? || forbidden.any? { |path| contained?(evidence_root, path) }
       raise Invalid, 'evidence_root_not_durable' if unsafe
     end
 
-    def temporary_roots
+    def resolved_temporary_roots
+      return temporary_roots if temporary_roots
+
       [Dir.tmpdir, '/tmp', '/private/tmp', '/var/tmp'].uniq.filter_map do |path|
         candidate = Pathname.new(path)
         candidate.realpath if candidate.exist?
       end
     end
 
-    def repository_tmp
-      path = Pathname.new(File.expand_path('../../tmp', __dir__))
-      path.realpath if path.exist?
+    def canonical_reference_path(path)
+      candidate = Pathname.new(path).expand_path
+      candidate.exist? ? candidate.realpath : candidate
     end
 
     def contained?(candidate, root)
       candidate == root || candidate.to_s.start_with?("#{root}#{File::SEPARATOR}")
+    end
+
+    attr_reader :repository_root, :temporary_roots
+  end
+
+  class AtomicFileWriter
+    def call(path, content)
+      File.open(path, File::WRONLY | File::CREAT | File::EXCL, 0o600) do |file|
+        file.write(content)
+        file.fsync
+      end
     end
   end
 
   class EvidenceWriter
     class AlreadyExists < StandardError; end
 
-    def initialize(root:, output:)
+    def initialize(root:, output:, file_writer: AtomicFileWriter.new, token: -> { SecureRandom.hex(12) })
       @root = Pathname.new(root)
       @output = Pathname.new(output)
+      @file_writer = file_writer
+      @staging = @output.parent.join(".#{@output.basename}.#{token.call}.tmp")
+      @lock_path = @output.parent.join(".#{@output.basename}.lock")
     end
 
     def ensure_available!
       ensure_contained!
       raise AlreadyExists, 'evidence_output_exists' if output.exist?
 
-      Dir.mkdir(output, 0o700)
+      reserve_bundle!
     rescue Errno::EEXIST
       raise AlreadyExists, 'evidence_output_exists'
     end
 
     def write(evidence)
       ensure_contained!
-      write_exclusive(output.join('evidence.json'), "#{JSON.pretty_generate(evidence)}\n")
-      write_exclusive(output.join('evidence.md'), markdown(evidence))
+      write_staged_bundle(evidence)
+      publish_bundle!
     rescue Errno::EEXIST
+      cleanup_reservation!
       raise AlreadyExists, 'evidence_output_exists'
+    rescue StandardError
+      cleanup_reservation!
+      raise
     end
 
     private
 
-    attr_reader :root, :output
+    attr_reader :root, :output, :file_writer, :staging, :lock_path, :lock_file
 
     def ensure_contained!
       canonical_root = Pathname.new(File.realpath(root))
@@ -244,8 +260,60 @@ module HostedRestore
       candidate.to_s.start_with?("#{canonical_root}#{File::SEPARATOR}")
     end
 
-    def write_exclusive(path, content)
-      File.open(path, File::WRONLY | File::CREAT | File::EXCL, 0o600) { |file| file.write(content) }
+    def reserve_bundle!
+      @lock_file = File.open(lock_path, File::WRONLY | File::CREAT | File::EXCL, 0o600)
+      Dir.mkdir(staging, 0o700)
+    rescue StandardError
+      cleanup_reservation!
+      raise
+    end
+
+    def write_staged_bundle(evidence)
+      write_evidence_files(evidence)
+      write_completion_marker(evidence)
+      fsync_directory(staging)
+    end
+
+    def write_evidence_files(evidence)
+      file_writer.call(staging.join('evidence.json'), "#{JSON.pretty_generate(evidence)}\n")
+      file_writer.call(staging.join('evidence.md'), markdown(evidence))
+    end
+
+    def write_completion_marker(evidence)
+      file_writer.call(staging.join('complete.json'), "#{JSON.pretty_generate(completion_manifest(evidence))}\n")
+    end
+
+    def publish_bundle!
+      File.rename(staging, output)
+      fsync_directory(output.parent)
+      release_lock!
+    end
+
+    def completion_manifest(evidence)
+      {
+        outcome: evidence.fetch(:outcome),
+        files: {
+          'evidence.json' => Digest::SHA256.file(staging.join('evidence.json')).hexdigest,
+          'evidence.md' => Digest::SHA256.file(staging.join('evidence.md')).hexdigest
+        }
+      }
+    end
+
+    def fsync_directory(path)
+      File.open(path, File::RDONLY, &:fsync)
+    end
+
+    def cleanup_reservation!
+      FileUtils.rm_rf(staging)
+      release_lock!
+    end
+
+    def release_lock!
+      return unless lock_file
+
+      lock_file.close unless lock_file.closed?
+      FileUtils.rm_f(lock_path)
+      @lock_file = nil
     end
 
     def markdown(evidence)
@@ -268,13 +336,23 @@ module HostedRestore
 
     def commands_markdown(evidence)
       evidence.fetch(:commands).map do |command|
-        "- `#{command.fetch(:description)}`: #{command.fetch(:status).upcase}"
+        [
+          "- `#{command.fetch(:description)}`: #{command.fetch(:status).upcase}",
+          output_markdown(command.fetch(:output))
+        ].join("\n")
+      end.join("\n")
+    end
+
+    def output_markdown(output, prefix = nil)
+      output.flat_map do |key, value|
+        label = [prefix, key].compact.join('.')
+        value.is_a?(Hash) ? output_markdown(value, label) : "  - `#{label}`: `#{value}`"
       end.join("\n")
     end
 
     def failures_markdown(evidence)
       failures = evidence.fetch(:failures).map do |failure|
-        "- `#{failure.fetch(:command_id)}`: #{failure.fetch(:remediation)}"
+        "- `#{failure.fetch(:command_id)}` (`#{failure.fetch(:failure_code)}`): #{failure.fetch(:remediation)}"
       end.join("\n")
       failures.empty? ? '- None' : failures
     end
@@ -340,7 +418,7 @@ module HostedRestore
         id: 'runtime.restore_verify',
         description: 'env DATABASE_ROLE=med_tracker_app rails hosted_restore:verify_runtime',
         argv: ['task', 'internal:run', 'ENVIRONMENT=prod', 'SERVICE=web-prod',
-               'DOCKER_RUN_ARGS=-e HOUSEHOLD_A_ID -e HOUSEHOLD_B_ID -e RUNTIME_APP_IMAGE',
+               'DOCKER_RUN_ARGS=-e HOUSEHOLD_A_ID -e HOUSEHOLD_B_ID',
                'COMMAND=env DATABASE_ROLE=med_tracker_app rails hosted_restore:verify_runtime']
       },
       {
@@ -362,8 +440,9 @@ module HostedRestore
       ]
     }.freeze
 
-    def initialize(environment: ENV, runner: CommandRunner.new, clock: -> { Time.now.utc })
-      @input = Input.new(environment)
+    def initialize(environment: ENV, runner: CommandRunner.new, clock: -> { Time.now.utc },
+                   repository_root: File.expand_path('../..', __dir__), temporary_roots: nil)
+      @input = Input.new(environment, repository_root:, temporary_roots:)
       @runner = runner
       @clock = clock
       @writer = EvidenceWriter.new(root: input.evidence_root, output: input.evidence_output)

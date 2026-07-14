@@ -124,12 +124,27 @@ RSpec.describe 'Taskfiles' do
     expect(task.to_json).not_to include('pg_restore', 'aws s3', 'kubectl exec')
   end
 
+  it 'passes the exact production image reference into the production build environment' do
+    expect(prod_taskfile.dig('tasks', 'build', 'env', 'APP_IMAGE_REF'))
+      .to eq('{{ .APP_IMAGE_REF | default "med-tracker:local-production-build" }}')
+    expect(prod_taskfile.dig('tasks', 'rebuild', 'env', 'APP_IMAGE_REF'))
+      .to eq('{{ .APP_IMAGE_REF | default "med-tracker:local-production-build" }}')
+    expect(internal_taskfile.dig('tasks', 'build', 'env', 'APP_IMAGE_REF'))
+      .to eq('{{ .APP_IMAGE_REF | default "med-tracker:local-production-build" }}')
+    expect(prod_taskfile.dig('tasks', 'build', 'cmds', 0, 'vars', 'APP_IMAGE_REF'))
+      .to eq('{{ .APP_IMAGE_REF | default "med-tracker:local-production-build" }}')
+  end
+
   def dev_taskfile
     YAML.safe_load(Rails.root.join('Taskfiles/dev.yml').read, aliases: true, permitted_classes: [Symbol])
   end
 
   def test_taskfile
     YAML.safe_load(Rails.root.join('Taskfiles/test.yml').read, aliases: true, permitted_classes: [Symbol])
+  end
+
+  def prod_taskfile
+    YAML.safe_load(Rails.root.join('Taskfiles/prod.yml').read, aliases: true, permitted_classes: [Symbol])
   end
 
   def internal_taskfile

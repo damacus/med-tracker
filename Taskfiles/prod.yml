@@ -14,11 +14,14 @@ tasks:
       Use NO_CACHE=true to force a fresh build.
       Usage: task prod:build
       Usage: task prod:build NO_CACHE=true
+    env:
+      APP_IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:local-production-build" }}'
     cmds:
       - task: :internal:build
         vars:
           ENVIRONMENT: prod
           NO_CACHE: '{{ .NO_CACHE | default "" }}'
+          APP_IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:local-production-build" }}'
 
   up:
     desc: Start production server (local validation)
@@ -55,11 +58,15 @@ tasks:
       Rebuild the production environment from scratch.
       WARNING: This drops the database and all data!
       Usage: task prod:rebuild
+    env:
+      APP_IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:local-production-build" }}'
     cmds:
       - task: :internal:stop
         vars: { ENVIRONMENT: prod, REMOVE_VOLUMES: "true" }
       - task: :internal:build
-        vars: { ENVIRONMENT: prod }
+        vars:
+          ENVIRONMENT: prod
+          APP_IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:local-production-build" }}'
       - task: :internal:up
         vars: { ENVIRONMENT: prod }
 

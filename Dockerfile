@@ -165,6 +165,8 @@ CMD ["bundle", "exec", "rubocop"]
 
 FROM base AS app
 
+ARG APP_IMAGE_REF
+
 USER root
 
 RUN apt-get update \
@@ -174,6 +176,11 @@ RUN apt-get update \
   && chown ruby:ruby -R /app
 
 USER ruby
+
+RUN test -n "${APP_IMAGE_REF}" \
+  && test "${APP_IMAGE_REF}" != "${APP_IMAGE_REF%:latest}:latest" \
+  && printf '%s\n' "${APP_IMAGE_REF}" > /app/.runtime-image-ref \
+  && chmod 0444 /app/.runtime-image-ref
 
 RUN mkdir -p /app/storage
 
