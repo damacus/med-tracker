@@ -34,6 +34,9 @@ task local:clean
 `task playwright` is the canonical local Playwright entrypoint. It runs the
 browser-backed system tests through the repo's Taskfile wrapper.
 
+For a manual screen-reader and keyboard pass over those journeys, use the
+[manual accessibility smoke-test checklist](accessibility-smoke-test.md).
+
 ## TDD workflow
 
 MedTracker follows Red-Green-Refactor:
