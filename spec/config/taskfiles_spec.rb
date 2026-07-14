@@ -117,8 +117,9 @@ RSpec.describe 'Taskfiles' do
 
     expect(required).to include(
       'DATABASE_BACKUP_ID', 'ATTACHMENT_BACKUP_ID', 'RESTORE_TARGET_ID', 'APP_IMAGE', 'TESTER',
-      'HOUSEHOLD_A_ID', 'HOUSEHOLD_B_ID', 'WORM_REFERENCE', 'WORM_HEADS_JSON', 'EVIDENCE_OUTPUT'
+      'HOUSEHOLD_A_ID', 'HOUSEHOLD_B_ID', 'WORM_REFERENCE', 'WORM_HEADS_JSON', 'EVIDENCE_ROOT', 'EVIDENCE_OUTPUT'
     )
+    expect(task.fetch('env')).not_to have_key('RUNTIME_APP_IMAGE')
     expect(task.fetch('cmds')).to eq(['mise exec -- ruby scripts/hosted_restore_rehearsal.rb'])
     expect(task.to_json).not_to include('pg_restore', 'aws s3', 'kubectl exec')
   end

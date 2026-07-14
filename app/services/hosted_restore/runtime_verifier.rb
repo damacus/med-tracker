@@ -11,16 +11,20 @@ module HostedRestore
       attachments: ActiveStorage::Attachment
     }.freeze
 
-    def initialize(household_ids:, connection: ActiveRecord::Base.connection,
-                   storage_verifier: Storage::RestoreVerifier)
-      @household_ids = household_ids.map(&:to_i)
+    def initialize(household_ids:, runtime_image: ENV.fetch('RUNTIME_APP_IMAGE'),
+                   connection: ActiveRecord::Base.connection, storage_verifier: Storage::RestoreVerifier,
+                   models: MODELS)
+      @household_ids = household_ids.map { |value| canonical_integer(value) }
+      @runtime_image = runtime_image
       @connection = connection
       @storage_verifier = storage_verifier
+      @models = models
     end
 
     def call
       verify_role!
       verify_households!
+      verify_runtime_image!
       verify_forced_rls!
       samples = representative_samples
       verify_default_deny!
@@ -28,7 +32,8 @@ module HostedRestore
       verify_storage!(samples)
 
       {
-        schema_version:, database_role: 'med_tracker_app', forced_rls: true, default_deny: true,
+        schema_version:, database_role: 'med_tracker_app', app_image: runtime_image,
+        forced_rls: true, default_deny: true,
         isolation: { clinical: true, audit: true, attachments: true },
         storage: { samples_verified: samples.size }
       }
@@ -36,7 +41,7 @@ module HostedRestore
 
     private
 
-    attr_reader :household_ids, :connection, :storage_verifier
+    attr_reader :household_ids, :runtime_image, :connection, :storage_verifier, :models
 
     def verify_role!
       role = connection.select_value('SELECT current_user')
@@ -47,6 +52,14 @@ module HostedRestore
       return if household_ids.size == 2 && household_ids.all?(&:positive?) && household_ids.uniq.size == 2
 
       raise VerificationError, 'distinct_household_samples_required'
+    end
+
+    def verify_runtime_image!
+      valid = !runtime_image.end_with?(':latest') &&
+              runtime_image.match?(
+                %r{\A[a-zA-Z0-9][a-zA-Z0-9._/-]*(?::[a-zA-Z0-9][a-zA-Z0-9._-]*|@sha256:[a-f0-9]{64})\z}
+              )
+      raise VerificationError, 'runtime_app_image_invalid' unless valid
     end
 
     def verify_forced_rls!
@@ -63,7 +76,7 @@ module HostedRestore
     def representative_samples
       household_ids.to_h do |household_id|
         sample = with_household(household_id) do
-          MODELS.transform_values { |model| model.where(household_id:).pick(:id) }
+          models.transform_values { |model| model.where(household_id:).pick(:id) }
         end
         raise VerificationError, 'representative_sample_missing' if sample.value?(nil)
 
@@ -73,7 +86,7 @@ module HostedRestore
 
     def verify_default_deny!
       denied = without_household do
-        MODELS.values.all? { |model| model.where(household_id: household_ids).none? }
+        models.values.all? { |model| model.where(household_id: household_ids).none? }
       end
       raise VerificationError, 'rls_default_deny_failed' unless denied
     end
@@ -82,7 +95,7 @@ module HostedRestore
       samples.each do |household_id, own_sample|
         other_sample = samples.fetch((household_ids - [household_id]).sole)
         isolated = with_household(household_id) do
-          MODELS.all? do |name, model|
+          models.all? do |name, model|
             model.exists?(own_sample.fetch(name)) && !model.exists?(other_sample.fetch(name))
           end
         end
@@ -109,10 +122,12 @@ module HostedRestore
     end
 
     def with_setting(value)
-      apply_household_setting(value)
-      yield
-    ensure
-      apply_household_setting('')
+      connection.transaction(requires_new: true) do
+        apply_household_setting(value)
+        yield
+      ensure
+        apply_household_setting('')
+      end
     end
 
     def apply_household_setting(value)
@@ -125,6 +140,15 @@ module HostedRestore
 
     def schema_version
       connection.select_value('SELECT max(version) FROM schema_migrations').to_s
+    end
+
+    def canonical_integer(value)
+      string = value.to_s
+      unless string.match?(/\A[1-9]\d*\z/) && Integer(string, 10) <= (2**63) - 1
+        raise VerificationError, 'household_id_invalid'
+      end
+
+      Integer(string, 10)
     end
   end
 end

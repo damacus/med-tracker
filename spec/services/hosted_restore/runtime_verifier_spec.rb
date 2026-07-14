@@ -17,7 +17,9 @@ RSpec.describe HostedRestore::RuntimeVerifier do
 
   it 'proves forced RLS default denial and two-household clinical, audit, attachment, and storage isolation' do
     result = with_runtime_role do
-      described_class.new(household_ids: [first_household.id, second_household.id]).call
+      described_class.new(
+        household_ids: [first_household.id, second_household.id], runtime_image: 'app:v1'
+      ).call
     end
 
     expect(result).to include(
@@ -33,12 +35,18 @@ RSpec.describe HostedRestore::RuntimeVerifier do
 
   it 'fails closed when the application role or two distinct complete samples are absent' do
     expect do
-      described_class.new(household_ids: [first_household.id, second_household.id]).call
+      described_class.new(
+        household_ids: [first_household.id, second_household.id], runtime_image: 'app:v1'
+      ).call
     end.to raise_error(HostedRestore::VerificationError, 'runtime_role_required')
 
     ActiveStorage::Attachment.where(household_id: second_household.id).find_each(&:purge)
     expect do
-      with_runtime_role { described_class.new(household_ids: [first_household.id, second_household.id]).call }
+      with_runtime_role do
+        described_class.new(
+          household_ids: [first_household.id, second_household.id], runtime_image: 'app:v1'
+        ).call
+      end
     end.to raise_error(HostedRestore::VerificationError, 'representative_sample_missing')
   end
 

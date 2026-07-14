@@ -5,6 +5,7 @@ require 'json'
 require 'open3'
 require 'securerandom'
 require 'time'
+require 'tmpdir'
 
 module HostedRestore
   CommandResult = Data.define(:exit_code, :output)
@@ -13,12 +14,15 @@ module HostedRestore
     class Invalid < StandardError; end
 
     REQUIRED = %w[
-      DATABASE_BACKUP_ID ATTACHMENT_BACKUP_ID RESTORE_TARGET_ID APP_IMAGE TESTER
-      HOUSEHOLD_A_ID HOUSEHOLD_B_ID WORM_REFERENCE WORM_HEADS_JSON EVIDENCE_OUTPUT
+      DATABASE_BACKUP_ID ATTACHMENT_BACKUP_ID RESTORE_TARGET_ID APP_IMAGE RUNTIME_APP_IMAGE TESTER
+      HOUSEHOLD_A_ID HOUSEHOLD_B_ID WORM_REFERENCE WORM_HEADS_JSON EVIDENCE_ROOT EVIDENCE_OUTPUT
     ].freeze
     PLACEHOLDERS = %w[current latest todo tbd unknown].freeze
+    UUID_PATTERN = /\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/
+    INTEGER_PATTERN = /\A[1-9]\d*\z/
+    MAX_BIGINT = (2**63) - 1
 
-    attr_reader :values
+    attr_reader :values, :evidence_root, :evidence_output
 
     def initialize(environment)
       @values = {}
@@ -31,7 +35,7 @@ module HostedRestore
     end
 
     def household_ids
-      [self['HOUSEHOLD_A_ID'].to_i, self['HOUSEHOLD_B_ID'].to_i]
+      [canonical_integer('HOUSEHOLD_A_ID'), canonical_integer('HOUSEHOLD_B_ID')]
     end
 
     def worm_heads
@@ -46,6 +50,7 @@ module HostedRestore
       validate_presence!
       validate_content!
       validate_identifiers!
+      validate_image_binding!
       validate_worm_heads!
       validate_output!
     end
@@ -62,7 +67,12 @@ module HostedRestore
     def validate_identifiers!
       raise Invalid, 'opaque_identifier_required' unless opaque_identifiers?
       raise Invalid, 'immutable_app_image_required' unless immutable_image?
+      raise Invalid, 'household_id_invalid' unless valid_household_id_inputs?
       raise Invalid, 'distinct_household_samples_required' unless valid_household_ids?
+    end
+
+    def validate_image_binding!
+      raise Invalid, 'runtime_app_image_mismatch' unless self['APP_IMAGE'] == self['RUNTIME_APP_IMAGE']
     end
 
     def placeholder_value?
@@ -72,7 +82,12 @@ module HostedRestore
     end
 
     def immutable_image?
-      image = self['APP_IMAGE']
+      [self['APP_IMAGE'], self['RUNTIME_APP_IMAGE']].all? do |image|
+        immutable_image_reference?(image)
+      end
+    end
+
+    def immutable_image_reference?(image)
       return false if image.end_with?(':latest')
 
       image.match?(%r{\A[a-zA-Z0-9][a-zA-Z0-9._/-]*(?::[a-zA-Z0-9][a-zA-Z0-9._-]*|@sha256:[a-f0-9]{64})\z})
@@ -88,30 +103,109 @@ module HostedRestore
       household_ids.all?(&:positive?) && household_ids.uniq.size == 2
     end
 
+    def valid_household_id_inputs?
+      %w[HOUSEHOLD_A_ID HOUSEHOLD_B_ID].all? { |name| canonical_integer?(self[name]) }
+    end
+
     def validate_worm_heads!
-      %w[sample_a sample_b].each do |label|
-        head = worm_heads.fetch(label) { raise Invalid, 'worm_heads_invalid' }
-        valid = head['chain_epoch'].to_s.match?(/\A[0-9a-f-]{36}\z/) && head['sequence'].to_i.positive? &&
-                head['entry_hash'].to_s.match?(/\A[a-f0-9]{64}\z/)
-        raise Invalid, 'worm_heads_invalid' unless valid
-      end
+      raise Invalid, 'worm_heads_invalid' unless valid_worm_heads?
+    end
+
+    def valid_worm_heads?
+      worm_heads.is_a?(Hash) && worm_heads.keys.sort == %w[sample_a sample_b] &&
+        worm_heads.values.all? { |head| valid_worm_head?(head) }
+    end
+
+    def valid_worm_head?(head)
+      worm_head_shape?(head) && valid_chain_epoch?(head) && valid_sequence?(head) && valid_entry_hash?(head)
+    end
+
+    def worm_head_shape?(head)
+      head.is_a?(Hash) && head.keys.sort == %w[chain_epoch entry_hash sequence]
+    end
+
+    def valid_chain_epoch?(head)
+      value = head['chain_epoch']
+      value.is_a?(String) && value.match?(UUID_PATTERN)
+    end
+
+    def valid_sequence?(head)
+      value = head['sequence']
+      value.is_a?(Integer) && value.between?(1, MAX_BIGINT)
+    end
+
+    def valid_entry_hash?(head)
+      value = head['entry_hash']
+      value.is_a?(String) && value.match?(/\A[a-f0-9]{64}\z/)
     end
 
     def validate_output!
-      output = Pathname.new(self['EVIDENCE_OUTPUT'])
-      raise Invalid, 'evidence_output_must_be_absolute' unless output.absolute?
-      raise Invalid, 'evidence_parent_missing' unless output.parent.directory?
+      @evidence_root = canonical_existing_path(self['EVIDENCE_ROOT'], 'evidence_root_invalid')
+      reject_unsafe_root!
+      @evidence_output = canonical_output_path
+    end
+
+    def canonical_output_path
+      raw_output = Pathname.new(self['EVIDENCE_OUTPUT'])
+      raise Invalid, 'evidence_output_must_be_absolute' unless raw_output.absolute?
+
+      output = raw_output.expand_path
+      parent = canonical_existing_path(output.parent, 'evidence_parent_missing')
+      raise Invalid, 'evidence_output_outside_root' unless contained?(parent, evidence_root)
+
+      parent.join(output.basename)
+    end
+
+    def canonical_integer(name)
+      Integer(self[name], 10)
+    end
+
+    def canonical_integer?(value)
+      value.match?(INTEGER_PATTERN) && Integer(value, 10) <= MAX_BIGINT
+    end
+
+    def canonical_existing_path(path, failure_code)
+      expanded = Pathname.new(path).expand_path
+      raise Invalid, failure_code unless expanded.directory?
+
+      Pathname.new(File.realpath(expanded))
+    rescue Errno::ENOENT, Errno::EACCES
+      raise Invalid, failure_code
+    end
+
+    def reject_unsafe_root!
+      forbidden = temporary_roots + [repository_tmp].compact
+      unsafe = evidence_root.root? || forbidden.any? { |path| contained?(evidence_root, path) }
+      raise Invalid, 'evidence_root_not_durable' if unsafe
+    end
+
+    def temporary_roots
+      [Dir.tmpdir, '/tmp', '/private/tmp', '/var/tmp'].uniq.filter_map do |path|
+        candidate = Pathname.new(path)
+        candidate.realpath if candidate.exist?
+      end
+    end
+
+    def repository_tmp
+      path = Pathname.new(File.expand_path('../../tmp', __dir__))
+      path.realpath if path.exist?
+    end
+
+    def contained?(candidate, root)
+      candidate == root || candidate.to_s.start_with?("#{root}#{File::SEPARATOR}")
     end
   end
 
   class EvidenceWriter
     class AlreadyExists < StandardError; end
 
-    def initialize(output)
+    def initialize(root:, output:)
+      @root = Pathname.new(root)
       @output = Pathname.new(output)
     end
 
     def ensure_available!
+      ensure_contained!
       raise AlreadyExists, 'evidence_output_exists' if output.exist?
 
       Dir.mkdir(output, 0o700)
@@ -120,6 +214,7 @@ module HostedRestore
     end
 
     def write(evidence)
+      ensure_contained!
       write_exclusive(output.join('evidence.json'), "#{JSON.pretty_generate(evidence)}\n")
       write_exclusive(output.join('evidence.md'), markdown(evidence))
     rescue Errno::EEXIST
@@ -128,7 +223,26 @@ module HostedRestore
 
     private
 
-    attr_reader :output
+    attr_reader :root, :output
+
+    def ensure_contained!
+      canonical_root = Pathname.new(File.realpath(root))
+      return if contained_in_root?(canonical_output_candidate, canonical_root)
+
+      raise AlreadyExists, 'evidence_output_outside_root'
+    rescue Errno::ENOENT, Errno::EACCES
+      raise AlreadyExists, 'evidence_path_unavailable'
+    end
+
+    def canonical_output_candidate
+      return Pathname.new(File.realpath(output)) if output.exist?
+
+      Pathname.new(File.realpath(output.parent)).join(output.basename)
+    end
+
+    def contained_in_root?(candidate, canonical_root)
+      candidate.to_s.start_with?("#{canonical_root}#{File::SEPARATOR}")
+    end
 
     def write_exclusive(path, content)
       File.open(path, File::WRONLY | File::CREAT | File::EXCL, 0o600) { |file| file.write(content) }
@@ -154,7 +268,7 @@ module HostedRestore
 
     def commands_markdown(evidence)
       evidence.fetch(:commands).map do |command|
-        "- `#{command.fetch(:id)}`: #{command.fetch(:status).upcase}"
+        "- `#{command.fetch(:description)}`: #{command.fetch(:status).upcase}"
       end.join("\n")
     end
 
@@ -180,21 +294,36 @@ module HostedRestore
   end
 
   class CommandRunner
+    SAFE_KEYS = %i[
+      outcome failure_code schema_version database_role app_image forced_rls default_deny isolation storage scope
+      samples_verified checked_entries checked_checkpoints checked_objects verified_heads worm_comparison
+    ].freeze
+
+    def initialize(capture: Open3.method(:capture3))
+      @capture = capture
+    end
+
     def call(command)
-      stdout, _stderr, status = Open3.capture3(*command.fetch(:argv))
-      CommandResult.new(exit_code: status.exitstatus || 1, output: parsed_output(command.fetch(:id), stdout))
+      stdout, stderr, status = capture.call(*command.fetch(:argv))
+      output = parsed_output(status.exitstatus&.zero? ? stdout : stderr)
+      CommandResult.new(exit_code: status.exitstatus || 1, output:)
     rescue SystemCallError
       CommandResult.new(exit_code: 1, output: { outcome: 'failed', failure_code: 'command_unavailable' })
     end
 
     private
 
-    def parsed_output(command_id, stdout)
-      return { outcome: 'passed' } if command_id == 'owner.db_migrate'
+    attr_reader :capture
 
-      line = stdout.lines.rfind { |candidate| candidate.lstrip.start_with?('{') }
-      JSON.parse(line, symbolize_names: true)
+    def parsed_output(stream)
+      line = stream.lines.rfind { |candidate| candidate.lstrip.start_with?('{') }
+      parsed = JSON.parse(line, symbolize_names: true)
+      parsed.is_a?(Hash) ? parsed.slice(*SAFE_KEYS) : invalid_output
     rescue JSON::ParserError, TypeError
+      invalid_output
+    end
+
+    def invalid_output
       { outcome: 'failed', failure_code: 'invalid_command_output' }
     end
   end
@@ -203,32 +332,41 @@ module HostedRestore
     COMMANDS = [
       {
         id: 'owner.db_migrate',
+        description: 'env DATABASE_ROLE=med_tracker_owner rails hosted_restore:migrate',
         argv: ['task', 'internal:run', 'ENVIRONMENT=prod', 'SERVICE=migrate-prod',
-               'COMMAND=env DATABASE_ROLE=med_tracker_owner rails db:migrate']
+               'COMMAND=env DATABASE_ROLE=med_tracker_owner rails hosted_restore:migrate']
       },
       {
         id: 'runtime.restore_verify',
+        description: 'env DATABASE_ROLE=med_tracker_app rails hosted_restore:verify_runtime',
         argv: ['task', 'internal:run', 'ENVIRONMENT=prod', 'SERVICE=web-prod',
-               'DOCKER_RUN_ARGS=-e HOUSEHOLD_A_ID -e HOUSEHOLD_B_ID',
+               'DOCKER_RUN_ARGS=-e HOUSEHOLD_A_ID -e HOUSEHOLD_B_ID -e RUNTIME_APP_IMAGE',
                'COMMAND=env DATABASE_ROLE=med_tracker_app rails hosted_restore:verify_runtime']
       },
       {
         id: 'audit.combined_verify',
+        description: 'env DATABASE_ROLE=med_tracker_audit_verifier rails hosted_restore:verify_audit',
         argv: ['task', 'internal:run', 'ENVIRONMENT=prod', 'SERVICE=audit-verifier-prod',
                'DOCKER_RUN_ARGS=-e HOUSEHOLD_A_ID -e HOUSEHOLD_B_ID -e WORM_HEADS_JSON',
                'COMMAND=rails hosted_restore:verify_audit']
       }
     ].freeze
-    OUTPUT_KEYS = %i[
-      outcome failure_code schema_version database_role forced_rls default_deny isolation storage scope
-      samples_verified checked_entries checked_checkpoints checked_objects worm_comparison
-    ].freeze
+    SCHEMAS = {
+      'owner.db_migrate' => %i[outcome schema_version database_role],
+      'runtime.restore_verify' => %i[
+        outcome schema_version database_role app_image forced_rls default_deny isolation storage
+      ],
+      'audit.combined_verify' => %i[
+        outcome scope samples_verified checked_entries checked_checkpoints checked_objects verified_heads
+        worm_comparison
+      ]
+    }.freeze
 
     def initialize(environment: ENV, runner: CommandRunner.new, clock: -> { Time.now.utc })
       @input = Input.new(environment)
       @runner = runner
       @clock = clock
-      @writer = EvidenceWriter.new(input['EVIDENCE_OUTPUT'])
+      @writer = EvidenceWriter.new(root: input.evidence_root, output: input.evidence_output)
     end
 
     def call
@@ -249,30 +387,108 @@ module HostedRestore
 
       COMMANDS.each do |command|
         result = runner.call(command)
-        command_evidence << command_record(command, result)
-        next if result.exit_code.zero? && result.output[:outcome].to_s != 'failed'
+        valid = valid_stage_result?(command, result, command_evidence)
+        command_evidence << command_record(command, result, valid:)
+        next if valid
 
-        failures << failure_record(command, result)
+        failures << failure_record(command, result, valid:)
         break
       end
 
       [command_evidence, failures]
     end
 
-    def command_record(command, result)
-      passed = result.exit_code.zero? && result.output[:outcome].to_s != 'failed'
+    def command_record(command, result, valid:)
       {
-        id: command.fetch(:id), status: passed ? 'passed' : 'failed',
-        exit_code: result.exit_code, output: result.output.slice(*OUTPUT_KEYS)
+        id: command.fetch(:id), description: command.fetch(:description), status: valid ? 'passed' : 'failed',
+        exit_code: result.exit_code, output: sanitized_output(command, result.output, valid:)
       }
     end
 
-    def failure_record(command, result)
+    def failure_record(command, result, valid:)
       {
         command_id: command.fetch(:id),
-        failure_code: result.output.fetch(:failure_code, 'stage_failed'),
+        failure_code: stage_failure_code(result, valid:),
         remediation: 'correct the isolated restore or configuration and repeat the same rehearsal'
       }
+    end
+
+    def stage_failure_code(result, valid:)
+      return 'invalid_stage_output' if valid || result.output[:outcome] != 'failed'
+
+      safe_failure_code(result.output)
+    end
+
+    def valid_stage_result?(command, result, previous_commands)
+      return false unless result.exit_code.zero? && result.output[:outcome] == 'passed'
+      return false unless result.output.keys.sort == SCHEMAS.fetch(command.fetch(:id)).sort
+
+      valid_stage_payload?(command.fetch(:id), result.output, previous_commands)
+    end
+
+    def valid_stage_payload?(command_id, output, previous_commands)
+      case command_id
+      when 'owner.db_migrate' then valid_owner_output?(output)
+      when 'runtime.restore_verify' then valid_runtime_output?(output, previous_commands)
+      when 'audit.combined_verify' then valid_audit_output?(output)
+      end
+    end
+
+    def valid_owner_output?(output)
+      output[:database_role] == 'med_tracker_owner' && schema_version?(output[:schema_version])
+    end
+
+    def valid_runtime_output?(output, previous_commands)
+      owner_version = previous_commands.first&.dig(:output, :schema_version)
+      valid_runtime_identity?(output, owner_version) &&
+        valid_runtime_controls?(output) &&
+        valid_runtime_samples?(output)
+    end
+
+    def valid_runtime_identity?(output, owner_version)
+      output[:database_role] == 'med_tracker_app' && output[:app_image] == input['APP_IMAGE'] &&
+        output[:schema_version] == owner_version
+    end
+
+    def valid_runtime_controls?(output)
+      output[:forced_rls] == true && output[:default_deny] == true &&
+        output[:isolation] == { clinical: true, audit: true, attachments: true }
+    end
+
+    def valid_runtime_samples?(output)
+      output[:storage] == { samples_verified: 2 }
+    end
+
+    def valid_audit_output?(output)
+      output[:scope] == 'combined' && output[:samples_verified] == 2 && output[:verified_heads] == 2 &&
+        positive_integer?(output[:checked_entries]) && integer_at_least?(output[:checked_checkpoints], 2) &&
+        integer_at_least?(output[:checked_objects], 4) && output[:worm_comparison] == 'match'
+    end
+
+    def schema_version?(value)
+      value.is_a?(String) && value.match?(/\A\d{14}\z/)
+    end
+
+    def positive_integer?(value)
+      value.is_a?(Integer) && value.positive?
+    end
+
+    def integer_at_least?(value, minimum)
+      value.is_a?(Integer) && value >= minimum
+    end
+
+    def valid_failure_code?(value)
+      value.is_a?(String) && value.match?(/\A[a-z0-9_]+\z/)
+    end
+
+    def sanitized_output(command, output, valid:)
+      return { outcome: 'failed', failure_code: safe_failure_code(output) } unless valid
+
+      output.slice(*SCHEMAS.fetch(command.fetch(:id)))
+    end
+
+    def safe_failure_code(output)
+      valid_failure_code?(output[:failure_code]) ? output[:failure_code] : 'invalid_stage_output'
     end
 
     def build_evidence(commands, failures)
