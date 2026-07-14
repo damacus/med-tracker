@@ -31,14 +31,7 @@ RSpec.describe Households::HostedExport do
   end
 
   it 'exports every portable household collection including health-event medication joins' do
-    person = attach_avatar(household, 'complete-export-avatar-bytes', 'complete-export-avatar.png')
-    location = create(:location, household: household)
-    person.location_memberships.create!(household: household, location: location)
-    medication = create(:medication, household: household, location: location)
-    event = HealthEvent.create!(household: household, person: person, event_kind: :suspected_side_effect,
-                                title: 'Hosted export reaction', started_on: Date.current)
-    HealthEventMedication.create!(household: household, health_event: event, medication: medication)
-
+    person, location, medication, event = complete_export_graph
     export = described_class.generate!(household:, membership:, actor_account: operator)
     payload = JSON.parse(export_zip_contents(export, person).fetch(:portable))
 
@@ -50,6 +43,17 @@ RSpec.describe Households::HostedExport do
       'medication_portable_ids' => [medication.portable_id]
     )
     expect(payload.dig('records', 'people').sole.fetch('location_portable_ids')).to include(location.portable_id)
+  end
+
+  def complete_export_graph
+    person = attach_avatar(household, 'complete-export-avatar-bytes', 'complete-export-avatar.png')
+    location = create(:location, household: household)
+    person.location_memberships.create!(household: household, location: location)
+    medication = create(:medication, household: household, location: location)
+    event = HealthEvent.create!(household: household, person: person, event_kind: :suspected_side_effect,
+                                title: 'Hosted export reaction', started_on: Date.current)
+    HealthEventMedication.create!(household: household, health_event: event, medication: medication)
+    [person, location, medication, event]
   end
 
   def attach_avatar(target_household, bytes, filename)
@@ -165,5 +169,59 @@ RSpec.describe Households::HostedExport do
     expect do
       described_class.expire!(export: export, actor_account: requester)
     end.to raise_error(Pundit::NotAuthorizedError)
+  end
+
+  it 'reauthorizes download after acquiring the household lifecycle lock' do
+    export = described_class.generate!(household:, membership:, actor_account: operator)
+    revoke_membership_when_household_is_locked(export, membership)
+
+    expect do
+      described_class.download!(export: export, actor_account: operator)
+    end.to raise_error(Pundit::NotAuthorizedError)
+  end
+
+  it 'reauthorizes manual expiry after acquiring the household lifecycle lock' do
+    export = described_class.generate!(household:, membership:, actor_account: operator)
+    revoke_membership_when_household_is_locked(export, membership)
+
+    expect do
+      described_class.expire!(export: export, actor_account: operator)
+    end.to raise_error(Pundit::NotAuthorizedError)
+  end
+
+  it 'refuses manual support expiry while an active retention hold exists' do
+    export = described_class.generate!(household:, membership:, actor_account: operator)
+    create_active_support_session
+    Households::RetentionHoldManager.place!(
+      household: household,
+      actor_account: operator,
+      reason: 'Preserve held export',
+      review_on: 30.days.from_now.to_date
+    )
+
+    expect do
+      described_class.expire!(export: export, actor_account: operator)
+    end.to raise_error(/active retention hold/i)
+    expect(export.reload).to be_ready
+    expect(export.artifact).to be_attached
+  end
+
+  def revoke_membership_when_household_is_locked(export, target_membership)
+    allow(export.household).to receive(:with_lock) do |&block|
+      export.household.update!(status: :archived, lifecycle_state: :offboarded, offboarded_at: Time.current)
+      target_membership.update!(status: :revoked, revoked_at: Time.current)
+      block.call
+    end
+  end
+
+  def create_active_support_session
+    SupportAccessSession.create!(
+      platform_admin: operator.platform_admin,
+      household: household,
+      reason: 'Expire hosted export',
+      mfa_verified_at: Time.current,
+      starts_at: 1.minute.ago,
+      expires_at: 30.minutes.from_now
+    )
   end
 end

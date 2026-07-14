@@ -57,16 +57,19 @@ module PortableData
         scope: scope,
         exported_at: Time.current.iso8601,
         source_instance_id: source_instance_id,
-        records: records_payload(include_health_events: include_health_events)
+        records: records_payload(
+          include_health_events: include_health_events,
+          household_wide: scope == 'household'
+        )
       }
     end
 
-    def records_payload(include_health_events:)
+    def records_payload(include_health_events:, household_wide:)
       records = {
         people: people,
-        locations: locations(include_health_events:),
-        medications: medications(include_health_events:),
-        dosage_options: dosage_options(include_health_events:),
+        locations: locations(include_health_events:, household_wide:),
+        medications: medications(include_health_events:, household_wide:),
+        dosage_options: dosage_options(include_health_events:, household_wide:),
         schedules: schedules,
         person_medications: person_medications,
         medication_takes: medication_takes,
@@ -107,7 +110,7 @@ module PortableData
       @location_id_values ||= {}
       @location_id_values[include_health_events] ||= begin
         ids = LocationMembership.where(household: household, person_id: person_id_values).pluck(:location_id)
-        ids.concat(medications(include_health_events:).pluck(:location_id))
+        ids.concat(medications(include_health_events:, household_wide: false).pluck(:location_id))
         ids.concat(medication_takes.pluck(:taken_from_location_id))
         ids.compact.uniq
       end
@@ -125,26 +128,31 @@ module PortableData
       end
     end
 
-    def locations(include_health_events:)
+    def locations(include_health_events:, household_wide:)
       @locations ||= {}
-      @locations[include_health_events] ||=
-        household.locations.where(id: location_id_values(include_health_events:)).order(:id)
+      @locations[[include_health_events, household_wide]] ||= begin
+        scope = household.locations
+        scope = scope.where(id: location_id_values(include_health_events:)) unless household_wide
+        scope.order(:id)
+      end
     end
 
-    def medications(include_health_events:)
+    def medications(include_health_events:, household_wide:)
       @medications ||= {}
-      @medications[include_health_events] ||=
-        household.medications.where(id: medication_id_values(include_health_events:))
-                 .includes(:location)
-                 .order(:id)
+      @medications[[include_health_events, household_wide]] ||= begin
+        scope = household.medications
+        scope = scope.where(id: medication_id_values(include_health_events:)) unless household_wide
+        scope.includes(:location).order(:id)
+      end
     end
 
-    def dosage_options(include_health_events:)
+    def dosage_options(include_health_events:, household_wide:)
       @dosage_options ||= {}
-      @dosage_options[include_health_events] ||= MedicationDosageOption.where(
-        household: household,
-        medication_id: medication_id_values(include_health_events:)
-      ).includes(:medication).order(:id)
+      @dosage_options[[include_health_events, household_wide]] ||= begin
+        scope = MedicationDosageOption.where(household: household)
+        scope = scope.where(medication_id: medication_id_values(include_health_events:)) unless household_wide
+        scope.includes(:medication).order(:id)
+      end
     end
 
     def schedules
