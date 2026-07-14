@@ -425,6 +425,35 @@ cy:
           to: i
           of: o
           results: canlyniad
+          previous: Blaenorol
+          next: Nesaf
+          label: Tudaleniad
+    ambiguous_person_access_grants:
+      index:
+        title: Grantiau mynediad amwys
+        subtitle: Adolygu grantiau gweithredol sydd angen tarddiad perthynas cyn newidiadau dirprwyo.
+        table:
+          id: ID grant
+          carer: Gofalwr
+          patient: Claf
+          access_level: Lefel mynediad
+          relationship: Perthynas grant
+          status: Perthynas gydnaws
+          created_at: Crëwyd
+          expires_at: Daw i ben
+          revoked_at: Diddymwyd
+        empty: Ni chanfuwyd grantiau mynediad amwys.
+        active: Gweithredol
+        inactive: Anweithredol
+        not_available: Ddim ar gael
+        pagination:
+          showing: Yn dangos
+          to: i
+          of: o
+          results: canlyniadau
+          previous: Blaenorol
+          next: Nesaf
+          label: Tudaleniad
     users:
       unauthorized: Nid oes gennych awdurdod i gyflawni'r weithred hon.
       missing_account: Nid oes gan y defnyddiwr gyfrif i'w ddilysu.
