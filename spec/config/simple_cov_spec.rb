@@ -38,7 +38,7 @@ RSpec.describe SimpleCov do
 
     expect(ci_workflow).to include("\n  lighthouse:\n")
     expect(job).to include('image: postgres:18-alpine')
-    expect(job).to include('ruby-version: "4.0.5"')
+    expect(job).to include('ruby-version: "4.0.6"')
     expect(job).to include('uses: actions/setup-node@v6')
     expect(job).to include('node-version: "24"')
   end

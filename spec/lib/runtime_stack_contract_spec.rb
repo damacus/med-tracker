@@ -7,7 +7,7 @@ module RuntimeStackContract
 
   def expected_versions
     {
-      ruby: '4.0.5',
+      ruby: '4.0.6',
       node: '24',
       rails: '8.1.3',
       postgres: '18',
@@ -25,7 +25,7 @@ RSpec.describe RuntimeStackContract do
 
     expect(read_file('.ruby-version').strip).to eq("ruby-#{expected_ruby_version}")
     expect(mise_version('ruby')).to eq(expected_ruby_version)
-    expect(read_file('Dockerfile')).to start_with("FROM ruby:#{expected_ruby_version}-slim-trixie AS base")
+    expect(read_file('Dockerfile')).to start_with("FROM rubylang/ruby:#{expected_ruby_version}-resolute AS base")
     expect(ci_values('ruby-version')).to contain_exactly(expected_ruby_version)
     agent_guide_paths.each do |path|
       expect(read_file(path)).to include("- Ruby #{expected_ruby_version}")
