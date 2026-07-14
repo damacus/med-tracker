@@ -38,7 +38,7 @@ class OfflineController < ApplicationController
       return render_unprocessable(t('take_medications.future_taken_at'))
     end
 
-    result = TakeMedicationService.new.call(
+    result = MedicationAdministration::RecordDose.new.call(
       source: source,
       amount_override: dose_amount,
       taken_from_medication_id: taken_from_medication_id,

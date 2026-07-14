@@ -10,7 +10,7 @@ class MedicationTakesController < ApplicationController
     taken_at = medication_taken_at_or_respond(scope: 'take_medications')
     return unless taken_at
 
-    result = TakeMedicationService.new.call(
+    result = MedicationAdministration::RecordDose.new.call(
       source: @schedule,
       amount_override: nil,
       taken_from_medication_id: requested_taken_from_medication_id,

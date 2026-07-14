@@ -28,7 +28,7 @@ than one context without making those contexts the same domain.
 
 | Context | Present responsibility and ownership | Current code landmarks |
 | --- | --- | --- |
-| Medication Administration | Defines scheduled and direct administration sources, applies dose and timing rules, owns regimen defaults, and records immutable dose history. It owns `Schedule`, `PersonMedication`, and `MedicationTake` semantics. | `TakeMedicationService`, `MedicationDoseSource`, `DoseTimingPolicy`, `DoseCycle`, administration defaults on `Medication` and `MedicationDosageOption`, medication-take controllers |
+| Medication Administration | Defines scheduled and direct administration sources, applies dose and timing rules, owns regimen defaults, and records immutable dose history. It owns `Schedule`, `PersonMedication`, and `MedicationTake` semantics. | `MedicationAdministration::RecordDose`, `MedicationAdministration::RestoreHistory`, `MedicationAdministration::HistoricalDataMigration`, `MedicationDoseSource`, `DoseTimingPolicy`, `DoseCycle`, administration defaults on `Medication` and `MedicationDosageOption`, medication-take controllers |
 | Medication Catalogue | Defines medicine/product identity, catalogue codes, display data, and selectable dose identity. It does not own household stock, regimen defaults, or administration history. | Catalogue attributes on `Medication`, dose identity on `MedicationDosageOption`, `BarcodeCatalogEntry`, `NhsDmdBarcode`, `NhsDmd::*`, `BarcodeCatalog::*` |
 | Inventory | Tracks location-bound quantities, restocks, reorder state, thresholds, and the tracked stock source consumed by an administration. | Inventory attributes on `Medication` and `MedicationDosageOption`, `SupplyLevel`, `RestockMedicationService`, `AdjustMedicationInventoryService`, `MedicationStockSourceResolver`, `MedicationTakeStockMutation` |
 | Health and Medication Safety | Owns recorded illnesses and suspected side effects, medication-interaction evidence, and the practitioner-review state and immutable evidence snapshots created from that evidence. It does not own administration history or medicine identity. | `HealthEvent`, `HealthEventMedication`, `HealthEvents::*`, `MedicationReviewEvidenceRecord`, `MedicationReviewPrompt`, `MedicationReviewPromptSync` |
@@ -54,6 +54,13 @@ Access for the caller scope.
 `Schedule` is a date-bounded source that supports scheduled types and the
 retained `prn` type. `PersonMedication` is the direct routine or as-needed
 source; it is not the only current representation of as-needed administration.
+
+`MedicationAdministration::RecordDose` is the sole normal creator of
+`MedicationTake` records. `MedicationAdministration::RestoreHistory` restores
+immutable portable history without replaying stock mutation, while
+`MedicationAdministration::HistoricalDataMigration` is limited to legacy
+household and location metadata repair. These are explicit restoration and
+migration exceptions, not alternative dose-recording workflows.
 
 ### Medication Catalogue and Inventory
 

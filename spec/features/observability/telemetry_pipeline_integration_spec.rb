@@ -15,7 +15,7 @@ RSpec.describe 'Observability telemetry pipeline integration' do
 
     payloads = captured_payloads('take_recorded.med_tracker') do
       travel_to Time.current.end_of_day - 1.minute do
-        TakeMedicationService.new.call(
+        MedicationAdministration::RecordDose.new.call(
           source: schedule,
           amount_override: nil,
           taken_from_medication_id: nil,

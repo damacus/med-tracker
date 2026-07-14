@@ -55,12 +55,18 @@ the distinction between care responsibility and authority.
 ## Medication Safety Rules
 
 `Schedule` and `PersonMedication` expose the applicable dose and timing rules.
-`TakeMedicationService` checks source state, stock availability, dose amount,
+`MedicationAdministration::RecordDose` checks source state, stock availability, dose amount,
 timing restrictions, and overlapping administration rules before creating a
 `MedicationTake`. The take stores a dose snapshot and its concrete source.
 Persisting a valid take mutates only the selected tracked inventory source when
 inventory tracking is enabled and retains the selected source on the historical
 record. A valid take may use untracked inventory without changing a quantity.
+It is the sole normal creator of dose history.
+
+`MedicationAdministration::RestoreHistory` restores immutable portable history
+without replaying stock changes. `MedicationAdministration::HistoricalDataMigration`
+repairs only legacy household and location metadata. These explicit exceptions
+do not provide alternative dose-recording paths.
 
 Important timing concepts include:
 

@@ -300,7 +300,7 @@ class SchedulesController < ApplicationController
   end
 
   def take_schedule(taken_at)
-    result = TakeMedicationService.new.call(
+    result = MedicationAdministration::RecordDose.new.call(
       source: @schedule,
       amount_override: params[:dose_amount],
       taken_from_medication_id: requested_taken_from_medication_id,

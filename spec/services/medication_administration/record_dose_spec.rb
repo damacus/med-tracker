@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe TakeMedicationService do
+RSpec.describe MedicationAdministration::RecordDose do
   fixtures :accounts, :people, :users, :locations, :location_memberships,
            :medications, :dosages, :schedules, :person_medications
 

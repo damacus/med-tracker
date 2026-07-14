@@ -157,6 +157,40 @@ RSpec.describe Households::LocalMigrator do
     record[column_name] = value
   end
 
+  def stub_history_migration(owner_person)
+    retained, duplicate = build_history_locations(owner_person)
+    stub_legacy_location_relation(retained, duplicate)
+    migration = history_migration_double
+    allow(MedicationAdministration::HistoricalDataMigration).to receive(:new).and_return(migration)
+    [retained, duplicate, migration]
+  end
+
+  def build_history_locations(owner_person)
+    retained = create(:location, household: owner_person.household, name: 'History Cabinet')
+    duplicate = create(:location, household: create(:household), name: 'history cabinet')
+    [retained, duplicate]
+  end
+
+  def stub_legacy_location_relation(retained, duplicate)
+    locations = instance_double(ActiveRecord::Relation)
+    stub_location_scope(locations)
+    stub_location_iteration(locations, retained, duplicate)
+  end
+
+  def stub_location_scope(locations)
+    allow(Location).to receive(:where).and_call_original
+    allow(Location).to receive(:where).with(household_id: nil).and_return(locations)
+  end
+
+  def stub_location_iteration(locations, retained, duplicate)
+    allow(locations).to receive(:order).with(:id).and_return([retained, duplicate])
+    allow(locations).to receive(:find_each)
+  end
+
+  def history_migration_double
+    instance_double(MedicationAdministration::HistoricalDataMigration, backfill_household: nil, move_location: nil)
+  end
+
   it 'reads pre-cutover subscription plans and roles only when legacy columns are present' do
     migrator = described_class.new(owner_email: 'legacy@example.test', household_name: 'Legacy', apply: false)
     connection = ActiveRecord::Base.connection
@@ -169,6 +203,19 @@ RSpec.describe Households::LocalMigrator do
 
     expect(migrator.send(:highest_subscription_plan)).to eq(:family_plus)
     expect(migrator.send(:legacy_user_role, legacy_user)).to eq(:doctor)
+  end
+
+  it 'routes legacy medication history metadata through the administration boundary' do
+    owner, owner_person = create_legacy_account(email: 'history-owner@example.test', person_name: 'History Owner')
+    owner_person.household.update!(created_by_account: owner)
+    retained_location, duplicate_location, history_migration = stub_history_migration(owner_person)
+    stub_account_enumeration(owner)
+
+    result = run_migration(owner, owner_person.household.name)
+
+    expect(result).to be_applied
+    expect(history_migration).to have_received(:move_location).with(from: duplicate_location, into: retained_location)
+    expect(history_migration).to have_received(:backfill_household).with(household: result.household)
   end
 
   it 'links relationship grants through the public migration transaction' do
