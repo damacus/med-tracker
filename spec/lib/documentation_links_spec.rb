@@ -12,7 +12,11 @@ RSpec.describe 'DocumentationLinks' do
   end
 
   it 'resolves links from the documentation entry points' do
-    sources = [Rails.root.join('docs/index.md'), Rails.root.join('docs/passkey-setup.md')]
+    sources = [
+      Rails.root.join('docs/index.md'),
+      Rails.root.join('docs/passkey-setup.md'),
+      Rails.root.join('docs/families/quick-setup.md')
+    ]
     missing = sources.flat_map { |source| local_links(source) }.reject(&:exist?)
 
     expect(missing).to be_empty, "Missing documentation targets: #{missing.join(', ')}"
