@@ -14,12 +14,19 @@ RSpec.describe 'DocumentationLinks' do
   it 'resolves links from the documentation entry points' do
     sources = [
       Rails.root.join('docs/index.md'),
+      Rails.root.join('docs/testing.md'),
       Rails.root.join('docs/passkey-setup.md'),
       Rails.root.join('docs/families/quick-setup.md')
     ]
     missing = sources.flat_map { |source| local_links(source) }.reject(&:exist?)
 
     expect(missing).to be_empty, "Missing documentation targets: #{missing.join(', ')}"
+  end
+
+  it 'links the manual accessibility smoke-test checklist from contributor testing' do
+    testing_guide = Rails.root.join('docs/testing.md').read
+
+    expect(testing_guide).to include('accessibility-smoke-test.md')
   end
 
   it 'connects the family quick setup journey' do
