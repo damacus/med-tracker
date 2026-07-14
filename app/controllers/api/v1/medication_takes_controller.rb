@@ -21,7 +21,7 @@ module Api
         taken_at = parse_taken_at(attributes[:taken_at])
         return render_unprocessable('taken_at is invalid') if taken_at.blank?
 
-        result = TakeMedicationService.new.call(
+        result = MedicationAdministration::RecordDose.new.call(
           source: source,
           amount_override: attributes[:dose_amount],
           taken_from_medication_id: attributes[:taken_from_medication_id],

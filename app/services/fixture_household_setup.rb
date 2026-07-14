@@ -9,7 +9,7 @@ module FixtureHouseholdSetup
   ].freeze
   TENANT_MODELS = [
     Person, Location, LocationMembership, Medication, MedicationDosageOption, Dosage, Schedule,
-    PersonMedication, MedicationTake, NotificationPreference
+    PersonMedication, NotificationPreference
   ].freeze
 
   def self.apply!
@@ -37,6 +37,7 @@ module FixtureHouseholdSetup
         record.save!(validate: false)
       end
     end
+    MedicationAdministration::HistoricalDataMigration.new.backfill_household(household: household)
   end
 
   def self.create_memberships(household)

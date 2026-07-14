@@ -1,6 +1,10 @@
 # Medication Take Metrics
 
-Medication take activity is emitted through `ActiveSupport::Notifications` at the `TakeMedicationService` boundary.
+Medication take activity is emitted through `ActiveSupport::Notifications` at the `MedicationAdministration::RecordDose` boundary.
+This is the sole normal dose creator. Portable restoration through
+`MedicationAdministration::RestoreHistory` and legacy metadata repair through
+`MedicationAdministration::HistoricalDataMigration` do not represent new dose
+activity and do not emit these workflow events.
 
 ## Event Names
 

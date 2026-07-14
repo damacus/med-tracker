@@ -2,7 +2,13 @@
 
 module PortableData
   module ImportWriterRecords
-    include ImportWriterMedicationTakes
+    def import_medication_takes
+      MedicationAdministration::RestoreHistory.new(
+        household: household,
+        rows: records(:medication_takes),
+        conflict_error: Importer::Error
+      ).call
+    end
 
     def import_notification_preferences
       records(:notification_preferences).each do |row|

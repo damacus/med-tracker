@@ -137,15 +137,15 @@ RSpec.describe 'API v1 medication takes' do
     it 'records takes without idempotency client UUIDs' do
       login_data = api_login(user)
       household_id = login_data.dig('household', 'id')
-      service = instance_double(TakeMedicationService)
+      service = instance_double(MedicationAdministration::RecordDose)
       take = create(
         :medication_take,
         schedule: schedules(:jane_ibuprofen),
         person_medication: nil,
         skip_stock_mutation: true
       )
-      allow(TakeMedicationService).to receive(:new).and_return(service)
-      allow(service).to receive(:call).and_return(TakeMedicationService::Result.new(true, take, nil))
+      allow(MedicationAdministration::RecordDose).to receive(:new).and_return(service)
+      allow(service).to receive(:call).and_return(MedicationAdministration::RecordDose::Result.new(true, take, nil))
 
       post api_v1_household_medication_takes_path(household_id),
            params: {
@@ -166,8 +166,8 @@ RSpec.describe 'API v1 medication takes' do
     it 'returns API failure messages from medication take service errors' do
       login_data = api_login(user)
       household_id = login_data.dig('household', 'id')
-      service = instance_double(TakeMedicationService)
-      allow(TakeMedicationService).to receive(:new).and_return(service)
+      service = instance_double(MedicationAdministration::RecordDose)
+      allow(MedicationAdministration::RecordDose).to receive(:new).and_return(service)
       expected_messages = {
         out_of_stock: 'Cannot take medication: out of stock',
         cooldown: 'Cannot take medication: timing restrictions not met',
@@ -179,7 +179,7 @@ RSpec.describe 'API v1 medication takes' do
       }
 
       expected_messages.each do |error, message|
-        allow(service).to receive(:call).and_return(TakeMedicationService::Result.new(false, nil, error))
+        allow(service).to receive(:call).and_return(MedicationAdministration::RecordDose::Result.new(false, nil, error))
 
         post api_v1_household_medication_takes_path(household_id),
              params: {

@@ -7,7 +7,7 @@ module TakeMedicationGuardable
 
   private
 
-  # Maps a TakeMedicationService error symbol to the appropriate HTTP response.
+  # Maps a MedicationAdministration::RecordDose error symbol to the appropriate HTTP response.
   def handle_take_medication_failure(error, scope:)
     case error
     when :out_of_stock, :cooldown, :paused, :overlapping_prescription_restriction

@@ -8,7 +8,7 @@ module Households
                       notification_preferences households household_memberships person_access_grants].freeze
 
     TENANT_BACKFILL_TABLES = %w[people locations location_memberships medications dosages schedules
-                                person_medications medication_takes notification_preferences].freeze
+                                person_medications notification_preferences].freeze
 
     LEGACY_USER_ROLES = { 0 => :administrator, 1 => :doctor, 2 => :nurse, 3 => :carer, 4 => :parent,
                           5 => :minor }.freeze
@@ -102,6 +102,7 @@ module Households
           backfill_household(record, household)
         end
       end
+      medication_administration_history_migration.backfill_household(household: household)
 
       household.locations.find_or_create_by!(name: 'Home')
     end
@@ -127,7 +128,7 @@ module Households
       end
 
       move_medications(from, into)
-      move_medication_takes(from, into)
+      medication_administration_history_migration.move_location(from: from, into: into)
       from.destroy!
     end
 
@@ -135,10 +136,6 @@ module Households
 
     def move_medications(from, into)
       Medication.where(location: from).find_each { |medication| write_column(medication, :location_id, into.id) }
-    end
-
-    def move_medication_takes(from, into)
-      MedicationTake.where(taken_from_location: from).find_each { write_column(it, :taken_from_location_id, into.id) }
     end
 
     def model_for_table(table_name)
@@ -159,6 +156,10 @@ module Households
       sql = record.class.sanitize_sql_array(["UPDATE #{table_name} SET #{column} = ? WHERE id = ?", value, record.id])
       connection.execute(sql)
       record[column_name] = value
+    end
+
+    def medication_administration_history_migration
+      @medication_administration_history_migration ||= MedicationAdministration::HistoricalDataMigration.new
     end
 
     def create_memberships(household, owner)
