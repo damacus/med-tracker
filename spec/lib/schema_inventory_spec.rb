@@ -87,6 +87,16 @@ RSpec.describe SchemaInventory do
     expect(rls_tables).to match_array(described_class.household_owned_tables)
   end
 
+  it 'loads the fresh schema before runtime roles have been bootstrapped' do
+    schema_source = Rails.root.join('db/schema.rb').read
+    invitation_grant = schema_source.match(/DO \$role_grant\$(?<body>.*?)\$role_grant\$;/m)[:body]
+
+    expect(invitation_grant).to include(
+      "IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'med_tracker_app')",
+      'GRANT EXECUTE ON FUNCTION med_tracker.current_invitation_token_digest() TO med_tracker_app;'
+    )
+  end
+
   it 'keeps immutable audit tables tenant-classified while excluding them from destructive purge' do
     expect(described_class.immutable_audit_tables).to contain_exactly('security_audit_events', 'versions')
     expect(described_class.household_owned_tables).to include('security_audit_events')

@@ -10,7 +10,13 @@ class AllowInvitationTokenRlsBootstrap < ActiveRecord::Migration[8.1]
       AS $$
         SELECT NULLIF(current_setting('med_tracker.current_invitation_token_digest', true), '');
       $$;
-      GRANT EXECUTE ON FUNCTION med_tracker.current_invitation_token_digest() TO med_tracker_app;
+      DO $role_grant$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'med_tracker_app') THEN
+          GRANT EXECUTE ON FUNCTION med_tracker.current_invitation_token_digest() TO med_tracker_app;
+        END IF;
+      END
+      $role_grant$;
 
       DROP POLICY IF EXISTS household_tenant_isolation ON household_invitations;
       CREATE POLICY household_tenant_isolation ON household_invitations

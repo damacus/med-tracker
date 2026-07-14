@@ -1288,7 +1288,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_090000) do
     AS $$
       SELECT NULLIF(current_setting('med_tracker.current_invitation_token_digest', true), '');
     $$;
-    GRANT EXECUTE ON FUNCTION med_tracker.current_invitation_token_digest() TO med_tracker_app;
+    DO $role_grant$
+    BEGIN
+      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'med_tracker_app') THEN
+        GRANT EXECUTE ON FUNCTION med_tracker.current_invitation_token_digest() TO med_tracker_app;
+      END IF;
+    END
+    $role_grant$;
   SQL
 
   %w[
