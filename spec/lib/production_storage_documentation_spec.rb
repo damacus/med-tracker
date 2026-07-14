@@ -46,7 +46,10 @@ RSpec.describe ProductionStorage, '.documentation' do
     dockerfile = Rails.root.join('Dockerfile').read
     app_stage = dockerfile.split("FROM base AS app\n", 2).last
 
-    expect(app_stage).to include("USER ruby\n\nRUN mkdir -p /app/storage")
+    expect(app_stage).to include('RUN mkdir -p /app/storage')
+
+    before_storage_setup = app_stage.split('RUN mkdir -p /app/storage', 2).first
+    expect(before_storage_setup.scan(/^USER \S+$/).last).to eq('USER ruby')
   end
 
   it 'uses the validated production service while preserving local test services' do
