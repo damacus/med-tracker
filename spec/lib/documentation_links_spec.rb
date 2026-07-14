@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Documentation links' do
+RSpec.describe 'DocumentationLinks' do
   def local_links(source)
     source.read.scan(/\[[^\]]+\]\(([^)]+)\)/).flatten.filter_map do |target|
       next if target.start_with?('http://', 'https://', '#')
