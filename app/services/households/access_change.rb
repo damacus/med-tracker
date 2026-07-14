@@ -61,9 +61,7 @@ module Households
     end
 
     def upsert_grant!(grant, attributes)
-      return create_grant!(attributes) if grant.new_record?
-
-      update_grant!(grant, attributes)
+      successful_record!(change_grant(grant, attributes))
     end
 
     def revoke_grant(grant)

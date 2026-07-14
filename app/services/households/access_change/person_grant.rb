@@ -4,7 +4,7 @@ module Households
   class AccessChange
     class PersonGrant
       ACCESS_FIELDS = %w[
-        household_membership_id person_id access_level relationship_type expires_at revoked_at
+        household_membership_id person_id access_level relationship_type expires_at revoked_at carer_relationship_id
       ].freeze
 
       def initialize(actor_account:, actor_membership:, request:, grant:, attributes:)
@@ -128,7 +128,8 @@ module Households
           'access_level' => record.access_level,
           'relationship_type' => record.relationship_type,
           'expires_at' => record.expires_at&.iso8601,
-          'revoked_at' => record.revoked_at&.iso8601
+          'revoked_at' => record.revoked_at&.iso8601,
+          'carer_relationship_id' => record.carer_relationship_id
         }
       end
 

@@ -59,23 +59,36 @@ module CareDelegation
       return unless account
 
       membership = household.household_memberships.find_or_initialize_by(account: account)
-      persist_membership_record!(membership)
-      membership
+      persist_membership_record!(membership, household)
     end
 
-    def persist_membership_record!(membership)
-      membership.person = carer
-      membership.role = :member if membership.role.blank?
-      membership.status = :active
-      membership.save! if membership.new_record? || membership.changed?
+    def persist_membership_record!(membership, household)
+      attributes = {
+        account: membership.account || carer.account,
+        person: carer,
+        role: membership.role.presence || :member,
+        status: :active
+      }
+      return access_change_for(granted_by_membership).create_membership!(household: household, **attributes) if
+        membership.new_record?
+
+      access_change_for(membership).update_membership!(membership, attributes.except(:account))
     end
 
     def persist_self_grant!(membership)
       grant = self_grant(membership)
-      grant.assign_attributes(access_level: :manage, relationship_type: :self, expires_at: nil, revoked_at: nil,
-                              carer_relationship: nil)
-      grant.granted_by_membership ||= granted_by_membership || membership
-      persist_changed!(grant)
+      access_change_for(membership).upsert_grant!(
+        grant,
+        household: membership.household,
+        household_membership: membership,
+        person: carer,
+        access_level: :manage,
+        relationship_type: :self,
+        expires_at: nil,
+        revoked_at: nil,
+        carer_relationship: nil,
+        granted_by_membership: grant.granted_by_membership || granted_by_membership || membership
+      )
     end
 
     def persist_patient_grant!(relationship, membership, required_access_level, grant_relationship_type)
@@ -83,8 +96,7 @@ module CareDelegation
       return preserve_manual_grant!(grant, required_access_level) if manual_grant?(grant, relationship)
 
       grant ||= owned_patient_grant(relationship, membership)
-      assign_patient_grant(grant, membership, required_access_level, grant_relationship_type)
-      persist_changed!(grant)
+      persist_patient_grant(grant, membership, required_access_level, grant_relationship_type)
     end
 
     def available_patient_grant(membership)
@@ -114,23 +126,24 @@ module CareDelegation
         )
     end
 
-    def assign_patient_grant(grant, membership, required_access_level, grant_relationship_type)
-      grant.assign_attributes(
+    def persist_patient_grant(grant, membership, required_access_level, grant_relationship_type)
+      access_change_for(membership).upsert_grant!(
+        grant,
+        household: membership.household,
+        household_membership: membership,
+        person: patient,
         access_level: required_access_level,
         relationship_type: grant_relationship_type,
         granted_by_membership: granted_by_membership || membership,
         expires_at: expires_at,
-        revoked_at: nil
+        revoked_at: nil,
+        carer_relationship: grant.carer_relationship
       )
     end
 
     def self_grant(membership)
       active_grant(membership, carer) || latest_grant(membership, carer) ||
         membership.person_access_grants.build(household: membership.household, person: carer)
-    end
-
-    def persist_changed!(grant)
-      grant.save! if grant.new_record? || grant.changed?
     end
 
     def preserve_manual_grant!(grant, required_access_level)
@@ -148,7 +161,7 @@ module CareDelegation
     end
 
     def retire_expired_grant!(grant)
-      grant.update!(revoked_at: Time.current)
+      access_change_for(grant.household_membership).revoke_grant!(grant)
     end
 
     def grant_expired?(grant)
@@ -157,6 +170,15 @@ module CareDelegation
 
     def latest_grant(membership, grant_person)
       membership.person_access_grants.where(person: grant_person).order(id: :desc).first
+    end
+
+    def access_change_for(fallback_membership)
+      actor_membership = granted_by_membership || fallback_membership
+      Households::AccessChange.new(
+        actor_account: actor_membership&.account,
+        actor_membership: actor_membership,
+        request: nil
+      )
     end
 
     def grant_attributes
