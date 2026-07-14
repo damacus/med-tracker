@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.12](https://github.com/damacus/med-tracker/compare/v0.5.11...v0.5.12) (2026-07-14)
+
+
+### Features
+
+* **admin:** list ambiguous access grants ([#1682](https://github.com/damacus/med-tracker/issues/1682)) ([a46d83a](https://github.com/damacus/med-tracker/commit/a46d83ac30a41012925096cb69056ba3b9335576))
+
+
+### Bug Fixes
+
+* **ci:** pass container image reference ([#1681](https://github.com/damacus/med-tracker/issues/1681)) ([7617fb1](https://github.com/damacus/med-tracker/commit/7617fb15c00e5fbe38529fdab27aad084b6280f9))
+* **migrations:** relax forced RLS for carer ownership backfill ([#1684](https://github.com/damacus/med-tracker/issues/1684)) ([fddb494](https://github.com/damacus/med-tracker/commit/fddb49466628cd82bfd79af1c17b6bc7a24bb072))
+
 ## [0.5.11](https://github.com/damacus/med-tracker/compare/v0.5.10...v0.5.11) (2026-07-14)
 
 
