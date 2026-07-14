@@ -10,17 +10,23 @@ module PortableData
     def call(person)
       return if membership.blank?
 
-      grant = household.person_access_grants
-                       .where(revoked_at: nil)
-                       .find_or_initialize_by(household_membership: membership, person: person)
-      return if grant.carer_relationship && preserve_relationship_grant!(grant)
+      household.with_lock do
+        grant = active_grant_for(person)
+        next if grant.carer_relationship && preserve_relationship_grant!(grant)
 
-      Households::AccessChange.for(membership).upsert_grant!(grant, grant_attributes(grant, person))
+        Households::AccessChange.for(membership).upsert_grant!(grant, grant_attributes(grant, person))
+      end
     end
 
     private
 
     attr_reader :household, :membership
+
+    def active_grant_for(person)
+      household.person_access_grants
+               .where(revoked_at: nil)
+               .find_or_initialize_by(household_membership: membership, person: person)
+    end
 
     def preserve_relationship_grant!(grant)
       return true if grant.manage? && grant.expires_at.nil?

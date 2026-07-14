@@ -49,7 +49,7 @@ RSpec.describe Households::Purger do
     expect(household.reload).to be_lifecycle_purged
   end
 
-  it 'preserves a shared login identity and API usability under forced RLS without carrying clinical rows',
+  it 'preserves a shared login identity while invalidating prior API credentials under forced RLS',
      :aggregate_failures do
     shared = shared_login_records
 
@@ -87,7 +87,7 @@ RSpec.describe Households::Purger do
       account_resolves_user: true,
       membership_identity_linked: true,
       membership_status: 'active',
-      api_session_active: true,
+      api_session_active: false,
       target_preference_exists: false,
       target_person_exists: false
     }

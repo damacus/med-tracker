@@ -7,7 +7,7 @@ module Households
         target_people(household, actor_account).each do |person|
           next if person.user.blank?
 
-          preserve_or_remove_identity!(person, household)
+          preserve_or_remove_identity!(person, household, actor_account)
         end
       end
 
@@ -19,11 +19,11 @@ module Households
         end
       end
 
-      def preserve_or_remove_identity!(person, household)
+      def preserve_or_remove_identity!(person, household, actor_account)
         membership = surviving_membership(person.account, household)
         return User.where(id: person.user.id).delete_all if membership.blank?
 
-        preserve_identity!(person, membership)
+        preserve_identity!(person, membership, actor_account)
       end
 
       def surviving_membership(account, household)
@@ -36,14 +36,19 @@ module Households
         end
       end
 
-      def preserve_identity!(person, membership)
+      def preserve_identity!(person, membership, actor_account)
         TenantContext.with(account: person.account, household: membership.household, membership: membership) do
           identity = reusable_identity(person.account, membership.household) ||
                      build_identity(person, membership.household)
           identity.save!(validate: false) if identity.new_record?
           person.user.update!(person: identity)
-          membership.update!(person: identity) if membership.person.blank?
+          update_membership_identity!(membership, identity, actor_account) if membership.person.blank?
         end
+      end
+
+      def update_membership_identity!(membership, identity, actor_account)
+        AccessChange.new(actor_account: actor_account, actor_membership: nil, request: nil)
+                    .update_membership!(membership, person: identity)
       end
 
       def reusable_identity(account, household)
