@@ -62,10 +62,11 @@
       if (ratio >= minimum) return null;
 
       return {
-        text: directText(element).slice(0, 80),
+        selector: element.id ? `#${element.id}` : element.tagName.toLowerCase(),
+        role: element.getAttribute("role") || null,
         ratio: Math.round(ratio * 100) / 100,
         minimum,
-        tag: element.tagName.toLowerCase()
+        viewport: { width: window.innerWidth, height: window.innerHeight }
       };
     })
     .filter(Boolean)

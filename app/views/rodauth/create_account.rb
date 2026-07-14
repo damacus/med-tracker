@@ -45,7 +45,8 @@ module Views
       def form_section
         render_auth_card(
           title: t('rodauth.views.create_account.card_title'),
-          subtitle: t('rodauth.views.create_account.card_description')
+          subtitle: t('rodauth.views.create_account.card_description'),
+          title_level: 2
         ) do
           flash_section
           render_signup_form

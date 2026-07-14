@@ -4,6 +4,20 @@ Use this checklist for a quick, manual screen-reader and keyboard pass over a
 release candidate. It complements (and does not replace) the automated browser
 and system specs.
 
+## Automated blocking harness
+
+Run the deterministic accessibility/responsive journey matrix locally with:
+
+```fish
+task test:preflight
+task playwright TEST_FILE=spec/system/mobile_ui_audit_spec.rb
+task playwright TEST_FILE=spec/system/mobile_overflow_spec.rb
+```
+
+The existing blocking Playwright system job discovers these examples because
+it enumerates every `spec/**/*_spec.rb` file and runs the `browser` tag. No
+workflow or task change is required when extending the harness.
+
 ## Supported test combinations
 
 Run at least one desktop combination for each release candidate. Keep the
