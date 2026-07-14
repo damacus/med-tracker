@@ -172,9 +172,22 @@ paths:
       summary: List visible people in the household.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - $ref: '#/components/parameters/updated_since'
       responses:
         '200':
           description: People collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     post:
       operationId: createPerson
       tags:
@@ -183,9 +196,30 @@ paths:
       summary: Create a person in the household.
       parameters:
         - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonCreateRequest'
       responses:
         '201':
           description: Person created.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/people/{id}:
     get:
       operationId: getPerson
@@ -199,6 +233,21 @@ paths:
       responses:
         '200':
           description: Person resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     patch:
       operationId: updatePerson
       tags:
@@ -208,21 +257,67 @@ paths:
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonUpdateRequest'
       responses:
         '200':
           description: Person updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     put:
-      operationId: replacePerson
+      operationId: updatePersonWithPut
       tags:
         - Household
         - People
-      summary: Replace a person.
+      summary: Update a person using the PUT route.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonUpdateRequest'
       responses:
         '200':
           description: Person updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/locations:
     get:
       operationId: listLocations
@@ -244,7 +339,7 @@ paths:
       summary: Read a location.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Location resource.
@@ -280,10 +375,13 @@ paths:
       summary: Read a medication.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Medication resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
     patch:
       operationId: updateMedication
       tags:
@@ -292,10 +390,16 @@ paths:
       summary: Update a medication.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Medication updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
     put:
       operationId: replaceMedication
       tags:
@@ -304,10 +408,16 @@ paths:
       summary: Replace a medication.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Medication updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /households/{household_id}/medications/{id}/adjust_inventory:
     patch:
       operationId: adjustMedicationInventory
@@ -317,7 +427,7 @@ paths:
       summary: Adjust medication inventory.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Medication inventory adjusted.
@@ -330,7 +440,7 @@ paths:
       summary: Mark a medication reorder as ordered.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Reorder status updated.
@@ -343,7 +453,7 @@ paths:
       summary: Mark a medication reorder as received.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Reorder status updated.
@@ -379,10 +489,13 @@ paths:
       summary: Read a medication dosage option.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Dosage option resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
     patch:
       operationId: updateDosageOption
       tags:
@@ -391,10 +504,16 @@ paths:
       summary: Update a medication dosage option.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Dosage option updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
     put:
       operationId: replaceDosageOption
       tags:
@@ -403,10 +522,16 @@ paths:
       summary: Replace a medication dosage option.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Dosage option updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /households/{household_id}/health_events:
     get:
       operationId: listHealthEvents
@@ -439,10 +564,13 @@ paths:
       summary: Read a health event.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Health event resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
     patch:
       operationId: updateHealthEvent
       tags:
@@ -451,10 +579,16 @@ paths:
       summary: Update a health event.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Health event updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
     put:
       operationId: replaceHealthEvent
       tags:
@@ -463,10 +597,16 @@ paths:
       summary: Replace a health event.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Health event updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /households/{household_id}/schedules:
     get:
       operationId: listSchedules
@@ -499,10 +639,13 @@ paths:
       summary: Read a schedule.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Schedule resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
     patch:
       operationId: updateSchedule
       tags:
@@ -511,10 +654,16 @@ paths:
       summary: Update a schedule.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Schedule updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
     put:
       operationId: replaceSchedule
       tags:
@@ -523,10 +672,16 @@ paths:
       summary: Replace a schedule.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Schedule updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /households/{household_id}/schedules/{id}/pause:
     patch:
       operationId: pauseSchedule
@@ -536,7 +691,7 @@ paths:
       summary: Pause a schedule.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Schedule paused.
@@ -549,7 +704,7 @@ paths:
       summary: Resume a schedule.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Schedule resumed.
@@ -585,10 +740,13 @@ paths:
       summary: Read a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Person medication resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
     patch:
       operationId: updatePersonMedication
       tags:
@@ -597,10 +755,16 @@ paths:
       summary: Update a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Person medication updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
     put:
       operationId: replacePersonMedication
       tags:
@@ -609,10 +773,16 @@ paths:
       summary: Replace a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Person medication updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /households/{household_id}/person_medications/{id}/pause:
     patch:
       operationId: pausePersonMedication
@@ -622,7 +792,7 @@ paths:
       summary: Pause a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Person medication paused.
@@ -635,7 +805,7 @@ paths:
       summary: Resume a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Person medication resumed.
@@ -648,7 +818,7 @@ paths:
       summary: Reorder a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Person medication reordered.
@@ -730,7 +900,7 @@ paths:
       summary: Revoke a native device token.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/native_device_token'
       responses:
         '204':
           description: Device token revoked.
@@ -901,17 +1071,9 @@ paths:
         '201':
           description: Batch applied.
         '409':
-          description: An operation used a stale resource ETag.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/Conflict'
         '428':
-          description: An update or delete operation omitted its required resource ETag.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/PreconditionRequired'
   /households/{household_id}/admin/settings:
     get:
       operationId: getHouseholdAdminSettings
@@ -1120,27 +1282,351 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
+      bearerFormat: opaque
   parameters:
     household_id:
       name: household_id
       in: path
       required: true
       schema:
-        type: integer
+        $ref: '#/components/schemas/NumericId'
     id:
       name: id
       in: path
       required: true
       schema:
+        $ref: '#/components/schemas/NumericId'
+    resource_id:
+      name: id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/ResourceIdentifier'
+    native_device_token:
+      name: id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/DeviceTokenIdentifier'
+    page:
+      name: page
+      in: query
+      required: false
+      schema:
         type: integer
+        minimum: 1
+        default: 1
+    per_page:
+      name: per_page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    updated_since:
+      name: updated_since
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/Timestamp'
+    if_match:
+      name: If-Match
+      in: header
+      required: false
+      schema:
+        type: string
+  headers:
+    etag:
+      description: Version identifier for optimistic concurrency.
+      required: true
+      schema:
+        type: string
+    retry_after:
+      description: Seconds until the request may be retried.
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+  responses:
+    Unauthorized:
+      description: The bearer credential is absent, invalid, expired, revoked, or no longer active.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Forbidden:
+      description: The credential cannot perform the operation in the routed household or person scope.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    NotFound:
+      description: The resource does not exist inside the authorized scope.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    ValidationFailed:
+      description: The submitted attributes or filters are invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Conflict:
+      description: The resource or idempotency state conflicts with the requested mutation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    PreconditionRequired:
+      description: The mutation requires a version precondition.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    RateLimited:
+      description: The request exceeded an API rate limit.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/retry_after'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RateLimitErrorEnvelope'
   schemas:
+    NumericId:
+      type: integer
+      minimum: 1
+    PortableId:
+      type: string
+      format: uuid
+    ResourceIdentifier:
+      oneOf:
+        - $ref: '#/components/schemas/NumericId'
+        - $ref: '#/components/schemas/PortableId'
+    DeviceTokenIdentifier:
+      type: string
+      minLength: 1
+    NullableNumericId:
+      oneOf:
+        - $ref: '#/components/schemas/NumericId'
+        - type: 'null'
+    NullablePortableId:
+      oneOf:
+        - $ref: '#/components/schemas/PortableId'
+        - type: 'null'
+    Timestamp:
+      type: string
+      format: date-time
+    Date:
+      type: string
+      format: date
+    PaginationMeta:
+      type: object
+      additionalProperties: false
+      required:
+        - page
+        - per_page
+        - total_count
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        per_page:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total_count:
+          type: integer
+          minimum: 0
+    PersonAttributes:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type:
+            - string
+            - 'null'
+          format: email
+        date_of_birth:
+          $ref: '#/components/schemas/Date'
+        person_type:
+          type: string
+          enum:
+            - adult
+            - minor
+            - dependent_adult
+        has_capacity:
+          type: boolean
+    Person:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - updated_at
+        - name
+        - email
+        - date_of_birth
+        - person_type
+        - has_capacity
+        - age
+        - location_ids
+        - location_portable_ids
+        - notification_preference_id
+        - notification_preference_portable_id
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        name:
+          type: string
+          minLength: 1
+        email:
+          type:
+            - string
+            - 'null'
+          format: email
+        date_of_birth:
+          oneOf:
+            - $ref: '#/components/schemas/Date'
+            - type: 'null'
+        person_type:
+          type: string
+          enum:
+            - adult
+            - minor
+            - dependent_adult
+        has_capacity:
+          type: boolean
+        age:
+          type:
+            - integer
+            - 'null'
+        location_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/NumericId'
+        location_portable_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortableId'
+        notification_preference_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        notification_preference_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+    PersonCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - person
+      properties:
+        person:
+          allOf:
+            - $ref: '#/components/schemas/PersonAttributes'
+            - required:
+                - name
+                - date_of_birth
+    PersonUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - person
+      properties:
+        person:
+          $ref: '#/components/schemas/PersonAttributes'
+    PersonResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Person'
+    PersonCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Person'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    ValidationErrors:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: string
+    Error:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+        - request_id
+      properties:
+        code:
+          type: string
+          minLength: 1
+        message:
+          type: string
+          minLength: 1
+        request_id:
+          type: string
+          minLength: 1
+        errors:
+          $ref: '#/components/schemas/ValidationErrors'
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/Error'
+    RateLimitError:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          const: rate_limited
+        message:
+          type: string
+          minLength: 1
+    RateLimitErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/RateLimitError'
     SyncBatchRequest:
       type: object
+      additionalProperties: false
       required:
         - batch
       properties:
         batch:
           type: object
+          additionalProperties: false
           required:
             - operations
           properties:
@@ -1151,6 +1637,7 @@ components:
                 $ref: '#/components/schemas/SyncBatchOperation'
     SyncBatchOperation:
       type: object
+      additionalProperties: false
       required:
         - action
         - resource_type
@@ -1168,34 +1655,10 @@ components:
             - medication
             - health_event
         id:
-          type: string
+          $ref: '#/components/schemas/ResourceIdentifier'
         if_match:
           type: string
           description: Exact ETag from the snapshot or latest resource response.
         attributes:
           type: object
           additionalProperties: true
-    ErrorEnvelope:
-      type: object
-      required:
-        - error
-      properties:
-        error:
-          type: object
-          required:
-            - code
-            - message
-            - request_id
-          properties:
-            code:
-              type: string
-            message:
-              type: string
-            request_id:
-              type: string
-            errors:
-              type: object
-              additionalProperties:
-                type: array
-                items:
-                  type: string
