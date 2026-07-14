@@ -7,7 +7,6 @@ implementation and acceptance tests.
 ## Definitions and shared state machine
 
 - Retirement is explicit and reversible.
-- Retirement is an explicit, reversible transition to logical cold storage.
 - Logical cold storage is a lifecycle and visibility state, not a separate
   database tier.
 - Every root has the states `active`, `retired`, and `hard_deleted`.
@@ -98,6 +97,10 @@ Reactivation never recreates care relationships; relinking is explicit.
   selected household. Cross-household requests remain hidden or fail closed.
 - Retirement and reactivation use the existing policy authority for the
   corresponding destructive or update action.
+- Only a caller authorized by Household Access to manage that Person and linked
+  account may request linked-user deactivation. Identity performs the linked
+  Account deactivation; Household Access may suspend or revoke the membership
+  separately. These are distinct lifecycle transitions.
 - Retirement, reactivation, and hard deletion require an explicit operation;
   a warning or page visit is never confirmation. Sole-carer transitions require
   an explicit confirmation token/flag after the privacy-safe warning.
@@ -109,10 +112,6 @@ Reactivation never recreates care relationships; relinking is explicit.
   contain names, diagnoses, medication values, carer details, or warning text.
   A required audit write failure rolls back the transition.
 
-An actual transition records one PHI-safe immutable audit event with actor,
-household, root type and id, transition, and time. Required audit failure rolls
-back the transition.
-
 ## Visibility, exchange, and API conflicts
 
 | Surface | Active root | Retired root |
@@ -122,10 +121,9 @@ back the transition.
 | Reports, sync, export/import, and restoration | Included | Included with retired state preserved |
 | Authorization and retrieval | Existing policy authority applies | Existing policy authority applies; historical identity remains resolvable |
 
-API sync represents retirement without deleting historical identity. It also
-represents retirement/cold storage without deleting historical identity: it
-preserves the same portable identity (`portable_id`) and carries
-the retired state through changes, snapshots, export/import, and restore.
+API sync represents retirement without deleting historical identity while
+carrying retirement/cold-storage state. It preserves the same portable identity
+(`portable_id`) through changes, snapshots, export/import, and restore.
 Import and restore preserve retired state and never activate it implicitly.
 
 Stale or concurrent lifecycle state, and a location precondition that is still

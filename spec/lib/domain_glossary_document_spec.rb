@@ -41,8 +41,8 @@ RSpec.describe DomainGlossaryDocument do
   end
 
   it 'defines reversible cold-storage behaviour for medication, person, and location roots' do
-    expect(document.operational_contract).to include('Retirement is an explicit, reversible transition')
-    expect(document.operational_contract).to include('logical cold storage')
+    expect(document.operational_contract).to include('Retirement is explicit and reversible.')
+    expect(document.operational_contract).to include('Logical cold storage')
     expect(document.operational_contract).to match(/Retiring a Medication\s+retires only that Medication/)
     expect(document.operational_contract).to match(
       /Person retirement never retires, deactivates, deletes, or otherwise changes\s+another Person/
@@ -70,7 +70,7 @@ RSpec.describe DomainGlossaryDocument do
     expect(document.operational_contract).to include('after explicit confirmation')
     expect(document.operational_contract).to include('transition may proceed')
     expect(document.operational_contract).to include('dependant remains active')
-    expect(document.operational_contract).to include('does not silently deactivate the dependant')
+    expect(document.operational_contract).to match(/does\s+not silently deactivate the dependant/)
     expect(document.operational_contract).to include('needs-carer workflow')
     expect(document.operational_contract).to match(/Reactivation\s+never recreates care relationships/)
   end
@@ -80,10 +80,10 @@ RSpec.describe DomainGlossaryDocument do
       /Every `MedicationTake`, its source, and its root\s+reference remain unchanged/
     )
     expect(document.operational_contract).to include('Hard deletion is permitted only for a never-used root')
-    expect(document.operational_contract).to include(
-      'API sync represents retirement without deleting historical identity.'
+    expect(document.operational_contract).to match(
+      /API sync represents retirement without deleting historical identity while/
     )
-    expect(document.operational_contract).to include('preserves the same portable identity (`portable_id`)')
+    expect(document.operational_contract).to match(/preserves the same portable identity\s+\(`portable_id`\)/)
     expect(document.operational_contract).to include(
       'Import and restore preserve retired state and never activate it implicitly.'
     )
@@ -113,5 +113,49 @@ RSpec.describe DomainGlossaryDocument do
     expect(contract).to include('A Person with dependants')
     expect(contract).to include('A sole carer linked to a user account')
     expect(contract).to include('A never-used root with no protected state')
+  end
+
+  it 'protects each root transition, conflict, and concurrency invariant' do
+    contract = document.operational_contract
+
+    expect(contract).to match(/The selected Medication becomes retired.*no Person changes/m)
+    expect(contract).to match(/Retiring a Medication retires only that Medication's active `Schedule` and\s+`PersonMedication` rows/)
+    expect(contract).to match(/Every `MedicationTake`, its source, and its root\s+reference remain unchanged/)
+    expect(contract).to include('HTTP 409 Conflict')
+    expect(contract).to include('location precondition')
+    expect(contract).to include('The selected Location becomes active')
+    expect(contract).to include('The selected Person becomes active')
+    expect(contract).to include('The selected Medication becomes active')
+    expect(contract).to include('Repeating a completed same-state transition is idempotent')
+    expect(contract).to include('does not duplicate audit evidence')
+    expect(contract).to include('No partial root, child, relationship, or audit writes')
+  end
+
+  it 'defines linked-account deactivation authority separately from membership lifecycle' do
+    contract = document.operational_contract
+
+    expect(contract).to match(
+      /Only a caller authorized by Household Access to manage that Person and linked\s+account/
+    )
+    expect(contract).to match(/Identity performs the linked\s+Account deactivation/)
+    expect(contract).to match(/Household Access may suspend or revoke the membership\s+separately/)
+    expect(contract).to include('explicit confirmation token/flag')
+  end
+
+  it 'protects every acceptance example label in the lifecycle contract' do
+    contract = document.operational_contract
+
+    %w[
+      A\ medication\ with\ active\ administration\ sources
+      A\ Person\ with\ no\ dependants
+      A\ Person\ with\ dependants
+      A\ sole\ carer\ linked\ to\ a\ user\ account
+      A\ Location\ that\ is\ primary\ or\ holds\ active\ stock
+      A\ retired\ Person,\ Medication,\ or\ Location
+      A\ never-used\ root\ with\ no\ protected\ state
+      A\ repeated\ or\ stale\ retirement\ request
+    ].each do |example_label|
+      expect(contract).to include(example_label.tr('\\', ''))
+    end
   end
 end
