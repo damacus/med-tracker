@@ -35,6 +35,11 @@ pub enum PortableImportMode {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BatchMutationRequest {
+    pub batch: BatchMutationPayload,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BatchMutationPayload {
     pub operations: Vec<Value>,
 }
 
