@@ -184,6 +184,17 @@ RSpec.describe CareDelegation::Assign do
     expect(relationship.reload.person_access_grants.sole).to eq(grant)
   end
 
+  it 'invalidates existing membership credentials when delegated authority changes' do
+    membership = create_membership(carer)
+    create_self_grant(membership)
+    api_session, = ApiSession.issue_for(account: carer.account, household_membership: membership)
+
+    assign_delegation
+
+    expect(membership.reload.permissions_version).to eq(api_session.permissions_version + 1)
+    expect(api_session.reload).not_to be_active_for_membership
+  end
+
   it 'rejects cross-household assignments without partial writes' do
     foreign_carer = create_account_person(create(:household), 'foreign-carer')
 

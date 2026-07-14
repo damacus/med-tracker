@@ -29,6 +29,16 @@ RSpec.describe CareDelegation::Revoke do
     expect(self_grant.reload.revoked_at).to be_nil
   end
 
+  it 'invalidates existing membership credentials when delegated authority is revoked' do
+    membership = relationship.household.household_memberships.find_by!(person: carer)
+    api_session, = ApiSession.issue_for(account: carer.account, household_membership: membership)
+
+    revoke_delegation
+
+    expect(membership.reload.permissions_version).to eq(api_session.permissions_version + 1)
+    expect(api_session.reload).not_to be_active_for_membership
+  end
+
   it 'deactivates a self relationship without revoking or sourcing its identity grant' do
     membership = create_membership(carer)
     identity_grant = create_self_grant(membership)

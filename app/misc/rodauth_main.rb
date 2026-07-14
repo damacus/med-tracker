@@ -263,7 +263,8 @@ class RodauthMain < Rodauth::Rails::Auth
       end
 
       def create_owner_person_grant(household, membership, person)
-        household.person_access_grants.create!(
+        household_access_change(membership).create_grant!(
+          household: household,
           household_membership: membership,
           person: person,
           access_level: :manage,
@@ -305,13 +306,22 @@ class RodauthMain < Rodauth::Rails::Auth
       end
 
       def create_invitation_manual_grant!(membership, invitation, grant)
-        invitation.household.person_access_grants.create!(
+        household_access_change(invitation.invited_by_membership).create_grant!(
+          household: invitation.household,
           household_membership: membership,
           person: grant.person,
           access_level: grant.access_level,
           relationship_type: grant.relationship_type,
           expires_at: grant.expires_at,
           granted_by_membership: invitation.invited_by_membership
+        )
+      end
+
+      def household_access_change(actor_membership)
+        Households::AccessChange.new(
+          actor_account: actor_membership&.account,
+          actor_membership: actor_membership,
+          request: rails_controller_instance&.request
         )
       end
 

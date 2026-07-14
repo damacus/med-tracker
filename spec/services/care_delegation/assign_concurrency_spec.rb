@@ -6,6 +6,8 @@ require 'timeout'
 RSpec.describe CareDelegation::Assign do
   self.use_transactional_tests = false
 
+  before { allow(Audit::Event).to receive(:record!) }
+
   it 'serializes concurrent assignment at the household boundary' do
     Household.where("name LIKE 'Concurrent Assignment %'").find_each { cleanup_household(it) }
     records = concurrency_records

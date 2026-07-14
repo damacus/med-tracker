@@ -46,7 +46,7 @@ module PortableData
         person.primary_location = location_by_portable_id(Array(row[:location_portable_ids]).first)
         person.assign_attributes(person_attributes(row))
         person.save!
-        grant_imported_person_access(person)
+        ImportedPersonAccessGranter.new(household: household, membership: membership).call(person)
       end
     end
 
@@ -64,33 +64,6 @@ module PortableData
       return false if row[:person_type].to_s.in?(%w[minor dependent_adult])
 
       row.fetch(:has_capacity, true)
-    end
-
-    def grant_imported_person_access(person)
-      return if membership.blank?
-
-      grant = household.person_access_grants
-                       .where(revoked_at: nil)
-                       .find_or_initialize_by(household_membership: membership, person: person)
-      return if grant.carer_relationship && preserve_relationship_grant!(grant)
-
-      attributes = {
-        household: household, household_membership: membership, person: person,
-        access_level: :manage,
-        relationship_type: grant.relationship_type || :family_member,
-        granted_by_membership: grant.granted_by_membership || membership
-      }
-      access_change.upsert_grant!(grant, attributes)
-    end
-
-    def access_change
-      @access_change ||= Households::AccessChange.for(membership)
-    end
-
-    def preserve_relationship_grant!(grant)
-      return true if grant.manage? && grant.expires_at.nil?
-
-      raise Importer::Error, 'relationship-owned access grant conflicts with imported manage access'
     end
 
     def import_location_memberships

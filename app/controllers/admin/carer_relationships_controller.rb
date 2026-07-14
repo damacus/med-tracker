@@ -89,7 +89,10 @@ module Admin
       @relationship = policy_scope(CarerRelationship).find(params.expect(:id))
       authorize @relationship
 
-      CareDelegation::Revoke.new(relationship: @relationship).call
+      CareDelegation::Revoke.new(
+        relationship: @relationship,
+        actor_membership: relationship_actor_membership(@relationship)
+      ).call
       respond_to do |format|
         format.html { redirect_to admin_carer_relationships_path, notice: t('admin.carer_relationships.deactivated') }
         format.turbo_stream do
