@@ -208,6 +208,35 @@ ga:
           to: go
           of: as
           results: torthaí
+          previous: Roimhe Seo
+          next: Ar Aghaidh
+          label: Leathanachú
+    ambiguous_person_access_grants:
+      index:
+        title: Deontais rochtana débhríocha
+        subtitle: Déan athbhreithniú ar dheontais ghníomhacha a dteastaíonn bunús caidrimh uathu roimh athruithe tarmligin.
+        table:
+          id: ID deontais
+          carer: Cúramóir
+          patient: Othar
+          access_level: Leibhéal rochtana
+          relationship: Caidreamh deontais
+          status: Caidreamh comhoiriúnach
+          created_at: Cruthaithe
+          expires_at: Rachaidh in éag
+          revoked_at: Cúlghairthe
+        empty: Níor aimsíodh deontais rochtana débhríocha.
+        active: Gníomhach
+        inactive: Neamhghníomhach
+        not_available: Níl ar fáil
+        pagination:
+          showing: Ag taispeáint
+          to: go
+          of: as
+          results: torthaí
+          previous: Roimhe Seo
+          next: Ar Aghaidh
+          label: Leathanachú
     users:
       unauthorized: Níl údarás agat an gníomh seo a dhéanamh.
       missing_account: Níl cuntas ag an úsáideoir le fíorú.

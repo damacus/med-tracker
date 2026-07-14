@@ -432,6 +432,35 @@ pt:
           to: a
           of: de
           results: resultados
+          previous: Anterior
+          next: Seguinte
+          label: Paginação
+    ambiguous_person_access_grants:
+      index:
+        title: Concessões de acesso ambíguas
+        subtitle: Reveja concessões ativas que precisam da origem da relação antes de alterar delegações.
+        table:
+          id: ID da concessão
+          carer: Cuidador
+          patient: Paciente
+          access_level: Nível de acesso
+          relationship: Relação da concessão
+          status: Relação compatível
+          created_at: Criada
+          expires_at: Expira
+          revoked_at: Revogada
+        empty: Não foram encontradas concessões de acesso ambíguas.
+        active: Ativa
+        inactive: Inativa
+        not_available: Não disponível
+        pagination:
+          showing: A mostrar
+          to: a
+          of: de
+          results: resultados
+          previous: Anterior
+          next: Seguinte
+          label: Paginação
     users:
       unauthorized: Não está autorizado a realizar esta ação.
       missing_account: O utilizador não tem uma conta para verificar.
