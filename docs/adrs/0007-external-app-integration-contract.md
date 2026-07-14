@@ -1,7 +1,11 @@
 # ADR 0007: External App Integration Contract
 
-- Status: Accepted
+- Status: Superseded by [ADR 0010](0010-external-integration-architecture.md)
 - Date: 2026-07-09
+
+ADR 0010 replaces this decision because SMART on FHIR support shipped after
+this document was written, leaving its deferred and implemented descriptions in
+conflict. This document remains as historical context.
 
 ## Context
 
