@@ -21,6 +21,7 @@ nav = [
     { Deployment = "deployment.md" },
     { Testing = "testing.md" },
     { "MCP Integration" = "mcp.md" },
+    { "API Contract Conventions" = "api/README.md" },
     { Design = "design.md" },
     { "Database Relationships" = "database-relationships.md" },
     { "Audit Trail" = "audit-trail.md" }

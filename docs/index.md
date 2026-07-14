@@ -28,6 +28,8 @@ ensuring medications are given on time and safely.
   Claude Code, or VS Code to read medication context.
 - [Client Tools](api/client-tools.md): install and operate the first-party
   `medtracker` CLI and `medtracker-mcp` stdio server over `/api/v1`.
+- [API Contract Conventions](api/README.md): use canonical API addressing,
+  stable operation IDs, and audience/resource tags when extending the OpenAPI contract.
 - [API Contract](api/openapi.v1.yaml): OpenAPI contract for hosted auth, portable IDs, sync, backups, admin APIs, and FHIR R4 reads.
 - [External Integration Architecture](adrs/0010-external-integration-architecture.md): choose `/api/v1`, `/mcp`, or SMART on FHIR by client audience.
 - [Production Upload Storage](adrs/0008-production-upload-storage.md): understand the single-node persistent-volume decision and scaling boundary.
