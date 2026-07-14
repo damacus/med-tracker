@@ -153,13 +153,15 @@ rules that trigger delivery.
 
 [Record lifecycle operational contract](../operations/record-lifecycle.md)
 defines retirement and reactivation as lifecycle and visibility transitions for
-Medication, Person, and Location roots. Medication Administration owns the
-retirement of its `Schedule` and `PersonMedication` sources while preserving
+Medication, Person, and Location roots. Medication Catalogue owns the
+Medication root lifecycle; Medication Administration owns only the retirement
+of its `Schedule` and `PersonMedication` child sources while preserving
 `MedicationTake` history. People and Care Delegation owns Person lifecycle and
-outbound care-relationship changes, Inventory owns Location availability and
-stock-placement preconditions, Household Access remains the authority source,
-Interoperability preserves retired identity across sync and import/restore, and
-Audit and Compliance records the immutable transition evidence.
+outbound care-relationship changes, Identity owns linked-user account
+deactivation, Inventory owns Location availability and stock-placement
+preconditions, Household Access remains the authority source, Interoperability
+preserves retired identity across sync and import/restore, and Audit and
+Compliance records the immutable transition evidence.
 
 ## Dependency Direction
 
