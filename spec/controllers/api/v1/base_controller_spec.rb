@@ -153,6 +153,74 @@ RSpec.describe Api::V1::BaseController do # rubocop:disable RSpec/MultipleMemoiz
         expect(response).to have_http_status(:unauthorized)
       end
     end
+
+    context 'when the credential household is not operational' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:household) { instance_double(Household, id: 1, operational?: false) }
+
+      it 'returns forbidden' do
+        get :index
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context 'when the credential has no household' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:membership) do
+        instance_double(
+          HouseholdMembership,
+          active?: true,
+          household: nil,
+          household_id: nil,
+          id: 1,
+          role: 'owner',
+          permissions_version: 1
+        )
+      end
+
+      it 'returns forbidden' do
+        get :index
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context 'when the requested household is not operational' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:requested_household) { instance_double(Household, id: 2, operational?: false) }
+
+      before do
+        allow(Household).to receive(:find).with('2').and_return(requested_household)
+      end
+
+      it 'returns forbidden' do
+        get :index, params: { household_id: 2 }
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context 'when the credential membership is inactive for an explicitly requested household' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:membership) do
+        instance_double(
+          HouseholdMembership,
+          active?: false,
+          household: household,
+          household_id: 1,
+          id: 1,
+          role: 'owner',
+          permissions_version: 1
+        )
+      end
+
+      before do
+        allow(Household).to receive(:find).with('1').and_return(household)
+      end
+
+      it 'returns forbidden' do
+        get :index, params: { household_id: 1 }
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
   end
 
   describe 'exception handling' do # rubocop:disable RSpec/MultipleMemoizedHelpers

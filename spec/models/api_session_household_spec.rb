@@ -47,6 +47,17 @@ RSpec.describe ApiSession do
     expect(session).not_to be_active_for_membership
   end
 
+  it 'treats sessions for every non-operational household lifecycle state as inactive' do
+    account, membership = household_bundle
+    session, = described_class.issue_for(account: account, household_membership: membership)
+
+    %i[held offboarded purging purged].each do |lifecycle_state|
+      membership.household.update!(lifecycle_state: lifecycle_state)
+
+      expect(session.reload).not_to be_active_for_membership
+    end
+  end
+
   it 'partitions token audit versions by household membership' do
     account, membership = household_bundle
 
