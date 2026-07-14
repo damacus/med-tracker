@@ -78,7 +78,7 @@ RSpec.describe ApiAppToken do
       ).first
 
       %i[held offboarded purging purged].each do |lifecycle_state|
-        membership.household.update_columns(lifecycle_state: lifecycle_state)
+        membership.household.update!(lifecycle_state: lifecycle_state)
 
         expect(app_token.reload).not_to be_active_for_membership
       end

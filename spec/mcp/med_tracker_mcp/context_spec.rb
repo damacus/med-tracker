@@ -80,7 +80,7 @@ RSpec.describe MedTrackerMcp::Context do
       raw_token
 
       %i[held offboarded purging purged].each do |lifecycle_state|
-        household.update_columns(lifecycle_state: lifecycle_state)
+        household.update!(lifecycle_state: lifecycle_state)
 
         expect_authentication_failure(request_for(raw_token))
       end

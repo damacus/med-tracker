@@ -114,10 +114,25 @@ RSpec.describe Households::HostedExportTransfer do
   end
 
   def expect_failed_transfer(destination)
-    expect(File).not_to exist(destination)
-    expect(export.reload).to be_ready
-    expect(export.downloaded_at).to be_nil
-    expect(SecurityAuditEvent.where(household: household, event_type: 'household.export.downloaded')).to be_empty
+    expect(failed_transfer_state(destination)).to eq(
+      destination_exists: false,
+      status: 'ready',
+      downloaded_at: nil,
+      downloaded_event_exists: false
+    )
+  end
+
+  def failed_transfer_state(destination)
+    export.reload
+    {
+      destination_exists: File.exist?(destination),
+      status: export.status,
+      downloaded_at: export.downloaded_at,
+      downloaded_event_exists: SecurityAuditEvent.exists?(
+        household: household,
+        event_type: 'household.export.downloaded'
+      )
+    }
   end
 
   def restore_output_root(previous_root)
