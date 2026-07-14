@@ -79,7 +79,8 @@ module OpenapiYamlValidation
   end
 
   def unsupported_free_form?(value, path)
-    value.is_a?(Hash) && value['type'] == 'object' && value['additionalProperties'] == true &&
+    value.is_a?(Hash) && value['type'] == 'object' &&
+      (value['additionalProperties'] == true || !value.key?('additionalProperties')) &&
       OpenapiStructure::ALLOWED_FREE_FORM_PATHS.exclude?(path)
   end
 end
@@ -147,6 +148,32 @@ module OpenapiStructure
   HTTP_METHODS = %w[delete get head options patch post put trace].freeze
   AUDIENCE_TAGS = ['Public', 'Account', 'Household', 'Household administration'].freeze
   ALLOWED_FREE_FORM_PATHS = ['#/components/schemas/SyncBatchOperation/properties/attributes'].freeze
+  LOCATOR_PATHS = %w[
+    /households/{household_id}/locations/{id}
+    /households/{household_id}/medications/{id}
+    /households/{household_id}/medications/{id}/adjust_inventory
+    /households/{household_id}/medications/{id}/mark_as_ordered
+    /households/{household_id}/medications/{id}/mark_as_received
+    /households/{household_id}/dosage_options/{id}
+    /households/{household_id}/health_events/{id}
+    /households/{household_id}/schedules/{id}
+    /households/{household_id}/schedules/{id}/pause
+    /households/{household_id}/schedules/{id}/resume
+    /households/{household_id}/person_medications/{id}
+    /households/{household_id}/person_medications/{id}/pause
+    /households/{household_id}/person_medications/{id}/resume
+    /households/{household_id}/person_medications/{id}/reorder
+  ].freeze
+  PRECONDITION_PATHS = %w[
+    /households/{household_id}/medications/{id}
+    /households/{household_id}/dosage_options/{id}
+    /households/{household_id}/health_events/{id}
+    /households/{household_id}/schedules/{id}
+    /households/{household_id}/person_medications/{id}
+  ].freeze
+  OPENAPI_SCHEMA_PATH = Rails.root.join(
+    'spec/fixtures/files/openapi-3.1-schema-2022-10-07.json'
+  )
 
   extend OpenapiYamlValidation
   extend OpenapiReferenceValidation
@@ -188,6 +215,51 @@ module OpenapiStructure
   def operation(path, method)
     paths.fetch(path).fetch(method)
   end
+
+  def document_schema_errors(openapi_document = document)
+    schema = JSON.parse(OPENAPI_SCHEMA_PATH.read)
+    JSONSchemer.schema(schema).validate(openapi_document).map { |error| error.fetch('data_pointer') }
+  end
+
+  def security_requirement_errors(openapi_document = document)
+    defined_schemes = openapi_document.dig('components', 'securitySchemes').keys
+    security_requirements(openapi_document).flat_map do |path, requirements|
+      security_errors_for(path, requirements, defined_schemes)
+    end
+  end
+
+  def security_errors_for(path, requirements, defined_schemes)
+    return [path] unless requirements.is_a?(Array)
+
+    requirements.flat_map do |requirement|
+      errors = requirement.empty? && requirements.any? ? [path] : []
+      errors + requirement.keys.filter_map do |scheme|
+        "#{path}/#{scheme}" unless defined_schemes.include?(scheme)
+      end
+    end
+  end
+
+  def security_requirements(openapi_document)
+    root = [['#/security', openapi_document.fetch('security')]]
+    openapi_document.fetch('paths').each_with_object(root) do |(path, path_item), requirements|
+      path_item.each do |method, operation|
+        next unless HTTP_METHODS.include?(method) && operation.key?('security')
+
+        pointer = "#/paths/#{path.gsub('/', '~1')}/#{method}/security"
+        requirements << [pointer, operation.fetch('security')]
+      end
+    end
+  end
+
+  def unauthenticated_operations
+    operations.filter_map do |path, method, operation|
+      "#{method.upcase} #{path}" if operation['security'] == []
+    end
+  end
+
+  def person_request_errors(attributes)
+    schema_errors('PersonCreateRequest', 'person' => attributes)
+  end
 end
 
 RSpec.describe OpenapiRouteCoverage, type: :request do
@@ -201,6 +273,15 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
   end
 
   describe OpenapiStructure do
+    let(:person_attributes) do
+      {
+        'name' => 'API Contract Dependent',
+        'date_of_birth' => 8.years.ago.to_date.iso8601,
+        'person_type' => 'minor',
+        'has_capacity' => true
+      }
+    end
+
     it 'uses the canonical API v1 server address' do
       expect(described_class.document.fetch('servers').first.fetch('url')).to eq('/api/v1')
     end
@@ -258,14 +339,60 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       )
     end
 
-    it 'uses shared path, precondition, and response header components' do
+    it 'uses shared path identifier components' do
+      parameters = described_class.components.fetch('parameters')
+
+      expect(parameters.fetch('id').dig('schema', '$ref')).to eq('#/components/schemas/NumericId')
+      expect(parameters.fetch('resource_id').dig('schema', '$ref')).to eq(
+        '#/components/schemas/ResourceIdentifier'
+      )
+      expect(parameters.fetch('native_device_token').dig('schema', '$ref')).to eq(
+        '#/components/schemas/DeviceTokenIdentifier'
+      )
+      expect(parameters.fetch('household_id').dig('schema', '$ref')).to eq('#/components/schemas/NumericId')
+    end
+
+    it 'uses shared precondition and response header components' do
       parameters = described_class.components.fetch('parameters')
       headers = described_class.components.fetch('headers')
 
-      expect(parameters.fetch('id').dig('schema', '$ref')).to eq('#/components/schemas/ResourceIdentifier')
-      expect(parameters.fetch('household_id').dig('schema', '$ref')).to eq('#/components/schemas/NumericId')
       expect(parameters.fetch('if_match').fetch('in')).to eq('header')
       expect(headers.fetch('etag').dig('schema', 'type')).to eq('string')
+      expect(headers.fetch('etag')).to include('required' => true)
+    end
+
+    it 'uses portable-or-numeric identifiers on locator-backed resource paths' do
+      described_class::LOCATOR_PATHS.each do |path|
+        described_class.paths.fetch(path).each do |method, operation|
+          next unless described_class::HTTP_METHODS.include?(method)
+
+          expect(operation.fetch('parameters')).to include(
+            { '$ref' => '#/components/parameters/resource_id' }
+          )
+        end
+      end
+    end
+
+    it 'models ETag preconditions on every controller that enforces stale-write conflicts' do
+      described_class::PRECONDITION_PATHS.each do |path|
+        %w[patch put].each do |method|
+          operation = described_class.operation(path, method)
+
+          expect(operation.fetch('parameters')).to include({ '$ref' => '#/components/parameters/if_match' })
+          expect(operation.dig('responses', '409', '$ref')).to eq('#/components/responses/Conflict')
+          expect(operation.dig('responses', '200', 'headers', 'ETag', '$ref')).to eq(
+            '#/components/headers/etag'
+          )
+        end
+      end
+    end
+
+    it 'models ETag headers on reads that supply update preconditions' do
+      described_class::PRECONDITION_PATHS.each do |path|
+        expect(described_class.operation(path, 'get').dig('responses', '200', 'headers', 'ETag', '$ref')).to eq(
+          '#/components/headers/etag'
+        )
+      end
     end
 
     it 'defines shared errors and bearer security' do
@@ -281,12 +408,9 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
     end
 
     it 'models intentional unauthenticated exceptions without weakening protected operations' do
-      unauthenticated = described_class.operations.filter_map do |path, method, operation|
-        "#{method.upcase} #{path}" if operation['security'] == []
-      end
-
       expect(described_class.document.fetch('security')).to eq([{ 'bearerAuth' => [] }])
-      expect(unauthenticated).to contain_exactly(
+      expect(described_class.security_requirement_errors).to be_empty
+      expect(described_class.unauthenticated_operations).to contain_exactly(
         'GET /capabilities',
         'POST /auth/login',
         'POST /auth/oidc_exchange',
@@ -295,12 +419,44 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(described_class.operation('/auth/logout', 'delete')).not_to include('security')
     end
 
-    it 'validates OpenAPI structure, local references, and object boundaries' do
+    it 'rejects optional and unknown security requirements' do
+      optional_security = described_class.document.deep_dup
+      optional_security['paths']['/auth/logout']['delete']['security'] = [{}]
+      unknown_security = described_class.document.deep_dup
+      unknown_security['security'] = [{ 'unknownAuth' => [] }]
+
+      expect(described_class.security_requirement_errors(optional_security)).to include(
+        '#/paths/~1auth~1logout/delete/security'
+      )
+      expect(described_class.security_requirement_errors(unknown_security)).to include(
+        '#/security/unknownAuth'
+      )
+    end
+
+    it 'declares an OpenAPI 3.1 document with required sections' do
       expect(described_class.document).to include('openapi' => '3.1.0')
       expect(described_class.document).to include('info', 'servers', 'paths', 'components')
+    end
+
+    it 'rejects duplicate YAML mapping keys including keys inside sequences' do
+      nested_duplicate = Psych.parse("items:\n  - name: first\n    name: second\n").root
+
       expect(described_class.duplicate_mapping_keys).to be_empty
+      expect(described_class.duplicate_mapping_keys(nested_duplicate)).to eq(['#/items/0/name'])
+    end
+
+    it 'rejects broken references and unsupported free-form objects' do
       expect(described_class.local_reference_errors).to be_empty
       expect(described_class.unsupported_free_form_errors).to be_empty
+      expect(described_class.unsupported_free_form_errors('type' => 'object')).to eq(['#'])
+    end
+
+    it 'validates the complete document against the pinned OpenAPI schema' do
+      expect(described_class.document_schema_errors).to be_empty
+
+      malformed_document = described_class.document.deep_dup
+      malformed_document.fetch('info').delete('title')
+      expect(described_class.document_schema_errors(malformed_document)).to include('/info')
     end
 
     it 'loads every reusable schema through the JSON Schema validator' do
@@ -311,25 +467,37 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       end.not_to raise_error
     end
 
-    it 'matches a representative Rails request, response, and nullable fields' do
-      user = users(:jane)
-      login_data = api_login(user)
+    it 'models person request fields according to Rails validation and defaults' do
+      expect(described_class.person_request_errors(person_attributes)).to be_empty
+      expect(described_class.person_request_errors(person_attributes.except('person_type'))).to be_empty
+      expect(described_class.person_request_errors(person_attributes.merge('date_of_birth' => nil))).to include(
+        '/person/date_of_birth'
+      )
+    end
+
+    it 'matches a representative Rails create request and response' do
+      login_data = api_login(users(:jane))
       household_id = login_data.dig('household', 'id')
       headers = api_auth_headers(login_data.fetch('access_token'))
-      request_body = {
-        'person' => {
-          'name' => 'API Contract Dependent',
-          'date_of_birth' => 8.years.ago.to_date.iso8601,
-          'person_type' => 'minor'
-        }
-      }
 
-      expect(described_class.schema_errors('PersonCreateRequest', request_body)).to be_empty
-
-      post api_v1_household_people_path(household_id), params: request_body, headers:, as: :json
+      post api_v1_household_people_path(household_id), params: { person: person_attributes }, headers:, as: :json
 
       expect(response).to have_http_status(:created)
+      expect(response.headers['ETag']).to be_present
+      expect(response.parsed_body.dig('data', 'has_capacity')).to be(false)
       expect(described_class.schema_errors('PersonResponse', response.parsed_body)).to be_empty
+    end
+
+    it 'allows negative serialized ages that Rails can currently emit' do
+      person = Api::V1::PersonSerializer.new(people(:child_patient)).as_json.merge(age: -1)
+
+      expect(described_class.schema_errors('PersonResponse', { data: person })).to be_empty
+    end
+
+    it 'allows nullable response fields emitted for legacy people' do
+      person = Api::V1::PersonSerializer.new(people(:child_patient)).as_json.merge(date_of_birth: nil, age: nil)
+
+      expect(described_class.schema_errors('PersonResponse', { data: person })).to be_empty
     end
 
     it 'matches a representative Rails validation error' do
@@ -344,10 +512,9 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(described_class.schema_errors('ErrorEnvelope', response.parsed_body)).to be_empty
     end
 
-    it 'references typed representative operation schemas and shared errors' do
+    it 'references typed representative person request and response schemas' do
       create_person = described_class.operation('/households/{household_id}/people', 'post')
       show_person = described_class.operation('/households/{household_id}/people/{id}', 'get')
-      update_person = described_class.operation('/households/{household_id}/people/{id}', 'patch')
 
       expect(create_person.dig('requestBody', 'content', 'application/json', 'schema', '$ref')).to eq(
         '#/components/schemas/PersonCreateRequest'
@@ -358,8 +525,25 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(show_person.dig('responses', '200', 'content', 'application/json', 'schema', '$ref')).to eq(
         '#/components/schemas/PersonResponse'
       )
-      expect(update_person.dig('responses', '409', '$ref')).to eq('#/components/responses/Conflict')
+    end
+
+    it 'does not advertise unsupported person update preconditions' do
+      update_person = described_class.operation('/households/{household_id}/people/{id}', 'patch')
+
+      expect(update_person.fetch('parameters')).not_to include(
+        { '$ref' => '#/components/parameters/if_match' }
+      )
+      expect(update_person.fetch('responses')).not_to include('409')
       expect(update_person.dig('responses', '422', '$ref')).to eq('#/components/responses/ValidationFailed')
+    end
+
+    it 'types the arbitrary native device token path separately' do
+      native_device_token = described_class.operation(
+        '/households/{household_id}/native_device_tokens/{id}', 'delete'
+      )
+      expect(native_device_token.fetch('parameters')).to include(
+        { '$ref' => '#/components/parameters/native_device_token' }
+      )
     end
 
     it 'reports schema failures by pointer without echoing response data' do

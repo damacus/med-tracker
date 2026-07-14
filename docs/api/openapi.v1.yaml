@@ -257,7 +257,6 @@ paths:
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/id'
-        - $ref: '#/components/parameters/if_match'
       requestBody:
         required: true
         content:
@@ -280,22 +279,19 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimited'
     put:
-      operationId: replacePerson
+      operationId: updatePersonWithPut
       tags:
         - Household
         - People
-      summary: Replace a person.
+      summary: Update a person using the PUT route.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/id'
-        - $ref: '#/components/parameters/if_match'
       requestBody:
         required: true
         content:
@@ -318,8 +314,6 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
         '429':
@@ -345,7 +339,7 @@ paths:
       summary: Read a location.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Location resource.
@@ -381,10 +375,13 @@ paths:
       summary: Read a medication.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Medication resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
     patch:
       operationId: updateMedication
       tags:
@@ -393,10 +390,16 @@ paths:
       summary: Update a medication.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Medication updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
     put:
       operationId: replaceMedication
       tags:
@@ -405,10 +408,16 @@ paths:
       summary: Replace a medication.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Medication updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /households/{household_id}/medications/{id}/adjust_inventory:
     patch:
       operationId: adjustMedicationInventory
@@ -418,7 +427,7 @@ paths:
       summary: Adjust medication inventory.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Medication inventory adjusted.
@@ -431,7 +440,7 @@ paths:
       summary: Mark a medication reorder as ordered.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Reorder status updated.
@@ -444,7 +453,7 @@ paths:
       summary: Mark a medication reorder as received.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Reorder status updated.
@@ -480,10 +489,13 @@ paths:
       summary: Read a medication dosage option.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Dosage option resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
     patch:
       operationId: updateDosageOption
       tags:
@@ -492,10 +504,16 @@ paths:
       summary: Update a medication dosage option.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Dosage option updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
     put:
       operationId: replaceDosageOption
       tags:
@@ -504,10 +522,16 @@ paths:
       summary: Replace a medication dosage option.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Dosage option updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /households/{household_id}/health_events:
     get:
       operationId: listHealthEvents
@@ -540,10 +564,13 @@ paths:
       summary: Read a health event.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Health event resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
     patch:
       operationId: updateHealthEvent
       tags:
@@ -552,10 +579,16 @@ paths:
       summary: Update a health event.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Health event updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
     put:
       operationId: replaceHealthEvent
       tags:
@@ -564,10 +597,16 @@ paths:
       summary: Replace a health event.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Health event updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /households/{household_id}/schedules:
     get:
       operationId: listSchedules
@@ -600,10 +639,13 @@ paths:
       summary: Read a schedule.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Schedule resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
     patch:
       operationId: updateSchedule
       tags:
@@ -612,10 +654,16 @@ paths:
       summary: Update a schedule.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Schedule updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
     put:
       operationId: replaceSchedule
       tags:
@@ -624,10 +672,16 @@ paths:
       summary: Replace a schedule.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Schedule updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /households/{household_id}/schedules/{id}/pause:
     patch:
       operationId: pauseSchedule
@@ -637,7 +691,7 @@ paths:
       summary: Pause a schedule.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Schedule paused.
@@ -650,7 +704,7 @@ paths:
       summary: Resume a schedule.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Schedule resumed.
@@ -686,10 +740,13 @@ paths:
       summary: Read a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Person medication resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
     patch:
       operationId: updatePersonMedication
       tags:
@@ -698,10 +755,16 @@ paths:
       summary: Update a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Person medication updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
     put:
       operationId: replacePersonMedication
       tags:
@@ -710,10 +773,16 @@ paths:
       summary: Replace a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
       responses:
         '200':
           description: Person medication updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /households/{household_id}/person_medications/{id}/pause:
     patch:
       operationId: pausePersonMedication
@@ -723,7 +792,7 @@ paths:
       summary: Pause a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Person medication paused.
@@ -736,7 +805,7 @@ paths:
       summary: Resume a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Person medication resumed.
@@ -749,7 +818,7 @@ paths:
       summary: Reorder a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_id'
       responses:
         '200':
           description: Person medication reordered.
@@ -831,7 +900,7 @@ paths:
       summary: Revoke a native device token.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/native_device_token'
       responses:
         '204':
           description: Device token revoked.
@@ -1002,17 +1071,9 @@ paths:
         '201':
           description: Batch applied.
         '409':
-          description: An operation used a stale resource ETag.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/Conflict'
         '428':
-          description: An update or delete operation omitted its required resource ETag.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/PreconditionRequired'
   /households/{household_id}/admin/settings:
     get:
       operationId: getHouseholdAdminSettings
@@ -1234,7 +1295,19 @@ components:
       in: path
       required: true
       schema:
+        $ref: '#/components/schemas/NumericId'
+    resource_id:
+      name: id
+      in: path
+      required: true
+      schema:
         $ref: '#/components/schemas/ResourceIdentifier'
+    native_device_token:
+      name: id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/DeviceTokenIdentifier'
     page:
       name: page
       in: query
@@ -1267,6 +1340,7 @@ components:
   headers:
     etag:
       description: Version identifier for optimistic concurrency.
+      required: true
       schema:
         type: string
     retry_after:
@@ -1332,6 +1406,9 @@ components:
       oneOf:
         - $ref: '#/components/schemas/NumericId'
         - $ref: '#/components/schemas/PortableId'
+    DeviceTokenIdentifier:
+      type: string
+      minLength: 1
     NullableNumericId:
       oneOf:
         - $ref: '#/components/schemas/NumericId'
@@ -1377,9 +1454,7 @@ components:
             - 'null'
           format: email
         date_of_birth:
-          oneOf:
-            - $ref: '#/components/schemas/Date'
-            - type: 'null'
+          $ref: '#/components/schemas/Date'
         person_type:
           type: string
           enum:
@@ -1436,7 +1511,6 @@ components:
           type:
             - integer
             - 'null'
-          minimum: 0
         location_ids:
           type: array
           items:
@@ -1461,7 +1535,6 @@ components:
             - required:
                 - name
                 - date_of_birth
-                - person_type
     PersonUpdateRequest:
       type: object
       additionalProperties: false
@@ -1547,11 +1620,13 @@ components:
           $ref: '#/components/schemas/RateLimitError'
     SyncBatchRequest:
       type: object
+      additionalProperties: false
       required:
         - batch
       properties:
         batch:
           type: object
+          additionalProperties: false
           required:
             - operations
           properties:
@@ -1562,6 +1637,7 @@ components:
                 $ref: '#/components/schemas/SyncBatchOperation'
     SyncBatchOperation:
       type: object
+      additionalProperties: false
       required:
         - action
         - resource_type
