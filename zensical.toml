@@ -10,6 +10,7 @@ site_dir = "site"
 nav = [
   { Home = "index.md" },
   { "🏠 For Families" = [
+    { "Quick Setup" = "families/quick-setup.md" },
     { "Add your first medicine" = "families/adding-first-medicine.md" },
     { "Record a dose" = "families/taking-first-dose.md" },
     { "Managing Your Family" = "user-management.md" }

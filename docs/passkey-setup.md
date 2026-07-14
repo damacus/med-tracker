@@ -404,7 +404,7 @@ When migrating users from passwords to passkeys:
 
 ## Related Documentation
 
-- [OAuth Setup](oauth-setup.md)
+- [OpenID Connect (OIDC) Setup](oidc-setup.md)
 - [Audit Trail](audit-trail.md)
 - [Design](design.md)
 - [Rodauth Documentation](https://rodauth.jeremyevans.net/rdoc/files/doc/webauthn_rdoc.html)
