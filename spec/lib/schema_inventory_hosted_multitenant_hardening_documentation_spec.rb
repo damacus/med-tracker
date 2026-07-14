@@ -16,7 +16,7 @@ RSpec.describe SchemaInventory do
     expect(audit_doc).to include(
       '| Requirement | Current evidence | Gap / decision | Severity | Owner issue | Tests required | Beta status |'
     )
-    expect(audit_doc).to include('Date: 2026-07-13')
+    expect(audit_doc).to include('Date: 2026-07-14')
     expect(audit_doc).to include('**Current status: NO-GO**')
     expect(audit_doc).to include('Platform admin')
     expect(audit_doc).to include('export + purge')
@@ -44,11 +44,10 @@ RSpec.describe SchemaInventory do
 
   it 'classifies the controls against current main without overstating the hosted launch decision' do
     expect(go_requirements).to contain_exactly(
-      'FR1', 'FR2', 'FR3', 'FR4', 'FR5', 'FR6', 'FR10', 'FR12', 'FR13', 'FR17', 'FR18', 'NFR1', 'NFR2'
+      'FR1', 'FR2', 'FR3', 'FR4', 'FR5', 'FR6', 'FR7', 'FR8', 'FR9', 'FR10', 'FR11', 'FR12', 'FR13', 'FR14',
+      'FR15', 'FR16', 'FR17', 'FR18', 'NFR1', 'NFR2', 'NFR3'
     )
-    expect(no_go_requirements).to contain_exactly(
-      'FR7', 'FR8', 'FR9', 'FR11', 'FR14', 'FR15', 'FR16', 'NFR3', 'NFR4'
-    )
+    expect(no_go_requirements).to contain_exactly('NFR4')
   end
 
   it 'documents hosted beta onboarding, support access, export/offboarding, and restore checks', :aggregate_failures do
