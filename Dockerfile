@@ -1,16 +1,19 @@
-FROM ruby:4.0.5-slim-trixie AS base
+FROM rubylang/ruby:4.0.6-resolute AS base
 WORKDIR /app
 
 ARG UID=1000
 ARG GID=1000
 
-RUN groupadd -g "${GID}" ruby \
-  && useradd --create-home --no-log-init -u "${UID}" -g "${GID}" ruby \
+RUN groupmod --gid "${GID}" --new-name ruby ubuntu \
+  && usermod --uid "${UID}" --gid "${GID}" --login ruby --home /home/ruby --move-home ubuntu \
+  && mkdir -p /usr/local/bundle \
   && chown ruby:ruby -R /app /usr/local/bundle
 
 USER ruby
 
-ENV PATH="${PATH}:/home/ruby/.local/bin" \
+ENV GEM_HOME="/usr/local/bundle" \
+  GEM_PATH="/usr/local/bundle:/usr/local/lib/ruby/gems/4.0.0" \
+  PATH="${PATH}:/usr/local/bundle/bin:/home/ruby/.local/bin" \
   USER="ruby"
 
 ###############################################################################
@@ -86,7 +89,7 @@ USER root
 RUN bash -c "set -o pipefail && apt-get update \
   && apt-get install -y --no-install-recommends postgresql-client ca-certificates curl git unzip \
     libnss3 libatk-bridge2.0-0 libdrm2 libxkbcommon0 \
-    libxcomposite1 libxdamage1 libxrandr2 libgbm1 libxss1 libasound2 \
+    libxcomposite1 libxdamage1 libxrandr2 libgbm1 libxss1 libasound2t64 \
   && mkdir -p /etc/apt/keyrings \
   && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key -o /etc/apt/keyrings/nodesource.asc \
   && echo 'deb [signed-by=/etc/apt/keyrings/nodesource.asc] https://deb.nodesource.com/node_24.x nodistro main' > /etc/apt/sources.list.d/nodesource.list \

@@ -27,7 +27,7 @@ Follow Red-Green-Refactor — no production code without a failing test first.
 
 ## Stack
 
-- Ruby 4.0.5
+- Ruby 4.0.6
 - Rails 8.1.3
 - PostgreSQL 18
 - Bundler 4.0.3
