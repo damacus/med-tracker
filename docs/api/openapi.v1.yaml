@@ -7,16 +7,77 @@ servers:
   - url: /api/v1
 security:
   - bearerAuth: []
+tags:
+  - name: Public
+    description: Unauthenticated capability discovery and session-establishment operations.
+  - name: Account
+    description: Authenticated account and session operations outside a selected household.
+  - name: Household
+    description: Ordinary operations within a selected household, including portability and synchronization.
+  - name: Household administration
+    description: Administrative operations scoped to a selected household.
+  - name: Capabilities
+    description: API capability discovery.
+  - name: Authentication
+    description: Login, session, and credential lifecycle operations.
+  - name: People
+    description: Household people and current-profile operations.
+  - name: Locations
+    description: Household location records.
+  - name: Medications
+    description: Medication records and inventory/reorder actions.
+  - name: Dosage options
+    description: Medication dosage-option records.
+  - name: Health events
+    description: Health-event records.
+  - name: Schedules
+    description: Medication schedules and lifecycle actions.
+  - name: Person medications
+    description: Medication assignments to people.
+  - name: Medication takes
+    description: Medication administration records.
+  - name: Notification preferences
+    description: Signed-in notification preferences.
+  - name: Devices
+    description: Native device tokens and web push subscriptions.
+  - name: Medication lookup
+    description: External medication lookup operations.
+  - name: Medication suggestions
+    description: AI-assisted medication setup suggestions.
+  - name: Portability
+    description: Portable household import/export and data-export operations.
+  - name: Synchronization
+    description: Mobile snapshots and incremental synchronization feeds/batches.
+  - name: Household settings
+    description: Household administration settings.
+  - name: Memberships
+    description: Household membership administration.
+  - name: Invitations
+    description: Household invitation administration.
+  - name: Access grants
+    description: Person access-grant administration.
+  - name: App tokens
+    description: Household API app-token administration.
+  - name: Audit logs
+    description: Household security audit events.
 paths:
-  /api/v1/capabilities:
+  /capabilities:
     get:
+      operationId: getCapabilities
+      tags:
+        - Public
+        - Capabilities
       summary: Describe supported API features, diagnostics, and first-party client-tool contracts.
       security: []
       responses:
         '200':
           description: API capability document, including CLI and MCP availability.
-  /api/v1/auth/login:
+  /auth/login:
     post:
+      operationId: createLoginSession
+      tags:
+        - Public
+        - Authentication
       summary: Exchange development or migration password credentials for API tokens.
       security: []
       responses:
@@ -24,8 +85,12 @@ paths:
           description: API session created.
         '401':
           description: Credentials are invalid or password login is unavailable.
-  /api/v1/auth/refresh:
+  /auth/refresh:
     post:
+      operationId: refreshSession
+      tags:
+        - Account
+        - Authentication
       summary: Rotate an API session refresh token.
       security: []
       responses:
@@ -33,49 +98,77 @@ paths:
           description: New access and refresh tokens.
         '401':
           description: Refresh token is invalid or expired.
-  /api/v1/auth/oidc_exchange:
+  /auth/oidc_exchange:
     post:
+      operationId: exchangeOidcSession
+      tags:
+        - Public
+        - Authentication
       summary: Exchange a hosted OIDC ID token for an API session.
       security: []
       responses:
         '201':
           description: API session created.
-  /api/v1/auth/households:
+  /auth/households:
     get:
+      operationId: listHouseholds
+      tags:
+        - Account
+        - Authentication
       summary: List households available to the current API credential.
       responses:
         '200':
           description: Household collection.
-  /api/v1/auth/sessions:
+  /auth/sessions:
     get:
+      operationId: listSessions
+      tags:
+        - Account
+        - Authentication
       summary: List active API sessions for the current account.
       responses:
         '200':
           description: API session collection.
-  /api/v1/auth/sessions/{id}:
+  /auth/sessions/{id}:
     delete:
+      operationId: deleteSession
+      tags:
+        - Account
+        - Authentication
       summary: Revoke an API session.
       parameters:
         - $ref: '#/components/parameters/id'
       responses:
         '204':
           description: API session revoked.
-  /api/v1/auth/logout:
+  /auth/logout:
     delete:
+      operationId: logoutSession
+      tags:
+        - Account
+        - Authentication
       summary: Revoke the current API session or app token.
       responses:
         '204':
           description: Credential revoked.
-  /api/v1/households/{household_id}/me:
+  /households/{household_id}/me:
     get:
+      operationId: getCurrentProfile
+      tags:
+        - Household
+        - People
       summary: Read the current account and person profile for a household session.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '200':
           description: Current user profile.
-  /api/v1/households/{household_id}/people:
+  /households/{household_id}/people:
     get:
+      operationId: listPeople
+      tags:
+        - Household
+        - People
       summary: List visible people in the household.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -83,14 +176,22 @@ paths:
         '200':
           description: People collection.
     post:
+      operationId: createPerson
+      tags:
+        - Household
+        - People
       summary: Create a person in the household.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '201':
           description: Person created.
-  /api/v1/households/{household_id}/people/{id}:
+  /households/{household_id}/people/{id}:
     get:
+      operationId: getPerson
+      tags:
+        - Household
+        - People
       summary: Read a person.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -99,6 +200,10 @@ paths:
         '200':
           description: Person resource.
     patch:
+      operationId: updatePerson
+      tags:
+        - Household
+        - People
       summary: Update a person.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -107,6 +212,10 @@ paths:
         '200':
           description: Person updated.
     put:
+      operationId: replacePerson
+      tags:
+        - Household
+        - People
       summary: Replace a person.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -114,16 +223,24 @@ paths:
       responses:
         '200':
           description: Person updated.
-  /api/v1/households/{household_id}/locations:
+  /households/{household_id}/locations:
     get:
+      operationId: listLocations
+      tags:
+        - Household
+        - Locations
       summary: List visible locations.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '200':
           description: Locations collection.
-  /api/v1/households/{household_id}/locations/{id}:
+  /households/{household_id}/locations/{id}:
     get:
+      operationId: getLocation
+      tags:
+        - Household
+        - Locations
       summary: Read a location.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -131,8 +248,12 @@ paths:
       responses:
         '200':
           description: Location resource.
-  /api/v1/households/{household_id}/medications:
+  /households/{household_id}/medications:
     get:
+      operationId: listMedications
+      tags:
+        - Household
+        - Medications
       summary: List visible medications.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -140,14 +261,22 @@ paths:
         '200':
           description: Medications collection.
     post:
+      operationId: createMedication
+      tags:
+        - Household
+        - Medications
       summary: Create a medication.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '201':
           description: Medication created.
-  /api/v1/households/{household_id}/medications/{id}:
+  /households/{household_id}/medications/{id}:
     get:
+      operationId: getMedication
+      tags:
+        - Household
+        - Medications
       summary: Read a medication.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -156,6 +285,10 @@ paths:
         '200':
           description: Medication resource.
     patch:
+      operationId: updateMedication
+      tags:
+        - Household
+        - Medications
       summary: Update a medication.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -164,6 +297,10 @@ paths:
         '200':
           description: Medication updated.
     put:
+      operationId: replaceMedication
+      tags:
+        - Household
+        - Medications
       summary: Replace a medication.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -171,8 +308,12 @@ paths:
       responses:
         '200':
           description: Medication updated.
-  /api/v1/households/{household_id}/medications/{id}/adjust_inventory:
+  /households/{household_id}/medications/{id}/adjust_inventory:
     patch:
+      operationId: adjustMedicationInventory
+      tags:
+        - Household
+        - Medications
       summary: Adjust medication inventory.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -180,8 +321,12 @@ paths:
       responses:
         '200':
           description: Medication inventory adjusted.
-  /api/v1/households/{household_id}/medications/{id}/mark_as_ordered:
+  /households/{household_id}/medications/{id}/mark_as_ordered:
     patch:
+      operationId: markMedicationAsOrdered
+      tags:
+        - Household
+        - Medications
       summary: Mark a medication reorder as ordered.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -189,8 +334,12 @@ paths:
       responses:
         '200':
           description: Reorder status updated.
-  /api/v1/households/{household_id}/medications/{id}/mark_as_received:
+  /households/{household_id}/medications/{id}/mark_as_received:
     patch:
+      operationId: markMedicationAsReceived
+      tags:
+        - Household
+        - Medications
       summary: Mark a medication reorder as received.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -198,8 +347,12 @@ paths:
       responses:
         '200':
           description: Reorder status updated.
-  /api/v1/households/{household_id}/dosage_options:
+  /households/{household_id}/dosage_options:
     get:
+      operationId: listDosageOptions
+      tags:
+        - Household
+        - Dosage options
       summary: List medication dosage options.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -207,14 +360,22 @@ paths:
         '200':
           description: Dosage option collection.
     post:
+      operationId: createDosageOption
+      tags:
+        - Household
+        - Dosage options
       summary: Create a medication dosage option.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '201':
           description: Dosage option created.
-  /api/v1/households/{household_id}/dosage_options/{id}:
+  /households/{household_id}/dosage_options/{id}:
     get:
+      operationId: getDosageOption
+      tags:
+        - Household
+        - Dosage options
       summary: Read a medication dosage option.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -223,6 +384,10 @@ paths:
         '200':
           description: Dosage option resource.
     patch:
+      operationId: updateDosageOption
+      tags:
+        - Household
+        - Dosage options
       summary: Update a medication dosage option.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -231,6 +396,10 @@ paths:
         '200':
           description: Dosage option updated.
     put:
+      operationId: replaceDosageOption
+      tags:
+        - Household
+        - Dosage options
       summary: Replace a medication dosage option.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -238,8 +407,12 @@ paths:
       responses:
         '200':
           description: Dosage option updated.
-  /api/v1/households/{household_id}/health_events:
+  /households/{household_id}/health_events:
     get:
+      operationId: listHealthEvents
+      tags:
+        - Household
+        - Health events
       summary: List visible health events.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -247,14 +420,22 @@ paths:
         '200':
           description: Health event collection.
     post:
+      operationId: createHealthEvent
+      tags:
+        - Household
+        - Health events
       summary: Create a health event.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '201':
           description: Health event created.
-  /api/v1/households/{household_id}/health_events/{id}:
+  /households/{household_id}/health_events/{id}:
     get:
+      operationId: getHealthEvent
+      tags:
+        - Household
+        - Health events
       summary: Read a health event.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -263,6 +444,10 @@ paths:
         '200':
           description: Health event resource.
     patch:
+      operationId: updateHealthEvent
+      tags:
+        - Household
+        - Health events
       summary: Update a health event.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -271,6 +456,10 @@ paths:
         '200':
           description: Health event updated.
     put:
+      operationId: replaceHealthEvent
+      tags:
+        - Household
+        - Health events
       summary: Replace a health event.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -278,8 +467,12 @@ paths:
       responses:
         '200':
           description: Health event updated.
-  /api/v1/households/{household_id}/schedules:
+  /households/{household_id}/schedules:
     get:
+      operationId: listSchedules
+      tags:
+        - Household
+        - Schedules
       summary: List visible schedules.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -287,14 +480,22 @@ paths:
         '200':
           description: Schedules collection.
     post:
+      operationId: createSchedule
+      tags:
+        - Household
+        - Schedules
       summary: Create a schedule.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '201':
           description: Schedule created.
-  /api/v1/households/{household_id}/schedules/{id}:
+  /households/{household_id}/schedules/{id}:
     get:
+      operationId: getSchedule
+      tags:
+        - Household
+        - Schedules
       summary: Read a schedule.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -303,6 +504,10 @@ paths:
         '200':
           description: Schedule resource.
     patch:
+      operationId: updateSchedule
+      tags:
+        - Household
+        - Schedules
       summary: Update a schedule.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -311,6 +516,10 @@ paths:
         '200':
           description: Schedule updated.
     put:
+      operationId: replaceSchedule
+      tags:
+        - Household
+        - Schedules
       summary: Replace a schedule.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -318,8 +527,12 @@ paths:
       responses:
         '200':
           description: Schedule updated.
-  /api/v1/households/{household_id}/schedules/{id}/pause:
+  /households/{household_id}/schedules/{id}/pause:
     patch:
+      operationId: pauseSchedule
+      tags:
+        - Household
+        - Schedules
       summary: Pause a schedule.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -327,8 +540,12 @@ paths:
       responses:
         '200':
           description: Schedule paused.
-  /api/v1/households/{household_id}/schedules/{id}/resume:
+  /households/{household_id}/schedules/{id}/resume:
     patch:
+      operationId: resumeSchedule
+      tags:
+        - Household
+        - Schedules
       summary: Resume a schedule.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -336,8 +553,12 @@ paths:
       responses:
         '200':
           description: Schedule resumed.
-  /api/v1/households/{household_id}/person_medications:
+  /households/{household_id}/person_medications:
     get:
+      operationId: listPersonMedications
+      tags:
+        - Household
+        - Person medications
       summary: List visible person medication assignments.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -345,14 +566,22 @@ paths:
         '200':
           description: Person medication collection.
     post:
+      operationId: createPersonMedication
+      tags:
+        - Household
+        - Person medications
       summary: Create a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '201':
           description: Person medication created.
-  /api/v1/households/{household_id}/person_medications/{id}:
+  /households/{household_id}/person_medications/{id}:
     get:
+      operationId: getPersonMedication
+      tags:
+        - Household
+        - Person medications
       summary: Read a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -361,6 +590,10 @@ paths:
         '200':
           description: Person medication resource.
     patch:
+      operationId: updatePersonMedication
+      tags:
+        - Household
+        - Person medications
       summary: Update a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -369,6 +602,10 @@ paths:
         '200':
           description: Person medication updated.
     put:
+      operationId: replacePersonMedication
+      tags:
+        - Household
+        - Person medications
       summary: Replace a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -376,8 +613,12 @@ paths:
       responses:
         '200':
           description: Person medication updated.
-  /api/v1/households/{household_id}/person_medications/{id}/pause:
+  /households/{household_id}/person_medications/{id}/pause:
     patch:
+      operationId: pausePersonMedication
+      tags:
+        - Household
+        - Person medications
       summary: Pause a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -385,8 +626,12 @@ paths:
       responses:
         '200':
           description: Person medication paused.
-  /api/v1/households/{household_id}/person_medications/{id}/resume:
+  /households/{household_id}/person_medications/{id}/resume:
     patch:
+      operationId: resumePersonMedication
+      tags:
+        - Household
+        - Person medications
       summary: Resume a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -394,8 +639,12 @@ paths:
       responses:
         '200':
           description: Person medication resumed.
-  /api/v1/households/{household_id}/person_medications/{id}/reorder:
+  /households/{household_id}/person_medications/{id}/reorder:
     patch:
+      operationId: reorderPersonMedication
+      tags:
+        - Household
+        - Person medications
       summary: Reorder a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -403,8 +652,12 @@ paths:
       responses:
         '200':
           description: Person medication reordered.
-  /api/v1/households/{household_id}/medication_takes:
+  /households/{household_id}/medication_takes:
     get:
+      operationId: listMedicationTakes
+      tags:
+        - Household
+        - Medication takes
       summary: List visible medication takes.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -412,14 +665,22 @@ paths:
         '200':
           description: Medication takes collection.
     post:
+      operationId: createMedicationTake
+      tags:
+        - Household
+        - Medication takes
       summary: Record a medication take.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '201':
           description: Medication take created.
-  /api/v1/households/{household_id}/notification_preference:
+  /households/{household_id}/notification_preference:
     get:
+      operationId: getNotificationPreference
+      tags:
+        - Household
+        - Notification preferences
       summary: Read the signed-in person's notification preference.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -427,6 +688,10 @@ paths:
         '200':
           description: Notification preference resource.
     patch:
+      operationId: updateNotificationPreference
+      tags:
+        - Household
+        - Notification preferences
       summary: Update the signed-in person's notification preference.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -434,22 +699,34 @@ paths:
         '200':
           description: Notification preference updated.
     put:
+      operationId: replaceNotificationPreference
+      tags:
+        - Household
+        - Notification preferences
       summary: Replace the signed-in person's notification preference.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '200':
           description: Notification preference updated.
-  /api/v1/households/{household_id}/native_device_tokens:
+  /households/{household_id}/native_device_tokens:
     post:
+      operationId: createNativeDeviceToken
+      tags:
+        - Household
+        - Devices
       summary: Register a native device token.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '201':
           description: Device token registered.
-  /api/v1/households/{household_id}/native_device_tokens/{id}:
+  /households/{household_id}/native_device_tokens/{id}:
     delete:
+      operationId: deleteNativeDeviceToken
+      tags:
+        - Household
+        - Devices
       summary: Revoke a native device token.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -457,8 +734,12 @@ paths:
       responses:
         '204':
           description: Device token revoked.
-  /api/v1/households/{household_id}/push_subscription:
+  /households/{household_id}/push_subscription:
     post:
+      operationId: createPushSubscription
+      tags:
+        - Household
+        - Devices
       summary: Register a web push subscription.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -466,70 +747,106 @@ paths:
         '201':
           description: Push subscription registered.
     delete:
+      operationId: deletePushSubscription
+      tags:
+        - Household
+        - Devices
       summary: Revoke a web push subscription.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '204':
           description: Push subscription revoked.
-  /api/v1/households/{household_id}/push_subscription/test:
+  /households/{household_id}/push_subscription/test:
     post:
+      operationId: testPushSubscription
+      tags:
+        - Household
+        - Devices
       summary: Send a test push notification.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '204':
           description: Test notification queued.
-  /api/v1/households/{household_id}/medication_lookup:
+  /households/{household_id}/medication_lookup:
     get:
+      operationId: searchMedicationLookup
+      tags:
+        - Household
+        - Medication lookup
       summary: Search external medication lookup data.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '200':
           description: Medication lookup results.
-  /api/v1/households/{household_id}/ai_medication_suggestions:
+  /households/{household_id}/ai_medication_suggestions:
     post:
+      operationId: generateAiMedicationSuggestions
+      tags:
+        - Household
+        - Medication suggestions
       summary: Generate medication setup suggestions.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '200':
           description: Suggestion payload.
-  /api/v1/households/{household_id}/portable_export:
+  /households/{household_id}/portable_export:
     get:
+      operationId: exportPortableHouseholdBundle
+      tags:
+        - Household
+        - Portability
       summary: Export an encrypted portable household bundle.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '200':
           description: Encrypted portable bundle.
-  /api/v1/households/{household_id}/mobile_snapshot:
+  /households/{household_id}/mobile_snapshot:
     get:
+      operationId: getMobileSnapshot
+      tags:
+        - Household
+        - Synchronization
       summary: Read a plaintext mobile sync snapshot over authenticated transport.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '200':
           description: Mobile snapshot payload.
-  /api/v1/households/{household_id}/portable_imports/dry_run:
+  /households/{household_id}/portable_imports/dry_run:
     post:
+      operationId: dryRunPortableImport
+      tags:
+        - Household
+        - Portability
       summary: Validate an encrypted portable import without writing data.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '200':
           description: Import validation summary.
-  /api/v1/households/{household_id}/portable_imports:
+  /households/{household_id}/portable_imports:
     post:
+      operationId: createPortableImport
+      tags:
+        - Household
+        - Portability
       summary: Apply an encrypted portable import transactionally.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '201':
           description: Import applied.
-  /api/v1/households/{household_id}/data_exports/{mode}:
+  /households/{household_id}/data_exports/{mode}:
     get:
+      operationId: getDataExport
+      tags:
+        - Household
+        - Portability
       summary: Export household data in a selected backup/profile mode.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -541,24 +858,36 @@ paths:
       responses:
         '200':
           description: Export payload.
-  /api/v1/households/{household_id}/sync/snapshot:
+  /households/{household_id}/sync/snapshot:
     get:
+      operationId: getSyncSnapshot
+      tags:
+        - Household
+        - Synchronization
       summary: Read a portable v2 sync snapshot.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '200':
           description: Sync snapshot.
-  /api/v1/households/{household_id}/sync/changes:
+  /households/{household_id}/sync/changes:
     get:
+      operationId: getSyncChanges
+      tags:
+        - Household
+        - Synchronization
       summary: Read sync changes after a cursor.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '200':
           description: Change feed.
-  /api/v1/households/{household_id}/sync/batches:
+  /households/{household_id}/sync/batches:
     post:
+      operationId: createSyncBatch
+      tags:
+        - Household
+        - Synchronization
       summary: Apply transactional sync batch operations.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -583,8 +912,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-  /api/v1/households/{household_id}/admin/settings:
+  /households/{household_id}/admin/settings:
     get:
+      operationId: getHouseholdAdminSettings
+      tags:
+        - Household administration
+        - Household settings
       summary: Read household administration settings.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -592,6 +925,10 @@ paths:
         '200':
           description: Household settings.
     patch:
+      operationId: updateHouseholdAdminSettings
+      tags:
+        - Household administration
+        - Household settings
       summary: Update household administration settings.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -599,22 +936,34 @@ paths:
         '200':
           description: Household settings updated.
     put:
+      operationId: replaceHouseholdAdminSettings
+      tags:
+        - Household administration
+        - Household settings
       summary: Replace household administration settings.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '200':
           description: Household settings updated.
-  /api/v1/households/{household_id}/admin/memberships:
+  /households/{household_id}/admin/memberships:
     get:
+      operationId: listMemberships
+      tags:
+        - Household administration
+        - Memberships
       summary: List household memberships.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '200':
           description: Membership collection.
-  /api/v1/households/{household_id}/admin/memberships/{id}:
+  /households/{household_id}/admin/memberships/{id}:
     patch:
+      operationId: updateMembership
+      tags:
+        - Household administration
+        - Memberships
       summary: Update a household membership.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -623,6 +972,10 @@ paths:
         '200':
           description: Membership updated.
     put:
+      operationId: replaceMembership
+      tags:
+        - Household administration
+        - Memberships
       summary: Replace a household membership.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -631,6 +984,10 @@ paths:
         '200':
           description: Membership updated.
     delete:
+      operationId: deleteMembership
+      tags:
+        - Household administration
+        - Memberships
       summary: Revoke a household membership.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -638,8 +995,12 @@ paths:
       responses:
         '204':
           description: Membership revoked.
-  /api/v1/households/{household_id}/admin/invitations:
+  /households/{household_id}/admin/invitations:
     get:
+      operationId: listInvitations
+      tags:
+        - Household administration
+        - Invitations
       summary: List household invitations.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -647,14 +1008,22 @@ paths:
         '200':
           description: Invitation collection.
     post:
+      operationId: createInvitation
+      tags:
+        - Household administration
+        - Invitations
       summary: Create a household invitation.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '201':
           description: Invitation created.
-  /api/v1/households/{household_id}/admin/invitations/{id}:
+  /households/{household_id}/admin/invitations/{id}:
     delete:
+      operationId: deleteInvitation
+      tags:
+        - Household administration
+        - Invitations
       summary: Revoke a household invitation.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -662,8 +1031,12 @@ paths:
       responses:
         '204':
           description: Invitation revoked.
-  /api/v1/households/{household_id}/admin/person_access_grants:
+  /households/{household_id}/admin/person_access_grants:
     get:
+      operationId: listPersonAccessGrants
+      tags:
+        - Household administration
+        - Access grants
       summary: List person access grants.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -671,14 +1044,22 @@ paths:
         '200':
           description: Access grant collection.
     post:
+      operationId: createPersonAccessGrant
+      tags:
+        - Household administration
+        - Access grants
       summary: Create a person access grant.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '201':
           description: Access grant created.
-  /api/v1/households/{household_id}/admin/person_access_grants/{id}:
+  /households/{household_id}/admin/person_access_grants/{id}:
     delete:
+      operationId: deletePersonAccessGrant
+      tags:
+        - Household administration
+        - Access grants
       summary: Revoke a person access grant.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -686,8 +1067,12 @@ paths:
       responses:
         '204':
           description: Access grant revoked.
-  /api/v1/households/{household_id}/admin/app_tokens:
+  /households/{household_id}/admin/app_tokens:
     get:
+      operationId: listAppTokens
+      tags:
+        - Household administration
+        - App tokens
       summary: List API app tokens.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -695,14 +1080,22 @@ paths:
         '200':
           description: API app token collection.
     post:
+      operationId: createAppToken
+      tags:
+        - Household administration
+        - App tokens
       summary: Create an API app token.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
         '201':
           description: API app token created.
-  /api/v1/households/{household_id}/admin/app_tokens/{id}:
+  /households/{household_id}/admin/app_tokens/{id}:
     delete:
+      operationId: deleteAppToken
+      tags:
+        - Household administration
+        - App tokens
       summary: Revoke an API app token.
       parameters:
         - $ref: '#/components/parameters/household_id'
@@ -710,8 +1103,12 @@ paths:
       responses:
         '204':
           description: API app token revoked.
-  /api/v1/households/{household_id}/admin/audit_logs:
+  /households/{household_id}/admin/audit_logs:
     get:
+      operationId: listAuditLogs
+      tags:
+        - Household administration
+        - Audit logs
       summary: List household security audit events.
       parameters:
         - $ref: '#/components/parameters/household_id'
