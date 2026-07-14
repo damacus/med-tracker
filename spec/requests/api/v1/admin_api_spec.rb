@@ -23,6 +23,79 @@ RSpec.describe 'API v1 household administration' do
     expect(response.parsed_body.fetch('data')).not_to be_empty
   end
 
+  it 'lists memberships without an optional person link' do
+    account = Account.create!(email: 'api.unlinked.member@example.test', status: :verified)
+    membership = Household.find(household_id).household_memberships.create!(
+      account: account,
+      role: :member,
+      status: :active
+    )
+
+    get api_v1_household_admin_memberships_path(household_id), headers: headers, as: :json
+
+    expect(response).to have_http_status(:ok)
+    payload = response.parsed_body.fetch('data').find { |item| item.fetch('id') == membership.id }
+    expect(payload).to include('person_id' => nil, 'person_name' => nil)
+  end
+
+  it 'revokes a non-owner membership and appends an audit event' do
+    api_session.update!(oidc_mfa_verified: true, mfa_verified_at: Time.current)
+    account = Account.create!(email: 'api.revoked.member@example.test', status: :verified)
+    membership = Household.find(household_id).household_memberships.create!(
+      account: account,
+      role: :member,
+      status: :active
+    )
+    original_permissions_version = membership.permissions_version
+
+    expect do
+      delete api_v1_household_admin_membership_path(household_id, membership.id), headers: headers, as: :json
+    end.to change {
+      SecurityAuditEvent.where(event_type: 'household_access.membership_changed').count
+    }.by(1)
+
+    expect(response).to have_http_status(:no_content)
+    expect(membership.reload).to have_attributes(
+      status: 'revoked',
+      permissions_version: original_permissions_version + 1
+    )
+    audit_event = SecurityAuditEvent.where(event_type: 'household_access.membership_changed').order(:id).last
+    expect(audit_event.metadata).to include('target_membership_id' => membership.id, 'outcome' => 'success')
+  end
+
+  it 'refuses to revoke the last active owner and appends the rejected audit event' do
+    household = Household.create!(
+      name: 'API Last Owner Household',
+      slug: "api-last-owner-#{SecureRandom.hex(4)}"
+    )
+    membership = household.household_memberships.create!(
+      account: user.person.account,
+      role: :owner,
+      status: :active
+    )
+    owner_login = api_login(user, household_id: household.id)
+    owner_session = ApiSession.lookup_by_access_token(owner_login.fetch('access_token'))
+    owner_session.update!(oidc_mfa_verified: true, mfa_verified_at: Time.current)
+    original_permissions_version = membership.permissions_version
+
+    expect do
+      delete api_v1_household_admin_membership_path(household.id, membership.id),
+             headers: api_auth_headers(owner_login.fetch('access_token')),
+             as: :json
+    end.to change {
+      SecurityAuditEvent.where(event_type: 'household_access.membership_changed').count
+    }.by(1)
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body.dig('error', 'errors', 'base')).to include('Last active owner cannot be removed')
+    expect(membership.reload).to have_attributes(
+      status: 'active',
+      permissions_version: original_permissions_version
+    )
+    audit_event = SecurityAuditEvent.where(event_type: 'household_access.membership_changed').order(:id).last
+    expect(audit_event.metadata).to include('target_membership_id' => membership.id, 'outcome' => 'rejected')
+  end
+
   it 'requires fresh privileged proof for admin mutations' do
     patch api_v1_household_admin_settings_path(household_id),
           params: { household: { name: 'API Admin Renamed Household' } },
