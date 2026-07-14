@@ -243,14 +243,21 @@ module Households
     end
 
     def upsert_grant(membership:, person:, **attributes)
-      GrantReconciler.new(membership: membership, person: person, attributes: attributes).call
+      actor_membership = attributes.fetch(:granted_by_membership, membership)
+      GrantReconciler.new(
+        membership: membership,
+        person: person,
+        attributes: attributes,
+        access_change: AccessChange.for(actor_membership)
+      ).call
     end
 
     class GrantReconciler
-      def initialize(membership:, person:, attributes:)
+      def initialize(membership:, person:, attributes:, access_change:)
         @membership = membership
         @person = person
         @attributes = attributes
+        @access_change = access_change
       end
 
       def call
@@ -264,7 +271,7 @@ module Households
 
       private
 
-      attr_reader :membership, :person, :attributes
+      attr_reader :membership, :person, :attributes, :access_change
 
       def current_grant
         PersonAccessGrant.find_or_initialize_by(
@@ -276,14 +283,16 @@ module Households
       end
 
       def persist_new_grant!(grant, attributes)
-        grant.assign_attributes(
+        access_change.upsert_grant!(
+          grant,
           authority_attributes(attributes).merge(
+            household: membership.household,
+            household_membership: membership,
+            person: person,
             granted_by_membership: attributes[:granted_by_membership],
             carer_relationship: attributes[:carer_relationship]
           )
         )
-        grant.save!
-        grant
       end
 
       def preserve_manual_grant!(grant, attributes)
@@ -293,9 +302,7 @@ module Households
       end
 
       def reconcile_relationship_grant!(grant, attributes)
-        grant.assign_attributes(authority_attributes(attributes))
-        grant.save! if grant.changed?
-        grant
+        access_change.upsert_grant!(grant, authority_attributes(attributes))
       end
 
       def same_relationship_source?(grant, attributes)

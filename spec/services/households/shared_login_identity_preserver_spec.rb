@@ -21,6 +21,7 @@ RSpec.describe Households::SharedLoginIdentityPreserver do
         identity_account: records.fetch(:account),
         identity_location_count: 0,
         membership_linked: true,
+        api_session_active: false,
         old_identity_visible_then_deleted: true,
         account_resolves_user: true
       )
@@ -46,7 +47,8 @@ RSpec.describe Households::SharedLoginIdentityPreserver do
       role: :owner,
       status: :active
     )
-    { account: account, person: person, user: user, membership: membership }
+    api_session = ApiSession.issue_for(account: account, household_membership: membership).first
+    { account: account, person: person, user: user, membership: membership, api_session: api_session }
   end
 
   def target_identity_person(account)
@@ -87,7 +89,8 @@ RSpec.describe Households::SharedLoginIdentityPreserver do
       identity_household: identity.household,
       identity_account: identity.account,
       identity_location_count: identity.location_memberships.size,
-      membership_linked: records.fetch(:membership).reload.person == identity
+      membership_linked: records.fetch(:membership).reload.person == identity,
+      api_session_active: records.fetch(:api_session).reload.active_for_membership?
     }
   end
 

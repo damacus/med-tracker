@@ -311,6 +311,7 @@ RSpec.describe Households::LocalMigrator do
     household, owner, patient, relationship = local_delegation_fixture
     membership = create_local_membership(household, owner, relationship.carer)
     grant = create_owned_local_grant(household, membership, patient, relationship)
+    api_session = ApiSession.issue_for(account: owner, household_membership: membership).first
     stub_account_enumeration(owner)
 
     run_migration(owner, household.name)
@@ -321,6 +322,7 @@ RSpec.describe Households::LocalMigrator do
       expires_at: nil,
       carer_relationship: relationship
     )
+    expect(api_session.reload).not_to be_active_for_membership
   end
 
   it 'rejects a grant sourced to another relationship without stealing provenance' do
