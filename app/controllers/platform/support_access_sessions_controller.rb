@@ -10,8 +10,7 @@ module Platform
       support_session.ip = request.remote_ip
 
       if support_session.valid?
-        ActiveRecord::Base.transaction do
-          support_session.save!
+        SupportAccessSessions::Creator.call(support_session: support_session, authorize: method(:authorize)) do
           record_support_access_event(support_session, 'support_access_session.started')
         end
         redirect_to platform_settings_path, notice: t('platform.support_access_sessions.created')

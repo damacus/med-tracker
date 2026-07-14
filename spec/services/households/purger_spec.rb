@@ -57,7 +57,7 @@ RSpec.describe Households::Purger do
       described_class.call(household: household, actor_account: operator)
       set_runtime_household(other_household)
 
-      verify_shared_login_after_purge(shared)
+      expect(shared_login_state(shared)).to eq(expected_shared_login_state(shared))
     end
   end
 
@@ -78,19 +78,54 @@ RSpec.describe Households::Purger do
       api_session: api_session, preference: preference }
   end
 
-  def verify_shared_login_after_purge(shared)
+  def expected_shared_login_state(shared)
+    {
+      identity_replaced: true,
+      identity_household: other_household,
+      identity_account: shared.fetch(:account),
+      identity_location_count: 0,
+      account_resolves_user: true,
+      membership_identity_linked: true,
+      membership_status: 'active',
+      api_session_active: true,
+      target_preference_exists: false,
+      target_person_exists: false
+    }
+  end
+
+  def shared_login_state(shared)
     user = shared.fetch(:user).reload
     identity_person = user.person
 
-    expect(identity_person).not_to eq(shared.fetch(:person))
-    expect(identity_person).to have_attributes(household: other_household, account: shared.fetch(:account))
-    expect(identity_person.location_memberships).to be_empty
-    expect(shared.fetch(:account).reload.person.user).to eq(user)
-    expect(shared.fetch(:membership).reload).to have_attributes(person: identity_person, status: 'active')
-    expect(shared.fetch(:api_session).reload).to be_active_for_membership
+    surviving_identity_state(shared, user, identity_person)
+      .merge(surviving_access_state(shared, identity_person), target_clinical_data_state(shared))
+  end
+
+  def surviving_identity_state(shared, user, identity_person)
+    {
+      identity_replaced: identity_person != shared.fetch(:person),
+      identity_household: identity_person.household,
+      identity_account: identity_person.account,
+      identity_location_count: identity_person.location_memberships.size,
+      account_resolves_user: shared.fetch(:account).reload.person.user == user
+    }
+  end
+
+  def surviving_access_state(shared, identity_person)
+    membership = shared.fetch(:membership).reload
+    {
+      membership_identity_linked: membership.person == identity_person,
+      membership_status: membership.status,
+      api_session_active: shared.fetch(:api_session).reload.active_for_membership?
+    }
+  end
+
+  def target_clinical_data_state(shared)
     set_runtime_household(household)
-    expect(NotificationPreference.where(id: shared.fetch(:preference).id)).not_to exist
-    expect(Person.where(household: household)).not_to exist
+    {
+      target_preference_exists: NotificationPreference.exists?(id: shared.fetch(:preference).id),
+      target_person_exists: Person.exists?(household: household)
+    }
   end
 
   it 'retains immutable audit history and appends a non-PHI purge tombstone under the runtime role',
