@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_13_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_14_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -562,7 +562,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_210000) do
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
     t.index ["household_id", "status"], name: "index_household_purge_runs_on_household_id_and_status"
-    t.index ["household_id"], name: "index_household_purge_runs_on_household_id"
+    t.index ["household_id"], name: "index_household_purge_runs_on_household_id", unique: true
     t.index ["requested_by_account_id"], name: "index_household_purge_runs_on_requested_by_account_id"
   end
 

@@ -26,6 +26,18 @@ module HouseholdLifecycleTasks
       Account.find(required('ACTOR_ACCOUNT_ID'))
     end
 
+    def membership(household:, actor_account:)
+      TenantContext.with(account: actor_account, household: household) do
+        HouseholdMembership.find(required('MEMBERSHIP_ID'))
+      end
+    end
+
+    def export(household:, actor_account:)
+      TenantContext.with(account: actor_account, household: household) do
+        HouseholdExport.find(required('EXPORT_ID'))
+      end
+    end
+
     def required(name)
       ENV.fetch(name).presence || raise(KeyError, "#{name} is required")
     end
@@ -36,10 +48,11 @@ namespace :household_lifecycle do
   task export: :environment do
     HouseholdLifecycleTasks.execute('household.export.ready') do
       household = HouseholdLifecycleTasks.household
+      actor_account = HouseholdLifecycleTasks.actor_account
       export = Households::HostedExport.generate!(
         household: household,
-        membership: HouseholdMembership.find(HouseholdLifecycleTasks.required('MEMBERSHIP_ID')),
-        actor_account: HouseholdLifecycleTasks.actor_account
+        membership: HouseholdLifecycleTasks.membership(household: household, actor_account: actor_account),
+        actor_account: actor_account
       )
       puts JSON.generate(
         event_type: 'household.export.ready',
@@ -47,6 +60,27 @@ namespace :household_lifecycle do
         household_id: household.id,
         export_id: export.id,
         attachment_count: export.manifest.fetch('attachments').size
+      )
+    end
+  end
+
+  task download: :environment do
+    HouseholdLifecycleTasks.execute('household.export.downloaded') do
+      household = HouseholdLifecycleTasks.household
+      actor_account = HouseholdLifecycleTasks.actor_account
+      export = HouseholdLifecycleTasks.export(household: household, actor_account: actor_account)
+      result = Households::HostedExportTransfer.call(
+        export: export,
+        actor_account: actor_account,
+        destination: HouseholdLifecycleTasks.required('DESTINATION')
+      )
+      puts JSON.generate(
+        event_type: 'household.export.downloaded',
+        outcome: 'downloaded',
+        household_id: household.id,
+        export_id: export.id,
+        artifact_byte_size: result.artifact_byte_size,
+        artifact_checksum_sha256: result.artifact_checksum_sha256
       )
     end
   end

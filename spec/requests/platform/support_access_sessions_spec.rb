@@ -109,6 +109,46 @@ RSpec.describe 'Platform support access sessions' do
     expect(response).to have_http_status(:ok)
   end
 
+  it 'opens and audits support access through the forced-RLS application role' do
+    authenticate_with_totp
+
+    with_runtime_role do
+      expect do
+        post platform_support_access_sessions_path,
+             params: {
+               support_access_session: {
+                 household_id: target_household.id,
+                 reason: 'Investigate forced-RLS support access'
+               }
+             }
+      end.to change(SupportAccessSession, :count).by(1)
+
+      set_runtime_household
+      expect(SecurityAuditEvent.where(
+        household: target_household,
+        event_type: 'support_access_session.started'
+      ).count).to eq(1)
+    end
+  end
+
+  it 'rejects support access for a held household' do
+    authenticate_with_totp
+    target_household.update!(lifecycle_state: :held)
+
+    expect do
+      post platform_support_access_sessions_path,
+           params: {
+             support_access_session: {
+               household_id: target_household.id,
+               reason: 'Attempt unavailable support access'
+             }
+           }
+    end.not_to change(SupportAccessSession, :count)
+
+    expect(response).to redirect_to(root_path)
+    expect(flash[:alert]).to include('not authorized')
+  end
+
   it 'requires hosted privileged MFA before support-mode admin access' do
     ENV['HOSTED_ADMIN_MFA_REQUIRED'] = 'true'
     SupportAccessSession.create!(
@@ -247,5 +287,19 @@ RSpec.describe 'Platform support access sessions' do
     visible_secret = RodauthApp.rodauth.allocate.send(:otp_hmac_secret, secret)
     AccountOtpKey.create!(id: account.id, key: secret, last_use: 5.minutes.ago)
     post '/otp-auth', params: { otp: ROTP::TOTP.new(visible_secret).at(Time.current) }
+  end
+
+  def with_runtime_role
+    ActiveRecord::Base.connection.transaction(requires_new: true) do
+      ActiveRecord::Base.connection.execute('SET LOCAL ROLE med_tracker_app')
+      yield
+      raise ActiveRecord::Rollback
+    end
+  end
+
+  def set_runtime_household
+    ActiveRecord::Base.connection.execute(
+      "SELECT set_config('med_tracker.current_household_id', '#{target_household.id}', true)"
+    )
   end
 end

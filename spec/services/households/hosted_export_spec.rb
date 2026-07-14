@@ -189,6 +189,30 @@ RSpec.describe Households::HostedExport do
     end.to raise_error(Pundit::NotAuthorizedError)
   end
 
+  it 'downloads through one stable tenant context under the forced-RLS application role' do
+    export = described_class.generate!(household:, membership:, actor_account: operator)
+
+    with_runtime_role do
+      bytes = described_class.download!(export: export, actor_account: operator)
+      configure_runtime_household_context
+
+      expect(bytes).to be_present
+      expect(export.reload).to be_downloaded
+    end
+  end
+
+  it 'manually expires through one stable tenant context under the forced-RLS application role' do
+    export = described_class.generate!(household:, membership:, actor_account: operator)
+
+    with_runtime_role do
+      described_class.expire!(export: export, actor_account: operator)
+      configure_runtime_household_context
+
+      expect(export.reload).to be_expired
+      expect(export.artifact).not_to be_attached
+    end
+  end
+
   it 'refuses manual support expiry while an active retention hold exists' do
     export = described_class.generate!(household:, membership:, actor_account: operator)
     create_active_support_session
@@ -222,6 +246,20 @@ RSpec.describe Households::HostedExport do
       mfa_verified_at: Time.current,
       starts_at: 1.minute.ago,
       expires_at: 30.minutes.from_now
+    )
+  end
+
+  def with_runtime_role
+    ActiveRecord::Base.connection.transaction(requires_new: true) do
+      ActiveRecord::Base.connection.execute('SET LOCAL ROLE med_tracker_app')
+      yield
+      raise ActiveRecord::Rollback
+    end
+  end
+
+  def configure_runtime_household_context
+    ActiveRecord::Base.connection.execute(
+      "SELECT set_config('med_tracker.current_household_id', '#{household.id}', true)"
     )
   end
 end

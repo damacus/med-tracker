@@ -27,10 +27,8 @@ module Households
     end
 
     def authorize_export_actor!(export, actor_account)
-      authorized = TenantContext.with(account: actor_account, household: export.household) do
-        authorized_household_manager?(export.household, actor_account) ||
-          authorized_platform_operator?(export.household, actor_account)
-      end
+      authorized = authorized_household_manager?(export.household, actor_account) ||
+                   authorized_platform_operator?(export.household, actor_account)
       return if authorized
 
       raise Pundit::NotAuthorizedError, 'Export access is not authorized'

@@ -99,6 +99,19 @@ tasks:
           ENVIRONMENT: prod
           COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} MEMBERSHIP_ID={{ .MEMBERSHIP_ID }} rails household_lifecycle:export'
 
+  household-lifecycle:download:
+    desc: Download an authorized hosted household export to protected storage
+    requires:
+      vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID, EXPORT_ID, DESTINATION]
+    env:
+      DESTINATION: '{{ .DESTINATION }}'
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: prod
+          DOCKER_RUN_ARGS: '-e DESTINATION'
+          COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} EXPORT_ID={{ .EXPORT_ID }} rails household_lifecycle:download'
+
   household-lifecycle:hold:
     desc: Place an audited household retention hold
     requires:

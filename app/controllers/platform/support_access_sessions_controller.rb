@@ -47,15 +47,21 @@ module Platform
     end
 
     def record_support_access_event(support_session, event_type)
-      Audit::Event.record!(
+      TenantContext.with(
+        account: current_account,
         household: support_session.household,
-        actor_account: current_account,
-        event_type: event_type,
-        request: request,
-        metadata: {
-          support_access_session_id: support_session.id
-        }
-      )
+        request_id: request.request_id
+      ) do
+        Audit::Event.record!(
+          household: support_session.household,
+          actor_account: current_account,
+          event_type: event_type,
+          request: request,
+          metadata: {
+            support_access_session_id: support_session.id
+          }
+        )
+      end
     end
   end
 end
