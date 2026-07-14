@@ -97,10 +97,19 @@ Reactivation never recreates care relationships; relinking is explicit.
   selected household. Cross-household requests remain hidden or fail closed.
 - Retirement and reactivation use the existing policy authority for the
   corresponding destructive or update action.
-- Only a caller authorized by Household Access to manage that Person and linked
-  account may request linked-user deactivation. Identity performs the linked
-  Account deactivation; Household Access may suspend or revoke the membership
-  separately. These are distinct lifecycle transitions.
+- Household authority to manage a Person and linked account is limited to the
+  selected household and never authorizes global Account deactivation. That
+  authority may suspend or revoke only the selected HouseholdMembership and
+  end outbound care relationships in that household after the required warning
+  and confirmation.
+- Account deactivation is a global Identity transition.
+  Only the account holder or Identity-level platform operator may request it.
+  Identity locks and
+  revalidates the Account, its active memberships, and outbound relationships
+  in each affected household; it applies the confirmed relationship changes,
+  writes separate tenant-scoped audit evidence for each affected household,
+  and then revokes global credentials transactionally. Without that authority,
+  the request fails closed and may offer only the selected-membership action.
 - Retirement, reactivation, and hard deletion require an explicit operation;
   a warning or page visit is never confirmation. Sole-carer transitions require
   an explicit confirmation token/flag after the privacy-safe warning.
@@ -148,7 +157,8 @@ conflicted request.
 Lock and revalidate the selected root and affected associations in one
 transaction. A stale or concurrent state returns the stable conflict envelope
 above without partial writes. The lock covers the location's primary and stock
-checks and the carer's active relationship count.
+checks, the carer's active relationship count, and every affected membership
+and relationship for a global Account deactivation.
 
 Hard deletion is permitted only for a never-used root with no protected
 history, dependant state, audit evidence, retention obligation, export

@@ -122,6 +122,10 @@ Household Access binds the authenticated account to an active
 `HouseholdMembership` and establishes `AuthorizationContext` and
 `TenantContext`. Session and app-token records retain the membership and its
 permissions version, but grant evaluation remains owned by Household Access.
+Household authority can suspend or revoke only its selected membership; it does
+not authorize global Account deactivation. Identity-level authority owns that
+global transition and coordinates its separately audited effects across every
+affected household before credentials are revoked.
 
 ### Interoperability and Audit
 
