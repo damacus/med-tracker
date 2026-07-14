@@ -50,11 +50,17 @@ module Views
         end
       end
 
-      def render_auth_card(title: nil, subtitle: nil, &block)
+      def render_auth_card(title: nil, subtitle: nil, title_level: 3, &block)
         m3_card(variant: :elevated, class: 'w-full rounded-[2.5rem] border-none shadow-elevation-3 overflow-visible') do
           if title || subtitle
             m3_card_header(class: 'space-y-2 pb-2 pt-8 px-8 md:px-10') do
-              m3_card_title(class: 'text-3xl font-black tracking-tight text-foreground') { title } if title
+              if title
+                if title_level == 3
+                  m3_card_title(class: 'text-3xl font-black tracking-tight text-foreground') { title }
+                else
+                  m3_heading(level: title_level, class: 'text-3xl font-black tracking-tight text-foreground') { title }
+                end
+              end
               if subtitle
                 m3_card_description(variant: :body_large, class: 'text-on-surface-variant font-medium') { subtitle }
               end

@@ -39,15 +39,16 @@ RSpec.describe 'Mobile Navigation', :browser do
         const expectedLabels = ['Next Due', 'Due Now', 'Tasks Left']
         const labels = Array.from(document.querySelectorAll('#main-content p'))
 
-        return expectedLabels.map((text) => {
-          const label = labels.find((element) => element.textContent.trim() === text)
+        return expectedLabels.map((expectedLabel) => {
+          const label = labels.find((element) => element.textContent.trim() === expectedLabel)
 
           return {
-            text,
+            selector: label ? (label.id ? `#${label.id}` : label.tagName.toLowerCase()) : 'p',
             found: Boolean(label),
             clientWidth: label ? label.clientWidth : 0,
             scrollWidth: label ? label.scrollWidth : 0,
-            overflows: !label || label.scrollWidth > label.clientWidth + 1
+            overflows: !label || label.scrollWidth > label.clientWidth + 1,
+            viewport: { width: window.innerWidth, height: window.innerHeight }
           }
         })
       })()
@@ -143,7 +144,9 @@ RSpec.describe 'Mobile Navigation', :browser do
     within('[role="dialog"]') do
       all('a, button').each do |target|
         height = target.evaluate_script('this.getBoundingClientRect().height')
-        expect(height).to be >= 24, "Touch target '#{target.text}' height #{height}px < 24px minimum"
+        expect(height).to be >= 24,
+                          "target_failures=[{selector:#{target[:id].presence || target.tag_name}," \
+                          "role:#{target[:role]},height:#{height},viewport:{width:375,height:667}}]"
       end
     end
   end

@@ -81,7 +81,7 @@ module Components
             div(class: 'h-px bg-outline-variant w-full opacity-50')
 
             div(class: 'space-y-6') do
-              m3_heading(variant: :title_large, level: 3, class: 'font-bold text-foreground') do
+              m3_heading(variant: :title_large, level: 2, class: 'font-bold text-foreground') do
                 t('forms.medications.supply', default: 'Supply')
               end
               render Components::Medications::SupplyFields.new(medication: medication)

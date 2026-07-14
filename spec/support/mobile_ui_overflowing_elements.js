@@ -10,10 +10,10 @@
         tag: element.tagName.toLowerCase(),
         id: element.id || null,
         className: element.className.toString().slice(0, 160),
-        text: element.textContent.trim().replace(/\s+/g, " ").slice(0, 80),
         left: Math.round(rect.left),
         right: Math.round(rect.right),
-        width: Math.round(rect.width)
+        width: Math.round(rect.width),
+        viewport: { width: viewportWidth, height: window.innerHeight }
       };
     })
     .filter(Boolean)

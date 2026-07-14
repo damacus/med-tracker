@@ -81,7 +81,7 @@ module Views
           div(class: 'flex items-center gap-2') do
             input(
               type: 'checkbox', name: 'remember', id: 'remember', value: 't',
-              class: 'h-5 w-5 rounded border-outline-variant bg-surface-container-lowest text-teal-600 focus:ring-teal-500'
+              class: 'h-6 w-6 rounded border-outline-variant bg-surface-container-lowest text-teal-600 focus:ring-teal-500'
             )
             label(for: 'remember', class: 'text-sm text-on-surface-variant font-medium') do
               t('sessions.login.remember_me')

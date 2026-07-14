@@ -68,6 +68,25 @@ RSpec.describe 'Mobile overflow handling' do
     end
   end
 
+  it 'keeps overflow diagnostics privacy-safe', :js do
+    visit root_path
+    page.execute_script(<<~JS)
+      const probe = document.createElement('div');
+      probe.textContent = 'fixture name and medication details';
+      probe.style.cssText = 'position:absolute; left:100vw; width:40px; height:24px;';
+      document.body.appendChild(probe);
+    JS
+
+    diagnostics = page.evaluate_script(Rails.root.join('spec/support/mobile_ui_overflowing_elements.js').read)
+
+    expect(diagnostics).to all(
+      include('tag', 'id', 'className', 'left', 'right', 'width')
+    )
+    expect(diagnostics).to all(satisfy { |entry| !entry.key?('text') })
+    expect(diagnostics.join).not_to include('fixture name')
+    expect(diagnostics.join).not_to include('medication details')
+  end
+
   def page_horizontal_overflow
     page.evaluate_script(<<~JS)
       (() => {
@@ -78,7 +97,11 @@ RSpec.describe 'Mobile overflow handling' do
   end
 
   def offscreen_header_actions
-    page.evaluate_script(<<~JS)
+    page.evaluate_script(offscreen_header_actions_script)
+  end
+
+  def offscreen_header_actions_script
+    <<~JS
       (() => {
         const viewportWidth = document.documentElement.clientWidth;
         return Array.from(document.querySelectorAll('.medications-index-actions a, .medications-index-actions button'))
@@ -87,7 +110,18 @@ RSpec.describe 'Mobile overflow handling' do
             const rect = element.getBoundingClientRect();
             return styles.display !== 'none' && rect.width > 0 && (rect.left < -1 || rect.right > viewportWidth + 1);
           })
-          .map((element) => element.textContent.trim());
+          .map((element) => {
+            const rect = element.getBoundingClientRect();
+            return {
+              selector: element.id ? `#${element.id}` : element.tagName.toLowerCase(),
+              role: element.getAttribute('role'),
+              left: Math.round(rect.left),
+              right: Math.round(rect.right),
+              width: Math.round(rect.width),
+              height: Math.round(rect.height),
+              viewport: { width: window.innerWidth, height: window.innerHeight }
+            };
+          });
       })()
     JS
   end
