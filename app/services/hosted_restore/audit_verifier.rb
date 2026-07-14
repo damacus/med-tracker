@@ -3,24 +3,35 @@
 require 'json'
 
 module HostedRestore
+  class DefaultWormVerifierFactory
+    def call(command_environment)
+      Audit::Verification::WormVerifierFactory.new(command_environment).call
+    end
+  end
+
   class CombinedAuditCommand
-    def initialize(environment: ENV)
+    def initialize(environment: ENV,
+                   worm_verifier_factory: DefaultWormVerifierFactory.new,
+                   expected_head_evidence: nil)
       @environment = environment
+      @worm_verifier_factory = worm_verifier_factory
+      @expected_head_evidence = expected_head_evidence || ExpectedHeadEvidence.new
     end
 
-    def call(household_id:)
+    def call(household_id:, expected_head:)
+      expected_head_evidence.call(household_id:, expected: expected_head)
       command_environment = environment_for(household_id)
       output, exit_code = execute(command_environment)
       return failure_result unless exit_code.zero?
 
-      parsed_result(output)
+      verified_result(output)
     rescue Audit::Verification::ConfigurationError, JSON::ParserError, KeyError
       failure_result
     end
 
     private
 
-    attr_reader :environment
+    attr_reader :environment, :worm_verifier_factory, :expected_head_evidence
 
     def environment_for(household_id)
       environment.to_h.merge(
@@ -33,52 +44,72 @@ module HostedRestore
     def execute(command_environment)
       output = StringIO.new
       error_output = StringIO.new
-      worm_verifier = Audit::Verification::WormVerifierFactory.new(command_environment).call
+      worm_verifier = worm_verifier_factory.call(command_environment)
       exit_code = Audit::Verification::Command.new(
         environment: command_environment, output:, error_output:, worm_verifier:
       ).call
       [output, exit_code]
     end
 
-    def parsed_result(output)
+    def verified_result(output)
       result = JSON.parse(output.string, symbolize_names: true)
-      {
+      parsed = {
         checked_entries: result.fetch(:checked_entries), checked_checkpoints: result.fetch(:checked_checkpoints),
         checked_objects: result.fetch(:checked_objects), issue_codes: result.fetch(:issues).pluck(:code)
       }
+      return parsed.merge(verified_head: false) if parsed[:checked_checkpoints].to_i < 1 ||
+                                                   parsed[:checked_objects].to_i < 2
+
+      parsed.merge(verified_head: true)
     end
 
     def failure_result
-      { checked_entries: 0, checked_checkpoints: 0, checked_objects: 0, issue_codes: ['verification_failed'] }
+      {
+        checked_entries: 0, checked_checkpoints: 0, checked_objects: 0,
+        issue_codes: ['verification_failed'], verified_head: false
+      }
     end
   end
 
-  class WormHeadComparator
+  class ExpectedHeadEvidence
     def call(household_id:, expected:)
       checkpoint = AuditCheckpoint.find_by(
-        household_id:, chain_epoch: expected.fetch('chain_epoch'), sequence: expected.fetch('sequence')
+        household_id:, chain_epoch: expected.fetch('chain_epoch'), sequence: expected.fetch('sequence'),
+        entry_hash: [expected.fetch('entry_hash')].pack('H*')
       )
-      return false unless checkpoint&.signature.present? && checkpoint.audit_export_delivery&.delivered?
+      ledger_entry = AuditLedgerEntry.find_by(
+        household_id:, chain_epoch: expected.fetch('chain_epoch'), sequence: expected.fetch('sequence'),
+        entry_hash: [expected.fetch('entry_hash')].pack('H*')
+      )
+      valid = checkpoint&.signature.present? && ledger_entry && delivered?(checkpoint:, ledger_entry:)
+      raise VerificationError, 'expected_head_evidence_missing' unless valid
 
-      ActiveSupport::SecurityUtils.secure_compare(
-        checkpoint.entry_hash.unpack1('H*'), expected.fetch('entry_hash')
-      )
+      true
+    rescue ArgumentError
+      raise VerificationError, 'expected_head_evidence_missing'
+    end
+
+    private
+
+    def delivered?(checkpoint:, ledger_entry:)
+      AuditExportDelivery.exists?(audit_checkpoint: checkpoint, status: 'delivered') &&
+        AuditExportDelivery.exists?(audit_ledger_entry: ledger_entry, status: 'delivered')
     end
   end
 
   class AuditVerifier
     def initialize(household_ids:, expected_heads:, command: CombinedAuditCommand.new,
-                   head_comparator: WormHeadComparator.new,
-                   current_role: -> { ActiveRecord::Base.connection.select_value('SELECT current_user') })
-      @household_ids = household_ids.map(&:to_i)
+                   connection: ActiveRecord::Base.connection, current_role: nil)
+      @household_ids = household_ids.map { |value| canonical_integer(value) }
       @expected_heads = expected_heads
       @command = command
-      @head_comparator = head_comparator
-      @current_role = current_role
+      @connection = connection
+      @current_role = current_role || -> { connection.select_value('SELECT current_user') }
     end
 
     def call
       verify_households!
+      verify_expected_heads!
       raise VerificationError, 'audit_verifier_role_required' unless current_role.call == 'med_tracker_audit_verifier'
 
       summarize(verify_samples)
@@ -88,12 +119,41 @@ module HostedRestore
 
     private
 
-    attr_reader :household_ids, :expected_heads, :command, :head_comparator, :current_role
+    attr_reader :household_ids, :expected_heads, :command, :connection, :current_role
 
     def verify_households!
       return if household_ids.size == 2 && household_ids.all?(&:positive?) && household_ids.uniq.size == 2
 
       raise VerificationError, 'distinct_household_samples_required'
+    end
+
+    def verify_expected_heads!
+      valid = expected_heads.is_a?(Hash) && expected_heads.keys.sort == %w[sample_a sample_b] &&
+              expected_heads.values.all? { |head| valid_expected_head?(head) }
+      raise VerificationError, 'worm_heads_invalid' unless valid
+    end
+
+    def valid_expected_head?(head)
+      expected_head_shape?(head) && valid_epoch?(head) && valid_sequence?(head) && valid_entry_hash?(head)
+    end
+
+    def expected_head_shape?(head)
+      head.is_a?(Hash) && head.keys.sort == %w[chain_epoch entry_hash sequence]
+    end
+
+    def valid_epoch?(head)
+      value = head['chain_epoch']
+      value.is_a?(String) && value.match?(/\A[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\z/)
+    end
+
+    def valid_sequence?(head)
+      value = head['sequence']
+      value.is_a?(Integer) && value.between?(1, (2**63) - 1)
+    end
+
+    def valid_entry_hash?(head)
+      value = head['entry_hash']
+      value.is_a?(String) && value.match?(/\A[a-f0-9]{64}\z/)
     end
 
     def verify_samples
@@ -108,18 +168,43 @@ module HostedRestore
         checked_entries: results.sum { |result| result.fetch(:checked_entries) },
         checked_checkpoints: results.sum { |result| result.fetch(:checked_checkpoints) },
         checked_objects: results.sum { |result| result.fetch(:checked_objects) },
+        verified_heads: results.count { |result| result.fetch(:verified_head) },
         worm_comparison: 'match'
       }
     end
 
     def verify_sample(household_id, expected_head)
-      result = command.call(household_id:)
+      result = with_household(household_id) { command.call(household_id:, expected_head:) }
       raise VerificationError, 'audit_worm_verification_failed' if result.fetch(:issue_codes).any?
-      unless head_comparator.call(household_id:, expected: expected_head)
-        raise VerificationError, 'worm_restore_divergence'
-      end
+      raise VerificationError, 'worm_restore_divergence' unless result.fetch(:verified_head)
 
       result
+    end
+
+    def with_household(household_id)
+      connection.transaction(requires_new: true) do
+        apply_household_setting(household_id)
+        yield
+      ensure
+        apply_household_setting('')
+      end
+    end
+
+    def apply_household_setting(value)
+      connection.execute(
+        ActiveRecord::Base.sanitize_sql_array(
+          ['SELECT set_config(?, ?, true)', TenantContext::SETTING_NAMES.fetch(:household), value.to_s]
+        )
+      )
+    end
+
+    def canonical_integer(value)
+      string = value.to_s
+      unless string.match?(/\A[1-9]\d*\z/) && Integer(string, 10) <= (2**63) - 1
+        raise VerificationError, 'household_id_invalid'
+      end
+
+      Integer(string, 10)
     end
   end
 end

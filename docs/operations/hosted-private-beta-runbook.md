@@ -224,6 +224,11 @@ for each sample from the independent Object Lock evidence store. Supply the samp
 as process inputs; the evidence bundle records them as `sample_a` and `sample_b` and never
 records real tenant identifiers.
 
+The deployment environment must inject `RUNTIME_APP_IMAGE` from the image actually running
+the rehearsal. The operator-provided `APP_IMAGE` is an expected immutable tag or digest; the
+workflow fails before migrations unless it exactly matches the runtime-provided immutable
+image reference. Do not copy the operator value into `RUNTIME_APP_IMAGE` manually.
+
 ```fish
 set -lx DATABASE_BACKUP_ID database-snapshot-2026-07-14T010000Z
 set -lx ATTACHMENT_BACKUP_ID attachments-snapshot-2026-07-14T010000Z
@@ -246,6 +251,7 @@ set -lx WORM_HEADS_JSON '{
   }
 }'
 set -lx EVIDENCE_OUTPUT /approved-mounted-evidence/restore-2026-q3
+set -lx EVIDENCE_ROOT /approved-mounted-evidence
 task hosted-restore:rehearse
 ```
 
@@ -257,12 +263,21 @@ Any failed stage stops later stages and produces a failed bundle; partial work c
 success. Re-run with the same backup identifiers and a new evidence destination after the
 failure is remediated.
 
+Household ids and WORM sequences must be canonical positive decimal integers, checkpoint
+epochs must be canonical UUIDs, and the WORM JSON object must contain exactly `sample_a` and
+`sample_b` with only `chain_epoch`, `sequence`, and `entry_hash`. The evidence output is
+accepted only when its existing parent resolves by realpath below `EVIDENCE_ROOT`. Repository
+`tmp`, operating-system temporary directories, outside paths, and symlink escapes are refused.
+
 The destination must be a pre-approved durable mounted evidence repository, not the source
 tree or transient container filesystem. It receives mode-restricted `evidence.json` and
 `evidence.md` files. Link the durable evidence record from the NFR4 row in the hosted
 hardening audit only after a second operator has inspected both files and confirmed the final
 outcome is `passed`. Never copy secrets, credentials, health data, real tenant identifiers,
 attachment contents, sensitive infrastructure paths, or raw command output into that link.
+Each command entry records a safe fixed command description and only its whitelisted
+structured output. Structured failures are parsed from the Rake task's JSON error record;
+raw standard output and standard error are never copied into evidence.
 
 Perform the rehearsal at least quarterly. A new rehearsal is required after changing the
 database major version, backup or attachment storage system, encryption or Object Lock

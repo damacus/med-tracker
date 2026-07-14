@@ -161,6 +161,7 @@ tasks:
       Verify an isolated database and attachment restore without performing the restore itself.
       The evidence destination must be an absolute, non-existing directory on durable storage.
       WORM_HEADS_JSON must contain the latest signed external checkpoint for sample_a and sample_b.
+      RUNTIME_APP_IMAGE must be injected by the deployment environment and exactly match APP_IMAGE.
     requires:
       vars:
         - DATABASE_BACKUP_ID
@@ -172,6 +173,7 @@ tasks:
         - HOUSEHOLD_B_ID
         - WORM_REFERENCE
         - WORM_HEADS_JSON
+        - EVIDENCE_ROOT
         - EVIDENCE_OUTPUT
     env:
       DATABASE_BACKUP_ID: '{{ .DATABASE_BACKUP_ID }}'
@@ -183,6 +185,7 @@ tasks:
       HOUSEHOLD_B_ID: '{{ .HOUSEHOLD_B_ID }}'
       WORM_REFERENCE: '{{ .WORM_REFERENCE }}'
       WORM_HEADS_JSON: '{{ .WORM_HEADS_JSON }}'
+      EVIDENCE_ROOT: '{{ .EVIDENCE_ROOT }}'
       EVIDENCE_OUTPUT: '{{ .EVIDENCE_OUTPUT }}'
     cmds:
       - mise exec -- ruby scripts/hosted_restore_rehearsal.rb

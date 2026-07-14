@@ -10,7 +10,8 @@ RSpec.describe HostedRestore::Rehearsal do
     it 'documents the executable gate, durable evidence contract, cadence, and invalidation triggers' do
       expect(runbook).to include(
         'task hosted-restore:rehearse', 'DATABASE_BACKUP_ID', 'ATTACHMENT_BACKUP_ID', 'APP_IMAGE',
-        'TESTER', 'WORM_HEADS_JSON', 'EVIDENCE_OUTPUT', 'evidence.json', 'evidence.md',
+        'RUNTIME_APP_IMAGE', 'TESTER', 'WORM_HEADS_JSON', 'EVIDENCE_ROOT', 'EVIDENCE_OUTPUT',
+        'evidence.json', 'evidence.md',
         'at least quarterly', 'database major version', 'RLS policies', 'Object Lock'
       )
       expect(audit).to include('task hosted-restore:rehearse', 'no current production-like database and attachment')
@@ -21,7 +22,8 @@ RSpec.describe HostedRestore::Rehearsal do
     it 'forbids fabricated, transient, sensitive, or tenant-identifying evidence' do
       expect(runbook.squish).to include(
         'does not accept or run a raw restore command', 'not the source tree or transient container filesystem',
-        'real tenant identifiers', 'partial work can never claim success'
+        'real tenant identifiers', 'partial work can never claim success',
+        'resolves by realpath below', 'runtime-provided immutable image reference'
       )
     end
   end

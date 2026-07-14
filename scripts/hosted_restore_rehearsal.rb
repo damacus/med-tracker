@@ -4,10 +4,12 @@
 
 require_relative '../lib/hosted_restore/rehearsal'
 
-exit HostedRestore::Rehearsal.new.call
+begin
+  exit HostedRestore::Rehearsal.new.call
 rescue HostedRestore::Input::Invalid => e
   warn JSON.generate(outcome: 'failed', failure_code: e.message)
   exit(2)
 rescue HostedRestore::EvidenceWriter::AlreadyExists => e
   warn JSON.generate(outcome: 'failed', failure_code: e.message)
   exit(2)
+end
