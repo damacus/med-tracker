@@ -190,7 +190,7 @@ database, Rails engine, or namespace split.
 - [Design and Architecture](../design.md)
 - [Glossary](../glossary.md)
 - [MedicationTake Aggregate Source Boundary](0006-medication-take-aggregate-source-boundary.md)
-- [External App Integration Contract](0007-external-app-integration-contract.md)
+- [External Integration Architecture](0010-external-integration-architecture.md)
 - [Domain Events with ActiveSupport::Notifications](0004-domain-events-with-active-support-notifications.md)
 - [Authentication and Authorization Strategy](0002-authentication-and-authorization-strategy.md),
   whose six-role hierarchy, role-based policy examples, and obsolete migration
