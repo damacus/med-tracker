@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Git tag name to publish (e.g. v1.0.0)"
+        required: true
+        type: string
   workflow_call:
     inputs:
       tag_name:
@@ -75,6 +81,8 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
+          build-args: |
+            APP_IMAGE_REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.tag_name != '' && steps.meta.outputs.version || format('sha-{0}', github.sha) }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
