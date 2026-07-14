@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.13](https://github.com/damacus/med-tracker/compare/v0.5.12...v0.5.13) (2026-07-14)
+
+
+### Bug Fixes
+
+* **migrations:** validate FKs before RLS restore ([65a1957](https://github.com/damacus/med-tracker/commit/65a19570527c7d54788b8abdbf09b1ccde8a80a4))
+
 ## [0.5.12](https://github.com/damacus/med-tracker/compare/v0.5.11...v0.5.12) (2026-07-14)
 
 
