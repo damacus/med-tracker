@@ -19,6 +19,17 @@ end
 
 RSpec.describe RuntimeStackContract do
   let(:expected_versions) { described_class.expected_versions }
+  let(:docker_publish_workflow) do
+    YAML.safe_load(read_file('.github/workflows/docker-publish.yml'), aliases: true)
+  end
+  let(:docker_publish_triggers) do
+    docker_publish_workflow.fetch('on') { docker_publish_workflow.fetch(true) }
+  end
+  let(:docker_publish_build_step) do
+    docker_publish_workflow
+      .dig('jobs', 'build-and-push', 'steps')
+      .find { |step| step['uses'] == 'docker/build-push-action@v7' }
+  end
 
   it 'keeps Ruby runtime metadata aligned across local, Docker, CI, and agent docs' do
     expected_ruby_version = expected_versions.fetch(:ruby)
@@ -64,6 +75,21 @@ RSpec.describe RuntimeStackContract do
       expect(document).to include("- Bundler #{expected_versions.fetch(:bundler)}")
       expect(document).to include("- Playwright #{expected_versions.fetch(:playwright)}")
     end
+  end
+
+  it 'supports manually republishing an existing release tag' do
+    expect(docker_publish_triggers.dig('workflow_dispatch', 'inputs', 'tag_name')).to include(
+      'required' => true,
+      'type' => 'string'
+    )
+  end
+
+  it 'bakes an immutable image reference into published containers' do
+    build_args = docker_publish_build_step.dig('with', 'build-args')
+
+    expect(build_args).to include('APP_IMAGE_REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:')
+    expect(build_args).to include("inputs.tag_name != '' && steps.meta.outputs.version")
+    expect(build_args).to include("format('sha-{0}', github.sha)")
   end
 
   def read_file(path)
