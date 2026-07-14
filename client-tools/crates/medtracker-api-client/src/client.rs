@@ -77,6 +77,21 @@ impl ApiClient {
         Ok(envelope.data)
     }
 
+    pub(crate) async fn get_data_with_query<T>(
+        &self,
+        path: &str,
+        query: &[(&str, &str)],
+    ) -> Result<T, ApiError>
+    where
+        T: DeserializeOwned,
+    {
+        let mut url = self.url(path)?;
+        url.query_pairs_mut().extend_pairs(query);
+        let request = self.authorize(self.http.get(url));
+        let envelope: DataEnvelope<T> = self.send_json(request).await?;
+        Ok(envelope.data)
+    }
+
     fn authorize(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         match &self.bearer_token {
             Some(token) => request.bearer_auth(token),
