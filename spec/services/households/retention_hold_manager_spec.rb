@@ -226,7 +226,8 @@ RSpec.describe Households::RetentionHoldManager do
       expect(SecurityAuditEvent.where(household: empty_household, event_type: 'household.offboarded').count).to eq(1)
     end
 
-    it 'preserves account-scoped credentials when an account retains another operational household', :aggregate_failures do
+    it 'preserves account-scoped credentials when an account retains another operational household',
+       :aggregate_failures do
       shared_account = account('shared-offboard-member@example.test')
       target_membership = owner_membership(household, shared_account)
       other_household = create(:household)

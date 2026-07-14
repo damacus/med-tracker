@@ -36,16 +36,35 @@ RSpec.describe Households::Purger do
 
   it 'retains immutable audit history and appends a non-PHI purge tombstone under the runtime role',
      :aggregate_failures do
+    history = retained_audit_history
+
+    with_runtime_role do
+      expect(verify_runtime_purge(history)).to be_completed
+    end
+  end
+
+  def retained_audit_history
     member_account = account('hosted-purge-audited-member@example.test')
     actor_membership = household.household_memberships.create!(account: member_account, role: :member, status: :active)
-    retained_event = Audit::Event.record!(
+    {
+      membership: actor_membership,
+      event: retained_security_event(member_account, actor_membership),
+      version: retained_version(actor_membership)
+    }
+  end
+
+  def retained_security_event(member_account, actor_membership)
+    Audit::Event.record!(
       household: household,
       actor_account: member_account,
       actor_membership: actor_membership,
       event_type: 'purge.runtime.seed',
       metadata: { outcome: 'success' }
     )
-    retained_version = PaperTrail::Version.create!(
+  end
+
+  def retained_version(actor_membership)
+    PaperTrail::Version.create!(
       actor_membership_id: actor_membership.id,
       audit_context: {},
       event: 'update',
@@ -54,28 +73,51 @@ RSpec.describe Households::Purger do
       item_type: 'Person',
       object: '{}'
     )
+  end
 
-    with_runtime_role do
-      expect_direct_audit_delete_denied
-      expect_direct_version_update_denied(retained_version)
+  def verify_runtime_purge(history)
+    expect_direct_audit_delete_denied
+    expect_direct_version_update_denied(history.fetch(:version))
+    run = described_class.call(household: household, actor_account: operator)
 
-      run = described_class.call(household: household, actor_account: operator)
+    verify_runtime_purge_state(run, history)
+    run
+  end
 
-      expect(run).to be_completed
-      expect(household.reload).to be_lifecycle_purged
-      set_runtime_household
-      expect(SecurityAuditEvent.where(id: retained_event.id, household: household)).to exist
-      expect(SecurityAuditEvent.find(retained_event.id).actor_membership_id).to eq(actor_membership.id)
-      expect(PaperTrail::Version.find(retained_version.id).actor_membership_id).to eq(actor_membership.id)
-      expect(HouseholdMembership.where(id: actor_membership.id)).not_to exist
-      expect(purge_tombstone.metadata).to eq(
-        'attempts' => 1,
-        'household_id' => household.id,
-        'last_completed_table' => 'people',
-        'outcome' => 'success',
-        'purge_run_id' => run.id
-      )
-    end
+  def verify_runtime_purge_state(run, history)
+    expect(household.reload).to be_lifecycle_purged
+    set_runtime_household
+    verify_retained_audit_history(history)
+    expect(HouseholdMembership.where(id: history.fetch(:membership).id)).not_to exist
+    verify_purge_tombstone(run)
+  end
+
+  def verify_retained_audit_history(history)
+    verify_retained_security_event(history)
+    verify_retained_version(history)
+  end
+
+  def verify_retained_security_event(history)
+    event = history.fetch(:event)
+    membership_id = history.fetch(:membership).id
+
+    expect(SecurityAuditEvent.where(id: event.id, household: household)).to exist
+    expect(SecurityAuditEvent.find(event.id).actor_membership_id).to eq(membership_id)
+  end
+
+  def verify_retained_version(history)
+    expect(PaperTrail::Version.find(history.fetch(:version).id).actor_membership_id)
+      .to eq(history.fetch(:membership).id)
+  end
+
+  def verify_purge_tombstone(run)
+    expect(purge_tombstone.metadata).to eq(
+      'attempts' => 1,
+      'household_id' => household.id,
+      'last_completed_table' => 'people',
+      'outcome' => 'success',
+      'purge_run_id' => run.id
+    )
   end
 
   it 'resumes after a partial failure and deletes every tenant inventory row and owned attachment only',
@@ -133,11 +175,23 @@ RSpec.describe Households::Purger do
   end
 
   def verify_completed_purge(failed_run, records)
-    expect(described_class.call(household: household, actor_account: operator).id).to eq(failed_run.id)
+    verify_resumed_run(failed_run)
     verify_completed_state(failed_run)
+    verify_purged_data(records)
+    verify_purge_evidence
+  end
+
+  def verify_resumed_run(failed_run)
+    expect(described_class.call(household: household, actor_account: operator).id).to eq(failed_run.id)
+  end
+
+  def verify_purged_data(records)
     verify_purgeable_inventory_empty
     verify_storage(records)
     verify_uncached_attachment_check(records.fetch(:purged_blob))
+  end
+
+  def verify_purge_evidence
     expect(SecurityAuditEvent.where(household: household)).to exist
     expect(SecurityAuditEvent.where(household: household, event_type: 'household.purge.completed').count).to eq(1)
     expect(ledger_events('household.purge.completed')).to exist

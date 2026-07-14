@@ -77,6 +77,71 @@ RSpec.describe PortableData::Exporter do
     expect(payload.dig('records', 'medications').pluck('location_portable_id')).to all(be_present)
   end
 
+  it 'exports unassigned household records only in the household-wide bundle' do
+    household = create(:household)
+    owner = membership(household: household, role: :owner, email: 'household-export-owner@example.test')
+    create_portable_person_graph(household: household, name: 'Assigned Patient',
+                                 medication_name: 'Assigned Medicine')
+    unassigned = unassigned_records(household)
+    exporter = described_class.new(household: household, membership: owner, passphrase: passphrase)
+    household_payload = exporter.household_payload
+
+    expect(household_payload.fetch(:scope)).to eq('household')
+    verify_household_records(household_payload.fetch(:records), unassigned)
+    verify_single_person_records(exporter.payload.fetch(:records), unassigned)
+  end
+
+  def unassigned_records(household)
+    standalone_location = create(:location, household: household, name: 'Emergency Store')
+    medication_location = create(:location, household: household, name: 'Unassigned Medicine Store')
+    medication = create(
+      :medication,
+      household: household,
+      location: medication_location,
+      name: 'Unassigned Medicine'
+    )
+    dosage = create(:dosage, household: household, medication: medication)
+    { locations: [standalone_location, medication_location], medication: medication, dosage: dosage }
+  end
+
+  def verify_household_records(records, unassigned)
+    verify_household_locations(records, unassigned)
+    verify_household_medication(records, unassigned)
+    verify_household_dosage(records, unassigned)
+  end
+
+  def verify_household_locations(records, unassigned)
+    expect(records.fetch(:locations).pluck(:portable_id))
+      .to include(*unassigned.fetch(:locations).map(&:portable_id))
+  end
+
+  def verify_household_medication(records, unassigned)
+    expect(records.fetch(:medications).pluck(:portable_id)).to include(unassigned.fetch(:medication).portable_id)
+  end
+
+  def verify_household_dosage(records, unassigned)
+    expect(records.fetch(:dosage_options).pluck(:portable_id)).to include(unassigned.fetch(:dosage).portable_id)
+  end
+
+  def verify_single_person_records(records, unassigned)
+    verify_single_person_locations(records, unassigned)
+    verify_single_person_medication(records, unassigned)
+    verify_single_person_dosage(records, unassigned)
+  end
+
+  def verify_single_person_locations(records, unassigned)
+    expect(records.fetch(:locations).pluck(:portable_id))
+      .not_to include(*unassigned.fetch(:locations).map(&:portable_id))
+  end
+
+  def verify_single_person_medication(records, unassigned)
+    expect(records.fetch(:medications).pluck(:portable_id)).not_to include(unassigned.fetch(:medication).portable_id)
+  end
+
+  def verify_single_person_dosage(records, unassigned)
+    expect(records.fetch(:dosage_options).pluck(:portable_id)).not_to include(unassigned.fetch(:dosage).portable_id)
+  end
+
   it 'excludes medications referenced only by health events from encrypted bundles' do
     household = create(:household)
     owner = membership(household: household, role: :owner, email: 'health-event-owner@example.test')

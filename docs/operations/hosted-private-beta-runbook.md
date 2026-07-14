@@ -125,7 +125,11 @@ also runs `task test TEST_FILE=spec/lib/schema_inventory_spec.rb`,
 
 Set `HOUSEHOLD_EXPORT_RETENTION_DAYS` in the deployed web and task environment to
 the approved export retention period. The value is clamped to 1-365 days and
-defaults to 30 days. Retention holds override the normal export-and-purge schedule.
+defaults to 30 days. Set `HOUSEHOLD_EXPORT_GENERATION_TIMEOUT_MINUTES` to the
+maximum expected generation time. It is clamped to 1-1,440 minutes and defaults
+to 60 minutes; scheduled cleanup expires attached archives left by generation
+that remains incomplete beyond this boundary. Retention holds override both
+cleanup paths.
 
 Generate the complete portable export before offboarding. `MEMBERSHIP_ID` must be
 an active owner or administrator membership for the target household.

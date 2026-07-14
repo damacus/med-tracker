@@ -119,6 +119,7 @@ RSpec.describe SchemaInventory do
     it 'documents safe retries, hold refusal, configurable retention, and sanitized evidence' do
       expect(runbook).to include(
         'HOUSEHOLD_EXPORT_RETENTION_DAYS',
+        'HOUSEHOLD_EXPORT_GENERATION_TIMEOUT_MINUTES',
         'safe to retry',
         'active retention hold',
         'failure_code',
