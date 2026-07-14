@@ -41,6 +41,25 @@ RSpec.describe EnforceStrictHouseholdTenantBoundary do
 
   describe AddHouseholdOwnershipToCarerRelationships do
     describe 'legacy data verification' do
+      it 'keeps people RLS relaxed through endpoint foreign key validation' do
+        migration = described_class.new
+        rls_relaxed = false
+
+        stubbed_steps = %i[add_reference verify_legacy_relationships! backfill_households
+                           change_column_null add_indexes enable_household_rls]
+        stubbed_steps.each { |step| allow(migration).to receive(step) }
+        allow(migration).to receive(:add_foreign_keys) { expect(rls_relaxed).to be(true) }
+        allow(migration).to receive(:with_people_rls_relaxed) do |&operation|
+          rls_relaxed = true
+          operation.call
+        ensure
+          rls_relaxed = false
+        end
+
+        migration.up
+        expect(migration).to have_received(:add_foreign_keys)
+      end
+
       it 'reads valid endpoints while migrating as the forced-RLS table owner' do
         migration = described_class.new
 

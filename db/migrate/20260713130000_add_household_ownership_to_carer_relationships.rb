@@ -8,10 +8,10 @@ class AddHouseholdOwnershipToCarerRelationships < ActiveRecord::Migration[8.1]
     with_people_rls_relaxed do
       verify_legacy_relationships!
       backfill_households
+      change_column_null :carer_relationships, :household_id, false
+      add_indexes
+      add_foreign_keys
     end
-    change_column_null :carer_relationships, :household_id, false
-    add_indexes
-    add_foreign_keys
     enable_household_rls
   end
 
