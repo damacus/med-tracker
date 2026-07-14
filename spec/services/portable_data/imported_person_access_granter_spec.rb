@@ -34,7 +34,7 @@ RSpec.describe PortableData::ImportedPersonAccessGranter do
   end
 
   def synchronize_access_changes
-    gate = TimedGate.new(parties: 2)
+    gate = timed_gate_class.new(parties: 2)
     original = Households::AccessChange.method(:for)
     allow(Households::AccessChange).to receive(:for) do |membership|
       gate.arrive
@@ -97,23 +97,17 @@ RSpec.describe PortableData::ImportedPersonAccessGranter do
     Account.where(id: account_ids).delete_all
   end
 
-  class TimedGate
-    def initialize(parties:)
-      @parties = parties
-      @arrivals = 0
-      @mutex = Mutex.new
-      @condition = ConditionVariable.new
-    end
+  def timed_gate_class
+    state = Struct.new(:parties, :arrivals, :mutex, :condition, keyword_init: true)
+    Class.new(state) do
+      def initialize(parties:) = super(parties:, arrivals: 0, mutex: Mutex.new, condition: ConditionVariable.new)
 
-    def arrive
-      mutex.synchronize do
-        @arrivals += 1
-        arrivals == parties ? condition.broadcast : condition.wait(mutex, 0.25)
+      def arrive
+        mutex.synchronize do
+          self.arrivals += 1
+          arrivals == parties ? condition.broadcast : condition.wait(mutex, 0.25)
+        end
       end
     end
-
-    private
-
-    attr_reader :parties, :arrivals, :mutex, :condition
   end
 end
