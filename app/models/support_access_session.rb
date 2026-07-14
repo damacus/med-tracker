@@ -8,7 +8,7 @@ class SupportAccessSession < ApplicationRecord
 
   validates :reason, :mfa_verified_at, :starts_at, :expires_at, presence: true
   validate :expires_after_start
-  validate :household_operational
+  validate :household_operational, on: :create
 
   before_validation :set_time_window
 

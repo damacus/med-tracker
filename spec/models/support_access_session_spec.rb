@@ -92,6 +92,16 @@ RSpec.describe SupportAccessSession do
     end
   end
 
+  it 'permits an existing support session to be ended after its household becomes unavailable' do
+    session = build_support_access_session
+    session.save!
+    session.household.update!(status: :archived, lifecycle_state: :offboarded)
+
+    expect do
+      session.update!(ended_at: Time.current)
+    end.to change { session.reload.ended_at }.from(nil)
+  end
+
   def described_class_platform_admin
     @described_class_platform_admin ||= begin
       account = Account.create!(email: 'support-admin@example.test', status: :verified)

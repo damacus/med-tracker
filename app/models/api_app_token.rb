@@ -69,7 +69,8 @@ class ApiAppToken < ApplicationRecord
   def active_for_membership?
     return false if household_membership.blank?
 
-    revoked_at.nil? && household_membership.active? && permissions_version == household_membership.permissions_version
+    revoked_at.nil? && household_membership.active? && household_membership.household&.operational? &&
+      permissions_version == household_membership.permissions_version
   end
 
   def revoke!(audit_context: nil, action: 'revoked')

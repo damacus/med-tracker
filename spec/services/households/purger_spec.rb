@@ -34,6 +34,65 @@ RSpec.describe Households::Purger do
     end.to raise_error(Pundit::NotAuthorizedError)
   end
 
+  it 'ends active support access before purging the household' do
+    support_session = SupportAccessSession.create!(
+      platform_admin: operator.platform_admin,
+      household: household,
+      reason: 'Investigate household before purge',
+      mfa_verified_at: Time.current
+    )
+
+    expect do
+      described_class.call(household: household, actor_account: operator)
+    end.to change { support_session.reload.ended_at }.from(nil)
+
+    expect(household.reload).to be_lifecycle_purged
+  end
+
+  it 'preserves a shared login identity and API usability under forced RLS without carrying clinical rows',
+     :aggregate_failures do
+    shared = shared_login_records
+
+    with_runtime_role do
+      described_class.call(household: household, actor_account: operator)
+      set_runtime_household(other_household)
+
+      verify_shared_login_after_purge(shared)
+    end
+  end
+
+  def shared_login_records
+    shared_account = account('shared-purge-member@example.test')
+    person = create(:person, household: household, account: shared_account, name: 'Shared Purge Member')
+    user = User.create!(person: person, email_address: shared_account.email, password: 'password')
+    household.household_memberships.create!(account: shared_account, person: person, role: :owner, status: :active)
+    other_membership = other_household.household_memberships.create!(
+      account: shared_account,
+      role: :owner,
+      status: :active
+    )
+    api_session = ApiSession.issue_for(account: shared_account, household_membership: other_membership).first
+    preference = create(:notification_preference, household: household, person: person)
+
+    { account: shared_account, user: user, person: person, membership: other_membership,
+      api_session: api_session, preference: preference }
+  end
+
+  def verify_shared_login_after_purge(shared)
+    user = shared.fetch(:user).reload
+    identity_person = user.person
+
+    expect(identity_person).not_to eq(shared.fetch(:person))
+    expect(identity_person).to have_attributes(household: other_household, account: shared.fetch(:account))
+    expect(identity_person.location_memberships).to be_empty
+    expect(shared.fetch(:account).reload.person.user).to eq(user)
+    expect(shared.fetch(:membership).reload).to have_attributes(person: identity_person, status: 'active')
+    expect(shared.fetch(:api_session).reload).to be_active_for_membership
+    set_runtime_household(household)
+    expect(NotificationPreference.where(id: shared.fetch(:preference).id)).not_to exist
+    expect(Person.where(household: household)).not_to exist
+  end
+
   it 'retains immutable audit history and appends a non-PHI purge tombstone under the runtime role',
      :aggregate_failures do
     history = retained_audit_history
@@ -257,9 +316,9 @@ RSpec.describe Households::Purger do
     end.to raise_error(ActiveRecord::StatementInvalid)
   end
 
-  def set_runtime_household
+  def set_runtime_household(target_household = household)
     ActiveRecord::Base.connection.execute(
-      "SELECT set_config('med_tracker.current_household_id', '#{household.id}', true)"
+      "SELECT set_config('med_tracker.current_household_id', '#{target_household.id}', true)"
     )
   end
 end

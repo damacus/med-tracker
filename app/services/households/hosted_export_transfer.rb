@@ -57,11 +57,12 @@ module Households
     end
 
     def transfer(file)
-      bytes = HostedExport.download!(export: @export, actor_account: @actor_account)
-      checksum = Digest::SHA256.hexdigest(bytes)
-      verify_artifact!(bytes, checksum)
-      write(file, bytes)
-      Result.new(artifact_byte_size: bytes.bytesize, artifact_checksum_sha256: checksum)
+      HostedExport.download!(export: @export, actor_account: @actor_account) do |bytes|
+        checksum = Digest::SHA256.hexdigest(bytes)
+        verify_artifact!(bytes, checksum)
+        write(file, bytes)
+        Result.new(artifact_byte_size: bytes.bytesize, artifact_checksum_sha256: checksum)
+      end
     end
 
     def verify_artifact!(bytes, checksum)
@@ -71,7 +72,9 @@ module Households
     end
 
     def write(file, bytes)
-      file.write(bytes)
+      written = file.write(bytes)
+      raise IOError, 'Hosted export write incomplete' unless written == bytes.bytesize
+
       file.flush
       file.fsync
     end
