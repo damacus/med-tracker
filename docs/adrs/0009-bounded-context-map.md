@@ -149,6 +149,18 @@ delivery deduplication, and push transport. Reminder and stock notification
 jobs consume domain outcomes; they do not own the administration or inventory
 rules that trigger delivery.
 
+### Record lifecycle ownership
+
+[Record lifecycle operational contract](../operations/record-lifecycle.md)
+defines retirement and reactivation as lifecycle and visibility transitions for
+Medication, Person, and Location roots. Medication Administration owns the
+retirement of its `Schedule` and `PersonMedication` sources while preserving
+`MedicationTake` history. People and Care Delegation owns Person lifecycle and
+outbound care-relationship changes, Inventory owns Location availability and
+stock-placement preconditions, Household Access remains the authority source,
+Interoperability preserves retired identity across sync and import/restore, and
+Audit and Compliance records the immutable transition evidence.
+
 ## Dependency Direction
 
 - Web and API controllers are delivery adapters and call application services

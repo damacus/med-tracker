@@ -24,7 +24,8 @@ nav = [
     { "API Contract Conventions" = "api/README.md" },
     { Design = "design.md" },
     { "Database Relationships" = "database-relationships.md" },
-    { "Audit Trail" = "audit-trail.md" }
+    { "Audit Trail" = "audit-trail.md" },
+    { "Record lifecycle contract" = "operations/record-lifecycle.md" }
   ] },
   { "🩺 For Clinicians" = [
     { "NHS dm+d Integration" = "nhs-dmd-integration.md" },
