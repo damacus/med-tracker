@@ -155,6 +155,38 @@ tasks:
           ENVIRONMENT: prod
           COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} rails household_lifecycle:purge'
 
+  hosted-restore:rehearse:
+    desc: Verify an already-restored isolated hosted environment and write durable evidence
+    summary: |
+      Verify an isolated database and attachment restore without performing the restore itself.
+      The evidence destination must be an absolute, non-existing directory on durable storage.
+      WORM_HEADS_JSON must contain the latest signed external checkpoint for sample_a and sample_b.
+    requires:
+      vars:
+        - DATABASE_BACKUP_ID
+        - ATTACHMENT_BACKUP_ID
+        - RESTORE_TARGET_ID
+        - APP_IMAGE
+        - TESTER
+        - HOUSEHOLD_A_ID
+        - HOUSEHOLD_B_ID
+        - WORM_REFERENCE
+        - WORM_HEADS_JSON
+        - EVIDENCE_OUTPUT
+    env:
+      DATABASE_BACKUP_ID: '{{ .DATABASE_BACKUP_ID }}'
+      ATTACHMENT_BACKUP_ID: '{{ .ATTACHMENT_BACKUP_ID }}'
+      RESTORE_TARGET_ID: '{{ .RESTORE_TARGET_ID }}'
+      APP_IMAGE: '{{ .APP_IMAGE }}'
+      TESTER: '{{ .TESTER }}'
+      HOUSEHOLD_A_ID: '{{ .HOUSEHOLD_A_ID }}'
+      HOUSEHOLD_B_ID: '{{ .HOUSEHOLD_B_ID }}'
+      WORM_REFERENCE: '{{ .WORM_REFERENCE }}'
+      WORM_HEADS_JSON: '{{ .WORM_HEADS_JSON }}'
+      EVIDENCE_OUTPUT: '{{ .EVIDENCE_OUTPUT }}'
+    cmds:
+      - mise exec -- ruby scripts/hosted_restore_rehearsal.rb
+
   medication-review:snapshot:
     desc: Regenerate the committed public evidence snapshot
     cmds:

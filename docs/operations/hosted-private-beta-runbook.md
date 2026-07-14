@@ -213,14 +213,63 @@ Never retain free-text reasons, attachment contents, credentials, or health data
 
 ## Restore test
 
-1. Restore the latest backup into an isolated environment.
-2. Run migrations using the owner-capable migration role.
-3. Run the app using `DATABASE_ROLE=med_tracker_app`.
-4. Verify RLS default-denies without tenant context.
-5. Verify each restored household can only see its own people, medicines, schedules, notifications, audit rows, and attachments.
-6. Record restore date, backup identifier, app image/tag, migration version, tester, and outcome.
-7. Run combined audit verification and compare restored chain heads with signed WORM checkpoints.
-8. Treat a valid but older database chain as restore divergence; do not delete newer WORM evidence.
+Restore a current database backup and its matching attachment backup into an isolated,
+production-like target using the approved platform recovery procedure. Do not point the
+workflow below at a live environment. The repository command verifies an already-restored
+target; it does not accept or run a raw restore command.
+
+Before running it, select two households that each contain a representative person,
+immutable security audit event, and attachment. Obtain the latest signed WORM checkpoint
+for each sample from the independent Object Lock evidence store. Supply the sample ids only
+as process inputs; the evidence bundle records them as `sample_a` and `sample_b` and never
+records real tenant identifiers.
+
+```fish
+set -lx DATABASE_BACKUP_ID database-snapshot-2026-07-14T010000Z
+set -lx ATTACHMENT_BACKUP_ID attachments-snapshot-2026-07-14T010000Z
+set -lx RESTORE_TARGET_ID isolated-restore-2026-q3
+set -lx APP_IMAGE ghcr.io/damacus/med-tracker:v0.5.0-rc1
+set -lx TESTER restore-operator
+set -lx HOUSEHOLD_A_ID 101
+set -lx HOUSEHOLD_B_ID 202
+set -lx WORM_REFERENCE object-lock-checkpoint-2026-07-14
+set -lx WORM_HEADS_JSON '{
+  "sample_a": {
+    "chain_epoch": "uuid",
+    "sequence": 11,
+    "entry_hash": "64-hex-characters"
+  },
+  "sample_b": {
+    "chain_epoch": "uuid",
+    "sequence": 22,
+    "entry_hash": "64-hex-characters"
+  }
+}'
+set -lx EVIDENCE_OUTPUT /approved-mounted-evidence/restore-2026-q3
+task hosted-restore:rehearse
+```
+
+The command refuses missing, placeholder, duplicate sample, malformed WORM-head, relative
+evidence, and existing evidence destinations before migrations run. It then runs migrations
+as `med_tracker_owner`, verifies forced RLS and storage as `med_tracker_app`, and runs combined
+database, signed-checkpoint, and Object Lock verification as `med_tracker_audit_verifier`.
+Any failed stage stops later stages and produces a failed bundle; partial work can never claim
+success. Re-run with the same backup identifiers and a new evidence destination after the
+failure is remediated.
+
+The destination must be a pre-approved durable mounted evidence repository, not the source
+tree or transient container filesystem. It receives mode-restricted `evidence.json` and
+`evidence.md` files. Link the durable evidence record from the NFR4 row in the hosted
+hardening audit only after a second operator has inspected both files and confirmed the final
+outcome is `passed`. Never copy secrets, credentials, health data, real tenant identifiers,
+attachment contents, sensitive infrastructure paths, or raw command output into that link.
+
+Perform the rehearsal at least quarterly. A new rehearsal is required after changing the
+database major version, backup or attachment storage system, encryption or Object Lock
+configuration, database roles or RLS policies, migration strategy, application image release
+process, tenant schema, audit chain/checkpoint format, or disaster-recovery platform. A failed
+backup, missed quarterly rehearsal, unverified evidence link, or any invalidation trigger keeps
+#1621 and the hosted launch gate open.
 
 ## Incident response
 
