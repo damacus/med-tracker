@@ -45,12 +45,10 @@ RSpec.describe EnforceStrictHouseholdTenantBoundary do
         migration = described_class.new
         rls_relaxed = false
 
-        allow(migration).to receive(:add_reference)
-        allow(migration).to receive(:verify_legacy_relationships!)
-        allow(migration).to receive(:backfill_households)
-        allow(migration).to receive(:change_column_null)
-        allow(migration).to receive(:add_indexes)
-        allow(migration).to receive(:enable_household_rls)
+        stubbed_steps = %i[add_reference verify_legacy_relationships! backfill_households
+                           change_column_null add_indexes enable_household_rls]
+        stubbed_steps.each { |step| allow(migration).to receive(step) }
+        allow(migration).to receive(:add_foreign_keys) { expect(rls_relaxed).to be(true) }
         allow(migration).to receive(:with_people_rls_relaxed) do |&operation|
           rls_relaxed = true
           operation.call
@@ -58,9 +56,8 @@ RSpec.describe EnforceStrictHouseholdTenantBoundary do
           rls_relaxed = false
         end
 
-        expect(migration).to receive(:add_foreign_keys) { expect(rls_relaxed).to be(true) }
-
         migration.up
+        expect(migration).to have_received(:add_foreign_keys)
       end
 
       it 'reads valid endpoints while migrating as the forced-RLS table owner' do
