@@ -102,6 +102,17 @@ RSpec.describe 'Taskfiles' do
     expect(local_taskfile.dig('tasks', 'db:up').to_json).to include('compose/init-roles.sql')
   end
 
+  it 'bootstraps roles for an already-running local database container' do
+    bootstrap_task = local_taskfile.dig('tasks', 'db:bootstrap')
+
+    expect(bootstrap_task.fetch('deps')).to eq(['db:up'])
+    expect(bootstrap_task.fetch('cmds')).to include(
+      'docker exec -i {{.DB_CONTAINER}} psql --username {{.DB_USER}} --dbname {{.DB_NAME}} ' \
+      '--file /dev/stdin < {{.ROOT_DIR}}/compose/init-roles.sql'
+    )
+    expect(local_taskfile.dig('tasks', 'db:prepare', 'deps')).to eq(['db:bootstrap'])
+  end
+
   it 'defines a Vernier dashboard profiling task' do
     task = root_taskfile.dig('tasks', 'profile:dashboard')
     commands = task.fetch('cmds')

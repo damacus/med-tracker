@@ -35,6 +35,12 @@ tasks:
       - sleep 3
       - docker exec {{.DB_CONTAINER}} pg_isready -U {{.DB_USER}}
 
+  db:bootstrap:
+    desc: Apply local database role bootstrap
+    deps: [db:up]
+    cmds:
+      - docker exec -i {{.DB_CONTAINER}} psql --username {{.DB_USER}} --dbname {{.DB_NAME}} --file /dev/stdin < {{.ROOT_DIR}}/compose/init-roles.sql
+
   # Stop and remove PostgreSQL container
   # Usage: task local:db:down
   db:down:
@@ -47,7 +53,7 @@ tasks:
   # Usage: task local:db:prepare
   db:prepare:
     desc: Run database migrations
-    deps: [db:up]
+    deps: [db:bootstrap]
     env:
       DATABASE_URL: '{{.MIGRATION_DATABASE_URL}}'
       DATABASE_ROLE: med_tracker_owner

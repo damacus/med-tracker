@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require Rails.root.join('db/migrate/20260709131100_enforce_audit_ledger_immutability')
 require Rails.root.join('db/migrate/20260715090000_refresh_database_runtime_privileges')
 
 RSpec.describe 'ConfigureDatabaseRuntimeRoles' do
@@ -36,6 +37,14 @@ RSpec.describe 'ConfigureDatabaseRuntimeRoles' do
       expect(statements).to include(*expected_refresh_statements)
     end
 
+    it 'preserves the final audit privilege contract after refreshing runtime privileges' do
+      described_class.new.up
+
+      expect_audit_privilege_contract
+    ensure
+      EnforceAuditLedgerImmutability.new.up
+    end
+
     def expected_refresh_statements
       [
         'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO med_tracker_app;',
@@ -52,6 +61,50 @@ RSpec.describe 'ConfigureDatabaseRuntimeRoles' do
         'ALTER DEFAULT PRIVILEGES FOR ROLE med_tracker_owner IN SCHEMA med_tracker ' \
         'GRANT EXECUTE ON FUNCTIONS TO med_tracker_app;'
       ]
+    end
+
+    def expect_audit_privilege_contract
+      expect_source_audit_privileges
+      expect_household_audit_view_privilege
+      expect_no_ledger_privileges
+    end
+
+    def expect_source_audit_privileges
+      %w[versions security_audit_events].each do |table_name|
+        expect(table_privilege(table_name, 'SELECT')).to be(true)
+        expect(table_privilege(table_name, 'INSERT')).to be(true)
+        expect(table_privilege(table_name, 'UPDATE')).to be(false)
+        expect(table_privilege(table_name, 'DELETE')).to be(false)
+      end
+    end
+
+    def expect_household_audit_view_privilege
+      expect(table_privilege('household_audit_ledger_entries', 'SELECT')).to be(true)
+      %w[INSERT UPDATE DELETE].each do |action|
+        expect(table_privilege('household_audit_ledger_entries', action)).to be(false)
+      end
+    end
+
+    def expect_no_ledger_privileges
+      EnforceAuditLedgerImmutability::LEDGER_TABLES.each do |table_name|
+        %w[SELECT INSERT UPDATE DELETE].each do |action|
+          expect(table_privilege(table_name, action)).to be(false)
+        end
+        expect(sequence_privilege("#{table_name}_id_seq", 'USAGE')).to be(false)
+        expect(sequence_privilege("#{table_name}_id_seq", 'SELECT')).to be(false)
+      end
+    end
+
+    def table_privilege(table_name, action)
+      ActiveRecord::Base.connection.select_value(
+        "SELECT has_table_privilege('med_tracker_app', '#{table_name}', '#{action}')"
+      )
+    end
+
+    def sequence_privilege(sequence_name, action)
+      ActiveRecord::Base.connection.select_value(
+        "SELECT has_sequence_privilege('med_tracker_app', '#{sequence_name}', '#{action}')"
+      )
     end
   end
 end
