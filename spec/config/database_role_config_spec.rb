@@ -281,8 +281,10 @@ RSpec.describe DatabaseRoleConfig do
     end
 
     def create_legacy_auxiliary_database(database_name)
-      bootstrap_connection.exec("CREATE DATABASE #{PG::Connection.quote_ident(database_name)} OWNER medtracker")
-      with_database_connection('medtracker', 'medtracker_password', database_name) do |connection|
+      bootstrap_connection.exec(
+        "CREATE DATABASE #{PG::Connection.quote_ident(database_name)} OWNER #{PG::Connection.quote_ident(database_uri.user)}"
+      )
+      with_database_connection(database_uri.user, database_uri.password, database_name) do |connection|
         connection.exec('CREATE TABLE legacy_rows (value text NOT NULL)')
         connection.exec("INSERT INTO legacy_rows (value) VALUES ('preserved')")
         connection.exec('GRANT CREATE ON SCHEMA public TO PUBLIC')
