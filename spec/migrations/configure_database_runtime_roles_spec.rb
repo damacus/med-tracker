@@ -71,11 +71,15 @@ RSpec.describe 'ConfigureDatabaseRuntimeRoles' do
 
     def expect_source_audit_privileges
       %w[versions security_audit_events].each do |table_name|
-        expect(table_privilege(table_name, 'SELECT')).to be(true)
-        expect(table_privilege(table_name, 'INSERT')).to be(true)
-        expect(table_privilege(table_name, 'UPDATE')).to be(false)
-        expect(table_privilege(table_name, 'DELETE')).to be(false)
+        expect_source_audit_privileges_for(table_name)
       end
+    end
+
+    def expect_source_audit_privileges_for(table_name)
+      expect(table_privilege(table_name, 'SELECT')).to be(true)
+      expect(table_privilege(table_name, 'INSERT')).to be(true)
+      expect(table_privilege(table_name, 'UPDATE')).to be(false)
+      expect(table_privilege(table_name, 'DELETE')).to be(false)
     end
 
     def expect_household_audit_view_privilege
