@@ -117,9 +117,9 @@ tasks:
     requires:
       vars: [ENVIRONMENT]
     vars:
-      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
+      MIGRATION_SERVICE: "migrate-{{ .ENVIRONMENT }}"
     cmds:
-      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} run --rm {{ .WEB_SERVICE }} rails db:migrate"
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} run --rm {{ .MIGRATION_SERVICE }} rails db:migrate"
 
   # Follow logs from Docker containers
   # Press Ctrl+C to stop following logs
@@ -156,11 +156,14 @@ tasks:
     internal: true
     requires:
       vars: [ENVIRONMENT]
+    vars:
+      SERVICE: '{{ .SERVICE | default (printf "web-%s" .ENVIRONMENT) }}'
     cmds:
       - echo "Seeding {{ .ENVIRONMENT }} database..."
       - task: run
         vars:
           ENVIRONMENT: { ref: .ENVIRONMENT }
+          SERVICE: { ref: .SERVICE }
           COMMAND: "rails db:seed"
       - defer: echo "✓ Database seeding completed"
 

@@ -13,69 +13,54 @@ Run this bootstrap when all of these are true:
 
 - The database was created by a MedTracker release before 0.5.
 - The deployment uses PostgreSQL roles without app-superuser privileges.
-- The 0.5 release will run migrations with `DATABASE_ROLE=med_tracker_owner`.
+- The release will use distinct migration and runtime login credentials.
 
-Do not run the web process as the migration role. The app runtime should use
-`DATABASE_ROLE=med_tracker_app`.
+Do not give the runtime process the migration credential or the bootstrap
+credential.
 
 ## One-time bootstrap
 
-Run this SQL as a database administrator, superuser, or a role allowed to create
-and manage PostgreSQL roles. Replace `<database_name>` and `<app_login_role>`
-with the actual database and login role names. Quote names that contain hyphens.
+Stop web and job workloads. From the matching release checkout, run the shared
+bootstrap artifact as a database administrator or another role allowed to create
+and manage PostgreSQL roles:
 
-```sql
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'med_tracker_owner') THEN
-    CREATE ROLE med_tracker_owner NOLOGIN;
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'med_tracker_app') THEN
-    CREATE ROLE med_tracker_app NOLOGIN;
-  END IF;
-END
-$$;
-
-ALTER ROLE med_tracker_owner NOLOGIN;
-ALTER ROLE med_tracker_app NOLOGIN NOSUPERUSER NOBYPASSRLS;
-
-GRANT med_tracker_owner TO <app_login_role>;
-GRANT med_tracker_app TO <app_login_role>;
-
-ALTER DATABASE <database_name> OWNER TO med_tracker_owner;
-ALTER SCHEMA public OWNER TO med_tracker_owner;
-
-GRANT CONNECT ON DATABASE <database_name> TO med_tracker_owner, med_tracker_app;
-GRANT USAGE, CREATE ON SCHEMA public TO med_tracker_owner;
-GRANT USAGE ON SCHEMA public TO med_tracker_app;
-
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'med_tracker') THEN
-    GRANT USAGE ON SCHEMA med_tracker TO med_tracker_owner, med_tracker_app;
-  END IF;
-END
-$$;
+```bash
+psql "$BOOTSTRAP_DATABASE_URL" \
+  --set=runtime_password="$RUNTIME_DATABASE_PASSWORD" \
+  --set=migration_password="$MIGRATION_DATABASE_PASSWORD" \
+  --set=auxiliary_password="$AUXILIARY_DATABASE_PASSWORD" \
+  --file compose/init-roles.sql
 ```
 
-The app login should remain a normal non-superuser role. Do not grant it
-`CREATEROLE`, `BYPASSRLS`, or admin option on the runtime roles for normal
-upgrades.
+The SQL is idempotent and applies to the database named by
+`BOOTSTRAP_DATABASE_URL`. It creates `medtracker_migration`,
+`medtracker_runtime`, and `medtracker_auxiliary` as non-superuser logins. The
+memberships are deliberately narrow:
+
+```sql
+GRANT med_tracker_owner TO medtracker_migration WITH INHERIT FALSE, SET TRUE;
+GRANT med_tracker_app TO medtracker_runtime WITH INHERIT FALSE, SET TRUE;
+```
+
+Provision separate databases owned by `medtracker_auxiliary` for Solid Queue,
+Solid Cache, and Solid Cable. Revoke public connection access to those databases
+and grant it only to the auxiliary login. Do not grant the auxiliary login any
+role on the primary database.
 
 ## Preflight check
 
 After the bootstrap SQL and before running migrations, run the read-only Rails
-preflight from a Rails container using the same database login the deployment
-uses:
+preflight through `MIGRATION_DATABASE_URL` with
+`DATABASE_ROLE=med_tracker_owner`:
 
 ```bash
 rails med_tracker:pre_0_5_database_upgrade_preflight
 ```
 
-The preflight checks that both runtime roles exist, are `NOLOGIN`, are not
-superusers, do not have `BYPASSRLS`, and that the app login is a member of both
-roles. If it fails, fix the bootstrap state before running `db:prepare`.
+The preflight checks that the group and login roles have safe attributes, that
+the migration login can set only `med_tracker_owner`, and that the runtime login
+can set only `med_tracker_app`. If it fails, fix the bootstrap state before
+running `db:migrate`.
 
 ## Account access bootstrap
 
@@ -110,13 +95,19 @@ configuration:
 initContainers:
   migrate:
     env:
+      DATABASE_URL: ${MIGRATION_DATABASE_URL}
       DATABASE_ROLE: med_tracker_owner
 
 containers:
   app:
     env:
+      DATABASE_URL: ${RUNTIME_DATABASE_URL}
       DATABASE_ROLE: med_tracker_app
 ```
+
+Do not add `BOOTSTRAP_DATABASE_URL` to either workload. Store the bootstrap
+credential only in the operator-controlled process that runs
+`compose/init-roles.sql`, then remove it after the bootstrap succeeds.
 
 With Flux or another GitOps controller, commit those values to the source repo
 before reconciling the release.
@@ -126,13 +117,21 @@ before reconciling the release.
 After the migration and app startup complete, verify the role state:
 
 ```sql
-SELECT rolname, rolcreaterole, rolsuper, rolbypassrls
+SELECT rolname, rolcreaterole, rolcreatedb, rolreplication, rolsuper, rolbypassrls
 FROM pg_roles
-WHERE rolname IN ('med_tracker_owner', 'med_tracker_app', '<app_login_role>')
+WHERE rolname IN (
+  'med_tracker_owner',
+  'med_tracker_app',
+  'medtracker_migration',
+  'medtracker_runtime',
+  'medtracker_auxiliary'
+)
 ORDER BY rolname;
 
 SELECT m.roleid::regrole AS granted_role,
        m.member::regrole AS member_role,
+       m.inherit_option,
+       m.set_option,
        m.admin_option
 FROM pg_auth_members m
 WHERE m.roleid IN ('med_tracker_owner'::regrole, 'med_tracker_app'::regrole)
@@ -141,10 +140,24 @@ ORDER BY 1::text, 2::text;
 
 Expected result:
 
-- `med_tracker_owner` is `NOLOGIN`, not superuser, and not `BYPASSRLS`.
-- `med_tracker_app` is `NOLOGIN`, not superuser, and not `BYPASSRLS`.
-- The app login is a member of both runtime roles.
-- `admin_option` is `false` for the app login memberships.
+- `med_tracker_owner` is `NOLOGIN`, not superuser, and cannot create roles,
+  create databases, replicate, or bypass RLS.
+- `med_tracker_app` is `NOLOGIN`, not superuser, and cannot create roles,
+  create databases, replicate, or bypass RLS.
+- `medtracker_migration`, `medtracker_runtime`, and `medtracker_auxiliary` are
+  login roles, but are not superusers and cannot create roles, create databases,
+  replicate, or bypass RLS.
+- `medtracker_migration` has only the `med_tracker_owner` membership.
+- `medtracker_runtime` has only the `med_tracker_app` membership.
+- Both memberships have `inherit_option=false`, `set_option=true`, and
+  `admin_option=false`.
+- `medtracker_auxiliary` has neither membership and cannot connect to the primary
+  database.
+
+Connect through `RUNTIME_DATABASE_URL` and verify `SET ROLE med_tracker_app`
+succeeds while `SET ROLE med_tracker_owner` is denied. Connect through
+`MIGRATION_DATABASE_URL` and verify the inverse. Do not test these credentials
+against production from an unapproved network path.
 
 Verify household backfill and migration completion:
 

@@ -104,7 +104,9 @@ jobs:
 
     env:
       TEST_DATABASE_ADAPTER: postgresql
-      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
+      BOOTSTRAP_DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
+      MIGRATION_DATABASE_URL: postgres://medtracker_migration:local_migration_only@localhost:5432/medtracker_test
+      RUNTIME_DATABASE_URL: postgres://medtracker_runtime:local_runtime_only@localhost:5432/medtracker_test
       RAILS_ENV: test
       COVERAGE: true
       SIMPLECOV_COMMAND_NAME: rspec-non-system
@@ -119,13 +121,25 @@ jobs:
           ruby-version: "4.0.6"
           bundler-cache: true
 
+      - name: Bootstrap database roles
+        run: psql "$BOOTSTRAP_DATABASE_URL" --file compose/init-roles.sql
+
       - name: Set up database
+        env:
+          DATABASE_URL: ${{ env.MIGRATION_DATABASE_URL }}
+          DATABASE_ROLE: med_tracker_owner
         run: bundle exec rails db:migrate
 
       - name: Precompile assets
+        env:
+          DATABASE_URL: ${{ env.RUNTIME_DATABASE_URL }}
+          DATABASE_ROLE: med_tracker_app
         run: bundle exec rails assets:precompile
 
       - name: Run non-browser tests
+        env:
+          DATABASE_URL: ${{ env.BOOTSTRAP_DATABASE_URL }}
+          DATABASE_ROLE:
         run: bundle exec rspec --format RSpec::Github::Formatter --tag ~browser
 
       - name: Upload SimpleCov coverage report
@@ -161,7 +175,9 @@ jobs:
 
     env:
       TEST_DATABASE_ADAPTER: postgresql
-      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
+      BOOTSTRAP_DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
+      MIGRATION_DATABASE_URL: postgres://medtracker_migration:local_migration_only@localhost:5432/medtracker_test
+      RUNTIME_DATABASE_URL: postgres://medtracker_runtime:local_runtime_only@localhost:5432/medtracker_test
       RAILS_ENV: test
       CI: true
 
@@ -174,6 +190,9 @@ jobs:
         with:
           ruby-version: "4.0.6"
           bundler-cache: true
+
+      - name: Bootstrap database roles
+        run: psql "$BOOTSTRAP_DATABASE_URL" --file compose/init-roles.sql
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -194,12 +213,21 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Set up database
+        env:
+          DATABASE_URL: ${{ env.MIGRATION_DATABASE_URL }}
+          DATABASE_ROLE: med_tracker_owner
         run: bundle exec rails db:migrate
 
       - name: Precompile assets
+        env:
+          DATABASE_URL: ${{ env.RUNTIME_DATABASE_URL }}
+          DATABASE_ROLE: med_tracker_app
         run: bundle exec rails assets:precompile
 
       - name: Run browser tests (shard ${{ matrix.shard }}/2)
+        env:
+          DATABASE_URL: ${{ env.BOOTSTRAP_DATABASE_URL }}
+          DATABASE_ROLE:
         shell: bash
         run: |
           # Get all spec files and split tagged browser examples for this shard
@@ -254,7 +282,9 @@ jobs:
           --health-retries 5
     env:
       TEST_DATABASE_ADAPTER: postgresql
-      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
+      BOOTSTRAP_DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
+      MIGRATION_DATABASE_URL: postgres://medtracker_migration:local_migration_only@localhost:5432/medtracker_test
+      RUNTIME_DATABASE_URL: postgres://medtracker_runtime:local_runtime_only@localhost:5432/medtracker_test
       RAILS_ENV: test
     steps:
       - name: Checkout code
@@ -268,7 +298,13 @@ jobs:
           ruby-version: "4.0.6"
           bundler-cache: true
 
+      - name: Bootstrap database roles
+        run: psql "$BOOTSTRAP_DATABASE_URL" --file compose/init-roles.sql
+
       - name: Set up database
+        env:
+          DATABASE_URL: ${{ env.MIGRATION_DATABASE_URL }}
+          DATABASE_ROLE: med_tracker_owner
         run: bundle exec rails db:migrate
 
       - name: Ensure base ref is available
@@ -277,6 +313,9 @@ jobs:
       # Only mutates subjects changed since main (mutant --since), so a typical
       # PR is fast. usage: opensource (config/mutant.yml) means no licence/token.
       - name: Mutation test changed subjects (advisory)
+        env:
+          DATABASE_URL: ${{ env.BOOTSTRAP_DATABASE_URL }}
+          DATABASE_ROLE:
         run: bundle exec mutant run --since origin/main
 
   lighthouse:
@@ -302,7 +341,9 @@ jobs:
 
     env:
       TEST_DATABASE_ADAPTER: postgresql
-      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
+      BOOTSTRAP_DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
+      MIGRATION_DATABASE_URL: postgres://medtracker_migration:local_migration_only@localhost:5432/medtracker_test
+      RUNTIME_DATABASE_URL: postgres://medtracker_runtime:local_runtime_only@localhost:5432/medtracker_test
       RAILS_ENV: test
       CI: true
 
@@ -315,6 +356,9 @@ jobs:
         with:
           ruby-version: "4.0.6"
           bundler-cache: true
+
+      - name: Bootstrap database roles
+        run: psql "$BOOTSTRAP_DATABASE_URL" --file compose/init-roles.sql
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -336,15 +380,27 @@ jobs:
         run: npm ci
 
       - name: Set up database
-        run: bundle exec rails db:prepare
+        env:
+          DATABASE_URL: ${{ env.MIGRATION_DATABASE_URL }}
+          DATABASE_ROLE: med_tracker_owner
+        run: bundle exec rails db:migrate
 
       - name: Seed database
+        env:
+          DATABASE_URL: ${{ env.BOOTSTRAP_DATABASE_URL }}
+          DATABASE_ROLE:
         run: bundle exec rails db:seed
 
       - name: Precompile assets
+        env:
+          DATABASE_URL: ${{ env.RUNTIME_DATABASE_URL }}
+          DATABASE_ROLE: med_tracker_app
         run: bundle exec rails assets:precompile
 
       - name: Start Rails server
+        env:
+          DATABASE_URL: ${{ env.RUNTIME_DATABASE_URL }}
+          DATABASE_ROLE: med_tracker_app
         run: |
           bundle exec rails server -p 3000 > tmp/lighthouse-server.log 2>&1 &
           for attempt in {1..30}; do

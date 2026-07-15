@@ -64,6 +64,22 @@ RSpec.describe 'Taskfiles' do
     )
   end
 
+  it 'runs database migrations through the migration login service' do
+    migration_task = internal_taskfile.dig('tasks', 'db-migrate')
+
+    expect(migration_task.dig('vars', 'MIGRATION_SERVICE')).to eq('migrate-{{ .ENVIRONMENT }}')
+    expect(migration_task.dig('cmds', 0)).to include('{{ .MIGRATION_SERVICE }} rails db:migrate')
+    expect(migration_task.to_json).not_to include('WEB_SERVICE')
+  end
+
+  it 'runs specs through the isolated test login service' do
+    test_task = root_taskfile.dig('tasks', 'test')
+
+    expect(test_task.dig('cmds', 0, 'vars', 'SERVICE')).to eq('test-runner')
+    expect(test_taskfile.dig('tasks', 'seed', 'cmds', 0, 'vars', 'SERVICE')).to eq('test-runner')
+    expect(test_taskfile.dig('tasks', 'rebuild', 'cmds', 3, 'vars', 'SERVICE')).to eq('test-runner')
+  end
+
   it 'defines a Vernier dashboard profiling task' do
     task = root_taskfile.dig('tasks', 'profile:dashboard')
     commands = task.fetch('cmds')
