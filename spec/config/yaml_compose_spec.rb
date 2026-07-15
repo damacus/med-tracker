@@ -6,6 +6,9 @@ RSpec.describe YAML do
   let(:compose_config) do
     described_class.safe_load(Rails.root.join('compose.yaml').read, aliases: true)
   end
+  let(:base_compose_config) do
+    described_class.safe_load(Rails.root.join('compose/base.yml').read, aliases: true)
+  end
   let(:init_roles_sql) { Rails.root.join('compose/init-roles.sql').read }
   let(:dockerfile) { Rails.root.join('Dockerfile').read }
   let(:deploy_config) { Rails.root.join('config/deploy.yml').read }
@@ -49,6 +52,25 @@ RSpec.describe YAML do
     expect(compose_config.dig('services', 'migrate-test', 'build', 'target')).to eq('test')
   end
 
+  it 'confines bootstrap fixture access to the ephemeral test runner', :aggregate_failures do
+    runner = compose_config.dig('services', 'test-runner')
+
+    expect(runner.dig('environment', 'DATABASE_URL'))
+      .to eq('postgresql://medtracker:medtracker_password@db-test:5432/medtracker')
+    expect(runner.dig('environment', 'DATABASE_ROLE')).to be_nil
+
+    %w[migrate-dev web-dev migrate-test web-test migrate-prod web-prod].each do |service_name|
+      expect(compose_config.dig('services', service_name, 'environment').to_json)
+        .not_to include('medtracker_password')
+    end
+  end
+
+  it 'prepares non-production databases and migrates production through the owner login' do
+    expect(compose_config.dig('services', 'migrate-dev', 'command')).to eq('bin/rails db:prepare')
+    expect(compose_config.dig('services', 'migrate-test', 'command')).to eq('bin/rails db:prepare')
+    expect(compose_config.dig('services', 'migrate-prod', 'command')).to eq('bin/rails db:migrate')
+  end
+
   it 'passes OIDC environment through to Rails containers used for local OIDC flows' do
     expected_keys = %w[
       APP_URL
@@ -74,12 +96,58 @@ RSpec.describe YAML do
     end
 
     expect(database_roles).to eq(
-      'migrate-dev' => '${DEV_MIGRATION_DATABASE_ROLE:-}',
-      'web-dev' => '${DEV_DATABASE_ROLE:-}',
-      'migrate-test' => '${TEST_MIGRATION_DATABASE_ROLE:-}',
-      'web-test' => '${TEST_DATABASE_ROLE:-}',
+      'migrate-dev' => '${DEV_MIGRATION_DATABASE_ROLE:-med_tracker_owner}',
+      'web-dev' => '${DEV_DATABASE_ROLE:-med_tracker_app}',
+      'migrate-test' => '${TEST_MIGRATION_DATABASE_ROLE:-med_tracker_owner}',
+      'web-test' => '${TEST_DATABASE_ROLE:-med_tracker_app}',
       'migrate-prod' => '${MIGRATION_DATABASE_ROLE:-med_tracker_owner}',
       'web-prod' => '${DATABASE_ROLE:-med_tracker_app}'
+    )
+  end
+
+  it 'uses distinct non-superuser logins at every Rails database boundary', :aggregate_failures do
+    expected_database_urls.each do |service_name, urls|
+      expect(compose_config.dig('services', service_name, 'environment')).to include(urls)
+      expect(compose_config.dig('services', service_name, 'environment').to_json)
+        .not_to include('medtracker_password')
+    end
+    expect(base_compose_config.dig('services', 'postgres', 'environment', 'POSTGRES_PASSWORD'))
+      .to eq('medtracker_password')
+  end
+
+  it 'grants each primary login only its intended SET ROLE membership', :aggregate_failures do
+    expect_primary_login_memberships
+  end
+
+  it 'repairs unsafe group roles and public schema creation', :aggregate_failures do
+    expect(init_roles_sql).to include(
+      'ALTER ROLE med_tracker_owner NOLOGIN NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS;',
+      'ALTER ROLE med_tracker_app NOLOGIN NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS;',
+      'REVOKE CREATE ON SCHEMA public FROM PUBLIC;'
+    )
+  end
+
+  it 'loads deployment passwords from the environment and fails fast', :aggregate_failures do
+    expect(init_roles_sql).to start_with("\\set ON_ERROR_STOP on\n")
+    expect(init_roles_sql).to include(
+      '\\getenv runtime_password RUNTIME_DATABASE_PASSWORD',
+      '\\getenv migration_password MIGRATION_DATABASE_PASSWORD',
+      '\\getenv auxiliary_password AUXILIARY_DATABASE_PASSWORD'
+    )
+  end
+
+  it 'isolates the auxiliary login from the primary database', :aggregate_failures do
+    expect(init_roles_sql).to include(
+      '\\if :{?auxiliary_password}',
+      "PASSWORD %L NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS', :'auxiliary_password'",
+      "format('REVOKE CONNECT ON DATABASE %I FROM PUBLIC', current_database())"
+    )
+    expect(init_roles_sql).not_to match(/GRANT\s+CONNECT\s+ON\s+DATABASE.*TO[^;]*medtracker_auxiliary/i)
+    expect(init_multiple_databases).to include(
+      'CREATE DATABASE $db OWNER medtracker_auxiliary',
+      'ALTER DATABASE $db OWNER TO medtracker_auxiliary',
+      'ALTER SCHEMA public OWNER TO medtracker_auxiliary',
+      'REVOKE CREATE ON SCHEMA public FROM PUBLIC'
     )
   end
 
@@ -140,7 +208,9 @@ RSpec.describe YAML do
   end
 
   it 'bootstraps the deployed runtime role without owner or bypassrls privileges' do
-    expect(init_roles_sql).to include('ALTER ROLE med_tracker_app NOLOGIN NOSUPERUSER NOBYPASSRLS;')
+    expect(init_roles_sql).to include(
+      'ALTER ROLE med_tracker_app NOLOGIN NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS;'
+    )
     expect(init_roles_sql).to include('GRANT USAGE ON SCHEMA public TO med_tracker_app;')
     expect(init_roles_sql).not_to match(/GRANT\s+USAGE,\s+CREATE\s+ON\s+SCHEMA\s+public\s+TO\s+med_tracker_app/i)
   end
@@ -162,5 +232,198 @@ RSpec.describe YAML do
   it 'keeps development and test web host ports Docker-assigned for parallel worktrees' do
     expect(compose_config.dig('services', 'web-dev', 'ports')).to be_nil
     expect(compose_config.dig('services', 'web-test', 'ports')).to be_nil
+  end
+
+  context 'with CI database login routing' do
+    it 'bootstraps roles before migrating through the owner-only login' do
+      %w[test_non_system test_system mutation lighthouse].each do |job_name|
+        expect_ci_database_routing(job_name)
+      end
+    end
+
+    it 'uses bootstrap access only for CI test harness steps' do
+      ci_harness_steps.each do |job_name, step_name|
+        step = ci_workflow.dig(job_name, 'steps').find { |candidate| candidate['name'] == step_name }
+
+        expect(step.fetch('env')).to include(
+          'DATABASE_URL' => ci_bootstrap_url,
+          'DATABASE_ROLE' => nil
+        )
+      end
+    end
+
+    it 'scopes each database credential to only the step that consumes it' do
+      %w[test_non_system test_system mutation lighthouse].each do |job_name|
+        expect(ci_workflow.fetch(job_name).fetch('env')).not_to include(
+          'BOOTSTRAP_DATABASE_URL', 'MIGRATION_DATABASE_URL', 'RUNTIME_DATABASE_URL', 'DATABASE_URL'
+        )
+        expect_ci_step_credentials(ci_workflow.fetch(job_name))
+      end
+    end
+
+    it 'starts the CI Rails server through the runtime-only login' do
+      server_step = ci_workflow.dig('lighthouse', 'steps').find { |step| step['name'] == 'Start Rails server' }
+
+      expect(server_step.fetch('env')).to include(
+        'DATABASE_URL' => ci_runtime_url,
+        'DATABASE_ROLE' => 'med_tracker_app'
+      )
+    end
+  end
+
+  def expected_database_urls
+    {
+      'migrate-dev' => development_migration_urls,
+      'web-dev' => development_runtime_urls,
+      'migrate-test' => test_migration_urls,
+      'web-test' => test_runtime_urls,
+      'migrate-prod' => production_migration_urls,
+      'web-prod' => production_runtime_urls
+    }
+  end
+
+  def development_migration_urls
+    {
+      'DATABASE_URL' => 'postgresql://medtracker_migration:local_migration_only@db-dev:5432/medtracker',
+      'SOLID_QUEUE_DATABASE_URL' =>
+        'postgresql://medtracker_auxiliary:local_auxiliary_only@db-dev:5432/medtracker_queue'
+    }
+  end
+
+  def development_runtime_urls
+    development_migration_urls.merge(
+      'DATABASE_URL' => 'postgresql://medtracker_runtime:local_runtime_only@db-dev:5432/medtracker'
+    )
+  end
+
+  def test_migration_urls
+    { 'DATABASE_URL' => 'postgresql://medtracker_migration:local_migration_only@db-test:5432/medtracker' }
+  end
+
+  def test_runtime_urls
+    { 'DATABASE_URL' => 'postgresql://medtracker_runtime:local_runtime_only@db-test:5432/medtracker' }
+  end
+
+  def production_migration_urls
+    {
+      'DATABASE_URL' => 'postgresql://medtracker_migration:local_migration_only@db-prod:5432/medtracker',
+      'SOLID_QUEUE_DATABASE_URL' => auxiliary_production_url('queue'),
+      'SOLID_CACHE_DATABASE_URL' => auxiliary_production_url('cache'),
+      'SOLID_CABLE_DATABASE_URL' => auxiliary_production_url('cable')
+    }
+  end
+
+  def production_runtime_urls
+    production_migration_urls.merge(
+      'DATABASE_URL' => 'postgresql://medtracker_runtime:local_runtime_only@db-prod:5432/medtracker'
+    )
+  end
+
+  def auxiliary_production_url(database)
+    "postgresql://medtracker_auxiliary:local_auxiliary_only@db-prod:5432/medtracker_production_#{database}"
+  end
+
+  def expect_primary_login_memberships
+    expect(init_roles_sql).to include(*expected_primary_membership_statements)
+    expect(init_roles_sql).not_to include(
+      'GRANT med_tracker_owner TO medtracker_runtime',
+      'GRANT med_tracker_app TO medtracker_migration',
+      'GRANT med_tracker_owner TO medtracker;',
+      'GRANT med_tracker_app TO medtracker;'
+    )
+  end
+
+  def expected_primary_membership_statements
+    [
+      'GRANT med_tracker_app TO medtracker_runtime WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;',
+      'GRANT med_tracker_owner TO medtracker_migration WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;',
+      "WHERE member.rolname IN ('medtracker_auxiliary', 'medtracker_migration', 'medtracker_runtime')",
+      '\\if :{?runtime_password}',
+      '\\if :{?migration_password}',
+      "PASSWORD %L NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS', :'runtime_password'",
+      "PASSWORD %L NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS', :'migration_password'",
+      'ALTER DEFAULT PRIVILEGES FOR ROLE med_tracker_owner IN SCHEMA public'
+    ]
+  end
+
+  def init_multiple_databases
+    Rails.root.join('compose/init-multiple-dbs.sh').read
+  end
+
+  def ci_workflow
+    YAML.safe_load(Rails.root.join('.github/workflows/ci.yml').read, aliases: true).fetch('jobs')
+  end
+
+  def ci_harness_steps
+    {
+      'test_non_system' => 'Run non-browser tests',
+      'test_system' => 'Run browser tests (shard ${{ matrix.shard }}/2)',
+      'mutation' => 'Mutation test changed subjects (advisory)'
+    }
+  end
+
+  def expect_ci_database_routing(job_name)
+    job = ci_workflow.fetch(job_name)
+    expect_ci_database_urls(job)
+    expect_ci_database_steps(job)
+  end
+
+  def expect_ci_database_urls(job)
+    expect(job.fetch('env')).not_to include(
+      'BOOTSTRAP_DATABASE_URL', 'MIGRATION_DATABASE_URL', 'RUNTIME_DATABASE_URL', 'DATABASE_URL'
+    )
+  end
+
+  def expect_ci_database_steps(job)
+    steps = job.fetch('steps').index_by { |step| step['name'] }
+
+    expect_ci_bootstrap_step(steps.fetch('Bootstrap database roles'))
+    expect(steps.dig('Set up database', 'env')).to include(
+      'DATABASE_URL' => ci_migration_url,
+      'DATABASE_ROLE' => 'med_tracker_owner'
+    )
+  end
+
+  def expect_ci_bootstrap_step(step)
+    expect(step.fetch('run')).to eq('psql "$DATABASE_URL" --file compose/init-roles.sql')
+    expect(step.fetch('env')).to eq('DATABASE_URL' => ci_bootstrap_url)
+  end
+
+  def expect_ci_step_credentials(job)
+    job.fetch('steps').each do |step|
+      environment = step.fetch('env', {})
+      expected_url = ci_step_database_urls.fetch(step['name'], nil)
+
+      if expected_url
+        expect(environment.fetch('DATABASE_URL')).to eq(expected_url)
+      else
+        expect(environment.to_json).not_to include('medtracker_password', 'local_migration_only', 'local_runtime_only')
+      end
+    end
+  end
+
+  def ci_step_database_urls
+    {
+      'Bootstrap database roles' => ci_bootstrap_url,
+      'Set up database' => ci_migration_url,
+      'Precompile assets' => ci_runtime_url,
+      'Run non-browser tests' => ci_bootstrap_url,
+      'Run browser tests (shard ${{ matrix.shard }}/2)' => ci_bootstrap_url,
+      'Mutation test changed subjects (advisory)' => ci_bootstrap_url,
+      'Seed database' => ci_bootstrap_url,
+      'Start Rails server' => ci_runtime_url
+    }
+  end
+
+  def ci_bootstrap_url
+    'postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test'
+  end
+
+  def ci_migration_url
+    'postgres://medtracker_migration:local_migration_only@localhost:5432/medtracker_test'
+  end
+
+  def ci_runtime_url
+    'postgres://medtracker_runtime:local_runtime_only@localhost:5432/medtracker_test'
   end
 end

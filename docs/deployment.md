@@ -47,14 +47,11 @@ task test
 If you need to run the production compose file locally:
 
 ```bash
-docker compose -f docker-compose.yml up -d
+task prod:up
 ```
 
-Run migrations inside the web container:
-
-```bash
-docker compose -f docker-compose.yml run --rm web rails db:migrate
-```
+The dedicated `migrate-prod` service completes migrations before `web-prod`
+starts.
 
 ## Environment and database notes
 
@@ -64,8 +61,63 @@ docker compose -f docker-compose.yml run --rm web rails db:migrate
 - Existing databases created before 0.5 need the
   [pre-0.5 database upgrade](pre-0-5-database-upgrade.md) bootstrap before
   running 0.5 migrations.
-- Run migrations with `DATABASE_ROLE=med_tracker_owner`; run the web process
-  with `DATABASE_ROLE=med_tracker_app`.
+
+## Database login boundaries
+
+Use independent secrets and URLs for every database boundary. The local Compose
+passwords are development-only defaults and must not be reused in a deployment.
+
+| Setting | Login | Session role | Used by |
+|---|---|---|---|
+| `BOOTSTRAP_DATABASE_URL` | Cluster administrator | None | One-time role bootstrap only |
+| `MIGRATION_DATABASE_URL` | `medtracker_migration` | `med_tracker_owner` | Migrations and legacy upgrades |
+| `RUNTIME_DATABASE_URL` | `medtracker_runtime` | `med_tracker_app` | Web and job processes |
+| `SOLID_QUEUE_DATABASE_URL` | `medtracker_auxiliary` | None | Solid Queue |
+| `SOLID_CACHE_DATABASE_URL` | `medtracker_auxiliary` | None | Solid Cache |
+| `SOLID_CABLE_DATABASE_URL` | `medtracker_auxiliary` | None | Solid Cable |
+
+Supply `MIGRATION_DATABASE_URL` as the migration container's `DATABASE_URL` with
+`DATABASE_ROLE=med_tracker_owner`. Supply `RUNTIME_DATABASE_URL` as every web or
+job container's `DATABASE_URL` with `DATABASE_ROLE=med_tracker_app`. Never mount
+`BOOTSTRAP_DATABASE_URL` into either workload. The auxiliary URLs must use
+separate databases; their login is deliberately denied access to the primary
+database.
+
+For an existing PostgreSQL cluster, stop application traffic and run the
+idempotent role bootstrap from the release checkout with deployment-specific
+passwords:
+
+```fish
+read --silent --export --prompt-str 'Runtime database password: ' RUNTIME_DATABASE_PASSWORD
+read --silent --export --prompt-str 'Migration database password: ' MIGRATION_DATABASE_PASSWORD
+read --silent --export --prompt-str 'Auxiliary database password: ' AUXILIARY_DATABASE_PASSWORD
+psql "$BOOTSTRAP_DATABASE_URL" --file compose/init-roles.sql
+set --erase RUNTIME_DATABASE_PASSWORD MIGRATION_DATABASE_PASSWORD AUXILIARY_DATABASE_PASSWORD
+```
+
+The SQL reads the three passwords from its environment and stops on the first
+error. The passwords are not placed in `psql` arguments. Configure the bootstrap
+connection itself with an operator-controlled `PGPASSFILE`.
+
+For existing auxiliary databases, run the same idempotent ownership repair used
+by fresh Compose initialization. It preserves rows while transferring the
+database, public schema, tables, sequences, views, routines, and user-defined
+types to `medtracker_auxiliary`:
+
+```fish
+set -lx POSTGRES_MULTIPLE_DATABASES medtracker_production_queue,medtracker_production_cache,medtracker_production_cable
+set -lx POSTGRES_USER cluster_admin
+set -lx POSTGRES_DB postgres
+set -lx PGHOST database.example.test
+set -lx PGPORT 5432
+set -lx PGPASSFILE /secure/path/to/admin.pgpass
+compose/init-multiple-dbs.sh
+```
+
+Run `db:migrate` through the migration login, then restart web and job workloads
+through the runtime login. Remove the bootstrap credential from the deployment
+environment after the SQL completes. The detailed legacy cutover and verification
+queries are in the [pre-0.5 database upgrade](pre-0-5-database-upgrade.md) guide.
 
 ## External API credentials
 

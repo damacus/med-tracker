@@ -47,10 +47,12 @@ tasks:
       - task: :internal:run
         vars:
           ENVIRONMENT: test
+          SERVICE: web-test
           COMMAND: "rails tailwindcss:build"
       - task: :internal:run
         vars:
           ENVIRONMENT: test
+          SERVICE: web-test
           COMMAND: '{{ .CMD }}'
 
   portless:
@@ -76,7 +78,7 @@ tasks:
       Usage: task test:seed
     cmds:
       - task: :internal:seed
-        vars: { ENVIRONMENT: test }
+        vars: { ENVIRONMENT: test, SERVICE: test-runner }
 
   stop:
     desc: Stop test server
@@ -116,10 +118,12 @@ tasks:
       - task: :internal:run
         vars:
           ENVIRONMENT: test
+          SERVICE: web-test
           COMMAND: "find public/assets -mindepth 1 -maxdepth 1 -exec rm -rf {} +"
       - task: :internal:run
         vars:
           ENVIRONMENT: test
+          SERVICE: web-test
           COMMAND: "rails assets:precompile"
 
   rebuild:
@@ -142,7 +146,7 @@ tasks:
       - task: :internal:up-db
         vars: { ENVIRONMENT: test }
       - task: :internal:seed
-        vars: { ENVIRONMENT: test }
+        vars: { ENVIRONMENT: test, SERVICE: test-runner }
 
   port:
     desc: Print the host port of the running test server

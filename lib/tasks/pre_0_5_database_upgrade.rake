@@ -2,7 +2,32 @@
 
 module MedTracker
   class Pre05DatabaseUpgradePreflight
-    ROLE_NAMES = %w[med_tracker_owner med_tracker_app].freeze
+    ROLE_LOGIN_EXPECTATIONS = {
+      'med_tracker_owner' => false,
+      'med_tracker_app' => false,
+      'medtracker_auxiliary' => true,
+      'medtracker_migration' => true,
+      'medtracker_runtime' => true
+    }.freeze
+    EXPECTED_MEMBERSHIPS = [
+      ['med_tracker_app', 'medtracker_runtime', false, false, true],
+      ['med_tracker_owner', 'medtracker_migration', false, false, true]
+    ].freeze
+    EXPECTED_SET_ROLE_PATHS = [
+      ['medtracker_auxiliary', 'med_tracker_app', false],
+      ['medtracker_auxiliary', 'med_tracker_owner', false],
+      ['medtracker_migration', 'med_tracker_app', false],
+      ['medtracker_migration', 'med_tracker_owner', true],
+      ['medtracker_runtime', 'med_tracker_app', true],
+      ['medtracker_runtime', 'med_tracker_owner', false]
+    ].freeze
+    UNSAFE_ROLE_ATTRIBUTES = {
+      'rolsuper' => 'SUPERUSER',
+      'rolcreaterole' => 'CREATEROLE',
+      'rolcreatedb' => 'CREATEDB',
+      'rolreplication' => 'REPLICATION',
+      'rolbypassrls' => 'BYPASSRLS'
+    }.freeze
     UPGRADE_RUNBOOK_URL = 'https://damacus.github.io/med-tracker/pre-0-5-database-upgrade/'
 
     def initialize(connection)
@@ -11,11 +36,13 @@ module MedTracker
 
     def call
       role_rows = runtime_role_rows.index_by { |row| row.fetch('rolname') }
-      missing_roles = ROLE_NAMES - role_rows.keys
+      missing_roles = ROLE_LOGIN_EXPECTATIONS.keys - role_rows.keys
 
       missing_role_errors(missing_roles) +
         unsafe_role_errors(role_rows) +
-        membership_errors(missing_roles)
+        membership_errors +
+        set_role_path_errors +
+        current_login_errors
     end
 
     private
@@ -24,9 +51,15 @@ module MedTracker
 
     def runtime_role_rows
       connection.select_all(<<~SQL.squish).to_a
-        SELECT rolname, rolcanlogin, rolsuper, rolbypassrls
+        SELECT rolname, rolcanlogin, rolsuper, rolcreaterole, rolcreatedb, rolreplication, rolbypassrls
         FROM pg_roles
-        WHERE rolname IN ('med_tracker_owner', 'med_tracker_app')
+        WHERE rolname IN (
+          'med_tracker_owner',
+          'med_tracker_app',
+          'medtracker_auxiliary',
+          'medtracker_migration',
+          'medtracker_runtime'
+        )
         ORDER BY rolname
       SQL
     end
@@ -36,36 +69,95 @@ module MedTracker
     end
 
     def unsafe_role_errors(role_rows)
-      ROLE_NAMES.filter_map do |role_name|
+      ROLE_LOGIN_EXPECTATIONS.filter_map do |role_name, login_expected|
         role_row = role_rows[role_name]
         next if role_row.blank?
 
-        unsafe_attributes = unsafe_attributes_for(role_row)
+        unsafe_attributes = unsafe_attributes_for(role_row, login_expected)
         next if unsafe_attributes.empty?
 
         "#{role_name} has unsafe attributes: #{unsafe_attributes.join(', ')}"
       end
     end
 
-    def unsafe_attributes_for(role_row)
-      attributes = []
-      attributes << 'LOGIN' if truthy?(role_row.fetch('rolcanlogin'))
-      attributes << 'SUPERUSER' if truthy?(role_row.fetch('rolsuper'))
-      attributes << 'BYPASSRLS' if truthy?(role_row.fetch('rolbypassrls'))
-      attributes
+    def unsafe_attributes_for(role_row, login_expected)
+      [login_attribute_error(role_row, login_expected), *unsafe_privilege_attributes(role_row)].compact
     end
 
-    def membership_errors(missing_roles)
-      (ROLE_NAMES - missing_roles).filter_map do |role_name|
-        next if truthy?(runtime_role_member?(role_name))
+    def login_attribute_error(role_row, login_expected)
+      return if truthy?(role_row.fetch('rolcanlogin')) == login_expected
 
-        "Current database login is not a member of #{role_name}"
+      login_expected ? 'NOLOGIN' : 'LOGIN'
+    end
+
+    def unsafe_privilege_attributes(role_row)
+      UNSAFE_ROLE_ATTRIBUTES.filter_map do |attribute, label|
+        label if truthy?(role_row.fetch(attribute))
       end
     end
 
-    def runtime_role_member?(role_name)
-      connection.select_value(<<~SQL.squish)
-        SELECT pg_has_role(session_user, #{connection.quote(role_name)}, 'member')
+    def membership_errors
+      return [] if role_memberships == EXPECTED_MEMBERSHIPS
+
+      ['Database logins do not have isolated role membership']
+    end
+
+    def role_memberships
+      connection.select_all(role_membership_query).map do |row|
+        [
+          row.fetch('granted_role'),
+          row.fetch('member_role'),
+          truthy?(row.fetch('admin_option')),
+          truthy?(row.fetch('inherit_option')),
+          truthy?(row.fetch('set_option'))
+        ]
+      end
+    end
+
+    def set_role_path_errors
+      return [] if set_role_paths == EXPECTED_SET_ROLE_PATHS
+
+      ['Database logins do not have isolated SET ROLE paths']
+    end
+
+    def set_role_paths
+      connection.select_all(set_role_path_query).map do |row|
+        [row.fetch('login_role'), row.fetch('granted_role'), truthy?(row.fetch('can_set'))]
+      end
+    end
+
+    def current_login_errors
+      return [] if connection.select_value('SELECT session_user') == 'medtracker_migration'
+
+      ['Preflight must connect through medtracker_migration']
+    end
+
+    def role_membership_query
+      <<~SQL.squish
+        SELECT granted.rolname AS granted_role,
+               member.rolname AS member_role,
+               memberships.admin_option,
+               memberships.inherit_option,
+               memberships.set_option
+        FROM pg_auth_members memberships
+        JOIN pg_roles granted ON granted.oid = memberships.roleid
+        JOIN pg_roles member ON member.oid = memberships.member
+        WHERE granted.rolname IN ('med_tracker_owner', 'med_tracker_app')
+          AND member.rolname IN ('medtracker_auxiliary', 'medtracker_migration', 'medtracker_runtime')
+        ORDER BY granted.rolname, member.rolname
+      SQL
+    end
+
+    def set_role_path_query
+      <<~SQL.squish
+        SELECT login.rolname AS login_role,
+               granted.rolname AS granted_role,
+               pg_has_role(login.rolname, granted.rolname, 'SET') AS can_set
+        FROM pg_roles login
+        CROSS JOIN pg_roles granted
+        WHERE login.rolname IN ('medtracker_auxiliary', 'medtracker_migration', 'medtracker_runtime')
+          AND granted.rolname IN ('med_tracker_app', 'med_tracker_owner')
+        ORDER BY login.rolname, granted.rolname
       SQL
     end
 
