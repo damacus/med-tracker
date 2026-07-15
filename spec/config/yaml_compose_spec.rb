@@ -119,6 +119,23 @@ RSpec.describe YAML do
     expect_primary_login_memberships
   end
 
+  it 'repairs unsafe group roles and public schema creation', :aggregate_failures do
+    expect(init_roles_sql).to include(
+      'ALTER ROLE med_tracker_owner NOLOGIN NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS;',
+      'ALTER ROLE med_tracker_app NOLOGIN NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS;',
+      'REVOKE CREATE ON SCHEMA public FROM PUBLIC;'
+    )
+  end
+
+  it 'loads deployment passwords from the environment and fails fast', :aggregate_failures do
+    expect(init_roles_sql).to start_with("\\set ON_ERROR_STOP on\n")
+    expect(init_roles_sql).to include(
+      '\\getenv runtime_password RUNTIME_DATABASE_PASSWORD',
+      '\\getenv migration_password MIGRATION_DATABASE_PASSWORD',
+      '\\getenv auxiliary_password AUXILIARY_DATABASE_PASSWORD'
+    )
+  end
+
   it 'isolates the auxiliary login from the primary database', :aggregate_failures do
     expect(init_roles_sql).to include(
       '\\if :{?auxiliary_password}',
@@ -126,7 +143,12 @@ RSpec.describe YAML do
       "format('REVOKE CONNECT ON DATABASE %I FROM PUBLIC', current_database())"
     )
     expect(init_roles_sql).not_to match(/GRANT\s+CONNECT\s+ON\s+DATABASE.*TO[^;]*medtracker_auxiliary/i)
-    expect(init_multiple_databases).to include('CREATE DATABASE $db OWNER medtracker_auxiliary')
+    expect(init_multiple_databases).to include(
+      'CREATE DATABASE $db OWNER medtracker_auxiliary',
+      'ALTER DATABASE $db OWNER TO medtracker_auxiliary',
+      'ALTER SCHEMA public OWNER TO medtracker_auxiliary',
+      'REVOKE CREATE ON SCHEMA public FROM PUBLIC'
+    )
   end
 
   it 'keeps the production web container behind the runtime role after migrations complete' do
@@ -186,7 +208,9 @@ RSpec.describe YAML do
   end
 
   it 'bootstraps the deployed runtime role without owner or bypassrls privileges' do
-    expect(init_roles_sql).to include('ALTER ROLE med_tracker_app NOLOGIN NOSUPERUSER NOBYPASSRLS;')
+    expect(init_roles_sql).to include(
+      'ALTER ROLE med_tracker_app NOLOGIN NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS;'
+    )
     expect(init_roles_sql).to include('GRANT USAGE ON SCHEMA public TO med_tracker_app;')
     expect(init_roles_sql).not_to match(/GRANT\s+USAGE,\s+CREATE\s+ON\s+SCHEMA\s+public\s+TO\s+med_tracker_app/i)
   end
@@ -222,9 +246,18 @@ RSpec.describe YAML do
         step = ci_workflow.dig(job_name, 'steps').find { |candidate| candidate['name'] == step_name }
 
         expect(step.fetch('env')).to include(
-          'DATABASE_URL' => '${{ env.BOOTSTRAP_DATABASE_URL }}',
+          'DATABASE_URL' => ci_bootstrap_url,
           'DATABASE_ROLE' => nil
         )
+      end
+    end
+
+    it 'scopes each database credential to only the step that consumes it' do
+      %w[test_non_system test_system mutation lighthouse].each do |job_name|
+        expect(ci_workflow.fetch(job_name).fetch('env')).not_to include(
+          'BOOTSTRAP_DATABASE_URL', 'MIGRATION_DATABASE_URL', 'RUNTIME_DATABASE_URL', 'DATABASE_URL'
+        )
+        expect_ci_step_credentials(ci_workflow.fetch(job_name))
       end
     end
 
@@ -232,7 +265,7 @@ RSpec.describe YAML do
       server_step = ci_workflow.dig('lighthouse', 'steps').find { |step| step['name'] == 'Start Rails server' }
 
       expect(server_step.fetch('env')).to include(
-        'DATABASE_URL' => '${{ env.RUNTIME_DATABASE_URL }}',
+        'DATABASE_URL' => ci_runtime_url,
         'DATABASE_ROLE' => 'med_tracker_app'
       )
     end
@@ -291,21 +324,26 @@ RSpec.describe YAML do
   end
 
   def expect_primary_login_memberships
-    expect(init_roles_sql).to include(
-      'GRANT med_tracker_app TO medtracker_runtime WITH INHERIT FALSE, SET TRUE;',
-      'GRANT med_tracker_owner TO medtracker_migration WITH INHERIT FALSE, SET TRUE;',
-      '\\if :{?runtime_password}',
-      '\\if :{?migration_password}',
-      "PASSWORD %L NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS', :'runtime_password'",
-      "PASSWORD %L NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS', :'migration_password'",
-      'ALTER DEFAULT PRIVILEGES FOR ROLE med_tracker_owner IN SCHEMA public'
-    )
+    expect(init_roles_sql).to include(*expected_primary_membership_statements)
     expect(init_roles_sql).not_to include(
       'GRANT med_tracker_owner TO medtracker_runtime',
       'GRANT med_tracker_app TO medtracker_migration',
       'GRANT med_tracker_owner TO medtracker;',
       'GRANT med_tracker_app TO medtracker;'
     )
+  end
+
+  def expected_primary_membership_statements
+    [
+      'GRANT med_tracker_app TO medtracker_runtime WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;',
+      'GRANT med_tracker_owner TO medtracker_migration WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;',
+      "WHERE member.rolname IN ('medtracker_auxiliary', 'medtracker_migration', 'medtracker_runtime')",
+      '\\if :{?runtime_password}',
+      '\\if :{?migration_password}',
+      "PASSWORD %L NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS', :'runtime_password'",
+      "PASSWORD %L NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS', :'migration_password'",
+      'ALTER DEFAULT PRIVILEGES FOR ROLE med_tracker_owner IN SCHEMA public'
+    ]
   end
 
   def init_multiple_databases
@@ -331,23 +369,61 @@ RSpec.describe YAML do
   end
 
   def expect_ci_database_urls(job)
-    expect(job.fetch('env')).to include(
-      'MIGRATION_DATABASE_URL' =>
-        'postgres://medtracker_migration:local_migration_only@localhost:5432/medtracker_test',
-      'RUNTIME_DATABASE_URL' =>
-        'postgres://medtracker_runtime:local_runtime_only@localhost:5432/medtracker_test'
+    expect(job.fetch('env')).not_to include(
+      'BOOTSTRAP_DATABASE_URL', 'MIGRATION_DATABASE_URL', 'RUNTIME_DATABASE_URL', 'DATABASE_URL'
     )
-    expect(job.fetch('env')).not_to include('DATABASE_URL')
   end
 
   def expect_ci_database_steps(job)
     steps = job.fetch('steps').index_by { |step| step['name'] }
 
-    expect(steps.dig('Bootstrap database roles', 'run'))
-      .to eq('psql "$BOOTSTRAP_DATABASE_URL" --file compose/init-roles.sql')
+    expect_ci_bootstrap_step(steps.fetch('Bootstrap database roles'))
     expect(steps.dig('Set up database', 'env')).to include(
-      'DATABASE_URL' => '${{ env.MIGRATION_DATABASE_URL }}',
+      'DATABASE_URL' => ci_migration_url,
       'DATABASE_ROLE' => 'med_tracker_owner'
     )
+  end
+
+  def expect_ci_bootstrap_step(step)
+    expect(step.fetch('run')).to eq('psql "$DATABASE_URL" --file compose/init-roles.sql')
+    expect(step.fetch('env')).to eq('DATABASE_URL' => ci_bootstrap_url)
+  end
+
+  def expect_ci_step_credentials(job)
+    job.fetch('steps').each do |step|
+      environment = step.fetch('env', {})
+      expected_url = ci_step_database_urls.fetch(step['name'], nil)
+
+      if expected_url
+        expect(environment.fetch('DATABASE_URL')).to eq(expected_url)
+      else
+        expect(environment.to_json).not_to include('medtracker_password', 'local_migration_only', 'local_runtime_only')
+      end
+    end
+  end
+
+  def ci_step_database_urls
+    {
+      'Bootstrap database roles' => ci_bootstrap_url,
+      'Set up database' => ci_migration_url,
+      'Precompile assets' => ci_runtime_url,
+      'Run non-browser tests' => ci_bootstrap_url,
+      'Run browser tests (shard ${{ matrix.shard }}/2)' => ci_bootstrap_url,
+      'Mutation test changed subjects (advisory)' => ci_bootstrap_url,
+      'Seed database' => ci_bootstrap_url,
+      'Start Rails server' => ci_runtime_url
+    }
+  end
+
+  def ci_bootstrap_url
+    'postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test'
+  end
+
+  def ci_migration_url
+    'postgres://medtracker_migration:local_migration_only@localhost:5432/medtracker_test'
+  end
+
+  def ci_runtime_url
+    'postgres://medtracker_runtime:local_runtime_only@localhost:5432/medtracker_test'
   end
 end

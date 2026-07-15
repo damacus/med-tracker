@@ -47,12 +47,12 @@ tasks:
       - task: :internal:run
         vars:
           ENVIRONMENT: test
-          SERVICE: test-runner
+          SERVICE: web-test
           COMMAND: "rails tailwindcss:build"
       - task: :internal:run
         vars:
           ENVIRONMENT: test
-          SERVICE: test-runner
+          SERVICE: web-test
           COMMAND: '{{ .CMD }}'
 
   portless:
@@ -118,12 +118,12 @@ tasks:
       - task: :internal:run
         vars:
           ENVIRONMENT: test
-          SERVICE: test-runner
+          SERVICE: web-test
           COMMAND: "find public/assets -mindepth 1 -maxdepth 1 -exec rm -rf {} +"
       - task: :internal:run
         vars:
           ENVIRONMENT: test
-          SERVICE: test-runner
+          SERVICE: web-test
           COMMAND: "rails assets:precompile"
 
   rebuild:

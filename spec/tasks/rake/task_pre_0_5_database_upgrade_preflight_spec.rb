@@ -36,9 +36,26 @@ RSpec.describe Rake::Task do
       .and output(/isolated role membership/).to_stderr
   end
 
-  def stub_preflight(memberships)
+  it 'aborts when a desired membership retains admin authority' do
+    stub_preflight(admin_membership)
+
+    expect { task.invoke }
+      .to raise_error(SystemExit)
+      .and output(/isolated role membership/).to_stderr
+  end
+
+  it 'aborts when a login has an indirect forbidden SET ROLE path' do
+    stub_preflight(isolated_memberships, paths: indirect_owner_path)
+
+    expect { task.invoke }
+      .to raise_error(SystemExit)
+      .and output(/isolated SET ROLE paths/).to_stderr
+  end
+
+  def stub_preflight(memberships, paths: isolated_set_paths)
     stub_role_rows
     stub_membership_rows(memberships)
+    stub_set_role_paths(paths)
     allow(connection).to receive(:select_value).with(/session_user/).and_return('medtracker_migration')
   end
 
@@ -48,6 +65,10 @@ RSpec.describe Rake::Task do
 
   def stub_membership_rows(memberships)
     allow(connection).to receive(:select_all).with(/FROM pg_auth_members/).and_return(memberships)
+  end
+
+  def stub_set_role_paths(paths)
+    allow(connection).to receive(:select_all).with(/pg_has_role/).and_return(paths)
   end
 
   def safe_role_rows
@@ -83,10 +104,42 @@ RSpec.describe Rake::Task do
     [membership_row('med_tracker_app', 'medtracker_migration')]
   end
 
-  def membership_row(granted_role, member_role)
+  def admin_membership
+    [
+      membership_row('med_tracker_app', 'medtracker_runtime', admin: true),
+      membership_row('med_tracker_owner', 'medtracker_migration')
+    ]
+  end
+
+  def isolated_set_paths
+    role_paths('medtracker_runtime' => 'med_tracker_app', 'medtracker_migration' => 'med_tracker_owner')
+  end
+
+  def indirect_owner_path
+    isolated_set_paths.map do |path|
+      next path unless path['login_role'] == 'medtracker_runtime' && path['granted_role'] == 'med_tracker_owner'
+
+      path.merge('can_set' => true)
+    end
+  end
+
+  def role_paths(expected_paths)
+    %w[medtracker_auxiliary medtracker_migration medtracker_runtime].product(
+      %w[med_tracker_app med_tracker_owner]
+    ).map do |login_role, granted_role|
+      {
+        'login_role' => login_role,
+        'granted_role' => granted_role,
+        'can_set' => expected_paths[login_role] == granted_role
+      }
+    end
+  end
+
+  def membership_row(granted_role, member_role, admin: false)
     {
       'granted_role' => granted_role,
       'member_role' => member_role,
+      'admin_option' => admin,
       'inherit_option' => false,
       'set_option' => true
     }

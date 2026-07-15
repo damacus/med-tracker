@@ -10,8 +10,16 @@ module MedTracker
       'medtracker_runtime' => true
     }.freeze
     EXPECTED_MEMBERSHIPS = [
-      ['med_tracker_app', 'medtracker_runtime', false, true],
-      ['med_tracker_owner', 'medtracker_migration', false, true]
+      ['med_tracker_app', 'medtracker_runtime', false, false, true],
+      ['med_tracker_owner', 'medtracker_migration', false, false, true]
+    ].freeze
+    EXPECTED_SET_ROLE_PATHS = [
+      ['medtracker_auxiliary', 'med_tracker_app', false],
+      ['medtracker_auxiliary', 'med_tracker_owner', false],
+      ['medtracker_migration', 'med_tracker_app', false],
+      ['medtracker_migration', 'med_tracker_owner', true],
+      ['medtracker_runtime', 'med_tracker_app', true],
+      ['medtracker_runtime', 'med_tracker_owner', false]
     ].freeze
     UNSAFE_ROLE_ATTRIBUTES = {
       'rolsuper' => 'SUPERUSER',
@@ -33,6 +41,7 @@ module MedTracker
       missing_role_errors(missing_roles) +
         unsafe_role_errors(role_rows) +
         membership_errors +
+        set_role_path_errors +
         current_login_errors
     end
 
@@ -98,9 +107,22 @@ module MedTracker
         [
           row.fetch('granted_role'),
           row.fetch('member_role'),
+          truthy?(row.fetch('admin_option')),
           truthy?(row.fetch('inherit_option')),
           truthy?(row.fetch('set_option'))
         ]
+      end
+    end
+
+    def set_role_path_errors
+      return [] if set_role_paths == EXPECTED_SET_ROLE_PATHS
+
+      ['Database logins do not have isolated SET ROLE paths']
+    end
+
+    def set_role_paths
+      connection.select_all(set_role_path_query).map do |row|
+        [row.fetch('login_role'), row.fetch('granted_role'), truthy?(row.fetch('can_set'))]
       end
     end
 
@@ -114,6 +136,7 @@ module MedTracker
       <<~SQL.squish
         SELECT granted.rolname AS granted_role,
                member.rolname AS member_role,
+               memberships.admin_option,
                memberships.inherit_option,
                memberships.set_option
         FROM pg_auth_members memberships
@@ -122,6 +145,19 @@ module MedTracker
         WHERE granted.rolname IN ('med_tracker_owner', 'med_tracker_app')
           AND member.rolname IN ('medtracker_auxiliary', 'medtracker_migration', 'medtracker_runtime')
         ORDER BY granted.rolname, member.rolname
+      SQL
+    end
+
+    def set_role_path_query
+      <<~SQL.squish
+        SELECT login.rolname AS login_role,
+               granted.rolname AS granted_role,
+               pg_has_role(login.rolname, granted.rolname, 'SET') AS can_set
+        FROM pg_roles login
+        CROSS JOIN pg_roles granted
+        WHERE login.rolname IN ('medtracker_auxiliary', 'medtracker_migration', 'medtracker_runtime')
+          AND granted.rolname IN ('med_tracker_app', 'med_tracker_owner')
+        ORDER BY login.rolname, granted.rolname
       SQL
     end
 

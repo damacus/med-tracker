@@ -80,6 +80,28 @@ RSpec.describe 'Taskfiles' do
     expect(test_taskfile.dig('tasks', 'rebuild', 'cmds', 3, 'vars', 'SERVICE')).to eq('test-runner')
   end
 
+  it 'runs arbitrary and asset-only test commands through the runtime login service' do
+    exec_services = test_taskfile.dig('tasks', 'exec', 'cmds').map { |command| command.dig('vars', 'SERVICE') }
+    asset_commands = test_taskfile.dig('tasks', 'assets-rebuild', 'cmds')
+    asset_services = asset_commands.map { |command| command.dig('vars', 'SERVICE') }
+
+    expect(exec_services).to all(eq('web-test'))
+    expect(asset_services).to all(eq('web-test'))
+  end
+
+  it 'separates local CI-like database credentials by command boundary' do
+    expect(local_taskfile['vars']).to include(local_database_urls)
+    expect(local_taskfile.dig('tasks', 'db:prepare', 'env')).to include(
+      'DATABASE_URL' => '{{.MIGRATION_DATABASE_URL}}',
+      'DATABASE_ROLE' => 'med_tracker_owner'
+    )
+    expect(local_taskfile.dig('tasks', 'test', 'env')).to include(
+      'DATABASE_URL' => '{{.BOOTSTRAP_DATABASE_URL}}',
+      'DATABASE_ROLE' => nil
+    )
+    expect(local_taskfile.dig('tasks', 'db:up').to_json).to include('compose/init-roles.sql')
+  end
+
   it 'defines a Vernier dashboard profiling task' do
     task = root_taskfile.dig('tasks', 'profile:dashboard')
     commands = task.fetch('cmds')
@@ -165,6 +187,21 @@ RSpec.describe 'Taskfiles' do
 
   def internal_taskfile
     YAML.safe_load(Rails.root.join('Taskfiles/internal.yml').read, aliases: true, permitted_classes: [Symbol])
+  end
+
+  def local_taskfile
+    YAML.safe_load(Rails.root.join('Taskfiles/local.yml').read, aliases: true, permitted_classes: [Symbol])
+  end
+
+  def local_database_urls
+    {
+      'BOOTSTRAP_DATABASE_URL' =>
+        'postgres://{{.DB_USER}}:{{.DB_PASSWORD}}@localhost:{{.DB_PORT}}/{{.DB_NAME}}',
+      'MIGRATION_DATABASE_URL' =>
+        'postgres://medtracker_migration:local_migration_only@localhost:{{.DB_PORT}}/{{.DB_NAME}}',
+      'RUNTIME_DATABASE_URL' =>
+        'postgres://medtracker_runtime:local_runtime_only@localhost:{{.DB_PORT}}/{{.DB_NAME}}'
+    }
   end
 
   def root_taskfile

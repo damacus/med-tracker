@@ -24,12 +24,12 @@ Stop web and job workloads. From the matching release checkout, run the shared
 bootstrap artifact as a database administrator or another role allowed to create
 and manage PostgreSQL roles:
 
-```bash
-psql "$BOOTSTRAP_DATABASE_URL" \
-  --set=runtime_password="$RUNTIME_DATABASE_PASSWORD" \
-  --set=migration_password="$MIGRATION_DATABASE_PASSWORD" \
-  --set=auxiliary_password="$AUXILIARY_DATABASE_PASSWORD" \
-  --file compose/init-roles.sql
+```fish
+read --silent --export --prompt-str 'Runtime database password: ' RUNTIME_DATABASE_PASSWORD
+read --silent --export --prompt-str 'Migration database password: ' MIGRATION_DATABASE_PASSWORD
+read --silent --export --prompt-str 'Auxiliary database password: ' AUXILIARY_DATABASE_PASSWORD
+psql "$BOOTSTRAP_DATABASE_URL" --file compose/init-roles.sql
+set --erase RUNTIME_DATABASE_PASSWORD MIGRATION_DATABASE_PASSWORD AUXILIARY_DATABASE_PASSWORD
 ```
 
 The SQL is idempotent and applies to the database named by
@@ -43,9 +43,13 @@ GRANT med_tracker_app TO medtracker_runtime WITH INHERIT FALSE, SET TRUE;
 ```
 
 Provision separate databases owned by `medtracker_auxiliary` for Solid Queue,
-Solid Cache, and Solid Cable. Revoke public connection access to those databases
-and grant it only to the auxiliary login. Do not grant the auxiliary login any
-role on the primary database.
+Solid Cache, and Solid Cable. For existing auxiliary databases, run
+`compose/init-multiple-dbs.sh` with `POSTGRES_MULTIPLE_DATABASES`, `POSTGRES_USER`,
+`POSTGRES_DB`, `PGHOST`, `PGPORT`, and an operator-controlled `PGPASSFILE`. The
+script preserves populated tables while repairing database, schema, and object
+ownership. Revoke public connection access to those databases and grant it only
+to the auxiliary login. Do not grant the auxiliary login any role on the primary
+database.
 
 ## Preflight check
 
@@ -81,14 +85,29 @@ are the usual failure mode.
 
 ## Kubernetes and CNPG
 
-For CloudNativePG, run the bootstrap against the primary PostgreSQL pod. Example:
+For CloudNativePG, forward the primary service to an approved operator
+workstation and run the shared artifact there. Keep the administrator password
+in a protected passfile and read the three new login passwords without terminal
+echo or process arguments:
 
-```bash
-kubectl exec -n <namespace> <primary-postgres-pod> -c postgres -- \
-  psql -d <database_name> -v ON_ERROR_STOP=1
+```fish
+set namespace your-namespace
+set rw_service your-cluster-rw
+set database_name medtracker
+set database_admin database-admin
+set -lx PGPASSFILE /secure/path/to/cnpg-admin.pgpass
+kubectl port-forward -n $namespace service/$rw_service 55432:5432 &
+set port_forward_pid $last_pid
+set -lx BOOTSTRAP_DATABASE_URL "postgresql://$database_admin@127.0.0.1:55432/$database_name"
+read --silent --export --prompt-str 'Runtime database password: ' RUNTIME_DATABASE_PASSWORD
+read --silent --export --prompt-str 'Migration database password: ' MIGRATION_DATABASE_PASSWORD
+read --silent --export --prompt-str 'Auxiliary database password: ' AUXILIARY_DATABASE_PASSWORD
+psql "$BOOTSTRAP_DATABASE_URL" --file compose/init-roles.sql
+set --erase RUNTIME_DATABASE_PASSWORD MIGRATION_DATABASE_PASSWORD AUXILIARY_DATABASE_PASSWORD
+kill $port_forward_pid
 ```
 
-Paste the bootstrap SQL into that `psql` session, then update the workload
+The SQL stops on the first error. After it succeeds, update the workload
 configuration:
 
 ```yaml

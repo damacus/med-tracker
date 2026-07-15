@@ -87,12 +87,31 @@ For an existing PostgreSQL cluster, stop application traffic and run the
 idempotent role bootstrap from the release checkout with deployment-specific
 passwords:
 
-```bash
-psql "$BOOTSTRAP_DATABASE_URL" \
-  --set=runtime_password="$RUNTIME_DATABASE_PASSWORD" \
-  --set=migration_password="$MIGRATION_DATABASE_PASSWORD" \
-  --set=auxiliary_password="$AUXILIARY_DATABASE_PASSWORD" \
-  --file compose/init-roles.sql
+```fish
+read --silent --export --prompt-str 'Runtime database password: ' RUNTIME_DATABASE_PASSWORD
+read --silent --export --prompt-str 'Migration database password: ' MIGRATION_DATABASE_PASSWORD
+read --silent --export --prompt-str 'Auxiliary database password: ' AUXILIARY_DATABASE_PASSWORD
+psql "$BOOTSTRAP_DATABASE_URL" --file compose/init-roles.sql
+set --erase RUNTIME_DATABASE_PASSWORD MIGRATION_DATABASE_PASSWORD AUXILIARY_DATABASE_PASSWORD
+```
+
+The SQL reads the three passwords from its environment and stops on the first
+error. The passwords are not placed in `psql` arguments. Configure the bootstrap
+connection itself with an operator-controlled `PGPASSFILE`.
+
+For existing auxiliary databases, run the same idempotent ownership repair used
+by fresh Compose initialization. It preserves rows while transferring the
+database, public schema, tables, sequences, views, routines, and user-defined
+types to `medtracker_auxiliary`:
+
+```fish
+set -lx POSTGRES_MULTIPLE_DATABASES medtracker_production_queue,medtracker_production_cache,medtracker_production_cable
+set -lx POSTGRES_USER cluster_admin
+set -lx POSTGRES_DB postgres
+set -lx PGHOST database.example.test
+set -lx PGPORT 5432
+set -lx PGPASSFILE /secure/path/to/admin.pgpass
+compose/init-multiple-dbs.sh
 ```
 
 Run `db:migrate` through the migration login, then restart web and job workloads

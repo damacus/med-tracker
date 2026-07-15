@@ -50,7 +50,8 @@ web-test:
     target: test       # Uses 'test' stage from Dockerfile
   environment:
     RAILS_ENV: test
-    DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker
+    DATABASE_URL: postgresql://medtracker_runtime:local_runtime_only@db-test:5432/medtracker
+    DATABASE_ROLE: med_tracker_app
 ```
 
 The `test` stage extends the `assets` stage (which has all build tools and gems) and adds Playwright browser dependencies.
@@ -144,7 +145,7 @@ tasks:
       - task: internal:run
         vars:
           ENVIRONMENT: test
-          SERVICE: web
+          SERVICE: test-runner
           COMMAND: 'bundle exec rspec {{ .TEST_FILE | default "spec" }}'
 ```
 

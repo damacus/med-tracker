@@ -4,6 +4,8 @@ require 'rails_helper'
 require 'erb'
 require 'open3'
 require 'pg'
+require 'securerandom'
+require 'tempfile'
 require 'uri'
 
 module DatabaseRoleConfig
@@ -88,6 +90,7 @@ RSpec.describe DatabaseRoleConfig do
     let(:deployment_guide) { Rails.root.join('docs/deployment.md').read }
     let(:upgrade_guide) { Rails.root.join('docs/pre-0-5-database-upgrade.md').read }
     let(:testing_guide) { Rails.root.join('docs/testing.md').read }
+    let(:root_testing_guide) { Rails.root.join('TESTING.md').read }
 
     it 'routes existing deployments through distinct bootstrap, migration, and runtime credentials' do
       expect(deployment_guide).to include(
@@ -109,6 +112,39 @@ RSpec.describe DatabaseRoleConfig do
       expect(testing_guide).to include('test-runner', 'bootstrap credential', 'fixture')
       expect(testing_guide).to include('web-test', 'medtracker_runtime', 'migrate-test', 'medtracker_migration')
     end
+
+    it 'uses environment-sourced secrets in fish-compatible bootstrap commands' do
+      expect(deployment_guide).to include('```fish', 'RUNTIME_DATABASE_PASSWORD', '--file compose/init-roles.sql')
+      expect(upgrade_guide).to include('```fish', 'RUNTIME_DATABASE_PASSWORD', '--file compose/init-roles.sql')
+      expect(deployment_guide).not_to match(/--set=.*password/i)
+      expect(upgrade_guide).not_to match(/--set=.*password/i)
+    end
+
+    it 'provides one fail-fast secret-safe CNPG bootstrap flow' do
+      expect(upgrade_guide).to include('kubectl port-forward', 'PGPASSFILE', '--file compose/init-roles.sql')
+      expect(upgrade_guide).to include(
+        'set namespace your-namespace',
+        'set rw_service your-cluster-rw',
+        'set database_name medtracker',
+        'set database_admin database-admin'
+      )
+      expect(upgrade_guide).not_to match(/```fish.*?<[^>]+>.*?```/m)
+      expect(upgrade_guide).not_to include('Paste the bootstrap SQL')
+    end
+
+    it 'documents the populated auxiliary database ownership upgrade' do
+      expect(deployment_guide).to include('existing auxiliary databases', 'compose/init-multiple-dbs.sh')
+      expect(upgrade_guide).to include('existing auxiliary databases', 'compose/init-multiple-dbs.sh')
+    end
+
+    it 'keeps the root testing guide on the separated runtime login' do
+      expect(root_testing_guide).to include(
+        'postgresql://medtracker_runtime:local_runtime_only@db-test:5432/medtracker'
+      )
+      expect(root_testing_guide).not_to include(
+        'DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker'
+      )
+    end
   end
 
   context 'with live PostgreSQL login isolation' do
@@ -118,6 +154,40 @@ RSpec.describe DatabaseRoleConfig do
       output, status = run_role_bootstrap
 
       expect(status).to be_success, output
+    end
+
+    it 'returns nonzero when a middle bootstrap statement fails' do
+      Tempfile.create(['role-bootstrap-fail-fast', '.sql']) do |file|
+        file.write(fail_fast_probe_sql)
+        file.flush
+
+        output, status = Open3.capture2e('psql', ENV.fetch('DATABASE_URL'), '--file', file.path)
+
+        expect(status).not_to be_success, output
+      end
+    end
+
+    it 'repairs legacy role attributes, memberships, and public schema creation' do
+      configure_unsafe_legacy_roles
+
+      output, status = run_role_bootstrap
+
+      expect(status).to be_success, output
+      expect_repaired_role_contract
+    ensure
+      restore_role_contract
+    end
+
+    it 'upgrades a populated auxiliary database without data loss' do
+      database_name = "medtracker_auxiliary_upgrade_#{SecureRandom.hex(5)}"
+      create_legacy_auxiliary_database(database_name)
+
+      output, status = run_auxiliary_upgrade(database_name)
+
+      expect(status).to be_success, output
+      expect_upgraded_auxiliary_database(database_name)
+    ensure
+      drop_database(database_name) if database_name
     end
 
     it 'allows the runtime login to assume only the application role' do
@@ -139,18 +209,183 @@ RSpec.describe DatabaseRoleConfig do
 
     def run_role_bootstrap
       Open3.capture2e(
+        {
+          'RUNTIME_DATABASE_PASSWORD' => 'local_runtime_only',
+          'MIGRATION_DATABASE_PASSWORD' => 'local_migration_only',
+          'AUXILIARY_DATABASE_PASSWORD' => 'local_auxiliary_only'
+        },
         'psql', ENV.fetch('DATABASE_URL'),
-        '--set=runtime_password=local_runtime_only',
-        '--set=migration_password=local_migration_only',
-        '--set=auxiliary_password=local_auxiliary_only',
         '--file', Rails.root.join('compose/init-roles.sql').to_s
       )
+    end
+
+    def fail_fast_probe_sql
+      directive = Rails.root.join('compose/init-roles.sql').read[/^\\set ON_ERROR_STOP on$/]
+      [directive, 'SELECT 1;', 'SELECT medtracker_missing_bootstrap_function();', 'SELECT 2;'].compact.join("\n")
+    end
+
+    def configure_unsafe_legacy_roles
+      bootstrap_connection.exec('CREATE ROLE medtracker_indirect_owner NOLOGIN')
+      bootstrap_connection.exec('GRANT med_tracker_owner TO medtracker_indirect_owner WITH SET TRUE')
+      bootstrap_connection.exec('GRANT medtracker_indirect_owner TO medtracker_runtime WITH SET TRUE')
+      bootstrap_connection.exec(
+        'GRANT med_tracker_app TO medtracker_runtime WITH ADMIN TRUE, INHERIT TRUE, SET TRUE'
+      )
+      bootstrap_connection.exec(
+        'GRANT med_tracker_app TO medtracker_migration WITH ADMIN TRUE, INHERIT TRUE, SET TRUE'
+      )
+      bootstrap_connection.exec(
+        'ALTER ROLE med_tracker_owner CREATEROLE CREATEDB REPLICATION BYPASSRLS'
+      )
+      bootstrap_connection.exec('GRANT CREATE ON SCHEMA public TO PUBLIC')
+    end
+
+    def expect_repaired_role_contract
+      expect_safe_group_role
+      expect_isolated_migration_membership
+      expect_legacy_access_paths_removed
+    end
+
+    def expect_safe_group_role
+      expect(group_role_attributes('med_tracker_owner')).to eq(safe_group_role_attributes)
+    end
+
+    def expect_isolated_migration_membership
+      expect(role_memberships(bootstrap_connection, 'medtracker_migration')).to eq(
+        [{ 'role_name' => 'med_tracker_owner', 'admin_option' => 'false',
+           'inherit_option' => 'false', 'set_option' => 'true' }]
+      )
+    end
+
+    def expect_legacy_access_paths_removed
+      expect(bootstrap_connection.exec(
+        "SELECT pg_has_role('medtracker_runtime', 'med_tracker_owner', 'SET')::text"
+      ).getvalue(0, 0)).to eq('false')
+      expect(bootstrap_connection.exec(
+        "SELECT has_schema_privilege('public', 'public', 'CREATE')::text"
+      ).getvalue(0, 0)).to eq('false')
+    end
+
+    def restore_role_contract
+      connection = bootstrap_connection
+      connection.exec('REVOKE med_tracker_app FROM medtracker_migration')
+      connection.exec('REVOKE medtracker_indirect_owner FROM medtracker_runtime')
+      connection.exec('DROP ROLE IF EXISTS medtracker_indirect_owner')
+      connection.exec(
+        'GRANT med_tracker_app TO medtracker_runtime WITH ADMIN FALSE, INHERIT FALSE, SET TRUE'
+      )
+      connection.exec(
+        'ALTER ROLE med_tracker_owner NOLOGIN NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS'
+      )
+      connection.exec('REVOKE CREATE ON SCHEMA public FROM PUBLIC')
+    end
+
+    def create_legacy_auxiliary_database(database_name)
+      bootstrap_connection.exec("CREATE DATABASE #{PG::Connection.quote_ident(database_name)} OWNER medtracker")
+      with_database_connection('medtracker', 'medtracker_password', database_name) do |connection|
+        connection.exec('CREATE TABLE legacy_rows (value text NOT NULL)')
+        connection.exec("INSERT INTO legacy_rows (value) VALUES ('preserved')")
+        connection.exec('GRANT CREATE ON SCHEMA public TO PUBLIC')
+      end
+    end
+
+    def run_auxiliary_upgrade(database_name)
+      Open3.capture2e(
+        {
+          'POSTGRES_MULTIPLE_DATABASES' => database_name,
+          'POSTGRES_USER' => database_uri.user,
+          'PGHOST' => database_uri.host,
+          'PGPORT' => database_uri.port.to_s,
+          'PGPASSWORD' => database_uri.password
+        },
+        Rails.root.join('compose/init-multiple-dbs.sh').to_s
+      )
+    end
+
+    def expect_upgraded_auxiliary_database(database_name)
+      with_database_connection('medtracker_auxiliary', 'local_auxiliary_only', database_name) do |connection|
+        expect_auxiliary_data_preserved(connection)
+        expect_auxiliary_ownership(connection)
+        expect_public_schema_locked(connection)
+      end
+      expect(database_owner(database_name)).to eq('medtracker_auxiliary')
+    end
+
+    def expect_auxiliary_data_preserved(connection)
+      expect(connection.exec('SELECT value FROM legacy_rows').getvalue(0, 0)).to eq('preserved')
+    end
+
+    def expect_auxiliary_ownership(connection)
+      expect(object_owner(connection, 'legacy_rows')).to eq('medtracker_auxiliary')
+      expect(schema_owner(connection, 'public')).to eq('medtracker_auxiliary')
+    end
+
+    def expect_public_schema_locked(connection)
+      expect(connection.exec(
+        "SELECT has_schema_privilege('public', 'public', 'CREATE')::text"
+      ).getvalue(0, 0)).to eq('false')
+    end
+
+    def drop_database(database_name)
+      bootstrap_connection.exec_params(
+        'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1', [database_name]
+      )
+      bootstrap_connection.exec("DROP DATABASE IF EXISTS #{PG::Connection.quote_ident(database_name)}")
+    end
+
+    def bootstrap_connection
+      @bootstrap_connection ||= PG.connect(ENV.fetch('DATABASE_URL'))
+    end
+
+    def group_role_attributes(role_name)
+      bootstrap_connection.exec_params(<<~SQL.squish, [role_name]).first
+        SELECT rolcanlogin::text,
+               rolsuper::text,
+               rolcreaterole::text,
+               rolcreatedb::text,
+               rolreplication::text,
+               rolbypassrls::text
+        FROM pg_roles
+        WHERE rolname = $1
+      SQL
+    end
+
+    def safe_group_role_attributes
+      safe_login_attributes.merge('rolcanlogin' => 'false')
+    end
+
+    def database_owner(database_name)
+      bootstrap_connection.exec_params(<<~SQL.squish, [database_name]).getvalue(0, 0)
+        SELECT owner.rolname
+        FROM pg_database database
+        JOIN pg_roles owner ON owner.oid = database.datdba
+        WHERE database.datname = $1
+      SQL
+    end
+
+    def object_owner(connection, object_name)
+      connection.exec_params(<<~SQL.squish, [object_name]).getvalue(0, 0)
+        SELECT owner.rolname
+        FROM pg_class object
+        JOIN pg_roles owner ON owner.oid = object.relowner
+        WHERE object.relname = $1
+      SQL
+    end
+
+    def schema_owner(connection, schema_name)
+      connection.exec_params(<<~SQL.squish, [schema_name]).getvalue(0, 0)
+        SELECT owner.rolname
+        FROM pg_namespace schema
+        JOIN pg_roles owner ON owner.oid = schema.nspowner
+        WHERE schema.nspname = $1
+      SQL
     end
 
     def expect_runtime_login_isolated(connection)
       expect(login_attributes(connection)).to eq(safe_login_attributes)
       expect(role_memberships(connection, 'medtracker_runtime')).to eq(
-        [{ 'role_name' => 'med_tracker_app', 'inherit_option' => 'false', 'set_option' => 'true' }]
+        [{ 'role_name' => 'med_tracker_app', 'admin_option' => 'false',
+           'inherit_option' => 'false', 'set_option' => 'true' }]
       )
       expect { connection.exec('SET ROLE med_tracker_owner') }.to raise_error(PG::InsufficientPrivilege)
 
@@ -166,7 +401,8 @@ RSpec.describe DatabaseRoleConfig do
 
     def expect_migration_membership(connection)
       expect(role_memberships(connection, 'medtracker_migration')).to eq(
-        [{ 'role_name' => 'med_tracker_owner', 'inherit_option' => 'false', 'set_option' => 'true' }]
+        [{ 'role_name' => 'med_tracker_owner', 'admin_option' => 'false',
+           'inherit_option' => 'false', 'set_option' => 'true' }]
       )
     end
 
@@ -223,10 +459,21 @@ RSpec.describe DatabaseRoleConfig do
     end
 
     def connect_as(user, password)
+      connect_to_database(user, password, database_uri.path.delete_prefix('/'))
+    end
+
+    def with_database_connection(user, password, database_name)
+      connection = connect_to_database(user, password, database_name)
+      yield connection
+    ensure
+      connection&.close
+    end
+
+    def connect_to_database(user, password, database_name)
       PG.connect(
         host: database_uri.host,
         port: database_uri.port,
-        dbname: database_uri.path.delete_prefix('/'),
+        dbname: database_name,
         user:,
         password:
       )
@@ -235,6 +482,7 @@ RSpec.describe DatabaseRoleConfig do
     def role_memberships(connection, member_name)
       connection.exec_params(<<~SQL.squish, [member_name]).to_a
         SELECT granted.rolname AS role_name,
+               memberships.admin_option::text,
                memberships.inherit_option::text,
                memberships.set_option::text
         FROM pg_auth_members memberships
