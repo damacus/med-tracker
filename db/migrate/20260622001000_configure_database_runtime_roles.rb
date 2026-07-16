@@ -92,8 +92,6 @@ class ConfigureDatabaseRuntimeRoles < ActiveRecord::Migration[8.1]
   end
 
   def grant_roles_to_login
-    return unless can_create_roles?
-
     execute <<~SQL
       DO $$
       DECLARE

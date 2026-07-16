@@ -22,21 +22,6 @@ task test TEST_FILE=spec/models/user_spec.rb
 - Dockerized test environment: `task test` and `task test:*` tasks
 - Local CI-like environment: `task local:*` tasks
 
-The test stack preserves the same connection boundary as a deployment:
-
-- `migrate-test` connects as `medtracker_migration` and sets
-  `med_tracker_owner` while applying migrations.
-- `web-test` connects as `medtracker_runtime` and sets `med_tracker_app` for
-  server behavior.
-- The ephemeral `test-runner` is the only Rails service given the bootstrap credential.
-  Rails fixture maintenance needs PostgreSQL system-trigger and forced-RLS access
-  that the runtime and migration logins intentionally lack.
-
-The fixture exception exists only in the test profile. Do not copy the
-`test-runner` credential into `web-test`, development, production, web, job, or
-migration services. CI likewise scopes bootstrap access to fixture-backed RSpec
-and seed steps; migrations and server processes still use their isolated logins.
-
 Useful local commands:
 
 ```bash

@@ -156,14 +156,11 @@ tasks:
     internal: true
     requires:
       vars: [ENVIRONMENT]
-    vars:
-      SERVICE: '{{ .SERVICE | default (printf "web-%s" .ENVIRONMENT) }}'
     cmds:
       - echo "Seeding {{ .ENVIRONMENT }} database..."
       - task: run
         vars:
           ENVIRONMENT: { ref: .ENVIRONMENT }
-          SERVICE: { ref: .SERVICE }
           COMMAND: "rails db:seed"
       - defer: echo "✓ Database seeding completed"
 

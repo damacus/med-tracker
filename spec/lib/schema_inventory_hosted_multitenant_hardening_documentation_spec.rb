@@ -70,7 +70,9 @@ RSpec.describe SchemaInventory do
 
     expect(docs_home).to include('pre-0-5-database-upgrade.md')
     expect(upgrade_doc).to include('Pre-0.5 database upgrade')
-    expect(upgrade_doc).to include('DATABASE_ROLE=med_tracker_owner')
+    expect(upgrade_doc).to include('Leave `DATABASE_ROLE` unset for migrations')
+    expect(upgrade_doc).to include('`DATABASE_ROLE=med_tracker_app`')
+    expect(upgrade_doc).not_to include('DATABASE_ROLE=med_tracker_owner')
     expect(upgrade_doc).to include('med_tracker:pre_0_5_database_upgrade_preflight')
     expect(upgrade_doc).to include('med_tracker_owner')
     expect(upgrade_doc).to include('med_tracker_app')

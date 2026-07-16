@@ -11,9 +11,7 @@ vars:
   DB_USER: medtracker
   DB_PASSWORD: medtracker
   DB_NAME: medtracker_test
-  BOOTSTRAP_DATABASE_URL: 'postgres://{{.DB_USER}}:{{.DB_PASSWORD}}@localhost:{{.DB_PORT}}/{{.DB_NAME}}'
-  MIGRATION_DATABASE_URL: 'postgres://medtracker_migration:local_migration_only@localhost:{{.DB_PORT}}/{{.DB_NAME}}'
-  RUNTIME_DATABASE_URL: 'postgres://medtracker_runtime:local_runtime_only@localhost:{{.DB_PORT}}/{{.DB_NAME}}'
+  DATABASE_URL: 'postgres://{{.DB_USER}}:{{.DB_PASSWORD}}@localhost:{{.DB_PORT}}/{{.DB_NAME}}'
 
 tasks:
   # Start PostgreSQL container for local testing
@@ -29,17 +27,10 @@ tasks:
           -e POSTGRES_PASSWORD={{.DB_PASSWORD}} \
           -e POSTGRES_DB={{.DB_NAME}} \
           -p {{.DB_PORT}}:5432 \
-          -v {{.ROOT_DIR}}/compose/init-roles.sql:/docker-entrypoint-initdb.d/001-init-roles.sql:ro \
           postgres:18-alpine
       - echo "Waiting for PostgreSQL to be ready..."
       - sleep 3
       - docker exec {{.DB_CONTAINER}} pg_isready -U {{.DB_USER}}
-
-  db:bootstrap:
-    desc: Apply local database role bootstrap
-    deps: [db:up]
-    cmds:
-      - docker exec -i {{.DB_CONTAINER}} psql --username {{.DB_USER}} --dbname {{.DB_NAME}} --file /dev/stdin < {{.ROOT_DIR}}/compose/init-roles.sql
 
   # Stop and remove PostgreSQL container
   # Usage: task local:db:down
@@ -53,10 +44,9 @@ tasks:
   # Usage: task local:db:prepare
   db:prepare:
     desc: Run database migrations
-    deps: [db:bootstrap]
+    deps: [db:up]
     env:
-      DATABASE_URL: '{{.MIGRATION_DATABASE_URL}}'
-      DATABASE_ROLE: med_tracker_owner
+      DATABASE_URL: '{{.DATABASE_URL}}'
       RAILS_ENV: test
     cmds:
       - bundle exec rails db:migrate
@@ -68,8 +58,7 @@ tasks:
     desc: Run non-browser tests locally
     deps: [db:prepare]
     env:
-      DATABASE_URL: '{{.BOOTSTRAP_DATABASE_URL}}'
-      DATABASE_ROLE:
+      DATABASE_URL: '{{.DATABASE_URL}}'
       RAILS_ENV: test
     cmds:
       - bundle exec rspec --tag '~browser' {{.TEST_FILE | default ""}}
@@ -80,16 +69,11 @@ tasks:
     desc: Run browser tests locally (requires Playwright)
     deps: [db:prepare]
     env:
+      DATABASE_URL: '{{.DATABASE_URL}}'
       RAILS_ENV: test
     cmds:
-      - cmd: bundle exec rails assets:precompile
-        env:
-          DATABASE_URL: '{{.RUNTIME_DATABASE_URL}}'
-          DATABASE_ROLE: med_tracker_app
-      - cmd: bundle exec rspec --tag browser {{.TEST_FILE | default ""}}
-        env:
-          DATABASE_URL: '{{.BOOTSTRAP_DATABASE_URL}}'
-          DATABASE_ROLE:
+      - bundle exec rails assets:precompile
+      - bundle exec rspec --tag browser {{.TEST_FILE | default ""}}
 
   # Run all tests locally
   # Usage: task local:test:all
@@ -97,16 +81,11 @@ tasks:
     desc: Run all tests locally
     deps: [db:prepare]
     env:
+      DATABASE_URL: '{{.DATABASE_URL}}'
       RAILS_ENV: test
     cmds:
-      - cmd: bundle exec rails assets:precompile
-        env:
-          DATABASE_URL: '{{.RUNTIME_DATABASE_URL}}'
-          DATABASE_ROLE: med_tracker_app
-      - cmd: bundle exec rspec {{.TEST_FILE | default ""}}
-        env:
-          DATABASE_URL: '{{.BOOTSTRAP_DATABASE_URL}}'
-          DATABASE_ROLE:
+      - bundle exec rails assets:precompile
+      - bundle exec rspec {{.TEST_FILE | default ""}}
 
   # Clean up - stop database container
   # Usage: task local:clean
