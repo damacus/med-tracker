@@ -50,6 +50,23 @@ RSpec.describe Households::Purger do
     expect(household.reload).to be_purged
   end
 
+  it 'does not create a pending purge run when a household is already purged' do
+    household.update!(status: :archived, lifecycle_state: :purged, offboarded_at: Time.current)
+
+    expect do
+      described_class.call(household: household, actor_account: operator)
+    end.to raise_error(/already purged/)
+
+    expect(HouseholdPurgeRun.where(household: household)).to be_empty
+  end
+
+  it 'returns the completed purge run when the purge is repeated' do
+    completed_run = described_class.call(household: household, actor_account: operator)
+
+    expect(described_class.call(household: household, actor_account: operator)).to eq(completed_run)
+    expect(HouseholdPurgeRun.where(household: household).count).to eq(1)
+  end
+
   it 'ends active support access before purging the household' do
     support_session = SupportAccessSession.create!(
       platform_admin: operator.platform_admin,

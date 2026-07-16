@@ -44,11 +44,13 @@ module Households
         authorize_operator!(actor_account)
         LifecycleCutoffLock.with(household: household) do
           household = Household.find(household.id)
+          run = existing_purge_run(household)
+          next run if run&.completed?
+          raise InvalidLifecycle if household.purged?
+
           refuse_active_hold!(household, actor_account)
           household = Offboarder.call(household: household, actor_account: actor_account)
-          run = purge_run(household, actor_account)
-          next run if run.completed?
-          raise InvalidLifecycle if household.purged?
+          run ||= purge_run(household, actor_account)
 
           execute_purge!(run, household, actor_account, after_table)
           run
@@ -66,6 +68,10 @@ module Households
 
       def purge_run(household, actor_account)
         HouseholdPurgeRun.acquire!(household: household, requested_by_account: actor_account)
+      end
+
+      def existing_purge_run(household)
+        HouseholdPurgeRun.find_by(household: household)
       end
 
       def start_run!(run, household, actor_account)

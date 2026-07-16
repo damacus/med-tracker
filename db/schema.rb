@@ -1305,22 +1305,52 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_120000) do
     DECLARE
       v_account_setting text := pg_catalog.current_setting('med_tracker.current_account_id', true);
       v_household_setting text := pg_catalog.current_setting('med_tracker.current_household_id', true);
+      v_account_id bigint;
+      v_household_id bigint;
       v_deleted_rows bigint;
     BEGIN
       IF v_household_setting IS NULL
-         OR v_household_setting !~ '^[0-9]+$'
-         OR v_household_setting::bigint IS DISTINCT FROM p_household_id THEN
+         OR v_household_setting !~ '^[0-9]+$' THEN
+        RAISE EXCEPTION USING
+          ERRCODE = 'MT104',
+          MESSAGE = 'household purge tenant context does not match target';
+      END IF;
+
+      BEGIN
+        v_household_id := v_household_setting::bigint;
+      EXCEPTION
+        WHEN numeric_value_out_of_range OR invalid_text_representation THEN
+          RAISE EXCEPTION USING
+            ERRCODE = 'MT104',
+            MESSAGE = 'household purge tenant context does not match target';
+      END;
+
+      IF v_household_id IS DISTINCT FROM p_household_id THEN
         RAISE EXCEPTION USING
           ERRCODE = 'MT104',
           MESSAGE = 'household purge tenant context does not match target';
       END IF;
 
       IF v_account_setting IS NULL
-         OR v_account_setting !~ '^[0-9]+$'
-         OR NOT EXISTS (
+         OR v_account_setting !~ '^[0-9]+$' THEN
+        RAISE EXCEPTION USING
+          ERRCODE = 'MT105',
+          MESSAGE = 'household purge operator context is invalid';
+      END IF;
+
+      BEGIN
+        v_account_id := v_account_setting::bigint;
+      EXCEPTION
+        WHEN numeric_value_out_of_range OR invalid_text_representation THEN
+          RAISE EXCEPTION USING
+            ERRCODE = 'MT105',
+            MESSAGE = 'household purge operator context is invalid';
+      END;
+
+      IF NOT EXISTS (
            SELECT 1
            FROM public.platform_admins
-           WHERE account_id = v_account_setting::bigint
+           WHERE account_id = v_account_id
              AND status = 'active'
          ) THEN
         RAISE EXCEPTION USING

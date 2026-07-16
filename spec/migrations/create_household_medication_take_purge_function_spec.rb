@@ -134,12 +134,27 @@ RSpec.describe CreateHouseholdMedicationTakePurgeFunction do
     end
   end
 
+  it 'uses the stable tenant-context contract for an oversized numeric setting' do
+    set_context(household_id: '9' * 100, account_id: operator.id)
+
+    expect_contract('MT104', 'household purge tenant context does not match target') do
+      call_function(household.id)
+    end
+  end
+
   it 'uses the stable operator-context contract' do
     ordinary_account = Account.create!(
       email: "purge-function-ordinary-#{SecureRandom.hex(4)}@example.test",
       status: :verified
     )
     set_context(household_id: household.id, account_id: ordinary_account.id)
+
+    expect_contract('MT105', 'household purge operator context is invalid') { call_function(household.id) }
+  end
+
+  it 'uses the stable operator-context contract for an oversized numeric setting' do
+    operator
+    set_context(household_id: household.id, account_id: '9' * 100)
 
     expect_contract('MT105', 'household purge operator context is invalid') { call_function(household.id) }
   end
