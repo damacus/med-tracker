@@ -64,8 +64,9 @@ docker compose -f docker-compose.yml run --rm web rails db:migrate
 - Existing databases created before 0.5 need the
   [pre-0.5 database upgrade](pre-0-5-database-upgrade.md) bootstrap before
   running 0.5 migrations.
-- Run migrations with `DATABASE_ROLE=med_tracker_owner`; run the web process
-  with `DATABASE_ROLE=med_tracker_app`.
+- Leave `DATABASE_ROLE` unset for existing shared-login deployments, including
+  migration and web processes. Owner-role switching is deferred until there is
+  an explicit ownership-adoption and rollback design for existing databases.
 
 ## External API credentials
 

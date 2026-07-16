@@ -13,6 +13,8 @@ RSpec.describe SharedDatabaseLoginCompatibility do
   let(:local_taskfile) do
     YAML.safe_load(Rails.root.join('Taskfiles/local.yml').read, aliases: true, permitted_classes: [Symbol])
   end
+  let(:deployment_guide) { Rails.root.join('docs/deployment.md').read }
+  let(:upgrade_guide) { Rails.root.join('docs/pre-0-5-database-upgrade.md').read }
 
   it 'uses the existing shared login for local tasks' do
     shared_url = 'postgres://{{.DB_USER}}:{{.DB_PASSWORD}}@localhost:{{.DB_PORT}}/{{.DB_NAME}}'
@@ -52,6 +54,14 @@ RSpec.describe SharedDatabaseLoginCompatibility do
         .to eq('postgresql://med-tracker:password@database/medtracker_production_cache')
       expect(config.dig('production', 'cable', 'url'))
         .to eq('postgresql://med-tracker:password@database/medtracker_production_cable')
+    end
+  end
+
+  it 'instructs existing deployments to leave the migration role unset' do
+    [deployment_guide, upgrade_guide].each do |guide|
+      expect(guide).to include('Leave `DATABASE_ROLE` unset')
+      expect(guide).not_to include('DATABASE_ROLE=med_tracker_owner')
+      expect(guide).not_to include('DATABASE_ROLE: med_tracker_owner')
     end
   end
 

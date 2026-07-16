@@ -13,10 +13,12 @@ Run this bootstrap when all of these are true:
 
 - The database was created by a MedTracker release before 0.5.
 - The deployment uses PostgreSQL roles without app-superuser privileges.
-- The 0.5 release will run migrations with `DATABASE_ROLE=med_tracker_owner`.
+- The deployment will run migrations through its existing shared database
+  login.
 
-Do not run the web process as the migration role. The app runtime should use
-`DATABASE_ROLE=med_tracker_app`.
+Leave `DATABASE_ROLE` unset for the migration and web processes. Owner-role
+switching is deferred until an explicit ownership-adoption and rollback design
+exists for databases with mixed historical object ownership.
 
 ## One-time bootstrap
 
@@ -103,23 +105,9 @@ kubectl exec -n <namespace> <primary-postgres-pod> -c postgres -- \
   psql -d <database_name> -v ON_ERROR_STOP=1
 ```
 
-Paste the bootstrap SQL into that `psql` session, then update the workload
-configuration:
-
-```yaml
-initContainers:
-  migrate:
-    env:
-      DATABASE_ROLE: med_tracker_owner
-
-containers:
-  app:
-    env:
-      DATABASE_ROLE: med_tracker_app
-```
-
-With Flux or another GitOps controller, commit those values to the source repo
-before reconciling the release.
+Paste the bootstrap SQL into that `psql` session. Keep `DATABASE_ROLE` absent
+from the migration init container and the application container, then reconcile
+the release through Flux or the deployment's normal controller.
 
 ## Verification
 
@@ -207,8 +195,8 @@ WHERE NOT EXISTS (
 ```
 
 All three counts should be `0`. If any count is non-zero, deploy a release that
-contains the account access backfill migration and rerun migrations with
-`DATABASE_ROLE=med_tracker_owner`.
+contains the account access backfill migration and rerun migrations through the
+existing shared login with `DATABASE_ROLE` unset.
 
 ## If an earlier 0.5 attempt failed
 
