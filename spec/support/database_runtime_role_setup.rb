@@ -46,16 +46,9 @@ module DatabaseRuntimeRoleSetup
     AllowAccountScopedMembershipRlsBootstrap.new.up
     PartitionPaperTrailVersionsByHousehold.new.send(:enable_versions_rls)
     PartitionActiveStorageAttachmentsByHousehold.new.send(:enable_attachment_rls)
-    apply_runtime_privileges
+    ConfigureDatabaseRuntimeRoles.new.up
     AllowAccountLinkedPersonRlsLoginLookup.new.up
     AllowInvitationTokenRlsBootstrap.new.up
-  end
-
-  def self.apply_runtime_privileges
-    migration = ConfigureDatabaseRuntimeRoles.new
-    migration.send(:transfer_application_objects_to_owner)
-    migration.send(:grant_runtime_privileges)
-    migration.send(:configure_default_privileges)
   end
 
   def self.install_audit_ledger_database_objects

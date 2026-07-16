@@ -7,20 +7,18 @@ development:
   primary:
     adapter: postgresql
     url: <%= ENV['DATABASE_URL'] %>
-    seeds: false
 <% if primary_database_role != "" %>
     variables:
       role: <%= primary_database_role %>
 <% end %>
   queue:
     adapter: postgresql
-    url: <%= ENV['SOLID_QUEUE_DATABASE_URL'] %>
+    url: <%= ENV.fetch('SOLID_QUEUE_DATABASE_URL') { ENV['DATABASE_URL']&.gsub(/\/[^\/]+$/, '/medtracker_queue') } %>
     migrations_paths: db/queue_migrate
 
 test:
   adapter: postgresql
   url: <%= ENV['DATABASE_URL'] %>
-  seeds: false
   prepared_statements: false
 <% if primary_database_role != "" %>
   variables:
@@ -37,13 +35,13 @@ production:
 <% end %>
   cache:
     adapter: postgresql
-    url: <%= ENV['SOLID_CACHE_DATABASE_URL'] %>
+    url: <%= ENV.fetch('SOLID_CACHE_DATABASE_URL') { ENV['DATABASE_URL']&.gsub(/\/[^\/]+$/, '/medtracker_production_cache') } %>
     migrations_paths: db/cache_migrate
   queue:
     adapter: postgresql
-    url: <%= ENV['SOLID_QUEUE_DATABASE_URL'] %>
+    url: <%= ENV.fetch('SOLID_QUEUE_DATABASE_URL') { ENV['DATABASE_URL']&.gsub(/\/[^\/]+$/, '/medtracker_production_queue') } %>
     migrations_paths: db/queue_migrate
   cable:
     adapter: postgresql
-    url: <%= ENV['SOLID_CABLE_DATABASE_URL'] %>
+    url: <%= ENV.fetch('SOLID_CABLE_DATABASE_URL') { ENV['DATABASE_URL']&.gsub(/\/[^\/]+$/, '/medtracker_production_cable') } %>
     migrations_paths: db/cable_migrate
