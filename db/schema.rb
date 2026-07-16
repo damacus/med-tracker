@@ -1407,9 +1407,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_120000) do
     END;
     $$;
 
-    ALTER FUNCTION med_tracker.purge_medication_takes(bigint) OWNER TO med_tracker_owner;
     REVOKE ALL ON FUNCTION med_tracker.purge_medication_takes(bigint) FROM PUBLIC;
-    GRANT EXECUTE ON FUNCTION med_tracker.purge_medication_takes(bigint) TO med_tracker_app;
+    DO $purge_role_grant$
+    BEGIN
+      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'med_tracker_app') THEN
+        GRANT EXECUTE ON FUNCTION med_tracker.purge_medication_takes(bigint) TO med_tracker_app;
+      END IF;
+    END
+    $purge_role_grant$;
   SQL
 
   %w[

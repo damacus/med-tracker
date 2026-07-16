@@ -17,15 +17,23 @@ RSpec.describe CreateHouseholdMedicationTakePurgeFunction do
     household.update!(status: :archived, lifecycle_state: :purging, offboarded_at: Time.current)
   end
 
-  it 'installs the fixed-path security definer owned by the database owner' do
+  it 'installs the fixed-path security definer owned by the migration login' do
+    reinstall_function_as_migration_login
+
     expect(function_contract).to include(
       'prosecdef' => true,
       'proconfig' => 'search_path=pg_catalog',
       'lanname' => 'plpgsql',
-      'owner' => 'med_tracker_owner',
+      'owner' => connection.select_value('SELECT current_user'),
       'result_type' => 'bigint'
     )
     expect(function_contract.fetch('definition')).to include('public.households', 'public.medication_takes')
+  end
+
+  def reinstall_function_as_migration_login
+    migration = described_class.new
+    migration.migrate(:down)
+    migration.migrate(:up)
   end
 
   def function_contract

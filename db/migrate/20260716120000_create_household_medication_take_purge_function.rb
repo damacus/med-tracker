@@ -116,9 +116,14 @@ class CreateHouseholdMedicationTakePurgeFunction < ActiveRecord::Migration[8.1]
       END;
       $$;
 
-      ALTER FUNCTION #{FUNCTION_SIGNATURE} OWNER TO med_tracker_owner;
       REVOKE ALL ON FUNCTION #{FUNCTION_SIGNATURE} FROM PUBLIC;
-      GRANT EXECUTE ON FUNCTION #{FUNCTION_SIGNATURE} TO med_tracker_app;
+      DO $purge_role_grant$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'med_tracker_app') THEN
+          GRANT EXECUTE ON FUNCTION #{FUNCTION_SIGNATURE} TO med_tracker_app;
+        END IF;
+      END
+      $purge_role_grant$;
     SQL
   end
 
