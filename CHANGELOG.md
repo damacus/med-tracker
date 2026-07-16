@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.14](https://github.com/damacus/med-tracker/compare/v0.5.13...v0.5.14) (2026-07-16)
+
+
+### Bug Fixes
+
+* **ci:** harden Task setup ([#1697](https://github.com/damacus/med-tracker/issues/1697)) ([e356542](https://github.com/damacus/med-tracker/commit/e3565420037de7ac2fa1e6673b63a1aedb23a7ee))
+* **database:** separate runtime database logins ([#1688](https://github.com/damacus/med-tracker/issues/1688)) ([2e59da8](https://github.com/damacus/med-tracker/commit/2e59da875ced2cfc797089054cd55f3961df1369))
+* **households:** serialize purge cutoff ([#1696](https://github.com/damacus/med-tracker/issues/1696)) ([643ffb6](https://github.com/damacus/med-tracker/commit/643ffb6ea6a3c2f3adb06b9edaa1abc7d9bb2f97))
+
+
+### Reverts
+
+* **database:** restore shared login ([#1695](https://github.com/damacus/med-tracker/issues/1695)) ([0ca925a](https://github.com/damacus/med-tracker/commit/0ca925a0199c3f9806d9241a268c34dda1c389da))
+
 ## [0.5.13](https://github.com/damacus/med-tracker/compare/v0.5.12...v0.5.13) (2026-07-14)
 
 
