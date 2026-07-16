@@ -67,6 +67,18 @@ class RepairRlsHiddenAuditSources < ActiveRecord::Migration[8.1]
               chain_head.last_sequence, chain_head.last_hash, clock_timestamp(), clock_timestamp()
             )
             ON CONFLICT (chain_key, chain_epoch, sequence) DO NOTHING;
+
+            IF NOT EXISTS (
+              SELECT 1
+              FROM audit_checkpoints checkpoints
+              WHERE checkpoints.chain_key = chain_head.chain_key
+                AND checkpoints.chain_epoch = chain_head.chain_epoch
+                AND checkpoints.sequence = chain_head.last_sequence
+                AND checkpoints.household_id IS NOT DISTINCT FROM chain_head.household_id
+                AND checkpoints.entry_hash = chain_head.last_hash
+            ) THEN
+              RAISE EXCEPTION 'existing checkpoint does not match the pre-repair live tail';
+            END IF;
           END IF;
 
           UPDATE audit_chain_heads
