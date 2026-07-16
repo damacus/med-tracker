@@ -7,6 +7,15 @@ module Households
     class << self
       def call(household:, actor_account:)
         authorize_operator!(actor_account)
+        LifecycleCutoffLock.with(household: household) do
+          household = Household.find(household.id)
+          offboard(household, actor_account)
+        end
+      end
+
+      private
+
+      def offboard(household, actor_account)
         preserved_account_ids = accounts_with_other_operational_household(household, actor_account)
         TenantContext.with(account: actor_account, household: household) do
           ActiveRecord::Base.transaction do
@@ -20,8 +29,6 @@ module Households
           end
         end
       end
-
-      private
 
       def revoke_access!(household, actor_account, preserved_account_ids)
         memberships = household.household_memberships.to_a

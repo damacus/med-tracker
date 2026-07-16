@@ -34,6 +34,39 @@ RSpec.describe Households::Purger do
     end.to raise_error(Pundit::NotAuthorizedError)
   end
 
+  it 'rejects an incomplete purge run for a household already marked purged' do
+    household.update!(status: :archived, lifecycle_state: :purged, offboarded_at: Time.current)
+    HouseholdPurgeRun.create!(
+      household: household,
+      requested_by_account: operator,
+      status: :failed,
+      attempts: 1
+    )
+
+    expect do
+      described_class.call(household: household, actor_account: operator)
+    end.to raise_error(/already purged/)
+
+    expect(household.reload).to be_purged
+  end
+
+  it 'does not create a pending purge run when a household is already purged' do
+    household.update!(status: :archived, lifecycle_state: :purged, offboarded_at: Time.current)
+
+    expect do
+      described_class.call(household: household, actor_account: operator)
+    end.to raise_error(/already purged/)
+
+    expect(HouseholdPurgeRun.where(household: household)).to be_empty
+  end
+
+  it 'returns the completed purge run when the purge is repeated' do
+    completed_run = described_class.call(household: household, actor_account: operator)
+
+    expect(described_class.call(household: household, actor_account: operator)).to eq(completed_run)
+    expect(HouseholdPurgeRun.where(household: household).count).to eq(1)
+  end
+
   it 'ends active support access before purging the household' do
     support_session = SupportAccessSession.create!(
       platform_admin: operator.platform_admin,
@@ -47,6 +80,34 @@ RSpec.describe Households::Purger do
     end.to change { support_session.reload.ended_at }.from(nil)
 
     expect(household.reload).to be_lifecycle_purged
+  end
+
+  it 'preserves a completed dose before cutoff and removes it during purge' do
+    result = record_dose_before_purge
+
+    expect(result.success).to be(true)
+    expect { described_class.call(household: household, actor_account: operator) }
+      .to change { MedicationTake.exists?(id: result.take.id) }
+      .from(true)
+      .to(false)
+    expect(household.reload).to be_purged
+  end
+
+  def record_dose_before_purge
+    person = create(:person, household: household)
+    medication = create(:medication, household: household)
+    schedule = create(:schedule, household: household, person: person, medication: medication)
+    user = User.create!(
+      person: person,
+      email_address: "purge-dose-first-#{SecureRandom.hex(4)}@example.test",
+      password: 'password'
+    )
+    MedicationAdministration::RecordDose.new.call(
+      source: schedule,
+      amount_override: nil,
+      taken_from_medication_id: medication.id,
+      user: user
+    )
   end
 
   it 'preserves a shared login identity while invalidating prior API credentials under forced RLS',
@@ -206,7 +267,7 @@ RSpec.describe Households::Purger do
 
   def verify_purge_tombstone(run)
     expect(purge_tombstone.metadata).to eq(
-      'attempts' => 1,
+      'attempt_number' => 1,
       'household_id' => household.id,
       'last_completed_table' => 'people',
       'outcome' => 'success',
@@ -222,6 +283,37 @@ RSpec.describe Households::Purger do
     failed_run = verify_partial_progress(records)
     described_class.call(household:, actor_account: operator)
     verify_completed_purge(failed_run, records)
+  end
+
+  it 'appends initiated, cutoff, and failed evidence for an interrupted first attempt' do
+    expect do
+      interrupt_first_attempt
+    end.to raise_error('audit sequence interruption')
+
+    expect(failed_first_attempt_event_types).to eq(%w[
+                                                     household.purge.initiated
+                                                     household.purge.cutoff
+                                                     household.purge.failed
+                                                   ])
+  end
+
+  def interrupt_first_attempt
+    callback = lambda do |table_name|
+      raise 'audit sequence interruption' if table_name == 'medication_takes'
+    end
+    described_class.call(household: household, actor_account: operator, after_table: callback)
+  end
+
+  def failed_first_attempt_event_types
+    SecurityAuditEvent.where(household: household)
+                      .where(event_type: %w[
+                               household.purge.initiated
+                               household.purge.cutoff
+                               household.purge.failed
+                               household.purge.completed
+                             ])
+                      .order(:id)
+                      .pluck(:event_type)
   end
 
   def purge_records
@@ -286,9 +378,26 @@ RSpec.describe Households::Purger do
   end
 
   def verify_purge_evidence
+    expect_completion_evidence
+    expect_purge_attempt_sequence
+    expect_purge_metadata_allowlist
+  end
+
+  def expect_completion_evidence
     expect(SecurityAuditEvent.where(household: household)).to exist
     expect(SecurityAuditEvent.where(household: household, event_type: 'household.purge.completed').count).to eq(1)
     expect(ledger_events('household.purge.completed')).to exist
+  end
+
+  def expect_purge_attempt_sequence
+    expect(purge_event_types).to eq(%w[
+                                      household.purge.initiated
+                                      household.purge.cutoff
+                                      household.purge.failed
+                                      household.purge.retry_started
+                                      household.purge.completed
+                                    ])
+    expect(SecurityAuditEvent.where(household: household, event_type: 'household.purge.cutoff').count).to eq(1)
   end
 
   def verify_completed_state(failed_run)
@@ -321,6 +430,24 @@ RSpec.describe Households::Purger do
 
   def purge_tombstone
     SecurityAuditEvent.where(household: household, event_type: 'household.purge.completed').sole
+  end
+
+  def purge_event_types
+    SecurityAuditEvent.where(household: household)
+                      .where("event_type LIKE 'household.purge.%'")
+                      .order(:id)
+                      .pluck(:event_type)
+  end
+
+  def expect_purge_metadata_allowlist
+    allowed_keys = %w[
+      purge_run_id household_id attempt_number last_completed_table outcome exception_class failure_code
+    ]
+    SecurityAuditEvent.where(household: household)
+                      .where("event_type LIKE 'household.purge.%'")
+                      .find_each do |event|
+      expect(event.metadata.keys - allowed_keys).to be_empty
+    end
   end
 
   def with_runtime_role

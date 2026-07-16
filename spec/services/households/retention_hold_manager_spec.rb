@@ -23,11 +23,14 @@ RSpec.describe Households::RetentionHoldManager do
 
   describe Households::RetentionHoldManager do
     it 'places and releases an audited hold while changing household availability', :aggregate_failures do
+      allow(Households::LifecycleCutoffLock).to receive(:with).and_call_original
       hold = place_hold('Regulatory preservation request')
       expect(hold).to be_active
       verify_placed_hold(hold)
       described_class.release!(hold: hold, actor_account: operator)
       verify_released_hold(hold)
+      expect(Households::LifecycleCutoffLock).to have_received(:with).with(household: household)
+      expect(Households::LifecycleCutoffLock).to have_received(:with).with(household_id: household.id)
     end
 
     def place_hold(reason)
@@ -90,6 +93,15 @@ RSpec.describe Households::RetentionHoldManager do
   end
 
   describe Households::Offboarder do
+    it 'holds the lifecycle cutoff lock around standalone offboarding' do
+      allow(Households::LifecycleCutoffLock).to receive(:with).and_call_original
+
+      described_class.call(household: household, actor_account: operator)
+
+      expect(Households::LifecycleCutoffLock).to have_received(:with).with(household: household)
+      expect(household.reload).to be_offboarded
+    end
+
     it 'atomically disables access and revokes every hosted credential and device surface', :aggregate_failures do
       records = offboarding_records
       other_records = preserved_household_records

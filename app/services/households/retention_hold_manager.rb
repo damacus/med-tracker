@@ -13,24 +13,31 @@ module Households
     class << self
       def place!(household:, actor_account:, reason:, review_on:)
         authorize_operator!(actor_account)
-        TenantContext.with(account: actor_account, household: household) do
-          ActiveRecord::Base.transaction do
-            place_locked!(household, actor_account, reason, review_on)
+        LifecycleCutoffLock.with(household: household) do
+          household = Household.find(household.id)
+          TenantContext.with(account: actor_account, household: household) do
+            ActiveRecord::Base.transaction do
+              place_locked!(household, actor_account, reason, review_on)
+            end
           end
         end
       end
 
       def release!(hold:, actor_account:)
         authorize_operator!(actor_account)
-        TenantContext.with(account: actor_account, household: hold.household) do
-          ActiveRecord::Base.transaction do
-            hold.lock!
-            return hold if hold.released?
+        LifecycleCutoffLock.with(household_id: hold.household_id) do
+          hold = HouseholdRetentionHold.find(hold.id)
+          household = Household.find(hold.household_id)
+          TenantContext.with(account: actor_account, household: household) do
+            ActiveRecord::Base.transaction do
+              hold.lock!
+              return hold if hold.released?
 
-            hold.update!(status: :released, released_by_account: actor_account, released_at: Time.current)
-            hold.household.update!(lifecycle_state: :active) if hold.household.held?
-            record_event(hold, actor_account, 'released')
-            hold
+              hold.update!(status: :released, released_by_account: actor_account, released_at: Time.current)
+              household.update!(lifecycle_state: :active) if household.held?
+              record_event(hold, actor_account, 'released')
+              hold
+            end
           end
         end
       end

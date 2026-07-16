@@ -13,7 +13,7 @@ module TakeMedicationGuardable
     when :out_of_stock, :cooldown, :paused, :overlapping_prescription_restriction
       default_message = take_medication_default_message(error)
       respond_take_medication_error(message: t("#{scope}.cannot_take_medication", default: default_message))
-    when :invalid_amount, :create_failed
+    when :invalid_amount, :create_failed, :household_unavailable
       respond_take_medication_invalid_dose(scope:)
     when :selection_required, :invalid_source
       respond_take_medication_stock_source_error(scope:, error:)

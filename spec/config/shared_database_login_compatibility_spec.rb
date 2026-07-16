@@ -73,6 +73,19 @@ RSpec.describe SharedDatabaseLoginCompatibility do
     end
   end
 
+  it 'loads the purge function before optional runtime roles have been bootstrapped' do
+    migration_source = Rails.root.join(
+      'db/migrate/20260716120000_create_household_medication_take_purge_function.rb'
+    ).read
+    [migration_source, Rails.root.join('db/schema.rb').read].each do |source|
+      expect(source).not_to include('OWNER TO med_tracker_owner')
+      expect(source).to include('REVOKE ALL ON FUNCTION')
+      expect(source).to match(
+        /DO \$purge_role_grant\$.*?IF EXISTS .*?rolname = 'med_tracker_app'.*?GRANT EXECUTE ON FUNCTION/m
+      )
+    end
+  end
+
   def expect_compose_login(environment, login, *auxiliary_databases)
     services = %W[migrate-#{environment} web-#{environment}]
 
