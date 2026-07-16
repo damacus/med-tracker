@@ -57,11 +57,19 @@ RSpec.describe SharedDatabaseLoginCompatibility do
     end
   end
 
-  it 'instructs existing deployments to leave the migration role unset' do
+  it 'instructs shared-login deployments to keep migrations roleless' do
     [deployment_guide, upgrade_guide].each do |guide|
-      expect(guide).to include('Leave `DATABASE_ROLE` unset')
+      expect(guide).to include('Leave `DATABASE_ROLE` unset for migrations')
       expect(guide).not_to include('DATABASE_ROLE=med_tracker_owner')
       expect(guide).not_to include('DATABASE_ROLE: med_tracker_owner')
+    end
+  end
+
+  it 'allows the shared login to use the web runtime role' do
+    [deployment_guide, upgrade_guide].each do |guide|
+      expect(guide).to include('`DATABASE_ROLE=med_tracker_app`')
+      expect(guide).not_to include('unset for the migration and web processes')
+      expect(guide).not_to include('absent from the migration init container and the application container')
     end
   end
 

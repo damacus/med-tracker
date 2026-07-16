@@ -16,9 +16,11 @@ Run this bootstrap when all of these are true:
 - The deployment will run migrations through its existing shared database
   login.
 
-Leave `DATABASE_ROLE` unset for the migration and web processes. Owner-role
-switching is deferred until an explicit ownership-adoption and rollback design
-exists for databases with mixed historical object ownership.
+Leave `DATABASE_ROLE` unset for migrations. The web process uses the same
+shared database login and may set `DATABASE_ROLE=med_tracker_app` for runtime
+row-level security. Owner-role switching is deferred until an explicit
+ownership-adoption and rollback design exists for databases with mixed
+historical object ownership.
 
 ## One-time bootstrap
 
@@ -106,7 +108,8 @@ kubectl exec -n <namespace> <primary-postgres-pod> -c postgres -- \
 ```
 
 Paste the bootstrap SQL into that `psql` session. Keep `DATABASE_ROLE` absent
-from the migration init container and the application container, then reconcile
+from the migration init container. The application container may use
+`DATABASE_ROLE=med_tracker_app` with the same shared database login. Reconcile
 the release through Flux or the deployment's normal controller.
 
 ## Verification
