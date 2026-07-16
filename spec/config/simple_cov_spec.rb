@@ -48,6 +48,8 @@ RSpec.describe SimpleCov do
 
     expect(job).to include('uses: browser-actions/setup-chrome@2e1d749697dd1612b833dba4a722266286fbefcd')
     expect(job).to include('uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52')
+    expect(job).to include('version: 3.52.0')
+    expect(job).to include('repo-token: ${{ github.token }}')
   end
 
   it 'audits public and authenticated mobile workflows and always retains reports' do
