@@ -38,6 +38,23 @@ module MedicationAdministration
     end
 
     def call(source:, amount_override:, taken_from_medication_id:, user:, **options)
+      Households::LifecycleCutoffLock.with(household_id: source.household_id) do
+        source = freshly_loaded_operational_source(source)
+        return failure(:household_unavailable) unless source
+
+        record_dose(
+          source: source,
+          amount_override: amount_override,
+          taken_from_medication_id: taken_from_medication_id,
+          user: user,
+          options: options
+        )
+      end
+    end
+
+    private
+
+    def record_dose(source:, amount_override:, taken_from_medication_id:, user:, options:)
       publish_take_metric('take_attempted.med_tracker', source:, user:, options:)
       prepared_take = prepare_take(
         source: source,
@@ -54,7 +71,12 @@ module MedicationAdministration
       success(take, source:, user:, options:)
     end
 
-    private
+    def freshly_loaded_operational_source(source)
+      source.reload
+      source if source.household&.operational?
+    rescue ActiveRecord::RecordNotFound
+      nil
+    end
 
     def failure(error)
       Result.new(success: false, take: nil, error: error)

@@ -510,6 +510,25 @@ RSpec.describe MedicationAdministration::RecordDose do
     end
   end
 
+  describe 'household lifecycle cutoff' do
+    let(:schedule) { schedules(:john_paracetamol) }
+
+    before { travel_to Time.current.end_of_day - 1.minute }
+
+    it 'rejects a dose after purge cutoff without changing take history or stock' do
+      household = schedule.household
+      household.update!(status: :archived, lifecycle_state: :purging, offboarded_at: Time.current)
+      original_supply = schedule.medication.current_supply
+
+      expect do
+        result = call_service(source: schedule)
+        expect(result.error).to eq(:household_unavailable)
+      end.not_to change(MedicationTake, :count)
+
+      expect(schedule.medication.reload.current_supply).to eq(original_supply)
+    end
+  end
+
   describe 'medication take events' do
     def expect_metric_payload(payloads, source:, error: nil)
       expect(payloads).to contain_exactly(

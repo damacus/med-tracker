@@ -20,8 +20,13 @@ The runtime application role can insert source events but cannot update or delet
 Household purge never updates or deletes either audit source table. Historical
 `actor_membership_id` values deliberately outlive purged membership domain rows, so
 the source payload and chained ledger remain byte-for-byte verifiable. A successful
-purge appends one `household.purge.completed` tombstone containing identifiers and
-status fields only.
+purge appends initiated, cutoff, retry, and failed attempt evidence as applicable,
+then one `household.purge.completed` tombstone containing identifiers and status
+fields only. Purge metadata is limited to the purge run and household identifiers,
+attempt number, last completed table, outcome, and exception class or failure code.
+The medication-take deletion step is a validated `SECURITY DEFINER` maintenance
+boundary for the existing shared login; it does not provide credential isolation or
+a general medication-history bypass.
 
 - `med_tracker_audit_exporter` reads ledger/checkpoint data, signs checkpoints through a one-way database function, and updates delivery receipts. It cannot read source or clinical tables or modify ledger history.
 - `med_tracker_audit_verifier` reads source and ledger evidence and may insert the audit event describing an export. It cannot read clinical tables or alter existing source, ledger, checkpoint, or delivery rows.

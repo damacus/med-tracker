@@ -197,6 +197,13 @@ Purge refuses an active retention hold before deleting anything. It is safe to
 retry after interruption: the durable purge run increments `attempts`, reports
 `last_completed_table`, repeats idempotent deletions, and finishes only after every
 purgeable `SchemaInventory` tenant table and household-owned attachment is empty.
+The `medication_takes` step crosses the validated
+`med_tracker.purge_medication_takes(bigint)` maintenance boundary. The function
+requires matching transaction-local household context and an active platform
+administrator account context, validates the archived/purging/offboarded lifecycle
+and retention hold state, and deletes only the target household's dose history.
+It is a `SECURITY DEFINER` boundary for the existing shared database login, not
+credential isolation or a general bypass for immutable medication history.
 Immutable `security_audit_events` and `versions` audit history are never updated or
 deleted. Tenant security events remain under tenant RLS. Historical actor-membership
 identifiers remain in the audit sources after the corresponding access-domain row is
@@ -204,10 +211,13 @@ purged. Completion appends one immutable `household.purge.completed` tombstone
 containing only the identifiers and status fields listed below. Purge never deletes
 another household's attachment or a blob still referenced elsewhere.
 Successful evidence contains `event_type`, `outcome`, `household_id`,
-`purge_run_id`, `attempts`, and `last_completed_table`. Failed commands emit
-`event_type`, `outcome`, and `failure_code`, exit non-zero, and do not claim
-completion. Investigate the application exception telemetry, correct the cause,
-then run the identical task command again.
+`purge_run_id`, `attempt_number`, and `last_completed_table`. The immutable sequence
+records `household.purge.initiated`, one `household.purge.cutoff`,
+`household.purge.failed` on failed attempts, `household.purge.retry_started` on
+later attempts, and one `household.purge.completed` tombstone after inventory is
+empty. Failed commands emit `event_type`, `outcome`, and `failure_code`, exit
+non-zero, and do not claim completion. Investigate the application exception
+telemetry, correct the cause, then run the identical task command again.
 
 Never retain free-text reasons, attachment contents, credentials, or health data in command output.
 

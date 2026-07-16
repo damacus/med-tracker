@@ -10,6 +10,12 @@ module Households
       end
     end
 
+    class InvalidLifecycle < StandardError
+      def initialize
+        super('Household is already purged without a completed purge run')
+      end
+    end
+
     PURGE_ORDER = %w[
       health_event_medications
       notification_events
@@ -33,16 +39,16 @@ module Households
       medications
       locations
     ].freeze
-    LOCK_NAMESPACE = 'med_tracker.household_purge'
-
     class << self
       def call(household:, actor_account:, after_table: nil)
         authorize_operator!(actor_account)
-        with_purge_lock(household) do
+        LifecycleCutoffLock.with(household: household) do
+          household = Household.find(household.id)
           refuse_active_hold!(household, actor_account)
-          Offboarder.call(household: household, actor_account: actor_account)
+          household = Offboarder.call(household: household, actor_account: actor_account)
           run = purge_run(household, actor_account)
           next run if run.completed?
+          raise InvalidLifecycle if household.purged?
 
           execute_purge!(run, household, actor_account, after_table)
           run
@@ -62,54 +68,28 @@ module Households
         HouseholdPurgeRun.acquire!(household: household, requested_by_account: actor_account)
       end
 
-      def with_purge_lock(household)
-        connection = ActiveRecord::Base.connection
-        lock_key = "#{LOCK_NAMESPACE}:#{household.id}"
-        acquire_purge_lock(connection, lock_key)
-        yield
-      ensure
-        release_purge_lock(connection, lock_key) if connection && lock_key
-      end
-
-      def acquire_purge_lock(connection, lock_key)
-        connection.select_value(
-          ActiveRecord::Base.sanitize_sql_array(
-            [
-              'WITH lock_acquired AS MATERIALIZED (' \
-              'SELECT pg_advisory_lock(hashtextextended(?, 0))' \
-              ') SELECT 1 FROM lock_acquired',
-              lock_key
-            ]
+      def start_run!(run, household, actor_account)
+        attempt_number = run.attempts + 1
+        TenantContext.with(account: actor_account, household: household) do
+          run.update!(
+            status: :running,
+            attempts: attempt_number,
+            started_at: run.started_at || Time.current,
+            failure_code: nil,
+            failed_at: nil
           )
-        )
-      end
-
-      def release_purge_lock(connection, lock_key)
-        connection.select_value(
-          ActiveRecord::Base.sanitize_sql_array(
-            ['SELECT pg_advisory_unlock(hashtextextended(?, 0))', lock_key]
-          )
-        )
-      end
-
-      def start_run!(run)
-        run.update!(
-          status: :running,
-          attempts: run.attempts + 1,
-          started_at: run.started_at || Time.current,
-          failure_code: nil,
-          failed_at: nil
-        )
+          PurgeAudit.attempt_started(run: run, household: household, actor_account: actor_account)
+        end
       end
 
       def execute_purge!(run, household, actor_account, after_table)
-        start_run!(run)
-        prepare_purge!(household, actor_account)
+        start_run!(run, household, actor_account)
+        prepare_purge!(run, household, actor_account)
         purge_dependencies!(run, household, actor_account, after_table)
         purge_inventory!(run, household, actor_account, after_table)
         complete_run!(run, household, actor_account)
       rescue StandardError => e
-        run.reload.update!(status: :failed, failure_code: e.class.name, failed_at: Time.current)
+        record_failure(run, household, actor_account, e)
         raise
       end
 
@@ -131,12 +111,18 @@ module Households
         end
       end
 
-      def prepare_purge!(household, actor_account)
+      def prepare_purge!(run, household, actor_account)
         TenantContext.with(account: actor_account, household: household) do
           household.lock!
           raise ActiveRetentionHold if household.household_retention_holds.active.exists?
+          return if household.purging?
 
-          household.update!(lifecycle_state: :purging) unless household.purging?
+          household.update!(lifecycle_state: :purging)
+          PurgeAudit.cutoff(
+            run: run,
+            household: household,
+            actor_account: actor_account
+          )
         end
       end
 
@@ -182,6 +168,8 @@ module Households
       end
 
       def delete_household_rows(table_name, household_id)
+        return purge_medication_takes(household_id) if table_name == 'medication_takes'
+
         connection = ActiveRecord::Base.connection
         connection.exec_delete(
           "DELETE FROM #{connection.quote_table_name(table_name)} " \
@@ -189,19 +177,32 @@ module Households
         )
       end
 
+      def purge_medication_takes(household_id)
+        ActiveRecord::Base.connection.select_value(
+          ActiveRecord::Base.sanitize_sql_array(
+            ['SELECT med_tracker.purge_medication_takes(?)', household_id]
+          )
+        ).to_i
+      end
+
       def record_completion(run, household, actor_account)
-        Audit::Event.record!(
+        PurgeAudit.completed(
+          run: run,
           household: household,
-          actor_account: actor_account,
-          event_type: 'household.purge.completed',
-          metadata: {
-            attempts: run.attempts,
-            household_id: household.id,
-            last_completed_table: run.last_completed_table,
-            outcome: 'success',
-            purge_run_id: run.id
-          }
+          actor_account: actor_account
         )
+      end
+
+      def record_failure(run, household, actor_account, exception)
+        TenantContext.with(account: actor_account, household: household) do
+          run.reload.update!(status: :failed, failure_code: exception.class.name, failed_at: Time.current)
+          PurgeAudit.failed(
+            run: run,
+            household: household,
+            actor_account: actor_account,
+            exception: exception
+          )
+        end
       end
 
       def ensure_inventory_empty!(household_id)
