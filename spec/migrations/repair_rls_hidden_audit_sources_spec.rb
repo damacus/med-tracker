@@ -21,6 +21,7 @@ RSpec.describe RepairRlsHiddenAuditSources do
       expect(missing_entry?('versions', version_id)).to be(true)
 
       expected_order = add_ordering_sources(event_id, version_id)
+      expect(household_source_times(expected_order).uniq.size).to be > 1
       live_entry = create_live_tail
       preserved_records = preserve_existing_audit_records
 
@@ -156,15 +157,19 @@ RSpec.describe RepairRlsHiddenAuditSources do
       SELECT created_at FROM security_audit_events WHERE id = #{event_id}
     SQL
     connection.execute('ALTER TABLE versions DISABLE TRIGGER append_versions_to_audit_ledger')
+    earlier_version_id = insert_version_for(occurred_at - 2.hours, household.id)
     second_version_id = insert_version_for(occurred_at, household.id)
-    global_version_id = insert_version_for(occurred_at, nil)
+    later_version_id = insert_version_for(occurred_at + 2.hours, household.id)
+    global_version_id = insert_version_for(occurred_at + 4.hours, nil)
     connection.execute('ALTER TABLE versions ENABLE TRIGGER append_versions_to_audit_ledger')
 
     [
       ['global', 'versions', global_version_id],
+      ["household:#{household.id}", 'versions', earlier_version_id],
       ["household:#{household.id}", 'security_audit_events', event_id],
       ["household:#{household.id}", 'versions', version_id],
-      ["household:#{household.id}", 'versions', second_version_id]
+      ["household:#{household.id}", 'versions', second_version_id],
+      ["household:#{household.id}", 'versions', later_version_id]
     ]
   ensure
     connection.execute('ALTER TABLE versions ENABLE TRIGGER append_versions_to_audit_ledger')
@@ -272,6 +277,16 @@ RSpec.describe RepairRlsHiddenAuditSources do
   def entries_for(expected_order)
     expected_order.reduce(AuditLedgerEntry.none) do |entries, (_chain_key, source_table, source_id)|
       entries.or(AuditLedgerEntry.where(source_table:, source_id:))
+    end
+  end
+
+  def household_source_times(expected_order)
+    expected_order.filter_map do |chain_key, source_table, source_id|
+      next unless chain_key == "household:#{household.id}"
+
+      connection.select_value(<<~SQL.squish)
+        SELECT created_at FROM #{connection.quote_table_name(source_table)} WHERE id = #{source_id}
+      SQL
     end
   end
 
