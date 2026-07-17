@@ -17,13 +17,6 @@ RSpec.describe FreshSchemaRowLevelSecurity do
       owner: PG.connect(disposable_database_parameters)
     }
   end
-  let(:seeded_records) { seed_records! }
-
-  before do
-    create_database!
-    load_schema!
-    seeded_records
-  end
 
   after do
     close_disposable_connections
@@ -31,12 +24,41 @@ RSpec.describe FreshSchemaRowLevelSecurity do
     drop_database!
   end
 
-  it 'restores the household RLS and runtime role contract after db:schema:load' do
-    expect_household_policies!
-    expect_people_login_lookup_policy!
-    expect_role_convergence!
-    expect_runtime_isolation!
-    expect_owner_role_can_manage_a_matching_medication_take!
+  context 'when runtime roles are present' do
+    let(:seeded_records) { seed_records! }
+
+    before do
+      create_database!
+      load_schema!
+      seeded_records
+    end
+
+    it 'restores the household RLS and runtime role contract after db:schema:load' do
+      expect_household_policies!
+      expect_people_login_lookup_policy!
+      expect_role_convergence!
+      expect_runtime_isolation!
+      expect_owner_role_can_manage_a_matching_medication_take!
+    end
+  end
+
+  context 'when runtime roles are absent' do
+    let(:hidden_runtime_roles) { {} }
+
+    before do
+      hide_runtime_roles!
+      create_database!
+      load_schema!
+    end
+
+    after do
+      restore_runtime_roles!
+    end
+
+    it 'loads the schema without the role-dependent login lookup policy' do
+      expect(runtime_roles_present?).to be(false)
+      expect(people_login_lookup_policy).to be_nil
+    end
   end
 
   private
@@ -73,17 +95,9 @@ RSpec.describe FreshSchemaRowLevelSecurity do
   end
 
   def disposable_database_url
-    URI::Generic.build(
-      scheme: 'postgresql',
-      userinfo: [connection_parameter(:user), connection_parameter(:password)].compact.join(':'),
-      host: connection_parameter(:host),
-      port: connection_parameter(:port).to_i,
-      path: "/#{database_name}"
-    ).to_s
-  end
-
-  def connection_parameter(name)
-    connection_parameters[name] || connection_parameters[name.to_s]
+    uri = URI.parse(ActiveRecord::Base.connection_db_config.url)
+    uri.path = "/#{database_name}"
+    uri.to_s
   end
 
   def database_connection
@@ -133,13 +147,47 @@ RSpec.describe FreshSchemaRowLevelSecurity do
   end
 
   def expect_people_login_lookup_policy!
-    policy = database_connection.exec(<<~SQL.squish).first
-      SELECT roles, qual FROM pg_policies
-      WHERE schemaname = 'public' AND tablename = 'people' AND policyname = 'people_account_login_lookup'
-    SQL
+    policy = people_login_lookup_policy
 
     expect(policy).to include('roles' => '{med_tracker_app}')
     expect(policy.fetch('qual')).to include('account_id IS NOT NULL')
+  end
+
+  def people_login_lookup_policy
+    database_connection.exec(<<~SQL.squish).first
+      SELECT roles, qual FROM pg_policies
+      WHERE schemaname = 'public' AND tablename = 'people' AND policyname = 'people_account_login_lookup'
+    SQL
+  end
+
+  def hide_runtime_roles!
+    runtime_roles.each do |role|
+      hidden_role = "#{role}_absent_#{SecureRandom.hex(8)}"
+      rename_role!(role, hidden_role)
+      hidden_runtime_roles[role] = hidden_role
+    end
+  end
+
+  def restore_runtime_roles!
+    hidden_runtime_roles.each do |role, hidden_role|
+      rename_role!(hidden_role, role)
+    end
+  end
+
+  def runtime_roles_present?
+    runtime_roles.all? do |role|
+      database_connection.exec_params('SELECT to_regrole($1)', [role]).getvalue(0, 0)
+    end
+  end
+
+  def runtime_roles
+    %w[med_tracker_owner med_tracker_app]
+  end
+
+  def rename_role!(from, to)
+    admin_connection.exec(
+      "ALTER ROLE #{admin_connection.escape_identifier(from)} RENAME TO #{admin_connection.escape_identifier(to)}"
+    )
   end
 
   def expect_role_convergence!
