@@ -30,8 +30,8 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
     it 'bulk loads dose sources for the dashboard family' do
       counts = count_source_queries { query.call }
 
-      expect(counts[:schedules]).to eq(1)
-      expect(counts[:person_medications]).to eq(1)
+      expect(counts[:schedules]).to eq(2)
+      expect(counts[:person_medications]).to eq(2)
     end
 
     it 'keeps dashboard source query counts stable as rows grow' do

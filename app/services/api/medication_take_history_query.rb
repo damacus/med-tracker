@@ -3,6 +3,8 @@
 module Api
   class MedicationTakeHistoryQuery
     Result = Data.define(:records, :meta)
+    CURSOR_KEYS = %i[cursor person_id from to].freeze
+    LEGACY_KEYS = %i[page updated_since].freeze
     INCLUDES = [
       { schedule: %i[person medication] },
       { person_medication: %i[person medication] },
@@ -11,7 +13,28 @@ module Api
     ].freeze
 
     def self.cursor_mode?(params)
-      %i[cursor person_id from to].any? { |key| params[key].present? }
+      validate_pagination(params)
+      requested = cursor_requested?(params)
+      if requested && legacy_pagination_requested?(params)
+        raise Api::V1::BaseController::InvalidFilterValue,
+              'page and updated_since cannot be used with cursor pagination'
+      end
+
+      requested
+    end
+
+    def self.validate_pagination(params)
+      return unless params.key?(:pagination) && params[:pagination] != 'cursor'
+
+      raise Api::V1::BaseController::InvalidFilterValue, 'pagination must be cursor'
+    end
+
+    def self.cursor_requested?(params)
+      params[:pagination] == 'cursor' || CURSOR_KEYS.any? { |key| params.key?(key) }
+    end
+
+    def self.legacy_pagination_requested?(params)
+      LEGACY_KEYS.any? { |key| params.key?(key) }
     end
 
     def initialize(scope:, visible_people:, household:, params:)
@@ -109,7 +132,8 @@ module Api
     end
 
     def apply_cursor(relation)
-      return relation if params[:cursor].blank?
+      return relation unless params.key?(:cursor)
+      raise Api::V1::BaseController::InvalidFilterValue, 'cursor is invalid' if params[:cursor].blank?
 
       taken_at, id = cursor.decode(params[:cursor], filter_digest:)
       table = relation.klass.arel_table
@@ -139,7 +163,14 @@ module Api
     end
 
     def per_page
-      @per_page ||= params.fetch(:per_page, 20).to_i.clamp(1, 100)
+      @per_page ||= begin
+        value = Integer(params.fetch(:per_page, 20).to_s, 10)
+        raise ArgumentError unless (1..100).cover?(value)
+
+        value
+      rescue ArgumentError, TypeError
+        raise Api::V1::BaseController::InvalidFilterValue, 'per_page must be an integer between 1 and 100'
+      end
     end
   end
 end

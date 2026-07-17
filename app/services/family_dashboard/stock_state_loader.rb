@@ -43,15 +43,21 @@ module FamilyDashboard
 
     def build_state(source)
       resolver = stock_source_resolver(source)
-      blocked_reason = resolver.blocked_reason
+      blocked_reason = classified_blocked_reason(resolver.blocked_reason, source)
       selection_required = blocked_reason.blank? && resolver.selection_required?(nil)
       status = selection_required ? :selection_required : blocked_reason
 
       {
         status: status,
-        can_record: status.blank? && @recordable_person_ids.include?(source.person_id),
+        can_record: @recordable_person_ids.include?(source.person_id),
         choices: selection_required ? resolver.available_medications : []
       }
+    end
+
+    def classified_blocked_reason(blocked_reason, source)
+      return :max_reached if blocked_reason == :cooldown && daily_limit_reached?(source)
+
+      blocked_reason
     end
 
     def stock_source_resolver(source)
@@ -81,11 +87,7 @@ module FamilyDashboard
     end
 
     def preload_recordable_person_ids
-      @recordable_person_ids = if household_manager? || authorization_context.nil?
-                                 person_ids
-                               else
-                                 recordable_person_ids
-                               end
+      @recordable_person_ids = authorization_context ? recordable_person_ids : person_ids
     end
 
     def recordable_person_ids

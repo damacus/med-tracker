@@ -51,6 +51,38 @@ RSpec.describe 'API v1 medication takes' do
       expect(response.parsed_body.dig('error', 'code')).to eq('unprocessable_content')
     end
 
+    it 'returns an unfiltered first cursor page when cursor pagination is explicitly requested' do
+      login_data = api_login(user)
+      household_id = login_data.dig('household', 'id')
+
+      get api_v1_household_medication_takes_path(household_id),
+          params: { pagination: 'cursor' },
+          headers: api_auth_headers(login_data.fetch('access_token')),
+          as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.fetch('meta')).to include(
+        'per_page' => 20,
+        'next_cursor' => nil,
+        'has_more' => false
+      )
+    end
+
+    it 'rejects blank and tampered history cursors deterministically' do
+      login_data = api_login(user)
+      household_id = login_data.dig('household', 'id')
+
+      ['', 'tampered'].each do |cursor|
+        get api_v1_household_medication_takes_path(household_id),
+            params: { pagination: 'cursor', cursor: cursor },
+            headers: api_auth_headers(login_data.fetch('access_token')),
+            as: :json
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body.dig('error', 'message')).to eq('cursor is invalid')
+      end
+    end
+
     it 'rejects a tampered history cursor' do
       login_data = api_login(user)
       household_id = login_data.dig('household', 'id')
@@ -62,6 +94,44 @@ RSpec.describe 'API v1 medication takes' do
 
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.parsed_body.dig('error', 'message')).to eq('cursor is invalid')
+    end
+
+    it 'requires cursor page sizes to be integers from 1 through 100' do
+      login_data = api_login(user)
+      household_id = login_data.dig('household', 'id')
+
+      ['0', '101', '1.5', 'twenty', ''].each do |per_page|
+        get api_v1_household_medication_takes_path(household_id),
+            params: { pagination: 'cursor', per_page: per_page },
+            headers: api_auth_headers(login_data.fetch('access_token')),
+            as: :json
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body.dig('error', 'message')).to eq(
+          'per_page must be an integer between 1 and 100'
+        )
+      end
+    end
+
+    it 'rejects cursor and legacy pagination mixtures and unknown pagination modes' do
+      login_data = api_login(user)
+      household_id = login_data.dig('household', 'id')
+      invalid_params = [
+        { pagination: 'cursor', page: 1 },
+        { pagination: 'cursor', updated_since: 1.day.ago.iso8601 },
+        { cursor: 'tampered', page: 1 },
+        { pagination: 'offset' },
+        { pagination: '' }
+      ]
+
+      invalid_params.each do |params|
+        get api_v1_household_medication_takes_path(household_id),
+            params: params,
+            headers: api_auth_headers(login_data.fetch('access_token')),
+            as: :json
+
+        expect(response).to have_http_status(:unprocessable_content)
+      end
     end
 
     it 'filters history by a policy-visible portable person ID and time range' do
@@ -124,7 +194,7 @@ RSpec.describe 'API v1 medication takes' do
       end
     end
 
-    it 'paginates ties without duplicates and clamps cursor pages to 100 rows' do
+    it 'paginates ties without duplicates with the maximum cursor page size' do
       login_data = api_login(user)
       household_id = login_data.dig('household', 'id')
       taken_at = Time.iso8601('2026-01-15T12:00:00Z')
@@ -144,7 +214,7 @@ RSpec.describe 'API v1 medication takes' do
         person_id: user.person.portable_id,
         from: (taken_at - 1.minute).iso8601,
         to: (taken_at + 1.minute).iso8601,
-        per_page: 500
+        per_page: 100
       }
 
       get api_v1_household_medication_takes_path(household_id),

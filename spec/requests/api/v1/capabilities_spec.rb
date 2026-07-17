@@ -43,7 +43,7 @@ RSpec.describe 'API v1 capabilities' do
       'person_filter' => true,
       'time_range_filter' => true,
       'max_page_size' => 100,
-      'reversal_state' => true
+      'reversal_state' => false
     )
     expect(data).to include(
       'backups' => include('unencrypted_zip' => true, 'health_data_json' => true),

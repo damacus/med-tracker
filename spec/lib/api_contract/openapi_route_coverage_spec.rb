@@ -528,6 +528,60 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       )
     end
 
+    it 'fully types dashboard and medication take history operations' do
+      dashboard = described_class.operation('/households/{household_id}/dashboard', 'get')
+      history = described_class.operation('/households/{household_id}/medication_takes', 'get')
+
+      dashboard_parameters = dashboard.fetch('parameters').filter_map { |parameter| parameter['name'] }
+      history_parameters = history.fetch('parameters').filter_map { |parameter| parameter['name'] }
+
+      expect(dashboard_parameters).to contain_exactly('date', 'person_id')
+      expect(dashboard.dig('responses', '200', 'content', 'application/json', 'schema', '$ref')).to eq(
+        '#/components/schemas/DashboardResponse'
+      )
+      expect(history_parameters).to contain_exactly(
+        'pagination', 'cursor', 'person_id', 'from', 'to', 'per_page', 'page', 'updated_since'
+      )
+      expect(history.dig('responses', '200', 'content', 'application/json', 'schema', '$ref')).to eq(
+        '#/components/schemas/MedicationTakeCollectionResponse'
+      )
+    end
+
+    it 'fully types dashboard task and response schemas' do
+      task_schema = described_class.schema('DashboardTask')
+      expect(task_schema.dig('properties', 'status', 'enum')).to contain_exactly(
+        'due', 'upcoming', 'available', 'cooldown', 'max_reached', 'paused', 'out_of_stock',
+        'selection_required'
+      )
+      expect(described_class.schema('DashboardResponse').dig('properties', 'data', '$ref')).to eq(
+        '#/components/schemas/Dashboard'
+      )
+    end
+
+    it 'fully types medication take history response schemas' do
+      expect(described_class.schema('MedicationTakeCursorMeta').fetch('required')).to contain_exactly(
+        'per_page', 'next_cursor', 'has_more'
+      )
+      expect(described_class.schema('MedicationTake').dig('properties', 'reversal', 'type')).to contain_exactly(
+        'object', 'null'
+      )
+    end
+
+    it 'validates representative dashboard and cursor history responses against their schemas' do
+      login_data = api_login(users(:jane))
+      household_id = login_data.dig('household', 'id')
+      headers = api_auth_headers(login_data.fetch('access_token'))
+
+      get api_v1_household_dashboard_path(household_id), params: { person_id: 'all' }, headers:, as: :json
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('DashboardResponse', response.parsed_body)).to be_empty
+
+      get api_v1_household_medication_takes_path(household_id),
+          params: { pagination: 'cursor' }, headers:, as: :json
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('MedicationTakeCollectionResponse', response.parsed_body)).to be_empty
+    end
+
     it 'does not advertise unsupported person update preconditions' do
       update_person = described_class.operation('/households/{household_id}/people/{id}', 'patch')
 

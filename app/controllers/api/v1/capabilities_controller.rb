@@ -107,7 +107,7 @@ module Api
             person_filter: true,
             time_range_filter: true,
             max_page_size: 100,
-            reversal_state: true
+            reversal_state: false
           }
         }
       end

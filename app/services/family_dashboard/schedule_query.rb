@@ -30,9 +30,7 @@ module FamilyDashboard
     def build_result
       # 1. Fetch all active schedules and person_medications for these people first
       # to get the IDs for take preloading
-      @person_ids = @people.map(&:id)
-      @all_schedules = fetch_active_schedules
-      @all_person_medications = fetch_person_medications
+      load_administration_sources
 
       # 2. Preload takes using the specific IDs we just found
       preload_takes
@@ -41,47 +39,74 @@ module FamilyDashboard
       # 3. Aggregate all doses
       routine_tasks = sort_rows(aggregate_family_doses)
       as_needed_items = sort_rows(aggregate_family_as_needed_items)
-      today_takes = build_today_takes_by_person
 
       # 4. Sort by time and return
       Result.new(
         routine_tasks: routine_tasks,
         routine_tasks_by_person: group_rows_by_person(routine_tasks),
         as_needed_by_person: group_rows_by_person(as_needed_items),
-        today_takes_by_person: today_takes
+        today_takes_by_person: build_today_takes_by_person
       )
     end
 
-    def fetch_active_schedules
-      schedules = Schedule.current.where(start_date: ..date, end_date: date..)
-      schedules = schedules.where(active: true) unless @include_paused
-      schedules_by_person_id = schedules.where(person_id: @person_ids)
-                                        .includes(:medication)
-                                        .to_a
-                                        .group_by(&:person_id)
-
-      @people.to_h { |person| [person.id, schedules_by_person_id.fetch(person.id, [])] }
-    end
-
-    def fetch_person_medications
-      person_medications = PersonMedication.current
-      person_medications = person_medications.where(active: true) unless @include_paused
-      person_medications_by_person_id = person_medications.where(person_id: @person_ids)
-                                                          .includes(:medication)
-                                                          .to_a
-                                                          .group_by(&:person_id)
-
-      @people.to_h { |person| [person.id, person_medications_by_person_id.fetch(person.id, [])] }
+    def load_administration_sources
+      @person_ids = @people.map(&:id)
+      sources = AdministrationSourceLoader.new(
+        people: @people,
+        date: date,
+        reference_time: now,
+        include_paused: @include_paused
+      ).call
+      @all_schedules = sources.schedules_by_person
+      @all_person_medications = sources.person_medications_by_person
     end
 
     def preload_takes
       # Fetch takes for the last 30 days to cover weekly/monthly cycles
       # but focus on today for the dashboard
-      TakePreloader.new(sources: all_sources, date: date).call
+      all_takes = fetch_takes_for_sources
+
+      # Group by [source_type, source_id] for fast lookup
+      takes_by_source = all_takes.group_by do |take|
+        take.schedule_id ? ['Schedule', take.schedule_id] : ['PersonMedication', take.person_medication_id]
+      end
+
+      # Associate preloaded takes with these objects to avoid N+1 in TimingRestrictions
+      associate_takes_to_sources(all_sources, takes_by_source)
     end
 
     def all_sources
       @all_schedules.values.flatten + @all_person_medications.values.flatten
+    end
+
+    def fetch_takes_for_sources
+      scheduled = take_scope(schedule_id: source_ids(@all_schedules))
+      direct = take_scope(person_medication_id: source_ids(@all_person_medications))
+      scheduled.or(direct).includes(
+        :taken_from_location,
+        :taken_from_medication,
+        schedule: %i[person medication],
+        person_medication: %i[person medication]
+      ).to_a
+    end
+
+    def take_scope(source_filter)
+      range = (date.beginning_of_day - 30.days)..date.end_of_day
+      MedicationTake.where(taken_at: range, **source_filter)
+    end
+
+    def source_ids(sources_by_person) = sources_by_person.values.flatten.map(&:id)
+
+    def associate_takes_to_sources(sources, takes_by_source)
+      sources.each do |source|
+        key = [source.class.name, source.id]
+        takes = takes_by_source[key] || []
+
+        # Set the association as loaded and assign the takes
+        association = source.association(:medication_takes)
+        association.loaded!
+        association.target.concat(takes)
+      end
     end
 
     def aggregate_family_doses
@@ -93,7 +118,7 @@ module FamilyDashboard
     end
 
     def build_today_takes_by_person
-      @people.index_with { |member| sort_takes(sources_for(member).flat_map { |source| todays_takes(source) }) }
+      CompletedTakeLoader.new(people: @people, date: date).call.transform_values { |takes| sort_takes(takes) }
     end
 
     def aggregate_rows
@@ -128,7 +153,7 @@ module FamilyDashboard
     end
 
     def build_upcoming_row(source, person, takes)
-      stock_state = stock_state_for(source)
+      stock_state = @stock_state_loader.state_for(source)
       {
         person: person,
         source: source,
@@ -143,8 +168,8 @@ module FamilyDashboard
     def generate_as_needed_rows_for(source, person)
       return [] unless as_needed_source?(source)
 
-      stock_state = stock_state_for(source)
-      status = as_needed_status_for(source, stock_state)
+      stock_state = @stock_state_loader.state_for(source)
+      status = stock_state[:status].presence || :available
       takes = todays_takes(source)
       [{
         person: person,
@@ -152,7 +177,7 @@ module FamilyDashboard
         scheduled_at: as_needed_scheduled_at(source, status),
         taken_at: nil,
         status: status,
-        can_record: stock_state[:can_record] && status == :available,
+        can_record: stock_state[:can_record],
         stock_source_choices: stock_state[:choices]
       }.merge(dose_progress_for(takes, daily_dose_limit_for(source)))]
     end
@@ -180,18 +205,6 @@ module FamilyDashboard
       source.medication_takes.count { |take| cycle.range_for(now).cover?(take.taken_at) }
     end
 
-    def as_needed_status_for(source, stock_state)
-      blocked_reason = stock_state[:status]
-      return :available if blocked_reason.blank?
-      return :max_reached if blocked_reason == :cooldown && daily_limit_reached?(source)
-
-      blocked_reason
-    end
-
-    def stock_state_for(source)
-      @stock_state_loader.state_for(source)
-    end
-
     def preload_stock_states
       @stock_state_loader = StockStateLoader.new(
         sources: all_sources,
@@ -204,17 +217,9 @@ module FamilyDashboard
 
     def as_needed_scheduled_at(source, status)
       return now if status == :available
-      return next_available_time_for(source) if %i[cooldown max_reached].include?(status)
+      return @stock_state_loader.next_available_time_for(source) if %i[cooldown max_reached].include?(status)
 
       nil
-    end
-
-    def daily_limit_reached?(source)
-      @stock_state_loader.daily_limit_reached?(source)
-    end
-
-    def next_available_time_for(source)
-      @stock_state_loader.next_available_time_for(source)
     end
 
     def daily_dose_limit_for(source)
@@ -243,11 +248,7 @@ module FamilyDashboard
       raw_time = Array(schedule.schedule_config.to_h['times']).compact_blank[index]
       return if raw_time.blank?
 
-      current_day_at(*configured_hour_and_minute(raw_time))
-    end
-
-    def configured_hour_and_minute(raw_time)
-      raw_time.to_s.split(':').map(&:to_i)
+      current_day_at(*raw_time.to_s.split(':').map(&:to_i))
     end
 
     def current_day_at(hour, minute)

@@ -131,6 +131,83 @@ RSpec.describe 'API v1 dashboard' do
     expect(returned_ids).not_to include(excluded_take.portable_id)
   end
 
+  it 'keeps takes and sources that were visible on a historical dashboard date' do
+    login_data = api_login(user)
+    household = Household.find(login_data.dig('household', 'id'))
+    source = create_dashboard_schedule(
+      household: household,
+      person: user.person,
+      name: 'Historically active medication',
+      schedule_type: :prn,
+      frequency: 'As needed'
+    )
+    source.update!(retired_at: Time.zone.parse('2026-07-18 09:00:00'))
+    take = create(
+      :medication_take,
+      schedule: source,
+      person_medication: nil,
+      taken_at: Time.zone.parse('2026-07-17 11:00:00'),
+      skip_stock_mutation: true
+    )
+    retired_same_day_source = create_dashboard_schedule(
+      household: household,
+      person: user.person,
+      name: 'Retired later that day',
+      schedule_type: :prn,
+      frequency: 'As needed'
+    )
+    retired_same_day_source.update!(retired_at: Time.zone.parse('2026-07-17 12:00:00'))
+    retired_same_day_take = create(
+      :medication_take,
+      schedule: retired_same_day_source,
+      person_medication: nil,
+      taken_at: Time.zone.parse('2026-07-17 11:30:00'),
+      skip_stock_mutation: true
+    )
+
+    get "/api/v1/households/#{household.id}/dashboard",
+        params: { date: '2026-07-17', person_id: user.person.portable_id },
+        headers: api_auth_headers(login_data.fetch('access_token')),
+        as: :json
+
+    data = response.parsed_body.fetch('data')
+    expect(data.fetch('as_needed_tasks').pluck('source_id')).to include(source.portable_id)
+    expect(data.fetch('recent_completed_takes').pluck('portable_id')).to include(
+      take.portable_id,
+      retired_same_day_take.portable_id
+    )
+  end
+
+  it 'reports the full completed count while limiting recent completed takes to 20' do
+    login_data = api_login(user)
+    household = Household.find(login_data.dig('household', 'id'))
+    source = create_dashboard_schedule(
+      household: household,
+      person: user.person,
+      name: 'Frequent historical medication',
+      schedule_type: :prn,
+      frequency: 'As needed'
+    )
+    25.times do |index|
+      create(
+        :medication_take,
+        schedule: source,
+        person_medication: nil,
+        taken_at: Time.zone.parse('2026-06-01 08:00:00') + index.minutes,
+        skip_stock_mutation: true
+      )
+    end
+
+    get "/api/v1/households/#{household.id}/dashboard",
+        params: { date: '2026-06-01', person_id: user.person.portable_id },
+        headers: api_auth_headers(login_data.fetch('access_token')),
+        as: :json
+
+    data = response.parsed_body.fetch('data')
+    expect(data.dig('summary_counts', 'completed')).to eq(25)
+    expect(data.fetch('recent_completed_takes').size).to eq(20)
+  end
+
   it 'preserves routine, PRN, blocking, paused, and stock-selection states' do
     travel_to Time.zone.parse('2026-07-17 12:00:00') do
       login_data = api_login(users(:admin))
@@ -149,6 +226,9 @@ RSpec.describe 'API v1 dashboard' do
         household:, person:, name: 'Limited spray', schedule_type: :prn, frequency: 'As needed',
         min_hours_between_doses: 4, max_daily_doses: 1
       )
+      routine_max_reached = create_dashboard_schedule(
+        household:, person:, name: 'Limited routine tablet', times: %w[08:00 20:00], max_daily_doses: 1
+      )
       paused = create_dashboard_schedule(
         household:, person:, name: 'Paused spray', schedule_type: :prn, frequency: 'As needed'
       ).tap(&:pause!)
@@ -156,7 +236,7 @@ RSpec.describe 'API v1 dashboard' do
         household:, person:, name: 'Empty spray', schedule_type: :prn, frequency: 'As needed', current_supply: 0
       )
       selection = create_selection_schedule(household:, person:)
-      [cooldown, max_reached].each do |source|
+      [cooldown, max_reached, routine_max_reached].each do |source|
         create(:medication_take, schedule: source, person_medication: nil, taken_at: 1.hour.ago,
                                  skip_stock_mutation: true)
       end
@@ -174,12 +254,16 @@ RSpec.describe 'API v1 dashboard' do
       expect(tasks.fetch(cooldown.portable_id)).to include('status' => 'cooldown', 'blocking_reason' => 'cooldown')
       expect(tasks.fetch(max_reached.portable_id)).to include('status' => 'max_reached',
                                                               'blocking_reason' => 'max_reached')
+      expect(tasks.fetch(routine_max_reached.portable_id)).to include(
+        'status' => 'max_reached',
+        'blocking_reason' => 'max_reached'
+      )
       expect(tasks.fetch(paused.portable_id)).to include('status' => 'paused', 'blocking_reason' => 'paused')
       expect(tasks.fetch(out_of_stock.portable_id)).to include('status' => 'out_of_stock',
                                                                'blocking_reason' => 'out_of_stock')
       expect(tasks.fetch(selection.portable_id)).to include('status' => 'selection_required',
                                                             'blocking_reason' => 'selection_required',
-                                                            'can_record' => false)
+                                                            'can_record' => true)
       expect(tasks.fetch(selection.portable_id).fetch('stock_source_choices').size).to eq(2)
       expect(tasks.values).to all(include('person', 'medication', 'dose', 'daily_progress', 'scheduled_at'))
       expect(data.fetch('recent_completed_takes')).to all(include('reversal' => nil))
@@ -207,6 +291,66 @@ RSpec.describe 'API v1 dashboard' do
 
     tasks = response.parsed_body.dig('data', 'as_needed_tasks').index_by { |task| task['source_id'] }
     expect(tasks.fetch(source.portable_id)).to include('status' => 'available', 'can_record' => false)
+  end
+
+  {
+    owner: [:admin, :admin, true],
+    administrator: [:carer, :child_patient, true],
+    clinician: [:doctor, :john, false],
+    carer: [:carer, :child_patient, true],
+    parent: [:parent, :child_user_person, true],
+    self: [:adult_patient, :adult_patient_person, true]
+  }.each do |role, (user_name, person_name, expected_can_record)|
+    it "matches the instance mutation policy for a #{role} dashboard task" do
+      selected_user = users(user_name)
+      login_data = api_login(selected_user)
+      household = Household.find(login_data.dig('household', 'id'))
+      membership = HouseholdMembership.find_by!(household:, account: selected_user.person.account)
+      membership.update!(role: :administrator) if role == :administrator
+      person = people(person_name)
+      source = create_dashboard_schedule(
+        household: household,
+        person: person,
+        name: "#{role} policy medication",
+        schedule_type: :prn,
+        frequency: 'As needed'
+      )
+
+      get "/api/v1/households/#{household.id}/dashboard",
+          params: { person_id: person.portable_id },
+          headers: api_auth_headers(login_data.fetch('access_token')),
+          as: :json
+
+      task = response.parsed_body.dig('data', 'as_needed_tasks').find do |candidate|
+        candidate.fetch('source_id') == source.portable_id
+      end
+      expect(task).to include('can_record' => expected_can_record)
+    end
+  end
+
+  it 'does not let household ownership bypass a view-only person grant' do
+    selected_user = users(:admin)
+    login_data = api_login(selected_user)
+    household = Household.find(login_data.dig('household', 'id'))
+    membership = HouseholdMembership.find_by!(household:, account: selected_user.person.account)
+    PersonAccessGrant.active.find_by!(household_membership: membership, person: selected_user.person).view!
+    source = create_dashboard_schedule(
+      household: household,
+      person: selected_user.person,
+      name: 'Owner view-only medication',
+      schedule_type: :prn,
+      frequency: 'As needed'
+    )
+
+    get "/api/v1/households/#{household.id}/dashboard",
+        params: { person_id: selected_user.person.portable_id },
+        headers: api_auth_headers(login_data.fetch('access_token')),
+        as: :json
+
+    task = response.parsed_body.dig('data', 'as_needed_tasks').find do |candidate|
+      candidate.fetch('source_id') == source.portable_id
+    end
+    expect(task).to include('can_record' => false)
   end
 
   it 'does not expose hidden matching stock sources' do
@@ -252,18 +396,25 @@ RSpec.describe 'API v1 dashboard' do
     expect(tasks.fetch(source.portable_id)).to include('status' => 'available', 'stock_source_choices' => [])
   end
 
-  it 'keeps the representative dashboard within the SQL query budget' do
-    login_data = api_login(user)
-    household_id = login_data.dig('household', 'id')
-    query_count = count_sql_queries do
-      get "/api/v1/households/#{household_id}/dashboard",
-          params: { person_id: user.person.portable_id },
-          headers: api_auth_headers(login_data.fetch('access_token')),
-          as: :json
-    end
+  it 'keeps the uncached all-family dashboard read pipeline within SQL and payload budgets' do
+    selected_user = users(:admin)
+    household = Household.find(api_login(selected_user).dig('household', 'id'))
+    membership = household.household_memberships.find_by!(account: selected_user.person.account)
+    context = AuthorizationContext.new(account: selected_user.person.account, household:, membership:)
+    visible_people = PersonPolicy::Scope.new(context, Person.all).resolve.order(:id).first(6)
+    visible_people.each { |person| create_high_cardinality_dashboard_sources(household:, person:) }
 
-    expect(response).to have_http_status(:ok)
+    query_count, payload = capture_dashboard_read_pipeline(context, date: Date.current)
+    tasks = payload.fetch(:routine_tasks) + payload.fetch(:as_needed_tasks)
+    choices = tasks.flat_map { |task| task.fetch(:stock_source_choices) }
+
     expect(query_count).to be <= 20
+    expect(payload.fetch(:people).size).to be >= 6
+    expect(tasks.size).to be >= 36
+    expect(choices.size).to be >= 24
+    expect(payload.dig(:summary_counts, :completed)).to be >= 12
+    expect(payload.fetch(:recent_completed_takes).size).to be >= 12
+    expect(JSON.generate(data: payload).bytesize).to be <= 150.kilobytes
   end
 
   def create_dashboard_schedule(household:, person:, name:, **overrides)
@@ -333,18 +484,75 @@ RSpec.describe 'API v1 dashboard' do
     )
   end
 
-  def count_sql_queries(&)
-    count = 0
-    subscriber = lambda do |_name, _start, _finish, _id, payload|
-      table_pattern = Regexp.union(domain_tables)
-      relevant_table = payload[:sql].match?(/(?:FROM|JOIN) "(?:#{table_pattern})"/)
-      count += 1 if relevant_table && !payload[:cached] && payload[:name] != 'SCHEMA'
+  def create_high_cardinality_dashboard_sources(household:, person:)
+    2.times do |index|
+      create_high_cardinality_source_set(household:, person:, index:)
     end
-    ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
-    count
   end
 
-  def domain_tables
-    %w[people person_access_grants schedules person_medications medication_takes medications locations]
+  def create_high_cardinality_source_set(household:, person:, index:)
+    routine = create_dashboard_schedule(
+      household: household,
+      person: person,
+      name: "Routine performance #{person.id} #{index}",
+      times: %w[08:00 20:00]
+    )
+    create_selection_schedule(household: household, person: person)
+    create_direct_performance_source(household:, person:, index:)
+    create_completed_performance_take(routine, index)
+  end
+
+  def create_direct_performance_source(household:, person:, index:)
+    medication = create(:medication, household:, name: "Direct performance #{person.id} #{index}")
+    create(:person_medication, household:, person:, medication:)
+  end
+
+  def create_completed_performance_take(schedule, index)
+    create(
+      :medication_take,
+      schedule: schedule,
+      person_medication: nil,
+      taken_at: Time.current.beginning_of_day + (8 + index).hours,
+      skip_stock_mutation: true
+    )
+  end
+
+  def capture_dashboard_read_pipeline(context, date:)
+    queries = []
+    subscriber = lambda do |_name, _start, _finish, _id, payload|
+      queries << payload[:sql] unless payload[:cached] || payload[:name] == 'SCHEMA'
+    end
+    payload = ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record') do
+      ActiveRecord::Base.uncached do
+        build_dashboard_payload(context, date:)
+      end
+    end
+
+    [queries.size, payload]
+  end
+
+  def build_dashboard_payload(context, date:)
+    people = PersonPolicy::Scope.new(context, Person.all).resolve.order(:id).to_a
+    query = FamilyDashboard::ScheduleQuery.new(
+      people,
+      current_user: context,
+      date: date,
+      now: Time.current,
+      include_paused: true
+    )
+    query.call
+    serialize_dashboard(people, query, date)
+  end
+
+  def serialize_dashboard(people, query, date)
+    context = Api::V1::DashboardSerializer::Context.new(
+      visible_people: people,
+      selected_person: nil,
+      schedule_query: query,
+      date: date,
+      server_time: Time.current,
+      time_zone: Time.zone.name
+    )
+    Api::V1::DashboardSerializer.new(context).as_json
   end
 end

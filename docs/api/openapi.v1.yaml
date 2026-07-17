@@ -191,9 +191,28 @@ paths:
       summary: Read the policy-scoped household Today dashboard.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - name: date
+          in: query
+          required: false
+          description: Household-local dashboard date. Defaults to the household's current date.
+          schema:
+            $ref: '#/components/schemas/Date'
+        - name: person_id
+          in: query
+          required: false
+          description: A visible portable person ID, or all for the full visible family.
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/PortableId'
+              - type: string
+                const: all
       responses:
         '200':
           description: Typed household Today dashboard.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -868,9 +887,77 @@ paths:
       summary: List visible medication takes.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - name: pagination
+          in: query
+          required: false
+          description: Set to cursor to request the first or a subsequent cursor page.
+          schema:
+            type: string
+            enum:
+              - cursor
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque next_cursor from a previous response. A blank cursor is invalid.
+          schema:
+            type: string
+            minLength: 1
+        - name: person_id
+          in: query
+          required: false
+          description: Restrict cursor history to one policy-visible portable person ID.
+          schema:
+            $ref: '#/components/schemas/PortableId'
+        - name: from
+          in: query
+          required: false
+          description: Inclusive lower taken_at bound for cursor history.
+          schema:
+            $ref: '#/components/schemas/Timestamp'
+        - name: to
+          in: query
+          required: false
+          description: Inclusive upper taken_at bound for cursor history.
+          schema:
+            $ref: '#/components/schemas/Timestamp'
+        - name: per_page
+          in: query
+          required: false
+          description: Cursor or legacy page size. Cursor mode requires an integer from 1 through 100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: page
+          in: query
+          required: false
+          description: Legacy offset page. Cannot be combined with cursor-mode parameters.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: updated_since
+          in: query
+          required: false
+          description: Legacy inclusive update filter. Cannot be combined with cursor-mode parameters.
+          schema:
+            $ref: '#/components/schemas/Timestamp'
       responses:
         '200':
           description: Medication takes collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationTakeCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     post:
       operationId: createMedicationTake
       tags:
@@ -1601,6 +1688,358 @@ components:
             $ref: '#/components/schemas/Person'
         meta:
           $ref: '#/components/schemas/PaginationMeta'
+    DashboardPersonSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+      properties:
+        id:
+          $ref: '#/components/schemas/PortableId'
+        name:
+          type: string
+          minLength: 1
+    DashboardMedicationSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+      properties:
+        id:
+          $ref: '#/components/schemas/PortableId'
+        name:
+          type: string
+          minLength: 1
+    DashboardDose:
+      type: object
+      additionalProperties: false
+      required:
+        - amount
+        - unit
+      properties:
+        amount:
+          type:
+            - number
+            - 'null'
+        unit:
+          type:
+            - string
+            - 'null'
+    DashboardDailyProgress:
+      type: object
+      additionalProperties: false
+      required:
+        - count
+        - limit
+      properties:
+        count:
+          type: integer
+          minimum: 0
+        limit:
+          type:
+            - integer
+            - 'null'
+          minimum: 0
+    DashboardStockLocation:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+      properties:
+        id:
+          $ref: '#/components/schemas/PortableId'
+        name:
+          type: string
+          minLength: 1
+    DashboardStockSourceChoice:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - medication
+        - location
+        - current_supply
+      properties:
+        id:
+          $ref: '#/components/schemas/PortableId'
+        medication:
+          $ref: '#/components/schemas/DashboardMedicationSummary'
+        location:
+          $ref: '#/components/schemas/DashboardStockLocation'
+        current_supply:
+          type:
+            - number
+            - 'null'
+    DashboardTask:
+      type: object
+      additionalProperties: false
+      required:
+        - source_type
+        - source_id
+        - person
+        - medication
+        - dose
+        - scheduled_at
+        - status
+        - blocking_reason
+        - daily_progress
+        - can_record
+        - stock_source_choices
+      properties:
+        source_type:
+          type: string
+          enum:
+            - schedule
+            - person_medication
+        source_id:
+          $ref: '#/components/schemas/PortableId'
+        person:
+          $ref: '#/components/schemas/DashboardPersonSummary'
+        medication:
+          $ref: '#/components/schemas/DashboardMedicationSummary'
+        dose:
+          $ref: '#/components/schemas/DashboardDose'
+        scheduled_at:
+          oneOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        status:
+          type: string
+          enum:
+            - due
+            - upcoming
+            - available
+            - cooldown
+            - max_reached
+            - paused
+            - out_of_stock
+            - selection_required
+        blocking_reason:
+          type:
+            - string
+            - 'null'
+          enum:
+            - cooldown
+            - max_reached
+            - paused
+            - out_of_stock
+            - selection_required
+            - null
+        daily_progress:
+          $ref: '#/components/schemas/DashboardDailyProgress'
+        can_record:
+          type: boolean
+        stock_source_choices:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardStockSourceChoice'
+    DashboardSummaryCounts:
+      type: object
+      additionalProperties: false
+      required:
+        - routine
+        - as_needed
+        - completed
+        - due
+        - upcoming
+        - available
+        - blocked
+      properties:
+        routine:
+          type: integer
+          minimum: 0
+        as_needed:
+          type: integer
+          minimum: 0
+        completed:
+          type: integer
+          minimum: 0
+        due:
+          type: integer
+          minimum: 0
+        upcoming:
+          type: integer
+          minimum: 0
+        available:
+          type: integer
+          minimum: 0
+        blocked:
+          type: integer
+          minimum: 0
+    MedicationTake:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - client_uuid
+        - schedule_id
+        - schedule_portable_id
+        - person_medication_id
+        - person_medication_portable_id
+        - taken_from_medication_id
+        - taken_from_medication_portable_id
+        - taken_from_location_id
+        - taken_from_location_portable_id
+        - dose_amount
+        - dose_unit
+        - taken_at
+        - updated_at
+        - reversal
+        - person_id
+        - person_portable_id
+        - medication_id
+        - medication_portable_id
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        client_uuid:
+          oneOf:
+            - $ref: '#/components/schemas/PortableId'
+            - type: 'null'
+        schedule_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        schedule_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+        person_medication_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        person_medication_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+        taken_from_medication_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        taken_from_medication_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+        taken_from_location_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        taken_from_location_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+        dose_amount:
+          type:
+            - number
+            - 'null'
+        dose_unit:
+          type:
+            - string
+            - 'null'
+        taken_at:
+          oneOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        reversal:
+          type:
+            - object
+            - 'null'
+          additionalProperties: false
+        person_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        person_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+        medication_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        medication_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+    MedicationTakeCursorMeta:
+      type: object
+      additionalProperties: false
+      required:
+        - per_page
+        - next_cursor
+        - has_more
+      properties:
+        per_page:
+          type: integer
+          minimum: 1
+          maximum: 100
+        next_cursor:
+          type:
+            - string
+            - 'null'
+          minLength: 1
+        has_more:
+          type: boolean
+    MedicationTakeCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicationTake'
+        meta:
+          oneOf:
+            - $ref: '#/components/schemas/MedicationTakeCursorMeta'
+            - $ref: '#/components/schemas/PaginationMeta'
+    Dashboard:
+      type: object
+      additionalProperties: false
+      required:
+        - format
+        - server_time
+        - time_zone
+        - date
+        - people
+        - selected_person
+        - summary_counts
+        - next_task
+        - routine_tasks
+        - as_needed_tasks
+        - recent_completed_takes
+      properties:
+        format:
+          type: string
+          const: medtracker.dashboard.v1
+        server_time:
+          $ref: '#/components/schemas/Timestamp'
+        time_zone:
+          type: string
+          minLength: 1
+        date:
+          $ref: '#/components/schemas/Date'
+        people:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardPersonSummary'
+        selected_person:
+          oneOf:
+            - $ref: '#/components/schemas/DashboardPersonSummary'
+            - type: 'null'
+        summary_counts:
+          $ref: '#/components/schemas/DashboardSummaryCounts'
+        next_task:
+          oneOf:
+            - $ref: '#/components/schemas/DashboardTask'
+            - type: 'null'
+        routine_tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardTask'
+        as_needed_tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardTask'
+        recent_completed_takes:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/MedicationTake'
+    DashboardResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Dashboard'
     ValidationErrors:
       type: object
       additionalProperties:

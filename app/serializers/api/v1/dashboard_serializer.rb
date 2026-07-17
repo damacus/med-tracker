@@ -34,14 +34,14 @@ module Api
       def serialized_dashboard_tasks
         routine_tasks = serialize_tasks(schedule_query.routine_tasks, routine: true)
         as_needed_tasks = serialize_as_needed_tasks
-        completed_takes = serialize_completed_takes
+        completed_takes = completed_takes_for_day
 
         {
-          summary_counts: summary_counts(routine_tasks, as_needed_tasks, completed_takes),
+          summary_counts: summary_counts(routine_tasks, as_needed_tasks, completed_takes.size),
           next_task: next_task(routine_tasks, as_needed_tasks),
           routine_tasks: routine_tasks,
           as_needed_tasks: as_needed_tasks,
-          recent_completed_takes: completed_takes
+          recent_completed_takes: serialize_recent_completed_takes(completed_takes)
         }
       end
 
@@ -131,22 +131,24 @@ module Api
         { id: medication.portable_id, name: medication.name }
       end
 
-      def serialize_completed_takes
+      def completed_takes_for_day
         schedule_query.today_takes_by_person.values.flatten
                       .uniq(&:id)
                       .sort_by { |take| [take.taken_at, take.id] }
                       .reverse
-                      .first(20)
-                      .map { |take| MedicationTakeSerializer.new(take).as_json }
       end
 
-      def summary_counts(routine_tasks, as_needed_tasks, completed_takes)
+      def serialize_recent_completed_takes(completed_takes)
+        completed_takes.first(20).map { |take| MedicationTakeSerializer.new(take).as_json }
+      end
+
+      def summary_counts(routine_tasks, as_needed_tasks, completed_count)
         statuses = (routine_tasks + as_needed_tasks).pluck(:status).tally
 
         {
           routine: routine_tasks.size,
           as_needed: as_needed_tasks.size,
-          completed: completed_takes.size,
+          completed: completed_count,
           due: statuses.fetch('due', 0),
           upcoming: statuses.fetch('upcoming', 0),
           available: statuses.fetch('available', 0),

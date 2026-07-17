@@ -6,6 +6,7 @@ module Api
       def show
         Time.use_zone(current_household.timezone) do
           date = dashboard_date
+          authorize Person, :index?
           visible_people = policy_scope(Person).order(:id).to_a
           selected_people, selected_person = dashboard_people(visible_people)
           server_time = Time.current
