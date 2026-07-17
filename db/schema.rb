@@ -1511,6 +1511,80 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_130000) do
     end
   end
 
+  execute <<~SQL
+    DROP POLICY IF EXISTS people_account_login_lookup ON people;
+    CREATE POLICY people_account_login_lookup ON people
+    FOR SELECT TO med_tracker_app
+    USING (account_id IS NOT NULL);
+  SQL
+
+  execute <<~SQL
+    DO $runtime_role_convergence$
+    DECLARE
+      app_object record;
+      object_type text;
+      login_role text := session_user;
+    BEGIN
+      IF NOT pg_has_role(login_role, 'med_tracker_owner', 'member') THEN
+        EXECUTE format('GRANT med_tracker_owner TO %I', login_role);
+      END IF;
+
+      IF NOT pg_has_role(login_role, 'med_tracker_app', 'member') THEN
+        EXECUTE format('GRANT med_tracker_app TO %I', login_role);
+      END IF;
+
+      FOR app_object IN
+        SELECT c.relkind, n.nspname, c.relname
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+          AND c.relkind IN ('r', 'p', 'v', 'm')
+      LOOP
+        object_type := CASE app_object.relkind
+                       WHEN 'v' THEN 'VIEW'
+                       WHEN 'm' THEN 'MATERIALIZED VIEW'
+                       ELSE 'TABLE'
+                       END;
+        EXECUTE format(
+          'ALTER %s %I.%I OWNER TO %I',
+          object_type,
+          app_object.nspname,
+          app_object.relname,
+          'med_tracker_owner'
+        );
+      END LOOP;
+
+      FOR app_object IN
+        SELECT p.oid::regprocedure AS signature
+        FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'med_tracker'
+      LOOP
+        EXECUTE format('ALTER FUNCTION %s OWNER TO %I', app_object.signature, 'med_tracker_owner');
+      END LOOP;
+
+      EXECUTE format(
+        'GRANT CONNECT ON DATABASE %I TO med_tracker_owner, med_tracker_app',
+        current_database()
+      );
+      GRANT USAGE, CREATE ON SCHEMA public TO med_tracker_owner;
+      GRANT USAGE ON SCHEMA public TO med_tracker_app;
+      GRANT USAGE ON SCHEMA med_tracker TO med_tracker_owner, med_tracker_app;
+      GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO med_tracker_app;
+      GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO med_tracker_owner;
+      GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO med_tracker_app;
+      GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO med_tracker_owner;
+      GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA med_tracker TO med_tracker_owner, med_tracker_app;
+      ALTER DEFAULT PRIVILEGES FOR ROLE med_tracker_owner IN SCHEMA public
+        GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO med_tracker_app;
+      ALTER DEFAULT PRIVILEGES FOR ROLE med_tracker_owner IN SCHEMA public
+        GRANT USAGE, SELECT ON SEQUENCES TO med_tracker_app;
+      ALTER DEFAULT PRIVILEGES FOR ROLE med_tracker_owner IN SCHEMA med_tracker
+        GRANT EXECUTE ON FUNCTIONS TO med_tracker_app;
+    END
+    $runtime_role_convergence$;
+  SQL
+
   execute 'DROP POLICY IF EXISTS household_tenant_isolation ON versions;'
   execute 'ALTER TABLE versions NO FORCE ROW LEVEL SECURITY;'
   execute 'ALTER TABLE versions DISABLE ROW LEVEL SECURITY;'
