@@ -79,67 +79,31 @@ tasks:
       A11Y_THRESHOLD: '{{ .A11Y_THRESHOLD | default "90" }}'
       BP_THRESHOLD: '{{ .BP_THRESHOLD | default "90" }}'
       REPORT_PATH: '{{ .REPORT_PATH | default "./lighthouse-report" }}'
+      LIGHTHOUSE_RUNS: '{{ .LIGHTHOUSE_RUNS | default "3" }}'
       EXTRA_HEADERS: '{{ .EXTRA_HEADERS | default "" }}'
     cmds:
       - |
         set -euo pipefail
-        echo "Running Lighthouse CI audit on {{ .URL }}..."
-        npx --yes lighthouse@13 {{ .URL }} \
-          --output=json,html \
-          --output-path={{ .REPORT_PATH }} \
-          --chrome-flags="--headless --no-sandbox --disable-gpu" \
-          --form-factor=mobile \
-          --screenEmulation.mobile=true \
-          --screenEmulation.width=375 \
-          --screenEmulation.height=812 \
-          {{ if .EXTRA_HEADERS }}--extra-headers='{{ .EXTRA_HEADERS }}' {{ end }}--only-categories=accessibility,best-practices,performance
+        for run in $(seq 1 {{ .LIGHTHOUSE_RUNS }}); do
+          REPORT_PATH="{{ .REPORT_PATH }}-${run}"
+          echo "Running Lighthouse CI audit ${run}/{{ .LIGHTHOUSE_RUNS }} on {{ .URL }}..."
+          npx --yes lighthouse@13 {{ .URL }} \
+            --output=json,html \
+            --output-path="$REPORT_PATH" \
+            --chrome-flags="--headless --no-sandbox --disable-gpu" \
+            --form-factor=mobile \
+            --screenEmulation.mobile=true \
+            --screenEmulation.width=375 \
+            --screenEmulation.height=812 \
+            {{ if .EXTRA_HEADERS }}--extra-headers='{{ .EXTRA_HEADERS }}' {{ end }}--only-categories=accessibility,best-practices,performance
+        done
       - |
-        set -euo pipefail
-        REPORT_FILE=""
-        if [ -f "{{ .REPORT_PATH }}.report.json" ]; then
-          REPORT_FILE="{{ .REPORT_PATH }}.report.json"
-        elif [ -f "{{ .REPORT_PATH }}.json" ]; then
-          REPORT_FILE="{{ .REPORT_PATH }}.json"
-        else
-          echo "No Lighthouse JSON report found for REPORT_PATH={{ .REPORT_PATH }}"
-          exit 1
-        fi
-        echo ""
-        echo "═══════════════════════════════════════════"
-        echo "         LIGHTHOUSE MOBILE SCORES          "
-        echo "═══════════════════════════════════════════"
-
-        PERF=$(node -e "console.log(Math.floor(require('$REPORT_FILE').categories.performance.score * 100))")
-        A11Y=$(node -e "console.log(Math.floor(require('$REPORT_FILE').categories.accessibility.score * 100))")
-        BP=$(node -e "console.log(Math.floor(require('$REPORT_FILE').categories['best-practices'].score * 100))")
-
-        echo "Performance:     ${PERF}% (threshold: {{ .PERF_THRESHOLD }}%)"
-        echo "Accessibility:   ${A11Y}% (threshold: {{ .A11Y_THRESHOLD }}%)"
-        echo "Best Practices:  ${BP}% (threshold: {{ .BP_THRESHOLD }}%)"
-        echo "═══════════════════════════════════════════"
-
-        FAILED=0
-        if [ "$PERF" -lt "{{ .PERF_THRESHOLD }}" ]; then
-          echo "❌ Performance score below threshold!"
-          FAILED=1
-        fi
-        if [ "$A11Y" -lt "{{ .A11Y_THRESHOLD }}" ]; then
-          echo "❌ Accessibility score below threshold!"
-          FAILED=1
-        fi
-        if [ "$BP" -lt "{{ .BP_THRESHOLD }}" ]; then
-          echo "❌ Best Practices score below threshold!"
-          FAILED=1
-        fi
-
-        if [ "$FAILED" -eq 1 ]; then
-          echo ""
-          echo "Top 10 failed audits:"
-          node -e "const r=require('$REPORT_FILE');Object.entries(r.audits).filter(([k,v])=>v.score!=null&&v.score<1).map(([k,v])=>({title:v.title,score:Math.floor(v.score*100)})).sort((a,b)=>a.score-b.score).slice(0,10).forEach(a=>console.log('  ['+a.score+'%] '+a.title))"
-          exit 1
-        else
-          echo "✅ All scores meet thresholds!"
-        fi
+        node bin/lighthouse_score_gate.js \
+          --report-path "{{ .REPORT_PATH }}" \
+          --runs "{{ .LIGHTHOUSE_RUNS }}" \
+          --perf-threshold "{{ .PERF_THRESHOLD }}" \
+          --a11y-threshold "{{ .A11Y_THRESHOLD }}" \
+          --bp-threshold "{{ .BP_THRESHOLD }}"
 
   failed-audits:
     desc: List failed Lighthouse audits
