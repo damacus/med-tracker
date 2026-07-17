@@ -77,14 +77,18 @@ function loadReport(filePath) {
   };
 }
 
+function scorePercent(score) {
+  return Math.floor(score * 100);
+}
+
 function printScore(label, score, threshold) {
-  console.log(`${label}:`.padEnd(16) + ` ${Math.round(score * 100)}% (threshold: ${threshold}%)`);
+  console.log(`${label}:`.padEnd(16) + ` ${scorePercent(score)}% (threshold: ${threshold}%)`);
 }
 
 function failedAudits(report) {
   return Object.entries(report.audits)
     .filter(([, audit]) => isRecord(audit) && Number.isFinite(audit.score) && audit.score < 1)
-    .map(([id, audit]) => ({ score: Math.round(audit.score * 100), title: audit.title || id }))
+    .map(([id, audit]) => ({ score: scorePercent(audit.score), title: audit.title || id }))
     .sort((left, right) => left.score - right.score)
     .slice(0, 10);
 }
@@ -118,7 +122,7 @@ function run() {
     ['Performance', selected.performance, thresholds.performance],
     ['Accessibility', selected.accessibility, thresholds.accessibility],
     ['Best Practices', selected.bestPractices, thresholds.bestPractices]
-  ].filter(([, score, threshold]) => score * 100 < threshold);
+  ].filter(([, score, threshold]) => scorePercent(score) < threshold);
 
   if (failures.length === 0) {
     console.log('All scores meet thresholds.');

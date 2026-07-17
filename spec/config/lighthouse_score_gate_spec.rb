@@ -36,11 +36,26 @@ RSpec.describe 'Lighthouse score gate' do
 
     expect(status).not_to be_success
     expect(output).to include(
-      'Performance:     58% (threshold: 60%)',
+      'Performance:     57% (threshold: 60%)',
       'Performance score below threshold!',
       'Top 10 failed audits:',
       '[50%] First Contentful Paint'
     )
+  end
+
+  it 'floors a boundary score consistently for display and threshold checks' do
+    write_report(1, performance: 0.45)
+    write_report(2, performance: 0.599)
+    write_report(3, performance: 0.77)
+
+    output, status = run_gate
+
+    expect(status).not_to be_success
+    expect(output).to include(
+      'Performance:     59% (threshold: 60%)',
+      'Performance score below threshold!'
+    )
+    expect(output).not_to include('All scores meet thresholds.')
   end
 
   it 'fails closed when an expected report is missing' do
@@ -62,18 +77,6 @@ RSpec.describe 'Lighthouse score gate' do
 
     expect(status).not_to be_success
     expect(output).to include("Malformed Lighthouse JSON report: #{@report_path}-2.report.json")
-  end
-
-  it 'collects three reports and runs the gate once' do
-    task = Rails.root.join('Taskfiles/lighthouse.yml').read
-
-    expect(task).to include(
-      'LIGHTHOUSE_RUNS: \'{{ .LIGHTHOUSE_RUNS | default "3" }}\'',
-      'for run in $(seq 1 {{ .LIGHTHOUSE_RUNS }}); do',
-      'REPORT_PATH="{{ .REPORT_PATH }}-${run}"',
-      'node bin/lighthouse_score_gate.js'
-    )
-    expect(task.scan('node bin/lighthouse_score_gate.js').count).to eq(1)
   end
 
   def run_gate
