@@ -8,6 +8,7 @@ RSpec.describe Api::OidcProviderClient do
   let(:token_endpoint) { "#{issuer}/oauth/token" }
   let(:jwks_uri) { "#{issuer}/oauth/keys" }
   let(:redirect_uri) { 'https://mobile.example.test/oauth/callback' }
+  let(:signing_key) { OpenSSL::PKey::RSA.generate(2048) }
 
   before do
     allow(ENV).to receive(:fetch).and_call_original
@@ -106,6 +107,39 @@ RSpec.describe Api::OidcProviderClient do
     expect { exchange_code(described_class.new(cache: memory_cache)) }.to raise_error(described_class::Error)
   end
 
+  it 'maps correctly signed non-object claims sets to provider errors' do
+    stub_discovery
+    stub_request(:get, jwks_uri).to_return(
+      status: 200,
+      body: { keys: [JWT::JWK.new(signing_key).export] }.to_json
+    )
+    client = described_class.new(cache: memory_cache)
+
+    [[], nil, 'invalid'].each do |payload|
+      expect { client.decode_id_token(signed_token(payload)) }.to raise_error(described_class::Error)
+    end
+  end
+
+  it 'maps a correctly signed object with wrong claim types to a provider error' do
+    stub_discovery
+    stub_request(:get, jwks_uri).to_return(
+      status: 200,
+      body: { keys: [JWT::JWK.new(signing_key).export] }.to_json
+    )
+    payload = {
+      'iss' => issuer,
+      'aud' => 'mobile-client',
+      'exp' => {},
+      'iat' => Time.current.to_i,
+      'nonce' => 'nonce',
+      'sub' => 'subject'
+    }
+
+    expect do
+      described_class.new(cache: memory_cache).decode_id_token(signed_token(payload))
+    end.to raise_error(described_class::Error)
+  end
+
   it 'rejects discovered endpoints outside configured origins' do
     endpoint = 'https://tokens.example.test/oauth/token'
     stub_discovery(token_endpoint: endpoint)
@@ -189,5 +223,16 @@ RSpec.describe Api::OidcProviderClient do
       code_verifier: 'a' * 64,
       redirect_uri: redirect_uri
     )
+  end
+
+  def signed_token(payload)
+    jwk = JWT::JWK.new(signing_key)
+    segments = [
+      Base64.urlsafe_encode64({ alg: 'RS256', kid: jwk.kid }.to_json, padding: false),
+      Base64.urlsafe_encode64(payload.to_json, padding: false)
+    ]
+    signing_input = segments.join('.')
+    signature = signing_key.sign(OpenSSL::Digest.new('SHA256'), signing_input)
+    [signing_input, Base64.urlsafe_encode64(signature, padding: false)].join('.')
   end
 end

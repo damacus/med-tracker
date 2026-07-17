@@ -58,7 +58,10 @@ module Api
       algorithms = Array(configuration['id_token_signing_alg_values_supported']) & ALLOWED_SIGNING_ALGORITHMS
       raise Error if algorithms.empty?
 
-      payload, = JWT.decode(id_token, nil, true, decode_options(configuration, algorithms))
+      validate_claims_set_shape!(id_token)
+      payload = verified_payload(id_token, configuration, algorithms)
+      raise Error unless payload.is_a?(Hash)
+
       validate_authorized_party!(payload)
       payload
     rescue Faraday::Error, JSON::ParserError, JWT::DecodeError, KeyError, URI::InvalidURIError
@@ -144,6 +147,18 @@ module Api
       raise Error unless payload.is_a?(Hash)
 
       payload
+    end
+
+    def validate_claims_set_shape!(id_token)
+      payload, = JWT.decode(id_token, nil, false)
+      raise Error unless payload.is_a?(Hash)
+    end
+
+    def verified_payload(id_token, configuration, algorithms)
+      payload, = JWT.decode(id_token, nil, true, decode_options(configuration, algorithms))
+      payload
+    rescue TypeError, NoMethodError
+      raise Error
     end
 
     def validate_authorized_party!(payload)

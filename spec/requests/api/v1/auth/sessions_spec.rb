@@ -414,6 +414,15 @@ RSpec.describe 'API v1 auth sessions' do
       expect_generic_oidc_failure
     end
 
+    it 'returns a generic failure for correctly signed non-object claims sets' do
+      [[], nil, 'invalid'].each_with_index do |payload, index|
+        stub_oidc_token_response(id_token: signed_oidc_payload(payload))
+        exchange_oidc(nonce: "claims-shape-#{index}")
+
+        expect_generic_oidc_failure
+      end
+    end
+
     it 'rejects discovery failures and issuer mismatches' do
       stub_request(:get, oidc_discovery_url).to_return(status: 503, body: '')
       exchange_oidc(nonce: 'discovery-failure')
@@ -907,6 +916,11 @@ RSpec.describe 'API v1 auth sessions' do
       'RS256',
       kid: signing_jwk.kid
     )
+  end
+
+  def signed_oidc_payload(payload)
+    jwk = JWT::JWK.new(oidc_signing_key)
+    JWT.encode(payload, oidc_signing_key, 'RS256', kid: jwk.kid)
   end
 
   def expect_generic_oidc_failure
