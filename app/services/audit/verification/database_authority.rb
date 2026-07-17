@@ -19,6 +19,40 @@ module Audit
           '(household_id = med_tracker.current_household_id())'
         ]
       ].freeze
+      COLUMN_MUTATION_PRIVILEGES_SQL = <<~SQL.squish
+        SELECT DISTINCT relations.relname || ':column-' || privileges.name
+        FROM pg_class relations
+        JOIN pg_namespace namespaces ON namespaces.oid = relations.relnamespace
+        CROSS JOIN jsonb_array_elements_text($1::jsonb) AS privileges(name)
+        WHERE namespaces.nspname = 'public'
+          AND relations.relname IN (SELECT jsonb_array_elements_text($2::jsonb))
+          AND has_any_column_privilege(current_user, relations.oid, privileges.name)
+          AND NOT has_table_privilege(current_user, relations.oid, privileges.name)
+        ORDER BY 1
+      SQL
+      SEQUENCE_MUTATION_PRIVILEGES_SQL = <<~SQL.squish
+        SELECT relations.relname || ':sequence-mutation'
+        FROM pg_class relations
+        JOIN pg_namespace namespaces ON namespaces.oid = relations.relnamespace
+        WHERE namespaces.nspname = 'public'
+          AND relations.relkind = 'S'
+          AND relations.relname IN (SELECT jsonb_array_elements_text($1::jsonb))
+          AND (
+            has_sequence_privilege(current_user, relations.oid, 'USAGE')
+            OR has_sequence_privilege(current_user, relations.oid, 'UPDATE')
+          )
+        ORDER BY 1
+      SQL
+      UNAPPROVED_SELECT_PRIVILEGES_SQL = <<~SQL.squish
+        SELECT relations.relname
+        FROM pg_class relations
+        JOIN pg_namespace namespaces ON namespaces.oid = relations.relnamespace
+        WHERE namespaces.nspname = 'public'
+          AND relations.relkind IN ('r', 'p', 'v', 'm', 'f')
+          AND relations.relname NOT IN (SELECT jsonb_array_elements_text($1::jsonb))
+          AND has_any_column_privilege(current_user, relations.oid, 'SELECT')
+        ORDER BY relations.relname
+      SQL
 
       def initialize(connection: ActiveRecord::Base.connection)
         @connection = connection
@@ -105,17 +139,7 @@ module Audit
 
       def column_mutation_privileges
         connection.select_values(
-          <<~SQL.squish,
-            SELECT DISTINCT relations.relname || ':column-' || privileges.name
-            FROM pg_class relations
-            JOIN pg_namespace namespaces ON namespaces.oid = relations.relnamespace
-            CROSS JOIN jsonb_array_elements_text($1::jsonb) AS privileges(name)
-            WHERE namespaces.nspname = 'public'
-              AND relations.relname IN (SELECT jsonb_array_elements_text($2::jsonb))
-              AND has_any_column_privilege(current_user, relations.oid, privileges.name)
-              AND NOT has_table_privilege(current_user, relations.oid, privileges.name)
-            ORDER BY 1
-          SQL
+          COLUMN_MUTATION_PRIVILEGES_SQL,
           'Audit column mutation privileges',
           text_array_binds(
             column_mutation_privileges: COLUMN_MUTATION_PRIVILEGES,
@@ -126,19 +150,7 @@ module Audit
 
       def sequence_mutation_privileges
         connection.select_values(
-          <<~SQL.squish,
-            SELECT relations.relname || ':sequence-mutation'
-            FROM pg_class relations
-            JOIN pg_namespace namespaces ON namespaces.oid = relations.relnamespace
-            WHERE namespaces.nspname = 'public'
-              AND relations.relkind = 'S'
-              AND relations.relname IN (SELECT jsonb_array_elements_text($1::jsonb))
-              AND (
-                has_sequence_privilege(current_user, relations.oid, 'USAGE')
-                OR has_sequence_privilege(current_user, relations.oid, 'UPDATE')
-              )
-            ORDER BY 1
-          SQL
+          SEQUENCE_MUTATION_PRIVILEGES_SQL,
           'Audit sequence mutation privileges',
           [text_array_bind('approved_sequences', APPROVED_SELECT_TABLES.map { |name| "#{name}_id_seq" })]
         )
@@ -158,16 +170,7 @@ module Audit
 
       def verify_unapproved_select_privileges!
         tables = connection.select_values(
-          <<~SQL.squish,
-            SELECT relations.relname
-            FROM pg_class relations
-            JOIN pg_namespace namespaces ON namespaces.oid = relations.relnamespace
-            WHERE namespaces.nspname = 'public'
-              AND relations.relkind IN ('r', 'p', 'v', 'm', 'f')
-              AND relations.relname NOT IN (SELECT jsonb_array_elements_text($1::jsonb))
-              AND has_any_column_privilege(current_user, relations.oid, 'SELECT')
-            ORDER BY relations.relname
-          SQL
+          UNAPPROVED_SELECT_PRIVILEGES_SQL,
           'Audit unapproved select privileges',
           [text_array_bind('approved_tables', APPROVED_SELECT_TABLES)]
         )
