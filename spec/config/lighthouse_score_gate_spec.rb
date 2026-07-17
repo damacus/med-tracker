@@ -1,15 +1,16 @@
+# frozen_string_literal: true
+
+require 'fileutils'
 require 'json'
 require 'open3'
 require 'rails_helper'
 require 'tmpdir'
 
-RSpec.describe 'Lighthouse score gate' do
-  around do |example|
-    Dir.mktmpdir('lighthouse-score-gate') do |directory|
-      @report_path = File.join(directory, 'lighthouse-report')
-      example.run
-    end
-  end
+RSpec.describe 'Lighthouse score gate' do # rubocop:disable RSpec/DescribeClass
+  let(:report_directory) { Dir.mktmpdir('lighthouse-score-gate') }
+  let(:report_path) { File.join(report_directory, 'lighthouse-report') }
+
+  after { FileUtils.remove_entry(report_directory) }
 
   it 'passes when one low performance outlier leaves a passing median' do
     write_report(1, performance: 0.45)
@@ -29,7 +30,11 @@ RSpec.describe 'Lighthouse score gate' do
 
   it 'fails for a below-threshold median and identifies failed audits' do
     write_report(1, performance: 0.55)
-    write_report(2, performance: 0.58, audits: { 'first-contentful-paint' => { score: 0.5, title: 'First Contentful Paint' } })
+    write_report(
+      2,
+      performance: 0.58,
+      audits: { 'first-contentful-paint' => { score: 0.5, title: 'First Contentful Paint' } }
+    )
     write_report(3, performance: 0.77)
 
     output, status = run_gate
@@ -65,25 +70,25 @@ RSpec.describe 'Lighthouse score gate' do
     output, status = run_gate
 
     expect(status).not_to be_success
-    expect(output).to include("Missing Lighthouse JSON report: #{@report_path}-2.report.json")
+    expect(output).to include("Missing Lighthouse JSON report: #{report_path}-2.report.json")
   end
 
   it 'fails closed when an expected report is malformed' do
     write_report(1, performance: 0.72)
-    File.write("#{@report_path}-2.report.json", '{')
+    File.write("#{report_path}-2.report.json", '{')
     write_report(3, performance: 0.77)
 
     output, status = run_gate
 
     expect(status).not_to be_success
-    expect(output).to include("Malformed Lighthouse JSON report: #{@report_path}-2.report.json")
+    expect(output).to include("Malformed Lighthouse JSON report: #{report_path}-2.report.json")
   end
 
   def run_gate
     stdout, stderr, status = Open3.capture3(
       'node',
       Rails.root.join('bin/lighthouse_score_gate.js').to_s,
-      '--report-path', @report_path,
+      '--report-path', report_path,
       '--runs', '3',
       '--perf-threshold', '60',
       '--a11y-threshold', '90',
@@ -103,6 +108,6 @@ RSpec.describe 'Lighthouse score gate' do
       audits: audits
     }
 
-    File.write("#{@report_path}-#{run}.report.json", JSON.generate(report))
+    File.write("#{report_path}-#{run}.report.json", JSON.generate(report))
   end
 end
