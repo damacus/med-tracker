@@ -384,27 +384,9 @@ RSpec.describe 'API v1 auth sessions' do
     end
 
     it 'returns a generic failure for non-object provider responses' do
-      [[], nil, 'invalid'].each_with_index do |payload, index|
-        stub_request(:post, oidc_token_endpoint).to_return(status: 200, body: payload.to_json)
-        exchange_oidc(nonce: "token-shape-#{index}")
-        expect_generic_oidc_failure
-      end
-
-      [[], nil, 'invalid'].each_with_index do |payload, index|
-        Rails.cache.clear
-        stub_request(:get, oidc_discovery_url).to_return(status: 200, body: payload.to_json)
-        exchange_oidc(nonce: "discovery-shape-#{index}")
-        expect_generic_oidc_failure
-      end
-
-      [[], nil, 'invalid'].each_with_index do |payload, index|
-        Rails.cache.clear
-        stub_oidc_discovery
-        stub_request(:get, oidc_jwks_uri).to_return(status: 200, body: payload.to_json)
-        stub_oidc_token_response(id_token: oidc_token(sub: 'jane-oidc-sub', nonce: "jwks-shape-#{index}"))
-        exchange_oidc(nonce: "jwks-shape-#{index}")
-        expect_generic_oidc_failure
-      end
+      expect_non_object_token_responses_rejected
+      expect_non_object_discovery_responses_rejected
+      expect_non_object_jwks_responses_rejected
 
       Rails.cache.clear
       stub_oidc_discovery
@@ -902,20 +884,52 @@ RSpec.describe 'API v1 auth sessions' do
   def oidc_token(sub:, nonce:, signing_key: oidc_signing_key, **overrides)
     signing_jwk = JWT::JWK.new(signing_key)
     JWT.encode(
-      {
-        iss: overrides.fetch(:issuer, oidc_issuer),
-        aud: overrides.fetch(:audience, oidc_client_id),
-        exp: overrides.fetch(:exp, 15.minutes.from_now.to_i),
-        iat: overrides.fetch(:iat, Time.current.to_i),
-        sub: sub,
-        nonce: nonce,
-        amr: overrides[:amr],
-        azp: overrides[:azp]
-      }.compact,
+      oidc_claims(sub, nonce, overrides),
       signing_key,
       'RS256',
       kid: signing_jwk.kid
     )
+  end
+
+  def oidc_claims(sub, nonce, overrides)
+    {
+      iss: overrides.fetch(:issuer, oidc_issuer),
+      aud: overrides.fetch(:audience, oidc_client_id),
+      exp: overrides.fetch(:exp, 15.minutes.from_now.to_i),
+      iat: overrides.fetch(:iat, Time.current.to_i),
+      sub: sub,
+      nonce: nonce,
+      amr: overrides[:amr],
+      azp: overrides[:azp]
+    }.compact
+  end
+
+  def expect_non_object_token_responses_rejected
+    [[], nil, 'invalid'].each_with_index do |payload, index|
+      stub_request(:post, oidc_token_endpoint).to_return(status: 200, body: payload.to_json)
+      exchange_oidc(nonce: "token-shape-#{index}")
+      expect_generic_oidc_failure
+    end
+  end
+
+  def expect_non_object_discovery_responses_rejected
+    [[], nil, 'invalid'].each_with_index do |payload, index|
+      Rails.cache.clear
+      stub_request(:get, oidc_discovery_url).to_return(status: 200, body: payload.to_json)
+      exchange_oidc(nonce: "discovery-shape-#{index}")
+      expect_generic_oidc_failure
+    end
+  end
+
+  def expect_non_object_jwks_responses_rejected
+    [[], nil, 'invalid'].each_with_index do |payload, index|
+      Rails.cache.clear
+      stub_oidc_discovery
+      stub_request(:get, oidc_jwks_uri).to_return(status: 200, body: payload.to_json)
+      stub_oidc_token_response(id_token: oidc_token(sub: 'jane-oidc-sub', nonce: "jwks-shape-#{index}"))
+      exchange_oidc(nonce: "jwks-shape-#{index}")
+      expect_generic_oidc_failure
+    end
   end
 
   def signed_oidc_payload(payload)

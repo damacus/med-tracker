@@ -3,14 +3,7 @@
 require 'ipaddr'
 
 module Api
-  class OidcProviderClient
-    class Error < StandardError; end
-
-    DISCOVERY_CACHE_TTL = 5.minutes
-    JWKS_CACHE_TTL = 5.minutes
-    HTTP_TIMEOUT = 10
-    HTTP_OPEN_TIMEOUT = 5
-    ALLOWED_SIGNING_ALGORITHMS = %w[RS256 RS384 RS512 PS256 PS384 PS512 ES256 ES384 ES512].freeze
+  class OidcProviderEndpointValidator
     UNSAFE_ADDRESS_RANGES = %w[
       0.0.0.0/8
       10.0.0.0/8
@@ -34,6 +27,88 @@ module Api
       2001:db8::/32
     ].map { IPAddr.new(it) }.freeze
 
+    def initialize(issuer:, configured_origins:, resolver:, error_class:)
+      @issuer = issuer
+      @configured_origins = configured_origins
+      @resolver = resolver
+      @error_class = error_class
+    end
+
+    def validate!(value)
+      uri = endpoint_uri(value)
+      raise error_class unless allowed_origins.include?(origin(uri))
+
+      validate_resolved_host!(uri)
+    rescue URI::InvalidURIError
+      raise error_class
+    end
+
+    def allowed_origins
+      @allowed_origins ||= configured_origin_values.map { normalized_origin(it) }.uniq
+    rescue URI::InvalidURIError
+      raise error_class
+    end
+
+    private
+
+    attr_reader :issuer, :configured_origins, :resolver, :error_class
+
+    def configured_origin_values
+      values = configured_origins.presence || origin(URI.parse(issuer))
+      Array(values).flat_map { it.to_s.split(',') }.map(&:strip).compact_blank
+    end
+
+    def normalized_origin(value)
+      uri = endpoint_uri(value)
+      raise error_class if uri.path.present? && uri.path != '/'
+      raise error_class if uri.query.present? || uri.fragment.present?
+
+      origin(uri)
+    end
+
+    def endpoint_uri(value)
+      raise error_class unless value.is_a?(String)
+
+      uri = URI.parse(value)
+      raise error_class unless uri.is_a?(URI::HTTPS) && uri.host.present?
+      raise error_class if uri.userinfo.present?
+
+      uri
+    end
+
+    def validate_resolved_host!(uri)
+      addresses = literal_or_resolved_addresses(uri)
+      raise error_class if addresses.empty? || addresses.any? { unsafe_address?(it) }
+    rescue SocketError, SystemCallError, IPAddr::InvalidAddressError
+      raise error_class
+    end
+
+    def literal_or_resolved_addresses(uri)
+      [IPAddr.new(uri.host)]
+    rescue IPAddr::InvalidAddressError
+      resolver.getaddrinfo(uri.host, uri.port, nil, :STREAM).map { IPAddr.new(it.ip_address) }
+    end
+
+    def unsafe_address?(address)
+      address = address.native if address.ipv4_mapped?
+      UNSAFE_ADDRESS_RANGES.any? { it.include?(address) }
+    end
+
+    def origin(uri)
+      default_port = uri.scheme == 'https' ? 443 : 80
+      port = uri.port == default_port ? nil : uri.port
+      "#{uri.scheme}://#{uri.host}#{':' if port}#{port}"
+    end
+  end
+
+  class OidcProviderClient
+    class Error < StandardError; end
+
+    DISCOVERY_CACHE_TTL = 5.minutes
+    JWKS_CACHE_TTL = 5.minutes
+    HTTP_TIMEOUT = 10
+    HTTP_OPEN_TIMEOUT = 5
+    ALLOWED_SIGNING_ALGORITHMS = %w[RS256 RS384 RS512 PS256 PS384 PS512 ES256 ES384 ES512].freeze
     def initialize(connection: nil, cache: Rails.cache, resolver: Addrinfo)
       @connection = connection || Faraday.new
       @cache = cache
@@ -106,16 +181,20 @@ module Api
 
     def provider_configuration
       @provider_configuration ||= cache.fetch(discovery_cache_key, expires_in: DISCOVERY_CACHE_TTL) do
-        configuration = get_json(discovery_url)
-        raise Error unless configuration['issuer'] == issuer
-
-        validate_provider_endpoint!(configuration.fetch('token_endpoint'))
-        validate_provider_endpoint!(configuration.fetch('jwks_uri'))
-        validate_signing_algorithms!(configuration.fetch('id_token_signing_alg_values_supported'))
-        configuration
+        fetch_provider_configuration
       end
     rescue KeyError
       raise Error
+    end
+
+    def fetch_provider_configuration
+      configuration = get_json(discovery_url)
+      raise Error unless configuration['issuer'] == issuer
+
+      endpoint_validator.validate!(configuration.fetch('token_endpoint'))
+      endpoint_validator.validate!(configuration.fetch('jwks_uri'))
+      validate_signing_algorithms!(configuration.fetch('id_token_signing_alg_values_supported'))
+      configuration
     end
 
     def jwks(uri)
@@ -175,55 +254,8 @@ module Api
         audiences.uniq.length == audiences.length && audiences.include?(client_id) && authorized_party == client_id
     end
 
-    def validate_provider_endpoint!(value)
-      raise Error unless value.is_a?(String)
-
-      uri = URI.parse(value)
-      raise Error unless uri.is_a?(URI::HTTPS) && uri.host.present?
-      raise Error if uri.userinfo.present?
-      raise Error unless allowed_endpoint_origins.include?(origin(uri))
-
-      validate_resolved_host!(uri)
-    rescue URI::InvalidURIError
-      raise Error
-    end
-
     def validate_signing_algorithms!(algorithms)
       raise Error unless algorithms.is_a?(Array) && algorithms.present? && algorithms.all?(String)
-    end
-
-    def validate_resolved_host!(uri)
-      addresses = literal_or_resolved_addresses(uri)
-      raise Error if addresses.empty? || addresses.any? { unsafe_address?(it) }
-    rescue SocketError, SystemCallError, IPAddr::InvalidAddressError
-      raise Error
-    end
-
-    def literal_or_resolved_addresses(uri)
-      [IPAddr.new(uri.host)]
-    rescue IPAddr::InvalidAddressError
-      resolver.getaddrinfo(uri.host, uri.port, nil, :STREAM).map { IPAddr.new(it.ip_address) }
-    end
-
-    def unsafe_address?(address)
-      address = address.native if address.ipv4_mapped?
-      UNSAFE_ADDRESS_RANGES.any? { it.include?(address) }
-    end
-
-    def allowed_endpoint_origins
-      @allowed_endpoint_origins ||= begin
-        values = configured_allowed_endpoint_origins.presence || origin(URI.parse(issuer))
-        Array(values).flat_map { it.to_s.split(',') }.map(&:strip).compact_blank.map do |value|
-          uri = URI.parse(value)
-          raise Error unless uri.is_a?(URI::HTTPS) && uri.host.present? && uri.userinfo.blank?
-          raise Error if uri.path.present? && uri.path != '/'
-          raise Error if uri.query.present? || uri.fragment.present?
-
-          origin(uri)
-        end.uniq
-      end
-    rescue URI::InvalidURIError
-      raise Error
     end
 
     def configured_allowed_endpoint_origins
@@ -231,10 +263,13 @@ module Api
         Rails.application.credentials.dig(:oidc, :allowed_endpoint_origins)
     end
 
-    def origin(uri)
-      default_port = uri.scheme == 'https' ? 443 : 80
-      port = uri.port == default_port ? nil : uri.port
-      "#{uri.scheme}://#{uri.host}#{":" if port}#{port}"
+    def endpoint_validator
+      @endpoint_validator ||= OidcProviderEndpointValidator.new(
+        issuer: issuer,
+        configured_origins: configured_allowed_endpoint_origins,
+        resolver: resolver,
+        error_class: Error
+      )
     end
 
     def validate_configuration!
@@ -288,7 +323,7 @@ module Api
     end
 
     def discovery_cache_key
-      value = "#{issuer}\0#{discovery_url}\0#{allowed_endpoint_origins.join(',')}"
+      value = "#{issuer}\0#{discovery_url}\0#{endpoint_validator.allowed_origins.join(',')}"
       "api/oidc/discovery/#{Digest::SHA256.hexdigest(value)}"
     end
   end

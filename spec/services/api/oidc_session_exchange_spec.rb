@@ -25,15 +25,17 @@ RSpec.describe Api::OidcSessionExchange do
       decode_id_token: claims
     )
   end
-  let(:request) do
-    instance_double(
+
+  def request
+    @request ||= instance_double(
       ActionDispatch::Request,
       user_agent: 'RSpec',
       remote_ip: '127.0.0.1',
       request_id: SecureRandom.uuid
     )
   end
-  let(:params) do
+
+  def params
     {
       authorization_code: 'authorization-code',
       code_verifier: 'a' * 64,
@@ -54,7 +56,7 @@ RSpec.describe Api::OidcSessionExchange do
     expect_nonce_not_consumed { call_exchange }
 
     claims['sub'] = 'jane-oidc-sub'
-    account.household_memberships.update_all(status: HouseholdMembership.statuses.fetch(:suspended))
+    account.household_memberships.each(&:suspended!)
 
     expect_nonce_not_consumed { call_exchange }
   end
@@ -78,10 +80,10 @@ RSpec.describe Api::OidcSessionExchange do
     described_class.new(params: params, request: request, provider_client: provider_client).call
   end
 
-  def expect_nonce_not_consumed
+  def expect_nonce_not_consumed(&)
     nonce_count = ApiOidcNonce.count
 
-    expect { yield }.to raise_error(described_class::Error)
+    expect(&).to raise_error(described_class::Error)
     expect(ApiOidcNonce.count).to eq(nonce_count)
   end
 end

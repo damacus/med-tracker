@@ -8,7 +8,6 @@ RSpec.describe Api::OidcProviderClient do
   let(:token_endpoint) { "#{issuer}/oauth/token" }
   let(:jwks_uri) { "#{issuer}/oauth/keys" }
   let(:redirect_uri) { 'https://mobile.example.test/oauth/callback' }
-  let(:signing_key) { OpenSSL::PKey::RSA.generate(2048) }
 
   before do
     allow(ENV).to receive(:fetch).and_call_original
@@ -126,17 +125,8 @@ RSpec.describe Api::OidcProviderClient do
       status: 200,
       body: { keys: [JWT::JWK.new(signing_key).export] }.to_json
     )
-    payload = {
-      'iss' => issuer,
-      'aud' => 'mobile-client',
-      'exp' => {},
-      'iat' => Time.current.to_i,
-      'nonce' => 'nonce',
-      'sub' => 'subject'
-    }
-
     expect do
-      described_class.new(cache: memory_cache).decode_id_token(signed_token(payload))
+      described_class.new(cache: memory_cache).decode_id_token(signed_token(invalid_claim_type_payload))
     end.to raise_error(described_class::Error)
   end
 
@@ -150,7 +140,8 @@ RSpec.describe Api::OidcProviderClient do
 
   it 'allows an explicitly configured cross-origin endpoint' do
     endpoint = 'https://tokens.example.test/oauth/token'
-    allow(ENV).to receive(:fetch).with('OIDC_ALLOWED_ENDPOINT_ORIGINS', nil)
+    allow(ENV).to receive(:fetch)
+      .with('OIDC_ALLOWED_ENDPOINT_ORIGINS', nil)
       .and_return("#{issuer},https://tokens.example.test")
     stub_discovery(token_endpoint: endpoint)
     stub_request(:post, endpoint).to_return(status: 200, body: { id_token: 'signed-id-token' }.to_json)
@@ -177,7 +168,8 @@ RSpec.describe Api::OidcProviderClient do
   it 'rejects a hostname that resolves to a private address' do
     endpoint = 'https://tokens.example.test/oauth/token'
     resolver = class_double(Addrinfo, getaddrinfo: [Addrinfo.tcp('10.0.0.5', 443)])
-    allow(ENV).to receive(:fetch).with('OIDC_ALLOWED_ENDPOINT_ORIGINS', nil)
+    allow(ENV).to receive(:fetch)
+      .with('OIDC_ALLOWED_ENDPOINT_ORIGINS', nil)
       .and_return("#{issuer},https://tokens.example.test")
     stub_discovery(token_endpoint: endpoint)
 
@@ -197,6 +189,18 @@ RSpec.describe Api::OidcProviderClient do
   end
 
   def memory_cache = ActiveSupport::Cache::MemoryStore.new
+  def signing_key = @signing_key ||= OpenSSL::PKey::RSA.generate(2048)
+
+  def invalid_claim_type_payload
+    {
+      'iss' => issuer,
+      'aud' => 'mobile-client',
+      'exp' => {},
+      'iat' => Time.current.to_i,
+      'nonce' => 'nonce',
+      'sub' => 'subject'
+    }
+  end
 
   def stub_discovery(token_endpoint: self.token_endpoint, jwks_uri: self.jwks_uri)
     stub_request(:get, discovery_url).to_return(

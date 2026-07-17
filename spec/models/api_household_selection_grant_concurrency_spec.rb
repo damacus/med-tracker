@@ -34,23 +34,24 @@ RSpec.describe ApiHouseholdSelectionGrant do
     ready = Queue.new
     start = Queue.new
     results = Queue.new
-    threads = 2.times.map do
-      Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection do
-          ready << true
-          start.pop
-          result = described_class.select_household(token: token, household_id: household_id)
-          results << result
-        rescue described_class::InvalidGrant
-          results << :invalid
-        end
-      end
-    end
+    threads = 2.times.map { selection_thread(token, household_id, ready, start, results) }
 
     release_selections(threads, ready, start)
     2.times.map { Timeout.timeout(10) { results.pop } }
   ensure
     Array(threads).each { it.kill if it&.alive? }
+  end
+
+  def selection_thread(token, household_id, ready, start, results)
+    Thread.new do
+      ActiveRecord::Base.connection_pool.with_connection do
+        ready << true
+        start.pop
+        results << described_class.select_household(token: token, household_id: household_id)
+      rescue described_class::InvalidGrant
+        results << :invalid
+      end
+    end
   end
 
   def release_selections(threads, ready, start)
