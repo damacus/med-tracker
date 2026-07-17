@@ -7,16 +7,15 @@ RSpec.describe 'API v1 auth sessions' do
 
   let(:user) { users(:jane) }
   let(:account) { user.person.account }
-  let(:oidc_issuer) { 'https://issuer.example.test' }
-  let(:oidc_client_id) { 'medtracker-mobile-test' }
-  let(:oidc_client_secret) { 'oidc-test-secret' }
 
   before do
     allow(ENV).to receive(:fetch).and_call_original
     allow(ENV).to receive(:fetch).with('OIDC_ISSUER_URL', nil).and_return(oidc_issuer)
+    allow(ENV).to receive(:fetch).with('OIDC_DISCOVERY_URL', nil).and_return(oidc_discovery_url)
     allow(ENV).to receive(:fetch).with('OIDC_MOBILE_CLIENT_ID', nil).and_return(oidc_client_id)
-    allow(ENV).to receive(:fetch).with('OIDC_CLIENT_ID', nil).and_return(oidc_client_id)
-    allow(ENV).to receive(:fetch).with('OIDC_CLIENT_SECRET', nil).and_return(oidc_client_secret)
+    allow(ENV).to receive(:fetch).with('OIDC_MOBILE_REDIRECT_URIS', nil).and_return(oidc_redirect_uri)
+    stub_oidc_discovery
+    stub_oidc_jwks
   end
 
   describe 'POST /api/v1/auth/login' do
@@ -297,147 +296,231 @@ RSpec.describe 'API v1 auth sessions' do
       ensure_api_household_for(user)
     end
 
-    it 'exchanges a valid OIDC identity token for an API session' do
-      post api_v1_auth_oidc_exchange_path,
-           params: {
-             id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'nonce-1'),
-             nonce: 'nonce-1',
-             code_verifier: 'pkce-verifier',
-             device_name: 'RSpec Mobile'
-           },
-           as: :json
+    it 'exchanges an authorization code with PKCE for an API session without a client secret' do
+      stub_oidc_token_response(id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'nonce-1'))
+
+      exchange_oidc(nonce: 'nonce-1', device_name: 'RSpec Mobile')
 
       expect(response).to have_http_status(:created)
       expect(response.parsed_body.dig('data', 'access_token')).to be_present
       expect(response.parsed_body.dig('data', 'refresh_token')).to be_present
       expect(response.parsed_body.dig('data', 'me', 'email_address')).to eq(user.email_address)
       expect(ApiSession.order(:id).last.device_name).to eq('RSpec Mobile')
+      expect(WebMock).to have_requested(:post, oidc_token_endpoint).with(
+        body: hash_including(
+          'code' => 'authorization-code',
+          'code_verifier' => oidc_code_verifier,
+          'client_id' => oidc_client_id,
+          'redirect_uri' => oidc_redirect_uri,
+          'grant_type' => 'authorization_code'
+        )
+      )
+      expect(WebMock).not_to have_requested(:post, oidc_token_endpoint).with(body: /client_secret/)
     end
 
-    it 'binds OIDC exchange to a requested household membership' do
-      household = account.household_memberships.active.first.household
+    it 'binds OIDC exchange to the sole active operational household membership' do
+      household = account.household_memberships.active.sole.household
+      stub_oidc_token_response(id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'household-nonce'))
 
-      post api_v1_auth_oidc_exchange_path,
-           params: {
-             id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'household-nonce'),
-             nonce: 'household-nonce',
-             code_verifier: 'pkce-verifier',
-             household_id: household.id
-           },
-           as: :json
+      exchange_oidc(nonce: 'household-nonce')
 
       expect(response).to have_http_status(:created)
       expect(response.parsed_body.dig('data', 'household', 'id')).to eq(household.id)
     end
 
     it 'records OIDC MFA proof when the identity token includes an MFA authentication method' do
-      post api_v1_auth_oidc_exchange_path,
-           params: {
-             id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'mfa-nonce', amr: %w[pwd otp]),
-             nonce: 'mfa-nonce',
-             code_verifier: 'pkce-verifier'
-           },
-           as: :json
+      stub_oidc_token_response(
+        id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'mfa-nonce', amr: %w[pwd otp])
+      )
+
+      exchange_oidc(nonce: 'mfa-nonce')
 
       expect(response).to have_http_status(:created)
       expect(ApiSession.order(:id).last).to be_oidc_mfa_verified
     end
 
-    it 'rejects OIDC exchange when required token inputs are missing' do
+    it 'rejects the legacy raw id_token contract and missing required code inputs' do
       post api_v1_auth_oidc_exchange_path,
            params: {
-             id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'missing-verifier'),
-             nonce: 'missing-verifier'
+             id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'legacy-token'),
+             nonce: 'legacy-token',
+             code_verifier: oidc_code_verifier,
+             redirect_uri: oidc_redirect_uri
            },
            as: :json
 
       expect(response).to have_http_status(:unauthorized)
+      expect(WebMock).not_to have_requested(:post, oidc_token_endpoint)
 
       post api_v1_auth_oidc_exchange_path,
            params: {
-             nonce: 'missing-token',
-             code_verifier: 'pkce-verifier'
-           },
-           as: :json
-
-      expect(response).to have_http_status(:unauthorized)
-    end
-
-    it 'rejects OIDC exchange with a blank subject' do
-      post api_v1_auth_oidc_exchange_path,
-           params: {
-             id_token: oidc_token(sub: '', nonce: 'blank-subject'),
-             nonce: 'blank-subject',
-             code_verifier: 'pkce-verifier'
+             authorization_code: 'authorization-code',
+             nonce: 'missing-verifier',
+             redirect_uri: oidc_redirect_uri
            },
            as: :json
 
       expect(response).to have_http_status(:unauthorized)
     end
 
-    it 'rejects linked OIDC accounts that have no active person user' do
-      household = create(:household)
-      linked_account = Account.create!(email: 'oidc-no-person@example.test', status: :verified)
-      AccountIdentity.create!(account: linked_account, provider: 'oidc', uid: 'no-person-sub')
-      household.household_memberships.create!(account: linked_account, role: :member, status: :active)
+    it 'returns a generic failure for a rejected PKCE exchange or malformed token response' do
+      stub_request(:post, oidc_token_endpoint).to_return(status: 400, body: { error: 'invalid_grant' }.to_json)
 
-      post api_v1_auth_oidc_exchange_path,
-           params: {
-             id_token: oidc_token(sub: 'no-person-sub', nonce: 'no-person-nonce'),
-             nonce: 'no-person-nonce',
-             code_verifier: 'pkce-verifier'
-           },
-           as: :json
+      exchange_oidc(nonce: 'bad-pkce')
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(response.parsed_body.fetch('error')).to include(
+        'code' => 'invalid_oidc_exchange',
+        'message' => 'OIDC exchange is invalid'
+      )
+
+      stub_request(:post, oidc_token_endpoint).to_return(status: 200, body: { access_token: 'secret' }.to_json)
+
+      exchange_oidc(nonce: 'missing-id-token')
 
       expect(response).to have_http_status(:unauthorized)
     end
 
-    it 'rejects invalid issuer, audience, expiry, nonce, replay, locked account, and revoked membership cases' do
-      invalid_cases = [
-        [oidc_token(sub: 'jane-oidc-sub', issuer: 'https://evil.example.test', nonce: 'bad-issuer'), 'bad-issuer'],
-        [oidc_token(sub: 'jane-oidc-sub', audience: 'wrong-client', nonce: 'bad-audience'), 'bad-audience'],
-        [oidc_token(sub: 'jane-oidc-sub', exp: 1.minute.ago.to_i, nonce: 'expired'), 'expired'],
-        [oidc_token(sub: 'jane-oidc-sub', nonce: 'expected-nonce'), 'different-nonce']
-      ]
+    it 'rejects discovery failures and issuer mismatches' do
+      stub_request(:get, oidc_discovery_url).to_return(status: 503, body: '')
+      exchange_oidc(nonce: 'discovery-failure')
+      expect(response).to have_http_status(:unauthorized)
 
-      invalid_cases.each do |token, nonce|
-        post api_v1_auth_oidc_exchange_path,
-             params: { id_token: token, nonce: nonce, code_verifier: 'pkce-verifier' },
-             as: :json
+      stub_oidc_discovery(issuer: 'https://other-issuer.example.test')
+      exchange_oidc(nonce: 'issuer-mismatch')
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'rejects JWKS failures and invalid signatures' do
+      stub_request(:get, oidc_jwks_uri).to_return(status: 503, body: '')
+      stub_oidc_token_response(id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'jwks-failure'))
+      exchange_oidc(nonce: 'jwks-failure')
+      expect(response).to have_http_status(:unauthorized)
+
+      other_key = OpenSSL::PKey::RSA.generate(2048)
+      stub_oidc_token_response(
+        id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'bad-signature', signing_key: other_key)
+      )
+      exchange_oidc(nonce: 'bad-signature')
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'rejects invalid issuer, audience, expiry, issued-at, nonce, and subject claims' do
+      invalid_cases = {
+        'bad-issuer' => { issuer: 'https://evil.example.test' },
+        'bad-audience' => { audience: 'wrong-client' },
+        'expired' => { exp: 1.minute.ago.to_i },
+        'future-issued-at' => { iat: 5.minutes.from_now.to_i },
+        'different-nonce' => { token_nonce: 'expected-nonce' },
+        'blank-subject' => { sub: '' }
+      }
+
+      invalid_cases.each do |nonce, overrides|
+        token_nonce = overrides.delete(:token_nonce) || nonce
+        subject = overrides.delete(:sub) { 'jane-oidc-sub' }
+        stub_oidc_token_response(id_token: oidc_token(sub: subject, nonce: token_nonce, **overrides))
+        exchange_oidc(nonce: nonce)
 
         expect(response).to have_http_status(:unauthorized)
         expect(response.parsed_body.dig('error', 'code')).to eq('invalid_oidc_exchange')
       end
+    end
 
+    it 'rejects nonce replay and an unlinked identity' do
       replay_token = oidc_token(sub: 'jane-oidc-sub', nonce: 'replay-nonce')
-      post api_v1_auth_oidc_exchange_path,
-           params: { id_token: replay_token, nonce: 'replay-nonce', code_verifier: 'pkce-verifier' },
-           as: :json
-      post api_v1_auth_oidc_exchange_path,
-           params: { id_token: replay_token, nonce: 'replay-nonce', code_verifier: 'pkce-verifier' },
-           as: :json
+      stub_oidc_token_response(id_token: replay_token)
+      exchange_oidc(nonce: 'replay-nonce')
+      stub_oidc_token_response(id_token: replay_token)
+      exchange_oidc(nonce: 'replay-nonce')
+
       expect(response).to have_http_status(:unauthorized)
 
+      stub_oidc_token_response(id_token: oidc_token(sub: 'missing-subject', nonce: 'unlinked'))
+      exchange_oidc(nonce: 'unlinked')
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'rejects locked and deactivated linked accounts' do
       lock_account!(account)
-      post api_v1_auth_oidc_exchange_path,
-           params: {
-             id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'locked-nonce'),
-             nonce: 'locked-nonce',
-             code_verifier: 'pkce-verifier'
-           },
-           as: :json
+      stub_oidc_token_response(id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'locked-nonce'))
+      exchange_oidc(nonce: 'locked-nonce')
       expect(response).to have_http_status(:unauthorized)
       AccountLockout.where(account_id: account.id).delete_all
 
-      account.household_memberships.active.first.update!(status: :revoked)
-      post api_v1_auth_oidc_exchange_path,
-           params: {
-             id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'revoked-nonce'),
-             nonce: 'revoked-nonce',
-             code_verifier: 'pkce-verifier'
-           },
-           as: :json
+      user.update!(active: false)
+      stub_oidc_token_response(id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'deactivated-nonce'))
+      exchange_oidc(nonce: 'deactivated-nonce')
       expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'returns a one-time selection grant for multiple memberships and exchanges it for a session' do
+      second_household = create(:household)
+      second_membership = second_household.household_memberships.create!(
+        account: account,
+        role: :member,
+        status: :active
+      )
+      stub_oidc_token_response(id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'choose-household'))
+
+      expect { exchange_oidc(nonce: 'choose-household', device_name: 'Android') }
+        .not_to change(ApiSession, :count)
+
+      expect(response).to have_http_status(:accepted)
+      data = response.parsed_body.fetch('data')
+      expect(data).to include(
+        'status' => 'household_selection_required',
+        'selection_token' => be_present,
+        'selection_expires_at' => be_present,
+        'households' => contain_exactly(
+          include('id' => account.household_memberships.active.first.household_id),
+          include('id' => second_household.id)
+        )
+      )
+      grant = ApiHouseholdSelectionGrant.order(:id).last
+      expect(grant.token_digest).to eq(ApiHouseholdSelectionGrant.digest(data.fetch('selection_token')))
+      expect(grant.token_digest).not_to eq(data.fetch('selection_token'))
+
+      post api_v1_auth_select_household_path,
+           params: { selection_token: data.fetch('selection_token'), household_id: second_household.id },
+           as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(response.parsed_body.dig('data', 'household', 'id')).to eq(second_household.id)
+      expect(grant.reload.used_at).to be_present
+      expect(ApiSession.order(:id).last).to have_attributes(
+        account: account,
+        household_membership: second_membership,
+        device_name: 'Android'
+      )
+    end
+
+    it 'returns a generic failure for expired, used, and wrong-account selection grants' do
+      household_id = account.household_memberships.active.sole.household_id
+      expired_grant, expired_token = ApiHouseholdSelectionGrant.issue_for(account: account)
+      expired_grant.update!(expires_at: 1.minute.ago)
+      used_grant, used_token = ApiHouseholdSelectionGrant.issue_for(account: account)
+      used_grant.update!(used_at: Time.current)
+      _, wrong_account_token = ApiHouseholdSelectionGrant.issue_for(account: account)
+      other_household = create(:household)
+
+      [
+        [expired_token, household_id],
+        [used_token, household_id],
+        [wrong_account_token, other_household.id]
+      ].each do |selection_token, selected_household_id|
+        post api_v1_auth_select_household_path,
+             params: { selection_token: selection_token, household_id: selected_household_id },
+             as: :json
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(response.parsed_body.fetch('error')).to include(
+          'code' => 'invalid_household_selection',
+          'message' => 'Household selection is invalid or expired'
+        )
+      end
     end
   end
 
@@ -643,19 +726,71 @@ RSpec.describe 'API v1 auth sessions' do
     )
   end
 
-  def oidc_token(sub:, nonce:, **overrides)
+  def oidc_code_verifier = 'a' * 64
+  def oidc_issuer = 'https://issuer.example.test'
+  def oidc_discovery_url = "#{oidc_issuer}/.well-known/openid-configuration"
+  def oidc_token_endpoint = "#{oidc_issuer}/oauth/token"
+  def oidc_jwks_uri = "#{oidc_issuer}/oauth/keys"
+  def oidc_client_id = 'medtracker-mobile-test'
+  def oidc_redirect_uri = 'https://mobile.example.test/oauth/callback'
+  def oidc_signing_key = @oidc_signing_key ||= OpenSSL::PKey::RSA.generate(2048)
+  def oidc_jwk = JWT::JWK.new(oidc_signing_key).export
+
+  def exchange_oidc(nonce:, **params)
+    post api_v1_auth_oidc_exchange_path,
+         params: {
+           authorization_code: 'authorization-code',
+           code_verifier: oidc_code_verifier,
+           redirect_uri: oidc_redirect_uri,
+           nonce: nonce
+         }.merge(params),
+         as: :json
+  end
+
+  def stub_oidc_discovery(issuer: oidc_issuer)
+    stub_request(:get, oidc_discovery_url).to_return(
+      status: 200,
+      headers: { 'Content-Type' => 'application/json' },
+      body: {
+        issuer: issuer,
+        token_endpoint: oidc_token_endpoint,
+        jwks_uri: oidc_jwks_uri,
+        id_token_signing_alg_values_supported: ['RS256']
+      }.to_json
+    )
+  end
+
+  def stub_oidc_jwks
+    stub_request(:get, oidc_jwks_uri).to_return(
+      status: 200,
+      headers: { 'Content-Type' => 'application/json' },
+      body: { keys: [oidc_jwk] }.to_json
+    )
+  end
+
+  def stub_oidc_token_response(id_token:)
+    stub_request(:post, oidc_token_endpoint).to_return(
+      status: 200,
+      headers: { 'Content-Type' => 'application/json' },
+      body: { id_token: id_token, access_token: 'upstream-secret', token_type: 'Bearer' }.to_json
+    )
+  end
+
+  def oidc_token(sub:, nonce:, signing_key: oidc_signing_key, **overrides)
+    signing_jwk = JWT::JWK.new(signing_key)
     JWT.encode(
       {
         iss: overrides.fetch(:issuer, oidc_issuer),
         aud: overrides.fetch(:audience, oidc_client_id),
         exp: overrides.fetch(:exp, 15.minutes.from_now.to_i),
-        iat: Time.current.to_i,
+        iat: overrides.fetch(:iat, Time.current.to_i),
         sub: sub,
         nonce: nonce,
         amr: overrides[:amr]
       }.compact,
-      oidc_client_secret,
-      'HS256'
+      signing_key,
+      'RS256',
+      kid: signing_jwk.kid
     )
   end
 end

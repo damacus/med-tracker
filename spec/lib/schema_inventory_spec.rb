@@ -29,6 +29,7 @@ RSpec.describe SchemaInventory do
   let(:expected_global_tables) do
     %w[
       api_app_tokens
+      api_household_selection_grants
       api_sessions
       barcode_catalog_entries
       households

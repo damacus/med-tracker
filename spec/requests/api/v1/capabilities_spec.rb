@@ -20,6 +20,7 @@ RSpec.describe 'API v1 capabilities' do
     expect(data.dig('authentication', 'oidc_exchange')).to include(
       'supported' => true,
       'pkce_required' => true,
+      'household_selection' => true,
       'session_listing' => true,
       'session_revocation' => true
     )

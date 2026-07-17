@@ -414,6 +414,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
         'GET /capabilities',
         'POST /auth/login',
         'POST /auth/oidc_exchange',
+        'POST /auth/select_household',
         'POST /auth/refresh'
       )
       expect(described_class.operation('/auth/logout', 'delete')).not_to include('security')

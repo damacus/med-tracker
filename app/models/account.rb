@@ -17,6 +17,7 @@ class Account < ApplicationRecord
   has_many :household_memberships, dependent: :destroy
   has_many :households, through: :household_memberships
   has_many :api_sessions, dependent: :destroy
+  has_many :api_household_selection_grants, dependent: :destroy
   has_many :api_app_tokens, dependent: :destroy
   has_many :push_subscriptions, dependent: :destroy
   has_many :native_device_tokens, dependent: :destroy

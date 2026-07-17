@@ -49,6 +49,7 @@ class SchemaInventory
     active_storage_blobs
     active_storage_variant_records
     api_app_tokens
+    api_household_selection_grants
     api_oidc_nonces
     api_sessions
     app_settings

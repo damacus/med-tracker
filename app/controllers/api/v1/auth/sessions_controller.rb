@@ -41,12 +41,31 @@ module Api
 
         def oidc_exchange
           result = Api::OidcSessionExchange.new(params: oidc_exchange_params, request: request).call
+          if result.household_selection_required?
+            render json: { data: household_selection_payload(result) }, status: :accepted
+            return
+          end
+
           render json: {
             data: login_payload(result.api_session, result.access_token, result.refresh_token,
                                 result.household_membership)
           }, status: :created
         rescue Api::OidcSessionExchange::Error
           render_invalid_oidc_exchange
+        end
+
+        def select_household
+          result = ApiHouseholdSelectionGrant.select_household(
+            token: params.expect(:selection_token).to_s,
+            household_id: params.expect(:household_id),
+            audit_context: audit_context(nil)
+          )
+          render json: {
+            data: login_payload(result.api_session, result.access_token, result.refresh_token,
+                                result.household_membership)
+          }, status: :created
+        rescue ApiHouseholdSelectionGrant::InvalidGrant
+          render_invalid_household_selection
         end
 
         def households
@@ -77,8 +96,20 @@ module Api
               next
             end
 
-            access_token, refresh_token = api_session.rotate_tokens!(audit_context: audit_context(api_session.account))
-            token_payload = refresh_payload(api_session, access_token, refresh_token)
+            rotation = ApiSession.rotate_refresh_token(
+              params.expect(:refresh_token).to_s,
+              audit_context: audit_context(api_session.account)
+            )
+            unless rotation
+              render_invalid_refresh_token
+              next
+            end
+
+            token_payload = refresh_payload(
+              rotation.api_session,
+              rotation.access_token,
+              rotation.refresh_token
+            )
           end
           return if performed?
 
@@ -96,7 +127,7 @@ module Api
         private
 
         def oidc_exchange_params
-          params.permit(:id_token, :nonce, :code_verifier, :device_name, :household_id, :provider)
+          params.permit(:authorization_code, :nonce, :code_verifier, :redirect_uri, :device_name)
         end
 
         def audit_context(account)
@@ -209,6 +240,20 @@ module Api
           end
         end
 
+        def household_selection_payload(result)
+          {
+            status: 'household_selection_required',
+            selection_token: result.selection_token,
+            selection_expires_at: result.selection_grant.expires_at.iso8601,
+            households: result.household_memberships.map do |membership|
+              household_payload(membership.household).merge(
+                role: membership.role,
+                membership_id: membership.id
+              )
+            end
+          }
+        end
+
         def session_payload(api_session)
           {
             id: api_session.id,
@@ -258,6 +303,14 @@ module Api
           render_api_error(
             code: 'invalid_oidc_exchange',
             message: 'OIDC exchange is invalid',
+            status: :unauthorized
+          )
+        end
+
+        def render_invalid_household_selection
+          render_api_error(
+            code: 'invalid_household_selection',
+            message: 'Household selection is invalid or expired',
             status: :unauthorized
           )
         end

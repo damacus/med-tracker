@@ -4,74 +4,75 @@ module Api
   class OidcSessionExchange
     class Error < StandardError; end
 
-    Result = Data.define(:api_session, :access_token, :refresh_token, :household_membership)
+    Result = Struct.new(
+      :api_session,
+      :access_token,
+      :refresh_token,
+      :household_membership,
+      :selection_grant,
+      :selection_token,
+      :household_memberships,
+      keyword_init: true
+    ) do
+      def household_selection_required? = selection_grant.present?
+    end
 
-    def initialize(params:, request:)
+    def initialize(params:, request:, provider_client: OidcProviderClient.new)
       @params = params
       @request = request
+      @provider_client = provider_client
     end
 
     def call
-      validate_pkce!
-      claims = decode_claims
-      validate_nonce!(claims)
+      validate_required_params!
+      claims = verified_claims
+      validate_claims!(claims)
       reject_replay!(claims)
       account = account_for(claims)
-      membership = membership_for(account)
       validate_account!(account)
-      validate_membership!(membership)
+      memberships = operational_memberships(account).to_a
 
-      result_for(account, membership, claims)
+      return session_result(account, memberships.sole, claims) if memberships.one?
+      return selection_result(account, memberships, claims) if memberships.many?
+
+      raise Error
+    rescue OidcProviderClient::Error
+      raise Error
     end
 
     private
 
-    attr_reader :params, :request
+    attr_reader :params, :request, :provider_client
 
-    def result_for(account, membership, claims)
-      api_session, access_token, refresh_token = issue_session(account, membership, claims)
-      Result.new(api_session: api_session, access_token: access_token, refresh_token: refresh_token,
-                 household_membership: membership)
-    end
-
-    def issue_session(account, membership, claims)
-      mfa_verified = oidc_mfa_verified?(claims)
-      ApiSession.issue_for(
-        account: account,
-        household_membership: membership,
-        device_name: params[:device_name],
-        user_agent: request.user_agent,
-        mfa_verified_at: mfa_verified ? Time.current : nil,
-        oidc_mfa_verified: mfa_verified,
-        audit_context: audit_context(account, membership)
+    def verified_claims
+      id_token = provider_client.exchange_code(
+        authorization_code: params[:authorization_code],
+        code_verifier: params[:code_verifier],
+        redirect_uri: params[:redirect_uri]
       )
+      provider_client.decode_id_token(id_token)
     end
 
-    def validate_pkce!
-      raise Error, 'PKCE verifier is required' if params[:code_verifier].blank?
-      raise Error, 'OIDC token is required' if params[:id_token].blank?
+    def validate_required_params!
+      required = %i[authorization_code code_verifier redirect_uri nonce]
+      raise Error if required.any? { params[it].blank? }
     end
 
-    def decode_claims
-      payload, = JWT.decode(
-        params[:id_token].to_s,
-        client_secret,
-        true,
-        algorithm: 'HS256',
-        iss: issuer,
-        verify_iss: true,
-        aud: audience,
-        verify_aud: true,
-        verify_expiration: true
-      )
-      payload
-    rescue JWT::DecodeError => e
-      raise Error, e.message
+    def validate_claims!(claims)
+      raise Error unless valid_nonce?(claims['nonce'])
+      raise Error if claims['sub'].blank?
+      raise Error unless valid_issued_at?(claims['iat'])
+    rescue ArgumentError, KeyError
+      raise Error
     end
 
-    def validate_nonce!(claims)
-      raise Error, 'OIDC nonce is invalid' if claims['nonce'].blank? || claims['nonce'] != params[:nonce].to_s
-      raise Error, 'OIDC subject is invalid' if claims['sub'].blank?
+    def valid_nonce?(claim)
+      nonce = claim.to_s
+      nonce.present? && ActiveSupport::SecurityUtils.secure_compare(nonce, params[:nonce].to_s)
+    end
+
+    def valid_issued_at?(claim)
+      Time.zone.at(Integer(claim)) <= 1.minute.from_now
     end
 
     def reject_replay!(claims)
@@ -82,20 +83,17 @@ module Api
         used_at: Time.current
       )
     rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
-      raise Error, 'OIDC nonce has already been used'
+      raise Error
     end
 
     def account_for(claims)
-      AccountIdentity.find_by!(provider: params.fetch(:provider, 'oidc'), uid: claims.fetch('sub')).account
+      AccountIdentity.find_by!(provider: 'oidc', uid: claims.fetch('sub')).account
     rescue ActiveRecord::RecordNotFound
-      raise Error, 'OIDC identity is not linked'
+      raise Error
     end
 
-    def membership_for(account)
-      scope = operational_memberships(account)
-      return scope.find_by(household_id: params[:household_id]) if params[:household_id].present?
-
-      sole_membership(scope)
+    def validate_account!(account)
+      raise Error unless ApiHouseholdSelectionGrant.account_available?(account)
     end
 
     def operational_memberships(account)
@@ -103,33 +101,40 @@ module Api
              .includes(:household).order(:id)
     end
 
-    def sole_membership(scope)
-      memberships = scope.limit(2).to_a
-      memberships.first if memberships.one?
+    def session_result(account, membership, claims)
+      api_session, access_token, refresh_token = ApiSession.issue_for(
+        account: account,
+        household_membership: membership,
+        device_name: params[:device_name],
+        user_agent: request.user_agent,
+        **mfa_attributes(claims),
+        audit_context: audit_context(account, membership)
+      )
+      Result.new(
+        api_session: api_session,
+        access_token: access_token,
+        refresh_token: refresh_token,
+        household_membership: membership
+      )
     end
 
-    def validate_account!(account)
-      raise Error, 'OIDC account is unavailable' unless account&.verified? && account.person&.user&.active?
-      raise Error, 'OIDC account is unavailable' if ApiAuthState.locked_out?(account)
+    def selection_result(account, memberships, claims)
+      grant, token = ApiHouseholdSelectionGrant.issue_for(
+        account: account,
+        device_name: params[:device_name],
+        user_agent: request.user_agent,
+        **mfa_attributes(claims)
+      )
+      Result.new(selection_grant: grant, selection_token: token, household_memberships: memberships)
     end
 
-    def validate_membership!(membership)
-      raise Error, 'OIDC household membership is unavailable' unless membership&.active?
-    end
-
-    def issuer
-      ENV.fetch('OIDC_ISSUER_URL', nil).presence || Rails.application.credentials.dig(:oidc, :issuer_url).to_s
-    end
-
-    def audience
-      ENV.fetch('OIDC_MOBILE_CLIENT_ID', nil).presence ||
-        ENV.fetch('OIDC_CLIENT_ID', nil).presence ||
-        Rails.application.credentials.dig(:oidc, :client_id).to_s
-    end
-
-    def client_secret
-      ENV.fetch('OIDC_CLIENT_SECRET', nil).presence ||
-        Rails.application.credentials.dig(:oidc, :client_secret).to_s
+    def mfa_attributes(claims)
+      verified = Array(claims['amr']).map(&:to_s).intersect?(ApiAuthState::MFA_METHODS) ||
+                 claims['acr'].to_s.include?('mfa')
+      {
+        mfa_verified_at: verified ? Time.current : nil,
+        oidc_mfa_verified: verified
+      }
     end
 
     def audit_context(account, membership)
@@ -140,11 +145,6 @@ module Api
         household_id: membership.household_id,
         actor_membership_id: membership.id
       }
-    end
-
-    def oidc_mfa_verified?(claims)
-      Array(claims['amr']).map(&:to_s).intersect?(ApiAuthState::MFA_METHODS) ||
-        claims['acr'].to_s.include?('mfa')
     end
   end
 end

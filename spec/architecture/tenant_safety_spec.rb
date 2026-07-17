@@ -5,6 +5,7 @@ require 'rails_helper'
 RSpec.describe 'tenant safety architecture' do
   let(:cache_allowed_paths) do
     %w[
+      app/services/api/oidc_provider_client.rb
       app/services/nhs_dmd/barcode_lookup.rb
       app/services/nhs_dmd/client.rb
       app/services/nhs_website_content/client.rb

@@ -63,6 +63,47 @@ RSpec.describe ApiSession do
     end
   end
 
+  describe '.rotate_refresh_token' do
+    let(:account) { accounts(:jane_doe) }
+
+    it 'looks up and rotates the submitted digest once at the class boundary' do
+      session, _, refresh_token = described_class.issue_for(
+        account: account,
+        household_membership: api_membership_for(account)
+      )
+
+      result = described_class.rotate_refresh_token(refresh_token)
+
+      expect(result.api_session).to eq(session)
+      expect(result.access_token).to start_with('mt_')
+      expect(result.refresh_token).to start_with('mt_')
+      expect(result.refresh_token).not_to eq(refresh_token)
+      expect(described_class.rotate_refresh_token(refresh_token)).to be_nil
+    end
+  end
+
+  describe '#touch_last_used!' do
+    let(:account) { accounts(:jane_doe) }
+    let(:issued_at) { Time.zone.parse('2026-04-21 10:00:00') }
+
+    it 'skips persistence when the session was used in the last five minutes' do
+      session = issue_session_at(issued_at)
+
+      travel_to(issued_at + 1.minute) do
+        expect { session.touch_last_used! }.not_to(change { session.reload.updated_at })
+      end
+    end
+
+    it 'persists activity after the five-minute interval' do
+      session = issue_session_at(issued_at)
+
+      travel_to(issued_at + 6.minutes) do
+        expect { session.touch_last_used! }
+          .to change { session.reload.last_used_at }.from(issued_at).to(Time.current)
+      end
+    end
+  end
+
   describe '#revoke!' do
     let(:account) { accounts(:jane_doe) }
 
@@ -101,6 +142,15 @@ RSpec.describe ApiSession do
     end
   end
 
+  def issue_session_at(time)
+    travel_to(time) do
+      described_class.issue_for(
+        account: account,
+        household_membership: api_membership_for(account)
+      ).first
+    end
+  end
+
   def expected_persisted_attributes(access_token, refresh_token)
     expected_attributes.merge(
       id: be_present,
@@ -111,11 +161,9 @@ RSpec.describe ApiSession do
 
   def api_membership_for(account)
     household = api_household
-    person = api_person_for(account, household)
 
     household.household_memberships.create!(
       account: account,
-      person: person,
       role: :owner,
       status: :active
     )
@@ -124,17 +172,6 @@ RSpec.describe ApiSession do
   def api_household
     Household.create!(name: "API Session Spec #{SecureRandom.hex(4)}",
                       slug: "api-session-spec-#{SecureRandom.hex(4)}")
-  end
-
-  def api_person_for(account, household)
-    Person.create!(
-      household: household,
-      account: account,
-      name: 'API Session Person',
-      date_of_birth: 30.years.ago.to_date,
-      person_type: :adult,
-      has_capacity: true
-    )
   end
 
   def latest_auth_token_version

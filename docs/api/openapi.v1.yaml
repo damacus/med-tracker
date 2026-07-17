@@ -104,11 +104,28 @@ paths:
       tags:
         - Public
         - Authentication
-      summary: Exchange a hosted OIDC ID token for an API session.
+      summary: Exchange an OIDC authorization code with PKCE for an API session.
       security: []
       responses:
         '201':
           description: API session created.
+        '202':
+          description: Household selection is required before creating an API session.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/select_household:
+    post:
+      operationId: selectOidcHousehold
+      tags:
+        - Public
+        - Authentication
+      summary: Consume a one-time OIDC household-selection grant and create an API session.
+      security: []
+      responses:
+        '201':
+          description: API session created for the selected household.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /auth/households:
     get:
       operationId: listHouseholds

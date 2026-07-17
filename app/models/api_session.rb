@@ -3,6 +3,9 @@
 class ApiSession < ApplicationRecord
   ACCESS_TOKEN_TTL = 15.minutes
   REFRESH_TOKEN_TTL = 30.days
+  LAST_USED_TOUCH_INTERVAL = 5.minutes
+
+  RotationResult = Data.define(:api_session, :access_token, :refresh_token)
 
   belongs_to :account
   belongs_to :household_membership, optional: true
@@ -36,6 +39,17 @@ class ApiSession < ApplicationRecord
 
     def lookup_by_refresh_token(token)
       active.find_by(refresh_token_digest: digest(token))
+    end
+
+    def rotate_refresh_token(token, audit_context: nil)
+      transaction do
+        session = active.lock.find_by(refresh_token_digest: digest(token))
+        return unless session&.send(:refresh_permitted?)
+
+        access_token, refresh_token = session.send(:rotate_token_values!)
+        record_audit(session, 'rotated', audit_context)
+        RotationResult.new(api_session: session, access_token: access_token, refresh_token: refresh_token)
+      end
     end
 
     def digest(token)
@@ -113,6 +127,8 @@ class ApiSession < ApplicationRecord
   end
 
   def touch_last_used!
+    return if last_used_at.present? && last_used_at >= LAST_USED_TOUCH_INTERVAL.ago
+
     update!(last_used_at: Time.current)
   end
 
@@ -148,5 +164,9 @@ class ApiSession < ApplicationRecord
     )
 
     [access_token, refresh_token]
+  end
+
+  def refresh_permitted?
+    active_refresh_token? && account.verified? && account.person&.user&.active? && !ApiAuthState.locked_out?(account)
   end
 end
