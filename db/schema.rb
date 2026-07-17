@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_16_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_17_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -1514,4 +1514,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_120000) do
   execute 'DROP POLICY IF EXISTS household_tenant_isolation ON versions;'
   execute 'ALTER TABLE versions NO FORCE ROW LEVEL SECURITY;'
   execute 'ALTER TABLE versions DISABLE ROW LEVEL SECURITY;'
+
+  execute <<~SQL
+    DO $audit_verifier_visibility$
+    BEGIN
+      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'med_tracker_audit_verifier') THEN
+        DROP POLICY IF EXISTS audit_verifier_complete_visibility ON security_audit_events;
+        CREATE POLICY audit_verifier_complete_visibility ON security_audit_events
+          FOR SELECT TO med_tracker_audit_verifier
+          USING (true);
+      END IF;
+    END
+    $audit_verifier_visibility$;
+  SQL
 end

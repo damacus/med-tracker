@@ -159,6 +159,23 @@ ORDER BY table_name;
 
 Every `null_household_id` count should be `0`.
 
+## Audit evidence repair
+
+Affected upgrades automatically append previously omitted `versions` and
+`security_audit_events` rows in a separate `legacy-repair` epoch. Existing
+ledger entries and source evidence are not rewritten. The repair creates a
+`pre-legacy-repair` checkpoint before the new epoch and a `legacy-repair`
+checkpoint after it.
+
+Evidence that was omitted before this repair was not protected before repair.
+Integrity is established from the new repair checkpoint onward.
+
+Before accepting the repaired audit evidence, operators must sign and export
+both checkpoints, drain pending delivery records, and rerun database, WORM,
+and combined verification. Record the deployment version, migration time,
+checkpoint, key, manifest, and object identifiers, verification output, and
+operator in an external change or incident record.
+
 Verify the account access bootstrap:
 
 ```sql

@@ -35,6 +35,8 @@ module Audit
       def verification_result
         raise ConfigurationError, "unsupported scope: #{scope}" unless SCOPES.include?(scope)
 
+        validate_filter_compatibility!
+
         case scope
         when 'database' then resolved_database_verifier.call
         when 'worm' then resolved_worm_verifier.call
@@ -44,7 +46,7 @@ module Audit
 
       def resolved_database_verifier
         database_verifier || DatabaseVerifier.new(entries: entry_filter.call,
-                                                  verify_heads: !entry_filter.time_filtered?)
+                                                  household_id: entry_filter.household_id)
       end
 
       def resolved_worm_verifier
@@ -57,6 +59,12 @@ module Audit
 
       def scope
         @scope ||= environment.fetch('SCOPE', 'database').downcase
+      end
+
+      def validate_filter_compatibility!
+        return if scope == 'worm' || !entry_filter.time_filtered?
+
+        raise ConfigurationError, 'time filters are unsupported for database verification'
       end
 
       def combine(database_result, worm_result)

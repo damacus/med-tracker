@@ -14,6 +14,7 @@ module DatabaseRuntimeRoleSetup
     db/migrate/20260709143000_configure_audit_object_lock_exporter.rb
     db/migrate/20260709143100_enforce_recent_household_row_level_security.rb
     db/migrate/20260709150000_configure_audit_verifier_role.rb
+    db/migrate/20260717130000_grant_audit_verifier_complete_visibility.rb
     db/migrate/20260713190100_allow_invitation_token_rls_bootstrap.rb
   ].freeze
 
@@ -69,6 +70,7 @@ module DatabaseRuntimeRoleSetup
     migration = ConfigureAuditVerifierRole.new
     migration.install_verifier_role
     migration.lock_verifier_privileges
+    GrantAuditVerifierCompleteVisibility.new.up
   end
 end
 

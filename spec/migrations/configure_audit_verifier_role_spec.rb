@@ -2,12 +2,13 @@
 
 require 'rails_helper'
 require Rails.root.join('db/migrate/20260709150000_configure_audit_verifier_role')
+require Rails.root.join('db/migrate/20260717130000_grant_audit_verifier_complete_visibility')
 
 RSpec.describe ConfigureAuditVerifierRole do
-  it 'can read audit evidence and record exports without reading clinical tables' do
+  it 'can read audit evidence without reading clinical tables' do
     expect(privilege('audit_ledger_entries', 'SELECT')).to be(true)
     expect(privilege('security_audit_events', 'SELECT')).to be(true)
-    expect(privilege('security_audit_events', 'INSERT')).to be(true)
+    expect(privilege('security_audit_events', 'INSERT')).to be(false)
     expect(privilege('versions', 'SELECT')).to be(true)
     expect(privilege('medications', 'SELECT')).to be(false)
   end
@@ -29,6 +30,7 @@ RSpec.describe ConfigureAuditVerifierRole do
     expect(privilege('security_audit_events', 'INSERT')).to be(false)
   ensure
     migration&.lock_verifier_privileges
+    GrantAuditVerifierCompleteVisibility.new.up
   end
 
   def privilege(table_name, action)

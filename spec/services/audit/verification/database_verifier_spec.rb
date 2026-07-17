@@ -12,7 +12,7 @@ RSpec.describe Audit::Verification::DatabaseVerifier do
     second = ledger_entry_for('audit.verify.second')
     signer.sign(second)
 
-    result = described_class.new(entries: AuditLedgerEntry.where(id: [first.id, second.id])).call
+    result = verify(entries: AuditLedgerEntry.where(id: [first.id, second.id]))
 
     expect(result).to be_valid
     expect(result.checked_entries).to eq(2)
@@ -23,7 +23,7 @@ RSpec.describe Audit::Verification::DatabaseVerifier do
     entry = ledger_entry_for('audit.verify.hash')
     execute("UPDATE audit_ledger_entries SET entry_hash = decode('#{'00' * 32}', 'hex') WHERE id = #{entry.id}")
 
-    result = described_class.new(entries: AuditLedgerEntry.where(id: entry.id)).call
+    result = verify(entries: AuditLedgerEntry.where(id: entry.id))
 
     expect(result.issue_codes).to include('entry_hash_mismatch', 'chain_head_mismatch')
     expect(result.exit_code).to eq(1)
@@ -33,9 +33,198 @@ RSpec.describe Audit::Verification::DatabaseVerifier do
     entry = ledger_entry_for('audit.verify.source')
     execute("UPDATE security_audit_events SET event_type = 'audit.verify.changed' WHERE id = #{entry.source_id}")
 
-    result = described_class.new(entries: AuditLedgerEntry.where(id: entry.id)).call
+    result = verify(entries: AuditLedgerEntry.where(id: entry.id))
 
     expect(result.issue_codes).to include('source_payload_mismatch')
+  end
+
+  it 'does not follow a forged source reference into another household' do
+    entry = ledger_entry_for('audit.verify.cross-household.source')
+    other_household = Household.create!(name: 'Cross-household source reference')
+    other_event = Audit::Event.record!(
+      household: other_household, event_type: 'audit.verify.cross-household.secret', metadata: {}
+    )
+    remove_ledger_entry('security_audit_events', other_event.id)
+    execute("UPDATE audit_ledger_entries SET source_id = #{other_event.id} WHERE id = #{entry.id}")
+
+    result = verify(entries: AuditLedgerEntry.where(id: entry.id), household_id: household.id)
+
+    expect(result.issue_codes).to include('source_row_missing')
+    expect(result.issue_codes).not_to include('source_payload_mismatch')
+    expect(result.to_h.to_s).not_to include(other_event.event_type)
+  end
+
+  it 'reports a source row with no matching ledger entry without exposing its payload' do
+    event = Audit::Event.record!(household:, event_type: 'audit.verify.missing', metadata: { outcome: 'success' })
+    entry = AuditLedgerEntry.find_by!(source_table: 'security_audit_events', source_id: event.id)
+    execute("DELETE FROM audit_export_deliveries WHERE audit_ledger_entry_id = #{entry.id}")
+    execute("DELETE FROM audit_ledger_entries WHERE id = #{entry.id}")
+
+    result = verify(entries: AuditLedgerEntry.where(household:))
+
+    issue = result.issues.find { |candidate| candidate.code == 'source_ledger_entry_missing' }
+    expect(issue&.to_h).to include(
+      code: 'source_ledger_entry_missing',
+      metadata: { source_table: 'security_audit_events', missing_count: 1 }
+    )
+    expect(issue.to_h.to_s).not_to include(event.event_type)
+  end
+
+  it 'reports a version row with no matching ledger entry' do
+    version_id = insert_version('audit.verify.version.missing', household.id)
+    remove_ledger_entry('versions', version_id)
+
+    result = verify(entries: AuditLedgerEntry.where(household:))
+
+    expect(result.issues.map(&:to_h)).to include(
+      hash_including(
+        code: 'source_ledger_entry_missing',
+        metadata: { source_table: 'versions', missing_count: 1 }
+      )
+    )
+  end
+
+  it 'limits source completeness to the requested household' do
+    own_event = Audit::Event.record!(household:, event_type: 'audit.verify.household.missing', metadata: {})
+    other_household = Household.create!(name: 'Unrelated verifier household')
+    other_event = Audit::Event.record!(household: other_household, event_type: 'audit.verify.unrelated', metadata: {})
+    remove_ledger_entry('security_audit_events', own_event.id)
+    remove_ledger_entry('security_audit_events', other_event.id)
+
+    result = verify(entries: AuditLedgerEntry.where(household:), household_id: household.id)
+
+    expect(result.issues.map(&:to_h)).to include(
+      hash_including(
+        code: 'source_ledger_entry_missing',
+        metadata: { source_table: 'security_audit_events', missing_count: 1 }
+      )
+    )
+  end
+
+  %w[legacy-baseline legacy-repair].product(%i[wrong null]).each do |epoch_kind, household_mismatch|
+    it "reports a completed #{epoch_kind} source whose ledger household is #{household_mismatch}" do
+      event = Audit::Event.record!(
+        household:, event_type: "audit.verify.#{epoch_kind}.#{household_mismatch}", metadata: {}
+      )
+      entry = AuditLedgerEntry.find_by!(source_table: 'security_audit_events', source_id: event.id)
+      ledger_household_id = Household.create!(name: 'Wrong ledger household').id if household_mismatch == :wrong
+      complete_legacy_epoch(entry, epoch_kind:, ledger_household_id:)
+
+      result = verify(entries: AuditLedgerEntry.all, household_id: household.id)
+
+      expect(result.issue_codes).to contain_exactly('source_ledger_entry_missing')
+    end
+  end
+
+  it 'scopes every verification phase when the requested household has no ledger entries' do
+    requested_household = Household.create!(name: 'Empty requested verifier household')
+    unrelated_entry, unrelated_event = corrupt_unrelated_audit_evidence
+
+    result = verify(entries: AuditLedgerEntry.all, household_id: requested_household.id)
+
+    expect(result).to be_valid
+    expect(result.checked_entries).to eq(0)
+    expect(result.checked_checkpoints).to eq(0)
+    expect(result.to_h.to_s).not_to include(unrelated_entry.chain_key, unrelated_event.event_type)
+  end
+
+  it 'binds household completeness filters as bigint values' do
+    large_household_id = 4_294_967_296
+    large_household = Household.create!(id: large_household_id, name: 'Bigint verifier household')
+    event = Audit::Event.record!(household: large_household, event_type: 'audit.verify.bigint', metadata: {})
+    remove_ledger_entry('security_audit_events', event.id)
+
+    result = verify(entries: AuditLedgerEntry.where(household: large_household), household_id: large_household_id)
+
+    expect(result.issues.map(&:to_h)).to include(
+      hash_including(metadata: { source_table: 'security_audit_events', missing_count: 1 })
+    )
+  end
+
+  it 'requires the dedicated verifier database role' do
+    expect do
+      described_class.new(entries: AuditLedgerEntry.none).call
+    end.to raise_error(Audit::Verification::ConfigurationError, /med_tracker_audit_verifier/)
+  end
+
+  it 'requires every read privilege used by verification' do
+    execute('REVOKE SELECT ON versions FROM med_tracker_audit_verifier')
+
+    expect do
+      verify(entries: AuditLedgerEntry.none)
+    end.to raise_error(Audit::Verification::ConfigurationError, /SELECT privilege/)
+  ensure
+    execute('GRANT SELECT ON versions TO med_tracker_audit_verifier')
+  end
+
+  it 'requires the complete verifier RLS policy' do
+    execute('DROP POLICY audit_verifier_complete_visibility ON security_audit_events')
+
+    expect do
+      verify(entries: AuditLedgerEntry.none)
+    end.to raise_error(Audit::Verification::ConfigurationError, /RLS policy/)
+  ensure
+    install_verifier_visibility_policy
+  end
+
+  it 'rejects effective audit mutation privileges' do
+    execute('GRANT INSERT ON audit_ledger_entries TO med_tracker_audit_verifier')
+
+    expect do
+      verify(entries: AuditLedgerEntry.none)
+    end.to raise_error(Audit::Verification::ConfigurationError, /mutation privilege/)
+  ensure
+    execute('REVOKE INSERT ON audit_ledger_entries FROM med_tracker_audit_verifier')
+  end
+
+  it 'rejects effective reads on unapproved public tables' do
+    execute('GRANT SELECT ON medications TO med_tracker_audit_verifier')
+
+    expect do
+      verify(entries: AuditLedgerEntry.none)
+    end.to raise_error(Audit::Verification::ConfigurationError, /unapproved SELECT privilege/)
+  ensure
+    execute('REVOKE SELECT ON medications FROM med_tracker_audit_verifier')
+  end
+
+  it 'rejects membership in runtime, owner, or exporter roles' do
+    %w[med_tracker_app med_tracker_owner med_tracker_audit_exporter].each do |role_name|
+      execute("GRANT #{role_name} TO med_tracker_audit_verifier")
+
+      expect do
+        verify(entries: AuditLedgerEntry.none)
+      end.to raise_error(Audit::Verification::ConfigurationError, /forbidden role membership/)
+    ensure
+      execute("REVOKE #{role_name} FROM med_tracker_audit_verifier")
+    end
+  end
+
+  it 'rejects a non-literal unrestricted security-event policy' do
+    execute <<~SQL.squish
+      CREATE POLICY audit_verifier_competing_visibility ON security_audit_events
+      FOR SELECT TO med_tracker_app
+      USING (current_user IS NOT NULL)
+    SQL
+
+    expect do
+      verify(entries: AuditLedgerEntry.none)
+    end.to raise_error(Audit::Verification::ConfigurationError, /RLS policy set/)
+  ensure
+    execute('DROP POLICY IF EXISTS audit_verifier_competing_visibility ON security_audit_events')
+  end
+
+  it 'rejects any unexpected security-event policy' do
+    execute <<~SQL.squish
+      CREATE POLICY audit_verifier_unexpected_policy ON security_audit_events
+      FOR SELECT TO med_tracker_app
+      USING (household_id = 123)
+    SQL
+
+    expect do
+      verify(entries: AuditLedgerEntry.none)
+    end.to raise_error(Audit::Verification::ConfigurationError, /RLS policy set/)
+  ensure
+    execute('DROP POLICY IF EXISTS audit_verifier_unexpected_policy ON security_audit_events')
   end
 
   it 'reports missing or duplicated sequence positions' do
@@ -46,8 +235,8 @@ RSpec.describe Audit::Verification::DatabaseVerifier do
     duplicate = second.dup
     duplicate.sequence = first.sequence
 
-    missing_result = described_class.new(entries: [missing], verify_heads: false).call
-    duplicated = described_class.new(entries: [first, duplicate], verify_heads: false).call
+    missing_result = verify(entries: [missing], verify_heads: false)
+    duplicated = verify(entries: [first, duplicate], verify_heads: false)
 
     expect(missing_result.issue_codes).to include('sequence_gap')
     expect(duplicated.issue_codes).to include('sequence_gap')
@@ -60,7 +249,7 @@ RSpec.describe Audit::Verification::DatabaseVerifier do
                                  metadata: { outcome: 'success' })
     second = AuditLedgerEntry.find_by!(source_table: 'security_audit_events', source_id: event.id)
 
-    result = described_class.new(entries: [second, first]).call
+    result = verify(entries: [second, first])
 
     expect(result).to be_valid
   end
@@ -70,7 +259,7 @@ RSpec.describe Audit::Verification::DatabaseVerifier do
     execute("DELETE FROM audit_export_deliveries WHERE audit_ledger_entry_id = #{entry.id}")
     execute("DELETE FROM audit_ledger_entries WHERE id = #{entry.id}")
 
-    result = described_class.new(entries: AuditLedgerEntry.none).call
+    result = verify(entries: AuditLedgerEntry.none)
 
     expect(result.issue_codes).to include('chain_head_mismatch')
   end
@@ -82,12 +271,12 @@ RSpec.describe Audit::Verification::DatabaseVerifier do
       checkpoint_kind: 'periodic', sequence: entry.sequence, entry_hash: entry.entry_hash
     )
 
-    unsigned = described_class.new(entries: AuditLedgerEntry.where(id: entry.id)).call
+    unsigned = verify(entries: AuditLedgerEntry.where(id: entry.id))
     expect(unsigned.issue_codes).to include('checkpoint_unsigned')
 
     signer.sign(entry)
     execute("UPDATE audit_checkpoints SET signature = decode('00', 'hex') WHERE id = #{checkpoint.id}")
-    invalid = described_class.new(entries: AuditLedgerEntry.where(id: entry.id)).call
+    invalid = verify(entries: AuditLedgerEntry.where(id: entry.id))
     expect(invalid.issue_codes).to include('checkpoint_signature_invalid')
   end
 
@@ -106,5 +295,79 @@ RSpec.describe Audit::Verification::DatabaseVerifier do
 
   def execute(sql)
     ActiveRecord::Base.connection.execute(sql)
+  end
+
+  def verify(entries:, verify_heads: true, household_id: nil)
+    with_audit_verifier_role do
+      described_class.new(entries:, verify_heads:, household_id:).call
+    end
+  end
+
+  def remove_ledger_entry(source_table, source_id)
+    entry = AuditLedgerEntry.find_by!(source_table:, source_id:)
+    execute("DELETE FROM audit_export_deliveries WHERE audit_ledger_entry_id = #{entry.id}")
+    execute("DELETE FROM audit_ledger_entries WHERE id = #{entry.id}")
+  end
+
+  def complete_legacy_epoch(entry, epoch_kind:, ledger_household_id:)
+    AuditCheckpoint.create!(
+      household:, chain_key: entry.chain_key, chain_epoch: entry.chain_epoch,
+      checkpoint_kind: epoch_kind, sequence: entry.sequence, entry_hash: entry.entry_hash
+    )
+    connection = ActiveRecord::Base.connection
+    execute <<~SQL.squish
+      UPDATE audit_ledger_entries
+      SET household_id = #{connection.quote(ledger_household_id)}, epoch_kind = #{connection.quote(epoch_kind)}
+      WHERE id = #{entry.id}
+    SQL
+    execute <<~SQL.squish
+      UPDATE audit_chain_heads
+      SET chain_epoch = gen_random_uuid(), epoch_kind = 'live', last_sequence = 0, last_hash = NULL
+      WHERE chain_key = #{connection.quote(entry.chain_key)}
+    SQL
+  end
+
+  def insert_version(event, household_id)
+    ActiveRecord::Base.connection.select_value(<<~SQL.squish)
+      INSERT INTO versions (item_type, item_id, event, object, created_at, audit_context, household_id)
+      VALUES ('VerifierSpec', 1, #{ActiveRecord::Base.connection.quote(event)}, '{}', clock_timestamp(), '{}',
+              #{household_id})
+      RETURNING id
+    SQL
+  end
+
+  def corrupt_unrelated_audit_evidence
+    unrelated_household = Household.create!(name: 'Corrupted unrelated verifier household')
+    event = Audit::Event.record!(
+      household: unrelated_household, event_type: 'audit.verify.unrelated.secret', metadata: {}
+    )
+    entry = AuditLedgerEntry.find_by!(source_table: 'security_audit_events', source_id: event.id)
+    AuditCheckpoint.create!(
+      household: unrelated_household, chain_key: entry.chain_key, chain_epoch: entry.chain_epoch,
+      checkpoint_kind: 'periodic', sequence: entry.sequence, entry_hash: entry.entry_hash
+    )
+    execute(<<~SQL.squish)
+      UPDATE audit_chain_heads
+      SET last_hash = decode('#{'00' * 32}', 'hex')
+      WHERE household_id = #{unrelated_household.id}
+    SQL
+    [entry, event]
+  end
+
+  def install_verifier_visibility_policy
+    execute <<~SQL.squish
+      CREATE POLICY audit_verifier_complete_visibility ON security_audit_events
+      FOR SELECT TO med_tracker_audit_verifier
+      USING (true)
+    SQL
+  end
+
+  def with_audit_verifier_role
+    execute("SELECT set_config('med_tracker.current_household_id', '#{household.id}', true)")
+    execute('SET LOCAL ROLE med_tracker_audit_verifier')
+    yield
+  ensure
+    execute('RESET ROLE')
+    execute("SELECT set_config('med_tracker.current_household_id', '', true)")
   end
 end

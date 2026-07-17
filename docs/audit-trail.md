@@ -29,13 +29,25 @@ boundary for the existing shared login; it does not provide credential isolation
 a general medication-history bypass.
 
 - `med_tracker_audit_exporter` reads ledger/checkpoint data, signs checkpoints through a one-way database function, and updates delivery receipts. It cannot read source or clinical tables or modify ledger history.
-- `med_tracker_audit_verifier` reads source and ledger evidence and may insert the audit event describing an export. It cannot read clinical tables or alter existing source, ledger, checkpoint, or delivery rows.
+- `med_tracker_audit_verifier` is read-only. It needs complete visibility of
+  both audit sources and ledger evidence, but no clinical-table access or
+  authority to alter source, ledger, checkpoint, or delivery rows. It checks
+  ledger-to-source equality and source-to-ledger completeness. If that
+  visibility or isolation is insufficient, verification fails as a
+  configuration error rather than reporting valid evidence.
 
 Database-owner access remains a break-glass capability. PostgreSQL cannot independently audit a malicious database owner who controls the database and its logs. Every owner-level audit-table operation therefore requires an incident or approved change record in a separate system.
 
 ## Existing history
 
 Rows that existed when the ledger was installed are chained in a distinct `legacy-baseline` epoch. A signed baseline manifest proves the bytes exported at that point and detects later changes. It does not prove that pre-migration history was complete or unmodified before the baseline. Documentation and exports must retain that label.
+
+Affected old-database upgrades also append previously omitted `versions` and
+`security_audit_events` rows in a distinct `legacy-repair` epoch. Existing
+evidence is not rewritten. The repair creates `pre-legacy-repair` and
+`legacy-repair` checkpoints; evidence omitted before repair was not protected
+before repair, and integrity is established from the new repair checkpoint
+onward.
 
 ## Object Lock evidence
 
@@ -60,13 +72,15 @@ Inputs are supplied as environment variables:
 | `SCOPE` | `database`, `worm`, or `combined` |
 | `FORMAT` | `human` or `json` |
 | `HOUSEHOLD_ID` | Optional numeric household filter |
-| `FROM` / `TO` | Optional ISO 8601 time bounds |
+| `FROM` / `TO` | Optional ISO 8601 bounds for WORM-only verification; unsupported for `database` and `combined` completeness verification |
 
 Exit status `0` means all selected evidence is valid, `1` means an integrity failure was found, and `2` means verification could not run because of configuration or runtime failure.
 
 Database verification checks source-row equality, canonical payload parsing, sequence continuity, every previous-hash link, recomputed entry hashes, live chain heads, checkpoint targets, Ed25519 signatures, and retained public keys. WORM verification checks delivery completeness, object key/checksum/version, retention mode/date, missing objects, and duplicate versions.
 
-Time-bounded verification validates selected entries and their predecessor links but does not compare a filtered range with the current chain head. Scheduled full verification is still required to detect tail truncation.
+`HOUSEHOLD_ID` remains supported for every scope. `FROM` and `TO` remain
+available for WORM-only verification; database and combined completeness
+verification reject time filters rather than reporting a valid partial result.
 
 ## Export
 
@@ -79,6 +93,13 @@ task audit:export
 Set `OUTPUT`, optional `HOUSEHOLD_ID`, `FROM`, `TO`, and `FHIR=true` as required. The export contains deterministic native NDJSON and a signed manifest. `FHIR=true` also writes a FHIR R4 `Bundle` of `AuditEvent` resources. The native envelope remains authoritative for integrity; FHIR is an interoperability representation. FHIR defines AuditEvent as a security log and advises servers not to support update/delete because that compromises audit integrity: <https://hl7.org/fhir/R4/auditevent.html>.
 
 Creating an export is itself written to `security_audit_events` without recording output paths or clinical content.
+
+After a `legacy-repair` upgrade, sign and export the new
+`pre-legacy-repair` and `legacy-repair` checkpoints, drain pending delivery
+records, then rerun database, WORM, and combined verification before accepting
+the evidence. Keep an external change or incident record with the deployment
+version, migration time, checkpoint, key, manifest, and object identifiers,
+verification output, and operator.
 
 ## Retention
 
