@@ -287,33 +287,46 @@ RSpec.describe RepairRlsHiddenAuditSources do
   end
 
   def create_repair_checkpoint_failure_function
-    connection.execute <<~SQL
+    connection.execute(repair_checkpoint_failure_function_sql)
+  end
+
+  def repair_checkpoint_failure_function_sql
+    <<~SQL.squish
       CREATE FUNCTION spec_fail_legacy_repair_checkpoint() RETURNS trigger
       LANGUAGE plpgsql
       AS $$
       BEGIN
-        IF NEW.checkpoint_kind = 'legacy-repair' THEN
-          IF NOT EXISTS (
-            SELECT 1
-            FROM audit_ledger_entries entries
-            JOIN audit_export_deliveries deliveries ON deliveries.audit_ledger_entry_id = entries.id
-            WHERE entries.chain_epoch = NEW.chain_epoch
-              AND entries.epoch_kind = 'legacy-repair'
-              AND deliveries.status = 'pending'
-          ) THEN
-            RAISE EXCEPTION 'repair checkpoint reached before repaired entry and delivery';
-          END IF;
-          RAISE EXCEPTION 'injected failure after repaired entry and delivery';
-        END IF;
+        #{repair_checkpoint_failure_body_sql}
         RETURN NEW;
       END;
       $$;
+    SQL
+  end
 
+  def repair_checkpoint_failure_body_sql
+    <<~SQL.squish
+      IF NEW.checkpoint_kind = 'legacy-repair' THEN
+        IF NOT EXISTS (#{pending_repair_delivery_sql}) THEN
+          RAISE EXCEPTION 'repair checkpoint reached before repaired entry and delivery';
+        END IF;
+        RAISE EXCEPTION 'injected failure after repaired entry and delivery';
+      END IF;
+    SQL
+  end
+
+  def pending_repair_delivery_sql
+    <<~SQL.squish
+      SELECT 1
+      FROM audit_ledger_entries entries
+      JOIN audit_export_deliveries deliveries ON deliveries.audit_ledger_entry_id = entries.id
+      WHERE entries.chain_epoch = NEW.chain_epoch
+        AND entries.epoch_kind = 'legacy-repair'
+        AND deliveries.status = 'pending'
     SQL
   end
 
   def create_repair_checkpoint_failure_trigger
-    connection.execute <<~SQL
+    connection.execute <<~SQL.squish
       CREATE TRIGGER spec_fail_legacy_repair_checkpoint
       BEFORE INSERT ON audit_checkpoints
       FOR EACH ROW EXECUTE FUNCTION spec_fail_legacy_repair_checkpoint();
@@ -375,19 +388,39 @@ RSpec.describe RepairRlsHiddenAuditSources do
   end
 
   def as_restricted_shared_login
+    create_restricted_shared_login
+    assume_restricted_shared_login
+    yield
+  ensure
+    remove_restricted_shared_login
+  end
+
+  def create_restricted_shared_login
     quoted_role = connection.quote_table_name(shared_login)
     connection.execute("CREATE ROLE #{quoted_role} LOGIN NOSUPERUSER NOBYPASSRLS INHERIT")
     connection.execute("GRANT med_tracker_owner TO #{quoted_role} WITH INHERIT TRUE, SET TRUE")
+  end
+
+  def assume_restricted_shared_login
     connection.execute("SET LOCAL SESSION AUTHORIZATION #{connection.quote(shared_login)}")
-    yield
-  ensure
+  end
+
+  def remove_restricted_shared_login
     connection.execute('RESET SESSION AUTHORIZATION')
     connection.execute("DROP ROLE IF EXISTS #{connection.quote_table_name(shared_login)}")
   end
 
   def expect_restricted_shared_login
+    expect_shared_login_identity
+    expect_shared_login_permissions
+  end
+
+  def expect_shared_login_identity
     expect(connection.select_value('SELECT current_user')).to eq(shared_login)
     expect(connection.select_value('SELECT session_user')).to eq(shared_login)
+  end
+
+  def expect_shared_login_permissions
     expect(connection.select_value(<<~SQL.squish)).to be(true)
       SELECT rolcanlogin AND NOT rolsuper AND NOT rolbypassrls
       FROM pg_roles
@@ -417,14 +450,22 @@ RSpec.describe RepairRlsHiddenAuditSources do
 
   def expect_repaired_audit_evidence(expected_order, live_entry, preserved_records)
     repaired_entries = entries_for(expected_order).order(:id)
-    expect(repaired_entries.pluck(:chain_key, :source_table, :source_id)).to eq(expected_order)
-    expect(repaired_entries.pluck(:epoch_kind).uniq).to eq(['legacy-repair'])
-    expect_repair_checkpoints(repaired_entries)
-    expect_pending_deliveries(repaired_entries)
-    expect_live_tail_checkpoint(live_entry)
+    expect_repaired_entries(repaired_entries, expected_order)
+    expect_repair_artifacts(repaired_entries, live_entry)
     expect_existing_audit_records_unchanged(preserved_records)
     expect_complete_source_coverage
     expect_clean_rls_state
+  end
+
+  def expect_repaired_entries(repaired_entries, expected_order)
+    expect(repaired_entries.pluck(:chain_key, :source_table, :source_id)).to eq(expected_order)
+    expect(repaired_entries.pluck(:epoch_kind).uniq).to eq(['legacy-repair'])
+  end
+
+  def expect_repair_artifacts(repaired_entries, live_entry)
+    expect_repair_checkpoints(repaired_entries)
+    expect_pending_deliveries(repaired_entries)
+    expect_live_tail_checkpoint(live_entry)
   end
 
   def expect_repair_to_be_idempotent

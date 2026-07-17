@@ -32,7 +32,13 @@ module Audit
       def incomplete_source_count(source_table)
         household_predicate = household_id ? 'WHERE source_row.household_id = $1' : ''
         binds = household_id ? [household_id_bind] : []
-        sql = <<~SQL.squish
+        connection.select_value(
+          incomplete_source_sql(source_table, household_predicate), 'Audit source completeness', binds
+        ).to_i
+      end
+
+      def incomplete_source_sql(source_table, household_predicate)
+        <<~SQL.squish
           SELECT COUNT(*)
           FROM (
             SELECT source_row.id
@@ -46,7 +52,6 @@ module Audit
             HAVING COUNT(ledger_entry.id) <> 1
           ) incomplete_sources
         SQL
-        connection.select_value(sql, 'Audit source completeness', binds).to_i
       end
 
       def household_id_bind
