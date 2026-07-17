@@ -21,6 +21,10 @@ module Audit
       value?('FROM') || value?('TO')
     end
 
+    def household_id
+      integer_filter('HOUSEHOLD_ID') if value?('HOUSEHOLD_ID')
+    end
+
     private
 
     attr_reader :environment, :relation

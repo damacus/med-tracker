@@ -22,14 +22,17 @@ module Audit
         WHERE source_row.id = $1
       SQL
 
-      def initialize(entries: AuditLedgerEntry.all, verify_heads: true)
+      def initialize(entries: AuditLedgerEntry.all, verify_heads: true, household_id: nil)
         @entries_source = entries
         @verify_heads = verify_heads
+        @household_id = household_id
         @issues = []
       end
 
       def call
+        DatabaseAuthority.new.verify!
         verify_entries
+        issues.concat(SourceCompletenessVerifier.new(household_id:).call)
         verify_chain_heads if verify_heads
         checked_checkpoints = verify_checkpoints
         Result.new(
@@ -40,7 +43,7 @@ module Audit
 
       private
 
-      attr_reader :entries_source, :issues, :verify_heads
+      attr_reader :entries_source, :household_id, :issues, :verify_heads
 
       def entries
         @entries ||= entries_source.to_a.sort_by { |entry| [entry.chain_key, entry.chain_epoch, entry.sequence] }

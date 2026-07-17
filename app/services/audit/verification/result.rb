@@ -4,9 +4,13 @@ module Audit
   module Verification
     class ConfigurationError < StandardError; end
 
-    Issue = Data.define(:code, :message, :chain_key, :sequence) do
+    Issue = Data.define(:code, :message, :chain_key, :sequence, :metadata) do
+      def initialize(code:, message:, chain_key:, sequence:, metadata: nil)
+        super
+      end
+
       def to_h
-        { code:, message:, chain_key:, sequence: }.compact
+        { code:, message:, chain_key:, sequence:, metadata: }.compact
       end
     end
 

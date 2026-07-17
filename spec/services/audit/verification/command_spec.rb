@@ -43,5 +43,36 @@ RSpec.describe Audit::Verification::Command do
 
     expect(exit_code).to eq(2)
     expect(error_output.string).to include('audit verification could not run: invalid FROM')
+    expect(output.string).not_to include('VALID')
+  end
+
+  it 'rejects time filters for database and combined verification without reporting valid evidence' do
+    %w[database combined].each do |scope|
+      output.truncate(0)
+      error_output.truncate(0)
+
+      exit_code = described_class.new(
+        environment: { 'SCOPE' => scope, 'FROM' => '2026-07-01T00:00:00Z' },
+        output:, error_output:
+      ).call
+
+      expect(exit_code).to eq(2)
+      expect(output.string).not_to include('VALID')
+      expect(error_output.string).to include('time filters are unsupported for database verification')
+    end
+  end
+
+  it 'preserves time filtering for WORM-only verification' do
+    result = Audit::Verification::Result.new(scope: 'worm', checked_entries: 0, checked_checkpoints: 0,
+                                             checked_objects: 1, issues: [])
+    verifier = instance_double(Audit::Verification::WormVerifier, call: result)
+
+    exit_code = described_class.new(
+      environment: { 'SCOPE' => 'worm', 'FROM' => '2026-07-01T00:00:00Z' },
+      output:, error_output:, worm_verifier: verifier
+    ).call
+
+    expect(exit_code).to eq(0)
+    expect(output.string).to include('VALID')
   end
 end
