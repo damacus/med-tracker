@@ -8,39 +8,16 @@ require Rails.root.join('db/migrate/20260717120000_repair_rls_hidden_audit_sourc
 RSpec.describe RepairRlsHiddenAuditSources do
   fixtures :accounts, :people, :users
 
-  POLICY_NAME = 'repair_rls_hidden_audit_sources_select'
-  SHARED_LOGIN = 'audit_repair_shared_login'
-
   let(:connection) { ActiveRecord::Base.connection }
   let(:household) { users(:admin).person.household }
   let(:migration) { described_class.new }
 
   it 'repairs forced-RLS omissions without changing existing audit evidence' do
     with_historical_omission do |event_id, version_id|
-      expect(missing_entry?('security_audit_events', event_id)).to be(true)
-      expect(missing_entry?('versions', version_id)).to be(true)
-
-      expected_order = add_ordering_sources(event_id, version_id)
-      expect(household_source_times(expected_order).uniq.size).to be > 1
-      live_entry = create_live_tail
-      preserved_records = preserve_existing_audit_records
-
-      as_med_tracker_owner { migration.migrate(:up) }
-
-      repaired_entries = entries_for(expected_order).order(:id)
-      expect(repaired_entries.pluck(:chain_key, :source_table, :source_id)).to eq(expected_order)
-      expect(repaired_entries.pluck(:epoch_kind).uniq).to eq(['legacy-repair'])
-      expect_repair_checkpoints(repaired_entries)
-      expect_pending_deliveries(repaired_entries)
-      expect_live_tail_checkpoint(live_entry)
-      expect_existing_audit_records_unchanged(preserved_records)
-      expect_complete_source_coverage
-      expect_clean_rls_state
-
-      repaired_state = repair_state
-      as_med_tracker_owner { migration.migrate(:up) }
-      expect(repair_state).to eq(repaired_state)
-      expect_clean_rls_state
+      expect_hidden_sources(event_id, version_id)
+      expected_order = expected_repair_order(event_id, version_id)
+      expect_distinct_household_source_times(expected_order)
+      verify_repair_preserves_existing_audit_evidence(expected_order)
     end
   end
 
@@ -50,12 +27,8 @@ RSpec.describe RepairRlsHiddenAuditSources do
       install_repair_checkpoint_failure
       state_before_repair = repair_state
 
-      expect { migrate_in_new_transaction }.to raise_error(
-        ActiveRecord::StatementInvalid, /injected failure after repaired entry and delivery/
-      )
-
-      expect(repair_state).to eq(state_before_repair)
-      expect_clean_rls_state
+      expect_repair_to_fail(/injected failure after repaired entry and delivery/)
+      expect_failed_repair_to_preserve(state_before_repair)
     end
   end
 
@@ -65,12 +38,8 @@ RSpec.describe RepairRlsHiddenAuditSources do
       create_live_tail_checkpoint(live_entry, entry_hash: "\0".b * 32)
       state_before_repair = repair_state
 
-      expect { migrate_in_new_transaction }.to raise_error(
-        ActiveRecord::StatementInvalid, /existing checkpoint does not match the pre-repair live tail/
-      )
-
-      expect(repair_state).to eq(state_before_repair)
-      expect_clean_rls_state
+      expect_repair_to_fail(/existing checkpoint does not match the pre-repair live tail/)
+      expect_failed_repair_to_preserve(state_before_repair)
     end
   end
 
@@ -82,24 +51,14 @@ RSpec.describe RepairRlsHiddenAuditSources do
 
       as_med_tracker_owner { migration.migrate(:up) }
 
-      expect(checkpoint.reload.attributes).to eq(attributes)
-      expect_complete_source_coverage
-      expect_clean_rls_state
+      expect_repair_to_preserve_checkpoint(checkpoint, attributes)
     end
   end
 
   it 'runs through the shared login without DATABASE_ROLE' do
     with_historical_omission do |event_id, version_id|
-      as_restricted_shared_login do
-        expect_restricted_shared_login
-        without_database_role { migration.migrate(:up) }
-        expect_restricted_shared_login
-      end
-
-      expect(missing_entry?('security_audit_events', event_id)).to be(false)
-      expect(missing_entry?('versions', version_id)).to be(false)
-      expect_complete_source_coverage
-      expect_clean_rls_state
+      migrate_as_restricted_shared_login
+      expect_repaired_sources(event_id, version_id)
     end
   end
 
@@ -152,17 +111,36 @@ RSpec.describe RepairRlsHiddenAuditSources do
     SQL
   end
 
-  def add_ordering_sources(event_id, version_id)
-    occurred_at = connection.select_value(<<~SQL.squish)
+  def expected_repair_order(event_id, version_id)
+    source_ids = ordering_source_ids(event_id)
+    expected_order(source_ids, event_id, version_id)
+  end
+
+  def ordering_source_ids(event_id)
+    occurred_at = event_occurred_at(event_id)
+    connection.execute('ALTER TABLE versions DISABLE TRIGGER append_versions_to_audit_ledger')
+    insert_ordering_versions(occurred_at)
+  ensure
+    connection.execute('ALTER TABLE versions ENABLE TRIGGER append_versions_to_audit_ledger')
+  end
+
+  def event_occurred_at(event_id)
+    connection.select_value(<<~SQL.squish)
       SELECT created_at FROM security_audit_events WHERE id = #{event_id}
     SQL
-    connection.execute('ALTER TABLE versions DISABLE TRIGGER append_versions_to_audit_ledger')
-    earlier_version_id = insert_version_for(occurred_at - 2.hours, household.id)
-    second_version_id = insert_version_for(occurred_at, household.id)
-    later_version_id = insert_version_for(occurred_at + 2.hours, household.id)
-    global_version_id = insert_version_for(occurred_at + 4.hours, nil)
-    connection.execute('ALTER TABLE versions ENABLE TRIGGER append_versions_to_audit_ledger')
+  end
 
+  def insert_ordering_versions(occurred_at)
+    [
+      insert_version_for(occurred_at - 2.hours, household.id),
+      insert_version_for(occurred_at, household.id),
+      insert_version_for(occurred_at + 2.hours, household.id),
+      insert_version_for(occurred_at + 4.hours, nil)
+    ]
+  end
+
+  def expected_order(source_ids, event_id, version_id)
+    earlier_version_id, second_version_id, later_version_id, global_version_id = source_ids
     [
       ['global', 'versions', global_version_id],
       ["household:#{household.id}", 'versions', earlier_version_id],
@@ -171,8 +149,6 @@ RSpec.describe RepairRlsHiddenAuditSources do
       ["household:#{household.id}", 'versions', second_version_id],
       ["household:#{household.id}", 'versions', later_version_id]
     ]
-  ensure
-    connection.execute('ALTER TABLE versions ENABLE TRIGGER append_versions_to_audit_ledger')
   end
 
   def create_live_tail
@@ -187,9 +163,13 @@ RSpec.describe RepairRlsHiddenAuditSources do
   end
 
   def preserve_existing_audit_records
-    [AuditLedgerEntry, AuditCheckpoint, AuditExportDelivery, AuditSigningKey].to_h do |model|
-      [model, model.order(:id).to_h { |record| [record.id, record.attributes] }]
+    audit_models.index_with do |model|
+      model.order(:id).index_by(&:id).transform_values(&:attributes)
     end
+  end
+
+  def audit_models
+    [AuditLedgerEntry, AuditCheckpoint, AuditExportDelivery, AuditSigningKey]
   end
 
   def expect_existing_audit_records_unchanged(preserved_records)
@@ -255,7 +235,7 @@ RSpec.describe RepairRlsHiddenAuditSources do
     expect(forced_rls?('versions')).to be(true)
     expect(forced_rls?('security_audit_events')).to be(true)
     expect(connection.select_value(<<~SQL.squish)).to eq(0)
-      SELECT COUNT(*) FROM pg_policies WHERE policyname = #{connection.quote(POLICY_NAME)}
+      SELECT COUNT(*) FROM pg_policies WHERE policyname = #{connection.quote(repair_policy_name)}
     SQL
   end
 
@@ -302,6 +282,11 @@ RSpec.describe RepairRlsHiddenAuditSources do
   end
 
   def install_repair_checkpoint_failure
+    create_repair_checkpoint_failure_function
+    create_repair_checkpoint_failure_trigger
+  end
+
+  def create_repair_checkpoint_failure_function
     connection.execute <<~SQL
       CREATE FUNCTION spec_fail_legacy_repair_checkpoint() RETURNS trigger
       LANGUAGE plpgsql
@@ -324,6 +309,11 @@ RSpec.describe RepairRlsHiddenAuditSources do
       END;
       $$;
 
+    SQL
+  end
+
+  def create_repair_checkpoint_failure_trigger
+    connection.execute <<~SQL
       CREATE TRIGGER spec_fail_legacy_repair_checkpoint
       BEFORE INSERT ON audit_checkpoints
       FOR EACH ROW EXECUTE FUNCTION spec_fail_legacy_repair_checkpoint();
@@ -385,19 +375,19 @@ RSpec.describe RepairRlsHiddenAuditSources do
   end
 
   def as_restricted_shared_login
-    quoted_role = connection.quote_table_name(SHARED_LOGIN)
+    quoted_role = connection.quote_table_name(shared_login)
     connection.execute("CREATE ROLE #{quoted_role} LOGIN NOSUPERUSER NOBYPASSRLS INHERIT")
     connection.execute("GRANT med_tracker_owner TO #{quoted_role} WITH INHERIT TRUE, SET TRUE")
-    connection.execute("SET LOCAL SESSION AUTHORIZATION #{connection.quote(SHARED_LOGIN)}")
+    connection.execute("SET LOCAL SESSION AUTHORIZATION #{connection.quote(shared_login)}")
     yield
   ensure
     connection.execute('RESET SESSION AUTHORIZATION')
-    connection.execute("DROP ROLE IF EXISTS #{connection.quote_table_name(SHARED_LOGIN)}")
+    connection.execute("DROP ROLE IF EXISTS #{connection.quote_table_name(shared_login)}")
   end
 
   def expect_restricted_shared_login
-    expect(connection.select_value('SELECT current_user')).to eq(SHARED_LOGIN)
-    expect(connection.select_value('SELECT session_user')).to eq(SHARED_LOGIN)
+    expect(connection.select_value('SELECT current_user')).to eq(shared_login)
+    expect(connection.select_value('SELECT session_user')).to eq(shared_login)
     expect(connection.select_value(<<~SQL.squish)).to be(true)
       SELECT rolcanlogin AND NOT rolsuper AND NOT rolbypassrls
       FROM pg_roles
@@ -406,5 +396,79 @@ RSpec.describe RepairRlsHiddenAuditSources do
     expect(connection.select_value(<<~SQL.squish)).to be(true)
       SELECT pg_has_role(current_user, 'med_tracker_owner', 'MEMBER')
     SQL
+  end
+
+  def expect_hidden_sources(event_id, version_id)
+    expect(missing_entry?('security_audit_events', event_id)).to be(true)
+    expect(missing_entry?('versions', version_id)).to be(true)
+  end
+
+  def expect_distinct_household_source_times(expected_order)
+    expect(household_source_times(expected_order).uniq.size).to be > 1
+  end
+
+  def verify_repair_preserves_existing_audit_evidence(expected_order)
+    live_entry = create_live_tail
+    preserved_records = preserve_existing_audit_records
+    as_med_tracker_owner { migration.migrate(:up) }
+    expect_repaired_audit_evidence(expected_order, live_entry, preserved_records)
+    expect_repair_to_be_idempotent
+  end
+
+  def expect_repaired_audit_evidence(expected_order, live_entry, preserved_records)
+    repaired_entries = entries_for(expected_order).order(:id)
+    expect(repaired_entries.pluck(:chain_key, :source_table, :source_id)).to eq(expected_order)
+    expect(repaired_entries.pluck(:epoch_kind).uniq).to eq(['legacy-repair'])
+    expect_repair_checkpoints(repaired_entries)
+    expect_pending_deliveries(repaired_entries)
+    expect_live_tail_checkpoint(live_entry)
+    expect_existing_audit_records_unchanged(preserved_records)
+    expect_complete_source_coverage
+    expect_clean_rls_state
+  end
+
+  def expect_repair_to_be_idempotent
+    repaired_state = repair_state
+    as_med_tracker_owner { migration.migrate(:up) }
+    expect(repair_state).to eq(repaired_state)
+    expect_clean_rls_state
+  end
+
+  def expect_repair_to_fail(message)
+    expect { migrate_in_new_transaction }.to raise_error(ActiveRecord::StatementInvalid, message)
+  end
+
+  def expect_failed_repair_to_preserve(state_before_repair)
+    expect(repair_state).to eq(state_before_repair)
+    expect_clean_rls_state
+  end
+
+  def expect_repair_to_preserve_checkpoint(checkpoint, attributes)
+    expect(checkpoint.reload.attributes).to eq(attributes)
+    expect_complete_source_coverage
+    expect_clean_rls_state
+  end
+
+  def migrate_as_restricted_shared_login
+    as_restricted_shared_login do
+      expect_restricted_shared_login
+      without_database_role { migration.migrate(:up) }
+      expect_restricted_shared_login
+    end
+  end
+
+  def expect_repaired_sources(event_id, version_id)
+    expect(missing_entry?('security_audit_events', event_id)).to be(false)
+    expect(missing_entry?('versions', version_id)).to be(false)
+    expect_complete_source_coverage
+    expect_clean_rls_state
+  end
+
+  def repair_policy_name
+    'repair_rls_hidden_audit_sources_select'
+  end
+
+  def shared_login
+    'audit_repair_shared_login'
   end
 end
