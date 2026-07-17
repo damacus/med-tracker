@@ -7,6 +7,11 @@ class GrantAuditVerifierCompleteVisibility < ActiveRecord::Migration[8.1]
     audit_chain_heads audit_ledger_entries audit_export_deliveries audit_signing_keys audit_checkpoints
     versions security_audit_events
   ].freeze
+  AUDIT_FUNCTIONS = [
+    'audit_append_ledger_entry(text, bigint, bigint, jsonb, timestamptz)',
+    'audit_capture_source_row()',
+    'audit_record_signed_checkpoint(text, text, text, uuid, bigint, text, text, timestamptz, text)'
+  ].freeze
 
   def up
     return unless role_exists?
@@ -40,5 +45,6 @@ class GrantAuditVerifierCompleteVisibility < ActiveRecord::Migration[8.1]
       FROM #{VERIFIER_ROLE};
     SQL
     execute "REVOKE ALL PRIVILEGES ON SEQUENCE security_audit_events_id_seq FROM #{VERIFIER_ROLE};"
+    execute "REVOKE ALL ON FUNCTION #{AUDIT_FUNCTIONS.join(', ')} FROM PUBLIC, #{VERIFIER_ROLE};"
   end
 end

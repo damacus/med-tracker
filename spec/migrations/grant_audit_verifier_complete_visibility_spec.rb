@@ -40,6 +40,8 @@ RSpec.describe GrantAuditVerifierCompleteVisibility do
     expect(privilege('security_audit_events', 'UPDATE')).to be(false)
     expect(privilege('security_audit_events', 'DELETE')).to be(false)
     expect(privilege('audit_ledger_entries', 'UPDATE')).to be(false)
+    function_signature = 'audit_append_ledger_entry(text,bigint,bigint,jsonb,timestamp with time zone)'
+    expect(function_privilege(function_signature)).to be(false)
   end
 
   it 'removes and restores only the complete-visibility policy across rollback' do
@@ -74,6 +76,12 @@ RSpec.describe GrantAuditVerifierCompleteVisibility do
       FROM pg_policies
       WHERE tablename = 'security_audit_events'
         AND policyname = 'audit_verifier_complete_visibility'
+    SQL
+  end
+
+  def function_privilege(signature)
+    connection.select_value(<<~SQL.squish)
+      SELECT has_function_privilege('med_tracker_audit_verifier', '#{signature}', 'EXECUTE')
     SQL
   end
 end

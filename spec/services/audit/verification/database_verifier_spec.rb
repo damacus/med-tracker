@@ -85,6 +85,31 @@ RSpec.describe Audit::Verification::DatabaseVerifier do
     )
   end
 
+  it 'scopes every verification phase when the requested household has no ledger entries' do
+    requested_household = Household.create!(name: 'Empty requested verifier household')
+    unrelated_entry, unrelated_event = corrupt_unrelated_audit_evidence
+
+    result = verify(entries: AuditLedgerEntry.all, household_id: requested_household.id)
+
+    expect(result).to be_valid
+    expect(result.checked_entries).to eq(0)
+    expect(result.checked_checkpoints).to eq(0)
+    expect(result.to_h.to_s).not_to include(unrelated_entry.chain_key, unrelated_event.event_type)
+  end
+
+  it 'binds household completeness filters as bigint values' do
+    large_household_id = 4_294_967_296
+    large_household = Household.create!(id: large_household_id, name: 'Bigint verifier household')
+    event = Audit::Event.record!(household: large_household, event_type: 'audit.verify.bigint', metadata: {})
+    remove_ledger_entry('security_audit_events', event.id)
+
+    result = verify(entries: AuditLedgerEntry.where(household: large_household), household_id: large_household_id)
+
+    expect(result.issues.map(&:to_h)).to include(
+      hash_including(metadata: { source_table: 'security_audit_events', missing_count: 1 })
+    )
+  end
+
   it 'requires the dedicated verifier database role' do
     expect do
       described_class.new(entries: AuditLedgerEntry.none).call
@@ -109,6 +134,52 @@ RSpec.describe Audit::Verification::DatabaseVerifier do
     end.to raise_error(Audit::Verification::ConfigurationError, /RLS policy/)
   ensure
     install_verifier_visibility_policy
+  end
+
+  it 'rejects effective audit mutation privileges' do
+    execute('GRANT INSERT ON audit_ledger_entries TO med_tracker_audit_verifier')
+
+    expect do
+      verify(entries: AuditLedgerEntry.none)
+    end.to raise_error(Audit::Verification::ConfigurationError, /mutation privilege/)
+  ensure
+    execute('REVOKE INSERT ON audit_ledger_entries FROM med_tracker_audit_verifier')
+  end
+
+  it 'rejects effective reads on unapproved public tables' do
+    execute('GRANT SELECT ON medications TO med_tracker_audit_verifier')
+
+    expect do
+      verify(entries: AuditLedgerEntry.none)
+    end.to raise_error(Audit::Verification::ConfigurationError, /unapproved SELECT privilege/)
+  ensure
+    execute('REVOKE SELECT ON medications FROM med_tracker_audit_verifier')
+  end
+
+  it 'rejects membership in runtime, owner, or exporter roles' do
+    %w[med_tracker_app med_tracker_owner med_tracker_audit_exporter].each do |role_name|
+      execute("GRANT #{role_name} TO med_tracker_audit_verifier")
+
+      expect do
+        verify(entries: AuditLedgerEntry.none)
+      end.to raise_error(Audit::Verification::ConfigurationError, /forbidden role membership/)
+    ensure
+      execute("REVOKE #{role_name} FROM med_tracker_audit_verifier")
+    end
+  end
+
+  it 'rejects competing unrestricted security-event policies for other roles' do
+    execute <<~SQL.squish
+      CREATE POLICY audit_verifier_competing_visibility ON security_audit_events
+      FOR SELECT TO med_tracker_app
+      USING (true)
+    SQL
+
+    expect do
+      verify(entries: AuditLedgerEntry.none)
+    end.to raise_error(Audit::Verification::ConfigurationError, /competing unrestricted RLS policy/)
+  ensure
+    execute('DROP POLICY IF EXISTS audit_verifier_competing_visibility ON security_audit_events')
   end
 
   it 'reports missing or duplicated sequence positions' do
@@ -200,6 +271,24 @@ RSpec.describe Audit::Verification::DatabaseVerifier do
               #{household_id})
       RETURNING id
     SQL
+  end
+
+  def corrupt_unrelated_audit_evidence
+    unrelated_household = Household.create!(name: 'Corrupted unrelated verifier household')
+    event = Audit::Event.record!(
+      household: unrelated_household, event_type: 'audit.verify.unrelated.secret', metadata: {}
+    )
+    entry = AuditLedgerEntry.find_by!(source_table: 'security_audit_events', source_id: event.id)
+    AuditCheckpoint.create!(
+      household: unrelated_household, chain_key: entry.chain_key, chain_epoch: entry.chain_epoch,
+      checkpoint_kind: 'periodic', sequence: entry.sequence, entry_hash: entry.entry_hash
+    )
+    execute(<<~SQL.squish)
+      UPDATE audit_chain_heads
+      SET last_hash = decode('#{'00' * 32}', 'hex')
+      WHERE household_id = #{unrelated_household.id}
+    SQL
+    [entry, event]
   end
 
   def install_verifier_visibility_policy

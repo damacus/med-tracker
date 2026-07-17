@@ -46,7 +46,8 @@ module Audit
       attr_reader :entries_source, :household_id, :issues, :verify_heads
 
       def entries
-        @entries ||= entries_source.to_a.sort_by { |entry| [entry.chain_key, entry.chain_epoch, entry.sequence] }
+        @entries ||= scoped_records(entries_source)
+                     .sort_by { |entry| [entry.chain_key, entry.chain_epoch, entry.sequence] }
       end
 
       def verify_entries
@@ -69,7 +70,7 @@ module Audit
       def stored_predecessor(entry)
         return if entry.sequence == 1
 
-        AuditLedgerEntry.find_by(
+        scoped_relation(AuditLedgerEntry.all).find_by(
           chain_key: entry.chain_key, chain_epoch: entry.chain_epoch, sequence: entry.sequence - 1
         )
       end
@@ -140,7 +141,7 @@ module Audit
       end
 
       def relevant_chain_heads
-        heads = AuditChainHead.all.to_a
+        heads = scoped_relation(AuditChainHead.all).to_a
         return heads if entries.empty?
 
         chain_keys = entries.map(&:chain_key).uniq
@@ -175,9 +176,20 @@ module Audit
 
       def checkpoints_for_entries
         keys = entries.to_h { |entry| [[entry.chain_key, entry.chain_epoch, entry.sequence], true] }
-        AuditCheckpoint.includes(:audit_signing_key).select do |checkpoint|
+        scoped_relation(AuditCheckpoint.includes(:audit_signing_key)).select do |checkpoint|
           keys.key?([checkpoint.chain_key, checkpoint.chain_epoch, checkpoint.sequence])
         end
+      end
+
+      def scoped_records(source)
+        return source.to_a unless household_id
+        return source.where(household_id:).to_a if source.respond_to?(:where)
+
+        source.to_a.select { |record| record.household_id == household_id }
+      end
+
+      def scoped_relation(relation)
+        household_id ? relation.where(household_id:) : relation
       end
 
       def verify_checkpoint(checkpoint)

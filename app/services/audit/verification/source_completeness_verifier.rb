@@ -50,7 +50,7 @@ module Audit
 
       def household_id_bind
         ActiveRecord::Relation::QueryAttribute.new(
-          'household_id', household_id, ActiveRecord::Type::Integer.new
+          'household_id', household_id, AuditLedgerEntry.type_for_attribute('household_id')
         )
       end
     end
