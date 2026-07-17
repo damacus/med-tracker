@@ -15,6 +15,8 @@ RSpec.describe Api::OidcProviderClient do
     allow(ENV).to receive(:fetch).with('OIDC_DISCOVERY_URL', nil).and_return(discovery_url)
     allow(ENV).to receive(:fetch).with('OIDC_MOBILE_CLIENT_ID', nil).and_return('mobile-client')
     allow(ENV).to receive(:fetch).with('OIDC_MOBILE_REDIRECT_URIS', nil).and_return(redirect_uri)
+    allow(ENV).to receive(:fetch).with('OIDC_ALLOWED_ENDPOINT_ORIGINS', nil).and_return(issuer)
+    allow(Addrinfo).to receive(:getaddrinfo).and_return([Addrinfo.tcp('8.8.8.8', 443)])
   end
 
   it 'caches discovery with a bounded expiry while exchanging every authorization code' do
@@ -73,7 +75,96 @@ RSpec.describe Api::OidcProviderClient do
     end.to raise_error(described_class::Error)
   end
 
-  def stub_discovery
+  it 'maps a JSON array token response to a provider error' do
+    stub_discovery
+    stub_request(:post, token_endpoint).to_return(status: 200, body: [].to_json)
+
+    expect { exchange_code(described_class.new) }.to raise_error(described_class::Error)
+  end
+
+  it 'maps non-object provider responses to provider errors' do
+    [nil, 'invalid'].each do |payload|
+      stub_discovery
+      stub_request(:post, token_endpoint).to_return(status: 200, body: payload.to_json)
+
+      expect { exchange_code(described_class.new(cache: memory_cache)) }.to raise_error(described_class::Error)
+    end
+
+    [[], nil, 'invalid'].each do |payload|
+      stub_request(:get, discovery_url).to_return(status: 200, body: payload.to_json)
+
+      expect { exchange_code(described_class.new(cache: memory_cache)) }.to raise_error(described_class::Error)
+    end
+  end
+
+  it 'rejects provider objects with wrong field types' do
+    stub_discovery
+    stub_request(:post, token_endpoint).to_return(status: 200, body: { id_token: [] }.to_json)
+    expect { exchange_code(described_class.new(cache: memory_cache)) }.to raise_error(described_class::Error)
+
+    stub_discovery(token_endpoint: [])
+    expect { exchange_code(described_class.new(cache: memory_cache)) }.to raise_error(described_class::Error)
+  end
+
+  it 'rejects discovered endpoints outside configured origins' do
+    endpoint = 'https://tokens.example.test/oauth/token'
+    stub_discovery(token_endpoint: endpoint)
+    stub_request(:post, endpoint).to_return(status: 200, body: { id_token: 'signed-id-token' }.to_json)
+
+    expect { exchange_code(described_class.new(cache: memory_cache)) }.to raise_error(described_class::Error)
+  end
+
+  it 'allows an explicitly configured cross-origin endpoint' do
+    endpoint = 'https://tokens.example.test/oauth/token'
+    allow(ENV).to receive(:fetch).with('OIDC_ALLOWED_ENDPOINT_ORIGINS', nil)
+      .and_return("#{issuer},https://tokens.example.test")
+    stub_discovery(token_endpoint: endpoint)
+    stub_request(:post, endpoint).to_return(status: 200, body: { id_token: 'signed-id-token' }.to_json)
+
+    expect(exchange_code(described_class.new(cache: memory_cache))).to eq('signed-id-token')
+  end
+
+  it 'rejects userinfo, unexpected ports, and literal internal endpoints' do
+    endpoints = [
+      'https://user@issuer.example.test/oauth/token',
+      'https://issuer.example.test:8443/oauth/token',
+      'https://127.0.0.1/oauth/token',
+      'https://169.254.169.254/oauth/token'
+    ]
+
+    endpoints.each do |endpoint|
+      stub_discovery(token_endpoint: endpoint)
+      stub_request(:post, endpoint).to_return(status: 200, body: { id_token: 'signed-id-token' }.to_json)
+
+      expect { exchange_code(described_class.new(cache: memory_cache)) }.to raise_error(described_class::Error)
+    end
+  end
+
+  it 'rejects a hostname that resolves to a private address' do
+    endpoint = 'https://tokens.example.test/oauth/token'
+    resolver = class_double(Addrinfo, getaddrinfo: [Addrinfo.tcp('10.0.0.5', 443)])
+    allow(ENV).to receive(:fetch).with('OIDC_ALLOWED_ENDPOINT_ORIGINS', nil)
+      .and_return("#{issuer},https://tokens.example.test")
+    stub_discovery(token_endpoint: endpoint)
+
+    expect do
+      exchange_code(described_class.new(cache: memory_cache, resolver: resolver))
+    end.to raise_error(described_class::Error)
+  end
+
+  it 'does not follow redirects from discovered endpoints' do
+    redirect_target = 'https://issuer.example.test/internal-target'
+    stub_discovery
+    stub_request(:post, token_endpoint).to_return(status: 302, headers: { 'Location' => redirect_target })
+
+    expect { exchange_code(described_class.new(cache: memory_cache)) }.to raise_error(described_class::Error)
+    expect(WebMock).not_to have_requested(:get, redirect_target)
+    expect(WebMock).not_to have_requested(:post, redirect_target)
+  end
+
+  def memory_cache = ActiveSupport::Cache::MemoryStore.new
+
+  def stub_discovery(token_endpoint: self.token_endpoint, jwks_uri: self.jwks_uri)
     stub_request(:get, discovery_url).to_return(
       status: 200,
       body: {

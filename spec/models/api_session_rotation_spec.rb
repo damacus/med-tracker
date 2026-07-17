@@ -21,6 +21,35 @@ RSpec.describe ApiSession do
     cleanup_rotation_records(records) if records
   end
 
+  it 'persists exactly one concurrent stale last-used touch' do
+    records = rotation_records
+    session, = described_class.issue_for(
+      account: records.fetch(:account),
+      household_membership: records.fetch(:membership)
+    )
+    session.update_column(:last_used_at, 6.minutes.ago)
+    stale_sessions = 2.times.map { described_class.find(session.id) }
+    ready = Queue.new
+    start = Queue.new
+    results = Queue.new
+    threads = stale_sessions.map do |stale_session|
+      Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do
+          ready << true
+          start.pop
+          results << stale_session.touch_last_used!
+        end
+      end
+    end
+
+    release_rotations(threads, ready, start)
+
+    expect(2.times.map { Timeout.timeout(10) { results.pop } }.count(true)).to eq(1)
+  ensure
+    Array(threads).each { it.kill if it&.alive? }
+    cleanup_rotation_records(records) if records
+  end
+
   def issue_refresh_token(records)
     described_class.issue_for(
       account: records.fetch(:account),

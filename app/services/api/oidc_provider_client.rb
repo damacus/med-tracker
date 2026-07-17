@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'ipaddr'
+
 module Api
   class OidcProviderClient
     class Error < StandardError; end
@@ -9,10 +11,33 @@ module Api
     HTTP_TIMEOUT = 10
     HTTP_OPEN_TIMEOUT = 5
     ALLOWED_SIGNING_ALGORITHMS = %w[RS256 RS384 RS512 PS256 PS384 PS512 ES256 ES384 ES512].freeze
+    UNSAFE_ADDRESS_RANGES = %w[
+      0.0.0.0/8
+      10.0.0.0/8
+      100.64.0.0/10
+      127.0.0.0/8
+      169.254.0.0/16
+      172.16.0.0/12
+      192.0.0.0/24
+      192.0.2.0/24
+      192.168.0.0/16
+      198.18.0.0/15
+      198.51.100.0/24
+      203.0.113.0/24
+      224.0.0.0/4
+      240.0.0.0/4
+      ::/128
+      ::1/128
+      fc00::/7
+      fe80::/10
+      ff00::/8
+      2001:db8::/32
+    ].map { IPAddr.new(it) }.freeze
 
-    def initialize(connection: nil, cache: Rails.cache)
+    def initialize(connection: nil, cache: Rails.cache, resolver: Addrinfo)
       @connection = connection || Faraday.new
       @cache = cache
+      @resolver = resolver
     end
 
     def exchange_code(authorization_code:, code_verifier:, redirect_uri:)
@@ -20,7 +45,10 @@ module Api
       validate_redirect_uri!(redirect_uri)
       response = token_request(authorization_code, code_verifier, redirect_uri)
       payload = response_payload(response)
-      payload.fetch('id_token').presence || raise(Error)
+      id_token = payload.fetch('id_token')
+      raise Error unless id_token.is_a?(String) && id_token.present?
+
+      id_token
     rescue Faraday::Error, JSON::ParserError, KeyError, URI::InvalidURIError
       raise Error
     end
@@ -31,6 +59,7 @@ module Api
       raise Error if algorithms.empty?
 
       payload, = JWT.decode(id_token, nil, true, decode_options(configuration, algorithms))
+      validate_authorized_party!(payload)
       payload
     rescue Faraday::Error, JSON::ParserError, JWT::DecodeError, KeyError, URI::InvalidURIError
       raise Error
@@ -38,7 +67,7 @@ module Api
 
     private
 
-    attr_reader :connection, :cache
+    attr_reader :connection, :cache, :resolver
 
     def token_request(authorization_code, code_verifier, redirect_uri)
       connection.post(provider_configuration.fetch('token_endpoint')) do |request|
@@ -77,8 +106,9 @@ module Api
         configuration = get_json(discovery_url)
         raise Error unless configuration['issuer'] == issuer
 
-        validate_https_url!(configuration.fetch('token_endpoint'))
-        validate_https_url!(configuration.fetch('jwks_uri'))
+        validate_provider_endpoint!(configuration.fetch('token_endpoint'))
+        validate_provider_endpoint!(configuration.fetch('jwks_uri'))
+        validate_signing_algorithms!(configuration.fetch('id_token_signing_alg_values_supported'))
         configuration
       end
     rescue KeyError
@@ -88,7 +118,8 @@ module Api
     def jwks(uri)
       cache.fetch("api/oidc/jwks/#{Digest::SHA256.hexdigest(uri)}", expires_in: JWKS_CACHE_TTL) do
         payload = get_json(uri)
-        raise Error unless payload['keys'].is_a?(Array) && payload['keys'].present?
+        keys = payload['keys']
+        raise Error unless keys.is_a?(Array) && keys.present? && keys.all?(Hash)
 
         payload
       end
@@ -109,7 +140,86 @@ module Api
     def response_payload(response)
       raise Error unless response.success?
 
-      JSON.parse(response.body)
+      payload = JSON.parse(response.body)
+      raise Error unless payload.is_a?(Hash)
+
+      payload
+    end
+
+    def validate_authorized_party!(payload)
+      audiences = payload.fetch('aud')
+      return if audiences == client_id
+      return if audiences == [client_id]
+      return if valid_multiple_audiences?(audiences, payload['azp'])
+
+      raise Error
+    end
+
+    def valid_multiple_audiences?(audiences, authorized_party)
+      audiences.is_a?(Array) && audiences.many? && audiences.all?(String) &&
+        audiences.uniq.length == audiences.length && audiences.include?(client_id) && authorized_party == client_id
+    end
+
+    def validate_provider_endpoint!(value)
+      raise Error unless value.is_a?(String)
+
+      uri = URI.parse(value)
+      raise Error unless uri.is_a?(URI::HTTPS) && uri.host.present?
+      raise Error if uri.userinfo.present?
+      raise Error unless allowed_endpoint_origins.include?(origin(uri))
+
+      validate_resolved_host!(uri)
+    rescue URI::InvalidURIError
+      raise Error
+    end
+
+    def validate_signing_algorithms!(algorithms)
+      raise Error unless algorithms.is_a?(Array) && algorithms.present? && algorithms.all?(String)
+    end
+
+    def validate_resolved_host!(uri)
+      addresses = literal_or_resolved_addresses(uri)
+      raise Error if addresses.empty? || addresses.any? { unsafe_address?(it) }
+    rescue SocketError, SystemCallError, IPAddr::InvalidAddressError
+      raise Error
+    end
+
+    def literal_or_resolved_addresses(uri)
+      [IPAddr.new(uri.host)]
+    rescue IPAddr::InvalidAddressError
+      resolver.getaddrinfo(uri.host, uri.port, nil, :STREAM).map { IPAddr.new(it.ip_address) }
+    end
+
+    def unsafe_address?(address)
+      address = address.native if address.ipv4_mapped?
+      UNSAFE_ADDRESS_RANGES.any? { it.include?(address) }
+    end
+
+    def allowed_endpoint_origins
+      @allowed_endpoint_origins ||= begin
+        values = configured_allowed_endpoint_origins.presence || origin(URI.parse(issuer))
+        Array(values).flat_map { it.to_s.split(',') }.map(&:strip).compact_blank.map do |value|
+          uri = URI.parse(value)
+          raise Error unless uri.is_a?(URI::HTTPS) && uri.host.present? && uri.userinfo.blank?
+          raise Error if uri.path.present? && uri.path != '/'
+          raise Error if uri.query.present? || uri.fragment.present?
+
+          origin(uri)
+        end.uniq
+      end
+    rescue URI::InvalidURIError
+      raise Error
+    end
+
+    def configured_allowed_endpoint_origins
+      ENV.fetch('OIDC_ALLOWED_ENDPOINT_ORIGINS', nil).presence ||
+        Rails.application.credentials.dig(:oidc, :allowed_endpoint_origins)
+    end
+
+    def origin(uri)
+      default_port = uri.scheme == 'https' ? 443 : 80
+      port = uri.port == default_port ? nil : uri.port
+      "#{uri.scheme}://#{uri.host}#{":" if port}#{port}"
     end
 
     def validate_configuration!
@@ -163,7 +273,7 @@ module Api
     end
 
     def discovery_cache_key
-      value = "#{issuer}\0#{discovery_url}"
+      value = "#{issuer}\0#{discovery_url}\0#{allowed_endpoint_origins.join(',')}"
       "api/oidc/discovery/#{Digest::SHA256.hexdigest(value)}"
     end
   end

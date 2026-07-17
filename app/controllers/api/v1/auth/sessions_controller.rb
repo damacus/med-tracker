@@ -87,9 +87,15 @@ module Api
 
         def refresh
           api_session = ApiSession.lookup_by_refresh_token(params.expect(:refresh_token).to_s)
+          membership = refresh_membership(api_session)
 
           token_payload = nil
-          TenantContext.with(account: api_session&.account, household: nil, request_id: request.request_id) do
+          TenantContext.with(
+            account: api_session&.account,
+            household: membership&.household,
+            membership: membership,
+            request_id: request.request_id
+          ) do
             unless refresh_permitted?(api_session)
               record_expired_session(api_session)
               render_invalid_refresh_token
@@ -189,6 +195,14 @@ module Api
             api_session.account.verified? &&
             api_session.account.person&.user&.active? &&
             !ApiAuthState.locked_out?(api_session.account)
+        end
+
+        def refresh_membership(api_session)
+          return unless api_session
+
+          TenantContext.with(account: api_session.account, household: nil, request_id: request.request_id) do
+            api_session.household_membership
+          end
         end
 
         def household_requested?

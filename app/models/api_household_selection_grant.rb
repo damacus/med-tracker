@@ -30,9 +30,16 @@ class ApiHouseholdSelectionGrant < ApplicationRecord
     def select_household(token:, household_id:, audit_context: nil)
       transaction do
         grant = usable_grant!(token)
-        membership = operational_membership(grant.account, household_id) || raise(InvalidGrant)
-        grant.update!(used_at: Time.current)
-        issue_session(grant, membership, audit_context)
+        TenantContext.with(
+          account: grant.account,
+          household: nil,
+          request_id: audit_context.to_h[:request_id]
+        ) do
+          raise InvalidGrant unless account_available?(grant.account)
+
+          membership = operational_membership(grant.account, household_id) || raise(InvalidGrant)
+          issue_selected_session(grant, membership, audit_context)
+        end
       end
     end
 
@@ -48,9 +55,21 @@ class ApiHouseholdSelectionGrant < ApplicationRecord
 
     def usable_grant!(token)
       grant = lock.find_by(token_digest: digest(token))
-      raise InvalidGrant unless grant&.usable? && account_available?(grant.account)
+      raise InvalidGrant unless grant&.usable?
 
       grant
+    end
+
+    def issue_selected_session(grant, membership, audit_context)
+      TenantContext.with(
+        account: grant.account,
+        household: membership.household,
+        membership: membership,
+        request_id: audit_context.to_h[:request_id]
+      ) do
+        grant.update!(used_at: Time.current)
+        issue_session(grant, membership, audit_context)
+      end
     end
 
     def issue_session(grant, membership, audit_context)

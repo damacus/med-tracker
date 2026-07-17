@@ -14,6 +14,8 @@ RSpec.describe 'API v1 auth sessions' do
     allow(ENV).to receive(:fetch).with('OIDC_DISCOVERY_URL', nil).and_return(oidc_discovery_url)
     allow(ENV).to receive(:fetch).with('OIDC_MOBILE_CLIENT_ID', nil).and_return(oidc_client_id)
     allow(ENV).to receive(:fetch).with('OIDC_MOBILE_REDIRECT_URIS', nil).and_return(oidc_redirect_uri)
+    allow(ENV).to receive(:fetch).with('OIDC_ALLOWED_ENDPOINT_ORIGINS', nil).and_return(oidc_issuer)
+    allow(Addrinfo).to receive(:getaddrinfo).and_return([Addrinfo.tcp('8.8.8.8', 443)])
     stub_oidc_discovery
     stub_oidc_jwks
   end
@@ -381,6 +383,37 @@ RSpec.describe 'API v1 auth sessions' do
       expect(response).to have_http_status(:unauthorized)
     end
 
+    it 'returns a generic failure for non-object provider responses' do
+      [[], nil, 'invalid'].each_with_index do |payload, index|
+        stub_request(:post, oidc_token_endpoint).to_return(status: 200, body: payload.to_json)
+        exchange_oidc(nonce: "token-shape-#{index}")
+        expect_generic_oidc_failure
+      end
+
+      [[], nil, 'invalid'].each_with_index do |payload, index|
+        Rails.cache.clear
+        stub_request(:get, oidc_discovery_url).to_return(status: 200, body: payload.to_json)
+        exchange_oidc(nonce: "discovery-shape-#{index}")
+        expect_generic_oidc_failure
+      end
+
+      [[], nil, 'invalid'].each_with_index do |payload, index|
+        Rails.cache.clear
+        stub_oidc_discovery
+        stub_request(:get, oidc_jwks_uri).to_return(status: 200, body: payload.to_json)
+        stub_oidc_token_response(id_token: oidc_token(sub: 'jane-oidc-sub', nonce: "jwks-shape-#{index}"))
+        exchange_oidc(nonce: "jwks-shape-#{index}")
+        expect_generic_oidc_failure
+      end
+
+      Rails.cache.clear
+      stub_oidc_discovery
+      stub_request(:get, oidc_jwks_uri).to_return(status: 200, body: { keys: [nil] }.to_json)
+      stub_oidc_token_response(id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'invalid-jwk-shape'))
+      exchange_oidc(nonce: 'invalid-jwk-shape')
+      expect_generic_oidc_failure
+    end
+
     it 'rejects discovery failures and issuer mismatches' do
       stub_request(:get, oidc_discovery_url).to_return(status: 503, body: '')
       exchange_oidc(nonce: 'discovery-failure')
@@ -426,6 +459,42 @@ RSpec.describe 'API v1 auth sessions' do
         expect(response).to have_http_status(:unauthorized)
         expect(response.parsed_body.dig('error', 'code')).to eq('invalid_oidc_exchange')
       end
+    end
+
+    it 'rejects multiple audiences without a matching authorized party' do
+      invalid_claims = [
+        { audience: [oidc_client_id, 'other-client'] },
+        { audience: [oidc_client_id, 'other-client'], azp: 'wrong-client' },
+        { audience: [oidc_client_id, oidc_client_id], azp: oidc_client_id },
+        { audience: [oidc_client_id, 7], azp: oidc_client_id }
+      ]
+
+      invalid_claims.each_with_index do |claims, index|
+        nonce = "multiple-audiences-#{index}"
+        stub_oidc_token_response(
+          id_token: oidc_token(
+            sub: 'jane-oidc-sub',
+            nonce: nonce,
+            **claims
+          )
+        )
+        exchange_oidc(nonce: nonce)
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      nonce = 'multiple-audiences-valid'
+      stub_oidc_token_response(
+        id_token: oidc_token(
+          sub: 'jane-oidc-sub',
+          nonce: nonce,
+          audience: [oidc_client_id, 'other-client'],
+          azp: oidc_client_id
+        )
+      )
+      exchange_oidc(nonce: nonce)
+
+      expect(response).to have_http_status(:created)
     end
 
     it 'rejects nonce replay and an unlinked identity' do
@@ -495,6 +564,51 @@ RSpec.describe 'API v1 auth sessions' do
         household_membership: second_membership,
         device_name: 'Android'
       )
+    end
+
+    it 'bootstraps and audits a sole household and refresh under the forced-RLS application role' do
+      membership = account.household_memberships.active.sole
+
+      with_runtime_role do
+        nonce = 'runtime-sole'
+        stub_oidc_token_response(id_token: oidc_token(sub: 'jane-oidc-sub', nonce: nonce))
+        exchange_oidc(nonce: nonce)
+
+        expect(response).to have_http_status(:created)
+        expect_runtime_auth_audit('created', membership)
+        refresh_token = response.parsed_body.dig('data', 'refresh_token')
+
+        post api_v1_auth_refresh_path, params: { refresh_token: refresh_token }, as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect_runtime_auth_audit('rotated', membership)
+      end
+    end
+
+    it 'selects and audits one of multiple households under the forced-RLS application role' do
+      second_household = create(:household)
+      second_membership = second_household.household_memberships.create!(
+        account: account,
+        role: :member,
+        status: :active
+      )
+
+      with_runtime_role do
+        nonce = 'runtime-selection'
+        stub_oidc_token_response(id_token: oidc_token(sub: 'jane-oidc-sub', nonce: nonce))
+        exchange_oidc(nonce: nonce)
+
+        expect(response).to have_http_status(:accepted)
+        post api_v1_auth_select_household_path,
+             params: {
+               selection_token: response.parsed_body.dig('data', 'selection_token'),
+               household_id: second_household.id
+             },
+             as: :json
+
+        expect(response).to have_http_status(:created)
+        expect_runtime_auth_audit('created', second_membership)
+      end
     end
 
     it 'returns a generic failure for expired, used, and wrong-account selection grants' do
@@ -786,11 +900,46 @@ RSpec.describe 'API v1 auth sessions' do
         iat: overrides.fetch(:iat, Time.current.to_i),
         sub: sub,
         nonce: nonce,
-        amr: overrides[:amr]
+        amr: overrides[:amr],
+        azp: overrides[:azp]
       }.compact,
       signing_key,
       'RS256',
       kid: signing_jwk.kid
     )
+  end
+
+  def expect_generic_oidc_failure
+    expect(response).to have_http_status(:unauthorized)
+    expect(response.parsed_body.fetch('error')).to include(
+      'code' => 'invalid_oidc_exchange',
+      'message' => 'OIDC exchange is invalid'
+    )
+  end
+
+  def expect_runtime_auth_audit(action, membership)
+    TenantContext.with(
+      account: account,
+      household: membership.household,
+      membership: membership,
+      request_id: response.headers.fetch('X-Request-Id')
+    ) do
+      event = SecurityAuditEvent.find_by!(
+        event_type: "auth_token/api_session/#{action}",
+        request_id: response.headers.fetch('X-Request-Id')
+      )
+      expect(event).to have_attributes(
+        household_id: membership.household_id,
+        actor_membership_id: membership.id
+      )
+    end
+  end
+
+  def with_runtime_role
+    ActiveRecord::Base.connection.transaction(requires_new: true) do
+      ActiveRecord::Base.connection.execute('SET LOCAL ROLE med_tracker_app')
+      yield
+      raise ActiveRecord::Rollback
+    end
   end
 end

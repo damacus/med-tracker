@@ -127,9 +127,12 @@ class ApiSession < ApplicationRecord
   end
 
   def touch_last_used!
-    return if last_used_at.present? && last_used_at >= LAST_USED_TOUCH_INTERVAL.ago
+    with_lock do
+      return false if last_used_at.present? && last_used_at >= LAST_USED_TOUCH_INTERVAL.ago
 
-    update!(last_used_at: Time.current)
+      update!(last_used_at: Time.current)
+      true
+    end
   end
 
   private

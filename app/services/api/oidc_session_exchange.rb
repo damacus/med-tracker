@@ -27,16 +27,21 @@ module Api
       validate_required_params!
       claims = verified_claims
       validate_claims!(claims)
-      reject_replay!(claims)
       account = account_for(claims)
-      validate_account!(account)
-      memberships = operational_memberships(account).to_a
 
-      return session_result(account, memberships.sole, claims) if memberships.one?
-      return selection_result(account, memberships, claims) if memberships.many?
+      TenantContext.with(account: account, household: nil, request_id: request.request_id) do
+        validate_account!(account)
+        memberships = operational_memberships(account).to_a
+        raise Error if memberships.empty?
 
-      raise Error
-    rescue OidcProviderClient::Error
+        reject_replay!(claims)
+        if memberships.one?
+          session_result(account, memberships.sole, claims)
+        else
+          selection_result(account, memberships, claims)
+        end
+      end
+    rescue OidcProviderClient::Error, ActiveRecord::RecordInvalid
       raise Error
     end
 
@@ -102,20 +107,27 @@ module Api
     end
 
     def session_result(account, membership, claims)
-      api_session, access_token, refresh_token = ApiSession.issue_for(
+      TenantContext.with(
         account: account,
-        household_membership: membership,
-        device_name: params[:device_name],
-        user_agent: request.user_agent,
-        **mfa_attributes(claims),
-        audit_context: audit_context(account, membership)
-      )
-      Result.new(
-        api_session: api_session,
-        access_token: access_token,
-        refresh_token: refresh_token,
-        household_membership: membership
-      )
+        household: membership.household,
+        membership: membership,
+        request_id: request.request_id
+      ) do
+        api_session, access_token, refresh_token = ApiSession.issue_for(
+          account: account,
+          household_membership: membership,
+          device_name: params[:device_name],
+          user_agent: request.user_agent,
+          **mfa_attributes(claims),
+          audit_context: audit_context(account, membership)
+        )
+        Result.new(
+          api_session: api_session,
+          access_token: access_token,
+          refresh_token: refresh_token,
+          household_membership: membership
+        )
+      end
     end
 
     def selection_result(account, memberships, claims)
