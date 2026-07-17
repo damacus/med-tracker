@@ -21,6 +21,7 @@ module Api
           backups: backups,
           fhir: fhir,
           sync: sync,
+          read_models: read_models,
           client_tools: client_tools
         }
       end
@@ -91,6 +92,23 @@ module Api
           change_feed: true,
           batch_mutations: true,
           tombstones: true
+        }
+      end
+
+      def read_models
+        {
+          today_dashboard: {
+            supported: true,
+            format: 'medtracker.dashboard.v1',
+            path: '/api/v1/households/{household_id}/dashboard'
+          },
+          medication_take_history: {
+            cursor_pagination: true,
+            person_filter: true,
+            time_range_filter: true,
+            max_page_size: 100,
+            reversal_state: true
+          }
         }
       end
 

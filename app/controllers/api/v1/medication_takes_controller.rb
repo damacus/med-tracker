@@ -4,10 +4,12 @@ module Api
   module V1
     class MedicationTakesController < BaseController
       def index
+        return render_history_collection if Api::MedicationTakeHistoryQuery.cursor_mode?(params)
+
         render_collection(
           policy_scope(MedicationTake),
           serializer: MedicationTakeSerializer,
-          includes: [{ schedule: %i[person medication] }, { person_medication: %i[person medication] }, :taken_from_location, :taken_from_medication]
+          includes: Api::MedicationTakeHistoryQuery::INCLUDES
         )
       end
 
@@ -40,6 +42,20 @@ module Api
       end
 
       private
+
+      def render_history_collection
+        result = Api::MedicationTakeHistoryQuery.new(
+          scope: policy_scope(MedicationTake),
+          visible_people: policy_scope(Person),
+          household: current_household,
+          params: params
+        ).call
+
+        render json: {
+          data: result.records.map { |record| MedicationTakeSerializer.new(record).as_json },
+          meta: result.meta
+        }
+      end
 
       def medication_take_params
         params.expect(

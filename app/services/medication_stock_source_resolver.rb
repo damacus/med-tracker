@@ -1,12 +1,16 @@
 # frozen_string_literal: true
 
 class MedicationStockSourceResolver
+  UNSPECIFIED = Object.new.freeze
+
   attr_reader :user, :source, :taken_at
 
-  def initialize(user:, source:, taken_at: Time.current)
+  def initialize(user:, source:, taken_at: Time.current, matching_medications: nil, can_take_at: UNSPECIFIED)
     @user = user
     @source = source
     @taken_at = taken_at
+    @preloaded_matching_medications = matching_medications
+    @can_take_at = can_take_at
   end
 
   def available_medications
@@ -16,7 +20,7 @@ class MedicationStockSourceResolver
   def blocked_reason
     return :paused if source.respond_to?(:paused?) && source.paused?
     return :out_of_stock if available_medications.empty?
-    return :cooldown unless source.can_take_at?(taken_at)
+    return :cooldown unless can_take_at?
 
     nil
   end
@@ -39,7 +43,15 @@ class MedicationStockSourceResolver
 
   private
 
+  def can_take_at?
+    return source.can_take_at?(taken_at) if @can_take_at.equal?(UNSPECIFIED)
+
+    @can_take_at
+  end
+
   def matching_medications
+    return @preloaded_matching_medications if @preloaded_matching_medications
+
     @matching_medications ||= begin
       medication = source.medication
       resolved_scope

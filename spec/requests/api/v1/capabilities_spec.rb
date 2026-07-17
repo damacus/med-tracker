@@ -33,6 +33,18 @@ RSpec.describe 'API v1 capabilities' do
     expect(data.dig('sync', 'batch_mutations')).to be(true)
     expect(data.dig('sync', 'tombstones')).to be(true)
     expect(data['portable_formats']).to include('medtracker.portable.v2')
+    expect(data.dig('read_models', 'today_dashboard')).to include(
+      'supported' => true,
+      'format' => 'medtracker.dashboard.v1',
+      'path' => '/api/v1/households/{household_id}/dashboard'
+    )
+    expect(data.dig('read_models', 'medication_take_history')).to include(
+      'cursor_pagination' => true,
+      'person_filter' => true,
+      'time_range_filter' => true,
+      'max_page_size' => 100,
+      'reversal_state' => true
+    )
     expect(data).to include(
       'backups' => include('unencrypted_zip' => true, 'health_data_json' => true),
       'fhir' => include(

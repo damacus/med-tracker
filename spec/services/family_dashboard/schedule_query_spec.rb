@@ -51,6 +51,7 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       expect(expanded_counts[:schedules]).to eq(baseline_counts[:schedules])
       expect(expanded_counts[:person_medications]).to eq(baseline_counts[:person_medications])
       expect(expanded_counts[:medication_takes]).to eq(baseline_counts[:medication_takes])
+      expect(expanded_counts[:medications]).to eq(baseline_counts[:medications])
     end
 
     it 'returns an aggregated list of doses for the person and their dependents' do
@@ -412,7 +413,8 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
     {
       schedules: ['FROM "schedules"', '"schedules"."person_id"'],
       person_medications: ['FROM "person_medications"', '"person_medications"."person_id"'],
-      medication_takes: ['FROM "medication_takes"']
+      medication_takes: ['FROM "medication_takes"'],
+      medications: ['FROM "medications"']
     }
   end
 

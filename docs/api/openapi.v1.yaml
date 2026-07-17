@@ -36,6 +36,8 @@ tags:
     description: Medication assignments to people.
   - name: Medication takes
     description: Medication administration records.
+  - name: Today dashboard
+    description: Typed household Today dashboard read model.
   - name: Notification preferences
     description: Signed-in notification preferences.
   - name: Devices
@@ -180,6 +182,24 @@ paths:
       responses:
         '200':
           description: Current user profile.
+  /households/{household_id}/dashboard:
+    get:
+      operationId: getTodayDashboard
+      tags:
+        - Household
+        - Today dashboard
+      summary: Read the policy-scoped household Today dashboard.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Typed household Today dashboard.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /households/{household_id}/people:
     get:
       operationId: listPeople

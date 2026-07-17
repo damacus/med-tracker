@@ -13,6 +13,7 @@ RSpec.describe Api::V1::MedicationTakeSerializer do
       taken_from_location_id: take.taken_from_location_id,
       dose_amount: take.dose_amount&.to_f, dose_unit: take.dose_unit,
       taken_at: take.taken_at&.iso8601, updated_at: take.updated_at.iso8601,
+      reversal: nil,
       person_id: take.person&.id, person_portable_id: take.person.portable_id,
       medication_id: take.medication&.id, medication_portable_id: take.medication.portable_id
     )
@@ -61,6 +62,7 @@ RSpec.describe Api::V1::MedicationTakeSerializer do
       taken_from_location_portable_id: nil,
       dose_amount: nil,
       taken_at: nil,
+      reversal: nil,
       person_id: nil,
       person_portable_id: nil,
       medication_id: nil,
