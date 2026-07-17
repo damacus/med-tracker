@@ -40,6 +40,7 @@ module Audit
             LEFT JOIN audit_ledger_entries ledger_entry
               ON ledger_entry.source_table = #{connection.quote(source_table)}
               AND ledger_entry.source_id = source_row.id
+              AND ledger_entry.household_id IS NOT DISTINCT FROM source_row.household_id
             #{household_predicate}
             GROUP BY source_row.id
             HAVING COUNT(ledger_entry.id) <> 1

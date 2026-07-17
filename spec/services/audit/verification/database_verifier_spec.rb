@@ -101,6 +101,21 @@ RSpec.describe Audit::Verification::DatabaseVerifier do
     )
   end
 
+  %w[legacy-baseline legacy-repair].product(%i[wrong null]).each do |epoch_kind, household_mismatch|
+    it "reports a completed #{epoch_kind} source whose ledger household is #{household_mismatch}" do
+      event = Audit::Event.record!(
+        household:, event_type: "audit.verify.#{epoch_kind}.#{household_mismatch}", metadata: {}
+      )
+      entry = AuditLedgerEntry.find_by!(source_table: 'security_audit_events', source_id: event.id)
+      ledger_household_id = Household.create!(name: 'Wrong ledger household').id if household_mismatch == :wrong
+      complete_legacy_epoch(entry, epoch_kind:, ledger_household_id:)
+
+      result = verify(entries: AuditLedgerEntry.all, household_id: household.id)
+
+      expect(result.issue_codes).to contain_exactly('source_ledger_entry_missing')
+    end
+  end
+
   it 'scopes every verification phase when the requested household has no ledger entries' do
     requested_household = Household.create!(name: 'Empty requested verifier household')
     unrelated_entry, unrelated_event = corrupt_unrelated_audit_evidence
@@ -292,6 +307,24 @@ RSpec.describe Audit::Verification::DatabaseVerifier do
     entry = AuditLedgerEntry.find_by!(source_table:, source_id:)
     execute("DELETE FROM audit_export_deliveries WHERE audit_ledger_entry_id = #{entry.id}")
     execute("DELETE FROM audit_ledger_entries WHERE id = #{entry.id}")
+  end
+
+  def complete_legacy_epoch(entry, epoch_kind:, ledger_household_id:)
+    AuditCheckpoint.create!(
+      household:, chain_key: entry.chain_key, chain_epoch: entry.chain_epoch,
+      checkpoint_kind: epoch_kind, sequence: entry.sequence, entry_hash: entry.entry_hash
+    )
+    connection = ActiveRecord::Base.connection
+    execute <<~SQL.squish
+      UPDATE audit_ledger_entries
+      SET household_id = #{connection.quote(ledger_household_id)}, epoch_kind = #{connection.quote(epoch_kind)}
+      WHERE id = #{entry.id}
+    SQL
+    execute <<~SQL.squish
+      UPDATE audit_chain_heads
+      SET chain_epoch = gen_random_uuid(), epoch_kind = 'live', last_sequence = 0, last_hash = NULL
+      WHERE chain_key = #{connection.quote(entry.chain_key)}
+    SQL
   end
 
   def insert_version(event, household_id)
