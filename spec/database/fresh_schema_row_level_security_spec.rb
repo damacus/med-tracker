@@ -27,6 +27,7 @@ RSpec.describe FreshSchemaRowLevelSecurity do
 
   after do
     close_disposable_connections
+  ensure
     drop_database!
   end
 
