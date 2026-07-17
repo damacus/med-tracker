@@ -20,6 +20,30 @@ The capacity record must include peak audited writes per second, p95 insert late
 
 Immediately after migration, sign every `legacy-baseline` checkpoint and export the native evidence and manifest to Object Lock. Record the manifest checksum, object version, public key ID, deployment version, migration time, and external change reference. State that integrity is proven from the baseline onward only.
 
+## Legacy-repair acceptance
+
+Affected old-database upgrades append previously omitted `versions` and
+`security_audit_events` rows in a `legacy-repair` epoch. They do not rewrite
+existing evidence. Omitted evidence was not protected before repair; integrity
+is established from the new repair checkpoint onward.
+
+Before accepting repaired evidence:
+
+1. Sign and export every new `pre-legacy-repair` and `legacy-repair`
+   checkpoint.
+2. Drain pending delivery records.
+3. Rerun database, WORM, and combined verification.
+4. Record the deployment version, migration time, checkpoint, key, manifest,
+   and object identifiers, verification output, and operator in an external
+   change or incident record.
+
+The dedicated verifier is read-only. It must see all audit source and ledger
+rows, but no clinical tables. It verifies both ledger-to-source equality and
+source-to-ledger completeness; incomplete authority is a configuration failure,
+not valid evidence. `HOUSEHOLD_ID` remains supported. `FROM` and `TO` are
+unsupported for database and combined completeness verification; WORM-only
+time filtering is unchanged.
+
 ## Signing-key rotation
 
 1. Generate Ed25519 key material in the approved key-management system.
