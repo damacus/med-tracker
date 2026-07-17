@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.15](https://github.com/damacus/med-tracker/compare/v0.5.14...v0.5.15) (2026-07-17)
+
+
+### Bug Fixes
+
+* **audit:** repair incomplete ledger upgrades ([#1702](https://github.com/damacus/med-tracker/issues/1702)) ([308f01a](https://github.com/damacus/med-tracker/commit/308f01ae3ec63e0f14524d3e3bd7cae9b98fdb15))
+* **ci:** stabilize Lighthouse score gate ([fc48a35](https://github.com/damacus/med-tracker/commit/fc48a356f8ef79b1e0caea66093918d63e5a438f))
+* **database:** restore RLS on schema load ([a1b6cb8](https://github.com/damacus/med-tracker/commit/a1b6cb8432cb4607e78513a96cc9d1977cc02433))
+
 ## [0.5.14](https://github.com/damacus/med-tracker/compare/v0.5.13...v0.5.14) (2026-07-16)
 
 
