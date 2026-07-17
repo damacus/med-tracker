@@ -38,6 +38,22 @@ RSpec.describe Audit::Verification::DatabaseVerifier do
     expect(result.issue_codes).to include('source_payload_mismatch')
   end
 
+  it 'does not follow a forged source reference into another household' do
+    entry = ledger_entry_for('audit.verify.cross-household.source')
+    other_household = Household.create!(name: 'Cross-household source reference')
+    other_event = Audit::Event.record!(
+      household: other_household, event_type: 'audit.verify.cross-household.secret', metadata: {}
+    )
+    remove_ledger_entry('security_audit_events', other_event.id)
+    execute("UPDATE audit_ledger_entries SET source_id = #{other_event.id} WHERE id = #{entry.id}")
+
+    result = verify(entries: AuditLedgerEntry.where(id: entry.id), household_id: household.id)
+
+    expect(result.issue_codes).to include('source_row_missing')
+    expect(result.issue_codes).not_to include('source_payload_mismatch')
+    expect(result.to_h.to_s).not_to include(other_event.event_type)
+  end
+
   it 'reports a source row with no matching ledger entry without exposing its payload' do
     event = Audit::Event.record!(household:, event_type: 'audit.verify.missing', metadata: { outcome: 'success' })
     entry = AuditLedgerEntry.find_by!(source_table: 'security_audit_events', source_id: event.id)
@@ -168,18 +184,32 @@ RSpec.describe Audit::Verification::DatabaseVerifier do
     end
   end
 
-  it 'rejects competing unrestricted security-event policies for other roles' do
+  it 'rejects a non-literal unrestricted security-event policy' do
     execute <<~SQL.squish
       CREATE POLICY audit_verifier_competing_visibility ON security_audit_events
       FOR SELECT TO med_tracker_app
-      USING (true)
+      USING (current_user IS NOT NULL)
     SQL
 
     expect do
       verify(entries: AuditLedgerEntry.none)
-    end.to raise_error(Audit::Verification::ConfigurationError, /competing unrestricted RLS policy/)
+    end.to raise_error(Audit::Verification::ConfigurationError, /RLS policy set/)
   ensure
     execute('DROP POLICY IF EXISTS audit_verifier_competing_visibility ON security_audit_events')
+  end
+
+  it 'rejects any unexpected security-event policy' do
+    execute <<~SQL.squish
+      CREATE POLICY audit_verifier_unexpected_policy ON security_audit_events
+      FOR SELECT TO med_tracker_app
+      USING (household_id = 123)
+    SQL
+
+    expect do
+      verify(entries: AuditLedgerEntry.none)
+    end.to raise_error(Audit::Verification::ConfigurationError, /RLS policy set/)
+  ensure
+    execute('DROP POLICY IF EXISTS audit_verifier_unexpected_policy ON security_audit_events')
   end
 
   it 'reports missing or duplicated sequence positions' do

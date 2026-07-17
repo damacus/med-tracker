@@ -11,7 +11,14 @@ module Audit
       MUTATION_PRIVILEGES = %w[INSERT UPDATE DELETE TRUNCATE REFERENCES TRIGGER].freeze
       COLUMN_MUTATION_PRIVILEGES = %w[INSERT UPDATE REFERENCES].freeze
       VERIFIER_ROLE = 'med_tracker_audit_verifier'
-      VERIFIER_POLICY = 'audit_verifier_complete_visibility'
+      EXPECTED_SECURITY_EVENT_POLICIES = [
+        ['audit_verifier_complete_visibility', 'PERMISSIVE', '{med_tracker_audit_verifier}', 'SELECT', 'true', nil],
+        [
+          'household_tenant_isolation', 'PERMISSIVE', '{public}', 'ALL',
+          '(household_id = med_tracker.current_household_id())',
+          '(household_id = med_tracker.current_household_id())'
+        ]
+      ].freeze
 
       def initialize(connection: ActiveRecord::Base.connection)
         @connection = connection
@@ -30,11 +37,7 @@ module Audit
 
         verify_mutation_privileges!
         verify_unapproved_select_privileges!
-        unless complete_visibility_policy?
-          raise ConfigurationError, 'database verifier complete RLS policy is missing or invalid'
-        end
-
-        verify_competing_visibility_policies!
+        verify_security_event_policy_set!
       end
 
       private
@@ -150,39 +153,25 @@ module Audit
         raise ConfigurationError, "database verifier has unapproved SELECT privilege: #{tables.join(', ')}"
       end
 
-      def complete_visibility_policy?
-        connection.select_value(<<~SQL.squish)
-          SELECT relations.relrowsecurity AND relations.relforcerowsecurity AND COUNT(policies.*) = 1
-          FROM pg_class relations
-          LEFT JOIN pg_policies policies
-            ON policies.schemaname = 'public'
-            AND policies.tablename = relations.relname
-            AND policies.policyname = #{connection.quote(VERIFIER_POLICY)}
-            AND policies.permissive = 'PERMISSIVE'
-            AND policies.roles = ARRAY[#{connection.quote(VERIFIER_ROLE)}]::name[]
-            AND policies.cmd = 'SELECT'
-            AND policies.qual = 'true'
-            AND policies.with_check IS NULL
-          WHERE relations.oid = 'security_audit_events'::regclass
-          GROUP BY relations.relrowsecurity, relations.relforcerowsecurity
-        SQL
-      end
-
-      def verify_competing_visibility_policies!
-        policies = connection.select_values(<<~SQL.squish)
-          SELECT policyname
+      def verify_security_event_policy_set!
+        policy_rows = connection.select_rows(<<~SQL.squish)
+          SELECT policyname, permissive, roles::text, cmd, qual, with_check
           FROM pg_policies
           WHERE schemaname = 'public'
             AND tablename = 'security_audit_events'
-            AND permissive = 'PERMISSIVE'
-            AND cmd IN ('SELECT', 'ALL')
-            AND qual = 'true'
-            AND roles <> ARRAY[#{connection.quote(VERIFIER_ROLE)}]::name[]
           ORDER BY policyname
         SQL
-        return if policies.empty?
+        return if security_events_forced_rls? && policy_rows == EXPECTED_SECURITY_EVENT_POLICIES
 
-        raise ConfigurationError, "database verifier has competing unrestricted RLS policy: #{policies.join(', ')}"
+        raise ConfigurationError, 'database verifier security-event RLS policy set is invalid'
+      end
+
+      def security_events_forced_rls?
+        connection.select_value(<<~SQL.squish)
+          SELECT relrowsecurity AND relforcerowsecurity
+          FROM pg_class
+          WHERE oid = 'security_audit_events'::regclass
+        SQL
       end
 
       def quoted_list(values)

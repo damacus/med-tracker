@@ -11,16 +11,6 @@ module Audit
       HASH_DOMAIN = 'medtracker.audit.ledger.v1'
       CHECKPOINT_DOMAIN = 'medtracker.audit.checkpoint.v1'
       SEPARATOR = "\u001F"
-      SECURITY_EVENT_SOURCE_SQL = <<~SQL.squish.freeze
-        SELECT (to_jsonb(source_row.*) - 'updated_at')::text
-        FROM security_audit_events source_row
-        WHERE source_row.id = $1
-      SQL
-      VERSION_SOURCE_SQL = <<~SQL.squish.freeze
-        SELECT (to_jsonb(source_row.*) - 'updated_at')::text
-        FROM versions source_row
-        WHERE source_row.id = $1
-      SQL
 
       def initialize(entries: AuditLedgerEntry.all, verify_heads: true, household_id: nil)
         @entries_source = entries
@@ -117,23 +107,10 @@ module Audit
           return
         end
 
-        current_payload = source_payload(entry)
+        current_payload = SourcePayloadReader.new.call(entry)
         code = current_payload ? 'source_payload_mismatch' : 'source_row_missing'
         message = current_payload ? 'source row no longer matches the ledger' : 'source row is missing'
         add_issue(code, message, entry) unless current_payload == entry.source_payload
-      end
-
-      def source_payload(entry)
-        sql = case entry.source_table
-              when 'versions' then VERSION_SOURCE_SQL
-              when 'security_audit_events' then SECURITY_EVENT_SOURCE_SQL
-              end
-        value = connection.select_value(sql, 'Audit source', [source_id_bind(entry.source_id)])
-        JSON.parse(value) if value
-      end
-
-      def source_id_bind(source_id)
-        ActiveRecord::Relation::QueryAttribute.new('source_id', source_id, ActiveRecord::Type::Integer.new)
       end
 
       def verify_chain_heads
@@ -249,10 +226,6 @@ module Audit
 
       def sorted_issues
         issues.sort_by { |issue| [issue.chain_key.to_s, issue.sequence.to_i, issue.code] }
-      end
-
-      def connection
-        ActiveRecord::Base.connection
       end
     end
   end
