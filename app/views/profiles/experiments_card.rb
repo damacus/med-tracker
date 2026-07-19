@@ -22,6 +22,28 @@ module Views
           description: 'Slides in from the right. See your list while editing.'
         }
       ].freeze
+      DASHBOARD_OPTIONS = [
+        {
+          value: 'current',
+          label_key: 'profiles.experiments.dashboard.options.current.label',
+          description_key: 'profiles.experiments.dashboard.options.current.description'
+        },
+        {
+          value: 'time_first',
+          label_key: 'profiles.experiments.dashboard.options.time_first.label',
+          description_key: 'profiles.experiments.dashboard.options.time_first.description'
+        },
+        {
+          value: 'family_lanes',
+          label_key: 'profiles.experiments.dashboard.options.family_lanes.label',
+          description_key: 'profiles.experiments.dashboard.options.family_lanes.description'
+        },
+        {
+          value: 'calm_focus',
+          label_key: 'profiles.experiments.dashboard.options.calm_focus.label',
+          description_key: 'profiles.experiments.dashboard.options.calm_focus.description'
+        }
+      ].freeze
 
       attr_reader :account
 
@@ -44,6 +66,7 @@ module Views
           end
           render CardContent.new(class: 'px-5 py-6 sm:px-6') do
             render_wizard_section
+            render_dashboard_section
           end
         end
       end
@@ -69,8 +92,27 @@ module Views
         end
       end
 
-      def render_option(option)
-        selected = account.wizard_variant == option[:value]
+      def render_dashboard_section
+        div(class: 'mt-8 space-y-4 border-t border-border/60 pt-8') do
+          p(class: 'text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-on-surface-variant') do
+            t('profiles.experiments.dashboard.title')
+          end
+          form_with(
+            url: experiments_profile_path,
+            method: :patch,
+            data: { controller: 'auto-submit' }
+          ) do
+            div(class: 'grid gap-3 sm:grid-cols-2') do
+              DASHBOARD_OPTIONS.each do |option|
+                render_option(option, field: :dashboard_variant)
+              end
+            end
+          end
+        end
+      end
+
+      def render_option(option, field: :wizard_variant)
+        selected = account.public_send(field) == option[:value]
         border_class = selected ? 'border-primary ring-2 ring-primary/20 shadow-elevation-2' : 'border-border/70'
 
         label(
@@ -79,7 +121,7 @@ module Views
         ) do
           input(
             type: 'radio',
-            name: 'account[wizard_variant]',
+            name: "account[#{field}]",
             value: option[:value],
             checked: selected,
             class: 'sr-only',
@@ -87,15 +129,23 @@ module Views
           )
           div(class: 'flex-1 min-w-0') do
             div(class: 'flex items-center justify-between') do
-              span(class: 'text-sm font-semibold text-foreground') { option[:label] }
+              span(class: 'text-sm font-semibold text-foreground') { option_label(option) }
               render Components::Icons::Check.new(
                 size: 16,
                 class: selected ? 'text-primary' : 'invisible'
               )
             end
-            p(class: 'text-xs text-on-surface-variant mt-0.5') { option[:description] }
+            p(class: 'text-xs text-on-surface-variant mt-0.5') { option_description(option) }
           end
         end
+      end
+
+      def option_label(option)
+        option[:label_key] ? t(option[:label_key]) : option[:label]
+      end
+
+      def option_description(option)
+        option[:description_key] ? t(option[:description_key]) : option[:description]
       end
     end
   end

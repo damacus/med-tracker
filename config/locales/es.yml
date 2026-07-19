@@ -1414,6 +1414,22 @@ es:
       para actualizar tu correo de inicio de sesión.
     no_changes: No hay cambios que guardar.
     profile_update_failed: 'Error al actualizar el perfil: %{errors}'
+    experiments:
+      dashboard:
+        title: Diseño del panel
+        options:
+          current:
+            label: Panel actual
+            description: Mantiene el panel conocido y sus secciones actuales.
+          time_first:
+            label: Primero el tiempo
+            description: Prioriza la siguiente dosis y una cronología de cuidados.
+          family_lanes:
+            label: Carriles familiares
+            description: Organiza el día por persona, con una vista horaria opcional.
+          calm_focus:
+            label: Enfoque tranquilo
+            description: Centra una única acción segura y mantiene el resto en calma.
     api_tokens:
       title: Tokens de API
       description: Crea tokens revocables para scripts e integraciones de confianza.
@@ -1797,6 +1813,41 @@ es:
     as_needed:
       title: Tomar según sea necesario
     todays_schedule: Horario de Hoy
+    variants:
+      due_at: Hora prevista
+      empty_title: Todo despejado por ahora
+      no_more_tasks: No hay más tareas hoy
+      stock_to_review: Stock para revisar
+      stock_summary: "%{medication} • quedan %{count}"
+      review_stock: Revisar stock
+      periods:
+        morning: Mañana
+        afternoon: Tarde
+        evening: Noche
+        anytime: En cualquier momento
+      time_first:
+        next_up: A continuación
+        timeline: Cronología de cuidados de hoy
+        later_today: Más tarde hoy
+      family_lanes:
+        title: Cuidados de hoy
+        grouping_label: Agrupar las tareas del panel
+        by_person: Por persona
+        by_time: Por hora
+        task_count:
+          one: 1 tarea hoy
+          other: "%{count} tareas hoy"
+        all_caught_up: Todo al día durante el resto de la jornada.
+      calm_focus:
+        needs_attention: Necesita atención ahora
+        after_this: Después de esto
+        review_and_record: Revisar y registrar
+        confirmation_hint: Confirma la persona, el medicamento, la hora y el stock antes de registrar.
+        completed_today: Completado hoy
+        completed_count:
+          one: 1 dosis
+          other: "%{count} dosis"
+        none_completed: Aún no se han registrado dosis hoy.
     no_active_schedules: No se encontraron prescripciones activas
     add_schedules_hint: Agregue prescripciones para verlas aquí
     dose_taken_at: "%{person} • Tomado a las %{time}"

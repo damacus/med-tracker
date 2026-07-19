@@ -6,10 +6,11 @@ class Account < ApplicationRecord
   has_paper_trail skip: %i[password_hash]
 
   WIZARD_VARIANTS = %w[fullpage modal slideover].freeze
+  DASHBOARD_VARIANTS = %w[current time_first family_lanes calm_focus].freeze
 
   TIME_ZONE_NAMES = ActiveSupport::TimeZone.all.map(&:name).freeze
 
-  store_accessor :preferences, :wizard_variant, :gravatar_enabled, :time_zone
+  store_accessor :preferences, :wizard_variant, :dashboard_variant, :gravatar_enabled, :time_zone
 
   enum :status, { unverified: 1, verified: 2, closed: 3 }
 
@@ -49,6 +50,11 @@ class Account < ApplicationRecord
   def wizard_variant
     variant = super
     WIZARD_VARIANTS.include?(variant) ? variant : 'fullpage'
+  end
+
+  def dashboard_variant
+    variant = super
+    DASHBOARD_VARIANTS.include?(variant) ? variant : 'current'
   end
 
   def gravatar_enabled?

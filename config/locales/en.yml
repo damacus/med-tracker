@@ -1589,6 +1589,22 @@ en:
       your sign-in email.
     no_changes: No changes to save.
     profile_update_failed: 'Failed to update profile: %{errors}'
+    experiments:
+      dashboard:
+        title: Dashboard layout
+        options:
+          current:
+            label: Current dashboard
+            description: Keeps the familiar dashboard and its existing sections.
+          time_first:
+            label: Time-first
+            description: Prioritises the next dose and a chronological care timeline.
+          family_lanes:
+            label: Family lanes
+            description: Organises today by person, with an optional time view.
+          calm_focus:
+            label: Calm focus
+            description: Centres one safe next action and keeps everything else quiet.
     appearance:
       title: Appearance
       description: Choose how MedTracker looks across signed-in and signed-out screens.
@@ -2018,6 +2034,41 @@ en:
     greeting_evening: Good evening, %{name}
     subtitle: Your family's medication schedule for today.
     todays_schedule: Today's Schedule
+    variants:
+      due_at: Due at
+      empty_title: All clear for now
+      no_more_tasks: No more tasks today
+      stock_to_review: Stock to review
+      stock_summary: "%{medication} • %{count} left"
+      review_stock: Review stock
+      periods:
+        morning: Morning
+        afternoon: Afternoon
+        evening: Evening
+        anytime: Anytime
+      time_first:
+        next_up: Next up
+        timeline: Today's care timeline
+        later_today: Later today
+      family_lanes:
+        title: Today's care
+        grouping_label: Group dashboard tasks
+        by_person: By person
+        by_time: By time
+        task_count:
+          one: 1 task today
+          other: "%{count} tasks today"
+        all_caught_up: All caught up for the rest of the day.
+      calm_focus:
+        needs_attention: Needs attention now
+        after_this: After this
+        review_and_record: Review & record
+        confirmation_hint: Confirm the person, medication, time and stock before recording.
+        completed_today: Completed today
+        completed_count:
+          one: 1 dose
+          other: "%{count} doses"
+        none_completed: No doses recorded yet today.
     person_selector:
       label: Dashboard person
       all_family: All Family

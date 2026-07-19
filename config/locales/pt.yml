@@ -1587,6 +1587,22 @@ pt:
       para atualizar o email de início de sessão.
     no_changes: Sem alterações a guardar.
     profile_update_failed: 'Falha ao atualizar perfil: %{errors}'
+    experiments:
+      dashboard:
+        title: Layout do painel
+        options:
+          current:
+            label: Painel atual
+            description: Mantém o painel familiar e as respetivas secções atuais.
+          time_first:
+            label: Tempo primeiro
+            description: Dá prioridade à próxima dose e a uma cronologia de cuidados.
+          family_lanes:
+            label: Faixas familiares
+            description: Organiza o dia por pessoa, com uma vista temporal opcional.
+          calm_focus:
+            label: Foco tranquilo
+            description: Centra uma ação segura seguinte e mantém o restante discreto.
     api_tokens:
       title: Tokens de API
       description: Crie tokens revogáveis para scripts e integrações de confiança.
@@ -2055,6 +2071,41 @@ pt:
     greeting_evening: Boa noite, %{name}
     subtitle: O horário de medicamentos da sua família para hoje.
     todays_schedule: Horário de Hoje
+    variants:
+      due_at: Previsto para
+      empty_title: Tudo tranquilo por agora
+      no_more_tasks: Não há mais tarefas hoje
+      stock_to_review: Stock para rever
+      stock_summary: "%{medication} • restam %{count}"
+      review_stock: Rever stock
+      periods:
+        morning: Manhã
+        afternoon: Tarde
+        evening: Noite
+        anytime: A qualquer hora
+      time_first:
+        next_up: A seguir
+        timeline: Cronologia de cuidados de hoje
+        later_today: Mais tarde hoje
+      family_lanes:
+        title: Cuidados de hoje
+        grouping_label: Agrupar tarefas do painel
+        by_person: Por pessoa
+        by_time: Por hora
+        task_count:
+          one: 1 tarefa hoje
+          other: "%{count} tarefas hoje"
+        all_caught_up: Tudo tratado para o resto do dia.
+      calm_focus:
+        needs_attention: Precisa de atenção agora
+        after_this: Depois disto
+        review_and_record: Rever e registar
+        confirmation_hint: Confirme a pessoa, o medicamento, a hora e o stock antes de registar.
+        completed_today: Concluído hoje
+        completed_count:
+          one: 1 dose
+          other: "%{count} doses"
+        none_completed: Ainda não foram registadas doses hoje.
     person_selector:
       label: Pessoa do painel
       all_family: Toda a Família

@@ -52,10 +52,8 @@ class ProfilesController < ApplicationController
 
   def experiments
     authorize current_user.person, :update?
-    variant = params.dig(:account, :wizard_variant).to_s
-    variant = 'fullpage' unless Account::WIZARD_VARIANTS.include?(variant)
 
-    if current_account.update(wizard_variant: variant)
+    if current_account.update(experiment_preferences)
       respond_to do |format|
         format.turbo_stream do
           render turbo_stream: [
@@ -81,6 +79,32 @@ class ProfilesController < ApplicationController
     person.association(:notification_preference).load_target
     api_app_tokens = account.api_app_tokens.active.order(created_at: :desc).to_a
     Views::Profiles::Show.new(person: person, account: account, api_app_tokens: api_app_tokens)
+  end
+
+  def experiment_preferences
+    preferences = params.fetch(:account, {}).permit(:wizard_variant, :dashboard_variant)
+
+    {}.tap do |attributes|
+      if preferences.key?(:wizard_variant)
+        attributes[:wizard_variant] = normalized_variant(
+          preferences[:wizard_variant],
+          allowed: Account::WIZARD_VARIANTS,
+          fallback: 'fullpage'
+        )
+      end
+      if preferences.key?(:dashboard_variant)
+        attributes[:dashboard_variant] = normalized_variant(
+          preferences[:dashboard_variant],
+          allowed: Account::DASHBOARD_VARIANTS,
+          fallback: 'current'
+        )
+      end
+    end
+  end
+
+  def normalized_variant(value, allowed:, fallback:)
+    variant = value.to_s
+    allowed.include?(variant) ? variant : fallback
   end
 
   def update_person_profile(attributes)
