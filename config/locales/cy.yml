@@ -1532,6 +1532,13 @@ cy:
       reminder_times_title: Amseroedd atgoffa
       reminder_times_description: Gosod pryd rydych am dderbyn atgoffa bob dydd
       categories_description: Dewiswch pa fathau o hysbysiadau i'w derbyn
+      managed_people:
+        title: Pobl rydych chi'n eu rheoli
+        description: Mae rhybuddion dos a fethwyd ar gyfer plant ac oedolion dibynnol
+          yn cael eu cynnwys yn awtomatig. Dewiswch unrhyw oedolion rydych hefyd am eu dilyn.
+        automatic: Wedi'i gynnwys yn awtomatig
+        notify_me: Rhoi gwybod i mi
+        toggle_label: Rhoi gwybod i mi pan fydd %{name} yn methu dos
       periods:
         morning: Bore
         afternoon: Prynhawn

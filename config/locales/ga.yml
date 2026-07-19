@@ -1513,6 +1513,13 @@ ga:
       reminder_times_description: Socraigh cathain is mian leat meabhrúcháin a fháil
         gach lá
       categories_description: Roghnaigh na cineálacha fógraí is mian leat a fháil
+      managed_people:
+        title: Daoine a bhainistíonn tú
+        description: Cuirtear foláirimh faoi dháileoga caillte do leanaí agus do dhaoine
+          fásta cleithiúnacha san áireamh go huathoibríoch. Roghnaigh aon duine fásta ar mhaith leat monatóireacht a dhéanamh air freisin.
+        automatic: San áireamh go huathoibríoch
+        notify_me: Cuir in iúl dom
+        toggle_label: Cuir in iúl dom nuair a chailleann %{name} dáileog
       periods:
         morning: Maidin
         afternoon: Tráthnóna

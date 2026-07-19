@@ -1681,6 +1681,13 @@ pt:
       reminder_times_title: Horários dos lembretes
       reminder_times_description: Defina quando quer receber lembretes todos os dias
       categories_description: Escolha que tipos de notificação quer receber
+      managed_people:
+        title: Pessoas que gere
+        description: Os alertas de doses em falta para crianças e adultos dependentes
+          são incluídos automaticamente. Escolha os adultos que também pretende acompanhar.
+        automatic: Incluído automaticamente
+        notify_me: Notificar-me
+        toggle_label: Notificar-me quando %{name} não tomar uma dose
       periods:
         morning: Manhã
         afternoon: Tarde

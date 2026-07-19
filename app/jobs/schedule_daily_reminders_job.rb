@@ -16,6 +16,8 @@ class ScheduleDailyRemindersJob < ApplicationJob
   private
 
   def schedule_household_reminders(household)
+    scheduled_missed_person_ids = []
+
     NotificationPreference.where(household: household, enabled: true)
                           .where('dose_due_enabled = ? OR missed_dose_enabled = ?', true, true)
                           .includes(person: [:account, { schedules: %i[medication medication_takes] }])
@@ -23,9 +25,12 @@ class ScheduleDailyRemindersJob < ApplicationJob
       next unless pref.person&.account
 
       enqueue_reminders_for(pref)
+      scheduled_missed_person_ids << pref.person_id if pref.missed_dose_enabled
     rescue StandardError => e
       Rails.logger.error("Failed to schedule reminders for preference #{pref.id}: #{e.class}: #{e.message}")
     end
+
+    enqueue_managed_missed_dose_reminders(household, scheduled_missed_person_ids)
   end
 
   def enqueue_reminders_for(pref)
@@ -46,7 +51,7 @@ class ScheduleDailyRemindersJob < ApplicationJob
   end
 
   def enqueue_schedule_time_reminders_for(pref)
-    configured_times_for(pref).each do |time|
+    configured_times_for(pref.person).each do |time|
       send_at = build_send_time_from_configured_time(time)
       next if send_at.blank? || send_at < Time.current
 
@@ -55,18 +60,37 @@ class ScheduleDailyRemindersJob < ApplicationJob
           .set(wait_until: send_at)
           .perform_later(pref.household_id, pref.person_id, :scheduled, time)
       end
-      enqueue_missed_dose_check_for(pref, send_at, time) if pref.missed_dose_enabled
+      enqueue_missed_dose_check_for(pref.person, send_at, time) if pref.missed_dose_enabled
     end
   end
 
-  def enqueue_missed_dose_check_for(pref, send_at, time)
-    MissedDoseNotificationJob
-      .set(wait_until: send_at + MissedDoseNotificationJob::GRACE_PERIOD)
-      .perform_later(pref.household_id, pref.person_id, send_at.to_date.iso8601, time)
+  def enqueue_managed_missed_dose_reminders(household, already_scheduled_person_ids)
+    ManagedMissedDoseNotificationSubjectsQuery.new(household: household).call.each do |person|
+      next if already_scheduled_person_ids.include?(person.id)
+
+      enqueue_missed_dose_checks_for(person)
+    rescue StandardError => e
+      Rails.logger.error("Failed to schedule managed reminders for person #{person.id}: #{e.class}: #{e.message}")
+    end
   end
 
-  def configured_times_for(pref)
-    MedicationReminderEligibilityQuery.new(person: pref.person).configured_times
+  def enqueue_missed_dose_checks_for(person)
+    configured_times_for(person).each do |time|
+      send_at = build_send_time_from_configured_time(time)
+      next if send_at.blank? || send_at < Time.current
+
+      enqueue_missed_dose_check_for(person, send_at, time)
+    end
+  end
+
+  def enqueue_missed_dose_check_for(person, send_at, time)
+    MissedDoseNotificationJob
+      .set(wait_until: send_at + MissedDoseNotificationJob::GRACE_PERIOD)
+      .perform_later(person.household_id, person.id, send_at.to_date.iso8601, time)
+  end
+
+  def configured_times_for(person)
+    MedicationReminderEligibilityQuery.new(person: person).configured_times
   end
 
   def build_send_time(time)

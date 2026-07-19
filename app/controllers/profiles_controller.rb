@@ -80,7 +80,14 @@ class ProfilesController < ApplicationController
   def profile_view(person:, account:)
     person.association(:notification_preference).load_target
     api_app_tokens = account.api_app_tokens.active.order(created_at: :desc).to_a
-    Views::Profiles::Show.new(person: person, account: account, api_app_tokens: api_app_tokens)
+    membership = account.active_household_membership_for(person.household)
+    managed_grants = ManagedNotificationGrantsQuery.new(membership: membership).call
+    Views::Profiles::Show.new(
+      person: person,
+      account: account,
+      api_app_tokens: api_app_tokens,
+      managed_notification_grants: managed_grants
+    )
   end
 
   def update_person_profile(attributes)

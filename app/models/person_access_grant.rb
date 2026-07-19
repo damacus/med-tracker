@@ -37,6 +37,10 @@ class PersonAccessGrant < ApplicationRecord
     expires_at.nil? || expires_at >= requested_expires_at
   end
 
+  def missed_dose_notifications_included?
+    manage? && (person.minor? || person.dependent_adult? || missed_dose_notifications_enabled?)
+  end
+
   private
 
   def membership_must_belong_to_household

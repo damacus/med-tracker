@@ -1519,6 +1519,13 @@ es:
       reminder_times_description: Configura cuándo quieres recibir recordatorios cada
         día
       categories_description: Elige qué tipos de notificaciones quieres recibir
+      managed_people:
+        title: Personas que gestionas
+        description: Las alertas de dosis omitidas para niños y adultos dependientes
+          se incluyen automáticamente. Elige a los adultos que también quieras seguir.
+        automatic: Incluido automáticamente
+        notify_me: Notificarme
+        toggle_label: Notificarme cuando %{name} omita una dosis
       periods:
         morning: Mañana
         afternoon: Tarde

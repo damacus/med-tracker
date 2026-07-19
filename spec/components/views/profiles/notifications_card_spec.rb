@@ -37,6 +37,25 @@ RSpec.describe Views::Profiles::NotificationsCard, type: :component do
     end
   end
 
+  it 'shows managed dependents as automatic and managed adults as optional' do
+    child = build_stubbed(:person, :minor, name: 'Alex Child')
+    adult = build_stubbed(:person, name: 'Sam Adult')
+    child_grant = instance_double(PersonAccessGrant, person: child, missed_dose_notifications_enabled?: false)
+    adult_grant = instance_double(PersonAccessGrant, person: adult, missed_dose_notifications_enabled?: true)
+
+    rendered = render_inline(described_class.new(person: person, managed_grants: [child_grant, adult_grant]))
+
+    expect(rendered.text).to include('Alex Child', 'Included automatically', 'Sam Adult')
+    expect(rendered.at_css("input[name='notification_preference[managed_person_ids][]'][value='#{child.id}']"))
+      .not_to be_present
+
+    adult_checkbox = rendered.at_css(
+      "input[name='notification_preference[managed_person_ids][]'][value='#{adult.id}'][type='checkbox']"
+    )
+    expect(adult_checkbox).to be_present
+    expect(adult_checkbox['checked']).to be_present
+  end
+
   it 'uses shared action styles for notification buttons' do
     rendered = render_inline(described_class.new(person: person))
     action_classes = rendered.css('button').map { |button| button[:class].to_s.split }
