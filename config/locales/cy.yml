@@ -1028,6 +1028,51 @@ cy:
       title: Addasu Stocrestr ar gyfer %{medication}
       units: unedau
     inventory_adjusted: Stocrestr wedi'i addasu'n llwyddiannus.
+    stock_check:
+      link: Gwiriad stoc
+      eyebrow: Stocrestr y cartref · %{location}
+      title: Gweinyddu stocrestr
+      mode: Modd addasu stoc
+      description: Lluniwch swp o addasiadau cyflenwad, yna eu cymhwyso gyda'i gilydd.
+      choose_title: Dewis meddyginiaethau
+      choose_description: Dewiswch y meddyginiaethau rydych wedi'u cyfrif.
+      search_label: Chwilio meddyginiaethau
+      search_placeholder: Chwilio meddyginiaethau...
+      location_label: Lleoliad y stocrestr
+      all_locations: Pob lleoliad
+      selected: "%{count} wedi'u dewis"
+      clear_selection: Clirio'r dewis
+      in_stock: Mewn stoc
+      low_stock: Stoc isel
+      out_of_stock: Allan o stoc
+      batch_title: Swp addasiadau
+      batch_description: Nodwch y cyfrif a ganfuoch ar gyfer pob meddyginiaeth a ddewiswyd.
+      medicine: Meddyginiaeth
+      current: Cyfredol
+      new_supply: Cyflenwad newydd sy'n weddill
+      new_supply_for: Cyflenwad newydd sy'n weddill ar gyfer %{medication}
+      difference: Gwahaniaeth
+      actions: Gweithredoedd
+      empty_title: Dim meddyginiaethau wedi'u dewis
+      empty_description: Dewiswch feddyginiaethau o'r rhestr i lunio swp addasiadau.
+      set_to_zero: Gosod i sero
+      remove_from_batch: Tynnu %{medication} o'r swp addasiadau
+      reason: Rheswm dros yr addasiadau
+      reasons:
+        house_stock_check: Gwiriad stoc y cartref
+        manual_correction: Cywiriad â llaw
+        damaged_or_disposed: Wedi'i ddifrodi neu ei waredu
+        other: Arall
+      clear_batch: Clirio'r swp
+      apply: Cymhwyso %{count} addasiad
+      medicines: "%{count} meddyginiaeth"
+      net_change: cyfanswm y newid net
+      units: unedau
+      increase: Cynnydd
+      decrease: Gostyngiad
+      no_change: Dim newid
+      dosage_not_set: Dos heb ei osod
+      success: Diweddarwyd y cyflenwad sy'n weddill ar gyfer %{count} meddyginiaeth.
   passwords:
     reset_sent: Anfonwyd cyfarwyddiadau ailosod cyfrinair (os oes defnyddiwr gyda'r
       cyfeiriad e-bost hwnnw).

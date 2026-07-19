@@ -15,6 +15,21 @@ class MedicationsController < ApplicationController
     render_medications_index_for_request
   end
 
+  def stock_check
+    authorize Medication, :stock_check?
+    render_stock_check
+  end
+
+  def bulk_adjust_inventory
+    authorize Medication, :stock_check?
+    result, adjustments, reason = run_bulk_adjustment
+
+    return render_stock_check_error(result.error, adjustments, reason) unless result.success?
+
+    redirect_to stock_check_medications_path(location_id: params[:location_id].presence),
+                notice: t('medications.stock_check.success', count: adjustments.size)
+  end
+
   def show
     authorize @medication
     render Components::Medications::ShowView.new(
@@ -200,6 +215,58 @@ class MedicationsController < ApplicationController
       medication_query: medication_query(base_scope),
       locations: locations
     )
+  end
+
+  def render_stock_check(status: :ok, error: nil, initial_adjustments: {}, reason: nil)
+    base_scope = policy_scope(Medication)
+    locations = accessible_inventory_locations(base_scope)
+    @current_location_id = resolved_inventory_location_id(locations)
+    medications = MedicationQuery.new(scope: base_scope, location_id: @current_location_id).call
+
+    render Components::Medications::StockCheckView.new(
+      medications: medications,
+      locations: locations,
+      current_location_id: @current_location_id,
+      state: {
+        initial_adjustments: initial_adjustments,
+        reason: reason,
+        error: error
+      }
+    ), status: status
+  end
+
+  def render_stock_check_error(error, adjustments, reason)
+    render_stock_check(
+      status: :unprocessable_content,
+      error: error,
+      initial_adjustments: adjustments,
+      reason: reason
+    )
+  end
+
+  def stock_check_medications(ids)
+    parsed_ids = ids.filter_map { |id| Integer(id, exception: false) }
+    medications = policy_scope(Medication).where(id: parsed_ids).to_a
+    raise ActiveRecord::RecordNotFound unless parsed_ids.size == ids.size && medications.size == parsed_ids.uniq.size
+
+    medications
+  end
+
+  def stock_check_params
+    params.expect(stock_check: [:reason, { adjustments: {} }])
+  end
+
+  def run_bulk_adjustment
+    permitted = stock_check_params
+    adjustments = permitted.fetch(:adjustments, {}).to_h
+    medications = stock_check_medications(adjustments.keys)
+    result = BulkAdjustMedicationInventoryService.new.call(
+      medications: medications,
+      adjustments: adjustments,
+      reason: permitted[:reason]
+    )
+
+    [result, adjustments, permitted[:reason]]
   end
 
   def medication_query(base_scope)

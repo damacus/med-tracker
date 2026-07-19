@@ -1034,6 +1034,51 @@ pt:
       title: Ajustar Inventário para %{medication}
       units: unidades
     inventory_adjusted: Inventário ajustado com sucesso.
+    stock_check:
+      link: Verificar stock
+      eyebrow: Inventário doméstico · %{location}
+      title: Administração do inventário
+      mode: Modo de alteração de stock
+      description: Crie um lote de alterações de fornecimento e aplique-as em conjunto.
+      choose_title: Escolher medicamentos
+      choose_description: Selecione os medicamentos que contou.
+      search_label: Pesquisar medicamentos
+      search_placeholder: Pesquisar medicamentos...
+      location_label: Localização do inventário
+      all_locations: Todas as localizações
+      selected: "%{count} selecionados"
+      clear_selection: Limpar seleção
+      in_stock: Em stock
+      low_stock: Stock baixo
+      out_of_stock: Sem stock
+      batch_title: Lote de alterações
+      batch_description: Introduza a quantidade encontrada para cada medicamento selecionado.
+      medicine: Medicamento
+      current: Atual
+      new_supply: Novo fornecimento restante
+      new_supply_for: Novo fornecimento restante de %{medication}
+      difference: Diferença
+      actions: Ações
+      empty_title: Nenhum medicamento selecionado
+      empty_description: Escolha medicamentos da lista para criar um lote de alterações.
+      set_to_zero: Definir como zero
+      remove_from_batch: Remover %{medication} do lote de alterações
+      reason: Motivo das alterações
+      reasons:
+        house_stock_check: Verificação do stock doméstico
+        manual_correction: Correção manual
+        damaged_or_disposed: Danificado ou eliminado
+        other: Outro
+      clear_batch: Limpar lote
+      apply: Aplicar %{count} alterações
+      medicines: "%{count} medicamentos"
+      net_change: alteração líquida total
+      units: unidades
+      increase: Aumento
+      decrease: Diminuição
+      no_change: Sem alteração
+      dosage_not_set: Dosagem não definida
+      success: O fornecimento restante de %{count} medicamentos foi atualizado.
   passwords:
     reset_sent: Instruções de redefinição de palavra-passe enviadas (se existir um
       utilizador com esse endereço de email).
