@@ -311,14 +311,13 @@ RSpec.describe 'Admin create and update turbo flows' do
       expect(response.body).to include('Only system administrators can assign the Owner role.')
       expect(response.body).to include('Update household role')
 
-      membership_role_options = Nokogiri::HTML5(response.body)
-                                        .css('input[name="membership[role]"]')
+      document = response.parsed_body
+      membership_role_options = document.css('input[name="membership[role]"]')
                                         .map { |input| [input['value'], input.parent.text.strip] }
 
-      expect(membership_role_options).to include(['administrator', 'Administrator'], ['member', 'Member'])
+      expect(membership_role_options).to include(%w[administrator Administrator], %w[member Member])
       expect(membership_role_options.map(&:first)).not_to include('owner')
 
-      document = Nokogiri::HTML5(response.body)
       label = document.at_css('label[for="membership_role_trigger"]')
       trigger = document.at_css('#membership_role_trigger')
       helper = document.at_css('#membership_role_helper')

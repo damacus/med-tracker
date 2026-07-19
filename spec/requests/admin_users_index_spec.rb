@@ -52,7 +52,7 @@ RSpec.describe 'Admin users index' do
     expect(response.body).to include('Household role')
     expect(response.body).to include('System administrator')
 
-    document = Nokogiri::HTML5(response.body)
+    document = response.parsed_body
     platform_admin_row = document.at_css("tr[data-user-id='#{users(:jane).id}']")
     ordinary_user_row = document.at_css("tr[data-user-id='#{admin.id}']")
 
