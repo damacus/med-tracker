@@ -1033,6 +1033,51 @@ es:
       title: Ajustar Inventario para %{medication}
       units: unidades
     inventory_adjusted: Inventario ajustado con éxito.
+    stock_check:
+      link: Comprobar existencias
+      eyebrow: Inventario del hogar · %{location}
+      title: Administración del inventario
+      mode: Modo de ajuste de existencias
+      description: Prepare un lote de ajustes de suministro y aplíquelos juntos.
+      choose_title: Elegir medicamentos
+      choose_description: Seleccione los medicamentos que ha contado.
+      search_label: Buscar medicamentos
+      search_placeholder: Buscar medicamentos...
+      location_label: Ubicación del inventario
+      all_locations: Todas las ubicaciones
+      selected: "%{count} seleccionados"
+      clear_selection: Borrar selección
+      in_stock: En stock
+      low_stock: Stock bajo
+      out_of_stock: Sin stock
+      batch_title: Lote de ajustes
+      batch_description: Introduzca la cantidad encontrada para cada medicamento seleccionado.
+      medicine: Medicamento
+      current: Actual
+      new_supply: Nuevo suministro restante
+      new_supply_for: Nuevo suministro restante de %{medication}
+      difference: Diferencia
+      actions: Acciones
+      empty_title: Ningún medicamento seleccionado
+      empty_description: Elija medicamentos de la lista para preparar un lote de ajustes.
+      set_to_zero: Establecer en cero
+      remove_from_batch: Quitar %{medication} del lote de ajustes
+      reason: Motivo de los ajustes
+      reasons:
+        house_stock_check: Comprobación de existencias del hogar
+        manual_correction: Corrección manual
+        damaged_or_disposed: Dañado o desechado
+        other: Otro
+      clear_batch: Borrar lote
+      apply: Aplicar %{count} ajustes
+      medicines: "%{count} medicamentos"
+      net_change: cambio neto total
+      units: unidades
+      increase: Aumento
+      decrease: Disminución
+      no_change: Sin cambios
+      dosage_not_set: Dosis no definida
+      success: Se actualizó el suministro restante de %{count} medicamentos.
   passwords:
     reset_sent: Instrucciones de restablecimiento de contraseña enviadas (si existe
       un usuario con esa dirección de correo electrónico).

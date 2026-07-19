@@ -5,6 +5,10 @@ class MedicationPolicy < ApplicationPolicy
     active_membership?
   end
 
+  def stock_check?
+    household_manager?
+  end
+
   def show?
     medication_visible_in_household?
   end
