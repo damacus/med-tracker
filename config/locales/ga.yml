@@ -1032,6 +1032,51 @@ ga:
       title: Coigeartáil Fardal do %{medication}
       units: haonaid
     inventory_adjusted: Fardal coigeartaithe go rathúil.
+    stock_check:
+      link: Seiceáil stoic
+      eyebrow: Fardal an teaghlaigh · %{location}
+      title: Riarachán fardail
+      mode: Mód leasaithe stoic
+      description: Cruthaigh baisc leasuithe soláthair, ansin cuir i bhfeidhm le chéile iad.
+      choose_title: Roghnaigh leigheasanna
+      choose_description: Roghnaigh na leigheasanna a chomhaireamh tú.
+      search_label: Cuardaigh leigheasanna
+      search_placeholder: Cuardaigh leigheasanna...
+      location_label: Suíomh fardail
+      all_locations: Gach suíomh
+      selected: "%{count} roghnaithe"
+      clear_selection: Glan an roghnú
+      in_stock: I stoc
+      low_stock: Stoc íseal
+      out_of_stock: As stoc
+      batch_title: Baisc leasuithe
+      batch_description: Cuir isteach an líon a fuair tú do gach leigheas roghnaithe.
+      medicine: Leigheas
+      current: Reatha
+      new_supply: Soláthar nua atá fágtha
+      new_supply_for: Soláthar nua atá fágtha do %{medication}
+      difference: Difríocht
+      actions: Gníomhartha
+      empty_title: Níl aon leigheas roghnaithe
+      empty_description: Roghnaigh leigheasanna ón liosta chun baisc leasuithe a chruthú.
+      set_to_zero: Socraigh go nialas
+      remove_from_batch: Bain %{medication} den bhaisc leasuithe
+      reason: Cúis leis na leasuithe
+      reasons:
+        house_stock_check: Seiceáil stoic an teaghlaigh
+        manual_correction: Ceartúchán de láimh
+        damaged_or_disposed: Damáistithe nó diúscartha
+        other: Eile
+      clear_batch: Glan an bhaisc
+      apply: Cuir %{count} leasú i bhfeidhm
+      medicines: "%{count} leigheas"
+      net_change: glanathrú iomlán
+      units: aonaid
+      increase: Méadú
+      decrease: Laghdú
+      no_change: Gan athrú
+      dosage_not_set: Dáileog gan socrú
+      success: Nuashonraíodh an soláthar atá fágtha do %{count} leigheas.
   passwords:
     reset_sent: Seoladh treoracha athshocraithe focal faire (más ann do úsáideoir
       leis an seoladh ríomhphoist sin).

@@ -852,6 +852,51 @@ en:
     scan_restocked: Scanned stock added successfully.
     scan_restock_no_match: No medication matched that barcode.
     inventory_adjusted: Inventory adjusted successfully.
+    stock_check:
+      link: Stock check
+      eyebrow: Household inventory · %{location}
+      title: Inventory administration
+      mode: Stock amendment mode
+      description: Build a batch of supply amendments, then apply them together.
+      choose_title: Choose medicines
+      choose_description: Select the medicines you counted.
+      search_label: Search medicines
+      search_placeholder: Search medicines...
+      location_label: Inventory location
+      all_locations: All locations
+      selected: "%{count} selected"
+      clear_selection: Clear selection
+      in_stock: In stock
+      low_stock: Low stock
+      out_of_stock: Out of stock
+      batch_title: Amendment batch
+      batch_description: Enter the count you found for each selected medicine.
+      medicine: Medicine
+      current: Current
+      new_supply: New remaining supply
+      new_supply_for: New remaining supply for %{medication}
+      difference: Difference
+      actions: Actions
+      empty_title: No medicines selected
+      empty_description: Choose medicines from the list to build an amendment batch.
+      set_to_zero: Set to zero
+      remove_from_batch: Remove %{medication} from the amendment batch
+      reason: Reason for amendments
+      reasons:
+        house_stock_check: House stock check
+        manual_correction: Manual correction
+        damaged_or_disposed: Damaged or disposed
+        other: Other
+      clear_batch: Clear batch
+      apply: Apply %{count} amendments
+      medicines: "%{count} medicines"
+      net_change: total net change
+      units: units
+      increase: Increase
+      decrease: Decrease
+      no_change: No change
+      dosage_not_set: Dosage not set
+      success: Updated the remaining supply for %{count} medicines.
     ordered: Refill marked as ordered
     received: Refill marked as received
     refill_button: Refill

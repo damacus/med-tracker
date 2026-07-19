@@ -1,3 +1,44 @@
+# Stock amendment mode design QA
+
+## Target
+
+- Selected direction: option 3, the two-pane inventory administration workspace.
+- Reference: `/Users/damacus/.codex/generated_images/019f7b0c-a1f9-7b51-a683-786e055c7109/exec-529d79d2-8d11-4ab6-86da-917cf2ab0910.png`
+- Prototype: `http://localhost:51204/households/fixture-household/medications/stock_check?location_id=836111569`
+
+## Matched desktop state
+
+- Viewport: 1440 x 1024.
+- Selected medicines: Paracetamol, Aspirin, Calpol, and Vitamin D.
+- Remaining supply: 74, 0, 32, and 42 units.
+- Total net change: -32 units.
+- Paired comparison: `docs/screenshots/stock-check-design-qa-comparison.png`.
+- Prototype capture: `docs/screenshots/stock-check-desktop.png`.
+
+The paired comparison confirms the reference hierarchy, two-pane proportions, spacing, batch-row density, amendment controls, reason field, and footer actions. Fixture medicine ordering and the existing MedTracker navigation labels remain product data rather than visual defects.
+
+## Responsive and interaction checks
+
+- Mobile viewport: 390 x 844.
+- Final document width: 390 pixels; no horizontal overflow.
+- Mobile captures: `docs/screenshots/stock-check-mobile.png` and `docs/screenshots/stock-check-mobile-batch.png`.
+- Search, location selection, medicine selection, clear/remove, set-to-zero, quantity editing, net-change calculation, and batch submission are functional.
+- A browser regression covers the long-medicine-name overflow found during the mobile pass.
+
+## Findings
+
+| Severity | Finding | Status |
+| --- | --- | --- |
+| P1 | A selected medicine with a long name expanded the mobile grid from 390 to 685 pixels. | Fixed and covered by a browser regression. |
+| P2 | An initial zero net change rendered as `-0 units`. | Fixed and covered by a request regression. |
+| P0 | No blocking usability or data-integrity findings remain. | Passed. |
+
+## Result
+
+Passed. No open P0, P1, or P2 design-QA findings remain.
+
+---
+
 # Medicine Reviews Design QA
 
 - Source visual truth: `/var/folders/3f/7gk0v01945nby3cfstkkj3d00000gn/T/codex-clipboard-4c8055fd-6afb-42c0-8d2f-605fd6e9725a.png`

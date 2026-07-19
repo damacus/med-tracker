@@ -32,6 +32,14 @@ RSpec.describe MedicationPolicy, type: :policy do
     expect(described_class.new(member.fetch(:context), medication).update?).to be(false)
   end
 
+  it 'allows only household managers to run a stock check' do
+    administrator = household_policy_member(role: :administrator, household: household)
+
+    expect(described_class.new(owner.fetch(:context), Medication).stock_check?).to be(true)
+    expect(described_class.new(administrator.fetch(:context), Medication).stock_check?).to be(true)
+    expect(described_class.new(member.fetch(:context), Medication).stock_check?).to be(false)
+  end
+
   it 'allows creation for managers or members with manage grants' do
     location = household_policy_location(household)
 
