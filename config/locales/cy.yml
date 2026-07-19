@@ -457,6 +457,8 @@ cy:
     users:
       unauthorized: Nid oes gennych awdurdod i gyflawni'r weithred hon.
       missing_account: Nid oes gan y defnyddiwr gyfrif i'w ddilysu.
+      index:
+        helper: Mae rolau aelwyd yn berthnasol i'r aelwyd hon yn unig. Gall gweinyddwyr system reoli pob aelwyd.
       form:
         subtitle: Llenwch y manylion isod i greu cyfrif defnyddiwr newydd.
         create_title: Creu defnyddiwr newydd
@@ -467,7 +469,8 @@ cy:
         email_address: Cyfeiriad e-bost
         password: Cyfrinair
         password_confirmation: Cadarnhad cyfrinair
-        role: Rôl
+        role: Rôl aelwyd
+        membership_role_helper: Dim ond gweinyddwyr system sy'n gallu rhoi'r rôl Perchennog.
         select_role: Dewis rôl
         dependents: Dibynyddion presennol
         cancel: Canslo
@@ -476,15 +479,17 @@ cy:
       search:
         search: Chwilio
         search_placeholder: Chwilio yn ôl enw neu e-bost...
-        role: Rôl
-        all_roles: Pob rôl
+        role: Rôl aelwyd
+        all_roles: Pob rôl aelwyd
         status: Statws
         all: Pawb
         clear: Clirio
       table:
-        system_access: Mynediad system
+        system_access: Gweinyddwr system
         system_administrator: Gweinyddwr system
         household_user: Defnyddiwr aelwyd
+        system_administrator_yes: Ie
+        system_administrator_no: Na
         activation: Actifadu
         verification: Dilysu
         actions: Gweithredoedd
@@ -723,7 +728,7 @@ cy:
         perchnogion.
       owner_rejected: Mae hyrwyddo i berchennog yn gofyn am gymorth gweinyddwr
         platfform.
-      update_submit: Diweddaru Rôl
+      update_submit: Diweddaru rôl aelwyd
       updated: Rôl aelodaeth wedi'i diweddaru.
     households:
       updated: Aelwyd wedi'i chadw

@@ -307,6 +307,26 @@ RSpec.describe 'Admin create and update turbo flows' do
       expect(response.body).to include(%(action="#{membership_role_admin_user_path(users(:jane))}"))
       expect(response.body).to include('name="membership[role]"')
       expect(response.body).not_to include('name="user[membership_role]"')
+      expect(response.body).to include('Household role')
+      expect(response.body).to include('Only system administrators can assign the Owner role.')
+      expect(response.body).to include('Update household role')
+
+      membership_role_options = Nokogiri::HTML5(response.body)
+                                        .css('input[name="membership[role]"]')
+                                        .map { |input| [input['value'], input.parent.text.strip] }
+
+      expect(membership_role_options).to include(['administrator', 'Administrator'], ['member', 'Member'])
+      expect(membership_role_options.map(&:first)).not_to include('owner')
+
+      document = Nokogiri::HTML5(response.body)
+      label = document.at_css('label[for="membership_role_trigger"]')
+      trigger = document.at_css('#membership_role_trigger')
+      helper = document.at_css('#membership_role_helper')
+
+      expect(label).to be_present
+      expect(label['for']).to eq(trigger['id'])
+      expect(helper).to be_present
+      expect(trigger['aria-describedby']).to eq(helper['id'])
     end
 
     it 'returns turbo_stream and replaces users index and flash on success' do

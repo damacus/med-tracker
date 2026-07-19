@@ -40,7 +40,8 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
 
       expect(rendered.css('[data-testid="admin-users-mobile-list"]')).to be_present
       expect(rendered.css('[data-testid="admin-users-desktop-table"] table')).to be_present
-      expect(rendered.css('[data-testid="admin-users-mobile-list"]').text).to include(target_user.email_address)
+      mobile_list = rendered.css('[data-testid="admin-users-mobile-list"]')
+      expect(mobile_list.text).to include(target_user.email_address, 'Household role', 'System administrator')
     end
 
     it 'keeps canonical row selectors unique when card representations render' do
@@ -57,7 +58,9 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
       rendered = render_inline(table_component)
 
       headers = rendered.css('th').map(&:text)
-      expect(headers).to include('Name', 'Email address', 'Role', 'Activation', 'Verification', 'Actions')
+      expect(headers).to include(
+        'Name', 'Email address', 'Household role', 'System administrator', 'Activation', 'Verification', 'Actions'
+      )
     end
 
     it 'renders a row for each user' do
@@ -117,14 +120,14 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
   end
 
   describe 'sortable headers' do
-    it 'renders sortable links for Name, Email, and Role' do
+    it 'renders sortable links for Name, Email, and Household role' do
       rendered = render_inline(table_component)
 
       sortable_links = rendered.css('th a')
       link_texts = sortable_links.map(&:text).join
       expect(link_texts).to include('Name')
       expect(link_texts).to include('Email')
-      expect(link_texts).to include('Role')
+      expect(link_texts).to include('Household role')
     end
 
     it 'includes sort direction in header links' do

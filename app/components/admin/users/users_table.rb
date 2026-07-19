@@ -158,9 +158,9 @@ module Components
 
         def system_access_label_for(user)
           if access_summary.platform_admin?(user.person&.account_id)
-            t('admin.users.table.system_administrator')
+            t('admin.users.table.system_administrator_yes')
           else
-            t('admin.users.table.household_user')
+            t('admin.users.table.system_administrator_no')
           end
         end
 

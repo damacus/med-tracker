@@ -462,6 +462,8 @@ es:
     users:
       unauthorized: No está autorizado para realizar esta acción.
       missing_account: El usuario no tiene una cuenta para verificar.
+      index:
+        helper: Los roles del hogar se aplican solo a este hogar. Los administradores del sistema pueden gestionar todos los hogares.
       form:
         subtitle: Rellena los datos a continuación para crear una nueva cuenta de
           usuario.
@@ -473,7 +475,8 @@ es:
         email_address: Dirección de correo electrónico
         password: Contraseña
         password_confirmation: Confirmación de contraseña
-        role: Rol
+        role: Rol del hogar
+        membership_role_helper: Solo los administradores del sistema pueden asignar el rol de Propietario.
         select_role: Selecciona un rol
         dependents: Dependientes existentes
         cancel: Cancelar
@@ -482,15 +485,17 @@ es:
       search:
         search: Buscar
         search_placeholder: Buscar por nombre o correo electrónico...
-        role: Rol
-        all_roles: Todos los roles
+        role: Rol del hogar
+        all_roles: Todos los roles del hogar
         status: Estado
         all: Todos
         clear: Limpiar
       table:
-        system_access: Acceso al sistema
+        system_access: Administrador del sistema
         system_administrator: Administrador del sistema
         household_user: Usuario del hogar
+        system_administrator_yes: Sí
+        system_administrator_no: No
         activation: Activación
         verification: Verificación
         actions: Acciones
@@ -729,7 +734,7 @@ es:
         membresías de propietario.
       owner_rejected: La promoción a propietario requiere soporte de administración
         de plataforma.
-      update_submit: Actualizar rol
+      update_submit: Actualizar rol del hogar
       updated: Rol de membresía actualizado.
     households:
       updated: Hogar guardado

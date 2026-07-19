@@ -240,6 +240,8 @@ ga:
     users:
       unauthorized: Níl údarás agat an gníomh seo a dhéanamh.
       missing_account: Níl cuntas ag an úsáideoir le fíorú.
+      index:
+        helper: Ní bhaineann róil teaghlaigh ach leis an teaghlach seo. Is féidir le riarthóirí córais gach teaghlach a bhainistiú.
       form:
         subtitle: Líon isteach na sonraí thíos chun cuntas úsáideora nua a chruthú.
         create_title: Cruthaigh úsáideoir nua
@@ -250,7 +252,8 @@ ga:
         email_address: Seoladh ríomhphoist
         password: Focal faire
         password_confirmation: Deimhniú focail faire
-        role: Ról
+        role: Ról teaghlaigh
+        membership_role_helper: Ní féidir ach le riarthóirí córais ról an Úinéara a shannadh.
         select_role: Roghnaigh ról
         dependents: Cleithiúnaithe reatha
         cancel: Cealaigh
@@ -259,15 +262,17 @@ ga:
       search:
         search: Cuardaigh
         search_placeholder: Cuardaigh de réir ainm nó ríomhphoist...
-        role: Ról
-        all_roles: Gach ról
+        role: Ról teaghlaigh
+        all_roles: Gach ról teaghlaigh
         status: Stádas
         all: Gach ceann
         clear: Glan
       table:
-        system_access: Rochtain chórais
+        system_access: Riarthóir córais
         system_administrator: Riarthóir córais
         household_user: Úsáideoir teaghlaigh
+        system_administrator_yes: Tá
+        system_administrator_no: Níl
         activation: Gníomhachtú
         verification: Fíorú
         actions: Gníomhartha
@@ -505,7 +510,7 @@ ga:
       owner_demotion_rejected: Ní féidir ach le húinéirí teaghlaigh ballraíochtaí
         úinéara a athrú.
       owner_rejected: Teastaíonn tacaíocht riarthóra ardáin chun ardú go húinéir.
-      update_submit: Nuashonraigh Ról
+      update_submit: Nuashonraigh ról teaghlaigh
       updated: Nuashonraíodh ról ballraíochta.
     households:
       updated: Sábháladh an teaghlach

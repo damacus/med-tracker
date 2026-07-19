@@ -52,7 +52,7 @@ module Components
                 'User Management'
               end
               m3_text(weight: 'muted', class: 'mt-2 block') do
-                'Review roles and access levels for everyone using MedTracker.'
+                t('admin.users.index.helper')
               end
             end
             render RubyUI::Link.new(
