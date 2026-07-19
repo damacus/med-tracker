@@ -270,7 +270,11 @@ module Components
           ) do |form|
             m3_card(variant: :elevated, class: 'overflow-visible border-none shadow-elevation-3 rounded-[2.5rem]') do
               div(class: 'p-10 space-y-6') do
-                render_membership_role_field(form, field_name: 'membership[role]')
+                render_membership_role_field(
+                  form,
+                  field_name: 'membership[role]',
+                  helper_text: t('admin.users.form.membership_role_helper')
+                )
                 m3_button(type: :submit, variant: :filled, size: :lg,
                           class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20 transition-all') do
                   t('admin.membership_roles.update_submit')
@@ -280,21 +284,24 @@ module Components
           end
         end
 
-        def render_membership_role_field(_form, field_name:)
+        def render_membership_role_field(_form, field_name:, helper_text: nil)
+          trigger_attributes = {
+            id: 'membership_role_trigger',
+            placeholder: selected_membership_role.titleize || t('admin.users.form.select_role'),
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
+          }
+          trigger_attributes[:aria] = { describedby: 'membership_role_helper' } if helper_text
+
           div(class: 'space-y-2') do
             render RubyUI::FormFieldLabel.new(
-              for: 'user_membership_role_trigger',
+              for: 'membership_role_trigger',
               class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
             ) do
               plain t('admin.users.form.role')
               span(class: 'text-error ml-0.5') { ' *' }
             end
             render RubyUI::Combobox.new(class: 'w-full') do
-              render RubyUI::ComboboxTrigger.new(
-                id: 'membership_role_trigger',
-                placeholder: selected_membership_role.titleize || t('admin.users.form.select_role'),
-                class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
-              )
+              render RubyUI::ComboboxTrigger.new(**trigger_attributes)
 
               render RubyUI::ComboboxPopover.new do
                 render RubyUI::ComboboxSearchInput.new(
@@ -319,6 +326,7 @@ module Components
                 end
               end
             end
+            m3_text(id: 'membership_role_helper', weight: 'muted') { helper_text } if helper_text
           end
         end
 

@@ -54,9 +54,9 @@ module Components
 
         def render_system_access_badge
           if access_summary.platform_admin?(user.person&.account_id)
-            render RubyUI::Badge.new(variant: :destructive) { t('admin.users.table.system_administrator') }
+            render RubyUI::Badge.new(variant: :destructive) { t('admin.users.table.system_administrator_yes') }
           else
-            render RubyUI::Badge.new(variant: :tonal) { t('admin.users.table.household_user') }
+            render RubyUI::Badge.new(variant: :tonal) { t('admin.users.table.system_administrator_no') }
           end
         end
 

@@ -90,7 +90,7 @@ RSpec.describe 'AdminManagesUsers' do
 
     find_by_id('membership_role_trigger').click
     all('label', text: 'Administrator', visible: :all).last.click
-    click_on 'Update Role'
+    click_on 'Update household role'
 
     expect(page).to have_text('Membership role updated')
     within "[data-user-id='#{carer.id}']" do

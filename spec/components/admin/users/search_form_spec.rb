@@ -37,10 +37,11 @@ RSpec.describe Components::Admin::Users::SearchForm, type: :component do
   end
 
   describe 'membership role filter' do
-    it 'renders all household membership roles as options' do
+    it 'uses household wording for the membership role filter' do
       rendered = render_inline(described_class.new)
 
-      expect(rendered.text).to include('All Roles')
+      expect(rendered.css('label[for="role_trigger"]').text).to eq('Household role')
+      expect(rendered.text).to include('All household roles')
       HouseholdMembership.roles.each_key do |role|
         expect(rendered.text).to include(role.titleize)
       end

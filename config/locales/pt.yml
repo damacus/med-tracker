@@ -464,6 +464,8 @@ pt:
     users:
       unauthorized: Não está autorizado a realizar esta ação.
       missing_account: O utilizador não tem uma conta para verificar.
+      index:
+        helper: As funções do agregado aplicam-se apenas a este agregado. Os administradores do sistema podem gerir todos os agregados.
       form:
         subtitle: Preencha os dados abaixo para criar uma nova conta de utilizador.
         create_title: Criar novo utilizador
@@ -474,7 +476,8 @@ pt:
         email_address: Endereço de email
         password: Palavra-passe
         password_confirmation: Confirmação da palavra-passe
-        role: Função
+        role: Função do agregado
+        membership_role_helper: Apenas os administradores do sistema podem atribuir a função de Proprietário.
         select_role: Selecione uma função
         dependents: Dependentes existentes
         cancel: Cancelar
@@ -483,15 +486,17 @@ pt:
       search:
         search: Pesquisar
         search_placeholder: Pesquisar por nome ou email...
-        role: Função
-        all_roles: Todas as funções
+        role: Função do agregado
+        all_roles: Todas as funções do agregado
         status: Estado
         all: Todos
         clear: Limpar
       table:
-        system_access: Acesso ao sistema
+        system_access: Administrador do sistema
         system_administrator: Administrador do sistema
         household_user: Utilizador do agregado
+        system_administrator_yes: Sim
+        system_administrator_no: Não
         activation: Ativação
         verification: Verificação
         actions: Ações
@@ -730,7 +735,7 @@ pt:
         associações de proprietário.
       owner_rejected: A promoção a proprietário requer suporte de administração
         da plataforma.
-      update_submit: Atualizar função
+      update_submit: Atualizar função do agregado
       updated: Função de associação atualizada.
     households:
       updated: Agregado guardado
