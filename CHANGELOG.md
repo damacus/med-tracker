@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.16](https://github.com/damacus/med-tracker/compare/v0.5.15...v0.5.16) (2026-07-20)
+
+
+### Features
+
+* **dashboard:** add layout experiments ([#1710](https://github.com/damacus/med-tracker/issues/1710)) ([a25099d](https://github.com/damacus/med-tracker/commit/a25099d4cd977d0dae17a5b79ec9acc0ec262e41))
+
+
+### Bug Fixes
+
+* **admin:** clarify household and system roles ([#1708](https://github.com/damacus/med-tracker/issues/1708)) ([2dfeebe](https://github.com/damacus/med-tracker/commit/2dfeebe0cc4b26fda7b2494883b6a7721ee78064))
+
 ## [0.5.15](https://github.com/damacus/med-tracker/compare/v0.5.14...v0.5.15) (2026-07-17)
 
 
