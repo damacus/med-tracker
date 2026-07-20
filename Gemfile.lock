@@ -737,7 +737,7 @@ GEM
     simplecov (1.0.1)
     simpleidn (0.2.3)
     sin_lru_redux (2.5.2)
-    solid_cable (4.0.0)
+    solid_cable (4.0.2)
       actioncable (>= 7.2)
       activejob (>= 7.2)
       activerecord (>= 7.2)
