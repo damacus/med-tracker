@@ -307,7 +307,7 @@ GEM
       net-smtp
     marcel (1.2.1)
     matrix (0.4.3)
-    mcp (0.24.0)
+    mcp (0.25.0)
       json_schemer (>= 2.4)
     mime-types (3.7.0)
       logger
