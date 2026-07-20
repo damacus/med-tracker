@@ -46,13 +46,14 @@ RSpec.describe Components::Admin::Users::Pagination, type: :component do
       prev_span = rendered.css('span.sr-only').find { |s| s.text == 'Previous' }
       expect(prev_span).to be_present
       prev_container = prev_span.parent
+      expect(prev_container).to be_present
       expect(prev_container['class']).to include('cursor-not-allowed')
     end
 
     it 'enables next button when there is a next page' do
       rendered = render_inline(described_class.new(pagy: pagy))
 
-      next_links = rendered.css('a').select { |a| a.css('.sr-only').any? { |s| s.text == 'Next' } }
+      next_links = rendered.css('a[aria-label="Next"]')
       expect(next_links).to be_present
     end
   end
@@ -92,7 +93,7 @@ RSpec.describe Components::Admin::Users::Pagination, type: :component do
     it 'enables previous button' do
       rendered = render_inline(described_class.new(pagy: pagy))
 
-      prev_links = rendered.css('a').select { |a| a.css('.sr-only').any? { |s| s.text == 'Previous' } }
+      prev_links = rendered.css('a[aria-label="Previous"]')
       expect(prev_links).to be_present
     end
   end
@@ -141,12 +142,13 @@ RSpec.describe Components::Admin::Users::Pagination, type: :component do
       expect(nav).to be_present
     end
 
-    it 'renders sr-only text for previous and next buttons' do
+    it 'renders aria-labels for previous and next buttons' do
       rendered = render_inline(described_class.new(pagy: pagy))
 
-      sr_only = rendered.css('.sr-only').map(&:text)
-      expect(sr_only).to include('Previous')
-      expect(sr_only).to include('Next')
+      aria_labels = rendered.css('[aria-label]').pluck('aria-label')
+      expect(aria_labels).to include('Pagination')
+      expect(rendered.css('a[aria-label="Previous"]')).to be_present
+      expect(rendered.css('a[aria-label="Next"]')).to be_present
     end
   end
 end
