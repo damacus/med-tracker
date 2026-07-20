@@ -55,7 +55,7 @@ class DashboardPresenter
     # Impact: Reduces database queries from O(N) to O(1) for dashboard supply levels.
     @active_schedules ||= active_schedule_scope
                           .where(person_id: people.map(&:id))
-                          .includes(person: :user, medication: [:schedules, :person_medications])
+                          .includes(person: :user, medication: %i[schedules person_medications])
                           .to_a
   end
 
