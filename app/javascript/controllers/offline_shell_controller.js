@@ -264,8 +264,12 @@ export default class extends Controller {
   }
 
   escape(value) {
-    const div = document.createElement("div")
-    div.appendChild(document.createTextNode(String(value ?? "")))
-    return div.innerHTML
-  }
+    const str = value;
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
 }
