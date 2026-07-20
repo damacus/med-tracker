@@ -1417,6 +1417,22 @@ ga:
       chun do ríomhphost sínithe isteach a nuashonrú.
     no_changes: Gan athruithe le sábháil.
     profile_update_failed: 'Theip ar nuashonrú na próifíle: %{errors}'
+    experiments:
+      dashboard:
+        title: Leagan amach an dashboard
+        options:
+          current:
+            label: An dashboard reatha
+            description: Coinníonn sé an dashboard coitianta agus na rannóga atá ann.
+          time_first:
+            label: Am ar dtús
+            description: Tugann sé tús áite don chéad dáileog eile agus d'amlíne chúraim.
+          family_lanes:
+            label: Lánaí teaghlaigh
+            description: Eagraíonn sé an lá de réir duine, le hamharc ama roghnach.
+          calm_focus:
+            label: Fócas socair
+            description: Díríonn sé ar chéad ghníomh sábháilte amháin agus coinníonn sé an chuid eile ciúin.
     api_tokens:
       title: Comharthaí API
       description: Cruthaigh comharthaí inchúlghairthe do scripteanna agus do chomhtháthuithe iontaofa.
@@ -1947,6 +1963,41 @@ ga:
     greeting_evening: Oíche mhaith, %{name}
     subtitle: Sceideal leigheasanna do theaghlaigh inniu.
     todays_schedule: Sceideal an Lae Innuit
+    variants:
+      due_at: Le tabhairt ag
+      empty_title: Gach rud glan faoi láthair
+      no_more_tasks: Níl tuilleadh tascanna inniu
+      stock_to_review: Stoc le hathbhreithniú
+      stock_summary: "%{medication} • %{count} fágtha"
+      review_stock: Athbhreithnigh stoc
+      periods:
+        morning: Maidin
+        afternoon: Tráthnóna
+        evening: Oíche
+        anytime: Am ar bith
+      time_first:
+        next_up: An chéad rud eile
+        timeline: Amlíne chúraim an lae inniu
+        later_today: Níos déanaí inniu
+      family_lanes:
+        title: Cúram an lae inniu
+        grouping_label: Grúpáil tascanna an dashboard
+        by_person: De réir duine
+        by_time: De réir ama
+        task_count:
+          one: 1 tasc inniu
+          other: "%{count} tasc inniu"
+        all_caught_up: Tá gach rud déanta don chuid eile den lá.
+      calm_focus:
+        needs_attention: Teastaíonn aird anois
+        after_this: Ina dhiaidh seo
+        review_and_record: Athbhreithnigh agus taifead
+        confirmation_hint: Deimhnigh an duine, an leigheas, an t-am agus an stoc sula dtaifeadtar é.
+        completed_today: Críochnaithe inniu
+        completed_count:
+          one: 1 dáileog
+          other: "%{count} dáileog"
+        none_completed: Níor taifeadadh aon dáileog inniu fós.
     person_selector:
       label: Duine an dashboard
       all_family: An Teaghlach Uile
