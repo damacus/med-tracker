@@ -49,9 +49,13 @@ class DashboardPresenter
   end
 
   def active_schedules
+    # ⚡ Bolt Optimization: Eager load schedules and person_medications
+    # to prevent N+1 queries when rendering supply item components
+    # which calculate estimated_daily_consumption for each medication.
+    # Impact: Reduces database queries from O(N) to O(1) for dashboard supply levels.
     @active_schedules ||= active_schedule_scope
                           .where(person_id: people.map(&:id))
-                          .includes(person: :user, medication: [])
+                          .includes(person: :user, medication: [:schedules, :person_medications])
                           .to_a
   end
 
