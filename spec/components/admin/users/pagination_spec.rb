@@ -145,9 +145,10 @@ RSpec.describe Components::Admin::Users::Pagination, type: :component do
     it 'renders aria-labels for previous and next buttons' do
       rendered = render_inline(described_class.new(pagy: pagy))
 
-      aria_labels = rendered.css('[aria-label]').map { |el| el['aria-label'] }
-      expect(aria_labels).to include('Previous')
-      expect(aria_labels).to include('Next')
+      aria_labels = rendered.css('[aria-label]').pluck('aria-label')
+      expect(aria_labels).to include('Pagination')
+      expect(rendered.css('a[aria-label="Previous"]')).to be_present
+      expect(rendered.css('a[aria-label="Next"]')).to be_present
     end
   end
 end
