@@ -1,0 +1,4 @@
+💡 What: Eager load schedules and person_medications for the dashboard's active_schedules.
+🎯 Why: The dashboard's quick stats section calculates supply statuses for top active schedules which delegates to `medication.supply_percentage`. This computation iterates through the medication's schedules and person_medications via `estimated_daily_consumption`. Without preloading, this resulted in an N+1 query loop when rendering the dashboard quick stats cards.
+📊 Impact: Reduces database queries from O(N) to O(1) for dashboard supply levels.
+🔬 Measurement: Verify by checking the server logs in the rails console or development server while loading the `/dashboard` path. The queries for `schedules` and `person_medications` are now batched into single `IN` queries instead of repeating per medication row.
