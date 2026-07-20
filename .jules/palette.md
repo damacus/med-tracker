@@ -8,3 +8,7 @@
 ## 2024-03-05 - Add Descriptive Placeholders for Better Guidance
 **Learning:** Form fields lacking `placeholder` attributes (such as the Medication form inputs) can cause user friction since it’s not immediately clear what expected format or type of data to provide, especially on larger, empty textareas like `warnings` or `description`. Adding placeholder text does not break existing test locators compared to changing ARIA labels.
 **Action:** When working with forms or input fields via `RubyUI::Input` or `RubyUI::Textarea`, add a corresponding translated placeholder where appropriate to guide users effectively without cluttering the UI with additional helper text.
+
+## 2024-05-18 - ARIA labels on disabled <span> elements
+**Learning:** According to W3C ARIA specifications, `aria-label` is generally ignored by screen readers when applied to non-interactive generic elements like `<span>` or `<div>` unless they have a designated widget role. When rendering disabled states of links or buttons using plain `<span>` tags, moving a nested `.sr-only` text label to an `aria-label` attribute on the outer `<span>` causes an accessibility regression, leaving screen reader users without context.
+**Action:** Retain the nested `<span class="sr-only">` pattern for accessible text when styling disabled interactive elements as generic `<span>` tags, or give the outer span appropriate ARIA semantics (e.g., `role="link" aria-disabled="true"`) to ensure the `aria-label` is announced.
