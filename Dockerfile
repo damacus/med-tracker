@@ -149,12 +149,15 @@ RUN apt-get update \
   && apt-get clean \
   && chown ruby:ruby -R /app
 
+RUN gem install audition --version 0.2.1 --no-document --install-dir /opt/audition --bindir /usr/local/bin
+
 USER ruby
 
 ENV RAILS_ENV=test \
   NODE_ENV=test \
   BUNDLE_WITHOUT="development:production" \
-  BUNDLE_WITH="tools"
+  BUNDLE_WITH="tools" \
+  GEM_PATH="/opt/audition:/usr/local/bundle:/usr/local/lib/ruby/gems/4.0.0"
 
 COPY --chown=ruby:ruby Gemfile* ./
 RUN bundle install

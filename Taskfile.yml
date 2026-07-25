@@ -271,6 +271,95 @@ tasks:
           SERVICE: tools-test
           COMMAND: 'bin/brakeman --no-pager'
 
+  audition:static:
+    desc: Report application-owned Audition static findings
+    summary: |
+      Run the static Ractor-readiness scan without the reviewed baseline.
+      Usage: task audition:static
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: tools-test
+          COMMAND: 'audition . --static-only --no-baseline'
+
+  audition:dependencies:
+    desc: Report Audition dependency readiness findings
+    summary: |
+      Scan every locked dependency for Ractor readiness.
+      Usage: task audition:dependencies
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: tools-test
+          COMMAND: 'audition Gemfile.lock --static-only'
+
+  audition:dynamic:
+    desc: Run Audition dynamic Ractor probes
+    summary: |
+      Boot the application in Audition's dynamic Ractor probes.
+      Usage: task audition:dynamic
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: tools-test
+          COMMAND: 'audition . --dynamic-only'
+
+  audition:target:
+    desc: Run a targeted Audition static scan
+    summary: |
+      Scan one path without loading the reviewed baseline.
+      Usage: task audition:target TARGET=app/services/example.rb
+    vars:
+      target: '{{ .TARGET | default "app" }}'
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: tools-test
+          COMMAND: 'audition {{ .target }} --static-only --no-baseline'
+
+  audition:fix-preview:
+    desc: Preview Audition safe and unsafe fixes without changing files
+    summary: |
+      Show Audition's proposed fixes as a diff. This task never modifies files.
+      Usage: task audition:fix-preview TARGET=app/services/example.rb
+    vars:
+      target: '{{ .TARGET | default "app" }}'
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: tools-test
+          COMMAND: 'audition {{ .target }} --no-baseline --fix-unsafe --dry-run'
+
+  audition:baseline:
+    desc: Write the reviewed Audition static finding baseline
+    summary: |
+      Replace .audition-baseline.json with the current application-owned static findings.
+      Review the generated baseline before committing it.
+      Usage: task audition:baseline
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: tools-test
+          COMMAND: 'audition . --static-only --write-baseline'
+
+  audition:ci:
+    desc: Fail on new application-owned Audition static findings
+    summary: |
+      Use the reviewed baseline and emit GitHub annotations for introduced static findings.
+      Usage: task audition:ci
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: tools-test
+          COMMAND: 'audition . --static-only --format github'
+
   rubycritic:
     desc: Run RubyCritic quality analysis
     summary: |

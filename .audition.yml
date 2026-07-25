@@ -1,0 +1,10 @@
+fail_on: error
+timeout: 60
+exclude:
+  - db/schema.rb
+  - db/migrate/**
+  - spec/**
+  - tmp/**
+  - vendor/**
+  - node_modules/**
+  - public/assets/**
