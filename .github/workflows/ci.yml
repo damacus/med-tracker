@@ -52,6 +52,52 @@ jobs:
       - name: Lint code for consistent style
         run: bin/rubocop -f github
 
+  audition:
+    runs-on: [ubuntu-latest]
+    name: Audition Ractor Readiness
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: audition
+          POSTGRES_PASSWORD: audition
+          POSTGRES_DB: medtracker_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DATABASE_ADAPTER: postgresql
+      DATABASE_URL: postgres://audition:audition@localhost:5432/medtracker_test
+      RAILS_ENV: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Build Audition tools image
+        run: docker build --target tools --tag med-tracker-audition .
+
+      - name: Gate new static Ractor-readiness findings
+        run: docker run --rm med-tracker-audition audition . --static-only --format github
+
+      - name: Report dependency readiness
+        continue-on-error: true
+        run: docker run --rm med-tracker-audition audition Gemfile.lock --static-only
+
+      - name: Report dynamic readiness with PostgreSQL
+        continue-on-error: true
+        run: >-
+          docker run --rm --network host
+          -e DATABASE_URL
+          -e TEST_DATABASE_ADAPTER
+          -e RAILS_ENV
+          med-tracker-audition
+          bash -lc 'bundle exec rails db:prepare && audition . --dynamic-only'
+
   client_tools:
     runs-on: [ubuntu-latest]
     name: Rust Client Tools

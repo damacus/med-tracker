@@ -11,6 +11,9 @@ RSpec.describe AuditionToolchain do
   end
   let(:dockerfile) { Rails.root.join('Dockerfile').read }
   let(:audition_config) { YAML.safe_load(Rails.root.join('.audition.yml').read) }
+  let(:ci_workflow) do
+    YAML.safe_load(Rails.root.join('.github/workflows/ci.yml').read, aliases: true)
+  end
   let(:audition_commands) do
     {
       'static' => 'audition . --static-only --no-baseline',
@@ -51,6 +54,36 @@ RSpec.describe AuditionToolchain do
     command = audition_task('fix-preview').dig('cmds', 0, 'vars', 'COMMAND')
 
     expect(command).to include('--fix-unsafe', '--dry-run')
+  end
+
+  it 'gates static regressions in the Docker tools image while keeping broader scans advisory' do
+    job = ci_workflow.dig('jobs', 'audition')
+    steps = job.fetch('steps')
+    static_step = steps.find { |step| step['name'] == 'Gate new static Ractor-readiness findings' }
+    dependency_step = steps.find { |step| step['name'] == 'Report dependency readiness' }
+    dynamic_step = steps.find { |step| step['name'] == 'Report dynamic readiness with PostgreSQL' }
+
+    expect(job.dig('services', 'postgres', 'image')).to eq('postgres:18-alpine')
+    expect(steps).to include(
+      hash_including(
+        'name' => 'Build Audition tools image',
+        'run' => 'docker build --target tools --tag med-tracker-audition .'
+      )
+    )
+    expect(static_step).to include(
+      'run' => 'docker run --rm med-tracker-audition audition . --static-only --format github'
+    )
+    expect(static_step).not_to have_key('continue-on-error')
+    expect(dependency_step).to include(
+      'continue-on-error' => true,
+      'run' => 'docker run --rm med-tracker-audition audition Gemfile.lock --static-only'
+    )
+    expect(dynamic_step).to include('continue-on-error' => true)
+    expect(dynamic_step.fetch('run')).to include(
+      '--network host',
+      '-e DATABASE_URL',
+      'audition . --dynamic-only'
+    )
   end
 
   def audition_task(name)

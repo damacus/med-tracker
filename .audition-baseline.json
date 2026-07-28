@@ -1,0 +1,23 @@
+{
+  "class-level-state|app/misc/rodauth_main.rb": 2,
+  "class-level-state|app/services/barcode_catalog/curated_products.rb": 1,
+  "mutable-constants|app/components/medications/dosage_options_fields.rb": 1,
+  "mutable-constants|app/components/medications/wizard/step_indicator.rb": 1,
+  "mutable-constants|app/components/shared/person_avatar.rb": 1,
+  "mutable-constants|app/controllers/concerns/medication_form_context.rb": 1,
+  "mutable-constants|app/controllers/pwa_controller.rb": 1,
+  "mutable-constants|app/models/medication_dosage.rb": 1,
+  "mutable-constants|app/services/audit/verification/database_authority.rb": 1,
+  "mutable-constants|app/services/care_delegation/assign.rb": 1,
+  "mutable-constants|app/services/medication_onboarding_create_service.rb": 1,
+  "mutable-constants|app/services/medication_review_source_instruction_classifier.rb": 1,
+  "mutable-constants|app/services/nhs_dmd/dosage_form_filter.rb": 1,
+  "mutable-constants|app/services/paid_feature.rb": 1,
+  "mutable-constants|app/services/reports/medication_review_pdf/opening_sections.rb": 1,
+  "mutable-constants|app/views/profiles/experiments_card.rb": 2,
+  "mutable-constants|app/views/profiles/theme_picker_card.rb": 2,
+  "mutable-constants|config/initializers/pagy.rb": 1,
+  "mutable-constants|lib/hosted_restore/rehearsal.rb": 2,
+  "mutable-constants|lib/otel/database_connection_pool_metrics.rb": 1,
+  "unsafe-calls|config/initializers/opentelemetry.rb": 2
+}
