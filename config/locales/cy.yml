@@ -1437,6 +1437,22 @@ cy:
       i ddiweddaru eich e-bost mewngofnodi.
     no_changes: Dim newidiadau i'w cadw.
     profile_update_failed: 'Methwyd â diweddaru''r proffil: %{errors}'
+    experiments:
+      dashboard:
+        title: Cynllun y dangosfwrdd
+        options:
+          current:
+            label: Dangosfwrdd presennol
+            description: Yn cadw'r dangosfwrdd cyfarwydd a'i adrannau presennol.
+          time_first:
+            label: Amser yn gyntaf
+            description: Yn blaenoriaethu'r dos nesaf a llinell amser ofal gronolegol.
+          family_lanes:
+            label: Lonydd teulu
+            description: Yn trefnu heddiw fesul person, gyda golwg amser dewisol.
+          calm_focus:
+            label: Ffocws tawel
+            description: Yn canolbwyntio ar un cam diogel nesaf ac yn tawelu popeth arall.
     api_tokens:
       title: Tocynnau API
       description: Creu tocynnau y gellir eu dirymu ar gyfer sgriptiau ac integreiddiadau dibynadwy.
@@ -1810,6 +1826,41 @@ cy:
     greeting_evening: Noswaith dda, %{name}
     subtitle: Amserlen meddyginiaeth eich teulu am heddiw.
     todays_schedule: Amserlen Heddiw
+    variants:
+      due_at: I'w roi am
+      empty_title: Popeth yn glir am y tro
+      no_more_tasks: Dim mwy o dasgau heddiw
+      stock_to_review: Stoc i'w hadolygu
+      stock_summary: "%{medication} • %{count} ar ôl"
+      review_stock: Adolygu stoc
+      periods:
+        morning: Bore
+        afternoon: Prynhawn
+        evening: Noswaith
+        anytime: Unrhyw bryd
+      time_first:
+        next_up: Nesaf
+        timeline: Llinell amser gofal heddiw
+        later_today: Yn ddiweddarach heddiw
+      family_lanes:
+        title: Gofal heddiw
+        grouping_label: Grwpio tasgau'r dangosfwrdd
+        by_person: Fesul person
+        by_time: Fesul amser
+        task_count:
+          one: 1 dasg heddiw
+          other: "%{count} tasg heddiw"
+        all_caught_up: Popeth wedi'i wneud am weddill y dydd.
+      calm_focus:
+        needs_attention: Angen sylw nawr
+        after_this: Ar ôl hyn
+        review_and_record: Adolygu a chofnodi
+        confirmation_hint: Cadarnhewch y person, y feddyginiaeth, yr amser a'r stoc cyn cofnodi.
+        completed_today: Wedi'i gwblhau heddiw
+        completed_count:
+          one: 1 dos
+          other: "%{count} dos"
+        none_completed: Dim dosau wedi'u cofnodi heddiw eto.
     person_selector:
       label: Person y dangosfwrdd
       all_family: Y Teulu Cyfan
