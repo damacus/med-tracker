@@ -609,9 +609,9 @@ GEM
       sequel (>= 4)
     rodauth-model (0.5.0)
       rodauth (~> 2.28)
-    rodauth-oauth (1.6.4)
+    rodauth-oauth (1.6.5)
       base64
-      rodauth (~> 2.0)
+      rodauth (~> 2.28)
     rodauth-omniauth (0.6.2)
       omniauth (~> 2.0)
       rodauth (~> 2.36)
