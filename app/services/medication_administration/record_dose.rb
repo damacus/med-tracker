@@ -42,7 +42,7 @@ module MedicationAdministration
         source = freshly_loaded_operational_source(source)
         return failure(:household_unavailable) unless source
 
-        record_dose(
+        record_dose_with_savepoint(
           source: source,
           amount_override: amount_override,
           taken_from_medication_id: taken_from_medication_id,
@@ -53,6 +53,12 @@ module MedicationAdministration
     end
 
     private
+
+    def record_dose_with_savepoint(**arguments)
+      return record_dose(**arguments) unless ActiveRecord::Base.connection.transaction_open?
+
+      ActiveRecord::Base.transaction(requires_new: true) { record_dose(**arguments) }
+    end
 
     def record_dose(source:, amount_override:, taken_from_medication_id:, user:, options:)
       publish_take_metric('take_attempted.med_tracker', source:, user:, options:)
