@@ -80,6 +80,8 @@ RSpec.describe 'Taskfiles' do
     expect(commands.dig(0, 'task')).to eq('internal:run')
     expect(commands.dig(0, 'vars', 'ENVIRONMENT')).to eq('dev')
     expect(commands.dig(0, 'vars', 'COMMAND')).to include(
+      'PROFILE_DASHBOARD_WARMUP_ITERATIONS={{ .warmup_iterations }}',
+      'PROFILE_DASHBOARD_MEASURED_ITERATIONS={{ .measured_iterations }}',
       'bundle exec vernier run',
       '--output {{ .output }}',
       '--hooks rails,memory_usage',
@@ -89,11 +91,9 @@ RSpec.describe 'Taskfiles' do
 
   it 'profiles a representative dashboard request pipeline' do
     expect(dashboard_profile_script).to include(
-      'Account.find_by!(email: profile_email)',
-      'DashboardPresenter.new(',
-      'presenter.routine_tasks_by_person',
-      'presenter.as_needed_by_person',
-      'presenter.today_takes_by_person',
+      'Performance::DashboardRequestProfiler.new(',
+      'warmup_iterations:',
+      'measured_iterations:',
       'File.write(summary_path, summary)'
     )
   end

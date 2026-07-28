@@ -402,6 +402,7 @@ tasks:
       Usage: task profile:dashboard
       Usage: task profile:dashboard OUT=docs/performance/profiles/dashboard-before.vernier.json.gz
       Usage: task profile:dashboard PROFILE_DASHBOARD_EMAIL=admin@example.com
+      Usage: task profile:dashboard WARMUP_ITERATIONS=1 MEASURED_ITERATIONS=3
     vars:
       output: '{{ .OUT | default "docs/performance/profiles/dashboard-baseline.vernier.json.gz" }}'
       summary_path: '{{ .SUMMARY | default "docs/performance/dashboard-baseline.md" }}'
@@ -409,6 +410,8 @@ tasks:
       allocation_interval: '{{ .ALLOCATION_INTERVAL | default "10" }}'
       profile_email: '{{ .PROFILE_DASHBOARD_EMAIL | default "admin@example.com" }}'
       selected_person_id: '{{ .PROFILE_DASHBOARD_PERSON_ID | default "all" }}'
+      warmup_iterations: '{{ .WARMUP_ITERATIONS | default "2" }}'
+      measured_iterations: '{{ .MEASURED_ITERATIONS | default "10" }}'
     cmds:
       - task: internal:run
         vars:
@@ -418,6 +421,8 @@ tasks:
             PROFILE_DASHBOARD_PERSON_ID={{ .selected_person_id }}
             PROFILE_DASHBOARD_ARTIFACT={{ .output }}
             PROFILE_DASHBOARD_SUMMARY={{ .summary_path }}
+            PROFILE_DASHBOARD_WARMUP_ITERATIONS={{ .warmup_iterations }}
+            PROFILE_DASHBOARD_MEASURED_ITERATIONS={{ .measured_iterations }}
             bundle exec vernier run
             --output {{ .output }}
             --interval {{ .interval }}
