@@ -8,14 +8,15 @@ module Views
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::ButtonTo
 
-      attr_reader :person, :account, :api_app_tokens, :new_api_app_token
+      attr_reader :person, :account, :api_app_tokens, :new_api_app_token, :managed_notification_grants
 
-      def initialize(person:, account:, api_app_tokens: nil, new_api_app_token: nil)
+      def initialize(person:, account:, api_app_tokens: nil, new_api_app_token: nil, managed_notification_grants: nil)
         super()
         @person = person
         @account = account
         @api_app_tokens = api_app_tokens || []
         @new_api_app_token = new_api_app_token
+        @managed_notification_grants = managed_notification_grants || []
       end
 
       def view_template
@@ -82,7 +83,7 @@ module Views
           render AccountSecurityCard.new(account: account)
           render_api_tokens_card
           render DataExportsCard.new
-          render NotificationsCard.new(person: person)
+          render_notifications_card
           render ExperimentsCard.new(account: account)
           render DangerZoneCard.new
           render VersionInfo.new
@@ -95,6 +96,10 @@ module Views
           api_app_tokens: api_app_tokens,
           new_api_app_token: new_api_app_token
         )
+      end
+
+      def render_notifications_card
+        render NotificationsCard.new(person: person, managed_grants: managed_notification_grants)
       end
 
       def render_personal_info_card

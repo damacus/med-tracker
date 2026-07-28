@@ -18,7 +18,10 @@ class MissedDoseNotificationJob < ApplicationJob
 
   def deliver_missed_dose_notification(household, person_id, scheduled_on, scheduled_time)
     person = Person.find_by(id: person_id, household: household)
-    return unless eligible_person?(person)
+    return unless person
+
+    recipients = MissedDoseNotificationRecipientsQuery.new(person: person).call
+    return if recipients.empty?
 
     scheduled_at = parsed_scheduled_at(scheduled_on, scheduled_time)
     return unless missed_dose_due?(person, scheduled_time, scheduled_at)
@@ -26,7 +29,7 @@ class MissedDoseNotificationJob < ApplicationJob
     event = record_missed_dose_event(household, person, scheduled_on, scheduled_time)
     return unless event
 
-    deliver_or_record_skip(event, household, person)
+    deliver_or_record_skip(event, household, person, recipients)
   end
 
   def missed_dose_due?(person, scheduled_time, scheduled_at)
@@ -49,23 +52,29 @@ class MissedDoseNotificationJob < ApplicationJob
     )
   end
 
-  def deliver_or_record_skip(event, household, person)
-    return record_skip(event, person, 'no_active_push_subscriptions') if person.account.push_subscriptions.none?
+  def deliver_or_record_skip(event, household, person, recipients)
+    active_recipients = recipients.select { |recipient| active_push_recipient?(recipient) }
+    return record_skip(event, person, 'no_active_push_subscriptions') if active_recipients.empty?
 
-    PushNotificationService.send_to_account(
-      person.account,
-      title: 'Medication reminder',
-      body: 'A dose may have been missed.',
-      path: "/households/#{household.slug}/dashboard"
-    )
+    active_recipients.each do |recipient|
+      PushNotificationService.send_to_account(
+        recipient.account,
+        title: 'Medication reminder',
+        body: notification_body(person, recipient),
+        path: "/households/#{household.slug}/dashboard"
+      )
+    end
     event.update!(sent_at: Time.current)
   end
 
-  def eligible_person?(person)
-    return false unless person&.account
+  def active_push_recipient?(recipient)
+    recipient.account.push_subscriptions.exists? || recipient.account.native_device_tokens.exists?
+  end
 
-    preference = person.notification_preference
-    preference&.enabled && preference.missed_dose_enabled
+  def notification_body(person, recipient)
+    return 'A dose may have been missed.' unless recipient.managed && !recipient.preference.private_text_enabled
+
+    "#{person.name} may have missed a dose."
   end
 
   def parsed_scheduled_at(scheduled_on, scheduled_time)

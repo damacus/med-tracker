@@ -7,17 +7,16 @@ module Views
       include Phlex::Rails::Helpers::Routes
 
       PERIOD_LABELS = {
-        morning: 'profiles.notifications.periods.morning',
-        afternoon: 'profiles.notifications.periods.afternoon',
-        evening: 'profiles.notifications.periods.evening',
-        night: 'profiles.notifications.periods.night'
+        morning: 'profiles.notifications.periods.morning', afternoon: 'profiles.notifications.periods.afternoon',
+        evening: 'profiles.notifications.periods.evening', night: 'profiles.notifications.periods.night'
       }.freeze
 
-      attr_reader :person
+      attr_reader :person, :managed_grants
 
-      def initialize(person:)
+      def initialize(person:, managed_grants: nil)
         super()
         @person = person
+        @managed_grants = managed_grants || []
       end
 
       def view_template
@@ -129,6 +128,7 @@ module Views
         ) do |_f|
           render_enabled_toggle
           render_category_toggles
+          render ManagedNotificationPeople.new(grants: managed_grants) if managed_grants.any?
           render_time_slots
           div(class: 'flex justify-end pt-2') do
             m3_button(

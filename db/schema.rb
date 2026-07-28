@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_17_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_19_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -939,6 +939,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_130000) do
     t.bigint "granted_by_membership_id"
     t.bigint "household_id", null: false
     t.bigint "household_membership_id", null: false
+    t.boolean "missed_dose_notifications_enabled", default: false, null: false
     t.bigint "person_id", null: false
     t.string "relationship_type", null: false
     t.datetime "revoked_at"

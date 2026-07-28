@@ -21,6 +21,7 @@ RSpec.describe ScheduleDailyRemindersJob do
   end
 
   before do
+    PersonAccessGrant.where(household: household).delete_all
     travel_to Time.zone.local(2026, 5, 12, 6, 0)
   end
 
@@ -76,6 +77,31 @@ RSpec.describe ScheduleDailyRemindersJob do
     end.to have_enqueued_job(MissedDoseNotificationJob)
       .with(household.id, person.id, '2026-05-12', '07:15')
       .at(Time.zone.local(2026, 5, 12, 7, 45))
+  end
+
+  it 'enqueues missed-dose checks for every child managed by an enabled recipient' do
+    parent = people(:jane)
+    children = [people(:child_patient), people(:child_user_person)]
+    enable_missed_dose_notifications(parent)
+    children.each { |child| prepare_managed_schedule(manager: parent, target: child, relationship_type: :parent) }
+
+    expect(ManagedMissedDoseNotificationSubjectsQuery.new(household: household).call)
+      .to match_array(children)
+    expect_missed_dose_checks_for(children)
+  end
+
+  it 'only schedules missed-dose checks for a managed adult after opt in' do
+    manager = people(:jane)
+    managed_adult = people(:bob)
+    enable_missed_dose_notifications(manager)
+    grant = prepare_managed_schedule(manager: manager, target: managed_adult, relationship_type: :family_member)
+    expect_no_missed_dose_check(managed_adult)
+
+    clear_enqueued_jobs
+    grant.update!(missed_dose_notifications_enabled: true)
+    expect(ManagedMissedDoseNotificationSubjectsQuery.new(household: household).call)
+      .to include(managed_adult)
+    expect_missed_dose_check(managed_adult)
   end
 
   it 'does not enqueue exact reminders for as-needed schedules' do
@@ -137,5 +163,70 @@ RSpec.describe ScheduleDailyRemindersJob do
     expect do
       described_class.perform_now
     end.not_to have_enqueued_job(MedicationReminderJob)
+  end
+
+  def enable_missed_dose_notifications(target)
+    create(:notification_preference, person: target, dose_due_enabled: false, missed_dose_enabled: true)
+  end
+
+  def prepare_managed_schedule(manager:, target:, relationship_type:)
+    clear_medication_activity(target)
+    grant = grant_management_access(manager: manager, target: target, relationship_type: relationship_type)
+    create_daily_schedule(target)
+    grant
+  end
+
+  def create_daily_schedule(target)
+    create(:schedule, person: target, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
+                      frequency: 'Once daily', schedule_type: :daily, schedule_config: { 'times' => ['07:15'] },
+                      start_date: Date.new(2026, 5, 11), end_date: Date.new(2026, 6, 12))
+  end
+
+  def expect_missed_dose_checks_for(children)
+    expect do
+      described_class.perform_now
+    end.to have_enqueued_job(MissedDoseNotificationJob)
+      .with(household.id, children.first.id, '2026-05-12', '07:15')
+      .and(
+        have_enqueued_job(MissedDoseNotificationJob)
+          .with(household.id, children.second.id, '2026-05-12', '07:15')
+      )
+  end
+
+  def expect_no_missed_dose_check(target)
+    expect do
+      described_class.perform_now
+    end.not_to have_enqueued_job(MissedDoseNotificationJob)
+      .with(household.id, target.id, '2026-05-12', '07:15')
+  end
+
+  def expect_missed_dose_check(target)
+    expect do
+      described_class.perform_now
+    end.to have_enqueued_job(MissedDoseNotificationJob)
+      .with(household.id, target.id, '2026-05-12', '07:15')
+  end
+
+  def grant_management_access(manager:, target:, relationship_type:)
+    membership = household.household_memberships.find_or_create_by!(account: manager.account) do |record|
+      record.person = manager
+      record.role = :member
+      record.status = :active
+    end
+    PersonAccessGrant.create!(
+      household: household,
+      household_membership: membership,
+      person: target,
+      access_level: :manage,
+      relationship_type: relationship_type,
+      granted_by_membership: membership
+    )
+  end
+
+  def clear_medication_activity(target)
+    MedicationTake.where(schedule_id: target.schedules.select(:id)).delete_all
+    MedicationTake.where(person_medication_id: target.person_medications.select(:id)).delete_all
+    target.schedules.destroy_all
+    target.person_medications.destroy_all
   end
 end

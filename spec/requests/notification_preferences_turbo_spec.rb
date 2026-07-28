@@ -47,6 +47,28 @@ RSpec.describe 'Notification preferences turbo streams' do
       expect(user.person.notification_preference.reload).to be_enabled
     end
 
+    it 'updates optional missed-dose notifications for managed adults' do
+      household = user.person.household
+      membership = household.household_memberships.active.find_by!(account: user.person.account)
+      selected_grant = membership.person_access_grants.active.manage.find_by!(person: people(:jane))
+      unselected_grant = membership.person_access_grants.active.manage.find_by!(person: people(:bob))
+      selected_grant.update!(missed_dose_notifications_enabled: false)
+      unselected_grant.update!(missed_dose_notifications_enabled: true)
+
+      patch notification_preference_path,
+            params: {
+              notification_preference: {
+                enabled: '1',
+                missed_dose_enabled: '1',
+                managed_person_ids: ['', selected_grant.person_id.to_s]
+              }
+            }
+
+      expect(response).to redirect_to(profile_path)
+      expect(selected_grant.reload).to be_missed_dose_notifications_enabled
+      expect(unselected_grant.reload).not_to be_missed_dose_notifications_enabled
+    end
+
     it 'returns turbo stream validation feedback when the preference cannot be saved' do
       account = user.person.account
       preference = user.person.notification_preference || user.person.create_notification_preference!
