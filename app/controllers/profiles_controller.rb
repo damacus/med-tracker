@@ -89,7 +89,11 @@ class ProfilesController < ApplicationController
   end
 
   def experiment_preferences
-    preferences = params.fetch(:account, {}).permit(:wizard_variant, :dashboard_variant)
+    preferences = params.fetch(:account, {}).permit(
+      :wizard_variant,
+      :dashboard_variant,
+      :medication_launcher_variant
+    )
 
     {}.tap do |attributes|
       if preferences.key?(:wizard_variant)
@@ -103,6 +107,13 @@ class ProfilesController < ApplicationController
         attributes[:dashboard_variant] = normalized_variant(
           preferences[:dashboard_variant],
           allowed: Account::DASHBOARD_VARIANTS,
+          fallback: 'current'
+        )
+      end
+      if preferences.key?(:medication_launcher_variant)
+        attributes[:medication_launcher_variant] = normalized_variant(
+          preferences[:medication_launcher_variant],
+          allowed: Account::MEDICATION_LAUNCHER_VARIANTS,
           fallback: 'current'
         )
       end

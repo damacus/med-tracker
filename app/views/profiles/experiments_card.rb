@@ -44,6 +44,18 @@ module Views
           description_key: 'profiles.experiments.dashboard.options.calm_focus.description'
         }
       ].freeze
+      MEDICATION_LAUNCHER_OPTIONS = [
+        {
+          value: 'current',
+          label: 'Current launcher',
+          description: 'Keep the existing Add Medication choices.'
+        },
+        {
+          value: 'context_aware',
+          label: 'Context-aware',
+          description: 'Carry known person and medication details into the unified workflow.'
+        }
+      ].freeze
 
       attr_reader :account
 
@@ -67,6 +79,7 @@ module Views
           render CardContent.new(class: 'px-5 py-6 sm:px-6') do
             render_wizard_section
             render_dashboard_section
+            render_medication_launcher_section
           end
         end
       end
@@ -105,6 +118,25 @@ module Views
             div(class: 'grid gap-3 sm:grid-cols-2') do
               DASHBOARD_OPTIONS.each do |option|
                 render_option(option, field: :dashboard_variant)
+              end
+            end
+          end
+        end
+      end
+
+      def render_medication_launcher_section
+        div(class: 'mt-8 space-y-4 border-t border-border/60 pt-8') do
+          p(class: 'text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-on-surface-variant') do
+            'Add Medication launcher'
+          end
+          form_with(
+            url: experiments_profile_path,
+            method: :patch,
+            data: { controller: 'auto-submit' }
+          ) do
+            div(class: 'grid gap-3 sm:grid-cols-2') do
+              MEDICATION_LAUNCHER_OPTIONS.each do |option|
+                render_option(option, field: :medication_launcher_variant)
               end
             end
           end

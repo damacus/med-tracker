@@ -305,6 +305,26 @@ RSpec.describe 'Profiles' do
       expect(response).to redirect_to(profile_path)
       expect(account.reload.dashboard_variant).to eq('current')
     end
+
+    it 'updates the medication launcher without changing other experiments' do
+      account.update!(wizard_variant: 'slideover', dashboard_variant: 'calm_focus')
+
+      patch experiments_profile_path, params: { account: { medication_launcher_variant: 'context_aware' } }
+
+      expect(response).to redirect_to(profile_path)
+      expect(account.reload.medication_launcher_variant).to eq('context_aware')
+      expect(account.wizard_variant).to eq('slideover')
+      expect(account.dashboard_variant).to eq('calm_focus')
+    end
+
+    it 'falls back to the current launcher for invalid launcher variants' do
+      account.update!(medication_launcher_variant: 'context_aware')
+
+      patch experiments_profile_path, params: { account: { medication_launcher_variant: 'invalid' } }
+
+      expect(response).to redirect_to(profile_path)
+      expect(account.reload.medication_launcher_variant).to eq('current')
+    end
   end
 
   describe 'DELETE /profile/avatar' do

@@ -16,6 +16,13 @@ RSpec.describe Components::MedicationWorkflow::PersonSelection, type: :component
     expect(choice.text).to include('Alex Patient')
   end
 
+  it 'renders safely without person choices' do
+    rendered = render_inline(described_class.new(people: []))
+
+    expect(rendered.text).to include('Who is this medication for?')
+    expect(rendered.css('a')).to be_empty
+  end
+
   def include_touch_target_class
     satisfy { |classes| classes.include?('min-h-11') || classes.include?('min-h-[44px]') }
   end

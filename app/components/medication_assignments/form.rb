@@ -298,7 +298,7 @@ module Components
           ) { t('person_medications.form.cancel') }
         else
           m3_link(
-            href: person_path(person),
+            href: cancel_path,
             variant: :text,
             size: :xl,
             class: 'w-full justify-center sm:w-auto'
