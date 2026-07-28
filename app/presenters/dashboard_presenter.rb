@@ -51,7 +51,7 @@ class DashboardPresenter
   def active_schedules
     @active_schedules ||= active_schedule_scope
                           .where(person_id: people.map(&:id))
-                          .includes(person: :user, medication: [])
+                          .includes(person: :user, medication: %i[schedules person_medications])
                           .to_a
   end
 
