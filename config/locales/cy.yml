@@ -1072,7 +1072,9 @@ cy:
       decrease: Gostyngiad
       no_change: Dim newid
       dosage_not_set: Dos heb ei osod
-      success: Diweddarwyd y cyflenwad sy'n weddill ar gyfer %{count} meddyginiaeth.
+      success:
+        one: Diweddarwyd y cyflenwad sy'n weddill ar gyfer %{count} meddyginiaeth.
+        other: Diweddarwyd y cyflenwad sy'n weddill ar gyfer %{count} meddyginiaethau.
   passwords:
     reset_sent: Anfonwyd cyfarwyddiadau ailosod cyfrinair (os oes defnyddiwr gyda'r
       cyfeiriad e-bost hwnnw).

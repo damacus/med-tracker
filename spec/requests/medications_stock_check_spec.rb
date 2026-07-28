@@ -45,6 +45,18 @@ RSpec.describe 'Medications stock check' do
   end
 
   describe 'PATCH /medications/bulk_adjust_inventory' do
+    it 'reports a singular stock amendment' do
+      patch bulk_adjust_inventory_medications_path, params: {
+        stock_check: {
+          reason: 'House stock check',
+          adjustments: {paracetamol.id.to_s => '74'}
+        }
+      }
+
+      expect(response).to redirect_to(stock_check_medications_path)
+      expect(flash[:notice]).to eq('Updated the remaining supply for 1 medicine.')
+    end
+
     it 'applies every selected amendment and records the shared reason' do
       expect do
         patch bulk_adjust_inventory_medications_path, params: {

@@ -896,7 +896,9 @@ en:
       decrease: Decrease
       no_change: No change
       dosage_not_set: Dosage not set
-      success: Updated the remaining supply for %{count} medicines.
+      success:
+        one: Updated the remaining supply for %{count} medicine.
+        other: Updated the remaining supply for %{count} medicines.
     ordered: Refill marked as ordered
     received: Refill marked as received
     refill_button: Refill

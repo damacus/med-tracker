@@ -1076,7 +1076,9 @@ ga:
       decrease: Laghdú
       no_change: Gan athrú
       dosage_not_set: Dáileog gan socrú
-      success: Nuashonraíodh an soláthar atá fágtha do %{count} leigheas.
+      success:
+        one: Nuashonraíodh an soláthar atá fágtha do %{count} leigheas.
+        other: Nuashonraíodh an soláthar atá fágtha do %{count} leigheasanna.
   passwords:
     reset_sent: Seoladh treoracha athshocraithe focal faire (más ann do úsáideoir
       leis an seoladh ríomhphoist sin).

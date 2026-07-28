@@ -1077,7 +1077,9 @@ es:
       decrease: Disminución
       no_change: Sin cambios
       dosage_not_set: Dosis no definida
-      success: Se actualizó el suministro restante de %{count} medicamentos.
+      success:
+        one: Se actualizó el suministro restante de %{count} medicamento.
+        other: Se actualizó el suministro restante de %{count} medicamentos.
   passwords:
     reset_sent: Instrucciones de restablecimiento de contraseña enviadas (si existe
       un usuario con esa dirección de correo electrónico).
