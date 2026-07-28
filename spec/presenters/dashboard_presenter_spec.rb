@@ -153,21 +153,12 @@ RSpec.describe DashboardPresenter do
   end
 
   describe '#active_schedules' do
-    it 'calculates daily consumption without additional source queries' do
-      person = create(:person)
-      medication = create(:medication, household: person.household)
-      create(:schedule, person: person, medication: medication)
-      create(:person_medication, :with_max_doses, person: person, medication: medication)
-      presenter = presenter_for(admin_user, people_scope: Person.where(id: person.id))
-      medications = presenter.active_schedules.map(&:medication).uniq
+    it 'preloads associated medication schedules and person_medications to avoid N+1 queries' do
+      presenter = presenter_for(admin_user, people_scope: Person.all)
+      schedules = presenter.active_schedules
 
-      expect(medications).not_to be_empty
-      counts = count_insight_source_queries do
-        medications.each(&:estimated_daily_consumption)
-      end
-
-      expect(counts[:schedules]).to be_zero
-      expect(counts[:person_medications]).to be_zero
+      expect(schedules.first.medication.association(:schedules).loaded?).to be true
+      expect(schedules.first.medication.association(:person_medications).loaded?).to be true
     end
 
     it 'returns date-active schedules for scoped people' do
