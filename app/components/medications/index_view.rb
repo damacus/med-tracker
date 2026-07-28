@@ -63,6 +63,17 @@ module Components
             div(
               class: 'medications-index-actions flex w-full flex-wrap gap-3 md:w-auto md:flex-nowrap md:justify-end'
             ) do
+              if can_stock_check?
+                m3_link(
+                  href: stock_check_medications_path(location_id: current_location_id),
+                  variant: :outlined,
+                  size: :lg,
+                  class: 'max-w-full justify-center rounded-shape-full font-bold text-sm bg-card border-border'
+                ) do
+                  render Icons::Pencil.new(size: 20, class: 'mr-2 text-primary')
+                  span { t('medications.stock_check.link') }
+                end
+              end
               render Components::Medications::InventoryScanModal.new if can_refill_medication?
               if can_create_medication?
                 m3_link(
@@ -139,6 +150,11 @@ module Components
 
       def can_refill_medication?
         view_context.policy(Medication).refill?
+      end
+
+      def can_stock_check?
+        medication_policy = view_context.policy(Medication)
+        medication_policy.respond_to?(:stock_check?) && medication_policy.stock_check?
       end
 
       def updatable_medication?(medication)
