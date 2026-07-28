@@ -27,26 +27,109 @@ RSpec.describe 'API v1 idempotency concurrency' do
   end
 
   it 'serializes concurrent People creates before mutation side effects' do
+    responses, person = perform_concurrent_people_creates
+
+    expect_serialized_create(responses, person)
+  end
+
+  it 'serializes replacement when concurrent callers encounter an expired response' do
+    expired_record = create_expired_idempotency_record
+
+    responses, person = perform_concurrent_people_creates
+    replacement = ApiIdempotencyKey.find_by!(
+      household_id: records.fetch(:household_id),
+      key: records.fetch(:key)
+    )
+
+    expect_serialized_create(responses, person)
+    expect(replacement.id).not_to eq(expired_record.id)
+    expect(replacement.response_headers.fetch('ETag')).to eq(responses.first.fetch(:etag))
+  end
+
+  def perform_concurrent_people_creates
     pause_first_assignment
+    first, second = start_concurrent_requests
+    wait_for_competing_request(second)
+    release_assignment << true
+    [collect_responses(first, second), created_person]
+  end
+
+  def start_concurrent_requests
     sessions = Array.new(2) { ActionDispatch::Integration::Session.new(Rails.application) }
     first = start_request(sessions.first, records.fetch(:tokens).first)
     wait_for(assignment_entered, 'first People assignment')
     second = start_request(sessions.second, records.fetch(:tokens).second)
+    [first, second]
+  end
+
+  def wait_for_competing_request(second)
     second_pid = wait_for(second.fetch(:pid), 'second request database session')
     wait_for_advisory_wait(second_pid)
+  end
 
-    release_assignment << true
-    responses = [join_worker(first.fetch(:worker)), join_worker(second.fetch(:worker))]
-    person = Person.find_by!(household_id: records.fetch(:household_id), name: records.fetch(:name))
+  def collect_responses(first, second)
+    [join_worker(first.fetch(:worker)), join_worker(second.fetch(:worker))]
+  end
 
+  def created_person
+    Person.find_by!(household_id: records.fetch(:household_id), name: records.fetch(:name))
+  end
+
+  def expect_serialized_create(responses, person)
+    expect_response_parity(responses)
+    expect_person_side_effects(person)
+    expect_audit_and_idempotency(person)
+  end
+
+  def expect_response_parity(responses)
+    expect_status_and_body_parity(responses)
+    expect_etag_and_replay_parity(responses)
+  end
+
+  def expect_status_and_body_parity(responses)
     expect(responses.map { it.fetch(:status) }).to eq([201, 201])
     expect(responses.map { it.fetch(:body) }.uniq.one?).to be true
+  end
+
+  def expect_etag_and_replay_parity(responses)
+    expect(responses.map { it.fetch(:etag) }.uniq.one?).to be true
+    expect(responses.first.fetch(:etag)).to be_present
     expect(responses.count { it.fetch(:replayed) }).to eq(1)
+  end
+
+  def expect_person_side_effects(person)
+    expect_single_person
+    expect_delegation_side_effects(person)
+  end
+
+  def expect_single_person
     expect(Person.where(household_id: records.fetch(:household_id), name: records.fetch(:name)).count).to eq(1)
+  end
+
+  def expect_delegation_side_effects(person)
     expect(CarerRelationship.where(patient: person).count).to eq(1)
     expect(PersonAccessGrant.where(person: person, revoked_at: nil).count).to eq(1)
+  end
+
+  def expect_audit_and_idempotency(person)
     expect(PaperTrail::Version.where(item_type: 'Person', item_id: person.id, event: 'create').count).to eq(1)
     expect(ApiIdempotencyKey.where(household_id: records.fetch(:household_id), key: records.fetch(:key)).count).to eq(1)
+  end
+
+  def create_expired_idempotency_record
+    ApiIdempotencyKey.create!(
+      household_id: records.fetch(:household_id),
+      account_id: records.fetch(:account_id),
+      api_session_id: records.fetch(:session_ids).first,
+      key: records.fetch(:key),
+      request_method: 'POST',
+      request_path: api_v1_household_people_path(records.fetch(:household_id)),
+      request_digest: 'expired-response',
+      response_status: 201,
+      response_body: { 'expired' => true },
+      response_headers: {},
+      expires_at: 1.minute.ago
+    )
   end
 
   def pause_first_assignment
@@ -103,6 +186,7 @@ RSpec.describe 'API v1 idempotency concurrency' do
     {
       status: request_response.status,
       body: request_response.parsed_body,
+      etag: request_response.headers['ETag'],
       replayed: request_response.headers['Idempotency-Replayed'] == 'true'
     }
   end

@@ -4,8 +4,9 @@ module Api
   class IdempotencyStore
     EXPIRY = 24.hours
     LOCK_NAMESPACE = 'med_tracker.api_idempotency.v1'
+    REPLAYABLE_RESPONSE_HEADERS = %w[ETag].freeze
 
-    Result = Data.define(:record, :replayed, :conflict)
+    Result = Data.define(:record, :replayed, :conflict, :response_headers)
 
     def initialize(request:, credential:, household:)
       @request = request
@@ -23,6 +24,7 @@ module Api
       result = nil
       ApiIdempotencyKey.transaction(requires_new: true) do
         acquire_reservation
+        discard_expired_record
         result = lookup
         next if result.record
 
@@ -34,9 +36,15 @@ module Api
 
     def lookup
       record = ApiIdempotencyKey.find_by(household: household, key: key)
-      return Result.new(record: nil, replayed: false, conflict: false) unless record
+      return Result.new(record: nil, replayed: false, conflict: false, response_headers: {}) unless record
 
-      Result.new(record: record, replayed: same_request?(record), conflict: !same_request?(record))
+      replayed = same_request?(record)
+      Result.new(
+        record: record,
+        replayed: replayed,
+        conflict: !replayed,
+        response_headers: replayed ? replayable_response_headers(record.response_headers) : {}
+      )
     end
 
     def store!(response)
@@ -61,6 +69,10 @@ module Api
       Digest::SHA256.digest(
         [LOCK_NAMESPACE, household.id, key].join("\0")
       ).unpack1('q>')
+    end
+
+    def discard_expired_record
+      ApiIdempotencyKey.where(household: household, key: key, expires_at: ..Time.current).delete_all
     end
 
     def persist_response!(response)
@@ -97,8 +109,13 @@ module Api
     def response_attributes(response)
       {
         response_status: response.status,
-        response_body: response_body(response)
+        response_body: response_body(response),
+        response_headers: replayable_response_headers(response.headers)
       }
+    end
+
+    def replayable_response_headers(headers)
+      REPLAYABLE_RESPONSE_HEADERS.index_with { |name| headers[name] }.compact
     end
 
     def key
