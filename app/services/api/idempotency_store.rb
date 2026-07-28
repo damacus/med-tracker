@@ -3,6 +3,7 @@
 module Api
   class IdempotencyStore
     EXPIRY = 24.hours
+    LOCK_NAMESPACE = 'med_tracker.api_idempotency.v1'
 
     Result = Data.define(:record, :replayed, :conflict)
 
@@ -16,6 +17,21 @@ module Api
       key.present? && mutating_request? && household.present? && credential.present?
     end
 
+    def with_reservation(response:)
+      return yield unless active?
+
+      result = nil
+      ApiIdempotencyKey.transaction(requires_new: true) do
+        acquire_reservation
+        result = lookup
+        next if result.record
+
+        yield
+        persist_response!(response)
+      end
+      result
+    end
+
     def lookup
       record = ApiIdempotencyKey.find_by(household: household, key: key)
       return Result.new(record: nil, replayed: false, conflict: false) unless record
@@ -27,13 +43,32 @@ module Api
       return unless active? && response.status < 500
 
       ApiIdempotencyKey.create!(idempotency_attributes(response))
-    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
-      nil
     end
 
     private
 
     attr_reader :request, :credential, :household
+
+    def acquire_reservation
+      ApiIdempotencyKey.connection.execute(
+        ActiveRecord::Base.sanitize_sql_array(
+          ['SELECT pg_advisory_xact_lock(?)', reservation_id]
+        )
+      )
+    end
+
+    def reservation_id
+      Digest::SHA256.digest(
+        [LOCK_NAMESPACE, household.id, key].join("\0")
+      ).unpack1('q>')
+    end
+
+    def persist_response!(response)
+      raise ActiveRecord::Rollback if response.status >= 500
+      return if response.status == 409
+
+      store!(response)
+    end
 
     def idempotency_attributes(response)
       credential_attributes.merge(request_attributes).merge(response_attributes(response)).merge(
@@ -75,7 +110,8 @@ module Api
     end
 
     def same_request?(record)
-      record.request_method == request.request_method &&
+      record.account_id == credential.account_id &&
+        record.request_method == request.request_method &&
         record.request_path == request.path &&
         record.request_digest == request_digest
     end

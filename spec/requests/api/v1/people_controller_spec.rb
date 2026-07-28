@@ -100,6 +100,57 @@ RSpec.describe Api::V1::PeopleController do
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.parsed_body.dig('error', 'errors', 'base')).to include('Delegated access is invalid')
     end
+
+    it 'rolls back a created dependent when idempotency response storage fails' do
+      login_data = api_login(user)
+      household_id = login_data.dig('household', 'id')
+      name = "Unstored API Dependent #{SecureRandom.hex(4)}"
+      invalid_key = ApiIdempotencyKey.new
+      invalid_key.errors.add(:base, 'Response storage failed')
+      allow(ApiIdempotencyKey).to receive(:create!).and_raise(ActiveRecord::RecordInvalid.new(invalid_key))
+
+      expect do
+        post api_v1_household_people_path(household_id),
+             params: {
+               person: {
+                 name: name,
+                 date_of_birth: 8.years.ago.to_date,
+                 person_type: 'minor'
+               }
+             },
+             headers: api_auth_headers(login_data.fetch('access_token'))
+                      .merge('Idempotency-Key' => SecureRandom.uuid),
+             as: :json
+      end.not_to change(Person, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(Person.exists?(name: name)).to be false
+    end
+
+    it 'stores and replays a deterministic validation failure' do
+      login_data = api_login(user)
+      household_id = login_data.dig('household', 'id')
+      headers = api_auth_headers(login_data.fetch('access_token'))
+                .merge('Idempotency-Key' => SecureRandom.uuid)
+      payload = {
+        person: {
+          name: '',
+          date_of_birth: 8.years.ago.to_date,
+          person_type: 'adult'
+        }
+      }
+
+      post api_v1_household_people_path(household_id), params: payload, headers: headers, as: :json
+      first_body = response.parsed_body
+
+      expect do
+        post api_v1_household_people_path(household_id), params: payload, headers: headers, as: :json
+      end.not_to change(Person, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body).to eq(first_body)
+      expect(response.headers['Idempotency-Replayed']).to eq('true')
+    end
   end
 
   describe 'GET /api/v1/households/:household_id/people household grants' do

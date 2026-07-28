@@ -8,6 +8,9 @@ RSpec.describe 'API v1 medication-take sync concurrency' do
 
   fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :dosages, :schedules
 
+  let(:worker_state) do
+    { workers: [], first_lock_released: Queue.new, release_first_request: Queue.new }
+  end
   let(:record_state) { { loaded: false } }
   let(:records) do
     PaperTrail.request(enabled: false) { concurrency_records }.tap { record_state[:loaded] = true }
@@ -24,6 +27,8 @@ RSpec.describe 'API v1 medication-take sync concurrency' do
   end
 
   after do
+    release_first_request << true
+    terminate_workers
     cleanup_records(records) if record_state[:loaded]
   ensure
     version_ledger_trigger(:enable)
@@ -54,19 +59,20 @@ RSpec.describe 'API v1 medication-take sync concurrency' do
   end
 
   it 'converges concurrent batch retries on one take and one set of side effects' do
-    ready = Queue.new
-    release = Queue.new
     gate = Mutex.new
-    counter = { calls: 0 }
-    pause_initial_dose_calls(ready, release, gate, counter)
+    state = { paused: false }
+    pause_first_lock_after_release(gate, state)
     initial_supply = medication.current_supply
 
     sessions = Array.new(2) { ActionDispatch::Integration::Session.new(Rails.application) }
-    workers = sessions.map { |session| start_request(session) }
+    first = start_request(sessions.first)
+    wait_for(first_lock_released, 'first request to release the household lock')
+    second = start_request(sessions.second)
+    second_pid = wait_for(second.fetch(:pid), 'second request database session')
+    wait_for_transaction_lock(second_pid)
 
-    2.times { Timeout.timeout(10) { ready.pop } }
-    2.times { release << true }
-    responses = workers.map { |worker| join_worker(worker) }
+    release_first_request << true
+    responses = [join_worker(first.fetch(:worker)), join_worker(second.fetch(:worker))]
 
     expect(responses.map { |result| result.fetch(:status) }).to eq([201, 201])
     results = responses.map { |result| result.dig(:body, 'data', 'results', 0) }
@@ -79,31 +85,47 @@ RSpec.describe 'API v1 medication-take sync concurrency' do
     expect(ApiChangeEvent.where(record_type: 'MedicationTake', record_id: take.id).count).to eq(1)
   end
 
-  def pause_initial_dose_calls(ready, release, gate, counter)
-    allow(MedicationAdministration::RecordDose).to receive(:new).and_wrap_original do |original, *arguments|
-      pause_dose_service(original.call(*arguments), ready, release, gate, counter)
+  def pause_first_lock_after_release(gate, state)
+    lock = Households::LifecycleCutoffLock
+    allow(lock).to receive(:with).and_wrap_original do |original, *arguments, **keywords, &operation|
+      result = original.call(*arguments, **keywords, &operation)
+      should_pause = gate.synchronize do
+        next false if state[:paused]
+
+        state[:paused] = true
+      end
+      if should_pause
+        first_lock_released << true
+        wait_for(release_first_request, 'first request transaction release')
+      end
+      result
     end
   end
 
-  def pause_dose_service(service, ready, release, gate, counter)
-    original_call = service.method(:call)
-    allow(service).to receive(:call) do |**keywords|
-      pause_dose_call(ready, release) if initial_dose_call?(gate, counter)
-      original_call.call(**keywords)
+  def wait_for_transaction_lock(pid)
+    Timeout.timeout(10) do
+      loop do
+        return if transaction_lock_waiting?(pid)
+
+        Thread.pass
+      end
     end
-    service
+  rescue Timeout::Error
+    raise Timeout::Error, "timed out waiting for database session #{pid} to block on a transaction"
   end
 
-  def initial_dose_call?(gate, counter)
-    gate.synchronize do
-      counter[:calls] += 1
-      counter[:calls] <= 2
-    end
+  def transaction_lock_waiting?(pid)
+    ActiveRecord::Base.connection.select_value(
+      ActiveRecord::Base.sanitize_sql_array(
+        ["SELECT EXISTS(SELECT 1 FROM pg_locks WHERE pid = ? AND locktype = 'transactionid' AND NOT granted)", pid]
+      )
+    )
   end
 
-  def pause_dose_call(ready, release)
-    ready << true
-    Timeout.timeout(10) { release.pop }
+  def wait_for(queue, description)
+    Timeout.timeout(10) { queue.pop }
+  rescue Timeout::Error
+    raise Timeout::Error, "timed out waiting for #{description}"
   end
 
   def concurrency_records
@@ -174,19 +196,25 @@ RSpec.describe 'API v1 medication-take sync concurrency' do
   def client_uuid = records.fetch(:client_uuid)
 
   def start_request(session)
-    Thread.new do
-      ActiveRecord::Base.connection_pool.with_connection do
-        session.post(
-          api_v1_household_sync_batches_path(household_id),
-          params: batch_payload,
-          headers: headers,
-          as: :json
-        )
-        { status: session.response.status, body: session.response.parsed_body }
-      end
-    rescue StandardError => e
-      e
+    pid = Queue.new
+    worker = Thread.new { perform_request(session, pid) }
+    workers << worker
+    { worker: worker, pid: pid }
+  end
+
+  def perform_request(session, pid)
+    ActiveRecord::Base.connection_pool.with_connection do
+      pid << ActiveRecord::Base.connection.select_value('SELECT pg_backend_pid()').to_i
+      session.post(
+        api_v1_household_sync_batches_path(household_id),
+        params: batch_payload,
+        headers: headers,
+        as: :json
+      )
+      { status: session.response.status, body: session.response.parsed_body }
     end
+  rescue StandardError => e
+    e
   end
 
   def join_worker(worker)
@@ -194,6 +222,17 @@ RSpec.describe 'API v1 medication-take sync concurrency' do
 
     worker.value.tap { raise it if it.is_a?(StandardError) }
   end
+
+  def terminate_workers
+    workers.each do |worker|
+      worker.kill if worker.alive?
+      worker.join(1)
+    end
+  end
+
+  def workers = worker_state.fetch(:workers)
+  def first_lock_released = worker_state.fetch(:first_lock_released)
+  def release_first_request = worker_state.fetch(:release_first_request)
 
   def batch_payload
     { batch: { operations: [batch_operation] } }
