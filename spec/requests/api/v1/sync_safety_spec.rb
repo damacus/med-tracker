@@ -63,6 +63,73 @@ RSpec.describe 'API v1 sync safety primitives' do
     expect(response.parsed_body.dig('error', 'code')).to eq('idempotency_key_reused')
   end
 
+  it 'rejects replay to a different authenticated account in the same household' do
+    idempotency_headers = headers.merge('Idempotency-Key' => SecureRandom.uuid)
+    payload = {
+      medication: {
+        name: 'API Account Scoped Result',
+        location_id: locations(:home).id,
+        dose_amount: 5,
+        dose_unit: 'ml'
+      }
+    }
+    post api_v1_household_medications_path(household_id),
+         params: payload,
+         headers: idempotency_headers,
+         as: :json
+    first_body = response.parsed_body
+    other_token = issue_other_account_token(Household.find(household_id))
+
+    post api_v1_household_medications_path(household_id),
+         params: payload,
+         headers: api_auth_headers(other_token).merge(
+           'Idempotency-Key' => idempotency_headers.fetch('Idempotency-Key')
+         ),
+         as: :json
+
+    expect(response).to have_http_status(:conflict)
+    expect(response.parsed_body.dig('error', 'code')).to eq('idempotency_key_reused')
+    expect(response.parsed_body).not_to eq(first_body)
+  end
+
+  it 'allows the same idempotency key to be used independently in different households' do
+    key = SecureRandom.uuid
+    first_household = Household.find(household_id)
+    second_household = Household.create!(
+      name: 'Other Idempotency Household',
+      slug: "other-idempotency-household-#{SecureRandom.hex(4)}"
+    )
+    second_token = issue_other_account_token(second_household)
+    payload = {
+      person: {
+        name: "Household Scoped Person #{SecureRandom.hex(4)}",
+        date_of_birth: 30.years.ago.to_date,
+        person_type: 'adult'
+      }
+    }
+
+    post api_v1_household_people_path(first_household),
+         params: payload,
+         headers: headers.merge('Idempotency-Key' => key),
+         as: :json
+    expect(response).to have_http_status(:created)
+
+    post api_v1_household_people_path(second_household),
+         params: payload,
+         headers: api_auth_headers(second_token).merge('Idempotency-Key' => key),
+         as: :json
+
+    expect(response).to have_http_status(:created)
+    expect(Person.where(name: payload.dig(:person, :name)).pluck(:household_id)).to contain_exactly(
+      first_household.id,
+      second_household.id
+    )
+    expect(ApiIdempotencyKey.where(key: key).pluck(:household_id)).to contain_exactly(
+      first_household.id,
+      second_household.id
+    )
+  end
+
   it 'finds resources by portable id without leaking cross-household records' do
     medication = medications(:paracetamol)
     other_household = Household.create!(name: 'Other Portable Household', slug: 'other-portable-household')
@@ -132,5 +199,49 @@ RSpec.describe 'API v1 sync safety primitives' do
       action: 'update'
     )
     expect(event.metadata.to_json).not_to include('Sensitive API Medicine')
+  end
+
+  def issue_other_account_token(household)
+    account = create_other_account
+    person = create_other_person(account, household)
+    create_other_user(person, account)
+    membership = create_other_membership(account, person, household)
+    ApiSession.issue_for(account: account, household_membership: membership).second
+  end
+
+  def create_other_account
+    Account.create!(
+      email: "api-idempotency-other-#{SecureRandom.hex(4)}@example.test",
+      status: :verified
+    )
+  end
+
+  def create_other_person(account, household)
+    Person.create!(
+      household: household,
+      account: account,
+      name: 'API Idempotency Other Owner',
+      date_of_birth: 30.years.ago.to_date,
+      person_type: :adult,
+      has_capacity: true
+    )
+  end
+
+  def create_other_user(person, account)
+    User.create!(
+      person: person,
+      email_address: account.email,
+      password: 'password',
+      active: true
+    )
+  end
+
+  def create_other_membership(account, person, household)
+    household.household_memberships.create!(
+      account: account,
+      person: person,
+      role: :owner,
+      status: :active
+    )
   end
 end

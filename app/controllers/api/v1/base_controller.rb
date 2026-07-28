@@ -243,26 +243,21 @@ module Api
         Api::RecordEtag.for(record)
       end
 
-      def with_api_idempotency
+      def with_api_idempotency(&action)
         store = Api::IdempotencyStore.new(request: request, credential: current_api_session, household: current_household)
         unless store.active?
-          yield
+          action.call
           return
         end
 
-        result = store.lookup
+        result = store.with_reservation(response: response, &action)
         if result.replayed
           response.set_header('Idempotency-Replayed', 'true')
           render json: result.record.response_body, status: result.record.response_status
-          return
+        elsif result.conflict
+          render_conflict('Idempotency key has already been used for a different request',
+                          code: 'idempotency_key_reused')
         end
-        if result.conflict
-          return render_conflict('Idempotency key has already been used for a different request',
-                                 code: 'idempotency_key_reused')
-        end
-
-        yield
-        store.store!(response) unless performed? && response.status == 409
       end
     end
   end

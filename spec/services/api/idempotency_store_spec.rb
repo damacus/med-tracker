@@ -39,9 +39,32 @@ RSpec.describe Api::IdempotencyStore do
     expect(result.conflict).to be false
   end
 
+  it 'rejects replay from a different authenticated account' do
+    request = request_double(method: 'POST', key: 'account-scoped-key')
+    response = response_double(status: 201, body: '{"data":{"name":"Private result"}}')
+    described_class.new(request: request, credential: api_session, household: household).store!(response)
+    other_session = api_session_for(create_account_with_membership(household))
+
+    result = described_class.new(request: request, credential: other_session, household: household).lookup
+
+    expect(result.replayed).to be false
+    expect(result.conflict).to be true
+  end
+
+  it 'derives a stable opaque reservation id from household and key' do
+    first = store_for('private-key-material')
+    matching = store_for('private-key-material')
+    different = store_for('different-key-material')
+
+    expect(first.send(:reservation_id)).to be_a(Integer)
+    expect(first.send(:reservation_id)).to eq(matching.send(:reservation_id))
+    expect(first.send(:reservation_id)).not_to eq(different.send(:reservation_id))
+    expect(first.send(:reservation_id).to_s).not_to include('private-key-material')
+  end
+
   it 'stores non-PHI response metadata and normalises invalid JSON response bodies' do
     request = request_double(method: 'POST', key: 'store-key')
-    response = instance_double(ActionDispatch::Response, status: 201, body: 'not-json')
+    response = response_double(status: 201, body: 'not-json')
 
     expect do
       described_class.new(request: request, credential: api_session, household: household).store!(response)
@@ -64,7 +87,7 @@ RSpec.describe Api::IdempotencyStore do
       name: 'Idempotency app token'
     ).first
     request = request_double(method: 'PATCH', key: 'app-token-key')
-    response = instance_double(ActionDispatch::Response, status: 200, body: '{"ok":true}')
+    response = response_double(status: 200, body: '{"ok":true}')
 
     described_class.new(request: request, credential: app_token, household: household).store!(response)
 
@@ -75,7 +98,7 @@ RSpec.describe Api::IdempotencyStore do
 
   it 'does not store inactive or failed responses' do
     inactive_request = request_double(method: 'GET', key: 'inactive-key')
-    failed_response = instance_double(ActionDispatch::Response, status: 500, body: '{}')
+    failed_response = response_double(status: 500, body: '{}')
 
     expect do
       described_class.new(
@@ -88,14 +111,52 @@ RSpec.describe Api::IdempotencyStore do
     end.not_to change(ApiIdempotencyKey, :count)
   end
 
-  it 'ignores duplicate stores for the same key' do
+  it 'raises when a response cannot be stored uniquely' do
     request = request_double(method: 'POST', key: 'duplicate-key')
-    response = instance_double(ActionDispatch::Response, status: 201, body: '{"ok":true}')
+    response = response_double(status: 201, body: '{"ok":true}')
     store = described_class.new(request: request, credential: api_session, household: household)
+    store.store!(response)
 
-    expect do
-      2.times { store.store!(response) }
-    end.to change(ApiIdempotencyKey, :count).by(1)
+    expect { store.store!(response) }.to raise_error(ActiveRecord::RecordInvalid)
+  end
+
+  it 'rolls back a rendered server error and leaves the key retryable' do
+    request = request_double(method: 'POST', key: 'server-error-key')
+    store = described_class.new(request: request, credential: api_session, household: household)
+    name = "Rolled Back Person #{SecureRandom.hex(4)}"
+
+    mutate_person(store, status: 500, name: name)
+    expect(Person.exists?(household: household, name: name)).to be false
+    expect(ApiIdempotencyKey.exists?(household: household, key: 'server-error-key')).to be false
+
+    mutate_person(store, status: 201, name: name)
+    expect(Person.exists?(household: household, name: name)).to be true
+    expect(ApiIdempotencyKey.exists?(household: household, key: 'server-error-key')).to be true
+  end
+
+  it 'rolls back a raised exception and leaves the key retryable' do
+    request = request_double(method: 'POST', key: 'exception-key')
+    store = described_class.new(request: request, credential: api_session, household: household)
+    name = "Exception Person #{SecureRandom.hex(4)}"
+
+    expect { mutate_person_then_raise(store, name) }.to raise_error('mutation failed')
+    expect(Person.exists?(household: household, name: name)).to be false
+    expect(ApiIdempotencyKey.exists?(household: household, key: 'exception-key')).to be false
+  end
+
+  it 'allows the same key to be stored independently in different households' do
+    request = request_double(method: 'POST', key: 'household-scoped-key')
+    response = response_double(status: 201, body: '{"ok":true}')
+    other_household = Household.create!(
+      name: 'Other Idempotency Store Spec',
+      slug: "other-idempotency-store-#{SecureRandom.hex(4)}"
+    )
+    other_session = api_session_for(create_account_with_membership(other_household))
+
+    described_class.new(request: request, credential: api_session, household: household).store!(response)
+    described_class.new(request: request, credential: other_session, household: other_household).store!(response)
+
+    expect(ApiIdempotencyKey.where(key: 'household-scoped-key').count).to eq(2)
   end
 
   def request_double(method:, key:)
@@ -110,6 +171,59 @@ RSpec.describe Api::IdempotencyStore do
       put?: method == 'PUT',
       delete?: method == 'DELETE'
     )
+  end
+
+  def response_double(status:, body:)
+    instance_double(ActionDispatch::Response, status: status, body: body)
+  end
+
+  def store_for(key)
+    described_class.new(
+      request: request_double(method: 'POST', key: key),
+      credential: api_session,
+      household: household
+    )
+  end
+
+  def mutate_person(store, status:, name:)
+    store.with_reservation(response: response_double(status: status, body: '{"ok":true}')) do
+      create_unowned_person(name)
+    end
+  end
+
+  def mutate_person_then_raise(store, name)
+    store.with_reservation(response: response_double(status: 201, body: '{"ok":true}')) do
+      create_unowned_person(name)
+      raise 'mutation failed'
+    end
+  end
+
+  def create_unowned_person(name)
+    Person.create!(
+      household: household,
+      name: name,
+      date_of_birth: 30.years.ago.to_date,
+      person_type: :adult,
+      has_capacity: true
+    )
+  end
+
+  def create_account_with_membership(target_household)
+    other_account = Account.create!(
+      email: "idempotency-other-#{SecureRandom.hex(4)}@example.test",
+      status: :verified
+    )
+    other_person = create_person_for(other_account, target_household)
+    target_household.household_memberships.create!(
+      account: other_account,
+      person: other_person,
+      role: :owner,
+      status: :active
+    )
+  end
+
+  def api_session_for(target_membership)
+    ApiSession.issue_for(account: target_membership.account, household_membership: target_membership).first
   end
 
   def create_person_for(account, household)
