@@ -22,23 +22,25 @@ class MedicationReminderJob < ApplicationJob
   private
 
   def deliver_reminder(household, person_id, period, scheduled_time)
-    @person = Person.find_by(id: person_id, household: household)
-    return unless @person&.account
-
-    @household = household
-    @pref = @person.notification_preference
-    return unless @pref&.enabled && @pref.dose_due_enabled
-
-    @scheduled_time = scheduled_time
-    @period = period
+    return unless prepare_reminder(household, person_id, period, scheduled_time)
 
     med_names = MedicationReminderEligibilityQuery.new(person: @person, scheduled_time: scheduled_time).medication_names
     return if med_names.empty?
 
     event = record_reminder_event
-    return unless event
+    deliver_notification(event, med_names) if event
+  end
 
-    deliver_notification(event, med_names)
+  def prepare_reminder(household, person_id, period, scheduled_time)
+    @person = Person.find_by(id: person_id, household: household)
+    return false unless @person&.account
+
+    @household = household
+    @pref = @person.notification_preference
+    @scheduled_time = scheduled_time
+    @period = period
+
+    @pref&.enabled && @pref.dose_due_enabled
   end
 
   def record_reminder_event

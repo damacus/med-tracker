@@ -2,12 +2,26 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Audition toolchain' do
+module AuditionToolchain
+end
+
+RSpec.describe AuditionToolchain do
   let(:taskfile) do
     YAML.safe_load(Rails.root.join('Taskfile.yml').read, aliases: true, permitted_classes: [Symbol])
   end
   let(:dockerfile) { Rails.root.join('Dockerfile').read }
   let(:audition_config) { YAML.safe_load(Rails.root.join('.audition.yml').read) }
+  let(:audition_commands) do
+    {
+      'static' => 'audition . --static-only --no-baseline',
+      'dependencies' => 'audition Gemfile.lock --static-only',
+      'dynamic' => 'audition . --dynamic-only',
+      'target' => 'audition {{ .target }} --static-only --no-baseline',
+      'fix-preview' => 'audition {{ .target }} --no-baseline --fix-unsafe --dry-run',
+      'baseline' => 'audition . --static-only --write-baseline',
+      'ci' => 'audition . --static-only --format github'
+    }
+  end
 
   it 'installs the pinned scanner in the tools image outside the application bundle' do
     tools_stage = docker_stage('tools')
@@ -30,28 +44,7 @@ RSpec.describe 'Audition toolchain' do
   end
 
   it 'runs Audition through the tools image without Bundler for every scan mode' do
-    expected_commands = {
-      'static' => 'audition . --static-only --no-baseline',
-      'dependencies' => 'audition Gemfile.lock --static-only',
-      'dynamic' => 'audition . --dynamic-only',
-      'target' => 'audition {{ .target }} --static-only --no-baseline',
-      'fix-preview' => 'audition {{ .target }} --no-baseline --fix-unsafe --dry-run',
-      'baseline' => 'audition . --static-only --write-baseline',
-      'ci' => 'audition . --static-only --format github'
-    }
-
-    expected_commands.each do |name, command|
-      task = audition_task(name)
-
-      expect(task.dig('cmds', 0, 'task')).to eq('internal:run')
-      expect(task.dig('cmds', 0, 'vars')).to include(
-        'ENVIRONMENT' => 'test',
-        'SERVICE' => 'tools-test',
-        'DOCKER_RUN_ARGS' => '--build',
-        'COMMAND' => command
-      )
-      expect(command).not_to include('bundle exec')
-    end
+    audition_commands.each { |name, command| expect_audition_task(name, command) }
   end
 
   it 'keeps mutation opt-in by exposing only a dry-run fix preview' do
@@ -62,6 +55,19 @@ RSpec.describe 'Audition toolchain' do
 
   def audition_task(name)
     taskfile.dig('tasks', "audition:#{name}") || {}
+  end
+
+  def expect_audition_task(name, command)
+    task = audition_task(name)
+
+    expect(task.dig('cmds', 0, 'task')).to eq('internal:run')
+    expect(task.dig('cmds', 0, 'vars')).to include(
+      'ENVIRONMENT' => 'test',
+      'SERVICE' => 'tools-test',
+      'DOCKER_RUN_ARGS' => '--build',
+      'COMMAND' => command
+    )
+    expect(command).not_to include('bundle exec')
   end
 
   def docker_stage(name)
