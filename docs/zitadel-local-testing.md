@@ -1,135 +1,79 @@
-# Zitadel Local Testing Guide
+# Test Local MedTracker with Zitadel
 
-This guide covers setting up [Zitadel](https://zitadel.com/) as a local OIDC
-provider for testing MedTracker's OpenID Connect authentication.
+This guide connects the local MedTracker development stack to a Zitadel
+instance. The Zitadel issuer must be reachable from both your browser and the
+MedTracker container; a hosted HTTPS issuer is the simplest setup.
 
 ## Prerequisites
 
-- Docker and Docker Compose
-- MedTracker development environment running
+- A Zitadel instance and project
+- Docker, Task, and Portless installed
+- Portless trusted once with `portless trust`
 
-## Quick Start
+## Create the Zitadel application
 
-### 1. Start Zitadel
+1. In Zitadel, create or open a project.
+2. Add an application of type **Web**.
+3. Select the authorization code flow.
+4. Add
+   `https://med-tracker.localhost/auth/oidc/callback`
+   as a redirect URI.
+5. Add `https://med-tracker.localhost` as a post-logout redirect URI.
+6. Record the issuer URL, client ID, and client secret.
 
-Add a Zitadel service to your local Docker Compose or run standalone:
+## Start MedTracker
 
-```bash
-docker run -d \
-  --name zitadel \
-  -p 8080:8080 \
-  ghcr.io/zitadel/zitadel:latest start-from-init \
-  --masterkey "MasterkeyNeedsToHave32Characters" \
-  --tlsMode disabled
-```
-
-### 2. Access Zitadel Console
-
-Open `http://localhost:8080` and log in with the default admin credentials:
-
-- **Username**: `zitadel-admin@zitadel.localhost`
-- **Password**: `Password1!`
-
-### 3. Create an OIDC Application
-
-1. Navigate to **Projects** and create a new project (e.g., "MedTracker")
-2. Add a new **Application** of type **Web**
-3. Set **Authentication Method** to **Code** (authorization code flow)
-4. Add redirect URI: `http://localhost:3000/auth/oidc/callback`
-5. Add post-logout redirect URI: `http://localhost:3000`
-6. Save and note the **Client ID** and **Client Secret**
-
-### 4. Create a Test User
-
-1. Navigate to **Users**
-2. Create a new user with a verified email address
-3. Set a password for the user
-
-### 5. Configure Project Roles (Optional)
-
-MedTracker maps Zitadel project roles to its internal roles (`administrator`, `doctor`,
-`nurse`, `carer`, `parent`, `minor`). Without a role assignment, users default to `parent`.
-
-To assign a role:
-
-1. Navigate to your project → **Roles** and create a role matching one of the MedTracker
-   role names exactly (e.g., `doctor`)
-2. Go to the user → **Authorizations** and assign them that role in your project
-3. In your Zitadel application settings, enable **Assert Roles on Authentication** so
-   the `urn:zitadel:iam:org:project:roles` claim is included in the ID token
-
-The role is synced on every login, so changes in Zitadel take effect at the next sign-in.
-
-### 6. Configure MedTracker
-
-Set environment variables for MedTracker:
+Export the provider and stable Portless URLs before starting the container:
 
 ```fish
-set -x OIDC_ISSUER_URL "http://localhost:8080"
+set -x APP_URL "https://med-tracker.localhost"
+set -x OIDC_REDIRECT_URI "https://med-tracker.localhost/auth/oidc/callback"
+set -x OIDC_ISSUER_URL "https://your-zitadel-instance.example"
 set -x OIDC_CLIENT_ID "your-zitadel-client-id"
 set -x OIDC_CLIENT_SECRET "your-zitadel-client-secret"
 set -x OIDC_PROVIDER_NAME "Zitadel"
+task dev:portless
 ```
 
-### 7. Start MedTracker
+Open <https://med-tracker.localhost/login> and choose **Continue with
+Zitadel**.
 
-```bash
-task dev:up
-```
+When invitation-only registration is enabled, use an invited email address.
+OIDC does not bypass MedTracker's registration or household-access policy.
 
-### 8. Test the Flow
+## Zitadel claims
 
-1. Visit `http://localhost:3000/login`
-2. Click **Continue with Zitadel**
-3. Log in with the test user created in step 4
-4. Verify redirect to MedTracker dashboard
-5. Log out of MedTracker — you should be redirected to Zitadel's logout page
-6. If you assigned a project role, verify the user's role in MedTracker matches
+MedTracker can synchronise the recognised `doctor` or `nurse` professional
+title from Zitadel's `urn:zitadel:iam:org:project:roles` claim. Zitadel roles do
+not grant MedTracker household roles or person-level access.
 
-## Verify Discovery Endpoint
+To synchronise a professional title:
 
-Confirm Zitadel's OIDC discovery is accessible:
-
-```bash
-curl -s http://localhost:8080/.well-known/openid-configuration | jq .
-```
-
-Expected fields include:
-
-- `issuer`: `http://localhost:8080`
-- `authorization_endpoint`
-- `token_endpoint`
-- `jwks_uri`
-- `userinfo_endpoint`
+1. Create a Zitadel project role named `doctor` or `nurse`.
+2. Assign it to the user.
+3. Enable **Assert Roles on Authentication** for the application.
+4. Sign in again to refresh the claim.
 
 ## Troubleshooting
 
-### Zitadel container won't start
+### Redirect URI mismatch
 
-Ensure port 8080 is not in use:
+Confirm the provider callback exactly matches:
 
-```bash
-lsof -i :8080
-```
+`https://med-tracker.localhost/auth/oidc/callback`
 
-### "Redirect URI mismatch"
+### Provider discovery fails
 
-Verify the redirect URI in Zitadel matches exactly:
-`http://localhost:3000/auth/oidc/callback`
+The issuer must expose
+`.well-known/openid-configuration` and be reachable from the MedTracker
+container. Do not use a host-only `localhost` issuer for a containerised
+MedTracker instance.
 
-### Token validation fails
+### Portless certificate warning
 
-Zitadel uses HTTP locally (no TLS). MedTracker allows HTTP for localhost
-issuer URLs automatically.
+Run `portless trust`, then restart `task dev:portless`.
 
-## Cleanup
-
-```bash
-docker stop zitadel
-docker rm zitadel
-```
-
-## Related Documentation
+## Related documentation
 
 - [OIDC Setup Guide](oidc-setup.md)
-- [Zitadel Documentation](https://zitadel.com/docs)
+- [Zitadel documentation](https://zitadel.com/docs)

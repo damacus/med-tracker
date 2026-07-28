@@ -8,13 +8,14 @@ MedTracker stack locally using Docker.
 Before you begin, make sure you have these tools installed:
 - [Docker](https://www.docker.com/) and Docker Compose
 - [Task](https://taskfile.dev/) (the task runner for this project)
+- [Portless](https://portless.sh/) (`npm install -g portless`, then run `portless trust` once)
 - Git
 
 ---
 
 ## 1. Clone the project
 
-```bash
+```fish
 git clone https://github.com/damacus/med-tracker.git
 cd med-tracker
 ```
@@ -23,17 +24,18 @@ cd med-tracker
 
 Run this command to start the database, web server, and worker:
 
-```bash
-task dev:up
+```fish
+task dev:portless
 ```
 
-*This command uses the configuration in `docker-compose.dev.yml`.*
+This starts the `dev` profile from `compose.yaml` and registers the stable local
+URL `https://med-tracker.localhost`.
 
 ## 3. Seed development data
 
 To quickly populate the database with example users, people, and medicines:
 
-```bash
+```fish
 task dev:seed
 ```
 
@@ -45,7 +47,7 @@ task dev:seed
 
 The MedTracker UI is available at:
 
-👉 **[http://localhost:3000](http://localhost:3000)**
+👉 **[https://med-tracker.localhost](https://med-tracker.localhost)**
 
 ---
 
@@ -62,13 +64,13 @@ The MedTracker UI is available at:
 
 ### Rebuild from scratch
 If you encounter database issues or want to start fresh:
-```bash
+```fish
 task dev:rebuild
 ```
 *Warning: This removes all data and recreates the database.*
 
 ### Database migrations
 To apply new database changes without a full rebuild:
-```bash
-task dev:run-migrations
+```fish
+task dev:db-migrate
 ```

@@ -40,13 +40,15 @@ For a private local evaluation:
 ```shell
 git clone https://github.com/damacus/med-tracker.git
 cd med-tracker
-task dev:up
+npm install -g portless
+portless trust
+task dev:portless
 task dev:seed
 ```
 
-Open <http://localhost:3000>. Development seed data contains sample accounts
-with known passwords, so never expose a seeded development instance to a public
-or shared network.
+Open <https://med-tracker.localhost>. Development seed data contains sample
+accounts with known passwords, so never expose a seeded development instance
+to a public or shared network.
 
 Read the [self-hosting guide](https://damacus.github.io/med-tracker/self-hosting/)
 before starting, and use the

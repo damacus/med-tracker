@@ -170,9 +170,9 @@ stringData:
   DATABASE_URL: postgresql://...
   SMTP_ADDRESS: smtp.example.com
   SMTP_PORT: "587"
-  SMTP_USERNAME: <smtp-user>
+  SMTP_USER_NAME: <smtp-user>
   SMTP_PASSWORD: <smtp-password>
-  SMTP_DOMAIN: yourdomain.example
+  MAILER_FROM: MedTracker <no-reply@yourdomain.example>
 ```
 
 ### 4) One-off seeding Job
@@ -242,15 +242,15 @@ spec:
     - secretKey: SMTP_PORT
       remoteRef:
         key: med-tracker/prod/smtp-port
-    - secretKey: SMTP_USERNAME
+    - secretKey: SMTP_USER_NAME
       remoteRef:
         key: med-tracker/prod/smtp-username
     - secretKey: SMTP_PASSWORD
       remoteRef:
         key: med-tracker/prod/smtp-password
-    - secretKey: SMTP_DOMAIN
+    - secretKey: MAILER_FROM
       remoteRef:
-        key: med-tracker/prod/smtp-domain
+        key: med-tracker/prod/mailer-from
 ```
 
 ### 2) Reuse the same seeding Job

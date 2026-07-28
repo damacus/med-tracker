@@ -101,15 +101,14 @@ Export the variables in your shell before starting the server:
 ```fish
 set -x NHS_DMD_CLIENT_ID "your-client-id"
 set -x NHS_DMD_CLIENT_SECRET "your-client-secret"
-task dev:up
+task dev:portless
 ```
 
-### Docker Compose
+### Development environment
 
-Docker Compose inherits exported shell variables automatically,
-so exporting them before `task dev:up` is sufficient. You can
-also add them to a `.env` file in the project root (never
-commit this file):
+The development stack inherits exported shell variables, so set them before
+`task dev:portless`. You can also add them to a `.env` file in the project root
+(never commit this file):
 
 ```sh
 NHS_DMD_CLIENT_ID=your-client-id
@@ -178,7 +177,7 @@ To test the live API locally:
 
 1. Obtain credentials (see [Getting credentials](#getting-credentials)).
 2. Export `NHS_DMD_CLIENT_ID` and `NHS_DMD_CLIENT_SECRET`.
-3. Run `task dev:up` and sign in as a doctor or administrator.
+3. Run `task dev:portless` and sign in as a doctor or administrator.
 4. Visit `/medication-finder` and search for a medication name,
    for example `Aspirin`.
 
