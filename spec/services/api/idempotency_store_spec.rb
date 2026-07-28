@@ -37,11 +37,16 @@ RSpec.describe Api::IdempotencyStore do
     expect(result.record).to be_nil
     expect(result.replayed).to be false
     expect(result.conflict).to be false
+    expect(result.response_headers).to eq({})
   end
 
-  it 'rejects replay from a different authenticated account' do
+  it 'rejects replay headers from a different authenticated account' do
     request = request_double(method: 'POST', key: 'account-scoped-key')
-    response = response_double(status: 201, body: '{"data":{"name":"Private result"}}')
+    response = response_double(
+      status: 201,
+      body: '{"data":{"name":"Private result"}}',
+      headers: { 'ETag' => '"private-etag"' }
+    )
     described_class.new(request: request, credential: api_session, household: household).store!(response)
     other_session = api_session_for(create_account_with_membership(household))
 
@@ -49,6 +54,7 @@ RSpec.describe Api::IdempotencyStore do
 
     expect(result.replayed).to be false
     expect(result.conflict).to be true
+    expect(result.response_headers).to eq({})
   end
 
   it 'derives a stable opaque reservation id from household and key' do
@@ -64,20 +70,58 @@ RSpec.describe Api::IdempotencyStore do
 
   it 'stores non-PHI response metadata and normalises invalid JSON response bodies' do
     request = request_double(method: 'POST', key: 'store-key')
-    response = response_double(status: 201, body: 'not-json')
 
     expect do
-      described_class.new(request: request, credential: api_session, household: household).store!(response)
+      described_class.new(request: request, credential: api_session, household: household).store!(private_response)
     end.to change(ApiIdempotencyKey, :count).by(1)
 
     key = ApiIdempotencyKey.order(:id).last
-    expect(key).to have_attributes(
-      household: household,
-      account: account,
-      api_session: api_session,
-      response_status: 201,
-      response_body: {}
+    expect(key).to have_attributes(stored_response_attributes)
+  end
+
+  it 'applies the current allowlist when reading stored response headers' do
+    store = store_for('read-allowlist-key')
+    store.store!(
+      response_double(status: 201, body: '{"ok":true}', headers: { 'ETag' => '"stored-etag"' })
     )
+    ApiIdempotencyKey.find_by!(household: household, key: 'read-allowlist-key').update!(
+      response_headers: { 'ETag' => '"stored-etag"', 'Set-Cookie' => 'private=value' }
+    )
+
+    result = store.lookup
+
+    expect(result.replayed).to be true
+    expect(result.response_headers).to eq('ETag' => '"stored-etag"')
+  end
+
+  it 'replays an unexpired legacy response without inventing headers' do
+    store = store_for('legacy-headerless-key')
+    store.store!(response_double(status: 201, body: '{"legacy":true}'))
+    executed = false
+
+    result = store.with_reservation(
+      response: response_double(status: 201, body: '{"replacement":true}', headers: { 'ETag' => '"new-etag"' })
+    ) { executed = true }
+
+    expect(executed).to be false
+    expect(result.replayed).to be true
+    expect(result.response_headers).to eq({})
+  end
+
+  it 'replaces an expired response while holding the reservation' do
+    store = store_for('expired-key')
+    store.store!(response_double(status: 201, body: '{"expired":true}'))
+    expired_record = ApiIdempotencyKey.find_by!(household: household, key: 'expired-key')
+    expired_record.update!(expires_at: 1.minute.ago)
+    name = replace_expired_response(store)
+    replacement = ApiIdempotencyKey.find_by!(household: household, key: 'expired-key')
+
+    expect(replacement.id).not_to eq(expired_record.id)
+    expect(replacement).to have_attributes(
+      response_body: { 'replacement' => true },
+      response_headers: { 'ETag' => '"replacement-etag"' }
+    )
+    expect(Person.exists?(household: household, name: name)).to be true
   end
 
   it 'stores app-token idempotency attribution' do
@@ -146,17 +190,20 @@ RSpec.describe Api::IdempotencyStore do
 
   it 'allows the same key to be stored independently in different households' do
     request = request_double(method: 'POST', key: 'household-scoped-key')
-    response = response_double(status: 201, body: '{"ok":true}')
     other_household = Household.create!(
       name: 'Other Idempotency Store Spec',
       slug: "other-idempotency-store-#{SecureRandom.hex(4)}"
     )
     other_session = api_session_for(create_account_with_membership(other_household))
+    first_store = described_class.new(request: request, credential: api_session, household: household)
+    second_store = described_class.new(request: request, credential: other_session, household: other_household)
 
-    described_class.new(request: request, credential: api_session, household: household).store!(response)
-    described_class.new(request: request, credential: other_session, household: other_household).store!(response)
+    store_household_response(first_store, number: 1)
+    store_household_response(second_store, number: 2)
 
     expect(ApiIdempotencyKey.where(key: 'household-scoped-key').count).to eq(2)
+    expect(first_store.lookup.response_headers).to eq('ETag' => '"household-one"')
+    expect(second_store.lookup.response_headers).to eq('ETag' => '"household-two"')
   end
 
   def request_double(method:, key:)
@@ -173,8 +220,53 @@ RSpec.describe Api::IdempotencyStore do
     )
   end
 
-  def response_double(status:, body:)
-    instance_double(ActionDispatch::Response, status: status, body: body)
+  def response_double(status:, body:, headers: {})
+    instance_double(ActionDispatch::Response, status: status, body: body, headers: headers)
+  end
+
+  def private_response
+    response_double(
+      status: 201,
+      body: 'not-json',
+      headers: {
+        'ETag' => '"record-etag"',
+        'Set-Cookie' => 'private=value',
+        'X-Request-Id' => 'delivery-specific',
+        'Retry-After' => '30'
+      }
+    )
+  end
+
+  def stored_response_attributes
+    {
+      household: household,
+      account: account,
+      api_session: api_session,
+      response_status: 201,
+      response_body: {},
+      response_headers: { 'ETag' => '"record-etag"' }
+    }
+  end
+
+  def replace_expired_response(store)
+    name = "Replacement Person #{SecureRandom.hex(4)}"
+    response = response_double(
+      status: 201,
+      body: '{"replacement":true}',
+      headers: { 'ETag' => '"replacement-etag"' }
+    )
+    store.with_reservation(response: response) { create_unowned_person(name) }
+    name
+  end
+
+  def store_household_response(store, number:)
+    store.store!(
+      response_double(
+        status: 201,
+        body: %({"household":#{number}}),
+        headers: { 'ETag' => %("household-#{number == 1 ? 'one' : 'two'}") }
+      )
+    )
   end
 
   def store_for(key)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_19_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_28_170000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -215,6 +215,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_19_090000) do
     t.string "request_method", null: false
     t.string "request_path", null: false
     t.jsonb "response_body", default: {}, null: false
+    t.jsonb "response_headers", default: {}, null: false
     t.integer "response_status", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_api_idempotency_keys_on_account_id"

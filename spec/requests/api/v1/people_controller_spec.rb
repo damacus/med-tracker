@@ -51,6 +51,41 @@ RSpec.describe Api::V1::PeopleController do
   end
 
   describe 'POST /api/v1/households/:household_id/people' do
+    it 'replays a lost create response with the original ETag' do
+      login_data = api_login(user)
+      household_id = login_data.dig('household', 'id')
+      headers = api_auth_headers(login_data.fetch('access_token')).merge('Idempotency-Key' => SecureRandom.uuid)
+      payload = {
+        person: {
+          name: "Durable adult #{SecureRandom.hex(4)}",
+          date_of_birth: 30.years.ago.to_date,
+          person_type: 'adult'
+        }
+      }
+
+      expect do
+        post api_v1_household_people_path(household_id), params: payload, headers: headers, as: :json
+      end.to change(Person, :count).by(1)
+      first_body = response.parsed_body
+      first_etag = response.headers.fetch('ETag')
+      stored_response = ApiIdempotencyKey.find_by!(key: headers.fetch('Idempotency-Key'))
+
+      expect(stored_response.response_headers).to eq('ETag' => first_etag)
+      replay_login = api_login(user, household_id: household_id)
+      replay_headers = api_auth_headers(replay_login.fetch('access_token')).merge(
+        'Idempotency-Key' => headers.fetch('Idempotency-Key')
+      )
+
+      expect do
+        post api_v1_household_people_path(household_id), params: payload, headers: replay_headers, as: :json
+      end.not_to change(Person, :count)
+
+      expect(response).to have_http_status(:created)
+      expect(response.headers['Idempotency-Replayed']).to eq('true')
+      expect(response.headers['ETag']).to eq(first_etag)
+      expect(response.parsed_body).to eq(first_body)
+    end
+
     it 'creates a dependent through the transactional care delegation workflow' do
       login_data = api_login(user)
       household_id = login_data.dig('household', 'id')
@@ -150,6 +185,41 @@ RSpec.describe Api::V1::PeopleController do
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.parsed_body).to eq(first_body)
       expect(response.headers['Idempotency-Replayed']).to eq('true')
+    end
+  end
+
+  describe 'PATCH /api/v1/households/:household_id/people/:id' do
+    it 'replays a lost update response with the original ETag' do
+      login_data = api_login(user)
+      household_id = login_data.dig('household', 'id')
+      person = people(:child_patient)
+      payload = { person: { name: "Durable fresh name #{SecureRandom.hex(4)}" } }
+      headers = api_auth_headers(login_data.fetch('access_token')).merge(
+        'Idempotency-Key' => SecureRandom.uuid,
+        'If-Match' => Api::RecordEtag.for(person)
+      )
+
+      patch api_v1_household_person_path(household_id, person.id),
+            params: payload,
+            headers: headers,
+            as: :json
+      first_body = response.parsed_body
+      first_etag = response.headers.fetch('ETag')
+      stored_response = ApiIdempotencyKey.find_by!(key: headers.fetch('Idempotency-Key'))
+
+      expect(stored_response.response_headers).to eq('ETag' => first_etag)
+
+      expect do
+        patch api_v1_household_person_path(household_id, person.id),
+              params: payload,
+              headers: headers,
+              as: :json
+      end.not_to(change { person.reload.updated_at })
+
+      expect(response).to have_http_status(:ok)
+      expect(response.headers['Idempotency-Replayed']).to eq('true')
+      expect(response.headers['ETag']).to eq(first_etag)
+      expect(response.parsed_body).to eq(first_body)
     end
   end
 
