@@ -46,6 +46,7 @@ RSpec.describe 'Audition toolchain' do
       expect(task.dig('cmds', 0, 'vars')).to include(
         'ENVIRONMENT' => 'test',
         'SERVICE' => 'tools-test',
+        'DOCKER_RUN_ARGS' => '--build',
         'COMMAND' => command
       )
       expect(command).not_to include('bundle exec')

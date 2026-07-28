@@ -281,6 +281,7 @@ tasks:
         vars:
           ENVIRONMENT: test
           SERVICE: tools-test
+          DOCKER_RUN_ARGS: '--build'
           COMMAND: 'audition . --static-only --no-baseline'
 
   audition:dependencies:
@@ -293,6 +294,7 @@ tasks:
         vars:
           ENVIRONMENT: test
           SERVICE: tools-test
+          DOCKER_RUN_ARGS: '--build'
           COMMAND: 'audition Gemfile.lock --static-only'
 
   audition:dynamic:
@@ -305,6 +307,7 @@ tasks:
         vars:
           ENVIRONMENT: test
           SERVICE: tools-test
+          DOCKER_RUN_ARGS: '--build'
           COMMAND: 'audition . --dynamic-only'
 
   audition:target:
@@ -319,6 +322,7 @@ tasks:
         vars:
           ENVIRONMENT: test
           SERVICE: tools-test
+          DOCKER_RUN_ARGS: '--build'
           COMMAND: 'audition {{ .target }} --static-only --no-baseline'
 
   audition:fix-preview:
@@ -333,6 +337,7 @@ tasks:
         vars:
           ENVIRONMENT: test
           SERVICE: tools-test
+          DOCKER_RUN_ARGS: '--build'
           COMMAND: 'audition {{ .target }} --no-baseline --fix-unsafe --dry-run'
 
   audition:baseline:
@@ -346,6 +351,7 @@ tasks:
         vars:
           ENVIRONMENT: test
           SERVICE: tools-test
+          DOCKER_RUN_ARGS: '--build'
           COMMAND: 'audition . --static-only --write-baseline'
 
   audition:ci:
@@ -358,6 +364,7 @@ tasks:
         vars:
           ENVIRONMENT: test
           SERVICE: tools-test
+          DOCKER_RUN_ARGS: '--build'
           COMMAND: 'audition . --static-only --format github'
 
   rubycritic:
