@@ -11,6 +11,7 @@ RSpec.describe MissedDoseNotificationJob do
   let(:scheduled_time) { '07:15' }
 
   before do
+    PersonAccessGrant.where(household: household).delete_all
     MedicationTake.where(schedule_id: person.schedules.select(:id)).delete_all
     MedicationTake.where(person_medication_id: person.person_medications.select(:id)).delete_all
     person.schedules.destroy_all
@@ -90,82 +91,34 @@ RSpec.describe MissedDoseNotificationJob do
     parent = people(:jane)
     children = [people(:child_patient), people(:child_user_person)]
     prepare_notification_recipient(parent)
-    relationship = CarerRelationship.find_or_initialize_by(household: household, carer: parent,
-                                                            patient: children.first)
-    relationship.update!(relationship_type: 'parent', active: true)
-    children.first.reload.update!(account: nil)
+    prepare_managed_children(parent: parent, children: children)
+    perform_missed_dose_checks(*children)
 
-    children.each do |child|
-      clear_medication_activity(child)
-      grant_management_access(manager: parent, target: child, relationship_type: :parent)
-      create_schedule(child)
-    end
-
-    travel_to Time.zone.local(2026, 5, 12, 7, 46) do
-      children.each do |child|
-        described_class.perform_now(household.id, child.id, scheduled_on, scheduled_time)
-      end
-    end
-
-    children.each do |child|
-      expect(PushNotificationService).to have_received(:send_to_account).with(
-        parent.account,
-        title: 'Medication reminder',
-        body: "#{child.name} may have missed a dose.",
-        path: "/households/#{household.slug}/dashboard"
-      ).once
-    end
+    children.each { |child| expect_missed_dose_notification(parent, child) }
   end
 
   it 'does not disclose a managed person missed dose through a revoked grant' do
     manager = people(:jane)
     child = people(:child_patient)
     prepare_notification_recipient(manager)
-    clear_medication_activity(child)
-    grant = grant_management_access(manager: manager, target: child, relationship_type: :parent)
+    grant = prepare_managed_person(manager: manager, target: child, relationship_type: :parent)
     grant.update!(revoked_at: 1.minute.ago)
-    create_schedule(child)
+    perform_missed_dose_checks(child)
 
-    travel_to Time.zone.local(2026, 5, 12, 7, 46) do
-      described_class.perform_now(household.id, child.id, scheduled_on, scheduled_time)
-    end
-
-    expect(PushNotificationService).not_to have_received(:send_to_account).with(
-      manager.account,
-      hash_including(body: "#{child.name} may have missed a dose.")
-    )
+    expect_no_missed_dose_notification(manager, child)
   end
 
   it 'only notifies a manager about an adult after they opt in' do
     manager = people(:jane)
     managed_adult = people(:bob)
     prepare_notification_recipient(manager)
-    clear_medication_activity(managed_adult)
-    grant = grant_management_access(manager: manager, target: managed_adult,
-                                    relationship_type: :family_member)
-    create_schedule(managed_adult)
-
-    travel_to Time.zone.local(2026, 5, 12, 7, 46) do
-      described_class.perform_now(household.id, managed_adult.id, scheduled_on, scheduled_time)
-    end
-
-    expect(PushNotificationService).not_to have_received(:send_to_account).with(
-      manager.account,
-      hash_including(body: "#{managed_adult.name} may have missed a dose.")
-    )
+    grant = prepare_managed_person(manager: manager, target: managed_adult, relationship_type: :family_member)
+    perform_missed_dose_checks(managed_adult)
+    expect_no_missed_dose_notification(manager, managed_adult)
 
     grant.update!(missed_dose_notifications_enabled: true)
-
-    travel_to Time.zone.local(2026, 5, 12, 7, 46) do
-      described_class.perform_now(household.id, managed_adult.id, scheduled_on, scheduled_time)
-    end
-
-    expect(PushNotificationService).to have_received(:send_to_account).with(
-      manager.account,
-      title: 'Medication reminder',
-      body: "#{managed_adult.name} may have missed a dose.",
-      path: "/households/#{household.slug}/dashboard"
-    ).once
+    perform_missed_dose_checks(managed_adult)
+    expect_missed_dose_notification(manager, managed_adult)
   end
 
   def create_schedule(target = person)
@@ -183,6 +136,46 @@ RSpec.describe MissedDoseNotificationJob do
       endpoint: "https://fcm.googleapis.com/fcm/send/#{recipient.id}",
       p256dh: 'public-key',
       auth: 'auth-secret'
+    )
+  end
+
+  def prepare_managed_children(parent:, children:)
+    relationship = CarerRelationship.find_or_initialize_by(
+      household: household,
+      carer: parent,
+      patient: children.first
+    )
+    relationship.update!(relationship_type: 'parent', active: true)
+    children.first.reload.update!(account: nil)
+    children.each { |child| prepare_managed_person(manager: parent, target: child, relationship_type: :parent) }
+  end
+
+  def prepare_managed_person(manager:, target:, relationship_type:)
+    clear_medication_activity(target)
+    grant = grant_management_access(manager: manager, target: target, relationship_type: relationship_type)
+    create_schedule(target)
+    grant
+  end
+
+  def perform_missed_dose_checks(*targets)
+    travel_to Time.zone.local(2026, 5, 12, 7, 46) do
+      targets.each { |target| described_class.perform_now(household.id, target.id, scheduled_on, scheduled_time) }
+    end
+  end
+
+  def expect_missed_dose_notification(manager, target)
+    expect(PushNotificationService).to have_received(:send_to_account).with(
+      manager.account,
+      title: 'Medication reminder',
+      body: "#{target.name} may have missed a dose.",
+      path: "/households/#{household.slug}/dashboard"
+    ).once
+  end
+
+  def expect_no_missed_dose_notification(manager, target)
+    expect(PushNotificationService).not_to have_received(:send_to_account).with(
+      manager.account,
+      hash_including(body: "#{target.name} may have missed a dose.")
     )
   end
 
