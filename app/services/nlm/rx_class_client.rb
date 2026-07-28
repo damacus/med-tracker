@@ -10,6 +10,10 @@ module Nlm
     READ_TIMEOUT = 20
     WORKER_COUNT = 8
 
+    def initialize(worker_count: WORKER_COUNT)
+      @response_map = ExternalIo::OrderedThreadMap.new(worker_count:)
+    end
+
     def entries_for(terms)
       responses_for(terms).zip(terms).map { |response, term| entry_for(response, term) }
     end
@@ -17,29 +21,7 @@ module Nlm
     private
 
     def responses_for(terms)
-      queue = Queue.new
-      terms.each_with_index { |term, index| queue << [index, term] }
-      responses = Array.new(terms.size)
-      errors = Queue.new
-      workers = Array.new([WORKER_COUNT, terms.size].min) { response_worker(queue, responses, errors) }
-      workers.each(&:join)
-      raise errors.pop unless errors.empty?
-
-      responses
-    end
-
-    def response_worker(queue, responses, errors)
-      Thread.new do
-        loop do
-          index, term = queue.pop(true)
-          responses[index] = request_json(request_uri(term))
-        rescue ThreadError
-          break
-        rescue StandardError => e
-          errors << e
-          break
-        end
-      end
+      @response_map.call(terms) { |term| request_json(request_uri(term)) }
     end
 
     def request_uri(term)

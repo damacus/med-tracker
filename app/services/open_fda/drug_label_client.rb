@@ -12,20 +12,28 @@ module OpenFda
     SEARCH_RESULT_LIMIT = 20
     WORKER_COUNT = 8
 
+    def initialize(worker_count: WORKER_COUNT)
+      @response_map = ExternalIo::OrderedThreadMap.new(worker_count:)
+    end
+
     def labels(limit:)
       request_json(request_uri(search: '_exists_:drug_interactions', limit: Integer(limit))).fetch('results')
     end
 
     def labels_for(terms)
       entries = terms.map { |term| { 'term' => term, 'interaction_targets' => [] } }
-      responses = concurrent_responses(entries)
-      {
-        'meta' => responses.first.fetch('meta'),
-        'results' => responses.zip(entries).map { |response, entry| select_label(response, entry.fetch('term')) }
-      }
+      labels_response(entries)
     end
 
     def labels_for_targeted(entries)
+      labels_response(entries)
+    end
+
+    private
+
+    def labels_response(entries)
+      return { 'meta' => {}, 'results' => [] } if entries.empty?
+
       responses = concurrent_responses(entries)
       {
         'meta' => responses.first.fetch('meta'),
@@ -34,8 +42,6 @@ module OpenFda
         end
       }
     end
-
-    private
 
     def response_for(entry)
       term = entry.fetch('term')
@@ -77,29 +83,7 @@ module OpenFda
     end
 
     def concurrent_responses(entries)
-      queue = Queue.new
-      entries.each_with_index { |entry, index| queue << [index, entry] }
-      responses = Array.new(entries.size)
-      errors = Queue.new
-      workers = Array.new([WORKER_COUNT, entries.size].min) { response_worker(queue, responses, errors) }
-      workers.each(&:join)
-      raise errors.pop unless errors.empty?
-
-      responses
-    end
-
-    def response_worker(queue, responses, errors)
-      Thread.new do
-        loop do
-          index, entry = queue.pop(true)
-          responses[index] = response_for(entry)
-        rescue ThreadError
-          break
-        rescue StandardError => e
-          errors << e
-          break
-        end
-      end
+      @response_map.call(entries) { |entry| response_for(entry) }
     end
 
     def searches_for(term, interaction_targets)
