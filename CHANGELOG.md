@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.5.16](https://github.com/damacus/med-tracker/compare/v0.5.15...v0.5.16) (2026-07-28)
+
+
+### Features
+
+* **dashboard:** add layout experiments ([#1710](https://github.com/damacus/med-tracker/issues/1710)) ([a25099d](https://github.com/damacus/med-tracker/commit/a25099d4cd977d0dae17a5b79ec9acc0ec262e41))
+* **inventory:** add bulk stock amendments ([#1715](https://github.com/damacus/med-tracker/issues/1715)) ([6f10a7d](https://github.com/damacus/med-tracker/commit/6f10a7dcf170abe657a204a059d6c484b0d30116))
+* **notifications:** alert managers to missed doses ([#1746](https://github.com/damacus/med-tracker/issues/1746)) ([503f47a](https://github.com/damacus/med-tracker/commit/503f47aa4b63129f28c5bab8cafdf9ed3dc81ea9))
+* **sync:** Make medication take sync idempotent ([#1744](https://github.com/damacus/med-tracker/issues/1744)) ([f19ec00](https://github.com/damacus/med-tracker/commit/f19ec001b49bdd51fb81523436af1cacc79720a9))
+
+
+### Bug Fixes
+
+* **admin:** clarify household and system roles ([#1708](https://github.com/damacus/med-tracker/issues/1708)) ([2dfeebe](https://github.com/damacus/med-tracker/commit/2dfeebe0cc4b26fda7b2494883b6a7721ee78064))
+
+
+### Performance Improvements
+
+* **dashboard:** preload medication supply associations ([#1716](https://github.com/damacus/med-tracker/issues/1716)) ([87685c7](https://github.com/damacus/med-tracker/commit/87685c74348b380da571f64a1f4e7fd1fc81c619))
+
 ## [0.5.15](https://github.com/damacus/med-tracker/compare/v0.5.14...v0.5.15) (2026-07-17)
 
 
