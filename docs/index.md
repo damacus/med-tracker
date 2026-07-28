@@ -1,8 +1,31 @@
 # MedTracker Documentation
 
-MedTracker helps you safely record when someone has taken their medicine.
-It's built to keep families, carers, and health professionals on the same page,
-ensuring medications are given on time and safely.
+MedTracker is an open-source, self-hosted medication tracker for individuals,
+families, and carers. It supports household medication schedules, dose
+recording, stock tracking, reminders, and auditable history.
+
+!!! important "MedTracker is in beta"
+    MedTracker should supplement—not replace—your existing medication routine.
+    Do not depend on it for clinical decisions, emergency information, or your
+    sole medication reminders.
+
+## Try the self-hosted beta
+
+Start with the [self-hosting guide](self-hosting.md) for private local
+evaluation. Technically confident operators planning a reachable installation
+should also read the [deployment guide](deployment.md).
+
+We welcome feedback through GitHub:
+
+- [Discussions](https://github.com/damacus/med-tracker/discussions) for
+  questions, early impressions, and self-hosting help
+- [Guided issue forms](https://github.com/damacus/med-tracker/issues/new/choose)
+  for bugs and feature requests
+- [Private security reports](https://github.com/damacus/med-tracker/security/advisories/new)
+  for suspected vulnerabilities
+
+Never post names, medication details, health information, credentials, tokens,
+or unredacted logs publicly.
 
 ---
 

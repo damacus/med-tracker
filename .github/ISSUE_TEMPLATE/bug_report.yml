@@ -1,0 +1,87 @@
+name: Bug report
+description: Tell us what broke while using or self-hosting MedTracker
+title: "[Bug]: "
+labels:
+  - type:bug
+  - feedback
+  - priority:p3
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve MedTracker.
+
+        Do not include names, medication details, health information, credentials, tokens, or unredacted logs. Please [report security vulnerabilities privately](https://github.com/damacus/med-tracker/security/advisories/new).
+
+  - type: input
+    id: version
+    attributes:
+      label: MedTracker version
+      description: Use the version shown in the app footer, release tag, or container tag.
+      placeholder: "Example: 0.5.16"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation
+      description: Where did the problem happen?
+      options:
+        - Local development
+        - Self-hosted production
+        - Hosted instance
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Briefly tell us what you saw and what you expected instead.
+      placeholder: "I expected… Instead…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can we reproduce it?
+      description: Give us the shortest set of steps that triggers the problem.
+      placeholder: |
+        1. Go to…
+        2. Select…
+        3. See…
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Relevant environment details
+      description: Add your OS, browser, deployment method, and redacted logs or screenshots if useful.
+      placeholder: "Example: Ubuntu 26.04, Docker, Firefox 142"
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      description: How much does this affect your use of MedTracker?
+      options:
+        - Blocks a medication or dose-recording journey
+        - Blocks setup or deployment
+        - Makes a journey difficult but has a workaround
+        - Minor problem or visual issue
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Final checks
+      options:
+        - label: I searched existing issues and discussions for the same problem.
+          required: true
+        - label: I removed personal, health, credential, token, and other sensitive information.
+          required: true

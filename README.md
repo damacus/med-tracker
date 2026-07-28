@@ -1,41 +1,74 @@
 # MedTracker
 
-MedTracker is a Rails application for safe medication tracking across
-prescriptions and non-prescription medicines, with auditability and care-team
-support.
+[![CI](https://github.com/damacus/med-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/damacus/med-tracker/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/damacus/med-tracker)](https://github.com/damacus/med-tracker/releases)
+[![License](https://img.shields.io/github/license/damacus/med-tracker)](LICENSE)
 
-## Key capabilities
+MedTracker is an open-source, self-hosted medication tracker for individuals,
+families, and carers. It supports household medication schedules, dose
+recording, stock tracking, reminders, and auditable history.
 
-- Prescription and person-medicine tracking
-- Dose recording with timing and daily-limit safeguards
-- Carer-to-dependent relationship support
-- Role-based access control
-- Audit trail for safety-critical changes
+> [!IMPORTANT]
+> MedTracker is currently in beta. It should supplement—not replace—your
+> existing medication routine. Do not depend on it for clinical decisions,
+> emergency information, or your sole medication reminders.
 
-## Stack
+![MedTracker dashboard showing today's medication schedule, dose status, and stock](docs/screenshots/dashboard-desktop.png)
 
-- Ruby on Rails
-- PostgreSQL
-- Hotwire (Turbo + Stimulus) + Phlex
-- RSpec + Capybara/Playwright
-- Docker Compose + Taskfile workflows
+## What MedTracker helps with
 
-## Quick start
+- Keep household medication schedules in one place
+- Record doses with timing and daily-limit safeguards
+- Track stock and see when supplies need attention
+- Support children, dependent adults, and other people you care for
+- Keep an attributable history of medication activity
+- Control access with household roles and person-level permissions
 
-```bash
+## Try the self-hosted beta
+
+We are looking for technically confident self-hosters who are willing to deploy
+MedTracker, try the journey from household setup to recording doses, and tell us
+where it is confusing or unreliable.
+
+For a private local evaluation:
+
+```shell
 git clone https://github.com/damacus/med-tracker.git
 cd med-tracker
 task dev:up
 task dev:seed
 ```
 
-Open <http://localhost:3000>.
+Open <http://localhost:3000>. Development seed data contains sample accounts
+with known passwords, so never expose a seeded development instance to a public
+or shared network.
 
-## Testing
+Read the [self-hosting guide](https://damacus.github.io/med-tracker/self-hosting/)
+before starting, and use the
+[deployment guide](https://damacus.github.io/med-tracker/deployment/) for a
+production-style installation.
 
-```bash
-task test
-```
+## Share feedback
+
+GitHub is the main home for MedTracker feedback:
+
+- [Start a Discussion](https://github.com/damacus/med-tracker/discussions) for
+  questions, early impressions, and self-hosting help
+- [Report a bug or request a feature](https://github.com/damacus/med-tracker/issues/new/choose)
+  using the short guided forms
+- [Report a security vulnerability privately](https://github.com/damacus/med-tracker/security/advisories/new)
+
+Please do not include names, medication details, health information, credentials,
+tokens, or unredacted logs in public issues or discussions.
+
+## Technology
+
+- Ruby on Rails and PostgreSQL
+- Hotwire, Phlex, RubyUI, and Tailwind CSS
+- RSpec, Capybara, and Playwright
+- Docker and Taskfile workflows
+
+Run the project checks with `task test`, `task rubocop`, and `task brakeman`.
 
 ## Client Tools
 
