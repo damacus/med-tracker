@@ -47,9 +47,9 @@ Alternative considered: compare every replayed attribute with the stored take. R
 
 ### 3. Retry the complete transaction after a concurrent UUID race
 
-The medication-take operation service will recognize only the named `index_medication_takes_on_client_uuid` uniqueness constraint and raise a dedicated retry signal. That signal will escape the transaction immediately; no query will run in the aborted transaction. After rollback, the controller will restart the entire batch once, rebuilding the results array and re-evaluating all authorization, ETags, and domain rules.
+The medication-take operation service will recognize the named `index_medication_takes_on_client_uuid` uniqueness constraint and raise a dedicated retry signal. That signal will escape the transaction immediately; no query will run in the aborted transaction. Because `MedicationAdministration::RecordDose` also serializes household lifecycle writes, a losing request can instead observe the winner during model uniqueness validation and return `create_failed` without aborting PostgreSQL. That persistence outcome will use the same one-time retry signal. After rollback, the controller will restart the entire batch once, rebuilding the results array and re-evaluating all authorization, ETags, and domain rules.
 
-On the retry, the winning take is found and returned as a replay. If it remains invisible, or the named constraint is hit again, the batch will return HTTP 409 with `idempotency_key_unavailable`. Other uniqueness failures will not be converted and will retain normal exception handling.
+On the retry, the winning take is found and returned as a replay. If it remains invisible and the named constraint is hit again, the batch will return HTTP 409 with `idempotency_key_unavailable`. A repeated non-constraint persistence failure will return `medication_take_invalid`. Other uniqueness failures will not be converted and will retain normal exception handling.
 
 This whole-batch retry is safe because the losing attempt has rolled back every earlier operation and medication side effect. If a sibling resource changed concurrently before the retry, its existing ETag check will produce the normal `sync_conflict` rather than silently overwriting it.
 
@@ -92,7 +92,7 @@ No model callback, raw insert, bulk update, or direct stock mutation will be add
 ## Risks / Trade-offs
 
 - **[A replay may contain attributes different from the original request]** → Treat the UUID as authoritative, return only the authorized stored take, and document this as parity with the direct endpoint.
-- **[A full-batch retry repeats application work]** → Retry at most once and only for the named UUID constraint; the failed attempt is fully rolled back before re-execution.
+- **[A full-batch retry repeats application work]** → Retry at most once for the named UUID constraint or the canonical service's serialized persistence failure; the failed attempt is fully rolled back before re-execution.
 - **[A sibling ETag can become stale during retry]** → Preserve normal `sync_conflict` behavior instead of weakening optimistic concurrency.
 - **[Global UUID uniqueness can collide with an inaccessible take]** → Return a generic 409 without confirming what owns the UUID.
 - **[New error codes extend the runtime API before generated types change]** → Keep the change runtime-only as required by #1675 and coordinate documentation/types through #1656.

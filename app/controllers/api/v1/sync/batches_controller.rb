@@ -4,17 +4,21 @@ module Api
   module V1
     module Sync
       class BatchesController < Api::V1::BaseController
-        class BatchError < StandardError; end
+        class BatchError < StandardError
+          attr_reader :code, :status
+
+          def initialize(message, code: 'unprocessable_content', status: :unprocessable_content)
+            @code = code
+            @status = status
+            super(message)
+          end
+        end
+
         class PreconditionRequired < BatchError; end
         class SyncConflict < BatchError; end
 
         def create
-          results = []
-          ActiveRecord::Base.transaction(requires_new: true) do
-            operations.each_with_index do |operation, index|
-              results << apply_operation(operation, index)
-            end
-          end
+          results = apply_batch_with_retry
 
           render json: { data: { applied: true, results: results } }, status: :created
         rescue PreconditionRequired => e
@@ -22,10 +26,45 @@ module Api
         rescue SyncConflict => e
           render_conflict(e.message, code: 'sync_conflict')
         rescue BatchError => e
-          render_unprocessable(e.message)
+          render_api_error(code: e.code, message: e.message, status: e.status)
         end
 
         private
+
+        def apply_batch_with_retry
+          retries = 0
+
+          begin
+            apply_batch
+          rescue Api::Sync::MedicationTakeOperation::RetryBatch => e
+            retries += 1
+            retry if retries == 1
+
+            unless e.client_uuid_constraint?
+              raise BatchError.new(
+                'Medication take is invalid',
+                code: 'medication_take_invalid'
+              )
+            end
+
+            raise BatchError.new(
+              'Medication take idempotency key is unavailable',
+              code: 'idempotency_key_unavailable',
+              status: :conflict
+            )
+          end
+        end
+
+        def apply_batch
+          results = []
+          ActiveRecord::Base.transaction(requires_new: true) do
+            operations.each_with_index do |operation, index|
+              results << apply_operation(operation, index)
+            end
+          end
+
+          results
+        end
 
         def operations
           params.expect(batch: [{ operations: [[:action, :resource_type, :id, :if_match, { attributes: {} }]] }])
@@ -33,7 +72,11 @@ module Api
         end
 
         def apply_operation(operation, index)
+          reject_medication_take_mutation!(operation, index)
+
           case operation.fetch(:action)
+          when 'create'
+            create_record(operation, index)
           when 'update'
             update_record(operation, index)
           when 'delete'
@@ -41,6 +84,65 @@ module Api
           else
             raise BatchError, "operation #{index} action is unsupported"
           end
+        end
+
+        def reject_medication_take_mutation!(operation, index)
+          return unless operation[:resource_type] == 'medication_take'
+          return if operation[:action] == 'create'
+
+          raise BatchError.new(
+            "operation #{index} action is unsupported",
+            code: 'sync_operation_unsupported'
+          )
+        end
+
+        def create_record(operation, index)
+          unless operation[:resource_type] == 'medication_take'
+            raise BatchError.new(
+              "operation #{index} action is unsupported",
+              code: 'sync_operation_unsupported'
+            )
+          end
+
+          attributes = operation.fetch(:attributes, {})
+          existing_take = idempotent_medication_take(attributes[:client_uuid])
+          result = medication_take_operation.call(
+            attributes: attributes,
+            existing_take: existing_take,
+            user: current_user,
+            route: request.path
+          ) do |source_type, source_id|
+            medication_take_source(source_type, source_id).tap do |source|
+              authorize source, :take_medication?
+            end
+          end
+
+          batch_result(result.take, index, 'create').merge(replayed: result.replayed)
+        rescue Api::Sync::MedicationTakeOperation::Error => e
+          raise BatchError.new("operation #{index} #{e.message}", code: e.code, status: e.status)
+        end
+
+        def idempotent_medication_take(client_uuid)
+          return if client_uuid.blank?
+
+          policy_scope(MedicationTake).find_by(client_uuid: client_uuid).tap do |take|
+            authorize take, :create? if take
+          end
+        end
+
+        def medication_take_source(source_type, source_id)
+          case source_type
+          when 'schedule'
+            find_api_record(policy_scope(Schedule), source_id)
+          when 'person_medication'
+            find_api_record(policy_scope(PersonMedication), source_id)
+          else
+            raise ActiveRecord::RecordNotFound
+          end
+        end
+
+        def medication_take_operation
+          @medication_take_operation ||= Api::Sync::MedicationTakeOperation.new
         end
 
         def update_record(operation, index)
