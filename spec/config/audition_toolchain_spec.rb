@@ -11,10 +11,8 @@ RSpec.describe AuditionToolchain do
   end
   let(:dockerfile) { Rails.root.join('Dockerfile').read }
   let(:audition_config) { YAML.safe_load(Rails.root.join('.audition.yml').read) }
-  let(:ci_workflow) do
-    YAML.safe_load(Rails.root.join('.github/workflows/ci.yml').read, aliases: true)
-  end
-  let(:audition_commands) do
+
+  def audition_commands
     {
       'static' => 'audition . --static-only --no-baseline',
       'dependencies' => 'audition Gemfile.lock --static-only',
@@ -56,24 +54,29 @@ RSpec.describe AuditionToolchain do
     expect(command).to include('--fix-unsafe', '--dry-run')
   end
 
-  it 'gates static regressions in the Docker tools image while keeping broader scans advisory' do
-    job = ci_workflow.dig('jobs', 'audition')
-    steps = job.fetch('steps')
-    static_step = steps.find { |step| step['name'] == 'Gate new static Ractor-readiness findings' }
-    dependency_step = steps.find { |step| step['name'] == 'Report dependency readiness' }
-    dynamic_step = steps.find { |step| step['name'] == 'Report dynamic readiness with PostgreSQL' }
-
-    expect(job.dig('services', 'postgres', 'image')).to eq('postgres:18-alpine')
-    expect(steps).to include(
+  it 'builds the Docker tools image with PostgreSQL 18 available' do
+    expect(audition_ci_job.dig('services', 'postgres', 'image')).to eq('postgres:18-alpine')
+    expect(audition_ci_steps).to include(
       hash_including(
         'name' => 'Build Audition tools image',
         'run' => 'docker build --target tools --tag med-tracker-audition .'
       )
     )
+  end
+
+  it 'blocks new static Ractor-readiness findings' do
+    static_step = audition_ci_step('Gate new static Ractor-readiness findings')
+
     expect(static_step).to include(
       'run' => 'docker run --rm med-tracker-audition audition . --static-only --format github'
     )
     expect(static_step).not_to have_key('continue-on-error')
+  end
+
+  it 'keeps dependency and dynamic scans advisory' do
+    dependency_step = audition_ci_step('Report dependency readiness')
+    dynamic_step = audition_ci_step('Report dynamic readiness with PostgreSQL')
+
     expect(dependency_step).to include(
       'continue-on-error' => true,
       'run' => 'docker run --rm med-tracker-audition audition Gemfile.lock --static-only'
@@ -88,6 +91,22 @@ RSpec.describe AuditionToolchain do
 
   def audition_task(name)
     taskfile.dig('tasks', "audition:#{name}") || {}
+  end
+
+  def audition_ci_job
+    ci_workflow.dig('jobs', 'audition')
+  end
+
+  def audition_ci_step(name)
+    audition_ci_steps.find { |step| step['name'] == name }
+  end
+
+  def audition_ci_steps
+    audition_ci_job.fetch('steps')
+  end
+
+  def ci_workflow
+    @ci_workflow ||= YAML.safe_load(Rails.root.join('.github/workflows/ci.yml').read, aliases: true)
   end
 
   def expect_audition_task(name, command)
