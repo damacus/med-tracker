@@ -29,6 +29,36 @@ RSpec.describe 'Dashboard home rendering' do
   end
 
   describe 'GET /households/:household_slug/dashboard' do
+    it 'uses the existing dashboard when no experiment is selected' do
+      household, = household_membership_for(users(:jane))
+      account = users(:jane).person.account
+      account.update!(preferences: account.preferences.except('dashboard_variant'))
+      sign_in(users(:jane))
+
+      get "/households/#{household.slug}/dashboard"
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.at_css('[data-testid="dashboard"]')).to be_present
+      expect(response.parsed_body.at_css('[data-testid^="dashboard-variant-"]')).not_to be_present
+    end
+
+    {
+      'time_first' => 'dashboard-variant-time-first',
+      'family_lanes' => 'dashboard-variant-family-lanes',
+      'calm_focus' => 'dashboard-variant-calm-focus'
+    }.each do |variant, testid|
+      it "renders the #{variant.tr('_', ' ')} dashboard experiment" do
+        household, = household_membership_for(users(:jane))
+        users(:jane).person.account.update!(dashboard_variant: variant)
+        sign_in(users(:jane))
+
+        get "/households/#{household.slug}/dashboard"
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body.at_css("[data-testid=\"#{testid}\"]")).to be_present
+      end
+    end
+
     it 'renders granted household records and excludes colliding records from another household' do
       household, membership = household_membership_for(users(:jane))
       other_household = Household.create!(name: 'Other Dashboard Household', slug: 'other-dashboard-household')
