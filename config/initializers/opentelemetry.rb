@@ -45,7 +45,8 @@ module OpenTelemetryConfig
 
   def install_database_pool_metrics
     meter = OpenTelemetry.meter_provider.meter('medtracker.database_pool')
-    Otel::DatabaseConnectionPoolMetrics.new(pool: ActiveRecord::Base.connection_pool, meter:).install
+    pool_provider = -> { ActiveRecord::Base.connection_pool }
+    Otel::DatabaseConnectionPoolMetrics.new(pool_provider:, meter:).install
     pool_class = ActiveRecord::ConnectionAdapters::ConnectionPool
     pool_class.prepend(Otel::ConnectionPoolTimeoutInstrumentation) unless pool_class < Otel::ConnectionPoolTimeoutInstrumentation
   end

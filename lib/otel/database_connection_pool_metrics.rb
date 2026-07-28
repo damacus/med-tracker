@@ -18,8 +18,8 @@ module Otel
       end
     end
 
-    def initialize(pool:, meter:)
-      @pool = pool
+    def initialize(pool_provider:, meter:)
+      @pool_provider = pool_provider
       @meter = meter
     end
 
@@ -34,13 +34,13 @@ module Otel
       self
     end
 
-    def record_timeout(timed_out_pool = pool)
+    def record_timeout(timed_out_pool)
       timeout_counter&.add(1, attributes: pool_attributes(timed_out_pool))
     end
 
     private
 
-    attr_reader :meter, :pool, :timeout_counter
+    attr_reader :meter, :pool_provider, :timeout_counter
 
     def install_gauges
       GAUGES.each do |stat_key, (name, description)|
@@ -54,7 +54,7 @@ module Otel
     end
 
     def pool_stat(stat_key)
-      pool.stat.fetch(stat_key)
+      pool_provider.call.stat.fetch(stat_key)
     rescue StandardError => e
       Rails.logger.warn("OpenTelemetry database pool metrics unavailable: #{e.class}: #{e.message}")
       0

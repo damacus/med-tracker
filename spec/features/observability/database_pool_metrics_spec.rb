@@ -16,8 +16,9 @@ RSpec.describe 'Database pool metrics export pipeline' do
   it 'installs metrics against the runtime Active Record pool' do
     pool = ActiveRecord::Base.connection_pool
     meter = DatabasePoolMetricsTestSupport::Meter.new
+    pool_provider = -> { ActiveRecord::Base.connection_pool }
 
-    metrics = Otel::DatabaseConnectionPoolMetrics.new(pool:, meter:)
+    metrics = Otel::DatabaseConnectionPoolMetrics.new(pool_provider:, meter:)
     metrics.install
 
     observations = meter.gauges.transform_values(&:observe)
@@ -35,9 +36,10 @@ RSpec.describe 'Database pool metrics export pipeline' do
     exporter = OpenTelemetry::SDK::Metrics::Export::InMemoryMetricPullExporter.new
     provider.add_metric_reader(exporter)
     meter = provider.meter('database-pool-runtime-spec')
+    pool_provider = -> { ActiveRecord::Base.connection_pool }
 
     described_class = Otel::DatabaseConnectionPoolMetrics
-    described_class.new(pool:, meter:).install
+    described_class.new(pool_provider:, meter:).install
     exporter.pull
 
     observations = exporter.metric_snapshots.to_h do |snapshot|

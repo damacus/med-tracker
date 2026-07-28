@@ -3,15 +3,22 @@
 require 'rails_helper'
 
 RSpec.describe Otel::DatabaseConnectionPoolMetrics do
-  subject(:metrics) { described_class.new(pool:, meter:) }
+  subject(:metrics) { described_class.new(pool_provider:, meter:) }
 
   let(:meter) { DatabasePoolMetricsTestSupport::Meter.new }
+  let(:pool_provider) { -> { pool } }
   let(:db_config) { instance_double(ActiveRecord::DatabaseConfigurations::HashConfig, name: 'primary', database: 'medtracker_test') }
   let(:pool) do
     instance_double(
       ActiveRecord::ConnectionAdapters::ConnectionPool,
       stat: { size: 10, connections: 7, busy: 4, dead: 0, idle: 3, waiting: 2, checkout_timeout: 5.0 },
       db_config:
+    )
+  end
+  let(:replacement_pool) do
+    instance_double(
+      ActiveRecord::ConnectionAdapters::ConnectionPool,
+      stat: { size: 8, connections: 5, busy: 3, dead: 0, idle: 2, waiting: 1, checkout_timeout: 5.0 }
     )
   end
 
@@ -36,6 +43,18 @@ RSpec.describe Otel::DatabaseConnectionPoolMetrics do
       'medtracker.db.connection_pool.idle' => 3,
       'medtracker.db.connection_pool.waiting' => 2
     )
+  end
+
+  it 'resolves the current runtime pool when gauges are observed' do
+    current_pool = pool
+    pool_provider = -> { current_pool }
+    runtime_metrics = described_class.new(pool_provider:, meter:)
+    runtime_metrics.install
+
+    current_pool = replacement_pool
+
+    expect(meter.gauges.transform_values(&:observe)).to eq(replacement_observations)
+    expect(pool).not_to have_received(:stat)
   end
 
   it 'records checkout timeouts with bounded pool metadata' do
@@ -73,5 +92,14 @@ RSpec.describe Otel::DatabaseConnectionPoolMetrics do
 
     expect(meter.gauges.values.map(&:observe)).to all(eq(0))
     expect(Rails.logger).to have_received(:warn).with(/database pool metrics unavailable/).at_least(:once)
+  end
+
+  def replacement_observations
+    {
+      'medtracker.db.connection_pool.size' => 8,
+      'medtracker.db.connection_pool.in_use' => 3,
+      'medtracker.db.connection_pool.idle' => 2,
+      'medtracker.db.connection_pool.waiting' => 1
+    }
   end
 end
