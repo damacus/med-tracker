@@ -36,6 +36,7 @@ RSpec.describe 'Audition toolchain' do
       'dynamic' => 'audition . --dynamic-only',
       'target' => 'audition {{ .target }} --static-only --no-baseline',
       'fix-preview' => 'audition {{ .target }} --no-baseline --fix-unsafe --dry-run',
+      'baseline' => 'audition . --static-only --write-baseline',
       'ci' => 'audition . --static-only --format github'
     }
 
