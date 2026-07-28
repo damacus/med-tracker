@@ -99,6 +99,18 @@ RSpec.describe Api::Sync::MedicationTakeOperation do
       end
   end
 
+  it 'classifies a persistence failure for an existing client UUID as an idempotency collision' do
+    take = medication_takes(:jane_morning_ibuprofen)
+    allow(dose_service).to receive(:call).and_return(
+      MedicationAdministration::RecordDose::Result.new(success: false, take: nil, error: :create_failed)
+    )
+    call = -> { operation.call(attributes: attributes.merge(client_uuid: take.client_uuid), user: user) { source } }
+
+    expect(&call).to raise_error(described_class::RetryBatch) do |error|
+      expect(error).to be_client_uuid_constraint
+    end
+  end
+
   it 'signals a whole-batch retry only for the client UUID constraint' do
     matching_error = ActiveRecord::RecordNotUnique.new(
       'duplicate key violates unique constraint "index_medication_takes_on_client_uuid"'

@@ -386,6 +386,21 @@ RSpec.describe 'API v1 sync' do
     expect(medication.reload.name).not_to eq('Unsupported Replace')
   end
 
+  it 'rejects create operations for unsupported resources before writing records' do
+    expect do
+      post_batch(
+        {
+          action: 'create',
+          resource_type: 'medication',
+          attributes: { name: 'Unsupported Create' }
+        }
+      )
+    end.not_to change(Medication, :count)
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body.fetch('error')).to include('code' => 'sync_operation_unsupported')
+  end
+
   it 'rolls back batch updates with invalid attributes' do
     event = HealthEvent.create!(
       household_id: household_id,
@@ -609,6 +624,37 @@ RSpec.describe 'API v1 sync' do
       expect(response.parsed_body.to_json).not_to include(private_value, 'private-dose-value')
     end
 
+    it 'rejects unsupported source types without echoing the source reference' do
+      operation = medication_take_operation(source: schedules(:jane_ibuprofen))
+      private_source_type = 'private-source-type'
+      private_source_id = 'private-source-id'
+      operation[:attributes].merge!(source_type: private_source_type, source_id: private_source_id)
+
+      post_batch(operation)
+
+      expect(response).to have_http_status(:not_found)
+      expect(response.parsed_body.fetch('error')).to include('code' => 'not_found', 'message' => 'Record not found')
+      expect(response.parsed_body.to_json).not_to include(private_source_type, private_source_id)
+    end
+
+    it 'returns a stable validation error after retrying an unrelated persistence failure' do
+      dose_service = instance_double(MedicationAdministration::RecordDose)
+      result = MedicationAdministration::RecordDose::Result.new(success: false, take: nil, error: :create_failed)
+      allow(MedicationAdministration::RecordDose).to receive(:new).and_return(dose_service)
+      allow(dose_service).to receive(:call).and_return(result)
+
+      expect do
+        post_batch(medication_take_operation(source: schedules(:jane_ibuprofen)))
+      end.not_to change(MedicationTake, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body.fetch('error')).to include(
+        'code' => 'medication_take_invalid',
+        'message' => 'Medication take is invalid'
+      )
+      expect(dose_service).to have_received(:call).twice
+    end
+
     it 'rolls back an earlier update when a queued take fails' do
       medication = medications(:paracetamol)
       original_name = medication.name
@@ -668,21 +714,24 @@ RSpec.describe 'API v1 sync' do
     end
 
     it 'does not disclose an idempotency key that cannot be replayed' do
-      hidden_uuid = SecureRandom.uuid
-      duplicate_error = ActiveRecord::RecordNotUnique.new(
-        'duplicate key violates unique constraint "index_medication_takes_on_client_uuid"'
-      )
-      service = instance_double(MedicationAdministration::RecordDose, call: nil)
-      allow(MedicationAdministration::RecordDose).to receive(:new).and_return(service)
-      allow(service).to receive(:call).and_raise(duplicate_error)
+      hidden_take = medication_takes(:jane_morning_ibuprofen)
+      hidden_uuid = hidden_take.client_uuid
+      scoped_login = api_login(users(:carer))
+      scoped_household_id = scoped_login.dig('household', 'id')
 
       post_batch(
-        medication_take_operation(source: schedules(:jane_ibuprofen), client_uuid: hidden_uuid)
+        medication_take_operation(source: schedules(:patient_schedule), client_uuid: hidden_uuid),
+        request_headers: api_auth_headers(scoped_login.fetch('access_token')),
+        target_household_id: scoped_household_id
       )
 
       expect(response).to have_http_status(:conflict)
       expect(response.parsed_body.dig('error', 'code')).to eq('idempotency_key_unavailable')
-      expect(response.parsed_body.to_json).not_to include(hidden_uuid)
+      expect(response.parsed_body.to_json).not_to include(
+        hidden_uuid,
+        hidden_take.portable_id,
+        hidden_take.person.portable_id
+      )
     end
   end
 

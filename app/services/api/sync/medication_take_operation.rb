@@ -53,14 +53,21 @@ module Api
         validate_source_reference!(attributes)
         source = yield(attributes[:source_type], attributes[:source_id])
         result = record_dose(source:, attributes:, taken_at:, context:)
-        build_result(result)
+        build_result(result, source:, client_uuid: context.fetch(:client_uuid))
       end
 
-      def build_result(result)
-        raise RetryBatch, :persistence_failure if result.error == :create_failed
+      def build_result(result, source:, client_uuid:)
+        raise RetryBatch, persistence_failure_reason(source:, client_uuid:) if result.error == :create_failed
         raise domain_error(result.error) unless result.success
 
         Result.new(take: result.take, replayed: false)
+      end
+
+      def persistence_failure_reason(source:, client_uuid:)
+        collision = MedicationTake.exists?(household_id: source.household_id, client_uuid: client_uuid)
+        return :client_uuid_constraint if collision
+
+        :persistence_failure
       end
 
       def validate_client_uuid!(client_uuid)

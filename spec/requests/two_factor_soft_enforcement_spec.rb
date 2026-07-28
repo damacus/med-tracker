@@ -15,6 +15,7 @@ RSpec.describe 'Two-factor soft enforcement' do
       user = users(:damacus)
       clear_2fa_for(user.person.account)
       sign_in(user)
+      current_membership_for(user).update!(role: :owner)
 
       get profile_path
 

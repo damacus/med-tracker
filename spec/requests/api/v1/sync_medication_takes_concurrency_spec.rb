@@ -8,8 +8,11 @@ RSpec.describe 'API v1 medication-take sync concurrency' do
 
   fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :dosages, :schedules
 
-  let(:records) { PaperTrail.request(enabled: false) { concurrency_records } }
-  let!(:version_ids_before) { PaperTrail::Version.ids }
+  let(:record_state) { { loaded: false } }
+  let(:records) do
+    PaperTrail.request(enabled: false) { concurrency_records }.tap { record_state[:loaded] = true }
+  end
+  let!(:version_ids_before) { AuditLedgerEntry.where(source_table: 'versions').pluck(:source_id) }
   let!(:change_event_ids_before) { ApiChangeEvent.ids }
 
   before do
@@ -21,15 +24,15 @@ RSpec.describe 'API v1 medication-take sync concurrency' do
   end
 
   after do
-    cleanup_records
+    cleanup_records(records) if record_state[:loaded]
   ensure
     version_ledger_trigger(:enable)
   end
 
-  def cleanup_records
-    take_ids = MedicationTake.where(client_uuid: client_uuid).pluck(:id)
-    cleanup_audit_records
+  def cleanup_records(created_records)
+    take_ids = MedicationTake.where(client_uuid: created_records.fetch(:client_uuid)).pluck(:id)
     cleanup_domain_records(take_ids)
+    cleanup_audit_records
   end
 
   def cleanup_audit_records
@@ -105,15 +108,27 @@ RSpec.describe 'API v1 medication-take sync concurrency' do
 
   def concurrency_records
     user = users(:admin)
-    household = households(:fixture_household)
-    location = locations(:home)
-    medication = concurrency_medication(household, location)
+    household = ensure_api_household_for(user)
+    medication = concurrency_medication(household, locations(:home))
     schedule = concurrency_schedule(household, medication)
-    login_data = api_login(user, household_id: household.id)
+    session, access_token = concurrency_api_session(user, household)
+    concurrency_record_attributes(household, medication, schedule, session, access_token)
+  end
+
+  def concurrency_api_session(user, household)
+    membership = user.person.account.household_memberships.find_by!(household: household)
+    ApiSession.issue_for(
+      account: user.person.account,
+      household_membership: membership,
+      device_name: 'RSpec concurrency client'
+    )
+  end
+
+  def concurrency_record_attributes(household, medication, schedule, session, access_token)
     {
       household_id: household.id,
-      headers: api_auth_headers(login_data.fetch('access_token')),
-      session_id: ApiSession.lookup_by_access_token(login_data.fetch('access_token')).id,
+      headers: api_auth_headers(access_token),
+      session_id: session.id,
       medication: medication,
       schedule: schedule,
       client_uuid: SecureRandom.uuid
