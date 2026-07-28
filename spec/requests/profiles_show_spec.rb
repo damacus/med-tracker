@@ -286,6 +286,25 @@ RSpec.describe 'Profiles' do
       expect(response.body).to include('target="experiments-card"')
       expect(account.reload.wizard_variant).to eq('slideover')
     end
+
+    it 'updates the dashboard variant without changing the wizard variant' do
+      account.update!(wizard_variant: 'slideover')
+
+      patch experiments_profile_path, params: { account: { dashboard_variant: 'family_lanes' } }
+
+      expect(response).to redirect_to(profile_path)
+      expect(account.reload.dashboard_variant).to eq('family_lanes')
+      expect(account.wizard_variant).to eq('slideover')
+    end
+
+    it 'falls back to the current dashboard for invalid dashboard variants' do
+      account.update!(dashboard_variant: 'calm_focus')
+
+      patch experiments_profile_path, params: { account: { dashboard_variant: 'invalid' } }
+
+      expect(response).to redirect_to(profile_path)
+      expect(account.reload.dashboard_variant).to eq('current')
+    end
   end
 
   describe 'DELETE /profile/avatar' do

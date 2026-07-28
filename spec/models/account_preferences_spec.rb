@@ -45,6 +45,28 @@ RSpec.describe Account do
     end
   end
 
+  describe '#dashboard_variant' do
+    it 'defaults to the current dashboard' do
+      expect(accounts(:damacus).dashboard_variant).to eq('current')
+    end
+
+    it 'keeps a valid preference value' do
+      account = accounts(:damacus)
+
+      account.dashboard_variant = 'time_first'
+
+      expect(account.dashboard_variant).to eq('time_first')
+    end
+
+    it 'falls back to the current dashboard for unknown preference values' do
+      account = accounts(:damacus)
+
+      account.dashboard_variant = 'unknown'
+
+      expect(account.dashboard_variant).to eq('current')
+    end
+  end
+
   describe '#gravatar_enabled?' do
     it 'defaults to false' do
       expect(accounts(:damacus).gravatar_enabled?).to be(false)
