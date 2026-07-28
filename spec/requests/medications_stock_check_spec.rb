@@ -49,7 +49,7 @@ RSpec.describe 'Medications stock check' do
       patch bulk_adjust_inventory_medications_path, params: {
         stock_check: {
           reason: 'House stock check',
-          adjustments: {paracetamol.id.to_s => '74'}
+          adjustments: { paracetamol.id.to_s => '74' }
         }
       }
 
