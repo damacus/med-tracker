@@ -22,6 +22,8 @@ includes:
     taskfile: Taskfiles/worktree.yml
   audit:
     taskfile: Taskfiles/audit.yml
+  openspec:
+    taskfile: Taskfiles/openspec.yml
 
 tasks:
   default:
