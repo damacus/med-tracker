@@ -15,14 +15,19 @@ recording, stock tracking, reminders, and auditable history.
 
 ![MedTracker dashboard showing today's medication schedule, dose status, and stock](docs/screenshots/dashboard-desktop.png)
 
-## What MedTracker helps with
+## Why MedTracker?
 
-- Keep household medication schedules in one place
-- Record doses with timing and daily-limit safeguards
-- Track stock and see when supplies need attention
-- Support children, dependent adults, and other people you care for
-- Keep an attributable history of medication activity
-- Control access with household roles and person-level permissions
+Medication management is rarely just a list of pills. When care is shared,
+families need to know what is due, what has already happened, whether supplies
+are running low, and who recorded each action. MedTracker brings that context
+together without handing control of it to a hosted service.
+
+- See today's medication routine for everyone you care for in one place
+- Replace "has anyone given this?" guesswork with a clear dose history
+- Spot low stock before it becomes a last-minute problem
+- Coordinate care for children, dependent adults, and other household members
+- Keep an attributable record of who did what and when
+- Run MedTracker on infrastructure you control
 
 ## Try the self-hosted beta
 
@@ -60,15 +65,6 @@ GitHub is the main home for MedTracker feedback:
 
 Please do not include names, medication details, health information, credentials,
 tokens, or unredacted logs in public issues or discussions.
-
-## Technology
-
-- Ruby on Rails and PostgreSQL
-- Hotwire, Phlex, RubyUI, and Tailwind CSS
-- RSpec, Capybara, and Playwright
-- Docker and Taskfile workflows
-
-Run the project checks with `task test`, `task rubocop`, and `task brakeman`.
 
 ## Client Tools
 
