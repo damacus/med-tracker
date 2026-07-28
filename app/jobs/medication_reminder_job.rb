@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class MedicationReminderJob < ApplicationJob
-  queue_as :default
+  queue_as :notifications
 
   PERIOD_LABELS = {
     morning: 'Morning',

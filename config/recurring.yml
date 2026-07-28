@@ -6,7 +6,7 @@ production:
   refresh_medication_review_evidence:
     class: MedicationReviewEvidenceRefreshJob
     schedule: every Sunday at 3am
-    queue: default
+    queue: imports
   expire_household_exports:
     class: ExpireHouseholdExportsJob
     schedule: every hour

@@ -35,7 +35,7 @@ RSpec.describe MedicationReviewEvidenceRefreshJob do
     )
 
     expect(schedule).to include(
-      'class' => described_class.name, 'schedule' => 'every Sunday at 3am', 'queue' => 'default'
+      'class' => described_class.name, 'schedule' => 'every Sunday at 3am', 'queue' => 'imports'
     )
   end
 end

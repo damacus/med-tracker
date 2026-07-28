@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class NhsDmdImportJob < ApplicationJob
-  queue_as :default
+  queue_as :imports
 
   def perform(import_run_or_id)
     import_run = resolve_import_run(import_run_or_id)

@@ -1,11 +1,24 @@
+<% queue_database_pool = ENV.fetch("SOLID_QUEUE_DATABASE_POOL", 8).to_i %>
+<% raise ArgumentError, "SOLID_QUEUE_DATABASE_POOL must be at least 5" if queue_database_pool < 5 %>
+<% notification_threads = [3, queue_database_pool - 4].min %>
+<% default_threads = queue_database_pool - notification_threads - 3 %>
+
 default: &default
   dispatchers:
     - polling_interval: 1
       batch_size: 500
   workers:
-    - queues: "*"
-      threads: 3
-      processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
+    - queues: notifications
+      threads: <%= notification_threads %>
+      processes: 1
+      polling_interval: 0.1
+    - queues: imports
+      threads: 1
+      processes: 1
+      polling_interval: 0.1
+    - queues: default
+      threads: <%= default_threads %>
+      processes: 1
       polling_interval: 0.1
 
 development:

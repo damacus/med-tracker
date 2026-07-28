@@ -38,8 +38,8 @@ RSpec.describe 'tenant safety architecture' do
     scheduler_source = Rails.root.join('app/jobs/schedule_daily_reminders_job.rb').read
 
     expect(reminder_source).to include('def perform(household_id, person_id, period, scheduled_time = nil)')
-    expect(scheduler_source).to include('perform_later(pref.household_id, pref.person_id')
-    expect(scheduler_source).not_to include('perform_later(pref.person_id')
+    expect(scheduler_source).to include('.new(pref.household_id, pref.person_id')
+    expect(scheduler_source).not_to include('.new(pref.person_id')
   end
 
   it 'requires offline IndexedDB access to be namespaced by tenant key' do

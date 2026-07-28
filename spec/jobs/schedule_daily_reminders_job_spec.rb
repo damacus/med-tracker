@@ -24,6 +24,53 @@ RSpec.describe ScheduleDailyRemindersJob do
     travel_to Time.zone.local(2026, 5, 12, 6, 0)
   end
 
+  it 'bulk enqueues built reminder jobs once with their arguments and scheduled times' do
+    create_bulk_reminder_inputs
+
+    enqueued_jobs = capture_bulk_enqueue { described_class.perform_now }
+    expected_jobs = [
+      [MedicationReminderJob, [household.id, person.id, :morning], Time.zone.local(2026, 5, 12, 8, 0)],
+      [MedicationReminderJob, [household.id, person.id, :scheduled, '07:15'], Time.zone.local(2026, 5, 12, 7, 15)],
+      [MissedDoseNotificationJob, [household.id, person.id, '2026-05-12', '07:15'],
+       Time.zone.local(2026, 5, 12, 7, 45)]
+    ]
+
+    expect(ActiveJob).to have_received(:perform_all_later).once
+    expect(enqueued_jobs.map { |job| [job.class, job.arguments, job.scheduled_at] }).to include(*expected_jobs)
+  end
+
+  it 'raises with failed job details when a bulk enqueue is only partially successful' do
+    create(:notification_preference, person: person, morning_time: '08:00:00', afternoon_time: nil,
+                                     evening_time: nil, night_time: nil)
+    allow(ActiveJob).to receive(:perform_all_later) do |jobs|
+      jobs.each { |job| job.successfully_enqueued = true }
+      jobs.first.successfully_enqueued = false
+      jobs.first.enqueue_error = ActiveJob::EnqueueError.new('queue unavailable')
+    end
+
+    expect { described_class.perform_now }
+      .to raise_error(ScheduleDailyRemindersJob::BulkEnqueueError, /MedicationReminderJob.*queue unavailable/)
+  end
+
+  def create_bulk_reminder_inputs
+    create(:notification_preference, person: person, morning_time: '08:00:00', afternoon_time: nil,
+                                     evening_time: nil, night_time: nil, dose_due_enabled: true,
+                                     missed_dose_enabled: true)
+    create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
+                      frequency: 'Twice daily', schedule_type: :multiple_daily,
+                      schedule_config: { 'times' => ['07:15'] })
+  end
+
+  def capture_bulk_enqueue
+    jobs = []
+    allow(ActiveJob).to receive(:perform_all_later) do |bulk_jobs|
+      jobs.concat(bulk_jobs)
+      bulk_jobs.each { |job| job.successfully_enqueued = true }
+    end
+    yield
+    jobs
+  end
+
   def count_schedule_queries(&)
     count = 0
 
@@ -65,14 +112,15 @@ RSpec.describe ScheduleDailyRemindersJob do
   end
 
   it 'enqueues missed-dose checks after active schedule times when missed-dose preferences are enabled' do
-    preference = create(:notification_preference, person: person, morning_time: nil, afternoon_time: nil,
-                                                  evening_time: nil, night_time: nil, dose_due_enabled: false,
-                                                  missed_dose_enabled: true)
-    job = described_class.new
-    allow(job).to receive(:configured_times_for).and_return(['07:15'])
+    create(:notification_preference, person: person, morning_time: nil, afternoon_time: nil,
+                                     evening_time: nil, night_time: nil, dose_due_enabled: false,
+                                     missed_dose_enabled: true)
+    create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
+                      frequency: 'Once daily', schedule_type: :daily,
+                      schedule_config: { 'times' => ['07:15'] })
 
     expect do
-      job.send(:enqueue_reminders_for, preference)
+      described_class.perform_now
     end.to have_enqueued_job(MissedDoseNotificationJob)
       .with(household.id, person.id, '2026-05-12', '07:15')
       .at(Time.zone.local(2026, 5, 12, 7, 45))

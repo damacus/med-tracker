@@ -14,6 +14,7 @@ development:
   queue:
     adapter: postgresql
     url: <%= ENV.fetch('SOLID_QUEUE_DATABASE_URL') { ENV['DATABASE_URL']&.gsub(/\/[^\/]+$/, '/medtracker_queue') } %>
+    pool: <%= ENV.fetch('SOLID_QUEUE_DATABASE_POOL', 8) %>
     migrations_paths: db/queue_migrate
 
 test:
@@ -40,6 +41,7 @@ production:
   queue:
     adapter: postgresql
     url: <%= ENV.fetch('SOLID_QUEUE_DATABASE_URL') { ENV['DATABASE_URL']&.gsub(/\/[^\/]+$/, '/medtracker_production_queue') } %>
+    pool: <%= ENV.fetch('SOLID_QUEUE_DATABASE_POOL', 8) %>
     migrations_paths: db/queue_migrate
   cable:
     adapter: postgresql

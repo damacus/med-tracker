@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class MissedDoseNotificationJob < ApplicationJob
-  queue_as :default
+  queue_as :notifications
 
   GRACE_PERIOD = 30.minutes
 

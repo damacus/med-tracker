@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class MedicationReviewEvidenceRefreshJob < ApplicationJob
-  queue_as :default
+  queue_as :imports
 
   def perform
     run = MedicationReviewEvidenceRefreshRun.create!

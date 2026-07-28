@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class LowStockNotificationJob < ApplicationJob
-  queue_as :default
+  queue_as :notifications
 
   def perform(household_id, medication_id, take_id)
     household = Household.operational.find_by(id: household_id)
