@@ -15,6 +15,14 @@ identity before person identity and re-establishes its own tenant context when
 it executes. No request threads or asynchronous Active Record queries were
 added.
 
+Medication dose reminders now record a unique `medication_reminder`
+`NotificationEvent` for the person, occurrence date, period, and configured
+time before sending. The occurrence date comes from the job's preserved
+`scheduled_at` value, with the current zoned date used for direct execution.
+Duplicate jobs for a partially enqueued batch therefore deliver at most once.
+If push delivery raises, the unsent event is removed before the error is
+reraised, so a later retry can still deliver and record `sent_at`.
+
 ## Queue isolation
 
 - `MedicationReminderJob`, `MissedDoseNotificationJob`, and
@@ -54,6 +62,10 @@ recurring import. The focused Task 5 run then passed 60 examples covering:
 - tenant-context identity ordering;
 - existing missed-dose and low-stock duplicate suppression;
 - notification/import job behavior.
+
+The review follow-up focused run passed 38 examples covering the scheduler and
+all notification jobs, including delayed duplicate execution on the next date
+and successful retry after an initial push failure.
 
 `task rubocop` found no Task 5 offenses. Its repository-wide exit remains
 nonzero because of two pre-existing Task 1 offenses in

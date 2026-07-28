@@ -35,6 +35,45 @@ RSpec.describe MedicationReminderJob do
     )
   end
 
+  it 'sends the same scheduled occurrence at most once' do
+    create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
+                      frequency: 'Once daily', schedule_type: :daily, schedule_config: { 'times' => ['07:15'] },
+                      start_date: Date.new(2026, 5, 1), end_date: Date.new(2026, 6, 1))
+    occurrence_time = Time.zone.local(2026, 5, 12, 7, 15)
+    jobs = 2.times.map do
+      described_class.new(household.id, person.id, :scheduled, '07:15').set(wait_until: occurrence_time)
+    end
+
+    travel_to occurrence_time + 1.day do
+      jobs.each(&:perform_now)
+    end
+
+    expect(PushNotificationService).to have_received(:send_to_account).once
+    event = NotificationEvent.find_by!(event_type: 'medication_reminder')
+    expect(event.metadata.fetch('scheduled_on')).to eq('2026-05-12')
+  end
+
+  it 'allows the occurrence to retry when push delivery fails' do
+    create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
+                      frequency: 'Once daily', schedule_type: :daily, schedule_config: { 'times' => ['07:15'] },
+                      start_date: Date.new(2026, 5, 1), end_date: Date.new(2026, 6, 1))
+    attempts = 0
+    allow(PushNotificationService).to receive(:send_to_account) do
+      attempts += 1
+      raise 'push failed' if attempts == 1
+    end
+
+    travel_to Time.zone.local(2026, 5, 12, 7, 15) do
+      expect do
+        described_class.perform_now(household.id, person.id, :scheduled, '07:15')
+      end.to raise_error(RuntimeError, 'push failed')
+      described_class.perform_now(household.id, person.id, :scheduled, '07:15')
+    end
+
+    expect(PushNotificationService).to have_received(:send_to_account).twice
+    expect(NotificationEvent.find_by!(event_type: 'medication_reminder').sent_at).to be_present
+  end
+
   it 'does not send scheduled-time reminders for doses already taken today' do
     schedule = create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
                                  frequency: 'Once daily', schedule_type: :daily,
