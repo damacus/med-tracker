@@ -1,26 +1,26 @@
 # Deployment
 
-MedTracker runs with Docker Compose in development, test, and production-style
-setups.
+MedTracker uses profiles in a single `compose.yaml` file for development,
+testing, and local validation of the production image.
 
-## Compose files
+## Compose profiles
 
-- `docker-compose.dev.yml`: development stack
-- `docker-compose.test.yml`: test stack
-- `docker-compose.yml`: production-style stack
+- `dev`: development stack
+- `test`: test stack
+- `prod`: local validation of the production image
 
 ## Development deployment
 
 Use Taskfile wrappers:
 
-```bash
-task dev:up
+```fish
+task dev:portless
 task dev:seed
 ```
 
 Stop or inspect:
 
-```bash
+```fish
 task dev:stop
 task dev:logs
 task dev:ps
@@ -30,7 +30,7 @@ task dev:ps
 
 Start/stop test services when needed:
 
-```bash
+```fish
 task test:up
 task test:stop
 task test:logs
@@ -38,23 +38,33 @@ task test:logs
 
 Run full tests in the test environment:
 
-```bash
+```fish
 task test
 ```
 
-## Production-style compose run
+## Local production-image validation
 
-If you need to run the production compose file locally:
+The `prod` profile validates that the production image builds, migrates its
+local PostgreSQL database, and starts successfully. It is not a real production
+deployment.
 
-```bash
-docker compose -f docker-compose.yml up -d
+```fish
+task prod:build
+task prod:up
+task prod:ps
 ```
 
-Run migrations inside the web container:
+`task prod:up` runs the `migrate-prod` service before starting the web service.
+Use the Task wrappers to inspect and stop the local stack:
 
-```bash
-docker compose -f docker-compose.yml run --rm web rails db:migrate
+```fish
+task prod:logs
+task prod:stop
 ```
+
+For a real reachable deployment, follow the
+[hosted private beta runbook](operations/hosted-private-beta-runbook.md) or the
+Kubernetes runbooks linked below.
 
 ## Environment and database notes
 

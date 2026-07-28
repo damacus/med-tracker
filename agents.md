@@ -100,6 +100,12 @@ Use `task` for everything. Never run `docker compose`, `bin/dev`, or `bundle exe
 
 ## Testing
 
+Documentation-only changes (`*.md` with no executable code or application
+configuration changes) do not require `task test:preflight`, the full RSpec
+suite, system or Playwright tests, Lighthouse, or application end-to-end tests.
+Verify Markdown correctness with `task docs:build` and `git diff --check`, plus
+any narrower documentation-specific check relevant to the changed files.
+
 Run `task test:preflight` before implementation work. If it reports that Docker is unavailable or the test image is missing, fix that specific prerequisite. Use GitHub CI as the verification authority only when local Docker remains unavailable.
 
 - Write RSpec tests in `_spec.rb` files using Rails/RSpec conventions.
@@ -123,6 +129,10 @@ task dev:port          # → e.g. 3000
 Save PR screenshots under `docs/screenshots/` with page and viewport in the filename, for example `dashboard-desktop.png` and `dashboard-mobile.png`.
 
 ## Quality gates (run before every push)
+
+These full application gates apply when executable code or application
+configuration changes. For documentation-only changes, use the documentation
+verification rule above.
 
 ```fish
 task rubocop          # lint — must pass with no offenses

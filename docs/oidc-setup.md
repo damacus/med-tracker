@@ -12,7 +12,7 @@ implementation supports:
 
 - **Any OIDC-compliant provider** via `.well-known/openid-configuration` discovery
 - **Authorization code flow** for secure server-side token exchange
-- **Automatic account creation** with profile synchronization from OIDC claims
+- **Account linking and creation** subject to MedTracker's registration policy
 - **ID token verification** using provider JWKS (JSON Web Key Set)
 
 ## Configuration
@@ -27,10 +27,30 @@ OIDC_CLIENT_SECRET=your-client-secret
 
 ### Optional Environment Variables
 
-```bash
-OIDC_REDIRECT_URI=http://localhost:3000/auth/oidc/callback  # Auto-generated if not set
-OIDC_PROVIDER_NAME="Your Identity Provider"                  # Defaults to "OIDC"
-APP_URL=http://localhost:3000                                # Used for redirect URI
+```dotenv
+APP_URL=https://medtracker.example.com
+OIDC_REDIRECT_URI=https://medtracker.example.com/auth/oidc/callback
+OIDC_PROVIDER_NAME="Your Identity Provider"
+```
+
+`OIDC_REDIRECT_URI` defaults to `${APP_URL}/auth/oidc/callback`.
+
+### Local development with Portless
+
+Register this callback with the provider:
+
+`https://med-tracker.localhost/auth/oidc/callback`
+
+Export the local URLs before starting the development container so OIDC sees
+the same stable origin as the browser:
+
+```fish
+set -x APP_URL "https://med-tracker.localhost"
+set -x OIDC_REDIRECT_URI "https://med-tracker.localhost/auth/oidc/callback"
+set -x OIDC_ISSUER_URL "https://your-provider.com"
+set -x OIDC_CLIENT_ID "your-client-id"
+set -x OIDC_CLIENT_SECRET "your-client-secret"
+task dev:portless
 ```
 
 ### Option 1: Rails Credentials (Recommended for Production)
@@ -84,17 +104,13 @@ sequenceDiagram
 
 ## Account Creation
 
-When a user signs in via OIDC for the first time, MedTracker automatically:
+MedTracker validates the provider identity and links it to an existing account
+with the same email when appropriate. New OIDC accounts are subject to the
+configured registration policy. When invitation-only registration is enabled,
+uninvited identities cannot create accounts through single sign-on.
 
-1. Validates the ID token signature using the provider's JWKS
-2. Validates token claims (issuer, audience, expiration)
-3. Creates an **Account** record with verified status
-4. Creates a **Person** record from OIDC claims (name, email)
-5. Creates a **User** record with default `parent` role
-6. Creates an **AccountIdentity** record linking the OIDC identity (provider + sub)
-
-Accounts created via OIDC are automatically verified since the provider has
-already verified the email address.
+Household roles and person-level access remain controlled by MedTracker; they
+are not granted from arbitrary provider role claims.
 
 ## OIDC Scopes and Claims
 
@@ -114,14 +130,14 @@ See [Zitadel Local Testing Guide](zitadel-local-testing.md).
 
 1. Create a new realm or use an existing one
 2. Create a new client with **Client authentication** enabled
-3. Set **Valid redirect URIs** to `http://localhost:3000/auth/oidc/callback`
+3. Set **Valid redirect URIs** to `${APP_URL}/auth/oidc/callback`
 4. Copy the client ID and secret
 5. Set `OIDC_ISSUER_URL` to `https://keycloak.example.com/realms/your-realm`
 
 ### Authentik
 
 1. Create a new OAuth2/OpenID Provider
-2. Set redirect URI to `http://localhost:3000/auth/oidc/callback`
+2. Set redirect URI to `${APP_URL}/auth/oidc/callback`
 3. Copy the client ID and secret
 4. Set `OIDC_ISSUER_URL` to `https://authentik.example.com/application/o/your-app/`
 
@@ -129,13 +145,13 @@ See [Zitadel Local Testing Guide](zitadel-local-testing.md).
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create OAuth 2.0 credentials (Web application)
-3. Set redirect URI to `http://localhost:3000/auth/oidc/callback`
+3. Set redirect URI to `${APP_URL}/auth/oidc/callback`
 4. Set `OIDC_ISSUER_URL` to `https://accounts.google.com`
 
 ### Azure AD / Entra ID
 
 1. Register an application in Azure Portal
-2. Add redirect URI `http://localhost:3000/auth/oidc/callback`
+2. Add redirect URI `${APP_URL}/auth/oidc/callback`
 3. Create a client secret
 4. Set `OIDC_ISSUER_URL` to `https://login.microsoftonline.com/{tenant-id}/v2.0`
 

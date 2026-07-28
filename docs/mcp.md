@@ -10,8 +10,8 @@ it does not support writes.
 
 ## Prerequisites
 
-- A running MedTracker deployment reachable over HTTPS. Local development can
-  use `http://localhost:<port>`.
+- A running MedTracker deployment reachable over HTTPS. Local development uses
+  `https://med-tracker.localhost` through `task dev:portless`.
 - A MedTracker account with active access to the household you want the client
   to read.
 - Access to complete multi-factor authentication when your account policy
@@ -45,9 +45,9 @@ export MEDTRACKER_MCP_TOKEN="paste-token-here"
 
 For local development, use the dev server URL instead:
 
-```bash
-export MEDTRACKER_URL="http://localhost:$(task dev:port)"
-export MEDTRACKER_MCP_TOKEN="paste-token-here"
+```fish
+set -x MEDTRACKER_URL "https://med-tracker.localhost"
+set -x MEDTRACKER_MCP_TOKEN "paste-token-here"
 ```
 
 Do not put bearer tokens in URLs, screenshots, checked-in config, or shell

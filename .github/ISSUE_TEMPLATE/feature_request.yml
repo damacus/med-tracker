@@ -1,0 +1,74 @@
+name: Feature request
+description: Suggest an improvement to a MedTracker journey
+title: "[Feature]: "
+labels:
+  - type:feature
+  - feedback
+  - priority:p3
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping shape MedTracker. Describe the problem before proposing a particular solution—it helps us understand the real journey.
+
+        Do not include names, medication details, health information, credentials, tokens, or unredacted logs.
+
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Who would this help?
+      options:
+        - A person managing their own medication
+        - A family member or carer
+        - A household administrator
+        - A self-hosting operator
+        - A clinician or care professional
+        - More than one of these groups
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Tell us what is difficult, confusing, or missing today.
+      placeholder: "When I try to… I find it difficult to…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: What would a good outcome look like?
+      description: Describe what you would be able to do, without needing to design the implementation.
+      placeholder: "I would be able to…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What do you do today?
+      description: Share any workaround or alternative product you currently use.
+
+  - type: dropdown
+    id: importance
+    attributes:
+      label: How important is this to you?
+      options:
+        - I cannot complete the journey without it
+        - It would remove significant friction
+        - It would be a useful improvement
+        - It is an idea for later
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Final checks
+      options:
+        - label: I searched existing issues and discussions for a similar request.
+          required: true
+        - label: I removed personal, health, credential, token, and other sensitive information.
+          required: true

@@ -2,15 +2,17 @@
 
 ## Quick setup
 
-```bash
+```fish
 git clone https://github.com/damacus/med-tracker.git
 cd med-tracker
 bin/setup-claude   # installs task, gems, npm packages, Python deps, Playwright
-task dev:up        # start dev server via Docker
+npm install -g portless
+portless trust
+task dev:portless  # start the dev stack at https://med-tracker.localhost
 task dev:seed      # seed the database
 ```
 
-Open <http://localhost:3000>.
+Open <https://med-tracker.localhost>.
 
 > **Note**: `bin/setup-claude` handles several environment quirks (Bundler/CGI
 > proxy issue, offline Playwright browsers, blocked `task` installer). If you
@@ -19,14 +21,14 @@ Open <http://localhost:3000>.
 
 ## Development workflow
 
-```bash
+```fish
 task test                    # run RSpec suite in Docker
 task test TEST_FILE=spec/models/user_spec.rb  # run a single file
 task rubocop                 # lint Ruby
 task rubocop AUTOCORRECT=true  # auto-fix style issues
-task dev:up                  # start / restart the dev server
+task dev:portless            # start / restart the dev server
 task stop-all                # stop all Docker environments
-task lighthouse:run          # accessibility/performance audit (requires dev:up)
+task lighthouse:run          # accessibility/performance audit (requires the dev stack)
 task docs:serve              # serve docs locally
 ```
 
@@ -81,7 +83,7 @@ fix: resolve dose timing validation error
 docs: update CONTRIBUTING with setup steps
 refactor: extract dosage calculation to service object
 test: add coverage for medication take model
-chore: bump Ruby to 3.4.7
+chore: bump Ruby to 4.0.6
 ```
 
 - Each commit is a complete, logical unit of work — tests green before merge
@@ -91,11 +93,12 @@ chore: bump Ruby to 3.4.7
 
 | Layer | Technology |
 |---|---|
-| Language | Ruby 3.4.7 |
-| Framework | Ruby on Rails 8.1 |
-| Database | PostgreSQL (Docker) |
+| Language | Ruby 4.0.6 |
+| Framework | Ruby on Rails 8.1.3 |
+| Database | PostgreSQL 18 |
 | Frontend | Hotwire, Phlex, TailwindCSS, Propshaft |
 | Testing | RSpec, Capybara, Playwright |
-| Auth | `has_secure_password` + Pundit, OIDC planned |
+| Authentication | Rodauth passwords, passkeys, and OIDC |
+| Authorization | Pundit |
 | Task runner | [Task](https://taskfile.dev) (`Taskfile.yml`) |
 | CI | GitHub Actions (`.github/workflows/`) |

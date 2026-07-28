@@ -4,7 +4,8 @@ Once you've set up MedTracker, the next step is adding a medicine for
 one of your family members.
 
 ## Step 1: Log in
-Open [http://localhost:3000](http://localhost:3000) in your web browser.
+Open [https://med-tracker.localhost](https://med-tracker.localhost) in your web
+browser.
 
 Sign in with the local demo account you selected during setup, or with the
 account your administrator invited. Do not use development fixture accounts on
