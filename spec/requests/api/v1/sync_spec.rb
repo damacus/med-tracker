@@ -3,7 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'API v1 sync' do
-  fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :dosages, :schedules
+  fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :dosages, :schedules,
+           :person_medications, :medication_takes, :carer_relationships
 
   let(:user) { users(:admin) }
   let(:login_data) { api_login(user) }
@@ -385,6 +386,21 @@ RSpec.describe 'API v1 sync' do
     expect(medication.reload.name).not_to eq('Unsupported Replace')
   end
 
+  it 'rejects create operations for unsupported resources before writing records' do
+    expect do
+      post_batch(
+        {
+          action: 'create',
+          resource_type: 'medication',
+          attributes: { name: 'Unsupported Create' }
+        }
+      )
+    end.not_to change(Medication, :count)
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body.fetch('error')).to include('code' => 'sync_operation_unsupported')
+  end
+
   it 'rolls back batch updates with invalid attributes' do
     event = HealthEvent.create!(
       household_id: household_id,
@@ -413,5 +429,340 @@ RSpec.describe 'API v1 sync' do
 
     expect(response).to have_http_status(:unprocessable_content)
     expect(event.reload.title).to eq('Cold')
+  end
+
+  describe 'medication-take create operations' do
+    it 'records a queued schedule take through the batch result contract' do
+      source = schedules(:jane_ibuprofen)
+      client_uuid = SecureRandom.uuid
+
+      expect do
+        post_batch(medication_take_operation(source: source, client_uuid: client_uuid))
+      end.to change(MedicationTake, :count).by(1)
+
+      expect(response).to have_http_status(:created)
+      take = MedicationTake.find_by!(client_uuid: client_uuid)
+      expect(take).to have_attributes(schedule: source, household_id: household_id)
+      expect(response.parsed_body.dig('data', 'results', 0)).to include(
+        'action' => 'create',
+        'record_type' => 'MedicationTake',
+        'record_portable_id' => take.portable_id,
+        'replayed' => false
+      )
+    end
+
+    it 'records a queued person-medication take' do
+      source = person_medications(:jane_vitamin_d)
+      client_uuid = SecureRandom.uuid
+
+      post_batch(medication_take_operation(source: source, client_uuid: client_uuid))
+
+      expect(response).to have_http_status(:created)
+      expect(MedicationTake.find_by!(client_uuid: client_uuid)).to have_attributes(person_medication: source)
+    end
+
+    it 'requires a non-blank client UUID' do
+      source = schedules(:jane_ibuprofen)
+
+      expect do
+        post_batch(medication_take_operation(source: source, client_uuid: ''))
+      end.not_to change(MedicationTake, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body.fetch('error')).to include(
+        'code' => 'medication_take_invalid',
+        'message' => 'operation 0 client_uuid is required'
+      )
+    end
+
+    it 'rejects update and delete actions for immutable medication takes' do
+      take = medication_takes(:jane_morning_ibuprofen)
+
+      %w[update delete].each do |action|
+        post_batch(
+          {
+            action: action,
+            resource_type: 'medication_take',
+            id: take.portable_id,
+            if_match: Api::RecordEtag.for(take),
+            attributes: {}
+          }
+        )
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body.fetch('error')).to include('code' => 'sync_operation_unsupported')
+        expect(response.parsed_body.to_json).not_to include(take.portable_id)
+      end
+
+      expect(take.reload).to eq(take)
+    end
+
+    it 'replays an authorized take without repeating stock, audit, or sync side effects' do
+      take = medication_takes(:jane_morning_ibuprofen)
+      medication = take.schedule.medication
+      counts = medication_take_side_effect_counts(take)
+      supply = medication.current_supply
+
+      post_batch(
+        medication_take_operation(
+          source: take.schedule,
+          client_uuid: take.client_uuid,
+          taken_at: 3.days.from_now.iso8601
+        )
+      )
+
+      expect(response).to have_http_status(:created)
+      expect(response.parsed_body.dig('data', 'results', 0)).to include(
+        'record_portable_id' => take.portable_id,
+        'replayed' => true
+      )
+      expect(medication.reload.current_supply).to eq(supply)
+      expect(medication_take_side_effect_counts(take)).to eq(counts)
+    end
+
+    it 'requires record access after resolving a visible source' do
+      scoped_user = users(:jane)
+      scoped_login = api_login(scoped_user)
+      scoped_household_id = scoped_login.dig('household', 'id')
+      membership = scoped_user.person.account.household_memberships.find_by!(household_id: scoped_household_id)
+      grant = PersonAccessGrant.find_by!(household_membership: membership, person: scoped_user.person)
+      grant.update!(access_level: :view)
+      source = schedules(:jane_ibuprofen)
+
+      expect do
+        post_batch(
+          medication_take_operation(source: source),
+          request_headers: api_auth_headers(scoped_login.fetch('access_token')),
+          target_household_id: scoped_household_id
+        )
+      end.not_to change(MedicationTake, :count)
+
+      expect(response).to have_http_status(:forbidden)
+      expect(response.parsed_body.dig('error', 'code')).to eq('forbidden')
+    end
+
+    it 'hides stale and cross-household source references' do
+      stale_id = SecureRandom.uuid
+      other_household = create(:household)
+      other_person = create(:person, household: other_household)
+      other_medication = create(:medication, household: other_household)
+      other_source = create(
+        :schedule,
+        household: other_household,
+        person: other_person,
+        medication: other_medication
+      )
+
+      [stale_id, other_source.portable_id].each do |source_id|
+        operation = medication_take_operation(source: schedules(:jane_ibuprofen))
+        operation[:attributes][:source_id] = source_id
+        post_batch(operation)
+
+        expect(response).to have_http_status(:not_found)
+        expect(response.parsed_body.fetch('error')).to include(
+          'code' => 'not_found',
+          'message' => 'Record not found'
+        )
+        expect(response.parsed_body.to_json).not_to include(source_id)
+      end
+    end
+
+    it 'returns stable errors for unavailable stock and timing conflicts' do
+      household = Household.find(household_id)
+      empty_medication = create(
+        :medication,
+        household: household,
+        current_supply: 0,
+        supply_at_last_restock: 0
+      )
+      empty_source = create(
+        :schedule,
+        household: household,
+        person: people(:jane),
+        medication: empty_medication
+      )
+      timing_source = schedules(:jane_ibuprofen)
+      timing_take = medication_takes(:jane_morning_ibuprofen)
+
+      [
+        [
+          medication_take_operation(
+            source: empty_source,
+            taken_from_medication_id: empty_medication.id
+          ),
+          'medication_stock_unavailable'
+        ],
+        [
+          medication_take_operation(source: timing_source, taken_at: (timing_take.taken_at + 1.hour).iso8601),
+          'medication_timing_conflict'
+        ]
+      ].each do |operation, code|
+        post_batch(operation)
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body.dig('error', 'code')).to eq(code)
+        expect(response.parsed_body.to_json).not_to include(
+          operation.dig(:attributes, :client_uuid),
+          operation.dig(:attributes, :source_id)
+        )
+      end
+    end
+
+    it 'rejects invalid dose input without echoing clinical values' do
+      private_value = 'private-dose-time'
+
+      post_batch(
+        medication_take_operation(
+          source: schedules(:jane_ibuprofen),
+          taken_at: private_value,
+          dose_amount: 'private-dose-value'
+        )
+      )
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body.dig('error', 'code')).to eq('medication_take_invalid')
+      expect(response.parsed_body.to_json).not_to include(private_value, 'private-dose-value')
+    end
+
+    it 'rejects unsupported source types without echoing the source reference' do
+      operation = medication_take_operation(source: schedules(:jane_ibuprofen))
+      private_source_type = 'private-source-type'
+      private_source_id = 'private-source-id'
+      operation[:attributes].merge!(source_type: private_source_type, source_id: private_source_id)
+
+      post_batch(operation)
+
+      expect(response).to have_http_status(:not_found)
+      expect(response.parsed_body.fetch('error')).to include('code' => 'not_found', 'message' => 'Record not found')
+      expect(response.parsed_body.to_json).not_to include(private_source_type, private_source_id)
+    end
+
+    it 'returns a stable validation error after retrying an unrelated persistence failure' do
+      dose_service = instance_double(MedicationAdministration::RecordDose)
+      result = MedicationAdministration::RecordDose::Result.new(success: false, take: nil, error: :create_failed)
+      allow(MedicationAdministration::RecordDose).to receive(:new).and_return(dose_service)
+      allow(dose_service).to receive(:call).and_return(result)
+
+      expect do
+        post_batch(medication_take_operation(source: schedules(:jane_ibuprofen)))
+      end.not_to change(MedicationTake, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body.fetch('error')).to include(
+        'code' => 'medication_take_invalid',
+        'message' => 'Medication take is invalid'
+      )
+      expect(dose_service).to have_received(:call).twice
+    end
+
+    it 'rolls back an earlier update when a queued take fails' do
+      medication = medications(:paracetamol)
+      original_name = medication.name
+      original_changes = ApiChangeEvent.count
+
+      post_batch(
+        {
+          action: 'update',
+          resource_type: 'medication',
+          id: medication.portable_id,
+          if_match: Api::RecordEtag.for(medication),
+          attributes: { name: 'Must Roll Back' }
+        },
+        medication_take_operation(source: schedules(:jane_ibuprofen), client_uuid: '')
+      )
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(medication.reload.name).to eq(original_name)
+      expect(ApiChangeEvent.count).to eq(original_changes)
+    end
+
+    it 'rolls back a queued take and all side effects when a later operation fails' do
+      source = schedules(:jane_ibuprofen)
+      medication = source.medication
+      client_uuid = SecureRandom.uuid
+      initial = {
+        takes: MedicationTake.count,
+        supply: medication.current_supply,
+        versions: PaperTrail::Version.where(item_type: 'MedicationTake').count,
+        changes: ApiChangeEvent.count,
+        tombstones: ApiTombstone.count
+      }
+
+      post_batch(
+        medication_take_operation(
+          source: source,
+          client_uuid: client_uuid,
+          taken_at: 2.days.from_now.iso8601
+        ),
+        {
+          action: 'replace',
+          resource_type: 'medication',
+          id: medications(:paracetamol).portable_id,
+          attributes: { name: 'Unsupported' }
+        }
+      )
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(
+        takes: MedicationTake.count,
+        supply: medication.reload.current_supply,
+        versions: PaperTrail::Version.where(item_type: 'MedicationTake').count,
+        changes: ApiChangeEvent.count,
+        tombstones: ApiTombstone.count
+      ).to eq(initial)
+      expect(MedicationTake.exists?(client_uuid: client_uuid)).to be(false)
+    end
+
+    it 'does not disclose an idempotency key that cannot be replayed' do
+      hidden_take = medication_takes(:jane_morning_ibuprofen)
+      hidden_uuid = hidden_take.client_uuid
+      scoped_login = api_login(users(:carer))
+      scoped_household_id = scoped_login.dig('household', 'id')
+
+      post_batch(
+        medication_take_operation(source: schedules(:patient_schedule), client_uuid: hidden_uuid),
+        request_headers: api_auth_headers(scoped_login.fetch('access_token')),
+        target_household_id: scoped_household_id
+      )
+
+      expect(response).to have_http_status(:conflict)
+      expect(response.parsed_body.dig('error', 'code')).to eq('idempotency_key_unavailable')
+      expect(response.parsed_body.to_json).not_to include(
+        hidden_uuid,
+        hidden_take.portable_id,
+        hidden_take.person.portable_id
+      )
+    end
+  end
+
+  def post_batch(*operations, request_headers: headers, target_household_id: household_id)
+    post api_v1_household_sync_batches_path(target_household_id),
+         params: { batch: { operations: operations } },
+         headers: request_headers,
+         as: :json
+  end
+
+  def medication_take_operation(
+    source:, client_uuid: SecureRandom.uuid, taken_at: 2.days.from_now.iso8601, **attributes
+  )
+    source_type = source.is_a?(Schedule) ? 'schedule' : 'person_medication'
+    {
+      action: 'create',
+      resource_type: 'medication_take',
+      attributes: {
+        client_uuid: client_uuid,
+        source_type: source_type,
+        source_id: source.portable_id,
+        taken_at: taken_at
+      }.merge(attributes)
+    }
+  end
+
+  def medication_take_side_effect_counts(take)
+    {
+      takes: MedicationTake.where(client_uuid: take.client_uuid).count,
+      versions: take.versions.count,
+      changes: ApiChangeEvent.where(record_type: 'MedicationTake', record_id: take.id).count
+    }
   end
 end

@@ -1,0 +1,20 @@
+---
+version: "3"
+
+tasks:
+  validate:
+    desc: Validate all OpenSpec changes and specifications
+    cmds:
+      - mise exec -- openspec validate --all
+
+  status:
+    desc: Show artifact status for an OpenSpec change
+    requires:
+      vars: [CHANGE]
+    cmds:
+      - mise exec -- openspec status --change "{{ .CHANGE }}"
+
+  update:
+    desc: Refresh generated OpenSpec Codex skills and commands
+    cmds:
+      - mise exec -- openspec update

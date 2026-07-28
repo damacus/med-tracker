@@ -1,0 +1,42 @@
+schema: spec-driven
+
+context: |
+  MedTracker is a Rails 8.1 modular monolith for household medication and health data.
+  Read AGENTS.md, docs/design.md, relevant ADRs, and existing public behavior before proposing changes.
+  Preserve household isolation, person-level authorization, medication safety, audit integrity,
+  immutable medication-take records, atomic transactions, and PHI-safe errors and diagnostics.
+  Reuse established service boundaries instead of duplicating domain behavior in controllers.
+  Follow Red-Green-Refactor and use repository task wrappers for verification.
+
+rules:
+  proposal:
+    - Link the originating GitHub issue and state the problem, scope, and explicit non-goals.
+    - Keep the proposal focused on observable behavior and project impact.
+  specs:
+    - Express every requirement as testable behavior using GIVEN, WHEN, and THEN scenarios.
+    - Cover authorization, cross-household isolation, idempotency, transaction rollback, and PHI-safe failures where relevant.
+  design:
+    - Identify existing boundaries to reuse and explain transaction, concurrency, authorization, audit, and privacy consequences.
+    - Record rejected alternatives and unresolved decisions explicitly.
+  tasks:
+    - Order work as Red-Green-Refactor and map tests to each behavioral requirement.
+    - Use task commands and include focused verification before full quality gates.
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours

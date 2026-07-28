@@ -40,11 +40,13 @@ RSpec.describe 'MedTracker MCP server' do
   end
 
   it 'throttles repeated MCP requests at the Rack boundary' do
-    with_rack_attack_enabled do
-      60.times { mcp_post('tools/list', headers: mcp_headers.except('Authorization')) }
-      expect(response).to have_http_status(:unauthorized)
+    freeze_time do
+      with_rack_attack_enabled do
+        60.times { mcp_post('tools/list', headers: mcp_headers.except('Authorization')) }
+        expect(response).to have_http_status(:unauthorized)
 
-      mcp_post('tools/list', headers: mcp_headers.except('Authorization'))
+        mcp_post('tools/list', headers: mcp_headers.except('Authorization'))
+      end
     end
 
     expect(response).to have_http_status(:too_many_requests)
