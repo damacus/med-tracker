@@ -42,6 +42,14 @@ RSpec.describe Otel::DatabaseConnectionPoolMetrics do
     )
   end
 
+  it 'returns the number of live pools from the collector callback' do
+    metrics.install
+
+    collector = meter.observable_gauges.fetch('medtracker.db.connection_pool.collector')
+
+    expect(collector.observe).to eq(1)
+  end
+
   it 'resolves live pools when each gauge is observed' do
     pools = [pool]
     metrics = described_class.new(pool_resolver: -> { pools }, meter:)
