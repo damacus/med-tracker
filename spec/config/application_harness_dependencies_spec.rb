@@ -154,6 +154,7 @@ RSpec.describe ApplicationHarnessDependencies do
     end
 
     expect(app_stage).not_to include('COPY --chown=ruby:ruby . .')
+    expect(app_stage).not_to include('COPY --chown=ruby:ruby --from=assets /app/data /app/data')
     expect(app_stage).not_to include('RUN chmod 0755 bin/*')
   end
 
@@ -239,7 +240,8 @@ RSpec.describe ApplicationHarnessDependencies do
       'COPY --chown=ruby:ruby --from=assets /app/bin /app/bin',
       'COPY --chown=ruby:ruby --from=assets /app/config /app/config',
       'COPY --chown=ruby:ruby --from=assets /app/db /app/db',
-      'COPY --chown=ruby:ruby --from=assets /app/data /app/data',
+      'COPY --chown=ruby:ruby --from=assets /app/data/medication_reviews/openfda_labels.json /app/data/medication_reviews/openfda_labels.json',
+      'COPY --chown=ruby:ruby --from=assets /app/data/medication_reviews/rxclass_terminology.json /app/data/medication_reviews/rxclass_terminology.json',
       'COPY --chown=ruby:ruby --from=assets /app/lib /app/lib',
       'COPY --chown=ruby:ruby --from=assets /app/public /app/public',
       'COPY --chown=ruby:ruby --from=assets /app/config.ru /app/Rakefile /app/',
