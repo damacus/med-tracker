@@ -18,9 +18,10 @@ module Otel
       end
     end
 
-    def initialize(pool:, meter:)
-      @pool = pool
+    def initialize(pool_resolver:, meter:)
+      @pool_resolver = pool_resolver
       @meter = meter
+      @error_log_mutex = Mutex.new
     end
 
     def install
@@ -34,30 +35,62 @@ module Otel
       self
     end
 
-    def record_timeout(timed_out_pool = pool)
+    def record_timeout(timed_out_pool)
       timeout_counter&.add(1, attributes: pool_attributes(timed_out_pool))
     end
 
     private
 
-    attr_reader :meter, :pool, :timeout_counter
+    attr_reader :meter, :pool_resolver, :timeout_counter
 
     def install_gauges
       GAUGES.each do |stat_key, (name, description)|
         meter.create_observable_gauge(
           name,
-          callback: -> { pool_stat(stat_key) },
+          callback: -> { pool_observations(stat_key) },
           unit: '1',
           description:
         )
       end
     end
 
-    def pool_stat(stat_key)
-      pool.stat.fetch(stat_key)
+    def pool_observations(stat_key)
+      connection_pools.filter_map do |connection_pool|
+        next if discarded?(connection_pool)
+
+        pool_stat(connection_pool, stat_key)
+      end
     rescue StandardError => e
-      Rails.logger.warn("OpenTelemetry database pool metrics unavailable: #{e.class}: #{e.message}")
-      0
+      log_collection_failure(e)
+      []
+    end
+
+    def connection_pools
+      pool_resolver.call || []
+    end
+
+    def discarded?(connection_pool)
+      connection_pool.respond_to?(:discarded?) && connection_pool.discarded?
+    end
+
+    def pool_stat(connection_pool, stat_key)
+      [connection_pool.stat.fetch(stat_key), pool_attributes(connection_pool)]
+    rescue StandardError => e
+      log_collection_failure(e)
+      nil
+    end
+
+    def log_collection_failure(error)
+      @error_log_mutex.synchronize do
+        return if @last_error_logged_at && monotonic_time - @last_error_logged_at < 60
+
+        @last_error_logged_at = monotonic_time
+        Rails.logger.warn("OpenTelemetry database pool metrics unavailable: #{error.class}: #{error.message}")
+      end
+    end
+
+    def monotonic_time
+      Process.clock_gettime(Process::CLOCK_MONOTONIC)
     end
 
     def pool_attributes(connection_pool)

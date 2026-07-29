@@ -10,7 +10,7 @@
       "title": "Pool utilization",
       "type": "timeseries",
       "targets": [
-        { "expr": "100 * sum(medtracker_db_connection_pool_in_use) / sum(medtracker_db_connection_pool_size)", "legendFormat": "utilization %" }
+        { "expr": "100 * sum by (db_pool_name, db_namespace) (medtracker_db_connection_pool_in_use) / sum by (db_pool_name, db_namespace) (medtracker_db_connection_pool_size)", "legendFormat": "{{db_pool_name}} / {{db_namespace}} utilization %" }
       ],
       "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 } }
     },
@@ -19,9 +19,9 @@
       "title": "Connections by state",
       "type": "timeseries",
       "targets": [
-        { "expr": "sum(medtracker_db_connection_pool_size)", "legendFormat": "size" },
-        { "expr": "sum(medtracker_db_connection_pool_in_use)", "legendFormat": "in use" },
-        { "expr": "sum(medtracker_db_connection_pool_idle)", "legendFormat": "idle" }
+        { "expr": "sum by (db_pool_name, db_namespace) (medtracker_db_connection_pool_size)", "legendFormat": "{{db_pool_name}} / {{db_namespace}} size" },
+        { "expr": "sum by (db_pool_name, db_namespace) (medtracker_db_connection_pool_in_use)", "legendFormat": "{{db_pool_name}} / {{db_namespace}} in use" },
+        { "expr": "sum by (db_pool_name, db_namespace) (medtracker_db_connection_pool_idle)", "legendFormat": "{{db_pool_name}} / {{db_namespace}} idle" }
       ]
     },
     {
@@ -29,7 +29,7 @@
       "title": "Waiting threads",
       "type": "timeseries",
       "targets": [
-        { "expr": "sum(medtracker_db_connection_pool_waiting)", "legendFormat": "waiting" }
+        { "expr": "sum by (db_pool_name, db_namespace) (medtracker_db_connection_pool_waiting)", "legendFormat": "{{db_pool_name}} / {{db_namespace}} waiting" }
       ]
     },
     {
@@ -37,7 +37,7 @@
       "title": "Checkout timeouts",
       "type": "timeseries",
       "targets": [
-        { "expr": "sum(rate(medtracker_db_connection_pool_timeouts_total[5m]))", "legendFormat": "timeouts / second" }
+        { "expr": "sum by (db_pool_name, db_namespace) (rate(medtracker_db_connection_pool_timeouts_total[5m]))", "legendFormat": "{{db_pool_name}} / {{db_namespace}} timeouts / second" }
       ]
     }
   ]

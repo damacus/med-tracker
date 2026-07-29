@@ -22,6 +22,7 @@ RSpec.describe DatabasePoolOperations do
     expect(expressions).to include('medtracker_db_connection_pool_idle')
     expect(expressions).to include('medtracker_db_connection_pool_waiting')
     expect(expressions).to include('medtracker_db_connection_pool_timeouts_total')
+    expect(expressions).to include('by (db_pool_name, db_namespace)')
   end
 
   it 'alerts only after sustained contention or a checkout timeout' do
@@ -30,5 +31,6 @@ RSpec.describe DatabasePoolOperations do
     expect(alerts.fetch('MedTrackerDatabasePoolContention')).to include('for' => '5m')
     expect(alerts.fetch('MedTrackerDatabasePoolExhaustion')).to include('for' => '10m')
     expect(alerts.fetch('MedTrackerDatabasePoolCheckoutTimeouts')).to include('for' => '1m')
+    expect(alerts.values.pluck('expr')).to all(include('by (db_pool_name, db_namespace)'))
   end
 end

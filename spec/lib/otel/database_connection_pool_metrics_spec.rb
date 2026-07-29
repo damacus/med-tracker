@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Otel::DatabaseConnectionPoolMetrics do
-  subject(:metrics) { described_class.new(pool:, meter:) }
+  subject(:metrics) { described_class.new(pool_resolver: -> { [pool] }, meter:) }
 
   let(:meter) { DatabasePoolMetricsTestSupport::Meter.new }
   let(:db_config) { instance_double(ActiveRecord::DatabaseConfigurations::HashConfig, name: 'primary', database: 'medtracker_test') }
@@ -30,11 +30,41 @@ RSpec.describe Otel::DatabaseConnectionPoolMetrics do
   it 'observes current Rails connection pool statistics' do
     metrics.install
 
+    attributes = { 'db.pool.name' => 'primary', 'db.namespace' => 'medtracker_test' }
+
     expect(meter.gauges.transform_values(&:observe)).to eq(
-      'medtracker.db.connection_pool.size' => 10,
-      'medtracker.db.connection_pool.in_use' => 4,
-      'medtracker.db.connection_pool.idle' => 3,
-      'medtracker.db.connection_pool.waiting' => 2
+      'medtracker.db.connection_pool.size' => [[10, attributes]],
+      'medtracker.db.connection_pool.in_use' => [[4, attributes]],
+      'medtracker.db.connection_pool.idle' => [[3, attributes]],
+      'medtracker.db.connection_pool.waiting' => [[2, attributes]]
+    )
+  end
+
+  it 'resolves live pools when each gauge is observed' do
+    replica_config = instance_double(
+      ActiveRecord::DatabaseConfigurations::HashConfig,
+      name: 'replica',
+      database: 'medtracker_replica'
+    )
+    replica_pool = instance_double(
+      ActiveRecord::ConnectionAdapters::ConnectionPool,
+      stat: { size: 5, busy: 2, dead: 0, idle: 3, waiting: 0 },
+      db_config: replica_config,
+      discarded?: false
+    )
+    pools = [pool]
+    metrics = described_class.new(pool_resolver: -> { pools }, meter:)
+
+    metrics.install
+
+    expect(meter.gauges.fetch('medtracker.db.connection_pool.size').observe).to contain_exactly(
+      [10, { 'db.pool.name' => 'primary', 'db.namespace' => 'medtracker_test' }]
+    )
+
+    pools = [replica_pool]
+
+    expect(meter.gauges.fetch('medtracker.db.connection_pool.size').observe).to contain_exactly(
+      [5, { 'db.pool.name' => 'replica', 'db.namespace' => 'medtracker_replica' }]
     )
   end
 
@@ -66,12 +96,19 @@ RSpec.describe Otel::DatabaseConnectionPoolMetrics do
     expect(meter.counters.fetch('medtracker.db.connection_pool.timeouts').recordings.size).to eq(1)
   end
 
-  it 'returns zero from gauge callbacks when pool statistics are unavailable' do
+  it 'skips unavailable pools and rate-limits the diagnostic' do
     allow(pool).to receive(:stat).and_raise(ActiveRecord::ConnectionNotEstablished)
     allow(Rails.logger).to receive(:warn)
     metrics.install
 
-    expect(meter.gauges.values.map(&:observe)).to all(eq(0))
-    expect(Rails.logger).to have_received(:warn).with(/database pool metrics unavailable/).at_least(:once)
+    expect(meter.gauges.values.map(&:observe)).to all(eq([]))
+    expect(Rails.logger).to have_received(:warn).with(/database pool metrics unavailable/).once
+  end
+
+  it 'skips discarded pools without emitting zero-value observations' do
+    allow(pool).to receive(:discarded?).and_return(true)
+    metrics.install
+
+    expect(meter.gauges.values.map(&:observe)).to all(eq([]))
   end
 end
