@@ -46,8 +46,8 @@ RSpec.describe NhsDmd::ReleaseImport do
     xml << '<AMP_TRADE_FAMILIES>'
     entries.each do |entry|
       xml << "<AMP_TRADE_FAMILY><APID>#{entry[:amp_code]}</APID><TFID>#{entry[:trade_family_code]}</TFID>"
-      xml << "<STARTDT>#{entry[:startdt]}</STARTDT>"
-      xml << "<ENDDT>#{entry[:enddt]}</ENDDT>" if entry[:enddt]
+      xml << "<STARTDT>#{entry[:startdt]}</STARTDT>" if entry.key?(:startdt)
+      xml << "<ENDDT>#{entry[:enddt]}</ENDDT>" if entry.key?(:enddt)
       xml << '</AMP_TRADE_FAMILY>'
     end
     xml << '</AMP_TRADE_FAMILIES>'
@@ -203,6 +203,64 @@ RSpec.describe NhsDmd::ReleaseImport do
     importer.import(release_dir)
 
     expect(NhsDmdAmpTradeFamily.find_by(amp_code: '222')).to be_nil
+  end
+
+  it 'keeps existing mappings when supplementary input is incomplete' do
+    old_group = NhsDmdTradeFamilyGroup.create!(code: '900', name: 'Old Group')
+    old_family = NhsDmdTradeFamily.create!(code: '800', name: 'Old Family', trade_family_group: old_group)
+    NhsDmdAmpTradeFamily.create!(amp_code: '222', trade_family: old_family)
+
+    write_ampp_xml([{ appid: '111', apid: '222', nm: 'Paracetamol 500mg tablets (Acme Ltd)' }])
+    write_single_gtin_xml(amppid: '111', gtin: '5016298210989', startdt: '2020-01-01')
+    write_amp_trade_family_xml([{ amp_code: '333', trade_family_code: '800', startdt: '2026-07-06' }])
+
+    expect { importer.import(release_dir) }.not_to raise_error
+    expect(NhsDmdAmpTradeFamily.find_by!(amp_code: '222')).to have_attributes(trade_family: old_family)
+    expect(barcode_record('5016298210989')).to have_attributes(amp_code: '222')
+  end
+
+  it 'expires local barcode lookup caches after replacing supplementary metadata' do
+    cache_store = ActiveSupport::Cache::MemoryStore.new
+    allow(Rails).to receive(:cache).and_return(cache_store)
+
+    old_group = NhsDmdTradeFamilyGroup.create!(code: '900', name: 'Old Group')
+    old_family = NhsDmdTradeFamily.create!(code: '800', name: 'Old Family', trade_family_group: old_group)
+    NhsDmdAmpTradeFamily.create!(amp_code: '222', trade_family: old_family)
+    NhsDmdBarcode.create!(
+      gtin: '5016298210989', amp_code: '222', code: '111', display: 'Paracetamol 500mg tablets (Acme Ltd)',
+      vmp_name: 'Paracetamol 500mg tablets', system: 'https://dmd.nhs.uk', concept_class: 'AMPP'
+    )
+    expect(NhsDmd::BarcodeLookup.new.lookup('5016298210989')).to include(trade_family: { code: '800', name: 'Old Family' })
+
+    write_ampp_xml([{ appid: '111', apid: '222', nm: 'Paracetamol 500mg tablets (Acme Ltd)' }])
+    write_single_gtin_xml(amppid: '111', gtin: '5016298210989', startdt: '2020-01-01')
+    write_trade_family_group_xml([{ code: '900', name: 'New Group' }])
+    write_trade_family_xml([{ code: '800', name: 'New Family', group_code: '900' }])
+    write_amp_trade_family_xml([{ amp_code: '222', trade_family_code: '800', startdt: '2026-07-06' }])
+
+    importer.import(release_dir)
+
+    expect(NhsDmd::BarcodeLookup.new.lookup('5016298210989')).to include(
+      trade_family: { code: '800', name: 'New Family' },
+      trade_family_group: { code: '900', name: 'New Group' }
+    )
+  end
+
+  it 'skips memberships with malformed supplied dates' do
+    write_ampp_xml([{ appid: '111', apid: '222', nm: 'Paracetamol 500mg tablets (Acme Ltd)' }])
+    write_single_gtin_xml(amppid: '111', gtin: '5016298210989', startdt: '2020-01-01')
+    write_trade_family_group_xml([{ code: '900', name: 'Acme' }])
+    write_trade_family_xml([{ code: '800', name: 'Acme Paracetamol', group_code: '900' }])
+    write_amp_trade_family_xml(
+      [
+        { amp_code: '222', trade_family_code: '800', startdt: 'not-a-date' },
+        { amp_code: '333', trade_family_code: '800', startdt: '2026-01-01', enddt: 'not-a-date' }
+      ]
+    )
+
+    importer.import(release_dir)
+
+    expect(NhsDmdAmpTradeFamily.where(amp_code: %w[222 333])).to be_empty
   end
 
   it 'stores nil vmp_name when the AMPP name has no manufacturer suffix' do

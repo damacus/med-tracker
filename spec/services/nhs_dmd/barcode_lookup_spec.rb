@@ -4,7 +4,10 @@ require 'rails_helper'
 
 RSpec.describe NhsDmd::BarcodeLookup do
   describe '#lookup' do
+    let(:cache_store) { ActiveSupport::Cache::MemoryStore.new }
+
     before do
+      allow(Rails).to receive(:cache).and_return(cache_store)
       Rails.cache.clear
       NhsDmdBarcode.create!(
         gtin: '05016298210989',
@@ -46,6 +49,22 @@ RSpec.describe NhsDmd::BarcodeLookup do
       result = described_class.new.lookup('5016298210989')
 
       expect(result).to include(
+        trade_family: { code: '800', name: 'Laxido' },
+        trade_family_group: { code: '900', name: 'Galen' }
+      )
+    end
+
+    it 'expires every local barcode cache entry when supplementary metadata changes' do
+      expect(described_class.new.lookup('5016298210989')).not_to include(:trade_family)
+
+      group = NhsDmdTradeFamilyGroup.create!(code: '900', name: 'Galen')
+      family = NhsDmdTradeFamily.create!(code: '800', name: 'Laxido', trade_family_group: group)
+      NhsDmdAmpTradeFamily.create!(amp_code: '222', trade_family: family)
+      NhsDmdBarcode.find_by!(gtin: '05016298210989').update!(amp_code: '222')
+
+      described_class.expire_all
+
+      expect(described_class.new.lookup('5016298210989')).to include(
         trade_family: { code: '800', name: 'Laxido' },
         trade_family_group: { code: '900', name: 'Galen' }
       )

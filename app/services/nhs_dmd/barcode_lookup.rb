@@ -20,6 +20,10 @@ module NhsDmd
       end
     end
 
+    def self.expire_all
+      Rails.cache.delete_matched("#{CACHE_PREFIX}/*")
+    end
+
     def self.cache_key(gtin)
       "#{CACHE_PREFIX}/#{gtin}"
     end
