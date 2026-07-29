@@ -248,6 +248,9 @@ jobs:
           version: 3.52.0
           repo-token: ${{ github.token }}
 
+      - name: Install Fish
+        run: sudo apt-get update && sudo apt-get install --yes fish
+
       - name: Exercise medication search from the final app image
         run: task prod:medication-search-smoke
 
