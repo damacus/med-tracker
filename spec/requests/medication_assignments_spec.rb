@@ -22,6 +22,25 @@ RSpec.describe 'Medication assignments' do
       expect(response.body).not_to include('Prescribed / Scheduled')
       expect(response.body).not_to include('How is this medication taken?')
     end
+
+    it 'preselects an allowed medication from launch context' do
+      medication = medications(:paracetamol)
+
+      get new_person_medication_assignment_path(person), params: { medication_id: medication.id }
+
+      selected = response.parsed_body.at_css(
+        "input[name='medication_assignment[medication_id]'][value='#{medication.id}']"
+      )
+      expect(selected).to have_attribute('checked')
+    end
+
+    it 'leaves medication unselected for stale launch context' do
+      get new_person_medication_assignment_path(person), params: { medication_id: 'missing-medication' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.at_css("input[name='medication_assignment[medication_id]'][checked]")).to be_nil
+      expect(response.body).not_to include('missing-medication')
+    end
   end
 
   describe 'POST /people/:person_id/medication_assignments' do

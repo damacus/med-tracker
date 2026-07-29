@@ -88,6 +88,29 @@ RSpec.describe 'Person medication workflow', :browser do
     expect(page).to have_text(person.name)
   end
 
+  it 'carries known context into the unified workflow and lets the parent change person' do
+    parent.person.account.update!(medication_launcher_variant: 'context_aware')
+    medication = medications(:paracetamol)
+
+    visit add_medication_person_path(person, medication_id: medication.id)
+
+    expect(page).to have_text("Add Medication for #{person.name}")
+    expect(page).to have_text(medication.name)
+    expect(page).to have_link('← Back')
+    expect(page).to have_no_text('How is this medication taken?')
+
+    click_link '← Back'
+
+    expect(page).to have_text('Who is this medication for?')
+    click_link person.name
+
+    expect(page).to have_text("Add Medication for #{person.name}")
+    expect(page).to have_text(medication.name)
+    click_on 'Cancel'
+
+    expect(page).to have_current_path(person_path(person))
+  end
+
   it 'shows zero minimum hours as a selected dose default' do
     medication = medications(:ibuprofen)
 

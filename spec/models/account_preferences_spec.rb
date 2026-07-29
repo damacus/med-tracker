@@ -67,6 +67,28 @@ RSpec.describe Account do
     end
   end
 
+  describe '#medication_launcher_variant' do
+    it 'defaults to the current launcher' do
+      expect(accounts(:damacus).medication_launcher_variant).to eq('current')
+    end
+
+    it 'keeps a valid preference value' do
+      account = accounts(:damacus)
+
+      account.medication_launcher_variant = 'context_aware'
+
+      expect(account.medication_launcher_variant).to eq('context_aware')
+    end
+
+    it 'falls back to the current launcher for unknown preference values' do
+      account = accounts(:damacus)
+
+      account.medication_launcher_variant = 'unknown'
+
+      expect(account.medication_launcher_variant).to eq('current')
+    end
+  end
+
   describe '#gravatar_enabled?' do
     it 'defaults to false' do
       expect(accounts(:damacus).gravatar_enabled?).to be(false)

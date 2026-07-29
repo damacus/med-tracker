@@ -25,6 +25,9 @@ RSpec.describe 'Profile Experiments' do
     expect(page).to have_text('Time-first')
     expect(page).to have_text('Family lanes')
     expect(page).to have_text('Calm focus')
+    expect(page).to have_text('Add Medication launcher')
+    expect(page).to have_text('Current launcher')
+    expect(page).to have_text('Context-aware')
   end
 
   it 'defaults to fullpage variant' do
@@ -32,5 +35,6 @@ RSpec.describe 'Profile Experiments' do
 
     expect(page).to have_field('account[wizard_variant]', with: 'fullpage', checked: true)
     expect(page).to have_field('account[dashboard_variant]', with: 'current', checked: true)
+    expect(page).to have_field('account[medication_launcher_variant]', with: 'current', checked: true)
   end
 end

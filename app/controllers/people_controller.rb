@@ -116,6 +116,15 @@ class PeopleController < ApplicationController
   def add_medication
     authorize @person, :add_medication?
 
+    if current_account.medication_launcher_variant == 'context_aware'
+      return redirect_to add_medication_path(
+        person_id: @person.id,
+        medication_id: params[:medication_id],
+        intent: :assign_medication,
+        return_to: url_from(params[:return_to]) || person_path(@person)
+      )
+    end
+
     render Components::People::AddMedicationLanding.new(
       person: @person,
       can_schedule: policy(add_medication_schedule).new?,

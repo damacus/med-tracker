@@ -111,7 +111,9 @@ class MedicationAssignmentsController < ApplicationController
         Components::MedicationAssignments::FormView.new(
           assignment: @assignment,
           person: @person,
-          medications: @medications
+          medications: @medications,
+          back_path: back_path,
+          return_to: return_to
         )
       },
       status: status

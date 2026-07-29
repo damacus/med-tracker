@@ -7,10 +7,12 @@ class Account < ApplicationRecord
 
   WIZARD_VARIANTS = %w[fullpage modal slideover].freeze
   DASHBOARD_VARIANTS = %w[current time_first family_lanes calm_focus].freeze
+  MEDICATION_LAUNCHER_VARIANTS = %w[current context_aware].freeze
 
   TIME_ZONE_NAMES = ActiveSupport::TimeZone.all.map(&:name).freeze
 
-  store_accessor :preferences, :wizard_variant, :dashboard_variant, :gravatar_enabled, :time_zone
+  store_accessor :preferences, :wizard_variant, :dashboard_variant, :medication_launcher_variant, :gravatar_enabled,
+                 :time_zone
 
   enum :status, { unverified: 1, verified: 2, closed: 3 }
 
@@ -55,6 +57,11 @@ class Account < ApplicationRecord
   def dashboard_variant
     variant = super
     DASHBOARD_VARIANTS.include?(variant) ? variant : 'current'
+  end
+
+  def medication_launcher_variant
+    variant = super
+    MEDICATION_LAUNCHER_VARIANTS.include?(variant) ? variant : 'current'
   end
 
   def gravatar_enabled?

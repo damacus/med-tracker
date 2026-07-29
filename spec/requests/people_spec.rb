@@ -412,6 +412,23 @@ RSpec.describe 'People' do
       expect(response.body).to include(new_person_schedule_path(person, medication_id: medication.id))
       expect(response.body).to include(new_person_person_medication_path(person, medication_id: medication.id))
     end
+
+    it 'passes person context to the launcher when the experiment is enabled' do
+      person = people(:john)
+      medication = medications(:paracetamol)
+      users(:admin).person.account.update!(medication_launcher_variant: 'context_aware')
+
+      get add_medication_person_path(person), params: { medication_id: medication.id }
+
+      expect(response).to redirect_to(
+        add_medication_path(
+          person_id: person.id,
+          medication_id: medication.id,
+          intent: :assign_medication,
+          return_to: person_path(person)
+        )
+      )
+    end
   end
 
   def household_target(target)

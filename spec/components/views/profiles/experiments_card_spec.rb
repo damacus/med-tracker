@@ -28,4 +28,19 @@ RSpec.describe Views::Profiles::ExperimentsCard, type: :component do
     current_option = rendered.at_css('input[name="account[dashboard_variant]"][value="current"]')
     expect(current_option['checked']).to eq('checked')
   end
+
+  it 'renders the medication launcher experiment with the current behavior selected by default', :aggregate_failures do
+    rendered = render_inline(described_class.new(account: account))
+
+    expect(rendered.text).to include('Add Medication launcher')
+    expect(rendered.text).to include('Current launcher')
+    expect(rendered.text).to include('Context-aware')
+    expect(rendered.text).to include(
+      'Starts with the person whose Add Medication action you chose. ' \
+      'Add Medication on Jane Doe starts with Jane Doe; use Back to choose someone else. ' \
+      'Global Add Medication still asks who it is for.'
+    )
+    current_option = rendered.at_css('input[name="account[medication_launcher_variant]"][value="current"]')
+    expect(current_option['checked']).to eq('checked')
+  end
 end
