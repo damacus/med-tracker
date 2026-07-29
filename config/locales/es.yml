@@ -891,6 +891,10 @@ es:
       review_prompt_source: Fuente de la evidencia
       review_prompt_checked_on: Evidencia consultada el
       review_prompt_description: Revisar con un profesional
+      related_medications_title: Medicamento relacionado en tu hogar
+      related_medications_message: Ya hay un medicamento relacionado registrado para tu hogar. Consulta su ficha antes de añadir este envase.
+      related_medications_location: Ubicación
+      related_medications_current_supply: Existencias actuales
       update_stock: Actualizar stock
       confirm_restock: Confirme que desea añadir %{quantity} unidades a %{medication}.
       confirm_restock_without_quantity: Confirme cuántas unidades desea añadir a

@@ -165,6 +165,7 @@ export default class extends Controller {
     const spcLink = this.renderSpcLink(result)
     const medicineDetails = this.renderMedicineDetails(result)
     const reviewPrompts = this.renderReviewPrompts(result)
+    const relatedMedications = this.renderRelatedMedications(result)
     const title = result.name || result.display
     const packageSize = result.package_size
       ? `<p class="text-xs text-on-surface-variant mt-0.5">Pack size: ${this.escapeHtml(result.package_size)}</p>`
@@ -181,6 +182,7 @@ export default class extends Controller {
             ${spcLink}
             ${medicineDetails}
             ${reviewPrompts}
+            ${relatedMedications}
           </div>
           <div class="flex flex-col items-end gap-1 shrink-0">
             ${matchReasonBadge}
@@ -219,6 +221,27 @@ export default class extends Controller {
         <dl id="${this.escapeHtml(detailsId)}" class="hidden mt-3 space-y-3 rounded-lg border border-border bg-surface-container-low p-3" data-testid="medicine-details">
           ${rows}
         </dl>
+      </div>
+    `
+  }
+
+  renderRelatedMedications(result) {
+    const relatedMedications = Array.isArray(result.related_medications) ? result.related_medications : []
+    if (relatedMedications.length === 0) return ''
+
+    const medicines = relatedMedications.map((medication) => `
+      <li class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-on-surface-variant">
+        <a href="${this.hrefAttribute(medication.path)}" class="font-bold text-primary underline underline-offset-2">${this.escapeHtml(medication.name)}</a>
+        <span>${this.escapeHtml(this.t("relatedMedicationsLocation"))}: ${this.escapeHtml(medication.location)}</span>
+        <span>${this.escapeHtml(this.t("relatedMedicationsCurrentSupply"))}: ${this.escapeHtml(medication.current_supply)}</span>
+      </li>
+    `).join('')
+
+    return `
+      <div class="mt-3 rounded-lg border border-secondary/50 bg-secondary-container/20 p-3" data-testid="related-medications-prompt">
+        <p class="text-xs font-bold text-on-secondary-container">${this.escapeHtml(this.t("relatedMedicationsTitle"))}</p>
+        <p class="mt-1 text-xs text-on-secondary-container">${this.escapeHtml(this.t("relatedMedicationsMessage"))}</p>
+        <ul class="mt-2 space-y-1">${medicines}</ul>
       </div>
     `
   }

@@ -17,7 +17,8 @@ RSpec.describe MedicationFinderSearchResponder do
       concept_class: 'VMP',
       name: 'Paracetamol 500mg Tablets',
       display: 'Paracetamol 500mg Tablets',
-      package_unit: 'tablet'
+      package_unit: 'tablet',
+      trade_family: nil
     }
     merged = defaults.merge(attrs)
     instance_double(NhsDmd::SearchResult, **merged).tap do |sr|
@@ -261,6 +262,94 @@ RSpec.describe MedicationFinderSearchResponder do
           # No match found — acceptable for this scope
           expect(payload[:existing_medication]).to be_nil
         end
+      end
+    end
+
+    context 'when a different household medication belongs to the result trade family' do
+      let(:exact_medication) do
+        create(
+          :medication,
+          name: 'Laxido Orange sachets',
+          barcode: '5016298210989',
+          dmd_code: 'AMPP001',
+          dmd_system: 'https://dmd.nhs.uk'
+        )
+      end
+      let(:related_medication) do
+        create(
+          :medication,
+          name: 'Laxido Lemon sachets',
+          barcode: '5016298210996',
+          dmd_code: 'AMPP002',
+          dmd_system: 'https://dmd.nhs.uk'
+        )
+      end
+      let(:unrelated_medication) do
+        create(
+          :medication,
+          name: 'Unrelated medicine',
+          barcode: '5016298211009',
+          dmd_code: 'AMPP003',
+          dmd_system: 'https://dmd.nhs.uk'
+        )
+      end
+      let(:scope) { Medication.where(id: [exact_medication.id, related_medication.id, unrelated_medication.id]) }
+      let(:responder_with_scope) { described_class.new(search: search, medication_scope: scope) }
+
+      before do
+        trade_family = NhsDmdTradeFamily.create!(code: 'TF001', name: 'Laxido')
+        other_trade_family = NhsDmdTradeFamily.create!(code: 'TF002', name: 'Unrelated')
+        NhsDmdAmpTradeFamily.create!(amp_code: 'AMP001', trade_family: trade_family)
+        NhsDmdAmpTradeFamily.create!(amp_code: 'AMP002', trade_family: trade_family)
+        NhsDmdAmpTradeFamily.create!(amp_code: 'AMP003', trade_family: other_trade_family)
+        NhsDmdBarcode.create!(
+          gtin: exact_medication.barcode, code: 'AMPP001', amp_code: 'AMP001', display: exact_medication.name
+        )
+        NhsDmdBarcode.create!(
+          gtin: related_medication.barcode, code: 'AMPP002', amp_code: 'AMP002', display: related_medication.name
+        )
+        NhsDmdBarcode.create!(
+          gtin: unrelated_medication.barcode, code: 'AMPP003', amp_code: 'AMP003', display: unrelated_medication.name
+        )
+        item = make_search_result(
+          barcode: exact_medication.barcode,
+          code: 'AMPP001',
+          trade_family: { code: trade_family.code, name: trade_family.name }
+        )
+        allow(search).to receive(:call).and_return(successful_nhs_result(results: [item]))
+      end
+
+      it 'returns other household medicines in the same trade family separately from the exact stock match' do
+        payload = responder_with_scope.call(query: 'laxido').body[:results].first
+
+        expect(payload[:existing_medication]).to include(id: exact_medication.id)
+        expect(payload[:related_medications]).to contain_exactly(
+          a_hash_including(
+            id: related_medication.id,
+            name: related_medication.display_name,
+            location: related_medication.location.name,
+            path: Rails.application.routes.url_helpers.medication_path(
+              related_medication.household.slug,
+              related_medication
+            ),
+            refill_path: Rails.application.routes.url_helpers.refill_medication_path(
+              related_medication.household.slug,
+              related_medication
+            ),
+            current_supply: '50'
+          )
+        )
+      end
+    end
+
+    context 'when a finder result has no trade family' do
+      it 'returns no related medications' do
+        item = make_search_result(trade_family: nil)
+        allow(search).to receive(:call).and_return(successful_nhs_result(results: [item]))
+
+        payload = responder.call(query: 'paracetamol').body[:results].first
+
+        expect(payload[:related_medications]).to eq([])
       end
     end
   end

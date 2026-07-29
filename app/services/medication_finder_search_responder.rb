@@ -4,10 +4,11 @@ class MedicationFinderSearchResponder
   Result = Data.define(:body, :status)
 
   def initialize(search: NhsDmd::Search.new, medication_scope: Medication.none, stock_match_resolver: nil,
-                 interaction_lookup: nil)
+                 interaction_lookup: nil, trade_family_resolver: nil)
     @search = search
     @stock_match_resolver = stock_match_resolver || MedicationStockMatchResolver.new(scope: medication_scope)
     @interaction_lookup = interaction_lookup || MedicationInteractionLookup.new(medication_scope: medication_scope)
+    @trade_family_resolver = trade_family_resolver || MedicationTradeFamilyResolver.new(scope: medication_scope)
   end
 
   def call(query:, form: nil, strength: nil, permissions: {})
@@ -74,6 +75,7 @@ class MedicationFinderSearchResponder
     search_result.to_h.tap do |payload|
       medication = existing_medication_for(search_result, barcode)
       payload[:existing_medication] = existing_medication_payload(medication) if medication
+      payload[:related_medications] = related_medication_payloads(search_result, excluding: medication)
       payload.merge!(review_prompt_payload(search_result))
     end
   end
@@ -129,6 +131,18 @@ class MedicationFinderSearchResponder
       refill_path: refill_medication_path(medication),
       current_supply: MedicationStockQuantityFormatter.format(medication.current_supply)
     }
+  end
+
+  def related_medication_payloads(search_result, excluding:)
+    @trade_family_resolver.call(
+      trade_family_code: trade_family_code(search_result),
+      excluding: excluding
+    ).map { |medication| existing_medication_payload(medication) }
+  end
+
+  def trade_family_code(search_result)
+    trade_family = search_result.trade_family
+    trade_family[:code] || trade_family['code'] if trade_family
   end
 
   def medication_path(medication)
