@@ -147,6 +147,8 @@ module NhsDmd
         description: item[:description],
         concept_class: item[:concept_class],
         category: item[:category],
+        trade_family: item[:trade_family],
+        trade_family_group: item[:trade_family_group],
         package_size: item[:package_size],
         package_quantity: item[:package_quantity],
         package_unit: item[:package_unit],
@@ -282,7 +284,7 @@ module NhsDmd
     def barcode_match_item(translated_query, barcode_match)
       vmp = VmpResolver.new(@client).resolve(translated_query, barcode_match)
       exact = exact_nhs_match(translated_query, barcode_match)
-      annotate_barcode_match(vmp || exact || barcode_match)
+      annotate_barcode_match(vmp || exact || barcode_match, barcode_match)
     end
 
     def exact_nhs_match(translated_query, barcode_match)
@@ -301,8 +303,8 @@ module NhsDmd
       nil
     end
 
-    def annotate_barcode_match(item)
-      item.merge(match_reason: 'barcode_match')
+    def annotate_barcode_match(item, barcode_match)
+      item.merge(barcode_match.slice(:trade_family, :trade_family_group).compact, match_reason: 'barcode_match')
     end
   end
 end

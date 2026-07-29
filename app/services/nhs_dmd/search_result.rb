@@ -4,7 +4,8 @@ require 'uri'
 
 module NhsDmd
   class SearchResult
-    attr_reader :barcode, :code, :display, :system, :concept_class, :match_reason, :name, :category, :package_size,
+    attr_reader :barcode, :code, :display, :system, :concept_class, :match_reason, :name, :category, :trade_family,
+                :trade_family_group, :package_size,
                 :package_quantity, :package_unit, :description, :directions, :warnings, :pil_url, :spc_url
 
     def initialize(code:, display:, system:, **attributes)
@@ -28,6 +29,8 @@ module NhsDmd
       @match_reason = attributes[:match_reason]
       @name = attributes[:name]
       @category = attributes[:category]
+      @trade_family = attributes[:trade_family]
+      @trade_family_group = attributes[:trade_family_group]
     end
 
     def assign_package_attributes(attributes)
@@ -89,7 +92,9 @@ module NhsDmd
         display: display,
         system: system,
         concept_class: concept_class,
-        category: category
+        category: category,
+        trade_family: trade_family,
+        trade_family_group: trade_family_group
       }
     end
 

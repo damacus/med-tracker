@@ -34,6 +34,7 @@ module NhsDmd
       emit_initial_progress(progress_callback, counts)
 
       names = parse_ampp_names(ampp_file, counts:, progress_callback: progress_callback)
+      import_supplementary_metadata(dir)
       emit_gtin_start_progress(progress_callback, counts)
 
       import_gtins(gtin_file, names, counts:, progress_callback: progress_callback)
@@ -77,7 +78,7 @@ module NhsDmd
         end
 
         counts[:ampp_named] += 1
-        names[appid] = name
+        names[appid] = { name: name, amp_code: node_text(doc, 'APID') }
       end
     ensure
       emit_progress(counts, progress_callback, force: true, message: ampp_progress_message(counts))
@@ -116,14 +117,15 @@ module NhsDmd
         return
       end
 
-      display = names[amppid]
+      ampp = names[amppid]
+      display = ampp&.fetch(:name)
       doc.css('GTINDATA').each do |gtin_data|
-        import_gtin_data(gtin_data, amppid:, display:, today:, counts:)
+        import_gtin_data(gtin_data, amppid:, amp_code: ampp&.fetch(:amp_code), display:, today:, counts:)
         emit_progress(counts, progress_callback, message: gtin_progress_message(counts))
       end
     end
 
-    def import_gtin_data(gtin_data, amppid:, display:, today:, counts:)
+    def import_gtin_data(gtin_data, amppid:, amp_code:, display:, today:, counts:)
       mark_gtin_processed(counts)
       gtin = node_text(gtin_data, 'GTIN')
       return increment(counts, :skipped_invalid) if gtin.blank?
@@ -134,6 +136,7 @@ module NhsDmd
       outcome = persist(
         gtin: NhsDmdBarcode.normalize_gtin(gtin),
         code: amppid,
+        amp_code: amp_code,
         display: display,
         vmp_name: stripped == display ? nil : stripped,
         system: 'https://dmd.nhs.uk',
@@ -169,6 +172,102 @@ module NhsDmd
       else
         :unchanged
       end
+    end
+
+    def import_supplementary_metadata(dir)
+      files = supplementary_files(dir)
+      return if files.values.all?(&:nil?)
+
+      import_trade_family_groups(files[:groups]) if files[:groups]
+      import_trade_families(files[:families]) if files[:families]
+      import_amp_trade_families(files[:memberships]) if files[:memberships]
+      record_supplementary_release(files.values.compact)
+    end
+
+    def supplementary_files(dir)
+      {
+        groups: optional_glob_one(dir, 'f_trade_family_group2_0*.xml'),
+        families: optional_glob_one(dir, 'f_trade_family2_0*.xml'),
+        memberships: optional_glob_one(dir, 'f_amp_trade_family2_0*.xml')
+      }
+    end
+
+    def optional_glob_one(dir, pattern) = Dir.glob(dir.join(pattern)).first
+
+    def import_trade_family_groups(path)
+      each_element(path, 'TRADE_FAMILY_GROUP') do |doc|
+        code = node_text(doc, 'TFGID')
+        name = node_text(doc, 'NM')
+        next if code.blank? || name.blank?
+
+        NhsDmdTradeFamilyGroup.upsert(
+          { code: code, name: name, updated_at: Time.current, created_at: Time.current },
+          unique_by: :code
+        )
+      end
+    end
+
+    def import_trade_families(path)
+      each_element(path, 'TRADE_FAMILY') do |doc|
+        code = node_text(doc, 'TFID')
+        name = node_text(doc, 'NM')
+        next if code.blank? || name.blank?
+
+        group = NhsDmdTradeFamilyGroup.find_by(code: node_text(doc, 'TFGID'))
+        NhsDmdTradeFamily.upsert(
+          { code: code, name: name, trade_family_group_id: group&.id, updated_at: Time.current, created_at: Time.current },
+          unique_by: :code
+        )
+      end
+    end
+
+    def import_amp_trade_families(path)
+      NhsDmdAmpTradeFamily.delete_all
+
+      each_element(path, 'AMP_TRADE_FAMILY') do |doc|
+        next unless active?(doc)
+
+        amp_code = node_text(doc, 'APID')
+        trade_family = NhsDmdTradeFamily.find_by(code: node_text(doc, 'TFID'))
+        next if amp_code.blank? || trade_family.nil?
+
+        NhsDmdAmpTradeFamily.create!(amp_code: amp_code, trade_family: trade_family)
+      end
+    end
+
+    def active?(doc)
+      today = Time.zone.today
+      start_date = parse_date(node_text(doc, 'STARTDT'))
+      end_date = parse_date(node_text(doc, 'ENDDT'))
+      (start_date.nil? || start_date <= today) && (end_date.nil? || end_date > today)
+    end
+
+    def record_supplementary_release(files)
+      released_on = files.filter_map { |file| release_date_from_filename(file) }.max
+      return unless released_on
+
+      NhsDmdSupplementaryRelease.find_or_create_by!(released_on: released_on)
+    end
+
+    def release_date_from_filename(path)
+      date = File.basename(path)[/(\d{6})(?=\.xml\z)/, 1]
+      Date.strptime(date, '%d%m%y') if date
+    rescue Date::Error
+      nil
+    end
+
+    def each_element(path, element_name)
+      Nokogiri::XML::Reader(File.open(path)).each do |node|
+        next unless node.name == element_name && node.node_type == Nokogiri::XML::Reader::TYPE_ELEMENT
+
+        yield Nokogiri::XML(node.outer_xml)
+      end
+    end
+
+    def parse_date(value)
+      Date.parse(value) if value.present?
+    rescue Date::Error
+      nil
     end
 
     def count_gtin_records(path) = count_records(path, 'GTINDATA')

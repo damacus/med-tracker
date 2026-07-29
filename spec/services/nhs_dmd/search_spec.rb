@@ -92,6 +92,8 @@ RSpec.describe NhsDmd::Search do
           display: 'Laxido Orange oral powder sachets (Galen Ltd)',
           system: 'https://dmd.nhs.uk',
           concept_class: 'AMPP',
+          trade_family: { code: '800', name: 'Laxido' },
+          trade_family_group: { code: '900', name: 'Galen' },
           source: 'nhs_dmd'
         }
         translated_results = [
@@ -123,7 +125,9 @@ RSpec.describe NhsDmd::Search do
           a_hash_including(
             code: '13629411000001105',
             display: 'Laxido Orange oral powder sachets (Galen Ltd)',
-            concept_class: 'AMPP'
+            concept_class: 'AMPP',
+            trade_family: { code: '800', name: 'Laxido' },
+            trade_family_group: { code: '900', name: 'Galen' }
           )
         )
         expect(client).to have_received(:search).with('Laxido Orange oral powder sachets (Galen Ltd)')

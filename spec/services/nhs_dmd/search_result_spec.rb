@@ -15,6 +15,21 @@ RSpec.describe NhsDmd::SearchResult do
       expect(result.to_h).to include(medicine_detail_fields)
     end
 
+    it 'includes optional trade family provenance fields in finder payloads' do
+      result = described_class.new(
+        code: '39720311000001101',
+        display: 'Aspirin 300mg tablets',
+        system: 'https://dmd.nhs.uk',
+        trade_family: { code: '800', name: 'Acme Aspirin' },
+        trade_family_group: { code: '900', name: 'Acme' }
+      )
+
+      expect(result.to_h).to include(
+        trade_family: { code: '800', name: 'Acme Aspirin' },
+        trade_family_group: { code: '900', name: 'Acme' }
+      )
+    end
+
     it 'includes a valid HTTPS PIL URL' do
       result = described_class.new(
         code: '39720311000001101',

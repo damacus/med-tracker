@@ -58,7 +58,7 @@ module BarcodeCatalog
     end
 
     def lookup_local(candidate)
-      record = NhsDmdBarcode.find_by(gtin: candidate)
+      record = NhsDmdBarcode.includes(amp_trade_family: { trade_family: :trade_family_group }).find_by(gtin: candidate)
       return nil unless record
 
       {
@@ -67,7 +67,7 @@ module BarcodeCatalog
         system: record.system,
         concept_class: record.concept_class,
         source: 'nhs_dmd'
-      }
+      }.merge(record.trade_family_metadata)
     end
 
     def lookup_open_products_facts(candidate)
