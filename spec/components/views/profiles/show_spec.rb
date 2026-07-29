@@ -19,7 +19,7 @@ RSpec.describe Views::Profiles::Show, type: :component do
     banned_classes = ['bg-[radial-gradient', 'bg-white/70', 'border-white/50', 'rounded-[2rem]',
                       'bg-card/95', 'backdrop-blur-[1.5px]']
 
-    expect(banned_classes.none? { |class_name| html.include?(class_name) }).to be(true)
+    expect(banned_classes.none?(&html.method(:include?))).to be(true)
   end
 
   it 'renders an M3 identity header with the person avatar and profile metadata' do

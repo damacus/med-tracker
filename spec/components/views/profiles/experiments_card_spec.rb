@@ -14,7 +14,7 @@ RSpec.describe Views::Profiles::ExperimentsCard, type: :component do
     banned_classes = ['rounded-[2rem]', 'rounded-[1.2rem]', 'bg-card/95', 'bg-background/60',
                       'shadow-[0_18px_45px_-32px_rgba']
 
-    expect(banned_classes.none? { |class_name| html.include?(class_name) }).to be(true)
+    expect(banned_classes.none?(&html.method(:include?))).to be(true)
   end
 
   it 'renders every dashboard design with the current dashboard selected by default', :aggregate_failures do

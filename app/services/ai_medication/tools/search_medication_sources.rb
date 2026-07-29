@@ -43,7 +43,7 @@ module AiMedication
       def matching_keywords(source, tokens)
         Array(source.fetch('keywords', [])).select do |keyword|
           keyword_tokens = query_tokens(keyword)
-          keyword_tokens.any? { |token| tokens.include?(token) }
+          keyword_tokens.intersect?(tokens)
         end
       end
 

@@ -32,7 +32,7 @@ RSpec.describe GlobalSearch::PersonMedicationsResultsQuery do
         expect(result.subtitle).to include(result.subtitle)
         # subtitle uses the person name translation key
         person_names = [people(:john).name, people(:jane).name]
-        expect(person_names.any? { |name| result.subtitle.include?(name) }).to be true
+        expect(person_names.any?(&result.subtitle.method(:include?))).to be true
       end
 
       it 'generates a path anchored to the person_medication on the person page' do
