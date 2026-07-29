@@ -19,10 +19,7 @@ class NhsDmdBarcode < ApplicationRecord
     family = amp_trade_family&.trade_family
     return {} unless family
 
-    metadata = { trade_family: { code: family.code, name: family.name } }
-    group = family.trade_family_group
-    metadata[:trade_family_group] = { code: group.code, name: group.name } if group
-    metadata
+    family.provenance
   end
 
   private

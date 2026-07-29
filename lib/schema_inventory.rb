@@ -63,8 +63,12 @@ class SchemaInventory
     medication_review_evidence_records
     medication_review_evidence_refresh_runs
     native_device_tokens
+    nhs_dmd_amp_trade_families
     nhs_dmd_barcodes
     nhs_dmd_imports
+    nhs_dmd_supplementary_releases
+    nhs_dmd_trade_families
+    nhs_dmd_trade_family_groups
     oauth_applications
     oauth_grants
     platform_admins

@@ -324,7 +324,7 @@ RSpec.describe MedicationFinderSearchResponder do
 
         expect(payload[:existing_medication]).to include(id: exact_medication.id)
         expect(payload[:related_medications]).to contain_exactly(
-          a_hash_including(
+          {
             id: related_medication.id,
             name: related_medication.display_name,
             location: related_medication.location.name,
@@ -332,13 +332,10 @@ RSpec.describe MedicationFinderSearchResponder do
               related_medication.household.slug,
               related_medication
             ),
-            refill_path: Rails.application.routes.url_helpers.refill_medication_path(
-              related_medication.household.slug,
-              related_medication
-            ),
             current_supply: '50'
-          )
+          }
         )
+        expect(payload[:related_medications].first).not_to include(:refill_path)
       end
     end
 

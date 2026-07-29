@@ -98,7 +98,31 @@ module NhsDmd
     end
 
     def nhs_items(query)
-      @client.search(query)
+      enrich_trade_family_provenance(@client.search(query))
+    end
+
+    def enrich_trade_family_provenance(items)
+      ampp_codes = items.filter_map { |item| item[:code] if item[:concept_class] == 'AMPP' }
+      amp_codes_by_ampp = NhsDmdBarcode.where(code: ampp_codes).where.not(amp_code: nil).pluck(:code, :amp_code).to_h
+      amp_codes = items.filter_map { |item| amp_code_for(item, amp_codes_by_ampp) }
+      memberships = NhsDmdAmpTradeFamily
+        .includes(trade_family: :trade_family_group)
+        .where(amp_code: amp_codes)
+        .index_by(&:amp_code)
+
+      items.map do |item|
+        family = memberships[amp_code_for(item, amp_codes_by_ampp)]&.trade_family
+        family ? item.merge(family.provenance) : item
+      end
+    end
+
+    def amp_code_for(item, amp_codes_by_ampp)
+      case item[:concept_class]
+      when 'AMP'
+        item[:code]
+      when 'AMPP'
+        amp_codes_by_ampp[item[:code]]
+      end
     end
 
     def failed_result(message, exception = nil)

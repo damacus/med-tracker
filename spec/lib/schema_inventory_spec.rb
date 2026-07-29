@@ -34,8 +34,12 @@ RSpec.describe SchemaInventory do
       households
       medication_review_evidence_records
       native_device_tokens
+      nhs_dmd_amp_trade_families
       nhs_dmd_barcodes
       nhs_dmd_imports
+      nhs_dmd_supplementary_releases
+      nhs_dmd_trade_families
+      nhs_dmd_trade_family_groups
       push_subscriptions
       users
     ]

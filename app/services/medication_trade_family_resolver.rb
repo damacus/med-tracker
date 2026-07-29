@@ -9,7 +9,12 @@ class MedicationTradeFamilyResolver
     related_medications = scope
       .joins(
         'INNER JOIN nhs_dmd_barcodes ' \
-        'ON nhs_dmd_barcodes.gtin = medications.barcode'
+        'ON nhs_dmd_barcodes.gtin IN (' \
+        'medications.barcode, ' \
+        "CASE WHEN char_length(medications.barcode) = 13 THEN '0' || medications.barcode END, " \
+        "CASE WHEN char_length(medications.barcode) = 14 AND left(medications.barcode, 1) = '0' " \
+        'THEN substring(medications.barcode FROM 2) END' \
+        ')'
       )
       .joins(
         'INNER JOIN nhs_dmd_amp_trade_families ' \

@@ -85,6 +85,59 @@ RSpec.describe NhsDmd::Search do
       end
     end
 
+    context 'when normal NHS text results have imported Trade Family memberships' do
+      let(:raw_results) do
+        [
+          {
+            code: 'AMPP001',
+            display: 'Laxido Orange oral powder sachets (Galen Ltd)',
+            system: 'https://dmd.nhs.uk',
+            concept_class: 'AMPP'
+          },
+          {
+            code: 'AMP002',
+            display: 'Laxido Lemon oral powder sachets (Galen Ltd)',
+            system: 'https://dmd.nhs.uk',
+            concept_class: 'AMP'
+          }
+        ]
+      end
+
+      before do
+        family = NhsDmdTradeFamily.create!(code: 'TF001', name: 'Laxido')
+        NhsDmdAmpTradeFamily.create!(amp_code: 'AMP001', trade_family: family)
+        NhsDmdAmpTradeFamily.create!(amp_code: 'AMP002', trade_family: family)
+        NhsDmdBarcode.create!(
+          gtin: '5016298210989',
+          code: 'AMPP001',
+          amp_code: 'AMP001',
+          display: 'Laxido Orange oral powder sachets (Galen Ltd)'
+        )
+        allow(client).to receive(:configured?).and_return(true)
+        allow(client).to receive(:search).with('macrogol').and_return(raw_results)
+      end
+
+      it 'annotates selected AMP and AMPP identities without using Trade Family as a match source' do
+        result = search.call('macrogol')
+
+        expect(result.results.map(&:to_h)).to contain_exactly(
+          a_hash_including(
+            code: 'AMPP001',
+            display: 'Laxido Orange oral powder sachets (Galen Ltd)',
+            source_label: 'NHS dm+d',
+            trade_family: { code: 'TF001', name: 'Laxido' }
+          ),
+          a_hash_including(
+            code: 'AMP002',
+            display: 'Laxido Lemon oral powder sachets (Galen Ltd)',
+            source_label: 'NHS dm+d',
+            trade_family: { code: 'TF001', name: 'Laxido' }
+          )
+        )
+        expect(client).to have_received(:search).with('macrogol').once
+      end
+    end
+
     context 'when the query is a known barcode' do
       before do
         barcode_result = {

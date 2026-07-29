@@ -151,6 +151,23 @@ RSpec.describe BarcodeCatalog::Lookup do
       )
     end
 
+    it 'preserves local Trade Family provenance when an earlier configured source supplies identity' do
+      prioritize_open_products_facts
+      group = NhsDmdTradeFamilyGroup.create!(code: '900', name: 'Acme')
+      family = NhsDmdTradeFamily.create!(code: '800', name: 'Acme Paracetamol', trade_family_group: group)
+      NhsDmdAmpTradeFamily.create!(amp_code: '222', trade_family: family)
+      create_local_entry(code: 'dmd-code', display: 'dm+d name', amp_code: '222')
+      stub_open_products_facts_result
+
+      expect(lookup.lookup(gtin)).to include(
+        display: 'Configured Open Products Facts name',
+        source: 'open_products_facts',
+        system: OpenProductsFacts::Client::BASE_URL,
+        trade_family: { code: '800', name: 'Acme Paracetamol' },
+        trade_family_group: { code: '900', name: 'Acme' }
+      )
+    end
+
     it 'prefers dm+d over a cached Open Products Facts entry' do
       BarcodeCatalogEntry.create!(
         gtin: gtin,

@@ -134,7 +134,6 @@ RSpec.describe 'MedicationFinder' do
               name: related_medication.display_name,
               location: related_medication.location.name,
               path: medication_path(related_medication),
-              refill_path: refill_medication_path(related_medication),
               current_supply: '10'
             }
           ]

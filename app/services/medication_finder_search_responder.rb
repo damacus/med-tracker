@@ -137,7 +137,17 @@ class MedicationFinderSearchResponder
     @trade_family_resolver.call(
       trade_family_code: trade_family_code(search_result),
       excluding: excluding
-    ).map { |medication| existing_medication_payload(medication) }
+    ).map { |medication| related_medication_payload(medication) }
+  end
+
+  def related_medication_payload(medication)
+    {
+      id: medication.id,
+      name: medication.display_name,
+      location: medication.location.name,
+      path: medication_path(medication),
+      current_supply: MedicationStockQuantityFormatter.format(medication.current_supply)
+    }
   end
 
   def trade_family_code(search_result)
