@@ -791,8 +791,8 @@ en:
       unavailable_title: Search unavailable
       unavailable_message: Unable to connect to the medication database. Please try
         again.
-      review_guidance_unavailable: Medication review guidance is temporarily unavailable.
-        Search results are still available.
+      review_guidance_unavailable: Medication review information is temporarily unavailable.
+        Search results may not include interaction guidance.
       no_results_title: No medications found
       no_results_message: Try searching with different terms or check the spelling.
       results_title: Search Results

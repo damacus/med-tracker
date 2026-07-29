@@ -12,6 +12,7 @@ class MedicationFinderSearchResponder
 
   def call(query:, form: nil, strength: nil, permissions: {})
     @review_enrichment_unavailable = false
+    @review_enrichment_failure_logged = false
     normalized_query = query.to_s.strip
     return Result.new(body: { results: [], permissions: permissions }, status: :ok) if normalized_query.blank?
 
@@ -28,22 +29,27 @@ class MedicationFinderSearchResponder
   private
 
   def successful_response(query:, result:, form:, strength:, permissions:)
+    Result.new(
+      body: successful_response_body(query:, result:, form:, strength:, permissions:),
+      status: :ok
+    )
+  end
+
+  def successful_response_body(query:, result:, form:, strength:, permissions:)
     normalized_form = NhsDmd::DosageFormFilter.normalize(form)
     normalized_strength = NhsDmd::StrengthFilter.normalize(strength)
     results = filtered_results(result.results, form:, strength:)
 
-    Result.new(
-      body: {
-        results: results.map { |search_result| result_payload(search_result, result.barcode) },
-        query: result.resolved_query.presence || query,
-        barcode: result.barcode,
-        barcode_resolution: barcode_resolution(result),
-        form: normalized_form,
-        strength: normalized_strength,
-        permissions: permissions
-      },
-      status: :ok
-    )
+    {
+      results: results.map { |search_result| result_payload(search_result, result.barcode) },
+      review_guidance: review_guidance_payload,
+      query: result.resolved_query.presence || query,
+      barcode: result.barcode,
+      barcode_resolution: barcode_resolution(result),
+      form: normalized_form,
+      strength: normalized_strength,
+      permissions: permissions
+    }
   end
 
   def unavailable_response
@@ -73,26 +79,33 @@ class MedicationFinderSearchResponder
   end
 
   def review_prompt_payload(search_result)
-    return unavailable_review_prompt_payload if @review_enrichment_unavailable
-
     review_result = @interaction_lookup.call(search_result)
     {
       review_prompts: review_result.visible_prompts,
-      review_prompt_filter: { hidden_count: review_result.hidden_count },
-      review_prompt_status: 'available'
+      review_prompt_filter: { hidden_count: review_result.hidden_count }
     }
   rescue StandardError => e
     @review_enrichment_unavailable = true
-    Rails.logger.error("Medication review enrichment failed: #{e.class}")
+    log_review_enrichment_failure(e)
     unavailable_review_prompt_payload
   end
 
   def unavailable_review_prompt_payload
     {
       review_prompts: [],
-      review_prompt_filter: { hidden_count: 0 },
-      review_prompt_status: 'unavailable'
+      review_prompt_filter: { hidden_count: 0 }
     }
+  end
+
+  def review_guidance_payload
+    { status: @review_enrichment_unavailable ? 'unavailable' : 'available' }
+  end
+
+  def log_review_enrichment_failure(error)
+    return if @review_enrichment_failure_logged
+
+    @review_enrichment_failure_logged = true
+    Rails.logger.error("Medication review enrichment failed: #{error.class}")
   end
 
   def existing_medication_for(search_result, barcode)

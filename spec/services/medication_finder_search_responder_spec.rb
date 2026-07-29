@@ -84,6 +84,30 @@ RSpec.describe MedicationFinderSearchResponder do
     context 'when search succeeds with results' do
       let(:search_result_item) { make_search_result }
       let(:nhs_result) { successful_nhs_result(results: [search_result_item], resolved_query: nil, barcode: nil) }
+      let(:mixed_responder) do
+        calls = 0
+        lookup = instance_double(MedicationInteractionLookup)
+        allow(lookup).to receive(:call) do
+          calls += 1
+          raise Errno::ENOENT, 'missing terminology' if calls == 1
+
+          MedicationInteractionLookup::Result.new(
+            visible_prompts: [{ risk_level: 'high' }],
+            hidden_count: 1
+          )
+        end
+        described_class.new(search: search, medication_scope: Medication.none, interaction_lookup: lookup)
+      end
+      let(:mixed_result_matchers) do
+        [
+          a_hash_including(code: 'DMD123', review_prompts: [], review_prompt_filter: { hidden_count: 0 }),
+          a_hash_including(
+            code: 'DMD456',
+            review_prompts: [{ risk_level: 'high' }],
+            review_prompt_filter: { hidden_count: 1 }
+          )
+        ]
+      end
 
       before { allow(search).to receive(:call).and_return(nhs_result) }
 
@@ -110,6 +134,25 @@ RSpec.describe MedicationFinderSearchResponder do
 
         expect(payload[:review_prompts]).to eq([{ risk_level: 'high' }])
         expect(payload[:review_prompt_filter]).to eq(hidden_count: 3)
+        expect(result.body[:review_guidance]).to eq(status: 'available')
+      end
+
+      it 'preserves successful enrichment after another result fails' do
+        search_results = [
+          make_search_result(code: 'DMD123', display: 'First result'),
+          make_search_result(code: 'DMD456', display: 'Second result')
+        ]
+        allow(search).to receive(:call).and_return(successful_nhs_result(results: search_results))
+        allow(Rails.logger).to receive(:error)
+
+        result = mixed_responder.call(query: 'medicine')
+
+        expect(result.status).to eq(:ok)
+        expect(result.body[:results]).to match_array(mixed_result_matchers)
+        expect(result.body[:review_guidance]).to eq(status: 'unavailable')
+        expect(Rails.logger).to have_received(:error)
+          .with('Medication review enrichment failed: Errno::ENOENT')
+          .once
       end
 
       it 'uses resolved_query from the search result when present' do

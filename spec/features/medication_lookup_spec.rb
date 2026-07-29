@@ -129,37 +129,41 @@ RSpec.describe 'Medication Lookup', :browser, type: :system do
 
   it 'keeps search results visible when medication review guidance is unavailable' do
     stub_nhs_dmd_search(
-      query: 'Paracetamol',
+      query: 'Novelmed',
       results: [
         {
           code: '32223611000001104',
-          display: 'Paracetamol 500mg tablets',
+          display: 'Novelmed 500mg tablets',
           system: 'https://dmd.nhs.uk',
           concept_class: 'VMP'
         }
       ]
     )
-    interaction_lookup = instance_double(MedicationInteractionLookup)
-    allow(interaction_lookup).to receive(:call).and_raise(
-      Errno::ENOENT,
-      'No such file or directory @ rb_sysopen - /app/data/medication_reviews/rxclass_terminology.json'
+    stub_const(
+      'MedicationReviewTerminology::DEFAULT_PATH',
+      Rails.root.join('tmp/missing-rxclass-terminology.json')
     )
-    allow(MedicationInteractionLookup).to receive(:new).and_return(interaction_lookup)
 
     expect(NhsDmdBarcode).not_to exist
 
     sign_in(admin)
     visit medication_finder_path
 
-    fill_in 'medication-search-input', with: 'Paracetamol'
+    fill_in 'medication-search-input', with: 'Novelmed'
     click_button 'Search'
 
-    expect(page).to have_text('Paracetamol 500mg tablets')
+    expect(page).to have_text('Novelmed 500mg tablets')
     expect(page).to have_css(
       '[role="status"]',
-      text: 'Medication review guidance is temporarily unavailable. Search results are still available.'
+      text: 'Medication review information is temporarily unavailable. ' \
+            'Search results may not include interaction guidance.',
+      count: 1
     )
     expect(page).to have_no_text('Search unavailable')
+    within('[data-testid="result-card"]', match: :first) do
+      click_link 'Add Medication'
+    end
+    expect(page).to have_current_path(%r{/medications/new})
   end
 
   it 'allows selecting a search result and prefill a new inventory item' do

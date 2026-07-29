@@ -844,8 +844,9 @@ pt:
       unavailable_title: Pesquisa indisponível
       unavailable_message: Não foi possível ligar à base de dados de medicamentos.
         Tente novamente.
-      review_guidance_unavailable: A orientação para revisão de medicamentos está
-        temporariamente indisponível. Os resultados da pesquisa continuam disponíveis.
+      review_guidance_unavailable: A informação sobre a revisão de medicamentos está
+        temporariamente indisponível. Os resultados da pesquisa podem não incluir
+        orientações sobre interações.
       no_results_title: Nenhum medicamento encontrado
       no_results_message: Tente pesquisar com termos diferentes ou verifique a ortografia.
       results_title: Resultados da pesquisa

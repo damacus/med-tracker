@@ -837,8 +837,8 @@ cy:
       unavailable_title: Chwiliad ddim ar gael
       unavailable_message: Methu cysylltu â'r gronfa ddata meddyginiaethau. Rhowch
         gynnig arall.
-      review_guidance_unavailable: Nid yw canllawiau adolygu meddyginiaeth ar gael
-        dros dro. Mae canlyniadau chwilio ar gael o hyd.
+      review_guidance_unavailable: Nid yw gwybodaeth adolygu meddyginiaeth ar gael
+        dros dro. Efallai na fydd canlyniadau chwilio yn cynnwys canllawiau rhyngweithio.
       no_results_title: Ni chanfuwyd meddyginiaethau
       no_results_message: Ceisiwch chwilio gyda thelerau gwahanol neu gwiriwch yr
         orgraff.
