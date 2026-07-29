@@ -35,12 +35,25 @@ RSpec.describe 'Database pool metrics export pipeline' do
     )
   end
 
+  it 'exports a numeric collector datapoint that the OTLP exporter can encode' do
+    metric_reader, _pools = configured_sdk_metrics
+    metric_reader.pull
+
+    collector = latest_metric(metric_reader, 'medtracker.db.connection_pool.collector')
+    encoded_metrics = OpenTelemetry::Exporter::OTLP::Metrics::MetricsExporter.allocate.send(
+      :encode,
+      metric_reader.metric_snapshots
+    )
+
+    expect(collector.data_points.map(&:value)).to eq([2])
+    expect(encoded_metrics).to be_present
+  end
+
   it 'removes a pool that is no longer live from the next export' do
     metric_reader, pools = configured_sdk_metrics
     metric_reader.pull
 
     pools.replace([pools.last])
-    metric_reader.reset
     metric_reader.pull
 
     expect(size_data_points(metric_reader)).to eq(
@@ -85,9 +98,11 @@ RSpec.describe 'Database pool metrics export pipeline' do
   end
 
   def size_data_points(metric_reader)
-    metric = metric_reader.metric_snapshots.find do |snapshot|
-      snapshot.name == 'medtracker.db.connection_pool.size'
-    end
+    metric = latest_metric(metric_reader, 'medtracker.db.connection_pool.size')
     metric.data_points.map { |point| [point.value, point.attributes] }
+  end
+
+  def latest_metric(metric_reader, name)
+    metric_reader.metric_snapshots.rfind { |snapshot| snapshot.name == name }
   end
 end

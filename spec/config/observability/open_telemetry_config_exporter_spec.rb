@@ -67,6 +67,15 @@ RSpec.describe OpenTelemetryConfig do
       expect(Otel::DatabaseConnectionPoolMetrics.current).to be_present
       expect(Otel::DatabaseConnectionPoolMetrics.current.send(:connection_pools)).to include(ActiveRecord::Base.connection_pool)
     end
+
+    it 'resolves connection pools across every Active Record role' do
+      handler = instance_spy(ActiveRecord::ConnectionAdapters::ConnectionHandler, connection_pool_list: [])
+      allow(ActiveRecord::Base).to receive(:connection_handler).and_return(handler)
+
+      Otel::DatabaseConnectionPoolMetrics.current.send(:connection_pools)
+
+      expect(handler).to have_received(:connection_pool_list).with(:all)
+    end
   end
 
   context 'when parsing OTLP headers' do

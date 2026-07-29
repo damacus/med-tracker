@@ -65,14 +65,15 @@ module Otel
     end
 
     def collect_pool_metrics
-      connection_pools.each do |connection_pool|
-        next if discarded?(connection_pool)
+      connection_pools.count do |connection_pool|
+        next false if discarded?(connection_pool)
 
         record_pool_metrics(connection_pool)
+        true
       end
     rescue StandardError => e
       log_collection_failure(e)
-      nil
+      0
     end
 
     def connection_pools
