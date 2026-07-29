@@ -65,6 +65,7 @@ RSpec.describe OpenTelemetryConfig do
     it 'installs database pool timeout instrumentation' do
       expect(ActiveRecord::ConnectionAdapters::ConnectionPool).to be < Otel::ConnectionPoolTimeoutInstrumentation
       expect(Otel::DatabaseConnectionPoolMetrics.current).to be_present
+      expect(Otel::DatabaseConnectionPoolMetrics.current.send(:connection_pools)).to include(ActiveRecord::Base.connection_pool)
     end
   end
 
