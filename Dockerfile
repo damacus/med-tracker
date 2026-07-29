@@ -199,6 +199,7 @@ COPY --chown=ruby:ruby --from=assets /app/app /app/app
 COPY --chown=ruby:ruby --from=assets /app/bin /app/bin
 COPY --chown=ruby:ruby --from=assets /app/config /app/config
 COPY --chown=ruby:ruby --from=assets /app/db /app/db
+COPY --chown=ruby:ruby --from=assets /app/data /app/data
 COPY --chown=ruby:ruby --from=assets /app/lib /app/lib
 COPY --chown=ruby:ruby --from=assets /app/public /app/public
 COPY --chown=ruby:ruby --from=assets /app/config.ru /app/Rakefile /app/
