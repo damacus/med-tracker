@@ -35,7 +35,7 @@ module NhsDmd
 
       names = parse_ampp_names(ampp_file, counts:, progress_callback: progress_callback)
       import_ampp_relationships(names)
-      import_supplementary_metadata(dir)
+      SupplementaryImport.new.call(dir)
       emit_gtin_start_progress(progress_callback, counts)
 
       import_gtins(gtin_file, names, counts:, progress_callback: progress_callback)
@@ -132,31 +132,34 @@ module NhsDmd
       end
 
       ampp = names[amppid]
-      display = ampp&.fetch(:name)
+      details = { amppid: amppid, amp_code: ampp&.fetch(:amp_code), display: ampp&.fetch(:name) }
       doc.css('GTINDATA').each do |gtin_data|
-        import_gtin_data(gtin_data, amppid:, amp_code: ampp&.fetch(:amp_code), display:, today:, counts:)
+        import_gtin_data(gtin_data, details:, today:, counts:)
         emit_progress(counts, progress_callback, message: gtin_progress_message(counts))
       end
     end
 
-    def import_gtin_data(gtin_data, amppid:, amp_code:, display:, today:, counts:)
+    def import_gtin_data(gtin_data, details:, today:, counts:)
       mark_gtin_processed(counts)
       gtin = node_text(gtin_data, 'GTIN')
       return increment(counts, :skipped_invalid) if gtin.blank?
       return increment(counts, :skipped_expired) if expired?(gtin_data, today)
-      return increment(counts, :skipped_missing_name) if display.blank?
+      return increment(counts, :skipped_missing_name) if details[:display].blank?
 
+      increment(counts, persist(gtin_attributes(gtin, details)))
+    end
+
+    def gtin_attributes(gtin, details)
+      display = details[:display]
       stripped = display.sub(/\s*\([^)]*\)\z/, '').strip
-      outcome = persist(
+      details.slice(:amp_code).merge(
         gtin: NhsDmdBarcode.normalize_gtin(gtin),
-        code: amppid,
-        amp_code: amp_code,
+        code: details[:amppid],
         display: display,
         vmp_name: stripped == display ? nil : stripped,
         system: 'https://dmd.nhs.uk',
         concept_class: 'AMPP'
       )
-      increment(counts, outcome)
     end
 
     def increment(counts, key)
@@ -185,177 +188,6 @@ module NhsDmd
         :updated
       else
         :unchanged
-      end
-    end
-
-    def import_supplementary_metadata(dir)
-      files = supplementary_files(dir)
-      return unless files.values.all?
-
-      metadata = stage_supplementary_metadata(files)
-      return unless metadata
-
-      ActiveRecord::Base.transaction do
-        import_trade_family_groups(metadata[:groups])
-        import_trade_families(metadata[:families])
-        import_amp_trade_families(metadata[:memberships])
-        record_supplementary_release(metadata[:released_on])
-      end
-      expire_barcode_lookup_cache
-    rescue Nokogiri::XML::SyntaxError, IOError, SystemCallError => error
-      Rails.logger.warn("Unable to import dm+d supplementary metadata: #{error.message}")
-    end
-
-    def supplementary_files(dir)
-      {
-        groups: optional_glob_one(dir, 'f_trade_family_group2_0*.xml'),
-        families: optional_glob_one(dir, 'f_trade_family2_0*.xml'),
-        memberships: optional_glob_one(dir, 'f_amp_trade_family2_0*.xml')
-      }
-    end
-
-    def optional_glob_one(dir, pattern)
-      matches = Dir.glob(dir.join(pattern))
-      return matches.first if matches.one?
-
-      Rails.logger.warn("Unable to import dm+d supplementary metadata: expected one #{pattern} file, found #{matches.length}") if matches.many?
-      nil
-    end
-
-    def expire_barcode_lookup_cache
-      NhsDmd::BarcodeLookup.expire_all
-    rescue StandardError, NotImplementedError => error
-      Rails.logger.warn("Unable to expire dm+d barcode lookup cache: #{error.class}: #{error.message}")
-    end
-
-    def stage_supplementary_metadata(files)
-      groups = parse_trade_family_groups(files[:groups])
-      families = parse_trade_families(files[:families])
-      memberships = parse_amp_trade_families(files[:memberships])
-      return if groups.empty? || families.empty?
-      return unless valid_supplementary_metadata?(groups, families, memberships)
-
-      {
-        groups: groups,
-        families: families,
-        memberships: memberships,
-        released_on: supplementary_release_date(files.values)
-      }
-    end
-
-    def parse_trade_family_groups(path)
-      each_element(path, 'TRADE_FAMILY_GROUP').filter_map do |doc|
-        code = node_text(doc, 'TFGID')
-        name = node_text(doc, 'NM')
-        { code: code, name: name } if code.present? && name.present?
-      end
-    end
-
-    def parse_trade_families(path)
-      each_element(path, 'TRADE_FAMILY').filter_map do |doc|
-        code = node_text(doc, 'TFID')
-        name = node_text(doc, 'NM')
-        next if code.blank? || name.blank?
-
-        { code: code, name: name, group_code: node_text(doc, 'TFGID') }
-      end
-    end
-
-    def parse_amp_trade_families(path)
-      each_element(path, 'AMP_TRADE_FAMILY').filter_map do |doc|
-        next unless active_amp_trade_family?(doc)
-
-        amp_code = node_text(doc, 'APID')
-        trade_family_code = node_text(doc, 'TFID')
-        next if amp_code.blank? || trade_family_code.blank?
-
-        { amp_code: amp_code, trade_family_code: trade_family_code }
-      end
-    end
-
-    def valid_supplementary_metadata?(groups, families, memberships)
-      group_codes = groups.pluck(:code)
-      family_codes = families.pluck(:code)
-
-      group_codes.uniq.length == group_codes.length &&
-        family_codes.uniq.length == family_codes.length &&
-        memberships.map { |membership| membership[:amp_code] }.uniq.length == memberships.length &&
-        families.all? { |family| family[:group_code].blank? || group_codes.include?(family[:group_code]) } &&
-        memberships.all? { |membership| family_codes.include?(membership[:trade_family_code]) }
-    end
-
-    def import_trade_family_groups(groups)
-      groups.each do |group|
-        NhsDmdTradeFamilyGroup.upsert(
-          group.merge(updated_at: Time.current, created_at: Time.current),
-          unique_by: :code
-        )
-      end
-    end
-
-    def import_trade_families(families)
-      families.each do |family|
-        group = NhsDmdTradeFamilyGroup.find_by(code: family[:group_code])
-        NhsDmdTradeFamily.upsert(
-          family.slice(:code, :name).merge(
-            trade_family_group_id: group&.id,
-            updated_at: Time.current,
-            created_at: Time.current
-          ),
-          unique_by: :code
-        )
-      end
-    end
-
-    def import_amp_trade_families(memberships)
-      NhsDmdAmpTradeFamily.delete_all
-
-      memberships.each do |membership|
-        trade_family = NhsDmdTradeFamily.find_by!(code: membership[:trade_family_code])
-        NhsDmdAmpTradeFamily.create!(amp_code: membership[:amp_code], trade_family: trade_family)
-      end
-    end
-
-    def active_amp_trade_family?(doc)
-      today = Time.zone.today
-      start_date, valid_start_date = supplementary_date(doc, 'STARTDT')
-      end_date, valid_end_date = supplementary_date(doc, 'ENDDT')
-      return false unless valid_start_date && valid_end_date
-
-      (start_date.nil? || start_date <= today) && (end_date.nil? || end_date > today)
-    end
-
-    def supplementary_date(doc, selector)
-      node = doc.at(selector)
-      return [nil, true] unless node
-
-      [Date.parse(node.text), true]
-    rescue Date::Error
-      [nil, false]
-    end
-
-    def record_supplementary_release(released_on)
-      return unless released_on
-
-      NhsDmdSupplementaryRelease.find_or_create_by!(released_on: released_on)
-    end
-
-    def supplementary_release_date(files) = files.filter_map { |file| release_date_from_filename(file) }.max
-
-    def release_date_from_filename(path)
-      date = File.basename(path)[/(\d{6})(?=\.xml\z)/, 1]
-      Date.strptime(date, '%d%m%y') if date
-    rescue Date::Error
-      nil
-    end
-
-    def each_element(path, element_name)
-      return enum_for(__method__, path, element_name) unless block_given?
-
-      Nokogiri::XML::Reader(File.open(path)).each do |node|
-        next unless node.name == element_name && node.node_type == Nokogiri::XML::Reader::TYPE_ELEMENT
-
-        yield Nokogiri::XML(node.outer_xml)
       end
     end
 

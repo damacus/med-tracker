@@ -37,8 +37,6 @@ class MedicationFinderSearchResponder
   end
 
   def successful_response_body(query:, result:, form:, strength:, permissions:)
-    normalized_form = NhsDmd::DosageFormFilter.normalize(form)
-    normalized_strength = NhsDmd::StrengthFilter.normalize(strength)
     results = filtered_results(result.results, form:, strength:)
     related_medications = @trade_family_resolver.call(trade_family_codes: trade_family_codes(results))
 
@@ -50,8 +48,8 @@ class MedicationFinderSearchResponder
       query: result.resolved_query.presence || query,
       barcode: result.barcode,
       barcode_resolution: barcode_resolution(result),
-      form: normalized_form,
-      strength: normalized_strength,
+      form: NhsDmd::DosageFormFilter.normalize(form),
+      strength: NhsDmd::StrengthFilter.normalize(strength),
       permissions: permissions
     }
   end

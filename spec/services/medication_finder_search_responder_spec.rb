@@ -294,7 +294,10 @@ RSpec.describe MedicationFinderSearchResponder do
         )
       end
       let(:scope) { Medication.where(id: [exact_medication.id, related_medication.id, unrelated_medication.id]) }
-      let(:responder_with_scope) { described_class.new(search: search, medication_scope: scope) }
+
+      def responder_with_scope
+        described_class.new(search: search, medication_scope: scope)
+      end
 
       before do
         trade_family = NhsDmdTradeFamily.create!(code: 'TF001', name: 'Laxido')
@@ -360,7 +363,8 @@ RSpec.describe MedicationFinderSearchResponder do
           make_search_result(code: 'AMPP002', trade_family: { code: 'TF002', name: 'Movicol' })
         ]
       end
-      let(:responder_with_batched_resolver) do
+
+      def responder_with_batched_resolver
         described_class.new(
           search: search,
           medication_scope: Medication.none,

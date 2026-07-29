@@ -9,7 +9,10 @@ class NhsDmdTradeFamily < ApplicationRecord
 
   def provenance
     metadata = { trade_family: { code: code, name: name } }
-    metadata[:trade_family_group] = { code: trade_family_group.code, name: trade_family_group.name } if trade_family_group
+    if trade_family_group
+      metadata[:trade_family_group] =
+        { code: trade_family_group.code, name: trade_family_group.name }
+    end
     metadata
   end
 end

@@ -18,6 +18,23 @@ RSpec.describe NhsDmd::Search do
   let(:open_food_facts_lookup) { instance_double(OpenFoodFacts::BarcodeLookup, lookup: nil) }
   let(:open_food_facts_search) { instance_double(OpenFoodFacts::Search, search: []) }
 
+  def expected_trade_family_results
+    [
+      a_hash_including(
+        code: 'AMPP001',
+        display: 'Laxido Orange oral powder sachets (Galen Ltd)',
+        source_label: 'NHS dm+d',
+        trade_family: { code: 'TF001', name: 'Laxido' }
+      ),
+      a_hash_including(
+        code: 'AMP002',
+        display: 'Laxido Lemon oral powder sachets (Galen Ltd)',
+        source_label: 'NHS dm+d',
+        trade_family: { code: 'TF001', name: 'Laxido' }
+      )
+    ]
+  end
+
   describe '#call' do
     context 'when the service is not configured (credentials absent)' do
       before do
@@ -116,20 +133,7 @@ RSpec.describe NhsDmd::Search do
         result = search.call('macrogol')
 
         expect(NhsDmdBarcode.find_by(code: 'AMPP001')).to be_nil
-        expect(result.results.map(&:to_h)).to contain_exactly(
-          a_hash_including(
-            code: 'AMPP001',
-            display: 'Laxido Orange oral powder sachets (Galen Ltd)',
-            source_label: 'NHS dm+d',
-            trade_family: { code: 'TF001', name: 'Laxido' }
-          ),
-          a_hash_including(
-            code: 'AMP002',
-            display: 'Laxido Lemon oral powder sachets (Galen Ltd)',
-            source_label: 'NHS dm+d',
-            trade_family: { code: 'TF001', name: 'Laxido' }
-          )
-        )
+        expect(result.results.map(&:to_h)).to match_array(expected_trade_family_results)
         expect(client).to have_received(:search).with('macrogol').once
       end
     end

@@ -152,7 +152,7 @@ RSpec.describe 'MedicationFinder' do
       expect(page).to have_text(related_medication.location.name)
       expect(page).to have_text('10')
     end
-    expect(page).not_to have_button('Update stock')
+    expect(page).to have_no_button('Update stock')
   end
 
   def stub_medication_finder_search(medication)

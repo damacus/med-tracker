@@ -2,7 +2,7 @@
 
 class NhsDmdBarcode < ApplicationRecord
   has_one :amp_trade_family, primary_key: :amp_code, foreign_key: :amp_code,
-                             class_name: 'NhsDmdAmpTradeFamily'
+                             class_name: 'NhsDmdAmpTradeFamily', dependent: nil, inverse_of: false
 
   validates :gtin, presence: true, uniqueness: true
   validates :code, presence: true

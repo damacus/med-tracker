@@ -5,22 +5,22 @@ require 'rails_helper'
 RSpec.describe MedicationTradeFamilyResolver do
   subject(:resolver) { described_class.new(scope: scope) }
 
-  let(:exact_medication) { create(:medication, barcode: '5016298210989') }
-  let(:related_medication) { create(:medication, barcode: '5016298210996') }
-  let(:zero_prefixed_medication) { create(:medication, barcode: '05016298211016') }
-  let(:unprefixed_medication) { create(:medication, barcode: '5016298211023') }
-  let(:unrelated_medication) { create(:medication, barcode: '5016298211009') }
-  let(:scope) do
-    Medication.where(
-      id: [
-        exact_medication.id,
-        related_medication.id,
-        zero_prefixed_medication.id,
-        unprefixed_medication.id,
-        unrelated_medication.id
-      ]
-    )
+  let(:medications) do
+    {
+      exact: create(:medication, barcode: '5016298210989'),
+      related: create(:medication, barcode: '5016298210996'),
+      zero_prefixed: create(:medication, barcode: '05016298211016'),
+      unprefixed: create(:medication, barcode: '5016298211023'),
+      unrelated: create(:medication, barcode: '5016298211009')
+    }
   end
+  let(:scope) { Medication.where(id: medications.values.pluck(:id)) }
+
+  def exact_medication = medications.fetch(:exact)
+  def related_medication = medications.fetch(:related)
+  def zero_prefixed_medication = medications.fetch(:zero_prefixed)
+  def unprefixed_medication = medications.fetch(:unprefixed)
+  def unrelated_medication = medications.fetch(:unrelated)
 
   before do
     matching_family = NhsDmdTradeFamily.create!(code: 'TF001', name: 'Laxido')

@@ -26,7 +26,9 @@ RSpec.describe NhsDmd::ReleaseImport do
   def write_trade_family_group_xml(entries)
     xml = +'<?xml version="1.0" encoding="utf-8" ?>'
     xml << '<TRADE_FAMILY_GROUPS>'
-    entries.each { |entry| xml << "<TRADE_FAMILY_GROUP><TFGID>#{entry[:code]}</TFGID><NM>#{entry[:name]}</NM></TRADE_FAMILY_GROUP>" }
+    entries.each do |entry|
+      xml << "<TRADE_FAMILY_GROUP><TFGID>#{entry[:code]}</TFGID><NM>#{entry[:name]}</NM></TRADE_FAMILY_GROUP>"
+    end
     xml << '</TRADE_FAMILY_GROUPS>'
     File.write(release_dir.join('f_trade_family_group2_0060726.xml'), xml)
   end
@@ -35,7 +37,8 @@ RSpec.describe NhsDmd::ReleaseImport do
     xml = +'<?xml version="1.0" encoding="utf-8" ?>'
     xml << '<TRADE_FAMILIES>'
     entries.each do |entry|
-      xml << "<TRADE_FAMILY><TFID>#{entry[:code]}</TFID><NM>#{entry[:name]}</NM><TFGID>#{entry[:group_code]}</TFGID></TRADE_FAMILY>"
+      xml << "<TRADE_FAMILY><TFID>#{entry[:code]}</TFID><NM>#{entry[:name]}</NM>"
+      xml << "<TFGID>#{entry[:group_code]}</TFGID></TRADE_FAMILY>"
     end
     xml << '</TRADE_FAMILIES>'
     File.write(release_dir.join('f_trade_family2_0060726.xml'), xml)
@@ -45,13 +48,20 @@ RSpec.describe NhsDmd::ReleaseImport do
     xml = +'<?xml version="1.0" encoding="utf-8" ?>'
     xml << '<AMP_TRADE_FAMILIES>'
     entries.each do |entry|
-      xml << "<AMP_TRADE_FAMILY><APID>#{entry[:amp_code]}</APID><TFID>#{entry[:trade_family_code]}</TFID>"
-      xml << "<STARTDT>#{entry[:startdt]}</STARTDT>" if entry.key?(:startdt)
-      xml << "<ENDDT>#{entry[:enddt]}</ENDDT>" if entry.key?(:enddt)
-      xml << '</AMP_TRADE_FAMILY>'
+      xml << amp_trade_family_xml(entry)
     end
     xml << '</AMP_TRADE_FAMILIES>'
     File.write(release_dir.join('f_amp_trade_family2_0060726.xml'), xml)
+  end
+
+  def amp_trade_family_xml(entry)
+    "<AMP_TRADE_FAMILY><APID>#{entry[:amp_code]}</APID><TFID>#{entry[:trade_family_code]}</TFID>" \
+      "#{supplementary_date_xml('STARTDT', entry[:startdt])}" \
+      "#{supplementary_date_xml('ENDDT', entry[:enddt])}</AMP_TRADE_FAMILY>"
+  end
+
+  def supplementary_date_xml(element, value)
+    value ? "<#{element}>#{value}</#{element}>" : ''
   end
 
   def write_gtin_xml(entries)
@@ -105,6 +115,34 @@ RSpec.describe NhsDmd::ReleaseImport do
 
   def barcode_record(gtin)
     NhsDmdBarcode.find_by!(gtin: gtin)
+  end
+
+  def write_standard_trade_family_release(group_name:, family_name:)
+    write_ampp_xml([{ appid: '111', apid: '222', nm: 'Paracetamol 500mg tablets (Acme Ltd)' }])
+    write_single_gtin_xml(amppid: '111', gtin: '5016298210989', startdt: '2020-01-01')
+    write_trade_family_group_xml([{ code: '900', name: group_name }])
+    write_trade_family_xml([{ code: '800', name: family_name, group_code: '900' }])
+    write_amp_trade_family_xml([{ amp_code: '222', trade_family_code: '800', startdt: '2026-07-06' }])
+  end
+
+  def create_existing_trade_family
+    group = NhsDmdTradeFamilyGroup.create!(code: '900', name: 'Old Group')
+    family = NhsDmdTradeFamily.create!(code: '800', name: 'Old Family', trade_family_group: group)
+    NhsDmdAmpTradeFamily.create!(amp_code: '222', trade_family: family)
+    family
+  end
+
+  def create_existing_barcode
+    NhsDmdBarcode.create!(
+      gtin: '5016298210989', amp_code: '222', code: '111', display: 'Paracetamol 500mg tablets (Acme Ltd)',
+      vmp_name: 'Paracetamol 500mg tablets', system: 'https://dmd.nhs.uk', concept_class: 'AMPP'
+    )
+  end
+
+  def expect_barcode_trade_family(name:, group_name: nil)
+    expected = { trade_family: { code: '800', name: name } }
+    expected[:trade_family_group] = { code: '900', name: group_name } if group_name
+    expect(NhsDmd::BarcodeLookup.new.lookup('5016298210989')).to include(expected)
   end
 
   def progress_ampp_entries
@@ -183,7 +221,9 @@ RSpec.describe NhsDmd::ReleaseImport do
     expect(barcode_record('5016298210989')).to have_attributes(amp_code: '222')
     expect(NhsDmdTradeFamily.find_by!(code: '800')).to have_attributes(name: 'Acme Paracetamol')
     expect(NhsDmdTradeFamilyGroup.find_by!(code: '900')).to have_attributes(name: 'Acme')
-    expect(NhsDmdAmpTradeFamily.find_by!(amp_code: '222')).to have_attributes(trade_family: NhsDmdTradeFamily.find_by!(code: '800'))
+    expect(NhsDmdAmpTradeFamily.find_by!(amp_code: '222')).to have_attributes(
+      trade_family: NhsDmdTradeFamily.find_by!(code: '800')
+    )
     expect(NhsDmdSupplementaryRelease.current).to have_attributes(released_on: Date.new(2026, 7, 6))
   end
 
@@ -233,27 +273,14 @@ RSpec.describe NhsDmd::ReleaseImport do
     cache_store = ActiveSupport::Cache::MemoryStore.new
     allow(Rails).to receive(:cache).and_return(cache_store)
 
-    old_group = NhsDmdTradeFamilyGroup.create!(code: '900', name: 'Old Group')
-    old_family = NhsDmdTradeFamily.create!(code: '800', name: 'Old Family', trade_family_group: old_group)
-    NhsDmdAmpTradeFamily.create!(amp_code: '222', trade_family: old_family)
-    NhsDmdBarcode.create!(
-      gtin: '5016298210989', amp_code: '222', code: '111', display: 'Paracetamol 500mg tablets (Acme Ltd)',
-      vmp_name: 'Paracetamol 500mg tablets', system: 'https://dmd.nhs.uk', concept_class: 'AMPP'
-    )
-    expect(NhsDmd::BarcodeLookup.new.lookup('5016298210989')).to include(trade_family: { code: '800', name: 'Old Family' })
-
-    write_ampp_xml([{ appid: '111', apid: '222', nm: 'Paracetamol 500mg tablets (Acme Ltd)' }])
-    write_single_gtin_xml(amppid: '111', gtin: '5016298210989', startdt: '2020-01-01')
-    write_trade_family_group_xml([{ code: '900', name: 'New Group' }])
-    write_trade_family_xml([{ code: '800', name: 'New Family', group_code: '900' }])
-    write_amp_trade_family_xml([{ amp_code: '222', trade_family_code: '800', startdt: '2026-07-06' }])
+    create_existing_trade_family
+    create_existing_barcode
+    expect_barcode_trade_family(name: 'Old Family')
+    write_standard_trade_family_release(group_name: 'New Group', family_name: 'New Family')
 
     importer.import(release_dir)
 
-    expect(NhsDmd::BarcodeLookup.new.lookup('5016298210989')).to include(
-      trade_family: { code: '800', name: 'New Family' },
-      trade_family_group: { code: '900', name: 'New Group' }
-    )
+    expect_barcode_trade_family(name: 'New Family', group_name: 'New Group')
   end
 
   it 'continues the core GTIN import when supplementary cache invalidation fails' do
@@ -262,11 +289,7 @@ RSpec.describe NhsDmd::ReleaseImport do
     allow(cache_store).to receive(:delete_matched).and_raise(NotImplementedError, 'cache unavailable')
     allow(Rails.logger).to receive(:warn)
 
-    write_ampp_xml([{ appid: '111', apid: '222', nm: 'Paracetamol 500mg tablets (Acme Ltd)' }])
-    write_single_gtin_xml(amppid: '111', gtin: '5016298210989', startdt: '2020-01-01')
-    write_trade_family_group_xml([{ code: '900', name: 'Acme' }])
-    write_trade_family_xml([{ code: '800', name: 'Acme Paracetamol', group_code: '900' }])
-    write_amp_trade_family_xml([{ amp_code: '222', trade_family_code: '800', startdt: '2026-07-06' }])
+    write_standard_trade_family_release(group_name: 'Acme', family_name: 'Acme Paracetamol')
 
     result = importer.import(release_dir)
 
@@ -279,15 +302,8 @@ RSpec.describe NhsDmd::ReleaseImport do
   end
 
   it 'keeps supplementary metadata when any expected supplementary file has multiple matches' do
-    old_group = NhsDmdTradeFamilyGroup.create!(code: '900', name: 'Old Group')
-    old_family = NhsDmdTradeFamily.create!(code: '800', name: 'Old Family', trade_family_group: old_group)
-    NhsDmdAmpTradeFamily.create!(amp_code: '222', trade_family: old_family)
-
-    write_ampp_xml([{ appid: '111', apid: '222', nm: 'Paracetamol 500mg tablets (Acme Ltd)' }])
-    write_single_gtin_xml(amppid: '111', gtin: '5016298210989', startdt: '2020-01-01')
-    write_trade_family_group_xml([{ code: '900', name: 'New Group' }])
-    write_trade_family_xml([{ code: '800', name: 'New Family', group_code: '900' }])
-    write_amp_trade_family_xml([{ amp_code: '222', trade_family_code: '800', startdt: '2026-07-06' }])
+    old_family = create_existing_trade_family
+    write_standard_trade_family_release(group_name: 'New Group', family_name: 'New Family')
 
     %w[f_trade_family_group2_0060726.xml f_trade_family2_0060726.xml f_amp_trade_family2_0060726.xml].each do |filename|
       FileUtils.cp(release_dir.join(filename), release_dir.join(filename.sub('060726', '130726')))

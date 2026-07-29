@@ -2,6 +2,24 @@
 
 module NhsDmd
   class Search # rubocop:disable Metrics/ClassLength
+    SEARCH_RESULT_ATTRIBUTE_KEYS = %i[
+      barcode
+      name
+      description
+      concept_class
+      category
+      trade_family
+      trade_family_group
+      package_size
+      package_quantity
+      package_unit
+      directions
+      warnings
+      pil_url
+      spc_url
+      match_reason
+    ].freeze
+
     Result = Struct.new(:results, :error, :resolved_query, :barcode, :barcode_source, keyword_init: true) do
       def success?
         error.nil?
@@ -102,18 +120,26 @@ module NhsDmd
     end
 
     def enrich_trade_family_provenance(items)
-      ampp_codes = items.filter_map { |item| item[:code] if item[:concept_class] == 'AMPP' }
-      amp_codes_by_ampp = NhsDmdAmppRelationship.where(ampp_code: ampp_codes).pluck(:ampp_code, :amp_code).to_h
-      amp_codes = items.filter_map { |item| amp_code_for(item, amp_codes_by_ampp) }
-      memberships = NhsDmdAmpTradeFamily
-        .includes(trade_family: :trade_family_group)
-        .where(amp_code: amp_codes)
-        .index_by(&:amp_code)
+      amp_codes_by_ampp = amp_codes_by_ampp(items)
+      memberships = trade_family_memberships(items, amp_codes_by_ampp)
 
       items.map do |item|
         family = memberships[amp_code_for(item, amp_codes_by_ampp)]&.trade_family
         family ? item.merge(family.provenance) : item
       end
+    end
+
+    def amp_codes_by_ampp(items)
+      ampp_codes = items.filter_map { |item| item[:code] if item[:concept_class] == 'AMPP' }
+      NhsDmdAmppRelationship.where(ampp_code: ampp_codes).pluck(:ampp_code, :amp_code).to_h
+    end
+
+    def trade_family_memberships(items, amp_codes_by_ampp)
+      amp_codes = items.filter_map { |item| amp_code_for(item, amp_codes_by_ampp) }
+      NhsDmdAmpTradeFamily
+        .includes(trade_family: :trade_family_group)
+        .where(amp_code: amp_codes)
+        .index_by(&:amp_code)
     end
 
     def amp_code_for(item, amp_codes_by_ampp)
@@ -165,23 +191,7 @@ module NhsDmd
     end
 
     def search_result_attributes(item)
-      {
-        barcode: item[:barcode],
-        name: item[:name],
-        description: item[:description],
-        concept_class: item[:concept_class],
-        category: item[:category],
-        trade_family: item[:trade_family],
-        trade_family_group: item[:trade_family_group],
-        package_size: item[:package_size],
-        package_quantity: item[:package_quantity],
-        package_unit: item[:package_unit],
-        directions: item[:directions],
-        warnings: item[:warnings],
-        pil_url: item[:pil_url],
-        spc_url: item[:spc_url],
-        match_reason: item[:match_reason]
-      }
+      item.slice(*SEARCH_RESULT_ATTRIBUTE_KEYS)
     end
 
     def barcode_result(query, barcode_match, source: barcode_match[:source])

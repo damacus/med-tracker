@@ -40,9 +40,9 @@ module BarcodeCatalog
 
     def local_trade_family_provenance(candidates)
       records = NhsDmdBarcode
-        .includes(amp_trade_family: { trade_family: :trade_family_group })
-        .where(gtin: candidates)
-        .index_by(&:gtin)
+                .includes(amp_trade_family: { trade_family: :trade_family_group })
+                .where(gtin: candidates)
+                .index_by(&:gtin)
 
       candidates.each do |candidate|
         provenance = records[candidate]&.trade_family_metadata

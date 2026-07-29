@@ -1,23 +1,17 @@
 # frozen_string_literal: true
 
 class MedicationTradeFamilyResolver
-  BARCODE_JOIN = (
-    'INNER JOIN nhs_dmd_barcodes ' \
-    'ON nhs_dmd_barcodes.gtin IN (' \
-    'medications.barcode, ' \
-    "CASE WHEN char_length(medications.barcode) = 13 THEN '0' || medications.barcode END, " \
-    "CASE WHEN char_length(medications.barcode) = 14 AND left(medications.barcode, 1) = '0' " \
-    'THEN substring(medications.barcode FROM 2) END' \
-    ')'
-  ).freeze
-  AMP_TRADE_FAMILY_JOIN = (
-    'INNER JOIN nhs_dmd_amp_trade_families ' \
-    'ON nhs_dmd_amp_trade_families.amp_code = nhs_dmd_barcodes.amp_code'
-  ).freeze
-  TRADE_FAMILY_JOIN = (
-    'INNER JOIN nhs_dmd_trade_families ' \
-    'ON nhs_dmd_trade_families.id = nhs_dmd_amp_trade_families.trade_family_id'
-  ).freeze
+  BARCODE_JOIN = 'INNER JOIN nhs_dmd_barcodes ' \
+                 'ON nhs_dmd_barcodes.gtin IN (' \
+                 'medications.barcode, ' \
+                 "CASE WHEN char_length(medications.barcode) = 13 THEN '0' || medications.barcode END, " \
+                 "CASE WHEN char_length(medications.barcode) = 14 AND left(medications.barcode, 1) = '0' " \
+                 'THEN substring(medications.barcode FROM 2) END' \
+                 ')'
+  AMP_TRADE_FAMILY_JOIN = 'INNER JOIN nhs_dmd_amp_trade_families ' \
+                          'ON nhs_dmd_amp_trade_families.amp_code = nhs_dmd_barcodes.amp_code'
+  TRADE_FAMILY_JOIN = 'INNER JOIN nhs_dmd_trade_families ' \
+                      'ON nhs_dmd_trade_families.id = nhs_dmd_amp_trade_families.trade_family_id'
 
   def initialize(scope:)
     @scope = scope
