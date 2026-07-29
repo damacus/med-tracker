@@ -187,7 +187,7 @@ module NhsDmd
         import_amp_trade_families(metadata[:memberships])
         record_supplementary_release(metadata[:released_on])
       end
-      NhsDmd::BarcodeLookup.expire_all
+      expire_barcode_lookup_cache
     rescue Nokogiri::XML::SyntaxError, IOError, SystemCallError => error
       Rails.logger.warn("Unable to import dm+d supplementary metadata: #{error.message}")
     end
@@ -200,7 +200,19 @@ module NhsDmd
       }
     end
 
-    def optional_glob_one(dir, pattern) = Dir.glob(dir.join(pattern)).first
+    def optional_glob_one(dir, pattern)
+      matches = Dir.glob(dir.join(pattern))
+      return matches.first if matches.one?
+
+      Rails.logger.warn("Unable to import dm+d supplementary metadata: expected one #{pattern} file, found #{matches.length}") if matches.many?
+      nil
+    end
+
+    def expire_barcode_lookup_cache
+      NhsDmd::BarcodeLookup.expire_all
+    rescue StandardError, NotImplementedError => error
+      Rails.logger.warn("Unable to expire dm+d barcode lookup cache: #{error.class}: #{error.message}")
+    end
 
     def stage_supplementary_metadata(files)
       groups = parse_trade_family_groups(files[:groups])
