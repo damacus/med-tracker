@@ -94,7 +94,7 @@ module NhsDmd
 
       NhsDmdAmppRelationship.transaction do
         NhsDmdAmppRelationship.delete_all
-        NhsDmdAmppRelationship.create!(relationships)
+        NhsDmdAmppRelationship.insert_all(relationships) if relationships.any? # rubocop:disable Rails/SkipsModelValidations
       end
     end
 

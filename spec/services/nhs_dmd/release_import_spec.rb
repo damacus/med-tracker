@@ -117,6 +117,17 @@ RSpec.describe NhsDmd::ReleaseImport do
     NhsDmdBarcode.find_by!(gtin: gtin)
   end
 
+  def capture_relationship_queries
+    queries = []
+    subscriber = ActiveSupport::Notifications.subscribe('sql.active_record') do |*, payload|
+      queries << payload[:sql] if payload[:sql].include?('"nhs_dmd_ampp_relationships"')
+    end
+    yield
+    queries
+  ensure
+    ActiveSupport::Notifications.unsubscribe(subscriber) if subscriber
+  end
+
   def write_standard_trade_family_release(group_name:, family_name:)
     write_ampp_xml([{ appid: '111', apid: '222', nm: 'Paracetamol 500mg tablets (Acme Ltd)' }])
     write_single_gtin_xml(amppid: '111', gtin: '5016298210989', startdt: '2020-01-01')
@@ -235,6 +246,26 @@ RSpec.describe NhsDmd::ReleaseImport do
 
     expect(NhsDmdAmppRelationship.find_by!(ampp_code: '111')).to have_attributes(amp_code: '222')
     expect(NhsDmdBarcode.find_by(code: '111')).to be_nil
+  end
+
+  it 'bulk inserts core AMPP-to-AMP relationships without uniqueness lookups' do
+    write_ampp_xml(
+      [
+        { appid: '111', apid: '222', nm: 'First product' },
+        { appid: '333', apid: '444', nm: 'Second product' }
+      ]
+    )
+    write_gtin_xml([])
+    relationship_queries = capture_relationship_queries { importer.import(release_dir) }
+
+    insert_queries = relationship_queries.grep(/\AINSERT INTO "nhs_dmd_ampp_relationships"/)
+    uniqueness_queries = relationship_queries.grep(/\ASELECT .*"nhs_dmd_ampp_relationships"/)
+
+    expect(insert_queries.size).to eq(1)
+    expect(uniqueness_queries).to be_empty
+    expect(NhsDmdAmppRelationship.order(:ampp_code).pluck(:ampp_code, :amp_code)).to eq(
+      [%w[111 222], %w[333 444]]
+    )
   end
 
   it 'tolerates missing supplementary XML and does not retain inactive AMP mappings' do
