@@ -17,6 +17,7 @@ module Components
               idleText: t('medications.finder.idle_text'),
               unavailableTitle: t('medications.finder.unavailable_title'),
               unavailableMessage: t('medications.finder.unavailable_message'),
+              reviewGuidanceUnavailable: t('medications.finder.review_guidance_unavailable'),
               noResultsTitle: t('medications.finder.no_results_title'),
               noResultsMessage: t('medications.finder.no_results_message'),
               resultsTitle: t('medications.finder.results_title'),

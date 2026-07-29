@@ -62,6 +62,7 @@ RSpec.describe 'GET /medication-finder/search' do
         expect(json['results'].first['code']).to eq('39720311000001101')
         expect(json['results'].first['concept_class']).to eq('VMP')
         expect(json['results'].first['pil_url']).to eq('https://www.medicines.org.uk/emc/product/13866/pil')
+        expect(json['results'].first['review_prompt_status']).to eq('available')
       end
 
       it 'includes existing medication metadata when the result matches accessible stock' do
@@ -140,6 +141,69 @@ RSpec.describe 'GET /medication-finder/search' do
         )
         expect(response.parsed_body.dig('results', 0, 'review_prompt_filter')).to eq('hidden_count' => 0)
         expect(response.parsed_body.dig('results', 0)).not_to have_key('interactions')
+      end
+    end
+
+    context 'when medication-review enrichment is unavailable' do
+      before do
+        login_as_admin
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_ID', nil).and_return('test-id')
+        allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_SECRET', nil).and_return('test-secret')
+        stub_nhs_dmd_token
+        stub_nhs_dmd_search(
+          query: 'paracetamol',
+          results: [
+            {
+              code: '32223611000001104',
+              display: 'Paracetamol 500mg tablets',
+              system: 'https://dmd.nhs.uk',
+              concept_class: 'VMP'
+            },
+            {
+              code: '32223711000001108',
+              display: 'Paracetamol 250mg tablets',
+              system: 'https://dmd.nhs.uk',
+              concept_class: 'VMP'
+            }
+          ]
+        )
+        interaction_lookup = instance_double(MedicationInteractionLookup)
+        allow(interaction_lookup).to receive(:call).and_raise(
+          Errno::ENOENT,
+          'No such file or directory @ rb_sysopen - /app/data/medication_reviews/rxclass_terminology.json'
+        )
+        allow(MedicationInteractionLookup).to receive(:new).and_return(interaction_lookup)
+        allow(Rails.logger).to receive(:error)
+        Rails.cache.clear
+      end
+
+      it 'preserves NHS results and marks review guidance unavailable' do
+        expect(NhsDmdBarcode).not_to exist
+
+        get medication_finder_search_path(format: :json), params: { q: 'paracetamol' }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body).not_to have_key('error')
+        expect(response.parsed_body['results']).to contain_exactly(
+          a_hash_including(
+            'code' => '32223611000001104',
+            'display' => 'Paracetamol 500mg tablets',
+            'review_prompts' => [],
+            'review_prompt_filter' => { 'hidden_count' => 0 },
+            'review_prompt_status' => 'unavailable'
+          ),
+          a_hash_including(
+            'code' => '32223711000001108',
+            'display' => 'Paracetamol 250mg tablets',
+            'review_prompts' => [],
+            'review_prompt_filter' => { 'hidden_count' => 0 },
+            'review_prompt_status' => 'unavailable'
+          )
+        )
+        expect(Rails.logger).to have_received(:error)
+          .with('Medication review enrichment failed: Errno::ENOENT')
+          .once
       end
     end
 

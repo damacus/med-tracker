@@ -11,6 +11,7 @@ class MedicationFinderSearchResponder
   end
 
   def call(query:, form: nil, strength: nil, permissions: {})
+    @review_enrichment_unavailable = false
     normalized_query = query.to_s.strip
     return Result.new(body: { results: [], permissions: permissions }, status: :ok) if normalized_query.blank?
 
@@ -66,11 +67,32 @@ class MedicationFinderSearchResponder
   def result_payload(search_result, barcode)
     search_result.to_h.tap do |payload|
       medication = existing_medication_for(search_result, barcode)
-      review_result = @interaction_lookup.call(search_result)
       payload[:existing_medication] = existing_medication_payload(medication) if medication
-      payload[:review_prompts] = review_result.visible_prompts
-      payload[:review_prompt_filter] = { hidden_count: review_result.hidden_count }
+      payload.merge!(review_prompt_payload(search_result))
     end
+  end
+
+  def review_prompt_payload(search_result)
+    return unavailable_review_prompt_payload if @review_enrichment_unavailable
+
+    review_result = @interaction_lookup.call(search_result)
+    {
+      review_prompts: review_result.visible_prompts,
+      review_prompt_filter: { hidden_count: review_result.hidden_count },
+      review_prompt_status: 'available'
+    }
+  rescue StandardError => e
+    @review_enrichment_unavailable = true
+    Rails.logger.error("Medication review enrichment failed: #{e.class}")
+    unavailable_review_prompt_payload
+  end
+
+  def unavailable_review_prompt_payload
+    {
+      review_prompts: [],
+      review_prompt_filter: { hidden_count: 0 },
+      review_prompt_status: 'unavailable'
+    }
   end
 
   def existing_medication_for(search_result, barcode)

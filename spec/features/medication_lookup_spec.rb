@@ -127,6 +127,41 @@ RSpec.describe 'Medication Lookup', :browser, type: :system do
     expect(page).to have_text('Search unavailable')
   end
 
+  it 'keeps search results visible when medication review guidance is unavailable' do
+    stub_nhs_dmd_search(
+      query: 'Paracetamol',
+      results: [
+        {
+          code: '32223611000001104',
+          display: 'Paracetamol 500mg tablets',
+          system: 'https://dmd.nhs.uk',
+          concept_class: 'VMP'
+        }
+      ]
+    )
+    interaction_lookup = instance_double(MedicationInteractionLookup)
+    allow(interaction_lookup).to receive(:call).and_raise(
+      Errno::ENOENT,
+      'No such file or directory @ rb_sysopen - /app/data/medication_reviews/rxclass_terminology.json'
+    )
+    allow(MedicationInteractionLookup).to receive(:new).and_return(interaction_lookup)
+
+    expect(NhsDmdBarcode).not_to exist
+
+    sign_in(admin)
+    visit medication_finder_path
+
+    fill_in 'medication-search-input', with: 'Paracetamol'
+    click_button 'Search'
+
+    expect(page).to have_text('Paracetamol 500mg tablets')
+    expect(page).to have_css(
+      '[role="status"]',
+      text: 'Medication review guidance is temporarily unavailable. Search results are still available.'
+    )
+    expect(page).to have_no_text('Search unavailable')
+  end
+
   it 'allows selecting a search result and prefill a new inventory item' do
     stub_nhs_dmd_search(query: '5016298210989', results: barcode_results)
 

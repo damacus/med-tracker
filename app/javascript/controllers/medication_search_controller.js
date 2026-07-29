@@ -122,8 +122,16 @@ export default class extends Controller {
     `
 
     const items = results.map(result => this.renderResultCard(result, barcode, permissions)).join('')
+    const reviewGuidanceWarning = results.some((result) => result.review_prompt_status === "unavailable")
+      ? `
+        <div class="mb-3 rounded-lg border border-warning/50 bg-warning-container/20 p-3 text-sm text-on-warning-container" role="status" data-testid="review-guidance-warning">
+          ${this.escapeHtml(this.t("reviewGuidanceUnavailable"))}
+        </div>
+      `
+      : ''
 
-    this.resultsTarget.innerHTML = header + `<div class="space-y-2" data-testid="results-list">${items}</div>`
+    this.resultsTarget.innerHTML = reviewGuidanceWarning + header +
+      `<div class="space-y-2" data-testid="results-list">${items}</div>`
   }
 
   renderResultCard(result, barcode, permissions = {}) {
