@@ -37,6 +37,12 @@ RSpec.describe MedicationAdministration::RecordDose do
     payloads
   end
 
+  def expect_record_dose_log(details)
+    expect(Rails.logger).to have_received(:info).with(
+      "[MedicationAdministration::RecordDose] #{details}"
+    )
+  end
+
   shared_examples 'a successful dose' do |expected_amount|
     it 'returns success' do
       expect(result.success).to be true
@@ -563,6 +569,7 @@ RSpec.describe MedicationAdministration::RecordDose do
     it 'publishes attempted and recorded metric events for a successful dose' do
       schedule = schedules(:john_paracetamol)
       result = nil
+      allow(Rails.logger).to receive(:info)
 
       travel_to Time.current.end_of_day - 1.minute do
         attempted_payloads = captured_event_payloads('take_attempted.med_tracker') do
@@ -576,12 +583,14 @@ RSpec.describe MedicationAdministration::RecordDose do
         expect(result.success).to be true
         expect_metric_payload(attempted_payloads, source: schedule)
       end
+      expect_record_dose_log('outcome=recorded source_type=schedule')
     end
 
     it 'publishes attempted and blocked metric events when rules prevent a dose' do
       schedule = schedules(:john_paracetamol)
       schedule.medication.update!(current_supply: 0)
       result = nil
+      allow(Rails.logger).to receive(:info)
 
       attempted_payloads = captured_event_payloads('take_attempted.med_tracker') do
         blocked_payloads = captured_event_payloads('take_blocked_by_rules.med_tracker') do
@@ -593,11 +602,13 @@ RSpec.describe MedicationAdministration::RecordDose do
 
       expect(result.error).to eq(:out_of_stock)
       expect_metric_payload(attempted_payloads, source: schedule)
+      expect_record_dose_log('outcome=blocked source_type=schedule reason=out_of_stock')
     end
 
     it 'publishes an error metric when take persistence fails' do
       schedule = schedules(:john_paracetamol)
       allow(schedule).to receive(:effective_dose_unit).and_return(nil)
+      allow(Rails.logger).to receive(:info)
       result = nil
 
       travel_to Time.current.end_of_day - 1.minute do
@@ -608,6 +619,7 @@ RSpec.describe MedicationAdministration::RecordDose do
         expect(result.error).to eq(:create_failed)
         expect_metric_payload(payloads, source: schedule, error: 'create_failed')
       end
+      expect_record_dose_log('outcome=failed source_type=schedule reason=create_failed')
     end
 
     it 'publishes one event for a successful scheduled dose' do

@@ -28,6 +28,7 @@ RSpec.describe MissedDoseNotificationJob do
 
   it 'sends one private notification when a scheduled dose is overdue' do
     create_schedule
+    allow(Rails.logger).to receive(:info)
 
     travel_to Time.zone.local(2026, 5, 12, 7, 46) do
       described_class.perform_now(household.id, person.id, scheduled_on, scheduled_time)
@@ -40,6 +41,9 @@ RSpec.describe MissedDoseNotificationJob do
       path: "/households/#{household.slug}/dashboard"
     )
     expect(NotificationEvent.where(event_type: 'missed_dose').count).to eq(1)
+    expect(Rails.logger).to have_received(:info).with(
+      '[MissedDoseNotificationJob] outcome=sent recipient_count=1'
+    )
   end
 
   it 'suppresses duplicates for the same scheduled occurrence' do
@@ -55,12 +59,16 @@ RSpec.describe MissedDoseNotificationJob do
   it 'does not send when the dose was taken in the dose window' do
     schedule = create_schedule
     create(:medication_take, :for_schedule, schedule: schedule, taken_at: Time.zone.local(2026, 5, 12, 7, 20))
+    allow(Rails.logger).to receive(:info)
 
     travel_to Time.zone.local(2026, 5, 12, 7, 46) do
       described_class.perform_now(household.id, person.id, scheduled_on, scheduled_time)
     end
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
+    expect(Rails.logger).to have_received(:info).with(
+      '[MissedDoseNotificationJob] outcome=skipped reason=no_due_dose'
+    )
   end
 
   it 'does not send when missed-dose notifications are disabled' do
