@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_28_170000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_29_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -791,7 +791,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_28_170000) do
     t.index ["device_token"], name: "index_native_device_tokens_on_device_token", unique: true
   end
 
+  create_table "nhs_dmd_amp_trade_families", force: :cascade do |t|
+    t.string "amp_code", null: false
+    t.datetime "created_at", null: false
+    t.bigint "trade_family_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["amp_code"], name: "index_nhs_dmd_amp_trade_families_on_amp_code", unique: true
+    t.index ["trade_family_id"], name: "index_nhs_dmd_amp_trade_families_on_trade_family_id"
+  end
+
+  create_table "nhs_dmd_ampp_relationships", force: :cascade do |t|
+    t.string "amp_code", null: false
+    t.string "ampp_code", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["amp_code"], name: "index_nhs_dmd_ampp_relationships_on_amp_code"
+    t.index ["ampp_code"], name: "index_nhs_dmd_ampp_relationships_on_ampp_code", unique: true
+  end
+
   create_table "nhs_dmd_barcodes", force: :cascade do |t|
+    t.string "amp_code"
     t.string "code", null: false
     t.string "concept_class"
     t.datetime "created_at", null: false
@@ -800,6 +819,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_28_170000) do
     t.string "system", default: "https://dmd.nhs.uk", null: false
     t.datetime "updated_at", null: false
     t.string "vmp_name"
+    t.index ["amp_code"], name: "index_nhs_dmd_barcodes_on_amp_code"
     t.index ["code"], name: "index_nhs_dmd_barcodes_on_code"
     t.index ["gtin"], name: "index_nhs_dmd_barcodes_on_gtin", unique: true
   end
@@ -824,6 +844,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_28_170000) do
     t.datetime "updated_at", null: false
     t.integer "updated_count", default: 0, null: false
     t.string "uploaded_filename", null: false
+  end
+
+  create_table "nhs_dmd_supplementary_releases", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.date "released_on", null: false
+    t.datetime "updated_at", null: false
+    t.index ["released_on"], name: "index_nhs_dmd_supplementary_releases_on_released_on", unique: true
+  end
+
+  create_table "nhs_dmd_trade_families", force: :cascade do |t|
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.bigint "trade_family_group_id"
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_nhs_dmd_trade_families_on_code", unique: true
+    t.index ["trade_family_group_id"], name: "index_nhs_dmd_trade_families_on_trade_family_group_id"
+  end
+
+  create_table "nhs_dmd_trade_family_groups", force: :cascade do |t|
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_nhs_dmd_trade_family_groups_on_code", unique: true
   end
 
   create_table "notification_preferences", force: :cascade do |t|
@@ -1212,6 +1257,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_28_170000) do
   add_foreign_key "medications", "locations", column: ["location_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_medications_location_id_household"
   add_foreign_key "medications", "locations", deferrable: :deferred
   add_foreign_key "native_device_tokens", "accounts"
+  add_foreign_key "nhs_dmd_amp_trade_families", "nhs_dmd_trade_families", column: "trade_family_id"
+  add_foreign_key "nhs_dmd_trade_families", "nhs_dmd_trade_family_groups", column: "trade_family_group_id"
   add_foreign_key "notification_events", "households", deferrable: :deferred
   add_foreign_key "notification_events", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_notification_events_person_id_household"
   add_foreign_key "notification_events", "people", deferrable: :deferred

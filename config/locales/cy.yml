@@ -882,6 +882,10 @@ cy:
       review_prompt_source: Ffynhonnell y dystiolaeth
       review_prompt_checked_on: Gwiriwyd y dystiolaeth ar
       review_prompt_description: Adolygu gydag ymarferydd
+      related_medications_title: Meddyginiaeth gysylltiedig yn eich cartref
+      related_medications_message: Mae meddyginiaeth gysylltiedig eisoes wedi'i chofnodi ar gyfer eich cartref. Gwiriwch ei chofnod cyn ychwanegu'r pecyn hwn.
+      related_medications_location: Lleoliad
+      related_medications_current_supply: Cyflenwad presennol
       update_stock: Diweddaru stoc
       confirm_restock: Cadarnhewch eich bod am ychwanegu %{quantity} uned at %{medication}.
       confirm_restock_without_quantity: Cadarnhewch faint o unedau rydych am eu hychwanegu

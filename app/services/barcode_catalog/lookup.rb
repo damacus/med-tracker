@@ -15,10 +15,13 @@ module BarcodeCatalog
     end
 
     def lookup(barcode)
-      barcode_candidates(barcode).each do |candidate|
+      candidates = barcode_candidates(barcode)
+      provenance = local_trade_family_provenance(candidates)
+
+      candidates.each do |candidate|
         configured_source_lookups.each do |lookup_method|
           result = send(lookup_method, candidate)
-          return result if result
+          return result.merge(provenance) if result
         end
       end
 
@@ -33,6 +36,20 @@ module BarcodeCatalog
 
     def configured_source_lookups
       AppSettings.instance.lookup_source_priority_for(SOURCE_LOOKUPS.keys).map { |source| SOURCE_LOOKUPS.fetch(source) }
+    end
+
+    def local_trade_family_provenance(candidates)
+      records = NhsDmdBarcode
+                .includes(amp_trade_family: { trade_family: :trade_family_group })
+                .where(gtin: candidates)
+                .index_by(&:gtin)
+
+      candidates.each do |candidate|
+        provenance = records[candidate]&.trade_family_metadata
+        return provenance if provenance.present?
+      end
+
+      {}
     end
 
     def lookup_imported_catalog(candidate)
@@ -58,7 +75,7 @@ module BarcodeCatalog
     end
 
     def lookup_local(candidate)
-      record = NhsDmdBarcode.find_by(gtin: candidate)
+      record = NhsDmdBarcode.includes(amp_trade_family: { trade_family: :trade_family_group }).find_by(gtin: candidate)
       return nil unless record
 
       {
@@ -67,7 +84,7 @@ module BarcodeCatalog
         system: record.system,
         concept_class: record.concept_class,
         source: 'nhs_dmd'
-      }
+      }.merge(record.trade_family_metadata)
     end
 
     def lookup_open_products_facts(candidate)

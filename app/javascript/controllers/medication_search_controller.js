@@ -165,6 +165,7 @@ export default class extends Controller {
     const spcLink = this.renderSpcLink(result)
     const medicineDetails = this.renderMedicineDetails(result)
     const reviewPrompts = this.renderReviewPrompts(result)
+    const relatedMedications = result.related_medications_html || ''
     const title = result.name || result.display
     const packageSize = result.package_size
       ? `<p class="text-xs text-on-surface-variant mt-0.5">Pack size: ${this.escapeHtml(result.package_size)}</p>`
@@ -181,6 +182,7 @@ export default class extends Controller {
             ${spcLink}
             ${medicineDetails}
             ${reviewPrompts}
+            ${relatedMedications}
           </div>
           <div class="flex flex-col items-end gap-1 shrink-0">
             ${matchReasonBadge}

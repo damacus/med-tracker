@@ -885,6 +885,10 @@ ga:
       review_prompt_source: Foinse na fianaise
       review_prompt_checked_on: Fianaise seiceáilte ar
       review_prompt_description: Athbhreithnigh le cleachtóir
+      related_medications_title: Cógas gaolmhar i do theaghlach
+      related_medications_message: Tá cógas gaolmhar taifeadta cheana féin do do theaghlach. Seiceáil a thaifead sula gcuireann tú an pacáiste seo leis.
+      related_medications_location: Suíomh
+      related_medications_current_supply: Soláthar reatha
       update_stock: Nuashonraigh stoc
       confirm_restock: Deimhnigh gur mian leat %{quantity} aonad a chur le %{medication}.
       confirm_restock_without_quantity: Deimhnigh cé mhéad aonad is mian leat a chur

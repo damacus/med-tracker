@@ -18,6 +18,23 @@ RSpec.describe NhsDmd::Search do
   let(:open_food_facts_lookup) { instance_double(OpenFoodFacts::BarcodeLookup, lookup: nil) }
   let(:open_food_facts_search) { instance_double(OpenFoodFacts::Search, search: []) }
 
+  def expected_trade_family_results
+    [
+      a_hash_including(
+        code: 'AMPP001',
+        display: 'Laxido Orange oral powder sachets (Galen Ltd)',
+        source_label: 'NHS dm+d',
+        trade_family: { code: 'TF001', name: 'Laxido' }
+      ),
+      a_hash_including(
+        code: 'AMP002',
+        display: 'Laxido Lemon oral powder sachets (Galen Ltd)',
+        source_label: 'NHS dm+d',
+        trade_family: { code: 'TF001', name: 'Laxido' }
+      )
+    ]
+  end
+
   describe '#call' do
     context 'when the service is not configured (credentials absent)' do
       before do
@@ -85,6 +102,42 @@ RSpec.describe NhsDmd::Search do
       end
     end
 
+    context 'when normal NHS text results have imported Trade Family memberships' do
+      let(:raw_results) do
+        [
+          {
+            code: 'AMPP001',
+            display: 'Laxido Orange oral powder sachets (Galen Ltd)',
+            system: 'https://dmd.nhs.uk',
+            concept_class: 'AMPP'
+          },
+          {
+            code: 'AMP002',
+            display: 'Laxido Lemon oral powder sachets (Galen Ltd)',
+            system: 'https://dmd.nhs.uk',
+            concept_class: 'AMP'
+          }
+        ]
+      end
+
+      before do
+        family = NhsDmdTradeFamily.create!(code: 'TF001', name: 'Laxido')
+        NhsDmdAmpTradeFamily.create!(amp_code: 'AMP001', trade_family: family)
+        NhsDmdAmpTradeFamily.create!(amp_code: 'AMP002', trade_family: family)
+        NhsDmdAmppRelationship.create!(ampp_code: 'AMPP001', amp_code: 'AMP001')
+        allow(client).to receive(:configured?).and_return(true)
+        allow(client).to receive(:search).with('macrogol').and_return(raw_results)
+      end
+
+      it 'annotates selected AMP and AMPP identities without using Trade Family as a match source' do
+        result = search.call('macrogol')
+
+        expect(NhsDmdBarcode.find_by(code: 'AMPP001')).to be_nil
+        expect(result.results.map(&:to_h)).to match_array(expected_trade_family_results)
+        expect(client).to have_received(:search).with('macrogol').once
+      end
+    end
+
     context 'when the query is a known barcode' do
       before do
         barcode_result = {
@@ -92,6 +145,8 @@ RSpec.describe NhsDmd::Search do
           display: 'Laxido Orange oral powder sachets (Galen Ltd)',
           system: 'https://dmd.nhs.uk',
           concept_class: 'AMPP',
+          trade_family: { code: '800', name: 'Laxido' },
+          trade_family_group: { code: '900', name: 'Galen' },
           source: 'nhs_dmd'
         }
         translated_results = [
@@ -123,7 +178,9 @@ RSpec.describe NhsDmd::Search do
           a_hash_including(
             code: '13629411000001105',
             display: 'Laxido Orange oral powder sachets (Galen Ltd)',
-            concept_class: 'AMPP'
+            concept_class: 'AMPP',
+            trade_family: { code: '800', name: 'Laxido' },
+            trade_family_group: { code: '900', name: 'Galen' }
           )
         )
         expect(client).to have_received(:search).with('Laxido Orange oral powder sachets (Galen Ltd)')

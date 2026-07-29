@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class NhsDmdBarcode < ApplicationRecord
+  has_one :amp_trade_family, primary_key: :amp_code, foreign_key: :amp_code,
+                             class_name: 'NhsDmdAmpTradeFamily', dependent: nil, inverse_of: false
+
   validates :gtin, presence: true, uniqueness: true
   validates :code, presence: true
   validates :display, presence: true
@@ -10,6 +13,13 @@ class NhsDmdBarcode < ApplicationRecord
 
   def self.normalize_gtin(value)
     value.to_s.gsub(/\D/, '')
+  end
+
+  def trade_family_metadata
+    family = amp_trade_family&.trade_family
+    return {} unless family
+
+    family.provenance
   end
 
   private

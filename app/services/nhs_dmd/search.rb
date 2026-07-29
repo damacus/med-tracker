@@ -2,6 +2,24 @@
 
 module NhsDmd
   class Search # rubocop:disable Metrics/ClassLength
+    SEARCH_RESULT_ATTRIBUTE_KEYS = %i[
+      barcode
+      name
+      description
+      concept_class
+      category
+      trade_family
+      trade_family_group
+      package_size
+      package_quantity
+      package_unit
+      directions
+      warnings
+      pil_url
+      spc_url
+      match_reason
+    ].freeze
+
     Result = Struct.new(:results, :error, :resolved_query, :barcode, :barcode_source, keyword_init: true) do
       def success?
         error.nil?
@@ -98,7 +116,39 @@ module NhsDmd
     end
 
     def nhs_items(query)
-      @client.search(query)
+      enrich_trade_family_provenance(@client.search(query))
+    end
+
+    def enrich_trade_family_provenance(items)
+      amp_codes_by_ampp = amp_codes_by_ampp(items)
+      memberships = trade_family_memberships(items, amp_codes_by_ampp)
+
+      items.map do |item|
+        family = memberships[amp_code_for(item, amp_codes_by_ampp)]&.trade_family
+        family ? item.merge(family.provenance) : item
+      end
+    end
+
+    def amp_codes_by_ampp(items)
+      ampp_codes = items.filter_map { |item| item[:code] if item[:concept_class] == 'AMPP' }
+      NhsDmdAmppRelationship.where(ampp_code: ampp_codes).pluck(:ampp_code, :amp_code).to_h
+    end
+
+    def trade_family_memberships(items, amp_codes_by_ampp)
+      amp_codes = items.filter_map { |item| amp_code_for(item, amp_codes_by_ampp) }
+      NhsDmdAmpTradeFamily
+        .includes(trade_family: :trade_family_group)
+        .where(amp_code: amp_codes)
+        .index_by(&:amp_code)
+    end
+
+    def amp_code_for(item, amp_codes_by_ampp)
+      case item[:concept_class]
+      when 'AMP'
+        item[:code]
+      when 'AMPP'
+        amp_codes_by_ampp[item[:code]]
+      end
     end
 
     def failed_result(message, exception = nil)
@@ -141,21 +191,7 @@ module NhsDmd
     end
 
     def search_result_attributes(item)
-      {
-        barcode: item[:barcode],
-        name: item[:name],
-        description: item[:description],
-        concept_class: item[:concept_class],
-        category: item[:category],
-        package_size: item[:package_size],
-        package_quantity: item[:package_quantity],
-        package_unit: item[:package_unit],
-        directions: item[:directions],
-        warnings: item[:warnings],
-        pil_url: item[:pil_url],
-        spc_url: item[:spc_url],
-        match_reason: item[:match_reason]
-      }
+      item.slice(*SEARCH_RESULT_ATTRIBUTE_KEYS)
     end
 
     def barcode_result(query, barcode_match, source: barcode_match[:source])
@@ -282,7 +318,7 @@ module NhsDmd
     def barcode_match_item(translated_query, barcode_match)
       vmp = VmpResolver.new(@client).resolve(translated_query, barcode_match)
       exact = exact_nhs_match(translated_query, barcode_match)
-      annotate_barcode_match(vmp || exact || barcode_match)
+      annotate_barcode_match(vmp || exact || barcode_match, barcode_match)
     end
 
     def exact_nhs_match(translated_query, barcode_match)
@@ -301,8 +337,8 @@ module NhsDmd
       nil
     end
 
-    def annotate_barcode_match(item)
-      item.merge(match_reason: 'barcode_match')
+    def annotate_barcode_match(item, barcode_match)
+      item.merge(barcode_match.slice(:trade_family, :trade_family_group).compact, match_reason: 'barcode_match')
     end
   end
 end

@@ -889,6 +889,10 @@ pt:
       review_prompt_source: Fonte da evidência
       review_prompt_checked_on: Evidência verificada em
       review_prompt_description: Rever com um profissional
+      related_medications_title: Medicamento relacionado no seu agregado
+      related_medications_message: Já existe um medicamento relacionado registado para o seu agregado. Consulte o respetivo registo antes de adicionar esta embalagem.
+      related_medications_location: Localização
+      related_medications_current_supply: Stock atual
       update_stock: Atualizar stock
       confirm_restock: Confirme que pretende adicionar %{quantity} unidades a %{medication}.
       confirm_restock_without_quantity: Confirme quantas unidades pretende adicionar

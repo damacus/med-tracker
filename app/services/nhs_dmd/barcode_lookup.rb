@@ -20,6 +20,10 @@ module NhsDmd
       end
     end
 
+    def self.expire_all
+      Rails.cache.delete_matched("#{CACHE_PREFIX}/*")
+    end
+
     def self.cache_key(gtin)
       "#{CACHE_PREFIX}/#{gtin}"
     end
@@ -47,7 +51,7 @@ module NhsDmd
 
     def fetch(gtin)
       Rails.cache.fetch(self.class.cache_key(gtin), expires_in: 12.hours) do
-        record = NhsDmdBarcode.find_by(gtin: gtin)
+        record = NhsDmdBarcode.includes(amp_trade_family: { trade_family: :trade_family_group }).find_by(gtin: gtin)
         next nil unless record
 
         {
@@ -55,7 +59,7 @@ module NhsDmd
           display: record.display,
           system: record.system,
           concept_class: record.concept_class
-        }
+        }.merge(record.trade_family_metadata)
       end
     end
   end

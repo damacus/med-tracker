@@ -182,10 +182,28 @@ class MedicationsController < ApplicationController
       permissions: medication_finder_permissions
     )
 
-    render json: response.body, status: response.status
+    render json: finder_search_response_body(response.body), status: response.status
   end
 
   private
+
+  def finder_search_response_body(body)
+    results = body[:results]
+    return body unless results
+
+    body.merge(results: results.each_with_index.map { |result, index| finder_search_result(result, index) })
+  end
+
+  def finder_search_result(result, index)
+    related_medications = result[:related_medications]
+    return result.except(:related_medications) if related_medications.blank?
+
+    prompt = Components::Medications::RelatedMedicationsPrompt.new(
+      medications: related_medications,
+      heading_id: "related-medications-#{index}"
+    )
+    result.except(:related_medications).merge(related_medications_html: view_context.render(prompt))
+  end
 
   def restock_scanned_medication(medication)
     RestockMedicationService.new.call(

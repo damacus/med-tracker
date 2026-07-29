@@ -835,6 +835,10 @@ en:
       review_prompt_source: Evidence source
       review_prompt_checked_on: Evidence checked on
       review_prompt_description: Review with a practitioner
+      related_medications_title: Related medicine in your household
+      related_medications_message: A related medicine is already recorded for your household. Check its record before adding this pack.
+      related_medications_location: Location
+      related_medications_current_supply: Current supply
       update_stock: Update stock
       confirm_restock: Confirm you wish to add %{quantity} units to %{medication}.
       confirm_restock_without_quantity: Confirm how many units you wish to add to

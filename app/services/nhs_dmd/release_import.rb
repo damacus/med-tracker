@@ -34,6 +34,8 @@ module NhsDmd
       emit_initial_progress(progress_callback, counts)
 
       names = parse_ampp_names(ampp_file, counts:, progress_callback: progress_callback)
+      import_ampp_relationships(names)
+      SupplementaryImport.new.call(dir)
       emit_gtin_start_progress(progress_callback, counts)
 
       import_gtins(gtin_file, names, counts:, progress_callback: progress_callback)
@@ -77,10 +79,23 @@ module NhsDmd
         end
 
         counts[:ampp_named] += 1
-        names[appid] = name
+        names[appid] = { name: name, amp_code: node_text(doc, 'APID') }
       end
     ensure
       emit_progress(counts, progress_callback, force: true, message: ampp_progress_message(counts))
+    end
+
+    def import_ampp_relationships(names)
+      timestamp = Time.current
+      relationships = names.filter_map do |ampp_code, attributes|
+        amp_code = attributes[:amp_code]
+        { ampp_code: ampp_code, amp_code: amp_code, created_at: timestamp, updated_at: timestamp } if amp_code.present?
+      end
+
+      NhsDmdAmppRelationship.transaction do
+        NhsDmdAmppRelationship.delete_all
+        NhsDmdAmppRelationship.insert_all(relationships) if relationships.any? # rubocop:disable Rails/SkipsModelValidations
+      end
     end
 
     def import_gtins(path, names, counts:, progress_callback:)
@@ -116,30 +131,35 @@ module NhsDmd
         return
       end
 
-      display = names[amppid]
+      ampp = names[amppid]
+      details = { amppid: amppid, amp_code: ampp&.fetch(:amp_code), display: ampp&.fetch(:name) }
       doc.css('GTINDATA').each do |gtin_data|
-        import_gtin_data(gtin_data, amppid:, display:, today:, counts:)
+        import_gtin_data(gtin_data, details:, today:, counts:)
         emit_progress(counts, progress_callback, message: gtin_progress_message(counts))
       end
     end
 
-    def import_gtin_data(gtin_data, amppid:, display:, today:, counts:)
+    def import_gtin_data(gtin_data, details:, today:, counts:)
       mark_gtin_processed(counts)
       gtin = node_text(gtin_data, 'GTIN')
       return increment(counts, :skipped_invalid) if gtin.blank?
       return increment(counts, :skipped_expired) if expired?(gtin_data, today)
-      return increment(counts, :skipped_missing_name) if display.blank?
+      return increment(counts, :skipped_missing_name) if details[:display].blank?
 
+      increment(counts, persist(gtin_attributes(gtin, details)))
+    end
+
+    def gtin_attributes(gtin, details)
+      display = details[:display]
       stripped = display.sub(/\s*\([^)]*\)\z/, '').strip
-      outcome = persist(
+      details.slice(:amp_code).merge(
         gtin: NhsDmdBarcode.normalize_gtin(gtin),
-        code: amppid,
+        code: details[:amppid],
         display: display,
         vmp_name: stripped == display ? nil : stripped,
         system: 'https://dmd.nhs.uk',
         concept_class: 'AMPP'
       )
-      increment(counts, outcome)
     end
 
     def increment(counts, key)

@@ -4,10 +4,11 @@ class MedicationFinderSearchResponder
   Result = Data.define(:body, :status)
 
   def initialize(search: NhsDmd::Search.new, medication_scope: Medication.none, stock_match_resolver: nil,
-                 interaction_lookup: nil)
+                 interaction_lookup: nil, trade_family_resolver: nil)
     @search = search
     @stock_match_resolver = stock_match_resolver || MedicationStockMatchResolver.new(scope: medication_scope)
     @interaction_lookup = interaction_lookup || MedicationInteractionLookup.new(medication_scope: medication_scope)
+    @trade_family_resolver = trade_family_resolver || MedicationTradeFamilyResolver.new(scope: medication_scope)
   end
 
   def call(query:, form: nil, strength: nil, permissions: {})
@@ -36,18 +37,19 @@ class MedicationFinderSearchResponder
   end
 
   def successful_response_body(query:, result:, form:, strength:, permissions:)
-    normalized_form = NhsDmd::DosageFormFilter.normalize(form)
-    normalized_strength = NhsDmd::StrengthFilter.normalize(strength)
     results = filtered_results(result.results, form:, strength:)
+    related_medications = @trade_family_resolver.call(trade_family_codes: trade_family_codes(results))
 
     {
-      results: results.map { |search_result| result_payload(search_result, result.barcode) },
+      results: results.map do |search_result|
+        result_payload(search_result, result.barcode, related_medications:)
+      end,
       review_guidance: review_guidance_payload,
       query: result.resolved_query.presence || query,
       barcode: result.barcode,
       barcode_resolution: barcode_resolution(result),
-      form: normalized_form,
-      strength: normalized_strength,
+      form: NhsDmd::DosageFormFilter.normalize(form),
+      strength: NhsDmd::StrengthFilter.normalize(strength),
       permissions: permissions
     }
   end
@@ -70,10 +72,15 @@ class MedicationFinderSearchResponder
     NhsDmd::StrengthFilter.filter(results, strength)
   end
 
-  def result_payload(search_result, barcode)
+  def result_payload(search_result, barcode, related_medications:)
     search_result.to_h.tap do |payload|
       medication = existing_medication_for(search_result, barcode)
       payload[:existing_medication] = existing_medication_payload(medication) if medication
+      payload[:related_medications] = related_medication_payloads(
+        search_result,
+        related_medications: related_medications,
+        excluding: medication
+      )
       payload.merge!(review_prompt_payload(search_result))
     end
   end
@@ -129,6 +136,32 @@ class MedicationFinderSearchResponder
       refill_path: refill_medication_path(medication),
       current_supply: MedicationStockQuantityFormatter.format(medication.current_supply)
     }
+  end
+
+  def related_medication_payloads(search_result, related_medications:, excluding:)
+    related_medications
+      .fetch(trade_family_code(search_result), [])
+      .reject { |medication| excluding && medication.id == excluding.id }
+      .map { |medication| related_medication_payload(medication) }
+  end
+
+  def related_medication_payload(medication)
+    {
+      id: medication.id,
+      name: medication.display_name,
+      location: medication.location.name,
+      path: medication_path(medication),
+      current_supply: MedicationStockQuantityFormatter.format(medication.current_supply)
+    }
+  end
+
+  def trade_family_code(search_result)
+    trade_family = search_result.trade_family
+    trade_family[:code] || trade_family['code'] if trade_family
+  end
+
+  def trade_family_codes(search_results)
+    search_results.filter_map { |search_result| trade_family_code(search_result) }.uniq
   end
 
   def medication_path(medication)

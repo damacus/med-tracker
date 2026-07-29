@@ -19,11 +19,12 @@ RSpec.describe BarcodeCatalog::Lookup do
       )
     end
 
-    def create_local_entry(code:, display:)
+    def create_local_entry(code:, display:, amp_code: nil)
       NhsDmdBarcode.create!(
         gtin: gtin,
         code: code,
         display: display,
+        amp_code: amp_code,
         system: 'https://dmd.nhs.uk',
         concept_class: 'AMPP'
       )
@@ -150,6 +151,23 @@ RSpec.describe BarcodeCatalog::Lookup do
       )
     end
 
+    it 'preserves local Trade Family provenance when an earlier configured source supplies identity' do
+      prioritize_open_products_facts
+      group = NhsDmdTradeFamilyGroup.create!(code: '900', name: 'Acme')
+      family = NhsDmdTradeFamily.create!(code: '800', name: 'Acme Paracetamol', trade_family_group: group)
+      NhsDmdAmpTradeFamily.create!(amp_code: '222', trade_family: family)
+      create_local_entry(code: 'dmd-code', display: 'dm+d name', amp_code: '222')
+      stub_open_products_facts_result
+
+      expect(lookup.lookup(gtin)).to include(
+        display: 'Configured Open Products Facts name',
+        source: 'open_products_facts',
+        system: OpenProductsFacts::Client::BASE_URL,
+        trade_family: { code: '800', name: 'Acme Paracetamol' },
+        trade_family_group: { code: '900', name: 'Acme' }
+      )
+    end
+
     it 'prefers dm+d over a cached Open Products Facts entry' do
       BarcodeCatalogEntry.create!(
         gtin: gtin,
@@ -194,6 +212,24 @@ RSpec.describe BarcodeCatalog::Lookup do
         code: '4585411000001109',
         source: 'nhs_dmd'
       )
+    end
+
+    it 'includes optional trade family and group metadata for an active local AMP mapping' do
+      group = NhsDmdTradeFamilyGroup.create!(code: '900', name: 'Acme')
+      family = NhsDmdTradeFamily.create!(code: '800', name: 'Acme Paracetamol', trade_family_group: group)
+      NhsDmdAmpTradeFamily.create!(amp_code: '222', trade_family: family)
+      create_local_entry(code: '4585411000001109', display: 'Calprofen 100mg/5ml oral suspension', amp_code: '222')
+
+      expect(lookup.lookup(gtin)).to include(
+        trade_family: { code: '800', name: 'Acme Paracetamol' },
+        trade_family_group: { code: '900', name: 'Acme' }
+      )
+    end
+
+    it 'omits trade family metadata when no active AMP mapping exists' do
+      create_local_entry(code: '4585411000001109', display: 'Calprofen 100mg/5ml oral suspension', amp_code: '222')
+
+      expect(lookup.lookup(gtin)).not_to include(:trade_family, :trade_family_group)
     end
 
     it 'falls back to branded display when vmp_name is absent' do
