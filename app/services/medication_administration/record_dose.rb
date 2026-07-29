@@ -90,18 +90,28 @@ module MedicationAdministration
 
     def rule_blocked_failure(prepared_take, source:, user:, options:)
       publish_rule_blocked_metric(prepared_take, source:, user:, options:)
+      log_outcome('blocked', source:, reason: prepared_take.error)
       failure(prepared_take.error)
     end
 
     def persistence_failure(source:, user:, options:)
       publish_take_metric('take_errors.med_tracker', source:, user:, options:, error: :create_failed)
+      log_outcome('failed', source:, reason: :create_failed)
       failure(:create_failed)
     end
 
     def success(take, source:, user:, options:)
       publish_dose_taken(take)
       publish_take_metric('take_recorded.med_tracker', source:, user:, options:)
+      log_outcome('recorded', source:)
       Result.new(success: true, take: take, error: nil)
+    end
+
+    def log_outcome(outcome, source:, reason: nil)
+      message = "[MedicationAdministration::RecordDose] outcome=#{outcome} " \
+                "source_type=#{source.class.model_name.singular}"
+      message += " reason=#{reason}" if reason
+      Rails.logger.info(message)
     end
 
     def prepare_take(source:, amount_override:, taken_from_medication_id:, user:, options:)
