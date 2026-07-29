@@ -121,6 +121,7 @@ RSpec.describe 'MedicationFinder' do
 
   it 'links to related household medicines without offering to restock them', :browser do
     driven_by(:playwright)
+    page.current_window.resize_to(390, 844)
     login_as(user)
     related_medication = medications(:vitamin_c)
     stub_medication_finder_payload(
@@ -128,15 +129,18 @@ RSpec.describe 'MedicationFinder' do
         {
           name: 'Related medicine pack',
           display: 'Related medicine pack',
-          related_medications: [
-            {
-              id: related_medication.id,
-              name: related_medication.display_name,
-              location: related_medication.location.name,
-              path: medication_path(related_medication),
-              current_supply: '10'
-            }
-          ]
+          related_medications_html: Components::Medications::RelatedMedicationsPrompt.new(
+            medications: [
+              {
+                id: related_medication.id,
+                name: related_medication.display_name,
+                location: related_medication.location.name,
+                path: medication_path(related_medication),
+                current_supply: '10'
+              }
+            ],
+            heading_id: 'related-medications-0'
+          ).call
         }
       ],
       permissions: { can_create: true, can_restock: true }
@@ -146,13 +150,17 @@ RSpec.describe 'MedicationFinder' do
     fill_in 'medication-search-input', with: 'related medicine'
     click_on 'Search'
 
-    within '[data-testid="related-medications-prompt"]' do
-      expect(page).to have_text('Related medicine in your household')
+    expect(page).to have_css('aside[data-testid="related-medications-prompt"][aria-labelledby]')
+    within 'aside[data-testid="related-medications-prompt"]' do
+      expect(page).to have_css('h3[id^="related-medications-"]', text: 'Related medicine in your household')
       expect(page).to have_link(related_medication.display_name, href: medication_path(related_medication))
-      expect(page).to have_text(related_medication.location.name)
-      expect(page).to have_text('10')
+      expect(page).to have_css('dl > dt', text: 'Location')
+      expect(page).to have_css('dl > dd', text: related_medication.location.name)
+      expect(page).to have_css('dl > dt', text: 'Current supply')
+      expect(page).to have_css('dl > dd', text: '10')
     end
     expect(page).to have_no_button('Update stock')
+    expect(page.evaluate_script('document.documentElement.scrollWidth')).to be <= 390
   end
 
   def stub_medication_finder_search(medication)

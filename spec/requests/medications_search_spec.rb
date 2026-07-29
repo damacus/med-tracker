@@ -144,6 +144,46 @@ RSpec.describe 'GET /medication-finder/search' do
       end
     end
 
+    context 'with a related household medication' do
+      before do
+        login_as_admin
+        responder = instance_double(
+          MedicationFinderSearchResponder,
+          call: MedicationFinderSearchResponder::Result.new(
+            body: {
+              results: [
+                {
+                  name: 'Related medicine pack',
+                  related_medications: [
+                    {
+                      name: 'Vitamin C',
+                      location: 'Home',
+                      path: '/medications/123',
+                      current_supply: '10'
+                    }
+                  ]
+                }
+              ],
+              permissions: { can_create: true, can_restock: true }
+            },
+            status: :ok
+          )
+        )
+        allow(MedicationFinderSearchResponder).to receive(:new).and_return(responder)
+      end
+
+      it 'renders the continuity prompt through its Phlex component' do
+        get medication_finder_search_path(format: :json), params: { q: 'related medicine' }
+
+        result = response.parsed_body['results'].first
+        prompt = Nokogiri::HTML.fragment(result['related_medications_html'])
+
+        expect(prompt.at_css('aside[data-testid="related-medications-prompt"]')).to be_present
+        expect(prompt.at_css('h3').text).to eq('Related medicine in your household')
+        expect(result).not_to have_key('related_medications')
+      end
+    end
+
     context 'without a local dm+d import or barcode catalogue' do
       before do
         login_as_admin
