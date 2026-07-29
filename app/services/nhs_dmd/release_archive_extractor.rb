@@ -8,7 +8,7 @@ module NhsDmd
     class Error < StandardError; end
 
     MAX_ENTRIES = 200
-    MAX_ENTRY_BYTES = 100.megabytes
+    MAX_ENTRY_BYTES = 150.megabytes
     MAX_TOTAL_BYTES = 500.megabytes
 
     def extract(zip_path, destination, pattern: nil)
