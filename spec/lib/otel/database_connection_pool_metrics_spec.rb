@@ -43,17 +43,6 @@ RSpec.describe Otel::DatabaseConnectionPoolMetrics do
   end
 
   it 'resolves live pools when each gauge is observed' do
-    replica_config = instance_double(
-      ActiveRecord::DatabaseConfigurations::HashConfig,
-      name: 'replica',
-      database: 'medtracker_replica'
-    )
-    replica_pool = instance_double(
-      ActiveRecord::ConnectionAdapters::ConnectionPool,
-      stat: { size: 5, busy: 2, dead: 0, idle: 3, waiting: 0 },
-      db_config: replica_config,
-      discarded?: false
-    )
     pools = [pool]
     metrics = described_class.new(pool_resolver: -> { pools }, meter:)
 
@@ -61,14 +50,14 @@ RSpec.describe Otel::DatabaseConnectionPoolMetrics do
     meter.collect
 
     expect(meter.gauges.fetch('medtracker.db.connection_pool.size').recordings).to contain_exactly(
-      [10, { 'db.pool.name' => 'primary', 'db.namespace' => 'medtracker_test' }]
+      pool_recording(pool)
     )
 
-    pools = [replica_pool]
+    pools.replace([replica_pool])
     meter.collect
 
     expect(meter.gauges.fetch('medtracker.db.connection_pool.size').recordings.last).to eq(
-      [5, { 'db.pool.name' => 'replica', 'db.namespace' => 'medtracker_replica' }]
+      pool_recording(replica_pool)
     )
   end
 
@@ -116,5 +105,26 @@ RSpec.describe Otel::DatabaseConnectionPoolMetrics do
     meter.collect
 
     expect(meter.gauges.values.map(&:recordings)).to all(eq([]))
+  end
+
+  def replica_pool
+    replica_config = instance_double(
+      ActiveRecord::DatabaseConfigurations::HashConfig,
+      name: 'replica',
+      database: 'medtracker_replica'
+    )
+    instance_double(
+      ActiveRecord::ConnectionAdapters::ConnectionPool,
+      stat: { size: 5, busy: 2, dead: 0, idle: 3, waiting: 0 },
+      db_config: replica_config,
+      discarded?: false
+    )
+  end
+
+  def pool_recording(connection_pool)
+    [connection_pool.stat.fetch(:size), {
+      'db.pool.name' => connection_pool.db_config.name,
+      'db.namespace' => connection_pool.db_config.database
+    }]
   end
 end
