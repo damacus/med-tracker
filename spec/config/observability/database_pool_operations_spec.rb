@@ -17,12 +17,14 @@ RSpec.describe DatabasePoolOperations do
   it 'provides dashboard panels for capacity, utilization, waiting, and timeouts' do
     expressions = dashboard.fetch('panels').flat_map { |panel| panel.fetch('targets') }.pluck('expr').join(' ')
 
-    expect(expressions).to include('medtracker_db_connection_pool_size')
-    expect(expressions).to include('medtracker_db_connection_pool_in_use')
-    expect(expressions).to include('medtracker_db_connection_pool_idle')
-    expect(expressions).to include('medtracker_db_connection_pool_waiting')
-    expect(expressions).to include('medtracker_db_connection_pool_timeouts_total')
-    expect(expressions).to include('by (db_pool_name, db_namespace)')
+    expect(expressions).to include(
+      'medtracker_db_connection_pool_size',
+      'medtracker_db_connection_pool_in_use',
+      'medtracker_db_connection_pool_idle',
+      'medtracker_db_connection_pool_waiting',
+      'medtracker_db_connection_pool_timeouts_total',
+      'by (db_pool_name, db_namespace)'
+    )
   end
 
   it 'alerts only after sustained contention or a checkout timeout' do

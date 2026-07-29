@@ -26,7 +26,7 @@ RSpec.describe 'Database pool metrics export pipeline' do
   end
 
   it 'exports one labelled datapoint for each live pool through the metrics SDK' do
-    metric_reader, pools = configured_sdk_metrics
+    metric_reader, _pools = configured_sdk_metrics
     metric_reader.pull
 
     expect(size_data_points(metric_reader)).to contain_exactly(
