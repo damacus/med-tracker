@@ -277,9 +277,8 @@ module Components
       end
 
       def initial_step
-        if person_medication.errors.any? && workflow_error_attributes.none? do |key|
-             %i[medication dose_amount dose_unit medication_id].include?(key)
-           end
+        if person_medication.errors.any? && !workflow_error_attributes.intersect?(%i[medication dose_amount dose_unit
+                                                                                     medication_id])
           return 3
         end
         return 2 if person_medication.errors[:dose_amount].any? || person_medication.errors[:dose_unit].any?

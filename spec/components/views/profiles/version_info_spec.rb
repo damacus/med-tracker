@@ -41,6 +41,6 @@ RSpec.describe Views::Profiles::VersionInfo, type: :component do
 
     banned_classes = ['rounded-[2rem]', 'bg-card/95', 'shadow-[0_18px_45px_-32px_rgba']
 
-    expect(banned_classes.none? { |class_name| html.include?(class_name) }).to be(true)
+    expect(banned_classes.none?(&html.method(:include?))).to be(true)
   end
 end

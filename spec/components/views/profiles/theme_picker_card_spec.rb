@@ -40,6 +40,6 @@ RSpec.describe Views::Profiles::ThemePickerCard, type: :component do
                       'rounded-[2rem]', 'rounded-[1.5rem]', 'rounded-[1.1rem]', 'bg-card/95',
                       'bg-muted/45']
 
-    expect(banned_classes.none? { |class_name| html.include?(class_name) }).to be(true)
+    expect(banned_classes.none?(&html.method(:include?))).to be(true)
   end
 end

@@ -16,6 +16,6 @@ RSpec.describe Views::Profiles::DangerZoneCard, type: :component do
     banned_classes = ['bg-[linear-gradient', 'dark:bg-[linear-gradient', 'rounded-[2rem]',
                       'shadow-[0_18px_45px_-32px_rgba']
 
-    expect(banned_classes.none? { |class_name| html.include?(class_name) }).to be(true)
+    expect(banned_classes.none?(&html.method(:include?))).to be(true)
   end
 end
