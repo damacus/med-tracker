@@ -127,6 +127,45 @@ RSpec.describe 'Medication Lookup', :browser, type: :system do
     expect(page).to have_text('Search unavailable')
   end
 
+  it 'keeps search results visible when medication review guidance is unavailable' do
+    stub_nhs_dmd_search(
+      query: 'Novelmed',
+      results: [
+        {
+          code: '32223611000001104',
+          display: 'Novelmed 500mg tablets',
+          system: 'https://dmd.nhs.uk',
+          concept_class: 'VMP'
+        }
+      ]
+    )
+    stub_const(
+      'MedicationReviewTerminology::DEFAULT_PATH',
+      Rails.root.join('tmp/missing-rxclass-terminology.json')
+    )
+
+    expect(NhsDmdBarcode).not_to exist
+
+    sign_in(admin)
+    visit medication_finder_path
+
+    fill_in 'medication-search-input', with: 'Novelmed'
+    click_button 'Search'
+
+    expect(page).to have_text('Novelmed 500mg tablets')
+    expect(page).to have_css(
+      '[role="status"]',
+      text: 'Medication review information is temporarily unavailable. ' \
+            'Search results may not include interaction guidance.',
+      count: 1
+    )
+    expect(page).to have_no_text('Search unavailable')
+    within('[data-testid="result-card"]', match: :first) do
+      click_link 'Add Medication'
+    end
+    expect(page).to have_current_path(%r{/medications/new})
+  end
+
   it 'allows selecting a search result and prefill a new inventory item' do
     stub_nhs_dmd_search(query: '5016298210989', results: barcode_results)
 

@@ -62,6 +62,7 @@ RSpec.describe 'GET /medication-finder/search' do
         expect(json['results'].first['code']).to eq('39720311000001101')
         expect(json['results'].first['concept_class']).to eq('VMP')
         expect(json['results'].first['pil_url']).to eq('https://www.medicines.org.uk/emc/product/13866/pil')
+        expect(json['review_guidance']).to eq('status' => 'available')
       end
 
       it 'includes existing medication metadata when the result matches accessible stock' do
@@ -140,6 +141,113 @@ RSpec.describe 'GET /medication-finder/search' do
         )
         expect(response.parsed_body.dig('results', 0, 'review_prompt_filter')).to eq('hidden_count' => 0)
         expect(response.parsed_body.dig('results', 0)).not_to have_key('interactions')
+      end
+    end
+
+    context 'without a local dm+d import or barcode catalogue' do
+      before do
+        login_as_admin
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_ID', nil).and_return('test-id')
+        allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_SECRET', nil).and_return('test-secret')
+        stub_nhs_dmd_token
+        stub_nhs_dmd_search(
+          query: 'paracetamol',
+          results: [
+            {
+              code: '32223611000001104',
+              display: 'Paracetamol 500mg tablets',
+              system: 'https://dmd.nhs.uk',
+              concept_class: 'VMP'
+            }
+          ]
+        )
+        Rails.cache.clear
+      end
+
+      it 'returns mapped NHS results with review guidance available' do
+        expect(NhsDmdBarcode).not_to exist
+        expect(NhsDmdImport).not_to exist
+
+        get medication_finder_search_path(format: :json), params: { q: 'paracetamol' }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body['results']).to contain_exactly(
+          a_hash_including(
+            'code' => '32223611000001104',
+            'display' => 'Paracetamol 500mg tablets',
+            'system' => 'https://dmd.nhs.uk',
+            'concept_class' => 'VMP',
+            'review_prompts' => [],
+            'review_prompt_filter' => { 'hidden_count' => 0 }
+          )
+        )
+        expect(response.parsed_body['review_guidance']).to eq('status' => 'available')
+      end
+    end
+
+    context 'when medication-review enrichment is unavailable' do
+      before do
+        login_as_admin
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_ID', nil).and_return('test-id')
+        allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_SECRET', nil).and_return('test-secret')
+        stub_nhs_dmd_token
+        stub_nhs_dmd_search(
+          query: 'paracetamol',
+          results: [
+            {
+              code: '32223611000001104',
+              display: 'Paracetamol 500mg tablets',
+              system: 'https://dmd.nhs.uk',
+              concept_class: 'VMP'
+            },
+            {
+              code: '32223711000001108',
+              display: 'Paracetamol 250mg tablets',
+              system: 'https://dmd.nhs.uk',
+              concept_class: 'VMP'
+            }
+          ]
+        )
+        stub_const(
+          'MedicationReviewTerminology::DEFAULT_PATH',
+          Rails.root.join('tmp/missing-rxclass-terminology.json')
+        )
+        allow(Rails.logger).to receive(:error) { |message| logged_errors << message }
+        Rails.cache.clear
+      end
+
+      let(:logged_errors) { [] }
+
+      it 'preserves NHS results and marks review guidance unavailable' do
+        expect(NhsDmdBarcode).not_to exist
+        expect(NhsDmdImport).not_to exist
+
+        get medication_finder_search_path(format: :json), params: { q: 'paracetamol' }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body).not_to have_key('error')
+        expect(response.parsed_body['results']).to contain_exactly(
+          a_hash_including(
+            'code' => '32223611000001104',
+            'display' => 'Paracetamol 500mg tablets',
+            'review_prompts' => [],
+            'review_prompt_filter' => { 'hidden_count' => 0 }
+          ),
+          a_hash_including(
+            'code' => '32223711000001108',
+            'display' => 'Paracetamol 250mg tablets',
+            'review_prompts' => [],
+            'review_prompt_filter' => { 'hidden_count' => 0 }
+          )
+        )
+        expect(response.parsed_body['review_guidance']).to eq('status' => 'unavailable')
+        expect(response.body).not_to include('Medication search is temporarily unavailable')
+        expect(logged_errors).to eq(['Medication review enrichment failed: Errno::ENOENT'])
+        expect(logged_errors.join).not_to match(
+          /paracetamol|legacy-household|admin|household|user/i
+        )
       end
     end
 

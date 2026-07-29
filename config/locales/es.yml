@@ -846,6 +846,9 @@ es:
       unavailable_title: Búsqueda no disponible
       unavailable_message: No se pudo conectar con la base de datos de medicamentos.
         Inténtelo de nuevo.
+      review_guidance_unavailable: La información sobre la revisión de medicamentos
+        no está disponible temporalmente. Es posible que los resultados de búsqueda
+        no incluyan orientación sobre interacciones.
       no_results_title: No se encontraron medicamentos
       no_results_message: Pruebe con otros términos o revise la ortografía.
       results_title: Resultados de la búsqueda

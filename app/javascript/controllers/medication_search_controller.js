@@ -41,7 +41,13 @@ export default class extends Controller {
       } else {
         const barcode = data.barcode || this.barcodeQuery(query)
         const displayQuery = barcode || query
-        this.showResults(displayQuery, data.results, barcode, data.permissions || {})
+        this.showResults(
+          displayQuery,
+          data.results,
+          barcode,
+          data.permissions || {},
+          data.review_guidance || {}
+        )
       }
     } catch (error) {
       this.showError(this.t("unavailableMessage"))
@@ -95,7 +101,7 @@ export default class extends Controller {
     `
   }
 
-  showResults(query, results, barcode, permissions = {}) {
+  showResults(query, results, barcode, permissions = {}, reviewGuidance = {}) {
     if (results.length === 0) {
       this.resultsTarget.innerHTML = `
         <div class="text-center py-12 text-on-surface-variant" data-testid="no-results">
@@ -122,8 +128,16 @@ export default class extends Controller {
     `
 
     const items = results.map(result => this.renderResultCard(result, barcode, permissions)).join('')
+    const reviewGuidanceWarning = reviewGuidance.status === "unavailable"
+      ? `
+        <div class="mb-3 rounded-lg border border-warning/50 bg-warning-container/20 p-3 text-sm text-on-warning-container" role="status" aria-controls="medication-search-results-list" data-testid="review-guidance-warning">
+          ${this.escapeHtml(this.t("reviewGuidanceUnavailable"))}
+        </div>
+      `
+      : ''
 
-    this.resultsTarget.innerHTML = header + `<div class="space-y-2" data-testid="results-list">${items}</div>`
+    this.resultsTarget.innerHTML = reviewGuidanceWarning + header +
+      `<div id="medication-search-results-list" class="space-y-2" data-testid="results-list">${items}</div>`
   }
 
   renderResultCard(result, barcode, permissions = {}) {

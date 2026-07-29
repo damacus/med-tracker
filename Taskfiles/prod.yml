@@ -23,6 +23,19 @@ tasks:
           NO_CACHE: '{{ .NO_CACHE | default "" }}'
           APP_IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:local-production-build" }}'
 
+  medication-search-smoke:
+    desc: Verify medication search from the final production image
+    summary: |
+      Build the final app target and exercise medication search without an app source mount.
+      Usage: task prod:medication-search-smoke
+    vars:
+      IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:medication-search-smoke" }}'
+    cmds:
+      - task: build
+        vars:
+          APP_IMAGE_REF: '{{ .IMAGE_REF }}'
+      - ./scripts/production_medication_search_smoke.fish '{{ .IMAGE_REF }}'
+
   up:
     desc: Start production server (local validation)
     summary: |
