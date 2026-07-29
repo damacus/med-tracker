@@ -10,11 +10,18 @@ The system SHALL provide a per-account medication launcher experiment with `curr
 - **WHEN** the account launches Add Medication from a person
 - **THEN** the system renders the existing person medication landing page
 
-#### Scenario: Experiment is enabled
+#### Scenario: Add Medication is selected for a person
 
 - **GIVEN** an account uses the `context_aware` launcher variant
-- **WHEN** the account launches Add Medication from a person it may manage
-- **THEN** the system opens the canonical medication-assignment workflow for that person
+- **WHEN** the account selects Add Medication for a person it may manage
+- **THEN** the system opens the canonical medication-assignment workflow with that person selected
+- **AND** the account can use Back to choose someone else
+
+#### Scenario: Global Add Medication is selected
+
+- **GIVEN** an account uses the `context_aware` launcher variant
+- **WHEN** the account selects global Add Medication without person context
+- **THEN** the system asks who the medication is for
 
 ### Requirement: Launch-context contract
 

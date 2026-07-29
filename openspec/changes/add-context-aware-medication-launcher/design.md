@@ -33,7 +33,7 @@ This reuses the established experiment mechanism and makes rollback immediate. R
 
 When the experiment is enabled, the controller will only use a requested person found by `MedicationWorkflowPeopleQuery`, which already applies the policy scope and `add_medication?` check. A valid person proceeds to the existing `new_person_medication_assignment_path` with `source: :workflow`. Missing, stale, or unauthorized person context renders the existing selector without revealing why the context was rejected.
 
-Direct person-page launches will redirect into this same boundary with the person ID and person page as the default return destination. The current landing page remains unchanged as the experiment-off fallback.
+Selecting Add Medication for a person will redirect into this same boundary with that person ID and person page as the default return destination. For example, selecting Add Medication for Jane Doe starts the canonical workflow with Jane Doe visible; the existing Back action can choose someone else. Global Add Medication has no person context and continues to ask who the medication is for. The current landing page remains unchanged as the experiment-off fallback.
 
 Adding a separate launcher service was rejected because the behavior is a small HTTP routing decision with no domain mutation.
 

@@ -14,3 +14,7 @@
 - [x] 3.1 Run focused model, request, component, and system specs
 - [x] 3.2 Verify the visible flow at desktop and mobile viewports
 - [x] 3.3 Run OpenSpec validation, RuboCop, and the full test suite
+
+## 4. Copy Clarification
+
+- [x] 4.1 Explain person-specific and global Add Medication behavior in the experiment UI and PR

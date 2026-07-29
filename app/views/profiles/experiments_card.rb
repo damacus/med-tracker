@@ -53,7 +53,9 @@ module Views
         {
           value: 'context_aware',
           label: 'Context-aware',
-          description: 'Carry known person and medication details into the unified workflow.'
+          description: 'Starts with the person whose Add Medication action you chose. ' \
+                       'Add Medication on Jane Doe starts with Jane Doe; use Back to choose someone else. ' \
+                       'Global Add Medication still asks who it is for.'
         }
       ].freeze
 

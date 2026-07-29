@@ -5,7 +5,7 @@
 ## What Changes
 
 - Define a launch-context contract for an optional person, medication, intent, and safe return destination.
-- Route known, authorized person context directly into the canonical medication-assignment workflow.
+- Start with the person whose Add Medication action was selected; a global Add Medication action still asks for a person.
 - Preserve known medication context and allow the existing assignment form to validate or replace it.
 - Fall back predictably when context is absent, stale, or unauthorized.
 - Gate the launcher through account experiments, with the current entry behavior as the default.
