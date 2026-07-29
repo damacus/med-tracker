@@ -107,12 +107,7 @@ RSpec.describe NhsDmd::Search do
         family = NhsDmdTradeFamily.create!(code: 'TF001', name: 'Laxido')
         NhsDmdAmpTradeFamily.create!(amp_code: 'AMP001', trade_family: family)
         NhsDmdAmpTradeFamily.create!(amp_code: 'AMP002', trade_family: family)
-        NhsDmdBarcode.create!(
-          gtin: '5016298210989',
-          code: 'AMPP001',
-          amp_code: 'AMP001',
-          display: 'Laxido Orange oral powder sachets (Galen Ltd)'
-        )
+        NhsDmdAmppRelationship.create!(ampp_code: 'AMPP001', amp_code: 'AMP001')
         allow(client).to receive(:configured?).and_return(true)
         allow(client).to receive(:search).with('macrogol').and_return(raw_results)
       end
@@ -120,6 +115,7 @@ RSpec.describe NhsDmd::Search do
       it 'annotates selected AMP and AMPP identities without using Trade Family as a match source' do
         result = search.call('macrogol')
 
+        expect(NhsDmdBarcode.find_by(code: 'AMPP001')).to be_nil
         expect(result.results.map(&:to_h)).to contain_exactly(
           a_hash_including(
             code: 'AMPP001',

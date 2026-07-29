@@ -103,7 +103,7 @@ module NhsDmd
 
     def enrich_trade_family_provenance(items)
       ampp_codes = items.filter_map { |item| item[:code] if item[:concept_class] == 'AMPP' }
-      amp_codes_by_ampp = NhsDmdBarcode.where(code: ampp_codes).where.not(amp_code: nil).pluck(:code, :amp_code).to_h
+      amp_codes_by_ampp = NhsDmdAmppRelationship.where(ampp_code: ampp_codes).pluck(:ampp_code, :amp_code).to_h
       amp_codes = items.filter_map { |item| amp_code_for(item, amp_codes_by_ampp) }
       memberships = NhsDmdAmpTradeFamily
         .includes(trade_family: :trade_family_group)

@@ -349,6 +349,47 @@ RSpec.describe MedicationFinderSearchResponder do
         expect(payload[:related_medications]).to eq([])
       end
     end
+
+    context 'when multiple finder results have trade families' do
+      let(:first_related_medication) { create(:medication, name: 'Laxido Lemon sachets') }
+      let(:second_related_medication) { create(:medication, name: 'Movicol Chocolate sachets') }
+      let(:trade_family_resolver) { instance_double(MedicationTradeFamilyResolver) }
+      let(:finder_results) do
+        [
+          make_search_result(code: 'AMPP001', trade_family: { code: 'TF001', name: 'Laxido' }),
+          make_search_result(code: 'AMPP002', trade_family: { code: 'TF002', name: 'Movicol' })
+        ]
+      end
+      let(:responder_with_batched_resolver) do
+        described_class.new(
+          search: search,
+          medication_scope: Medication.none,
+          trade_family_resolver: trade_family_resolver
+        )
+      end
+
+      before do
+        allow(search).to receive(:call).and_return(successful_nhs_result(results: finder_results))
+        allow(trade_family_resolver).to receive(:call)
+          .with(trade_family_codes: %w[TF001 TF002])
+          .and_return(
+            'TF001' => [first_related_medication],
+            'TF002' => [second_related_medication]
+          )
+      end
+
+      it 'resolves all trade families once and attaches the matching group to each result' do
+        payloads = responder_with_batched_resolver.call(query: 'macrogol').body[:results]
+
+        expect(payloads.first[:related_medications]).to contain_exactly(
+          a_hash_including(id: first_related_medication.id)
+        )
+        expect(payloads.second[:related_medications]).to contain_exactly(
+          a_hash_including(id: second_related_medication.id)
+        )
+        expect(trade_family_resolver).to have_received(:call).once
+      end
+    end
   end
 
   describe 'Result' do

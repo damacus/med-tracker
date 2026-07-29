@@ -34,6 +34,7 @@ module NhsDmd
       emit_initial_progress(progress_callback, counts)
 
       names = parse_ampp_names(ampp_file, counts:, progress_callback: progress_callback)
+      import_ampp_relationships(names)
       import_supplementary_metadata(dir)
       emit_gtin_start_progress(progress_callback, counts)
 
@@ -82,6 +83,19 @@ module NhsDmd
       end
     ensure
       emit_progress(counts, progress_callback, force: true, message: ampp_progress_message(counts))
+    end
+
+    def import_ampp_relationships(names)
+      timestamp = Time.current
+      relationships = names.filter_map do |ampp_code, attributes|
+        amp_code = attributes[:amp_code]
+        { ampp_code: ampp_code, amp_code: amp_code, created_at: timestamp, updated_at: timestamp } if amp_code.present?
+      end
+
+      NhsDmdAmppRelationship.transaction do
+        NhsDmdAmppRelationship.delete_all
+        NhsDmdAmppRelationship.create!(relationships)
+      end
     end
 
     def import_gtins(path, names, counts:, progress_callback:)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_29_103000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_29_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -798,6 +798,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_103000) do
     t.datetime "updated_at", null: false
     t.index ["amp_code"], name: "index_nhs_dmd_amp_trade_families_on_amp_code", unique: true
     t.index ["trade_family_id"], name: "index_nhs_dmd_amp_trade_families_on_trade_family_id"
+  end
+
+  create_table "nhs_dmd_ampp_relationships", force: :cascade do |t|
+    t.string "amp_code", null: false
+    t.string "ampp_code", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["amp_code"], name: "index_nhs_dmd_ampp_relationships_on_amp_code"
+    t.index ["ampp_code"], name: "index_nhs_dmd_ampp_relationships_on_ampp_code", unique: true
   end
 
   create_table "nhs_dmd_barcodes", force: :cascade do |t|

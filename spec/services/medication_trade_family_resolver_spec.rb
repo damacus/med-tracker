@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe MedicationTradeFamilyResolver do
@@ -46,26 +48,47 @@ RSpec.describe MedicationTradeFamilyResolver do
   end
 
   describe '#call' do
-    it 'finds household medicines whose barcode resolves to the requested trade family' do
-      related_medications = resolver.call(trade_family_code: 'TF001', excluding: exact_medication)
+    it 'groups household medicines by each requested trade family' do
+      related_medications = resolver.call(trade_family_codes: %w[TF001 TF002])
 
-      expect(related_medications).to include(related_medication)
-      expect(related_medications).not_to include(exact_medication)
-    end
-
-    it 'does not return medicines in another trade family' do
-      expect(resolver.call(trade_family_code: 'TF002')).to contain_exactly(unrelated_medication)
+      expect(related_medications.fetch('TF001')).to include(exact_medication, related_medication)
+      expect(related_medications.fetch('TF002')).to contain_exactly(unrelated_medication)
     end
 
     it 'matches household barcodes across 13 and zero-prefixed 14 digit GTIN forms' do
-      expect(resolver.call(trade_family_code: 'TF001')).to include(
+      expect(resolver.call(trade_family_codes: ['TF001']).fetch('TF001')).to include(
         zero_prefixed_medication,
         unprefixed_medication
       )
     end
 
-    it 'returns no medicines when the finder result has no trade family' do
-      expect(resolver.call(trade_family_code: nil)).to be_empty
+    it 'loads requested families and their locations in one batched query pair' do
+      scope
+      queries = capture_catalogue_queries do
+        related_medications = resolver.call(trade_family_codes: %w[TF001 TF002])
+        related_medications.values.flatten.each { |medication| medication.location.name }
+      end
+
+      expect(queries.count { |sql| sql.include?('FROM "medications"') }).to eq(1)
+      expect(queries.count { |sql| sql.include?('FROM "locations"') }).to eq(1)
     end
+
+    it 'returns no groups when no trade family codes are supplied' do
+      expect(resolver.call(trade_family_codes: [nil, ''])).to eq({})
+    end
+  end
+
+  def capture_catalogue_queries(&)
+    queries = []
+    subscriber = lambda do |_name, _start, _finish, _id, payload|
+      next if payload[:cached] || payload[:name] == 'SCHEMA'
+
+      queries << payload[:sql]
+    end
+
+    ActiveRecord::Base.uncached do
+      ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
+    end
+    queries
   end
 end

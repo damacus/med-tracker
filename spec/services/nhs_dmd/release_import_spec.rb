@@ -187,6 +187,16 @@ RSpec.describe NhsDmd::ReleaseImport do
     expect(NhsDmdSupplementaryRelease.current).to have_attributes(released_on: Date.new(2026, 7, 6))
   end
 
+  it 'imports the core AMPP-to-AMP relationship when the AMPP has no GTIN row' do
+    write_ampp_xml([{ appid: '111', apid: '222', nm: 'Paracetamol 500mg tablets (Acme Ltd)' }])
+    write_gtin_xml([])
+
+    importer.import(release_dir)
+
+    expect(NhsDmdAmppRelationship.find_by!(ampp_code: '111')).to have_attributes(amp_code: '222')
+    expect(NhsDmdBarcode.find_by(code: '111')).to be_nil
+  end
+
   it 'tolerates missing supplementary XML and does not retain inactive AMP mappings' do
     write_ampp_xml([{ appid: '111', apid: '222', nm: 'Paracetamol 500mg tablets (Acme Ltd)' }])
     write_single_gtin_xml(amppid: '111', gtin: '5016298210989', startdt: '2020-01-01')

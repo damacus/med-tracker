@@ -40,9 +40,12 @@ class MedicationFinderSearchResponder
     normalized_form = NhsDmd::DosageFormFilter.normalize(form)
     normalized_strength = NhsDmd::StrengthFilter.normalize(strength)
     results = filtered_results(result.results, form:, strength:)
+    related_medications = @trade_family_resolver.call(trade_family_codes: trade_family_codes(results))
 
     {
-      results: results.map { |search_result| result_payload(search_result, result.barcode) },
+      results: results.map do |search_result|
+        result_payload(search_result, result.barcode, related_medications:)
+      end,
       review_guidance: review_guidance_payload,
       query: result.resolved_query.presence || query,
       barcode: result.barcode,
@@ -71,11 +74,15 @@ class MedicationFinderSearchResponder
     NhsDmd::StrengthFilter.filter(results, strength)
   end
 
-  def result_payload(search_result, barcode)
+  def result_payload(search_result, barcode, related_medications:)
     search_result.to_h.tap do |payload|
       medication = existing_medication_for(search_result, barcode)
       payload[:existing_medication] = existing_medication_payload(medication) if medication
-      payload[:related_medications] = related_medication_payloads(search_result, excluding: medication)
+      payload[:related_medications] = related_medication_payloads(
+        search_result,
+        related_medications: related_medications,
+        excluding: medication
+      )
       payload.merge!(review_prompt_payload(search_result))
     end
   end
@@ -133,11 +140,11 @@ class MedicationFinderSearchResponder
     }
   end
 
-  def related_medication_payloads(search_result, excluding:)
-    @trade_family_resolver.call(
-      trade_family_code: trade_family_code(search_result),
-      excluding: excluding
-    ).map { |medication| related_medication_payload(medication) }
+  def related_medication_payloads(search_result, related_medications:, excluding:)
+    related_medications
+      .fetch(trade_family_code(search_result), [])
+      .reject { |medication| excluding && medication.id == excluding.id }
+      .map { |medication| related_medication_payload(medication) }
   end
 
   def related_medication_payload(medication)
@@ -153,6 +160,10 @@ class MedicationFinderSearchResponder
   def trade_family_code(search_result)
     trade_family = search_result.trade_family
     trade_family[:code] || trade_family['code'] if trade_family
+  end
+
+  def trade_family_codes(search_results)
+    search_results.filter_map { |search_result| trade_family_code(search_result) }.uniq
   end
 
   def medication_path(medication)

@@ -35,6 +35,7 @@ RSpec.describe SchemaInventory do
       medication_review_evidence_records
       native_device_tokens
       nhs_dmd_amp_trade_families
+      nhs_dmd_ampp_relationships
       nhs_dmd_barcodes
       nhs_dmd_imports
       nhs_dmd_supplementary_releases
