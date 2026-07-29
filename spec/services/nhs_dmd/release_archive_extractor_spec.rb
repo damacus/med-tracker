@@ -23,6 +23,12 @@ RSpec.describe NhsDmd::ReleaseArchiveExtractor do
       expect(destination.join('nested/f_gtin2_0000000.xml').read).to eq('<GTIN />')
     end
 
+    it 'accepts the AMPP entry size in the current NHSBSA release' do
+      current_release_entry_size = 120_269_530
+
+      expect(described_class::MAX_ENTRY_BYTES).to be >= current_release_entry_size
+    end
+
     it 'rejects traversal entries before writing files' do
       write_zip('../escape.txt' => 'owned', 'f_ampp2_3000000.xml' => '<AMPP />')
 
