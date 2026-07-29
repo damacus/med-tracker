@@ -24,6 +24,7 @@ RSpec.describe Otel::DatabaseConnectionPoolMetrics do
       'medtracker.db.connection_pool.idle',
       'medtracker.db.connection_pool.waiting'
     )
+    expect(meter.observable_gauges.keys).to contain_exactly('medtracker.db.connection_pool.collector')
     expect(meter.counters.keys).to contain_exactly('medtracker.db.connection_pool.timeouts')
   end
 
@@ -31,8 +32,9 @@ RSpec.describe Otel::DatabaseConnectionPoolMetrics do
     metrics.install
 
     attributes = { 'db.pool.name' => 'primary', 'db.namespace' => 'medtracker_test' }
+    meter.collect
 
-    expect(meter.gauges.transform_values(&:observe)).to eq(
+    expect(meter.gauges.transform_values(&:recordings)).to eq(
       'medtracker.db.connection_pool.size' => [[10, attributes]],
       'medtracker.db.connection_pool.in_use' => [[4, attributes]],
       'medtracker.db.connection_pool.idle' => [[3, attributes]],
@@ -56,14 +58,16 @@ RSpec.describe Otel::DatabaseConnectionPoolMetrics do
     metrics = described_class.new(pool_resolver: -> { pools }, meter:)
 
     metrics.install
+    meter.collect
 
-    expect(meter.gauges.fetch('medtracker.db.connection_pool.size').observe).to contain_exactly(
+    expect(meter.gauges.fetch('medtracker.db.connection_pool.size').recordings).to contain_exactly(
       [10, { 'db.pool.name' => 'primary', 'db.namespace' => 'medtracker_test' }]
     )
 
     pools = [replica_pool]
+    meter.collect
 
-    expect(meter.gauges.fetch('medtracker.db.connection_pool.size').observe).to contain_exactly(
+    expect(meter.gauges.fetch('medtracker.db.connection_pool.size').recordings.last).to eq(
       [5, { 'db.pool.name' => 'replica', 'db.namespace' => 'medtracker_replica' }]
     )
   end
@@ -100,15 +104,17 @@ RSpec.describe Otel::DatabaseConnectionPoolMetrics do
     allow(pool).to receive(:stat).and_raise(ActiveRecord::ConnectionNotEstablished)
     allow(Rails.logger).to receive(:warn)
     metrics.install
+    meter.collect
 
-    expect(meter.gauges.values.map(&:observe)).to all(eq([]))
+    expect(meter.gauges.values.map(&:recordings)).to all(eq([]))
     expect(Rails.logger).to have_received(:warn).with(/database pool metrics unavailable/).once
   end
 
   it 'skips discarded pools without emitting zero-value observations' do
     allow(pool).to receive(:discarded?).and_return(true)
     metrics.install
+    meter.collect
 
-    expect(meter.gauges.values.map(&:observe)).to all(eq([]))
+    expect(meter.gauges.values.map(&:recordings)).to all(eq([]))
   end
 end
