@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.17](https://github.com/damacus/med-tracker/compare/v0.5.16...v0.5.17) (2026-07-29)
+
+
+### Features
+
+* **medications:** add context-aware launcher ([#1753](https://github.com/damacus/med-tracker/issues/1753)) ([7c9f318](https://github.com/damacus/med-tracker/commit/7c9f31866939254e6ccc8b7f23e4474d8b7bcd90))
+
+
+### Bug Fixes
+
+* **api:** preserve idempotent response etags ([#1752](https://github.com/damacus/med-tracker/issues/1752)) ([73a1499](https://github.com/damacus/med-tracker/commit/73a14994ff0fc8dda6fdb33fccb705ea0695ed04))
+* **api:** serialize idempotent mutations ([#1750](https://github.com/damacus/med-tracker/issues/1750)) ([44a0ef6](https://github.com/damacus/med-tracker/commit/44a0ef6b53b58cb7b078bcc15c9c161ea0366298))
+* **dmd:** accept current release archive ([#1756](https://github.com/damacus/med-tracker/issues/1756)) ([9c0f123](https://github.com/damacus/med-tracker/commit/9c0f123fac3865fd6ed5e66d9874d10f2f77bc61))
+
 ## [0.5.16](https://github.com/damacus/med-tracker/compare/v0.5.15...v0.5.16) (2026-07-28)
 
 
