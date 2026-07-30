@@ -13,11 +13,11 @@ module OpenFoodFacts
       audit(barcode, result ? 'success' : 'not_found', result ? 1 : 0)
       result
     rescue Client::ApiError => e
-      Rails.logger.warn("OpenFoodFacts::BarcodeLookup failed: #{e.message}")
+      Observability::DiagnosticEvent.failure(component: :open_food_facts, error: e, severity: :warn)
       audit(barcode, 'error')
       nil
     rescue StandardError => e
-      Rails.logger.error("OpenFoodFacts::BarcodeLookup crashed: #{e.class}: #{e.message}")
+      Observability::DiagnosticEvent.failure(component: :open_food_facts, error: e)
       audit(barcode, 'error')
       nil
     end

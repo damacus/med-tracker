@@ -36,6 +36,19 @@ tasks:
           APP_IMAGE_REF: '{{ .IMAGE_REF }}'
       - ./scripts/production_medication_search_smoke.fish '{{ .IMAGE_REF }}'
 
+  observability-characterization:
+    desc: Characterize observability from the final production image
+    summary: |
+      Build the final app target and capture request, job, logger, and telemetry output without an app source mount.
+      Usage: task prod:observability-characterization
+    vars:
+      IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:observability-characterization" }}'
+    cmds:
+      - task: build
+        vars:
+          APP_IMAGE_REF: '{{ .IMAGE_REF }}'
+      - ./scripts/production_observability_characterization.fish '{{ .IMAGE_REF }}'
+
   up:
     desc: Start production server (local validation)
     summary: |

@@ -108,8 +108,11 @@ module Rack
       retry_after = match_data[:period] - (now % match_data[:period])
 
       throttle_type = request.env['rack.attack.matched']
-      ActiveSupport::Notifications.instrument('rack_attack.throttled', throttle: throttle_type, ip: request.ip)
-      Rails.logger.warn("Rate limit exceeded: #{throttle_type} from IP #{request.ip}")
+      Observability::DomainEventPublisher.instrument(
+        'rack_attack.throttled',
+        throttle: throttle_type,
+        ip: request.ip
+      )
 
       [
         429,

@@ -2,13 +2,18 @@
 
 require 'opentelemetry-api'
 require 'opentelemetry-metrics-api'
+require 'observability/dataset_logger'
 require 'otel/allowlisted_span_exporter'
 require 'otel/critical_path_sampler'
 require 'otel/database_connection_pool_metrics'
 require 'otel/exception_recorder'
 require 'otel/log_correlation'
 
-OpenTelemetry.logger = Logger.new($stdout, level: Rails.env.test? ? Logger::WARN : Logger::ERROR)
+OpenTelemetry.logger = Observability::DatasetLogger.new(
+  $stdout,
+  dataset: 'medtracker.opentelemetry',
+  level: Rails.env.test? ? Logger::WARN : Logger::ERROR
+)
 
 module OpenTelemetryConfig
   DEFAULT_PRODUCTION_TRACE_SAMPLE_RATE = 0.1
@@ -25,7 +30,8 @@ module OpenTelemetryConfig
     '/offline/medication_takes',
     '/admin/audit_logs',
     '/platform/support_access_sessions',
-    'medication_take.'
+    'medication_take.',
+    'observability.canary'
   ].freeze
 
   module_function
@@ -60,6 +66,25 @@ module OpenTelemetryConfig
 
   def apply_trace_sampler(configurator, sampler)
     configurator.send(:tracer_provider).sampler = sampler
+  end
+
+  def batch_span_processor(exporter)
+    OpenTelemetry::SDK::Trace::Export::BatchSpanProcessor.new(
+      exporter,
+      max_queue_size: 2048,
+      schedule_delay: 5000,
+      max_export_batch_size: 512
+    )
+  end
+
+  def otlp_trace_endpoint(env: ENV)
+    signal_endpoint = env['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT']
+    return signal_endpoint if signal_endpoint.present?
+
+    generic_endpoint = env['OTEL_EXPORTER_OTLP_ENDPOINT']
+    return if generic_endpoint.blank?
+
+    URI.join("#{generic_endpoint.delete_suffix('/')}/", 'v1/traces').to_s
   end
 
   def trace_sample_rate(environment: Rails.env, env: ENV)
@@ -172,32 +197,34 @@ elsif Rails.env.production? || ENV['OTEL_EXPORTER_OTLP_ENDPOINT'].present?
   require 'opentelemetry/instrumentation/rails'
 
   otlp_endpoint = ENV.fetch('OTEL_EXPORTER_OTLP_ENDPOINT', nil)
+  otlp_trace_endpoint = OpenTelemetryConfig.otlp_trace_endpoint
   otlp_headers = ENV.fetch('OTEL_EXPORTER_OTLP_HEADERS', nil)
   otlp_timeout = ENV.fetch('OTEL_EXPORTER_OTLP_TIMEOUT', '10').to_i
 
-  Rails.logger.info "[OpenTelemetry] Configuring OTLP exporter: #{otlp_endpoint}" if otlp_endpoint.present?
+  if otlp_endpoint.present?
+    Rails.application.config.after_initialize do
+      Observability::DiagnosticEvent.emit(
+        component: :opentelemetry,
+        reason: :configured,
+        severity: :info
+      )
+    end
+  end
 
   OpenTelemetry::SDK.configure do |c|
     c.service_name = 'medtracker'
     c.service_version = ENV.fetch('APP_VERSION', '1.0.0')
     OpenTelemetryConfig.apply_trace_sampler(c, OpenTelemetryConfig.trace_sampler)
 
-    if otlp_endpoint.present?
+    if otlp_trace_endpoint.present?
       span_exporter = OpenTelemetry::Exporter::OTLP::Exporter.new(
-        endpoint: otlp_endpoint,
+        endpoint: otlp_trace_endpoint,
         headers: OpenTelemetryConfig.parse_otlp_headers(otlp_headers),
         timeout: otlp_timeout
       )
       span_exporter = Otel::AllowlistedSpanExporter.new(span_exporter)
 
-      c.add_span_processor(
-        OpenTelemetry::SDK::Trace::Export::BatchSpanProcessor.new(
-          exporter: span_exporter,
-          max_queue_size: 2048,
-          scheduled_delay_millis: 5000,
-          max_export_batch_size: 512
-        )
-      )
+      c.add_span_processor(OpenTelemetryConfig.batch_span_processor(span_exporter))
     end
 
     c.use('OpenTelemetry::Instrumentation::Rails')

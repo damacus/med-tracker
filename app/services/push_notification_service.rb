@@ -1,43 +1,65 @@
 # frozen_string_literal: true
 
 class PushNotificationService
-  def self.send_to_account(account, title:, body:, path: '/', household: Current.household)
-    return if household && !household.operational?
+  def self.send_to_account(account, household: Current.household, notification_kind: :unknown, **message)
+    return suppress(notification_kind) if household && !household.operational?
 
-    send_web_push_to_account(account, title: title, body: body, path: path)
-    send_native_push_to_account(account, title: title, body: body, path: path)
+    title = message.fetch(:title)
+    body = message.fetch(:body)
+    path = message.fetch(:path, '/')
+    results = send_web_push_to_account(
+      account, title:, body:, path:, notification_kind:
+    ) + send_native_push_to_account(
+      account, title:, body:, path:, notification_kind:
+    )
+    record_aggregate_result(notification_kind, results)
+    results
   end
 
-  def self.send_web_push_to_account(account, title:, body:, path: '/')
+  def self.suppress(notification_kind)
+    Observability::NotificationStage.emit(
+      kind: notification_kind,
+      stage: :channel_attempt,
+      reason: :suppressed
+    )
+    nil
+  end
+  private_class_method :suppress
+
+  def self.send_web_push_to_account(account, title:, body:, notification_kind:, path: '/')
     vapid = build_vapid_config
     payload = { title: title, options: { body: body, data: { path: path } } }.to_json
 
-    account.push_subscriptions.each do |sub|
-      deliver(sub, payload, vapid)
+    account.push_subscriptions.map do |sub|
+      deliver(sub, payload, vapid, notification_kind:)
     end
   end
   private_class_method :send_web_push_to_account
 
-  def self.send_native_push_to_account(account, title:, body:, path: '/')
+  def self.send_native_push_to_account(account, title:, body:, notification_kind:, path: '/')
     tokens = account.native_device_tokens
-    return if tokens.none?
 
-    tokens.each do |token|
-      deliver_native(token, title: title, body: body, path: path)
+    tokens.map do |token|
+      deliver_native(token, title:, body:, path:, notification_kind:)
     end
   end
   private_class_method :send_native_push_to_account
 
-  def self.deliver_native(token, title:, body:, path:)
+  def self.deliver_native(token, title:, body:, path:, notification_kind:)
+    provider = token.platform == 'ios' ? :apns : :fcm
+    record_attempt(notification_kind, channel: :native_push, provider:)
     result = native_client_for(token)&.deliver(token, title: title, body: body, path: path)
-    return log_native_skip(token) unless result
-    return token.destroy if result.unregistered?
-    return if result.status == :delivered
+    return record_provider_result(notification_kind, :delivery_unknown, channel: :native_push, provider:) unless result
 
-    Rails.logger.error(
-      "[PushNotificationService] Native push failed: platform=#{token.platform} " \
-      "token_id=#{token.id} status=#{result.provider_status.inspect} error=#{result.provider_error.inspect}"
-    )
+    if result.unregistered?
+      token.destroy
+      return record_provider_result(notification_kind, :permanent_failure, channel: :native_push, provider:)
+    end
+    if result.status == :delivered
+      return record_provider_result(notification_kind, :provider_accepted, channel: :native_push, provider:)
+    end
+
+    record_provider_result(notification_kind, :permanent_failure, channel: :native_push, provider:)
   end
   private_class_method :deliver_native
 
@@ -51,13 +73,6 @@ class PushNotificationService
   end
   private_class_method :native_client_for
 
-  def self.log_native_skip(token)
-    Rails.logger.info(
-      "[PushNotificationService] Native push skipped: platform=#{token.platform} token_id=#{token.id}"
-    )
-  end
-  private_class_method :log_native_skip
-
   def self.build_vapid_config
     subject = ENV.fetch('VAPID_SUBJECT',
                         Rails.application.credentials.dig(:vapid, :subject) || 'notifications@example.com')
@@ -69,11 +84,9 @@ class PushNotificationService
   end
   private_class_method :build_vapid_config
 
-  def self.deliver(sub, payload, vapid)
-    unless PushSubscriptionEndpointPolicy.allowed?(sub.endpoint)
-      Rails.logger.warn("Skipped unsafe web push endpoint for subscription #{sub.id}")
-      return
-    end
+  def self.deliver(sub, payload, vapid, notification_kind:)
+    record_attempt(notification_kind, channel: :web_push, provider: :web_push)
+    return reject_web_subscription(notification_kind) unless PushSubscriptionEndpointPolicy.allowed?(sub.endpoint)
 
     WebPush.payload_send(
       message: payload,
@@ -82,10 +95,58 @@ class PushNotificationService
       auth: sub.auth,
       vapid: vapid
     )
+    record_provider_result(notification_kind, :provider_accepted, channel: :web_push, provider: :web_push)
   rescue WebPush::ExpiredSubscription, WebPush::InvalidSubscription
     sub.destroy
-  rescue StandardError => e
-    Rails.logger.error("Push notification delivery failed for subscription #{sub.id}: #{e.class}: #{e.message}")
+    record_provider_result(notification_kind, :permanent_failure, channel: :web_push, provider: :web_push)
+  rescue StandardError
+    record_provider_result(notification_kind, :delivery_unknown, channel: :web_push, provider: :web_push)
   end
   private_class_method :deliver
+
+  def self.reject_web_subscription(notification_kind)
+    record_provider_result(
+      notification_kind,
+      :permanent_failure,
+      channel: :web_push,
+      provider: :web_push
+    )
+  end
+  private_class_method :reject_web_subscription
+
+  def self.record_attempt(kind, channel:, provider:)
+    Observability::NotificationStage.emit(
+      kind:,
+      stage: :channel_attempt,
+      reason: :attempted,
+      channel:,
+      provider:
+    )
+  end
+  private_class_method :record_attempt
+
+  def self.record_provider_result(kind, reason, channel:, provider:)
+    Observability::NotificationStage.emit(
+      kind:,
+      stage: :provider_outcome,
+      reason:,
+      channel:,
+      provider:
+    )
+    reason
+  end
+  private_class_method :record_provider_result
+
+  def self.record_aggregate_result(kind, results)
+    accepted = results.count(:provider_accepted)
+    return if accepted.zero? || accepted == results.size
+
+    Observability::NotificationStage.emit(
+      kind:,
+      stage: :provider_outcome,
+      reason: :partial_failure,
+      channel: :mixed
+    )
+  end
+  private_class_method :record_aggregate_result
 end

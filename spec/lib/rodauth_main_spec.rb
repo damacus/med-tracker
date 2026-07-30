@@ -154,12 +154,14 @@ RSpec.describe RodauthMain do
       errors = instance_double(ActiveModel::Errors, full_messages: ['Professional title is invalid'])
       person = instance_double(Person, id: 123, professional_title: nil, errors: errors)
       allow(person).to receive(:update).and_return(false)
-      allow(Rails.logger).to receive(:warn)
+      allow(Observability::DiagnosticEvent).to receive(:emit)
 
       auth.send(:sync_zitadel_professional_title!, person, zitadel_auth_data(['doctor']))
 
-      expect(Rails.logger).to have_received(:warn).with(
-        '[OIDC] Professional title sync failed for 123: Professional title is invalid'
+      expect(Observability::DiagnosticEvent).to have_received(:emit).with(
+        component: :oidc,
+        reason: :operation_failed,
+        severity: :warn
       )
     end
   end

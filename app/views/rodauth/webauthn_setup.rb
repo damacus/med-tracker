@@ -55,7 +55,12 @@ module Views
           render_webauthn_script
         end
       rescue StandardError => e
-        Rails.logger.error("Failed to render WebAuthn setup form: #{e.message}")
+        Observability::DiagnosticEvent.emit(
+          component: :webauthn_renderer,
+          reason: :operation_failed,
+          severity: :error,
+          error: e
+        )
         div(class: 'border-t border-border pt-6') do
           p(class: 'text-sm text-destructive') do
             'Unable to initialize passkey registration. Please try again later.'

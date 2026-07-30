@@ -71,3 +71,23 @@ Deferred from this ADR tranche:
 - notification subscribers
 - analytics subscribers
 - any durable or cross-process event transport
+
+## Follow-up: Operational signals
+
+The application observability work completed after this decision adds a
+privacy-safe operational-event boundary beside domain publication.
+`ActiveSupport::Notifications remains the in-process domain-event mechanism`.
+The operational boundary does not replace, wrap, or become a subscriber framework.
+It records safe attempts and outcomes independently so that a
+logging failure cannot alter domain behaviour and subscriber ordering cannot
+hide the publication attempt.
+
+Domain payloads may remain rich enough for trusted in-process subscribers.
+Operational records use event-specific allowlists and must not serialize those
+raw payloads. A helper can emit the safe operational record before invoking
+`ActiveSupport::Notifications`, and can record a subscriber failure before
+re-raising it, but the original synchronous propagation semantics remain
+unchanged.
+
+This ADR remains accepted. It should be superseded only if a later decision
+replaces or wraps the domain-event mechanism itself.

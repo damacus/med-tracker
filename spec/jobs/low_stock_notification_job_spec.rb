@@ -35,7 +35,8 @@ RSpec.describe LowStockNotificationJob do
       person.account,
       title: 'Stock reminder',
       body: 'A medication may be running low.',
-      path: "/households/#{household.slug}/dashboard"
+      path: "/households/#{household.slug}/dashboard",
+      notification_kind: :low_stock
     )
     expect(NotificationEvent.where(event_type: 'low_stock').count).to eq(1)
   end

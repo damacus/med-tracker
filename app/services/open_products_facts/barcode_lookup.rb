@@ -13,11 +13,11 @@ module OpenProductsFacts
 
       process_product(barcode, product)
     rescue Client::ApiError => e
-      Rails.logger.warn("OpenProductsFacts::BarcodeLookup failed: #{e.message}")
+      Observability::DiagnosticEvent.failure(component: :open_products_facts, error: e, severity: :warn)
       audit(barcode, 'error')
       nil
     rescue StandardError => e
-      Rails.logger.error("OpenProductsFacts::BarcodeLookup crashed: #{e.class}: #{e.message}")
+      Observability::DiagnosticEvent.failure(component: :open_products_facts, error: e)
       audit(barcode, 'error')
       nil
     end
@@ -47,7 +47,7 @@ module OpenProductsFacts
         entry.concept_class = attrs[:concept_class]
       end
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
-      Rails.logger.warn("OpenProductsFacts::BarcodeLookup could not persist entry: #{e.message}")
+      Observability::DiagnosticEvent.failure(component: :open_products_facts, error: e, severity: :warn)
     end
 
     def audit(barcode, status, count = 0)

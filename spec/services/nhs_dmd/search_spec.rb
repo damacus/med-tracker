@@ -678,7 +678,7 @@ RSpec.describe NhsDmd::Search do
       before do
         allow(client).to receive(:configured?).and_return(true)
         allow(client).to receive(:search).and_raise(SocketError, 'lookup failed')
-        allow(Rails.logger).to receive(:error)
+        allow(Observability::DiagnosticEvent).to receive(:emit)
       end
 
       it 'returns a result instead of propagating the exception' do
@@ -687,7 +687,12 @@ RSpec.describe NhsDmd::Search do
         expect(result).not_to be_success
         expect(result.error).to eq('unexpected_error')
         expect(result.results).to eq([])
-        expect(Rails.logger).to have_received(:error).with(/NhsDmd::Search crashed/)
+        expect(Observability::DiagnosticEvent).to have_received(:emit).with(
+          component: :nhs_dmd_search,
+          reason: :operation_failed,
+          severity: :error,
+          error: instance_of(SocketError)
+        )
       end
 
       it 'audits the failed search' do

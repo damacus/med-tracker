@@ -7,7 +7,12 @@ module AiMedication
     def record(user:, medication_identity:, suggestion:)
       Audit::VersionEvent.record!(**version_attrs(user:, medication_identity:, suggestion:))
     rescue StandardError => e
-      Rails.logger.error("AiMedication::AuditLogger failed: #{e.class}: #{e.message}")
+      Observability::DiagnosticEvent.emit(
+        component: :ai_audit,
+        reason: :operation_failed,
+        severity: :error,
+        error: e
+      )
     end
 
     private

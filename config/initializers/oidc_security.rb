@@ -73,14 +73,28 @@ Rails.application.config.after_initialize do
   begin
     OidcSecurity.validate_issuer_url!(issuer_url)
   rescue OidcSecurity::ConfigurationError => e
-    Rails.logger.warn("[OIDC] Configuration warning: #{e.message}")
+    Observability::DiagnosticEvent.emit(
+      component: :oidc,
+      reason: :configuration_warning,
+      severity: :warn,
+      error: e
+    )
   end
 
   begin
     OidcSecurity.validate_redirect_uri!(effective_redirect_uri)
   rescue OidcSecurity::ConfigurationError => e
-    Rails.logger.warn("[OIDC] Configuration warning: #{e.message}")
+    Observability::DiagnosticEvent.emit(
+      component: :oidc,
+      reason: :configuration_warning,
+      severity: :warn,
+      error: e
+    )
   end
 
-  Rails.logger.info('[OIDC] OpenID Connect provider configured')
+  Observability::DiagnosticEvent.emit(
+    component: :oidc,
+    reason: :configured,
+    severity: :info
+  )
 end

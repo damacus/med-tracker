@@ -162,18 +162,26 @@ class MedicationTake < ApplicationRecord
     return unless low_stock_threshold_crossed?(inventory:, stock_row:)
 
     @low_stock_threshold_payload = low_stock_threshold_payload(inventory:, stock_row:)
+    @low_stock_observability_context = Current.observability_context
   end
 
   def publish_low_stock_threshold_reached
     return unless @low_stock_threshold_payload
     return unless low_stock_notifications_enabled?
 
-    ActiveSupport::Notifications.instrument(
-      'low_stock_threshold_reached.med_tracker',
-      @low_stock_threshold_payload
-    )
+    previous_context = Current.observability_context
+    Current.observability_context = @low_stock_observability_context
+    begin
+      Observability::DomainEventPublisher.instrument(
+        'low_stock_threshold_reached.med_tracker',
+        @low_stock_threshold_payload
+      )
+    ensure
+      Current.observability_context = previous_context
+    end
   ensure
     @low_stock_threshold_payload = nil
+    @low_stock_observability_context = nil
   end
 
   def low_stock_notifications_enabled?

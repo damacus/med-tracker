@@ -52,7 +52,7 @@ RSpec.describe BarcodeCatalog::Resolver do
 
   it 'returns a UI-safe error outcome when an adapter raises' do
     allow(lookup).to receive(:lookup).and_raise(Net::ReadTimeout, 'upstream details')
-    allow(Rails.logger).to receive(:error)
+    allow(Observability::DiagnosticEvent).to receive(:emit)
 
     result = resolver.call('5016298210989')
 
@@ -63,6 +63,15 @@ RSpec.describe BarcodeCatalog::Resolver do
       source: nil,
       error: 'barcode_resolution_failed'
     )
-    expect(Rails.logger).to have_received(:error).with(/BarcodeCatalog::Resolver failed: Net::ReadTimeout/)
+    expect_resolver_failure_diagnostic
+  end
+
+  def expect_resolver_failure_diagnostic
+    expect(Observability::DiagnosticEvent).to have_received(:emit).with(
+      component: :barcode_catalog,
+      reason: :operation_failed,
+      severity: :error,
+      error: instance_of(Net::ReadTimeout)
+    )
   end
 end

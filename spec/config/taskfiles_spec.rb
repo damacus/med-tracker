@@ -143,6 +143,14 @@ RSpec.describe 'Taskfiles' do
       .to eq('{{ .APP_IMAGE_REF | default "med-tracker:local-production-build" }}')
   end
 
+  it 'defines a final production-image observability characterization task' do
+    task = prod_taskfile.dig('tasks', 'observability-characterization')
+
+    expect(task.dig('vars', 'IMAGE_REF')).to eq(observability_image_reference)
+    expect(task.fetch('cmds')).to include(*observability_characterization_commands)
+    expect(observability_characterization_script).to include(*observability_characterization_contract)
+  end
+
   def dev_taskfile
     YAML.safe_load(Rails.root.join('Taskfiles/dev.yml').read, aliases: true, permitted_classes: [Symbol])
   end
@@ -181,5 +189,36 @@ RSpec.describe 'Taskfiles' do
 
   def test_preflight_script
     Rails.root.join('scripts/test_preflight.fish').read
+  end
+
+  def observability_characterization_script
+    Rails.root.join('scripts/production_observability_characterization.fish').read
+  end
+
+  def observability_image_reference
+    '{{ .APP_IMAGE_REF | default "med-tracker:observability-characterization" }}'
+  end
+
+  def observability_characterization_commands
+    [
+      { 'task' => 'build', 'vars' => { 'APP_IMAGE_REF' => '{{ .IMAGE_REF }}' } },
+      "./scripts/production_observability_characterization.fish '{{ .IMAGE_REF }}'"
+    ]
+  end
+
+  def observability_characterization_contract
+    [
+      'OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-receiver:4318',
+      'docker logs $OBSERVABILITY_CHARACTERIZATION_APP',
+      'docker logs $OBSERVABILITY_CHARACTERIZATION_WORKER',
+      'docker logs $OBSERVABILITY_CHARACTERIZATION_RECEIVER',
+      'Application container has a repository bind mount',
+      'Canonical request count or deployment identity is invalid',
+      'Routine health-check output was not suppressed',
+      'Thruster request output was not disabled',
+      'Production Puma output is not producer-scoped',
+      'Canonical job count or deployment identity is invalid',
+      'Canonical records contain nested JSON messages'
+    ]
   end
 end

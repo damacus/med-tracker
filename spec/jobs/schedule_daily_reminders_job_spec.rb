@@ -50,6 +50,22 @@ RSpec.describe ScheduleDailyRemindersJob do
       .at(Time.zone.local(2026, 5, 12, 8, 0))
   end
 
+  it 'records a past occurrence instead of enqueuing it' do
+    events = []
+    allow(Observability::CanonicalLogger).to receive(:write) { |event| events << event.to_h }
+    create(:notification_preference, person: person, morning_time: '05:00:00', afternoon_time: nil,
+                                     evening_time: nil, night_time: nil)
+
+    expect { described_class.perform_now }.not_to have_enqueued_job(MedicationReminderJob)
+    expect(events).to include(
+      include(
+        'event.name' => 'notification.stage',
+        'medtracker.reason' => 'past_occurrence',
+        'medtracker.workflow.stage' => 'reminder_enqueue'
+      )
+    )
+  end
+
   it 'enqueues exact reminders for active schedule times when dose-due preferences are enabled' do
     create(:notification_preference, person: person, morning_time: nil, afternoon_time: nil,
                                      evening_time: nil, night_time: nil, dose_due_enabled: true,
@@ -77,6 +93,26 @@ RSpec.describe ScheduleDailyRemindersJob do
     end.to have_enqueued_job(MissedDoseNotificationJob)
       .with(household.id, person.id, '2026-05-12', '07:15')
       .at(Time.zone.local(2026, 5, 12, 7, 45))
+  end
+
+  it 'propagates one opaque workflow from enqueue into the missed-dose job' do
+    events = []
+    allow(Observability::CanonicalLogger).to receive(:write) { |event| events << event.to_h }
+    preference = create(:notification_preference, person: person, morning_time: nil, afternoon_time: nil,
+                                                  evening_time: nil, night_time: nil, dose_due_enabled: false,
+                                                  missed_dose_enabled: true)
+    job = described_class.new
+    allow(job).to receive(:configured_times_for).and_return(['07:15'])
+
+    job.send(:enqueue_reminders_for, preference)
+
+    job_data = enqueued_jobs.find { |entry| entry.fetch(:job) == MissedDoseNotificationJob }
+    propagation = job_data.fetch('medtracker_observability_context')
+    enqueue_event = reminder_enqueue_event(events)
+
+    expect(enqueue_event['medtracker.workflow.id']).to eq(propagation.fetch('workflow.id'))
+    expect(enqueue_event['medtracker.attempt.id']).to eq(propagation.fetch('attempt.id'))
+    expect(propagation.keys).to contain_exactly('workflow.id', 'causation.id', 'attempt.id', 'expires_at')
   end
 
   it 'enqueues missed-dose checks for every child managed by an enabled recipient' do
@@ -167,6 +203,12 @@ RSpec.describe ScheduleDailyRemindersJob do
 
   def enable_missed_dose_notifications(target)
     create(:notification_preference, person: target, dose_due_enabled: false, missed_dose_enabled: true)
+  end
+
+  def reminder_enqueue_event(events)
+    events.find do |event|
+      event['event.name'] == 'notification.stage' && event['medtracker.reason'] == 'enqueued'
+    end
   end
 
   def prepare_managed_schedule(manager:, target:, relationship_type:)

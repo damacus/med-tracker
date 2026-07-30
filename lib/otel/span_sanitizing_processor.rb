@@ -32,7 +32,12 @@ module Otel
         span.set_attribute(key, value) if value != span.attributes[key]
       end
     rescue StandardError => e
-      Rails.logger.warn "[OpenTelemetry] SpanSanitizingProcessor error: #{e.message}"
+      Observability::DiagnosticEvent.emit(
+        component: :span_sanitizer,
+        reason: :operation_failed,
+        severity: :warn,
+        error: e
+      )
     end
   end
 end

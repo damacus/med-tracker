@@ -9,6 +9,7 @@ RSpec.describe MissedDoseNotificationJob do
   let(:household) { person.household }
   let(:scheduled_on) { '2026-05-12' }
   let(:scheduled_time) { '07:15' }
+  let(:events) { [] }
 
   before do
     PersonAccessGrant.where(household: household).delete_all
@@ -24,11 +25,11 @@ RSpec.describe MissedDoseNotificationJob do
     )
     person.create_notification_preference!(enabled: true, missed_dose_enabled: true)
     allow(PushNotificationService).to receive(:send_to_account)
+    allow(Observability::CanonicalLogger).to receive(:write) { |event| events << event.to_h }
   end
 
   it 'sends one private notification when a scheduled dose is overdue' do
     create_schedule
-    allow(Rails.logger).to receive(:info)
 
     travel_to Time.zone.local(2026, 5, 12, 7, 46) do
       described_class.perform_now(household.id, person.id, scheduled_on, scheduled_time)
@@ -38,12 +39,11 @@ RSpec.describe MissedDoseNotificationJob do
       person.account,
       title: 'Medication reminder',
       body: 'A dose may have been missed.',
-      path: "/households/#{household.slug}/dashboard"
+      path: "/households/#{household.slug}/dashboard",
+      notification_kind: :missed_dose
     )
     expect(NotificationEvent.where(event_type: 'missed_dose').count).to eq(1)
-    expect(Rails.logger).to have_received(:info).with(
-      '[MissedDoseNotificationJob] outcome=sent recipient_count=1'
-    )
+    expect(notification_reasons).to include('eligible', 'intent_recorded', 'attempted')
   end
 
   it 'suppresses duplicates for the same scheduled occurrence' do
@@ -54,21 +54,39 @@ RSpec.describe MissedDoseNotificationJob do
     end
 
     expect(PushNotificationService).to have_received(:send_to_account).once
+    expect(notification_reasons).to include('duplicate')
+  end
+
+  it 'keeps one workflow through evaluation, intent, channel attempt, and provider acceptance' do
+    create_schedule
+    allow(PushNotificationService).to receive(:send_to_account).and_call_original
+    allow(WebPush).to receive(:payload_send)
+    context = Observability::CorrelationContext.start.next_attempt
+    Current.observability_context = context
+
+    travel_to Time.zone.local(2026, 5, 12, 7, 46) do
+      described_class.perform_now(household.id, person.id, scheduled_on, scheduled_time)
+    end
+
+    notification_events = events.select { |event| event['event.name'] == 'notification.stage' }
+    expect(notification_events.pluck('medtracker.reason')).to include(
+      'eligible', 'intent_recorded', 'attempted', 'provider_accepted'
+    )
+    expect(notification_events.pluck('medtracker.workflow.id').uniq).to contain_exactly(context.workflow_id)
+  ensure
+    Current.observability_context = nil
   end
 
   it 'does not send when the dose was taken in the dose window' do
     schedule = create_schedule
     create(:medication_take, :for_schedule, schedule: schedule, taken_at: Time.zone.local(2026, 5, 12, 7, 20))
-    allow(Rails.logger).to receive(:info)
 
     travel_to Time.zone.local(2026, 5, 12, 7, 46) do
       described_class.perform_now(household.id, person.id, scheduled_on, scheduled_time)
     end
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
-    expect(Rails.logger).to have_received(:info).with(
-      '[MissedDoseNotificationJob] outcome=skipped reason=no_due_dose'
-    )
+    expect(notification_reasons).to include('no_due_dose')
   end
 
   it 'does not send when missed-dose notifications are disabled' do
@@ -176,7 +194,8 @@ RSpec.describe MissedDoseNotificationJob do
       manager.account,
       title: 'Medication reminder',
       body: "#{target.name} may have missed a dose.",
-      path: "/households/#{household.slug}/dashboard"
+      path: "/households/#{household.slug}/dashboard",
+      notification_kind: :missed_dose
     ).once
   end
 
@@ -201,6 +220,12 @@ RSpec.describe MissedDoseNotificationJob do
       relationship_type: relationship_type,
       granted_by_membership: membership
     )
+  end
+
+  def notification_reasons
+    events.filter_map do |event|
+      event['medtracker.reason'] if event['event.name'] == 'notification.stage'
+    end
   end
 
   def clear_medication_activity(target)

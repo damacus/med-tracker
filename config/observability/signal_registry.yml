@@ -1,0 +1,780 @@
+schema_version: 1
+source_revision: 82970afde0f90c40058f1b8fd01b7e3276f637c5
+
+transports:
+  container_stdout:
+    protocol: newline_delimited_text
+    collector: container_runtime
+    backend: loki
+  otlp_http_protobuf:
+    protocol: otlp_http_protobuf
+    collector: configured_otlp_endpoint
+    backend: tracing_and_metrics_backend
+
+output_producers:
+  - id: thruster
+    source: production image entrypoint
+    formatter: thruster_json_access
+    transport: container_stdout
+    sink: loki
+    privacy_classification: restricted_request_and_network_metadata
+    owner: platform_observability
+    verification: final_production_image_characterization
+  - id: rails_ecs_lograge
+    source: config/environments/production.rb and config/initializers/lograge.rb
+    formatter: ecs_logger_with_lograge_request_json
+    transport: container_stdout
+    sink: loki
+    privacy_classification: restricted_application_and_request_metadata
+    owner: platform_observability
+    verification: test_mode_and_final_production_image_contracts
+  - id: puma
+    source: production Rails server process
+    formatter: puma_console_text
+    transport: container_stdout
+    sink: loki
+    privacy_classification: operational
+    owner: platform_observability
+    verification: final_production_image_characterization
+  - id: solid_queue
+    source: bin/jobs
+    formatter: rails_logger_and_solid_queue_console
+    transport: container_stdout
+    sink: loki
+    privacy_classification: restricted_job_metadata
+    owner: platform_observability
+    verification: test_mode_and_final_production_image_contracts
+  - id: opentelemetry_sdk
+    source: config/initializers/opentelemetry.rb
+    formatter: otlp_proto
+    transport: otlp_http_protobuf
+    sink: tracing_and_metrics_backend
+    privacy_classification: allowlisted_telemetry
+    owner: platform_observability
+    verification: final_production_image_exporter_capture_and_span_privacy_contracts
+
+introduced_signal_paths:
+  - type: canonical_output_boundary
+    source: lib/observability/canonical_logger.rb
+    operational_sink: container_stdout
+    privacy_classification: canonical_allowlisted_event_only
+    failure_policy: exceptions are isolated by the publisher
+    owner: platform_observability
+    verification: publisher_and_final_production_image_contracts
+  - type: context_enricher
+    source: lib/observability/context_enricher.rb
+    operational_sink: canonical_event_context
+    privacy_classification: opaque_identifiers_and_valid_trace_context_only
+    failure_policy: malformed or absent context is omitted
+    owner: platform_observability
+    verification: context_enricher_specs
+  - type: correlation_context
+    source: lib/observability/correlation_context.rb
+    operational_sink: canonical_event_and_job_propagation_context
+    privacy_classification: opaque_bounded_lifetime_identifiers
+    failure_policy: invalid or expired propagation rotates to a new root workflow
+    owner: platform_observability
+    verification: correlation_lifecycle_contract_specs
+  - type: emergency_diagnostic
+    source: lib/observability/emergency_diagnostic.rb
+    operational_sink: process_stderr
+    privacy_classification: fixed_schema_error_type_and_event_name_only
+    failure_policy: bounded non-recursive and fail open
+    owner: platform_observability
+    verification: publisher_and_fail_open_resilience_specs
+  - type: custom_event_safe_mapper
+    source: lib/observability/event_mapper.rb
+    operational_sink: canonical_operational_event_builder
+    privacy_classification: event_specific_allowlists
+    failure_policy: invalid mappings are isolated by the publisher
+    owner: platform_observability
+    verification: event_mapper_and_registry_enforcement_specs
+  - type: custom_event_mapping_support
+    source: lib/observability/event_mapping_support.rb
+    operational_sink: custom_event_safe_mapper
+    privacy_classification: bounded_event_shapes_source_categories_and_counts_only
+    failure_policy: mapping_failures_are_isolated_by_the_publisher
+    owner: platform_observability
+    verification: event_mapper_and_registry_enforcement_specs
+  - type: canonical_event_serializer
+    source: lib/observability/operational_event.rb
+    operational_sink: canonical_logger
+    privacy_classification: flat_ecs_envelope_with_event_specific_allowlists
+    failure_policy: serialization failures are isolated by the publisher
+    owner: platform_observability
+    verification: schema_correlation_and_privacy_contract_specs
+  - type: canonical_event_sanitizer
+    source: lib/observability/operational_event_sanitizer.rb
+    operational_sink: canonical_event_serializer
+    privacy_classification: event_specific_scalar_allowlists_and_valid_opaque_context_only
+    failure_policy: validation_and_serialization_failures_are_isolated_by_the_publisher
+    owner: platform_observability
+    verification: schema_correlation_and_privacy_contract_specs
+  - type: canonical_event_validator
+    source: lib/observability/operational_event_validator.rb
+    operational_sink: canonical_event_serializer
+    privacy_classification: registered_names_outcomes_reasons_datasets_and_opaque_event_ids_only
+    failure_policy: validation_failures_are_isolated_by_the_publisher
+    owner: platform_observability
+    verification: schema_correlation_and_privacy_contract_specs
+  - type: canonical_event_payload_builder
+    source: lib/observability/operational_event_payload_builder.rb
+    operational_sink: canonical_event_serializer
+    privacy_classification: flat_ecs_envelope_with_event_specific_allowlists
+    failure_policy: serialization_failures_are_isolated_by_the_publisher
+    owner: platform_observability
+    verification: schema_correlation_and_privacy_contract_specs
+  - type: publisher_helper
+    source: lib/observability/publisher.rb
+    operational_sink: canonical_logger_with_emergency_fallback
+    privacy_classification: accepts_only_registered_event_shapes
+    failure_policy: fail open with at most one emergency diagnostic
+    owner: platform_observability
+    verification: publisher_fail_open_and_duplicate_ingestion_specs
+  - type: bounded_diagnostic_adapter
+    source: lib/observability/diagnostic_event.rb
+    operational_sink: canonical_operational_event_publisher
+    privacy_classification: categorical_component_reason_severity_and_error_type_only
+    failure_policy: fail open through the publisher and bounded emergency diagnostic
+    owner: platform_observability
+    verification: diagnostic_event_and_final_census_specs
+  - type: deployed_observability_canary
+    source: lib/observability/deployed_canary.rb
+    operational_sink: canonical_application_event_sampled_trace_and_bounded_metric
+    privacy_classification: generated_opaque_context_and_fixed_categorical_canary_kind_only
+    failure_policy: log_and_trace_emission_are_fail_open_and_metric_failure_emits_a_bounded_diagnostic
+    owner: platform_observability
+    verification: deployed_canary_unit_final_image_and_production_acceptance_contracts
+  - type: bounded_metric_label_mapper
+    source: lib/observability/metric_labels.rb
+    operational_sink: opentelemetry_metrics
+    privacy_classification: fixed_low_cardinality_categorical_labels_only
+    failure_policy: invalid_or_unregistered_labels_are_omitted
+    owner: platform_observability
+    verification: operational_event_privacy_contract_spec
+  - type: domain_event_publisher_helper
+    source: lib/observability/domain_event_publisher.rb
+    operational_sink: canonical_publication_and_subscriber_failure_events_before_active_support_dispatch
+    privacy_classification: registered_event_specific_allowlists_and_error_type_only
+    failure_policy: operational_failure_is_fail_open_and_business_subscriber_failure_preserves_propagation
+    owner: platform_observability
+    verification: domain_event_publisher_order_failure_and_propagation_specs
+  - type: medication_transaction_outcome
+    source: lib/observability/medication_transaction_outcome.rb
+    operational_sink: committed_domain_event_or_canonical_rollback_event
+    privacy_classification: source_category_and_opaque_correlation_only
+    failure_policy: operational_emission_is_fail_open_and_domain_subscriber_semantics_are_preserved
+    owner: medication_workflows
+    verification: outer_transaction_medication_outcome_specs
+  - type: notification_stage_adapter
+    source: lib/observability/notification_stage.rb
+    operational_sink: canonical_notification_stage_event
+    privacy_classification: categorical_notification_outcomes_and_bounded_counts_only
+    failure_policy: fail_open_through_the_operational_publisher
+    owner: medication_notifications
+    verification: reminder_low_stock_and_push_stage_specs
+  - type: request_event_adapter
+    source: lib/observability/request_event.rb
+    operational_sink: canonical_logger_through_publisher
+    privacy_classification: route_template_and_bounded_request_metadata_only
+    failure_policy: fail open through the publisher
+    owner: platform_observability
+    verification: request_event_and_final_production_image_contracts
+  - type: job_event_adapter
+    source: lib/observability/job_event.rb
+    operational_sink: canonical_logger_through_publisher
+    privacy_classification: job_class_queue_and_opaque_job_identifier_without_arguments
+    failure_policy: fail open through the publisher
+    owner: platform_observability
+    verification: job_event_and_final_production_image_contracts
+  - type: job_completion_subscriber
+    source: lib/observability/job_completion_subscriber.rb
+    operational_sink: canonical_job_event
+    privacy_classification: excludes_job_arguments_and_exception_text
+    failure_policy: fail open through one bounded emergency diagnostic
+    owner: platform_observability
+    verification: job_completion_subscriber_specs
+  - type: job_retry_subscriber
+    source: lib/observability/job_retry_subscriber.rb
+    operational_sink: canonical_notification_retry_stage_event
+    privacy_classification: job_class_mapping_and_error_type_without_arguments
+    failure_policy: fail_open_through_one_bounded_emergency_diagnostic
+    owner: medication_notifications
+    verification: job_retry_subscriber_specs
+  - type: process_log_formatter
+    source: lib/observability/process_log_formatter.rb
+    operational_sink: container_stdout
+    privacy_classification: fixed_process_metadata_without_source_message_text
+    failure_policy: producer startup fails if its formatter cannot initialize
+    owner: platform_observability
+    verification: process_log_formatter_and_final_image_specs
+  - type: process_dataset_logger
+    source: lib/observability/dataset_logger.rb
+    operational_sink: container_stdout
+    privacy_classification: fixed_process_metadata_without_source_message_text
+    failure_policy: process library controls logger call propagation
+    owner: platform_observability
+    verification: process_logging_configuration_and_final_image_specs
+  - type: request_completion_subscriber
+    source: lib/observability/request_completion_subscriber.rb
+    operational_sink: canonical_request_event
+    privacy_classification: excludes_raw_path_query_parameters_cookies_and_network_metadata
+    failure_policy: fail open through one bounded emergency diagnostic
+    owner: platform_observability
+    verification: request_completion_subscriber_specs
+  - type: request_subscriber_installation
+    source: config/initializers/observability_request_logging.rb
+    operational_sink: process_action_action_controller_notification
+    privacy_classification: no_payload_serialization_at_installation
+    failure_policy: production_only_installation
+    owner: platform_observability
+    verification: final_production_image_request_contract
+  - type: process_and_job_subscriber_installation
+    source: config/initializers/observability_process_logging.rb
+    operational_sink: process_datasets_and_job_completion_notification
+    privacy_classification: installs_only_safe_formatters_and_subscribers
+    failure_policy: production process boot must reject invalid configuration
+    owner: platform_observability
+    verification: process_logging_configuration_and_final_image_contract
+  - type: active_job_correlation_lifecycle
+    source: app/jobs/application_job.rb
+    operational_sink: serialized_opaque_job_metadata_and_current_execution_context
+    privacy_classification: workflow_causation_attempt_and_expiry_identifiers_only
+    failure_policy: job_exception_propagation_is_unchanged
+    owner: platform_observability
+    verification: application_job_observability_specs
+  - type: medication_recording_observability_adapter
+    source: app/services/medication_administration/record_dose_observability.rb
+    operational_sink: canonical_medication_events_and_active_support_domain_publication
+    privacy_classification: categorical_source_role_reason_and_opaque_correlation_only
+    failure_policy: operational_emission_is_fail_open_and_domain_subscriber_semantics_are_preserved
+    owner: medication_workflows
+    verification: medication_outcome_transaction_privacy_and_fail_open_specs
+  - type: reminder_scheduling_stages
+    source: app/jobs/schedule_daily_reminders_job.rb
+    operational_sink: canonical_notification_stage_events
+    privacy_classification: categorical_outcomes_without_preference_person_or_schedule_identifiers
+    failure_policy: operational_emission_is_fail_open_and_scheduling_rescue_semantics_are_unchanged
+    owner: medication_notifications
+    verification: schedule_daily_reminders_observability_specs
+  - type: missed_dose_notification_stages
+    source: app/jobs/missed_dose_notification_job.rb
+    operational_sink: canonical_notification_stage_events
+    privacy_classification: categorical_outcomes_and_bounded_recipient_counts_only
+    failure_policy: operational_emission_is_fail_open
+    owner: medication_notifications
+    verification: missed_dose_notification_observability_specs
+  - type: deployed_observability_canary_job
+    source: app/jobs/observability_canary_job.rb
+    operational_sink: canonical_canary_and_job_completion_events
+    privacy_classification: no_arguments_and_generated_opaque_context_only
+    failure_policy: normal_active_job_failure_and_retry_semantics
+    owner: platform_observability
+    verification: deployed_canary_job_and_production_acceptance_contracts
+  - type: dose_due_notification_stages
+    source: app/jobs/medication_reminder_job.rb
+    operational_sink: canonical_notification_stage_events
+    privacy_classification: categorical_outcomes_without_medication_names_or_message_content
+    failure_policy: operational_emission_is_fail_open
+    owner: medication_notifications
+    verification: medication_reminder_job_specs
+  - type: low_stock_notification_stages
+    source: app/jobs/low_stock_notification_job.rb
+    operational_sink: canonical_notification_stage_events
+    privacy_classification: categorical_outcomes_and_bounded_recipient_counts_only
+    failure_policy: operational_emission_is_fail_open
+    owner: medication_notifications
+    verification: low_stock_notification_job_specs
+  - type: low_stock_event_subscriber_stages
+    source: config/initializers/low_stock_notification_subscriber.rb
+    operational_sink: canonical_enqueue_outcome_and_low_stock_job
+    privacy_classification: canonical_stage_event_excludes_raw_domain_event_payload
+    failure_policy: business_enqueue_failure_is_recorded_and_preserves_propagation
+    owner: medication_notifications
+    verification: low_stock_workflow_correlation_specs
+  - type: push_provider_outcomes
+    source: app/services/push_notification_service.rb
+    operational_sink: canonical_channel_and_provider_stage_events
+    privacy_classification: excludes_endpoints_tokens_titles_bodies_paths_and_provider_error_text
+    failure_policy: per_destination_failures_remain_isolated
+    owner: medication_notifications
+    verification: push_notification_provider_outcome_specs
+
+custom_events:
+  - name: take_attempted.med_tracker
+    publisher: app/services/medication_administration/record_dose.rb#record_dose
+    payload_contract: environment, role, route, medicine_context_class, source_type, error, decision context
+    production_subscribers: []
+    operational_sink: planned_canonical_application_event
+    disposition: migrated
+    correlation_context: none_in_frozen_baseline
+    transaction_timing: before validation and persistence inside the current transaction boundary
+    failure_policy: subscriber failure currently propagates synchronously
+    privacy_classification: restricted_health_context_requires_safe_mapping
+    owner: medication_workflows
+    verification: record_dose_event_and_operational_mapping_specs
+  - name: take_recorded.med_tracker
+    publisher: app/services/medication_administration/record_dose.rb#success
+    payload_contract: environment, role, route, medicine_context_class, source_type, error, decision context
+    production_subscribers: []
+    operational_sink: planned_canonical_application_event
+    disposition: migrated
+    correlation_context: none_in_frozen_baseline
+    transaction_timing: after row persistence but before a possible outer transaction commit
+    failure_policy: subscriber failure currently propagates synchronously and can roll back the caller
+    privacy_classification: restricted_health_context_requires_safe_mapping
+    owner: medication_workflows
+    verification: outer_transaction_medication_outcome_specs
+  - name: take_blocked_by_rules.med_tracker
+    publisher: app/services/medication_administration/record_dose.rb#rule_blocked_failure
+    payload_contract: environment, role, route, medicine_context_class, source_type, stable error, decision context
+    production_subscribers: []
+    operational_sink: planned_canonical_application_event
+    disposition: migrated
+    correlation_context: none_in_frozen_baseline
+    transaction_timing: before persistence inside the current transaction boundary
+    failure_policy: subscriber failure currently propagates synchronously
+    privacy_classification: restricted_health_context_requires_safe_mapping
+    owner: medication_workflows
+    verification: medication_rule_blocking_mapping_specs
+  - name: take_errors.med_tracker
+    publisher: app/services/medication_administration/record_dose.rb#persistence_failure
+    payload_contract: environment, role, route, medicine_context_class, source_type, stable error, decision context
+    production_subscribers: []
+    operational_sink: planned_canonical_application_event
+    disposition: migrated
+    correlation_context: none_in_frozen_baseline
+    transaction_timing: after a failed persistence attempt inside the current transaction boundary
+    failure_policy: subscriber failure currently propagates synchronously
+    privacy_classification: restricted_health_context_requires_safe_mapping
+    owner: medication_workflows
+    verification: medication_persistence_failure_mapping_specs
+  - name: dose_taken.med_tracker
+    publisher: app/services/medication_administration/record_dose.rb#publish_dose_taken
+    payload_contract: raw take, source, person, medication, inventory, quantity, unit, and timestamp fields
+    production_subscribers: []
+    operational_sink: planned_canonical_application_event
+    disposition: migrated
+    correlation_context: none_in_frozen_baseline
+    transaction_timing: after row persistence but before a possible outer transaction commit
+    failure_policy: subscriber failure currently propagates synchronously and can roll back the caller
+    privacy_classification: restricted_health_data_unsafe_for_direct_export
+    owner: medication_workflows
+    verification: dose_taken_safe_mapping_and_outer_transaction_specs
+  - name: low_stock_threshold_reached.med_tracker
+    publisher: app/models/medication_take.rb#publish_low_stock_threshold_reached
+    payload_contract: raw household, medication, location, take, source, supply, threshold, and timestamp fields
+    production_subscribers:
+      - config/initializers/low_stock_notification_subscriber.rb
+    operational_sink: planned_canonical_application_event_and_low_stock_job_stage_events
+    disposition: migrated
+    correlation_context: none_in_frozen_baseline
+    transaction_timing: after the medication take outer transaction commits
+    failure_policy: subscriber enqueue failure currently propagates from the after_commit callback
+    privacy_classification: restricted_health_data_unsafe_for_direct_export
+    owner: medication_notifications
+    verification: low_stock_commit_mapping_and_delivery_specs
+  - name: audit_delivery_backlog.med_tracker
+    publisher: app/services/audit/backlog_monitor.rb#call
+    payload_contract: severity, pending count, oldest age, and warning and critical thresholds
+    production_subscribers: []
+    operational_sink: planned_canonical_application_event
+    disposition: migrated
+    correlation_context: none_in_frozen_baseline
+    transaction_timing: outside a write transaction after aggregate backlog evaluation
+    failure_policy: subscriber failure currently propagates synchronously
+    privacy_classification: operational_aggregate
+    owner: audit_security
+    verification: audit_backlog_safe_mapping_specs
+  - name: rack_attack.throttled
+    publisher: config/initializers/rack_attack.rb#throttled_responder
+    payload_contract: throttle name and raw client IP address
+    production_subscribers: []
+    operational_sink: planned_canonical_application_event
+    disposition: migrated
+    correlation_context: request context is not explicitly propagated
+    transaction_timing: outside a database transaction while constructing the throttled response
+    failure_policy: subscriber failure currently propagates and can replace the 429 response
+    privacy_classification: restricted_network_identifier_unsafe_for_direct_export
+    owner: application_security
+    verification: rate_limit_safe_mapping_and_fail_open_specs
+
+direct_logger_policies:
+  medication_health_migration:
+    disposition: migrated
+    message_contract: current free text becomes a registered medication outcome
+    correlation_context: request or job context is not guaranteed in the frozen baseline
+    transaction_timing: inline at the call site and not commit aware
+    failure_policy: target canonical emission is fail open
+    privacy_classification: restricted_health_context
+    owner: medication_workflows
+    verification: medication_outcome_and_privacy_specs
+  notification_migration:
+    disposition: migrated
+    message_contract: current free text becomes a registered notification stage outcome
+    correlation_context: no cross-execution workflow context in the frozen baseline
+    transaction_timing: inline in the job or provider attempt
+    failure_policy: target canonical emission is fail open
+    privacy_classification: restricted_notification_context
+    owner: medication_notifications
+    verification: reminder_low_stock_and_push_outcome_specs
+  integration_migration:
+    disposition: migrated
+    message_contract: current free text becomes a bounded external adapter outcome
+    correlation_context: request or job context is not guaranteed in the frozen baseline
+    transaction_timing: inline after or during an external adapter call
+    failure_policy: target canonical emission is fail open
+    privacy_classification: restricted_external_and_health_context
+    owner: data_integrations
+    verification: external_adapter_privacy_and_outcome_specs
+  security_migration:
+    disposition: migrated
+    message_contract: current free text becomes a bounded security or audit outcome
+    correlation_context: request context is inconsistent in the frozen baseline
+    transaction_timing: inline at the security decision or audit boundary
+    failure_policy: target canonical emission is fail open
+    privacy_classification: restricted_security_context
+    owner: application_security
+    verification: security_audit_privacy_and_correlation_specs
+  telemetry_migration:
+    disposition: migrated
+    message_contract: current free text becomes a bounded telemetry health outcome
+    correlation_context: process or trace context where valid
+    transaction_timing: inline at process boot or telemetry failure
+    failure_policy: fail open through the bounded non-recursive emergency diagnostic
+    privacy_classification: operational
+    owner: platform_observability
+    verification: telemetry_failure_and_emergency_diagnostic_specs
+  duplicate_event_removal:
+    disposition: removed
+    message_contract: superseded by the registered canonical application event
+    correlation_context: inherited by the replacement event
+    transaction_timing: replacement event declares its own transaction timing
+    failure_policy: replacement canonical emission is fail open
+    privacy_classification: unsafe_free_text_or_duplicate
+    owner: platform_observability
+    verification: census_and_exact_application_emission_specs
+  development_noise_removal:
+    disposition: removed
+    message_contract: development-only fallback noise has no production operational contract
+    correlation_context: none
+    transaction_timing: outside the application transaction contract
+    failure_policy: removal cannot affect delivery behavior
+    privacy_classification: development_only
+    owner: developer_experience
+    verification: final_census_spec
+
+direct_logger_sites:
+  - path: app/components/admin/audit_logs/show_view.rb
+    line: 281
+    level: warn
+    policy: security_migration
+  - path: app/controllers/concerns/take_medication_guardable.rb
+    line: 87
+    level: warn
+    policy: medication_health_migration
+  - path: app/controllers/push_subscriptions_controller.rb
+    line: 48
+    level: error
+    policy: notification_migration
+  - path: app/jobs/low_stock_notification_job.rb
+    line: 73
+    level: info
+    policy: notification_migration
+  - path: app/jobs/missed_dose_notification_job.rb
+    line: 68
+    level: info
+    policy: notification_migration
+  - path: app/jobs/missed_dose_notification_job.rb
+    line: 99
+    level: info
+    policy: notification_migration
+  - path: app/jobs/nhs_dmd_import_job.rb
+    line: 13
+    level: error
+    policy: integration_migration
+  - path: app/jobs/schedule_daily_reminders_job.rb
+    line: 30
+    level: error
+    policy: notification_migration
+  - path: app/jobs/schedule_daily_reminders_job.rb
+    line: 73
+    level: error
+    policy: notification_migration
+  - path: app/mcp/med_tracker_mcp/rack_app.rb
+    line: 48
+    level: warn
+    policy: security_migration
+  - path: app/misc/rodauth_main.rb
+    line: 733
+    level: warn
+    policy: security_migration
+  - path: app/models/concerns/otel_instrumented.rb
+    line: 46
+    level: warn
+    policy: telemetry_migration
+  - path: app/services/ai_medication/audit_logger.rb
+    line: 10
+    level: error
+    policy: security_migration
+  - path: app/services/ai_medication/suggestion_service.rb
+    line: 17
+    level: warn
+    policy: integration_migration
+  - path: app/services/ai_medication/suggestion_service.rb
+    line: 28
+    level: warn
+    policy: integration_migration
+  - path: app/services/auth_token_audit_logger.rb
+    line: 18
+    level: error
+    policy: security_migration
+  - path: app/services/barcode_catalog/resolver.rb
+    line: 28
+    level: error
+    policy: integration_migration
+  - path: app/services/external_lookup/audit_logger.rb
+    line: 15
+    level: error
+    policy: security_migration
+  - path: app/services/medication_administration/record_dose.rb
+    line: 114
+    level: info
+    policy: duplicate_event_removal
+  - path: app/services/medication_finder_search_responder.rb
+    line: 26
+    level: error
+    policy: integration_migration
+  - path: app/services/medication_finder_search_responder.rb
+    line: 115
+    level: error
+    policy: integration_migration
+  - path: app/services/nhs_dmd/search.rb
+    line: 178
+    level: error
+    policy: integration_migration
+  - path: app/services/nhs_dmd/search.rb
+    line: 180
+    level: error
+    policy: integration_migration
+  - path: app/services/nhs_dmd/supplementary_import.rb
+    line: 23
+    level: warn
+    policy: integration_migration
+  - path: app/services/nhs_dmd/supplementary_import.rb
+    line: 41
+    level: warn
+    policy: integration_migration
+  - path: app/services/nhs_dmd/supplementary_import.rb
+    line: 199
+    level: warn
+    policy: integration_migration
+  - path: app/services/nhs_dmd/vmp_resolver.rb
+    line: 19
+    level: error
+    policy: integration_migration
+  - path: app/services/nhs_website_content/medicine_guidance_lookup.rb
+    line: 47
+    level: error
+    policy: integration_migration
+  - path: app/services/nhs_website_content/medicine_guidance_lookup.rb
+    line: 50
+    level: error
+    policy: integration_migration
+  - path: app/services/open_food_facts/barcode_lookup.rb
+    line: 16
+    level: warn
+    policy: integration_migration
+  - path: app/services/open_food_facts/barcode_lookup.rb
+    line: 20
+    level: error
+    policy: integration_migration
+  - path: app/services/open_food_facts/search.rb
+    line: 19
+    level: warn
+    policy: integration_migration
+  - path: app/services/open_food_facts/search.rb
+    line: 23
+    level: error
+    policy: integration_migration
+  - path: app/services/open_products_facts/barcode_lookup.rb
+    line: 16
+    level: warn
+    policy: integration_migration
+  - path: app/services/open_products_facts/barcode_lookup.rb
+    line: 20
+    level: error
+    policy: integration_migration
+  - path: app/services/open_products_facts/barcode_lookup.rb
+    line: 50
+    level: warn
+    policy: integration_migration
+  - path: app/services/push_notification_service.rb
+    line: 37
+    level: error
+    policy: notification_migration
+  - path: app/services/push_notification_service.rb
+    line: 55
+    level: info
+    policy: notification_migration
+  - path: app/services/push_notification_service.rb
+    line: 74
+    level: warn
+    policy: notification_migration
+  - path: app/services/push_notification_service.rb
+    line: 88
+    level: error
+    policy: notification_migration
+  - path: app/views/rodauth/login_passkey_support.rb
+    line: 20
+    level: error
+    policy: security_migration
+  - path: app/views/rodauth/webauthn_setup.rb
+    line: 58
+    level: error
+    policy: security_migration
+  - path: config/initializers/oidc_security.rb
+    line: 76
+    level: warn
+    policy: security_migration
+  - path: config/initializers/oidc_security.rb
+    line: 82
+    level: warn
+    policy: security_migration
+  - path: config/initializers/oidc_security.rb
+    line: 85
+    level: info
+    policy: security_migration
+  - path: config/initializers/opentelemetry.rb
+    line: 198
+    level: info
+    policy: telemetry_migration
+  - path: config/initializers/rack_attack.rb
+    line: 112
+    level: warn
+    policy: duplicate_event_removal
+  - path: lib/mailpit_delivery.rb
+    line: 12
+    level: warn
+    policy: development_noise_removal
+  - path: lib/otel/database_connection_pool_metrics.rb
+    line: 111
+    level: warn
+    policy: telemetry_migration
+  - path: lib/otel/span_sanitizing_processor.rb
+    line: 35
+    level: warn
+    policy: telemetry_migration
+
+workflows:
+  - id: http_request_completion
+    entrypoints: Rails request server through Thruster and Rack
+    decisions: routing, authentication, authorization, rendering, and response status
+    side_effects: response delivery
+    retries: client initiated retries are separate requests
+    existing_signals: Thruster access output, Lograge completion output, Puma output, and Rack trace spans
+    correlation_context: request id and valid trace context within one request
+    privacy_classification: restricted_request_metadata
+    missing_outcomes: one canonical completion event, safe route template, severity, deployment identity, and producer separation
+    owner: platform_observability
+    verification: test_mode_and_final_production_image_request_contracts
+  - id: medication_administration
+    entrypoints: schedule, person medication, API, and offline record-dose operations
+    decisions: household availability, stock source, amount, overlap rules, persistence, outer commit, and rollback
+    side_effects: medication take persistence and stock mutation
+    retries: client UUID idempotency and distinct retry attempts
+    existing_signals: five take and dose events plus one free-text outcome log
+    correlation_context: request or job trace only; no workflow, causation, event, or attempt identifiers
+    privacy_classification: restricted_health_data
+    missing_outcomes: safe attempt, provisional persistence, committed success, rollback, and unavailable-household outcomes
+    owner: medication_workflows
+    verification: medication_schema_transaction_idempotency_and_fail_open_specs
+  - id: scheduled_reminders
+    entrypoints: ScheduleDailyRemindersJob and MissedDoseNotificationJob
+    decisions: enqueue timing, occurrence eligibility, past occurrence, preference suppression, and deduplication
+    side_effects: queued jobs and notification attempts
+    retries: Solid Queue retry and notification deduplication
+    existing_signals: direct free-text job logs and generic job lifecycle output
+    correlation_context: request and job identifiers do not span the whole reminder workflow
+    privacy_classification: restricted_health_and_notification_data
+    missing_outcomes: correlated enqueue, eligibility, suppression, deduplication, retry, and failure outcomes
+    owner: medication_notifications
+    verification: reminder_workflow_stage_and_correlation_specs
+  - id: low_stock_notifications
+    entrypoints: medication take after_commit event, subscriber, and LowStockNotificationJob
+    decisions: threshold crossing, preference eligibility, recipient selection, and delivery
+    side_effects: job enqueue and notification attempts
+    retries: Solid Queue retry and delivery idempotency
+    existing_signals: low-stock event, subscriber enqueue, direct job log, and generic job lifecycle output
+    correlation_context: raw identifiers are passed between stages without an opaque workflow identifier
+    privacy_classification: restricted_health_and_notification_data
+    missing_outcomes: safe evaluation, enqueue, suppression, retry, and delivery outcomes
+    owner: medication_notifications
+    verification: low_stock_workflow_stage_and_idempotency_specs
+  - id: push_delivery
+    entrypoints: PushSubscriptionsController and PushNotificationService
+    decisions: subscription validity, provider response, partial failure, and permanent failure
+    side_effects: external web-push provider attempt and subscription cleanup
+    retries: caller or job retries; provider delivery remains unconfirmed
+    existing_signals: direct free-text logs
+    correlation_context: no stable workflow and attempt identifiers across provider calls
+    privacy_classification: restricted_notification_and_endpoint_data
+    missing_outcomes: attempted, provider accepted, partial failure, permanent failure, and delivery unknown
+    owner: medication_notifications
+    verification: push_provider_outcome_and_privacy_specs
+  - id: rate_limiting
+    entrypoints: Rack Attack throttled responder
+    decisions: matched throttle and retry interval
+    side_effects: HTTP 429 response
+    retries: each new request is a distinct attempt
+    existing_signals: rack_attack.throttled event and duplicate free-text warning
+    correlation_context: request context is not explicitly included and raw IP is published
+    privacy_classification: restricted_security_and_network_data
+    missing_outcomes: safe throttle reason, request correlation, fail-open emission, and duplicate removal
+    owner: application_security
+    verification: rate_limit_mapping_privacy_and_response_preservation_specs
+  - id: audit_backlog_monitoring
+    entrypoints: Audit::BacklogMonitor
+    decisions: healthy, warning, and critical backlog age
+    side_effects: aggregate operational event
+    retries: each monitor execution is a distinct evaluation
+    existing_signals: audit_delivery_backlog.med_tracker with aggregate fields
+    correlation_context: no stable monitor execution event identifier
+    privacy_classification: operational_aggregate
+    missing_outcomes: canonical mapping, execution identifier, and severity contract
+    owner: audit_security
+    verification: audit_backlog_schema_and_safe_mapping_specs
+
+follow_up_changes:
+  - id: standardize-authentication-workflow-observability
+    discovery: Rodauth, passkey, WebAuthn, OIDC, and token-audit decisions exist outside the seven frozen workflow families
+    owner: application_security
+    scope_boundary: this change migrates unsafe direct logs but does not add authentication domain-stage events
+  - id: standardize-medication-catalog-integration-observability
+    discovery: NHS dm+d import, terminology resolution, barcode, food, product, and guidance lookup workflows have adapter decisions outside the frozen families
+    owner: data_integrations
+    scope_boundary: this change migrates unsafe direct logs but does not instrument new import or lookup workflows
+  - id: standardize-ai-medication-workflow-observability
+    discovery: AI suggestion and its audit decisions form a separate health-data workflow
+    owner: medication_intelligence
+    scope_boundary: this change migrates unsafe direct logs but does not add AI workflow-stage events
+  - id: standardize-audit-export-delivery-observability
+    discovery: audit export delivery has decisions beyond the bounded aggregate backlog monitor
+    owner: audit_security
+    scope_boundary: this change covers backlog health only and does not add export-delivery stage events
+  - id: correct-notification-state-transitions
+    discovery: notification intent sent_at and skipped state do not distinguish provider acceptance from unknown device delivery
+    owner: medication_notifications
+    scope_boundary: define and migrate the persisted notification state machine without changing eligibility or recipient selection
+  - id: standardize-notification-occurrence-timezones
+    discovery: reminder occurrence dates and times cross household and process timezone boundaries without one persisted occurrence contract
+    owner: medication_notifications
+    scope_boundary: define occurrence timezone storage and daylight-saving behavior without changing notification channels
+  - id: clarify-notification-preference-ownership
+    discovery: self and managed-recipient preferences contribute to missed-dose eligibility through different ownership paths
+    owner: medication_notifications
+    scope_boundary: define preference precedence and ownership without changing access-grant authorization
+  - id: align-notification-channel-parity
+    discovery: missed-dose eligibility recognizes web and native push while low-stock prechecks recognize web push only
+    owner: medication_notifications
+    scope_boundary: align channel eligibility and fallback behavior without adding email or SMS

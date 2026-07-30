@@ -254,11 +254,9 @@ RSpec.describe 'GET /medication-finder/search' do
           'MedicationReviewTerminology::DEFAULT_PATH',
           Rails.root.join('tmp/missing-rxclass-terminology.json')
         )
-        allow(Rails.logger).to receive(:error) { |message| logged_errors << message }
+        allow(Observability::DiagnosticEvent).to receive(:failure)
         Rails.cache.clear
       end
-
-      let(:logged_errors) { [] }
 
       it 'preserves NHS results and marks review guidance unavailable' do
         expect(NhsDmdBarcode).not_to exist
@@ -284,9 +282,9 @@ RSpec.describe 'GET /medication-finder/search' do
         )
         expect(response.parsed_body['review_guidance']).to eq('status' => 'unavailable')
         expect(response.body).not_to include('Medication search is temporarily unavailable')
-        expect(logged_errors).to eq(['Medication review enrichment failed: Errno::ENOENT'])
-        expect(logged_errors.join).not_to match(
-          /paracetamol|legacy-household|admin|household|user/i
+        expect(Observability::DiagnosticEvent).to have_received(:failure).with(
+          component: :medication_finder,
+          error: instance_of(Errno::ENOENT)
         )
       end
     end
@@ -368,7 +366,7 @@ RSpec.describe 'GET /medication-finder/search' do
         search = instance_double(NhsDmd::Search)
         allow(search).to receive(:call).and_raise(SocketError, 'lookup failed')
         allow(NhsDmd::Search).to receive(:new).and_return(search)
-        allow(Rails.logger).to receive(:error)
+        allow(Observability::DiagnosticEvent).to receive(:failure)
       end
 
       it 'returns 503 instead of raising a server error' do
@@ -376,7 +374,10 @@ RSpec.describe 'GET /medication-finder/search' do
 
         expect(response).to have_http_status(:service_unavailable)
         expect(response.parsed_body['error']).to eq('Medication search is temporarily unavailable.')
-        expect(Rails.logger).to have_received(:error).with(/Medication finder search failed/)
+        expect(Observability::DiagnosticEvent).to have_received(:failure).with(
+          component: :medication_finder,
+          error: instance_of(SocketError)
+        )
       end
     end
 

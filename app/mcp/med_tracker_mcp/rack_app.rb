@@ -45,7 +45,12 @@ module MedTrackerMcp
 
       Audit::Event.record!(**audit_event_attributes(request, context_data, outcome, response))
     rescue StandardError => e
-      Rails.logger.warn("MCP audit event failed: #{e.class}: #{e.message}")
+      Observability::DiagnosticEvent.emit(
+        component: :mcp_audit,
+        reason: :operation_failed,
+        severity: :warn,
+        error: e
+      )
     end
 
     def audit_event_attributes(request, context_data, outcome, response)

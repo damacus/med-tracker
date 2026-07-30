@@ -20,7 +20,12 @@ module NhsDmd
       persist_metadata(metadata)
       expire_barcode_lookup_cache
     rescue Nokogiri::XML::SyntaxError, IOError, SystemCallError => e
-      Rails.logger.warn("Unable to import dm+d supplementary metadata: #{e.message}")
+      Observability::DiagnosticEvent.emit(
+        component: :nhs_dmd_supplementary,
+        reason: :operation_failed,
+        severity: :warn,
+        error: e
+      )
     end
 
     private
@@ -37,9 +42,11 @@ module NhsDmd
       nil
     end
 
-    def warn_about_duplicate_files(pattern, count)
-      Rails.logger.warn(
-        "Unable to import dm+d supplementary metadata: expected one #{pattern} file, found #{count}"
+    def warn_about_duplicate_files(_pattern, _count)
+      Observability::DiagnosticEvent.emit(
+        component: :nhs_dmd_supplementary,
+        reason: :invalid_payload,
+        severity: :warn
       )
     end
 
@@ -196,7 +203,12 @@ module NhsDmd
     def expire_barcode_lookup_cache
       NhsDmd::BarcodeLookup.expire_all
     rescue StandardError, NotImplementedError => e
-      Rails.logger.warn("Unable to expire dm+d barcode lookup cache: #{e.class}: #{e.message}")
+      Observability::DiagnosticEvent.emit(
+        component: :nhs_dmd_supplementary,
+        reason: :operation_failed,
+        severity: :warn,
+        error: e
+      )
     end
   end
 end

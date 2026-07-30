@@ -25,7 +25,12 @@ module BarcodeCatalog
 
       outcome(:resolved, barcode:, match:, source: match[:source])
     rescue StandardError => e
-      Rails.logger.error("BarcodeCatalog::Resolver failed: #{e.class}: #{e.message}")
+      Observability::DiagnosticEvent.emit(
+        component: :barcode_catalog,
+        reason: :operation_failed,
+        severity: :error,
+        error: e
+      )
       outcome(:error, barcode:, error: 'barcode_resolution_failed')
     end
 

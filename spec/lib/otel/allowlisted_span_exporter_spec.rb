@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'opentelemetry/exporter/otlp'
 require 'otel/allowlisted_span_exporter'
 
 RSpec.describe Otel::AllowlistedSpanExporter do
@@ -64,5 +65,106 @@ RSpec.describe Otel::AllowlistedSpanExporter do
       'exception.source' => 'request'
     )
     expect(span.attributes).to include('model.id' => '123')
+  end
+
+  it 'sanitizes the complete exported span surface' do
+    marker = 'Daniel Webb takes Wellman Original at 08:04'
+    exporter.export([complete_span(marker)])
+    exported = fake_exporter.exported.sole
+    expect_complete_surface_sanitized(exported, marker)
+  end
+
+  it 'drops Active Job arguments from the final exporter surface' do
+    job_span = fake_span_class.new(
+      'MissedDoseNotificationJob',
+      {
+        'job.system' => 'active_job',
+        'job.arguments' => '[42,43,"2026-05-12","07:15"]',
+        'messaging.message.body' => 'Daniel may have missed a dose',
+        'error.type' => 'RuntimeError'
+      }
+    )
+
+    exporter.export([job_span])
+
+    expect(fake_exporter.exported.sole.attributes).to eq('error.type' => 'RuntimeError')
+  end
+
+  it 'preserves the OTLP encoding contract for SDK span data' do
+    marker = 'private-exporter-marker'
+    provider, spans = sdk_span_data(marker)
+    otlp_exporter = encoding_exporter(marker)
+
+    result = described_class.new(otlp_exporter).export(spans)
+
+    expect(result).to eq(OpenTelemetry::SDK::Trace::Export::SUCCESS)
+  ensure
+    provider&.shutdown
+  end
+
+  def sdk_span_data(marker)
+    capture_exporter = OpenTelemetry::SDK::Trace::Export::InMemorySpanExporter.new
+    resource = OpenTelemetry::SDK::Resources::Resource.create('unsafe.resource' => marker)
+    provider = OpenTelemetry::SDK::Trace::TracerProvider.new(resource:)
+    provider.add_span_processor(OpenTelemetry::SDK::Trace::Export::SimpleSpanProcessor.new(capture_exporter))
+    provider.tracer('allowlisted-exporter-spec').in_span(
+      'medication_take.characterization', links: [sdk_link(marker)]
+    ) do |span|
+      span.set_attribute('unsafe.attribute', marker)
+      span.add_event(marker, attributes: { 'unsafe.event' => marker })
+      span.status = OpenTelemetry::Trace::Status.error(marker)
+    end
+    [provider, capture_exporter.finished_spans]
+  end
+
+  def sdk_link(marker)
+    context = OpenTelemetry::Trace::SpanContext.new(
+      trace_id: "\x01" * 16,
+      span_id: "\x02" * 8,
+      trace_flags: OpenTelemetry::Trace::TraceFlags::SAMPLED,
+      remote: true
+    )
+    OpenTelemetry::Trace::Link.new(context, 'unsafe.link' => marker)
+  end
+
+  def encoding_exporter(marker)
+    exporter = OpenTelemetry::Exporter::OTLP::Exporter.new(
+      endpoint: 'http://localhost:4318/v1/traces', compression: 'none'
+    )
+    allow(exporter).to receive(:send_bytes) do |bytes, **|
+      expect(bytes).not_to include(marker)
+      OpenTelemetry::SDK::Trace::Export::SUCCESS
+    end
+    exporter
+  end
+
+  def complete_span(marker)
+    event = Struct.new(:name, :attributes).new(marker, { 'unsafe.event' => marker })
+    status = Struct.new(:code, :description).new(:error, marker)
+    link = Struct.new(:span_context, :attributes).new('opaque-context', { 'unsafe.link' => marker })
+    resource = Struct.new(:attributes).new({ 'unsafe.resource' => marker })
+    Struct.new(:name, :attributes, :events, :status, :links, :resource, keyword_init: true).new(
+      name: marker,
+      attributes: { 'model.name' => 'MedicationTake', 'unsafe.attribute' => marker },
+      events: [event],
+      status:,
+      links: [link],
+      resource:
+    )
+  end
+
+  def expect_complete_surface_sanitized(exported, marker)
+    expect(exported.to_json).not_to include(marker)
+    expect_exported_surface_empty(exported)
+  end
+
+  def expect_exported_surface_empty(exported)
+    expect(exported).to have_attributes(
+      name: 'span.filtered',
+      events: be_empty,
+      status: have_attributes(description: nil),
+      links: contain_exactly(have_attributes(attributes: be_empty)),
+      resource: have_attributes(attributes: be_empty)
+    )
   end
 end

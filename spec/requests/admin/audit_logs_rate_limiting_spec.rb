@@ -49,7 +49,7 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
     end
 
     it 'throttles requests exceeding 100 per minute and includes retry metadata' do
-      allow(Rails.logger).to receive(:warn)
+      allow(Observability::DomainEventPublisher).to receive(:instrument).and_call_original
 
       100.times { get admin_audit_logs_path }
       expect(response).to have_http_status(:success)
@@ -59,7 +59,11 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
       expect(response.body).to include('Rate limit exceeded')
       expect(response.headers['Retry-After']).to be_present
       expect(response.headers['Retry-After'].to_i).to be > 0
-      expect(Rails.logger).to have_received(:warn).with(%r{Rate limit exceeded: admin/audit_logs/ip})
+      expect(Observability::DomainEventPublisher).to have_received(:instrument).with(
+        'rack_attack.throttled',
+        throttle: 'admin/audit_logs/ip',
+        ip: kind_of(String)
+      )
 
       get admin_root_path
       expect(response).to have_http_status(:success)

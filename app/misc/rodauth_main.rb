@@ -730,8 +730,10 @@ class RodauthMain < Rodauth::Rails::Auth
 
         return if person.update(professional_title: professional_title)
 
-        Rails.logger.warn(
-          "[OIDC] Professional title sync failed for #{person.id}: #{person.errors.full_messages.join(', ')}"
+        Observability::DiagnosticEvent.emit(
+          component: :oidc,
+          reason: :operation_failed,
+          severity: :warn
         )
       end
 

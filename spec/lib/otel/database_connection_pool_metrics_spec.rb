@@ -97,14 +97,12 @@ RSpec.describe Otel::DatabaseConnectionPoolMetrics do
     expect(meter.counters.fetch('medtracker.db.connection_pool.timeouts').recordings.size).to eq(1)
   end
 
-  it 'skips unavailable pools and rate-limits the diagnostic' do
+  it 'skips unavailable pools, rate-limits the diagnostic, and reports recovery once' do
     allow(pool).to receive(:stat).and_raise(ActiveRecord::ConnectionNotEstablished)
-    allow(Rails.logger).to receive(:warn)
+    allow(Observability::DiagnosticEvent).to receive(:emit)
     metrics.install
-    meter.collect
-
-    expect(meter.gauges.values.map(&:recordings)).to all(eq([]))
-    expect(Rails.logger).to have_received(:warn).with(/database pool metrics unavailable/).once
+    expect_unavailable_pool_diagnostic
+    expect_pool_recovery_diagnostic
   end
 
   it 'skips discarded pools without emitting zero-value observations' do
@@ -134,5 +132,36 @@ RSpec.describe Otel::DatabaseConnectionPoolMetrics do
       'db.pool.name' => connection_pool.db_config.name,
       'db.namespace' => connection_pool.db_config.database
     }]
+  end
+
+  def expect_unavailable_pool_diagnostic
+    2.times { meter.collect }
+    expect_no_pool_recordings
+    expect_pool_failure_diagnostic
+  end
+
+  def expect_no_pool_recordings
+    expect(meter.gauges.values.map(&:recordings)).to all(eq([]))
+  end
+
+  def expect_pool_failure_diagnostic
+    expect(Observability::DiagnosticEvent).to have_received(:emit).with(
+      component: :database_pool,
+      reason: :operation_failed,
+      severity: :warn,
+      error: instance_of(ActiveRecord::ConnectionNotEstablished)
+    ).once
+  end
+
+  def expect_pool_recovery_diagnostic
+    allow(pool).to receive(:stat).and_return(
+      size: 10, connections: 7, busy: 4, dead: 0, idle: 3, waiting: 2, checkout_timeout: 5.0
+    )
+    2.times { meter.collect }
+    expect(Observability::DiagnosticEvent).to have_received(:emit).with(
+      component: :database_pool,
+      reason: :recovered,
+      severity: :info
+    ).once
   end
 end

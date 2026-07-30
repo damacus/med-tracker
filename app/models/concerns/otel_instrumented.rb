@@ -43,7 +43,12 @@ module OtelInstrumented
       span.add_event("#{self.class.name} #{operation}d")
     end
   rescue StandardError => e
-    Rails.logger.warn "[OpenTelemetry] Failed to trace #{operation}: #{e.message}"
+    Observability::DiagnosticEvent.emit(
+      component: :opentelemetry,
+      reason: :operation_failed,
+      severity: :warn,
+      error: e
+    )
   end
 
   # Override in models to provide custom attributes
