@@ -31,7 +31,8 @@ RSpec.describe MedicationReminderJob do
       person.account,
       title: 'Medication Reminder',
       body: '07:15 medications: Vitamin D',
-      path: "/households/#{household.slug}/dashboard"
+      path: "/households/#{household.slug}/dashboard",
+      notification_kind: :dose_due
     )
   end
 
@@ -175,7 +176,8 @@ RSpec.describe MedicationReminderJob do
       person.account,
       title: 'Medication reminder',
       body: 'A dose is due.',
-      path: "/households/#{household.slug}/dashboard"
+      path: "/households/#{household.slug}/dashboard",
+      notification_kind: :dose_due
     )
   end
 

@@ -23,7 +23,7 @@ class MedicationFinderSearchResponder
     successful_response(query: normalized_query, result: result, form: form, strength: strength,
                         permissions: permissions)
   rescue StandardError => e
-    Rails.logger.error("Medication finder search failed: #{e.class}: #{e.message}")
+    Observability::DiagnosticEvent.failure(component: :medication_finder, error: e)
     unavailable_response
   end
 
@@ -112,7 +112,7 @@ class MedicationFinderSearchResponder
     return if @review_enrichment_failure_logged
 
     @review_enrichment_failure_logged = true
-    Rails.logger.error("Medication review enrichment failed: #{error.class}")
+    Observability::DiagnosticEvent.failure(component: :medication_finder, error:)
   end
 
   def existing_medication_for(search_result, barcode)

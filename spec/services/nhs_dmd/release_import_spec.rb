@@ -318,7 +318,7 @@ RSpec.describe NhsDmd::ReleaseImport do
     cache_store = ActiveSupport::Cache::MemoryStore.new
     allow(Rails).to receive(:cache).and_return(cache_store)
     allow(cache_store).to receive(:delete_matched).and_raise(NotImplementedError, 'cache unavailable')
-    allow(Rails.logger).to receive(:warn)
+    allow(Observability::DiagnosticEvent).to receive(:emit)
 
     write_standard_trade_family_release(group_name: 'Acme', family_name: 'Acme Paracetamol')
 
@@ -329,7 +329,7 @@ RSpec.describe NhsDmd::ReleaseImport do
     expect(NhsDmdAmpTradeFamily.find_by!(amp_code: '222')).to have_attributes(
       trade_family: NhsDmdTradeFamily.find_by!(code: '800')
     )
-    expect(Rails.logger).to have_received(:warn).with(/Unable to expire dm\+d barcode lookup cache/)
+    expect_supplementary_failure_diagnostic
   end
 
   it 'keeps supplementary metadata when any expected supplementary file has multiple matches' do
@@ -527,5 +527,14 @@ RSpec.describe NhsDmd::ReleaseImport do
     importer.import(release_dir, progress_callback: ->(payload) { progress_updates << payload })
 
     expect_multi_phase_progress(progress_updates)
+  end
+
+  def expect_supplementary_failure_diagnostic
+    expect(Observability::DiagnosticEvent).to have_received(:emit).with(
+      component: :nhs_dmd_supplementary,
+      reason: :operation_failed,
+      severity: :warn,
+      error: instance_of(NotImplementedError)
+    )
   end
 end

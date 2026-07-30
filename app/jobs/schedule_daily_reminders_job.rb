@@ -17,20 +17,25 @@ class ScheduleDailyRemindersJob < ApplicationJob
 
   def schedule_household_reminders(household)
     scheduled_missed_person_ids = []
+    reminder_preferences(household).find_each do |preference|
+      schedule_preference(preference, scheduled_missed_person_ids)
+    end
+    enqueue_managed_missed_dose_reminders(household, scheduled_missed_person_ids)
+  end
 
-    NotificationPreference.where(household: household, enabled: true)
+  def reminder_preferences(household)
+    NotificationPreference.where(household:, enabled: true)
                           .where('dose_due_enabled = ? OR missed_dose_enabled = ?', true, true)
                           .includes(person: [:account, { schedules: %i[medication medication_takes] }])
-                          .find_each do |pref|
-      next unless pref.person&.account
+  end
 
-      enqueue_reminders_for(pref)
-      scheduled_missed_person_ids << pref.person_id if pref.missed_dose_enabled
-    rescue StandardError => e
-      Rails.logger.error("Failed to schedule reminders for preference #{pref.id}: #{e.class}: #{e.message}")
-    end
+  def schedule_preference(preference, scheduled_missed_person_ids)
+    return unless preference.person&.account
 
-    enqueue_managed_missed_dose_reminders(household, scheduled_missed_person_ids)
+    enqueue_reminders_for(preference)
+    scheduled_missed_person_ids << preference.person_id if preference.missed_dose_enabled
+  rescue StandardError => e
+    emit_job_failure(:unknown, e)
   end
 
   def enqueue_reminders_for(pref)
@@ -44,24 +49,44 @@ class ScheduleDailyRemindersJob < ApplicationJob
       next unless time
 
       send_at = build_send_time(time)
-      next if send_at < Time.current
+      if send_at < Time.current
+        record_past_occurrence(:dose_due)
+        next
+      end
 
-      MedicationReminderJob.set(wait_until: send_at).perform_later(pref.household_id, pref.person_id, period)
+      enqueue_notification_job(
+        MedicationReminderJob.new(pref.household_id, pref.person_id, period),
+        send_at:,
+        kind: :dose_due
+      )
     end
   end
 
   def enqueue_schedule_time_reminders_for(pref)
     configured_times_for(pref.person).each do |time|
-      send_at = build_send_time_from_configured_time(time)
-      next if send_at.blank? || send_at < Time.current
-
-      if pref.dose_due_enabled
-        MedicationReminderJob
-          .set(wait_until: send_at)
-          .perform_later(pref.household_id, pref.person_id, :scheduled, time)
-      end
-      enqueue_missed_dose_check_for(pref.person, send_at, time) if pref.missed_dose_enabled
+      enqueue_configured_time_for(pref, time)
     end
+  end
+
+  def enqueue_configured_time_for(pref, time)
+    send_at = build_send_time_from_configured_time(time)
+    return record_invalid_schedule(:unknown) if send_at.blank?
+    return record_past_occurrence(schedule_kind(pref)) if send_at < Time.current
+
+    enqueue_scheduled_dose_due(pref, send_at, time) if pref.dose_due_enabled
+    enqueue_missed_dose_check_for(pref.person, send_at, time) if pref.missed_dose_enabled
+  end
+
+  def schedule_kind(pref)
+    pref.missed_dose_enabled ? :missed_dose : :dose_due
+  end
+
+  def enqueue_scheduled_dose_due(pref, send_at, time)
+    enqueue_notification_job(
+      MedicationReminderJob.new(pref.household_id, pref.person_id, :scheduled, time),
+      send_at:,
+      kind: :dose_due
+    )
   end
 
   def enqueue_managed_missed_dose_reminders(household, already_scheduled_person_ids)
@@ -70,23 +95,86 @@ class ScheduleDailyRemindersJob < ApplicationJob
 
       enqueue_missed_dose_checks_for(person)
     rescue StandardError => e
-      Rails.logger.error("Failed to schedule managed reminders for person #{person.id}: #{e.class}: #{e.message}")
+      emit_job_failure(:missed_dose, e)
     end
   end
 
   def enqueue_missed_dose_checks_for(person)
     configured_times_for(person).each do |time|
-      send_at = build_send_time_from_configured_time(time)
-      next if send_at.blank? || send_at < Time.current
-
-      enqueue_missed_dose_check_for(person, send_at, time)
+      enqueue_missed_dose_time_for(person, time)
     end
   end
 
+  def enqueue_missed_dose_time_for(person, time)
+    send_at = build_send_time_from_configured_time(time)
+    return record_invalid_schedule(:missed_dose) if send_at.blank?
+    return record_past_occurrence(:missed_dose) if send_at < Time.current
+
+    enqueue_missed_dose_check_for(person, send_at, time)
+  end
+
   def enqueue_missed_dose_check_for(person, send_at, time)
-    MissedDoseNotificationJob
-      .set(wait_until: send_at + MissedDoseNotificationJob::GRACE_PERIOD)
-      .perform_later(person.household_id, person.id, send_at.to_date.iso8601, time)
+    enqueue_notification_job(
+      MissedDoseNotificationJob.new(person.household_id, person.id, send_at.to_date.iso8601, time),
+      send_at: send_at + MissedDoseNotificationJob::GRACE_PERIOD,
+      kind: :missed_dose
+    )
+  end
+
+  def enqueue_notification_job(job, send_at:, kind:)
+    context = Observability::CorrelationContext.start.next_attempt
+    job.observability_context = context
+    with_observability_context(context) do
+      job.enqueue(wait_until: send_at)
+      Observability::NotificationStage.emit(kind:, stage: :reminder_enqueue, reason: :enqueued)
+    end
+  rescue StandardError => e
+    record_enqueue_failure(context, kind, e)
+    raise
+  end
+
+  def record_enqueue_failure(context, kind, error)
+    with_observability_context(context) do
+      Observability::NotificationStage.emit(
+        kind:,
+        stage: :reminder_enqueue,
+        reason: :job_failed,
+        error_type: error.class
+      )
+    end
+  end
+
+  def emit_job_failure(kind, error)
+    Observability::NotificationStage.emit(
+      kind:,
+      stage: :job_execution,
+      reason: :job_failed,
+      error_type: error.class
+    )
+  end
+
+  def record_invalid_schedule(kind)
+    Observability::NotificationStage.emit(
+      kind:,
+      stage: :reminder_enqueue,
+      reason: :invalid_schedule
+    )
+  end
+
+  def record_past_occurrence(kind)
+    Observability::NotificationStage.emit(
+      kind:,
+      stage: :reminder_enqueue,
+      reason: :past_occurrence
+    )
+  end
+
+  def with_observability_context(context)
+    previous = Current.observability_context
+    Current.observability_context = context
+    yield
+  ensure
+    Current.observability_context = previous
   end
 
   def configured_times_for(person)

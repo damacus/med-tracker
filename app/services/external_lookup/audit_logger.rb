@@ -12,7 +12,12 @@ module ExternalLookup
       Audit::VersionEvent.record!(**version_attrs(source:, event:, query:, result_status:, **details))
       # rubocop:enable Rails/SkipsModelValidations, Lint/RedundantCopDisableDirective
     rescue StandardError => e
-      Rails.logger.error("ExternalLookup::AuditLogger failed: #{e.class}: #{e.message}")
+      Observability::DiagnosticEvent.emit(
+        component: :external_lookup,
+        reason: :operation_failed,
+        severity: :error,
+        error: e
+      )
     end
 
     private

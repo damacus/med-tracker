@@ -192,6 +192,7 @@ ENV RAILS_ENV=production \
   BUNDLE_WITHOUT="development:test:tools" \
   BUNDLE_WITH="production" \
   PATH="${PATH}:/home/ruby/.local/bin" \
+  THRUSTER_LOG_REQUESTS=false \
   USER="ruby"
 
 COPY --chown=ruby:ruby --from=assets /usr/local/bundle /usr/local/bundle

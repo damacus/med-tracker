@@ -16,11 +16,11 @@ module OpenFoodFacts
       audit(query, results.any? ? 'success' : 'not_found', results.size)
       results
     rescue Client::ApiError => e
-      Rails.logger.warn("OpenFoodFacts::Search failed: #{e.message}")
+      Observability::DiagnosticEvent.failure(component: :open_food_facts, error: e, severity: :warn)
       audit(query, 'error')
       []
     rescue StandardError => e
-      Rails.logger.error("OpenFoodFacts::Search crashed: #{e.class}: #{e.message}")
+      Observability::DiagnosticEvent.failure(component: :open_food_facts, error: e)
       audit(query, 'error')
       []
     end

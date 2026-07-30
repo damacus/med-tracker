@@ -173,12 +173,13 @@ module NhsDmd
       'success'
     end
 
-    def log_failure(message, exception)
-      if exception
-        Rails.logger.error("NhsDmd::Search crashed: #{exception.class}: #{exception.message}")
-      else
-        Rails.logger.error("NhsDmd::Search failed: #{message}")
-      end
+    def log_failure(_message, exception)
+      Observability::DiagnosticEvent.emit(
+        component: :nhs_dmd_search,
+        reason: :operation_failed,
+        severity: :error,
+        error: exception
+      )
     end
 
     def build_result(item)

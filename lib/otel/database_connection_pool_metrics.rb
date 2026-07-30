@@ -65,12 +65,11 @@ module Otel
     end
 
     def collect_pool_metrics
-      connection_pools.count do |connection_pool|
-        next false if discarded?(connection_pool)
-
+      results = connection_pools.reject { |connection_pool| discarded?(connection_pool) }.map do |connection_pool|
         record_pool_metrics(connection_pool)
-        true
       end
+      log_collection_recovery if results.all?
+      results.count(true)
     rescue StandardError => e
       log_collection_failure(e)
       0
@@ -91,24 +90,42 @@ module Otel
         value = pool_stat(connection_pool, stat_key)
         gauges.fetch(stat_key).record(value, attributes:) unless value.nil?
       end
+      true
     rescue StandardError => e
       log_collection_failure(e)
-      nil
+      false
     end
 
     def pool_stat(connection_pool, stat_key)
       connection_pool.stat.fetch(stat_key)
-    rescue StandardError => e
-      log_collection_failure(e)
-      nil
     end
 
     def log_collection_failure(error)
       @error_log_mutex.synchronize do
+        @collection_failing = true
         return if @last_error_logged_at && monotonic_time - @last_error_logged_at < 60
 
         @last_error_logged_at = monotonic_time
-        Rails.logger.warn("OpenTelemetry database pool metrics unavailable: #{error.class}: #{error.message}")
+        Observability::DiagnosticEvent.emit(
+          component: :database_pool,
+          reason: :operation_failed,
+          severity: :warn,
+          error:
+        )
+      end
+    end
+
+    def log_collection_recovery
+      @error_log_mutex.synchronize do
+        return unless @collection_failing
+
+        @collection_failing = false
+        @last_error_logged_at = nil
+        Observability::DiagnosticEvent.emit(
+          component: :database_pool,
+          reason: :recovered,
+          severity: :info
+        )
       end
     end
 

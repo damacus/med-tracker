@@ -7,7 +7,7 @@ class MissedDoseNotificationJob < ApplicationJob
 
   def perform(household_id, person_id, scheduled_on, scheduled_time)
     household = Household.operational.find_by(id: household_id)
-    return log_skip('household_unavailable') unless household
+    return record_outcome(:household_unavailable, stage: :missed_dose_evaluation) unless household
 
     TenantContext.with(account: nil, household: household) do
       deliver_missed_dose_notification(household, person_id, scheduled_on, scheduled_time)
@@ -18,16 +18,22 @@ class MissedDoseNotificationJob < ApplicationJob
 
   def deliver_missed_dose_notification(household, person_id, scheduled_on, scheduled_time)
     person = Person.find_by(id: person_id, household: household)
-    return log_skip('person_unavailable') unless person
+    return record_outcome(:person_unavailable, stage: :missed_dose_evaluation) unless person
 
     recipients = MissedDoseNotificationRecipientsQuery.new(person: person).call
-    return log_skip('no_recipients') if recipients.empty?
+    return record_outcome(:no_recipients, stage: :missed_dose_evaluation) if recipients.empty?
 
     scheduled_at = parsed_scheduled_at(scheduled_on, scheduled_time)
-    return log_skip('no_due_dose') unless missed_dose_due?(person, scheduled_time, scheduled_at)
+    unless missed_dose_due?(person, scheduled_time, scheduled_at)
+      return record_outcome(:no_due_dose, stage: :missed_dose_evaluation)
+    end
+
+    record_outcome(:eligible, stage: :missed_dose_evaluation, recipient_count: recipients.size)
 
     event = record_missed_dose_event(household, person, scheduled_on, scheduled_time)
-    return log_skip('duplicate') unless event
+    return record_outcome(:duplicate, stage: :notification_intent) unless event
+
+    record_outcome(:intent_recorded, stage: :notification_intent, recipient_count: recipients.size)
 
     deliver_or_record_skip(event, household, person, recipients)
   end
@@ -57,17 +63,16 @@ class MissedDoseNotificationJob < ApplicationJob
     return record_skip(event, 'no_active_push_subscriptions') if active_recipients.empty?
 
     active_recipients.each do |recipient|
+      record_outcome(:attempted, stage: :recipient_attempt)
       PushNotificationService.send_to_account(
         recipient.account,
         title: 'Medication reminder',
         body: notification_body(person, recipient),
-        path: "/households/#{household.slug}/dashboard"
+        path: "/households/#{household.slug}/dashboard",
+        notification_kind: :missed_dose
       )
     end
     event.update!(sent_at: Time.current)
-    Rails.logger.info(
-      "[MissedDoseNotificationJob] outcome=sent recipient_count=#{active_recipients.size}"
-    )
   end
 
   def active_push_recipient?(recipient)
@@ -92,10 +97,15 @@ class MissedDoseNotificationJob < ApplicationJob
 
   def record_skip(event, reason)
     event.update!(skipped_reason: reason)
-    log_skip(reason)
+    record_outcome(reason.to_sym, stage: :notification_intent)
   end
 
-  def log_skip(reason)
-    Rails.logger.info("[MissedDoseNotificationJob] outcome=skipped reason=#{reason}")
+  def record_outcome(reason, stage:, recipient_count: nil)
+    Observability::NotificationStage.emit(
+      kind: :missed_dose,
+      stage:,
+      reason:,
+      recipient_count:
+    )
   end
 end

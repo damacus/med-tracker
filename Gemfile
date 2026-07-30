@@ -84,7 +84,6 @@ end
 group :production do
   # Structured logging for production
   gem 'ecs-logging'
-  gem 'lograge'
 
   # Use the database-backed adapters for Rails.cache, Active Job, and Action Cable
   gem 'solid_cable'

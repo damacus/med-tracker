@@ -166,13 +166,18 @@ RSpec.describe 'Push subscriptions' do
 
     it 'returns a JSON error when the test notification cannot be sent' do
       allow(PushNotificationService).to receive(:send_to_account).and_raise(SocketError, 'lookup failed')
-      allow(Rails.logger).to receive(:error)
+      allow(Observability::DiagnosticEvent).to receive(:emit)
 
       post test_push_subscription_path, as: :json
 
       expect(response).to have_http_status(:service_unavailable)
       expect(response.parsed_body['error']).to eq('Unable to send test notification.')
-      expect(Rails.logger).to have_received(:error).with(/Test push notification failed/)
+      expect(Observability::DiagnosticEvent).to have_received(:emit).with(
+        component: :test_push,
+        reason: :operation_failed,
+        severity: :error,
+        error: instance_of(SocketError)
+      )
     end
   end
 end

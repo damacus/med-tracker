@@ -45,7 +45,12 @@ class PushSubscriptionsController < ApplicationController
     )
     head :no_content
   rescue StandardError => e
-    Rails.logger.error("Test push notification failed for account #{current_account.id}: #{e.class}: #{e.message}")
+    Observability::DiagnosticEvent.emit(
+      component: :test_push,
+      reason: :operation_failed,
+      severity: :error,
+      error: e
+    )
     render json: { error: 'Unable to send test notification.' }, status: :service_unavailable
   end
 

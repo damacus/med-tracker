@@ -40,17 +40,22 @@ RSpec.describe MailpitDelivery do
     expect(smtp_client).to have_received(:deliver!).with(mail)
   end
 
-  it 'logs a warning and suppresses SMTP connection failures' do
+  it 'emits a bounded warning and suppresses SMTP connection failures' do
     allow(Mail::SMTP).to receive(:new).with(settings).and_raise(
       SocketError,
       'getaddrinfo: nodename nor servname provided'
     )
-    allow(Rails.logger).to receive(:warn)
+    allow(Observability::DiagnosticEvent).to receive(:emit)
     ActionMailer::Base.delivery_method = :mailpit
 
     expect { delivery.deliver!(mail) }.not_to raise_error
 
-    expect(Rails.logger).to have_received(:warn).with(/\[MailpitDelivery\] SMTP delivery to Mailpit failed:/)
+    expect(Observability::DiagnosticEvent).to have_received(:emit).with(
+      component: :mailpit,
+      reason: :operation_failed,
+      severity: :warn,
+      error: instance_of(SocketError)
+    )
     expect(ActionMailer::Base.deliveries).to include(mail)
   end
 end

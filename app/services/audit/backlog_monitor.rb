@@ -16,7 +16,7 @@ module Audit
       oldest_age_seconds = ages.max.to_i
       result = Result.new(severity: severity(oldest_age_seconds), pending_count: ages.size,
                           oldest_age_seconds: oldest_age_seconds)
-      ActiveSupport::Notifications.instrument('audit_delivery_backlog.med_tracker', notification_payload(result))
+      Observability::DomainEventPublisher.instrument('audit_delivery_backlog.med_tracker', notification_payload(result))
       result
     end
 

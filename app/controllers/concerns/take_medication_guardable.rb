@@ -74,17 +74,12 @@ module TakeMedicationGuardable
     taken_at
   end
 
-  def log_invalid_take_attempt(source:, amount:, metadata: {})
-    payload = {
-      event: 'invalid_take_medication',
-      controller: self.class.name,
-      source: source,
-      person_id: @person.id,
-      attempted_dose_amount: amount&.to_s
-    }.merge(metadata)
-
-    filter = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters + %i[person_id attempted_dose_amount medication_id])
-    Rails.logger.warn(filter.filter(payload).to_json)
+  def log_invalid_take_attempt(**)
+    Observability::DiagnosticEvent.emit(
+      component: :medication_guard,
+      reason: :invalid_payload,
+      severity: :warn
+    )
   end
 
   def requested_taken_from_medication_id

@@ -6,6 +6,11 @@ RSpec.describe PushNotificationService do
   fixtures :accounts
 
   let(:account) { accounts(:admin) }
+  let(:events) { [] }
+
+  before do
+    allow(Observability::CanonicalLogger).to receive(:write) { |event| events << event.to_h }
+  end
 
   describe '.send_to_account' do
     let!(:first_subscription) do
@@ -32,14 +37,13 @@ RSpec.describe PushNotificationService do
         calls += 1
         raise SocketError, 'lookup failed' if calls == 1
       end
-      allow(Rails.logger).to receive(:error)
 
       expect do
         described_class.send_to_account(account, title: 'Medication Reminder', body: 'Take aspirin')
       end.not_to raise_error
 
       expect(WebPush).to have_received(:payload_send).twice
-      expect(Rails.logger).to have_received(:error).with(/Push notification delivery failed/)
+      expect(notification_reasons).to include('provider_accepted', 'delivery_unknown', 'partial_failure')
     end
 
     it 'skips unsafe legacy web push endpoints before delivery' do
@@ -50,12 +54,11 @@ RSpec.describe PushNotificationService do
         auth: 'legacy_auth_secret'
       ).save!(validate: false)
       allow(WebPush).to receive(:payload_send)
-      allow(Rails.logger).to receive(:warn)
 
       described_class.send_to_account(account, title: 'Medication Reminder', body: 'Take aspirin')
 
       expect(WebPush).to have_received(:payload_send).twice
-      expect(Rails.logger).to have_received(:warn).with(/Skipped unsafe web push endpoint/)
+      expect(notification_reasons).to include('permanent_failure')
     end
 
     it 'removes expired subscriptions and continues with the rest' do
@@ -97,15 +100,11 @@ RSpec.describe PushNotificationService do
     it 'does not write notification title or body content to native push logs' do
       create_native_device_token
       allow(WebPush).to receive(:payload_send)
-      allow(Rails.logger).to receive(:info)
 
       described_class.send_to_account(account, title: 'Medication Reminder', body: 'Take aspirin at 07:15')
 
-      expect(Rails.logger).to have_received(:info) do |message|
-        expect(message).to include('Native push skipped')
-        expect(message).not_to include('Medication Reminder')
-        expect(message).not_to include('Take aspirin')
-      end
+      expect(events.to_json).not_to include('Medication Reminder', 'Take aspirin', '07:15')
+      expect(notification_reasons).to include('delivery_unknown')
     end
 
     it 'delivers native notifications through the platform adapters' do
@@ -119,6 +118,7 @@ RSpec.describe PushNotificationService do
 
       expect_native_delivery(apns_client, ios)
       expect_native_delivery(fcm_client, android)
+      expect(notification_reasons.count('provider_accepted')).to eq(4)
     end
 
     it 'removes native device tokens rejected by providers as unregistered' do
@@ -153,5 +153,11 @@ RSpec.describe PushNotificationService do
       body: 'Take aspirin',
       path: '/today'
     )
+  end
+
+  def notification_reasons
+    events.filter_map do |event|
+      event['medtracker.reason'] if event['event.name'] == 'notification.stage'
+    end
   end
 end

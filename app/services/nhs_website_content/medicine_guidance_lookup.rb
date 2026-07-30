@@ -3,7 +3,7 @@
 require 'uri'
 
 module NhsWebsiteContent
-  class MedicineGuidanceLookup # rubocop:disable Metrics/ClassLength
+  class MedicineGuidanceLookup
     Section = Data.define(:title, :text)
     Result = Data.define(:title, :description, :webpage, :last_reviewed_on, :sections, :author_name, :author_url,
                          :author_logo)
@@ -43,11 +43,8 @@ module NhsWebsiteContent
       return audit_and_nil(name, 'not_found') unless page
 
       fetch_guidance_with_audit(name, page)
-    rescue Client::ApiError => e
-      Rails.logger.error("NhsWebsiteContent::MedicineGuidanceLookup failed: #{e.message}")
-      audit_and_nil(name, 'error')
-    rescue StandardError => e
-      Rails.logger.error("NhsWebsiteContent::MedicineGuidanceLookup crashed: #{e.class}: #{e.message}")
+    rescue Client::ApiError, StandardError => e
+      Observability::DiagnosticEvent.failure(component: :nhs_website_content, error: e)
       audit_and_nil(name, 'error')
     end
 

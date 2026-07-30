@@ -76,6 +76,23 @@ RSpec.describe OpenTelemetryConfig do
 
       expect(result).to be_sampled
     end
+
+    it 'always retains the deployed observability canary' do
+      sampler = described_class.trace_sampler(
+        environment: 'production',
+        env: { 'OTEL_TRACES_SAMPLER' => 'always_off' }
+      )
+      result = sampler.should_sample?(
+        trace_id: '0af7651916cd43dd8448eb211c80319c',
+        parent_context: OpenTelemetry::Context.empty,
+        links: [],
+        name: 'observability.canary',
+        kind: :internal,
+        attributes: {}
+      )
+
+      expect(result).to be_sampled
+    end
   end
 
   describe '.apply_trace_sampler' do
@@ -97,6 +114,38 @@ RSpec.describe OpenTelemetryConfig do
       described_class.apply_trace_sampler(configurator_class.new(provider), sampler)
 
       expect(provider.sampler).to eq(sampler)
+    end
+  end
+
+  describe '.batch_span_processor' do
+    it 'builds a processor using the locked SDK exporter contract' do
+      exporter = OpenTelemetry::SDK::Trace::Export::InMemorySpanExporter.new
+
+      processor = described_class.batch_span_processor(exporter)
+
+      expect(processor).to be_a(OpenTelemetry::SDK::Trace::Export::BatchSpanProcessor)
+      processor.shutdown
+    end
+  end
+
+  describe '.otlp_trace_endpoint' do
+    it 'appends the trace signal path to a generic OTLP endpoint' do
+      env = { 'OTEL_EXPORTER_OTLP_ENDPOINT' => 'http://collector:4318/base' }
+
+      endpoint = described_class.otlp_trace_endpoint(env:)
+
+      expect(endpoint).to eq('http://collector:4318/base/v1/traces')
+    end
+
+    it 'uses a signal-specific endpoint without changing its path' do
+      env = {
+        'OTEL_EXPORTER_OTLP_ENDPOINT' => 'http://collector:4318',
+        'OTEL_EXPORTER_OTLP_TRACES_ENDPOINT' => 'http://traces:4318/custom'
+      }
+
+      endpoint = described_class.otlp_trace_endpoint(env:)
+
+      expect(endpoint).to eq('http://traces:4318/custom')
     end
   end
 end

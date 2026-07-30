@@ -17,7 +17,12 @@ module Views
           render_passkey_login_form(credential_options)
         end
       rescue StandardError => e
-        Rails.logger.error("Failed to render passkey section: #{e.message}")
+        Observability::DiagnosticEvent.emit(
+          component: :passkey_renderer,
+          reason: :operation_failed,
+          severity: :error,
+          error: e
+        )
         nil
       end
 

@@ -104,10 +104,15 @@ RSpec.describe OtelInstrumented do
     it 'logs a warning and does not re-raise when the tracer fails' do
       take = build(:medication_take, :for_schedule, schedule: schedule)
       allow(MedicationTake.otel_tracer).to receive(:in_span).and_raise(StandardError, 'tracer unavailable')
-      allow(Rails.logger).to receive(:warn)
+      allow(Observability::DiagnosticEvent).to receive(:emit)
 
       expect { take.save! }.not_to raise_error
-      expect(Rails.logger).to have_received(:warn).with(/OpenTelemetry.*tracer unavailable/)
+      expect(Observability::DiagnosticEvent).to have_received(:emit).with(
+        component: :opentelemetry,
+        reason: :operation_failed,
+        severity: :warn,
+        error: instance_of(StandardError)
+      )
     end
   end
 end

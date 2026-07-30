@@ -1,0 +1,96 @@
+schema_version: 1
+
+loki:
+  datasource: Loki
+  stream_selector: '{namespace="home", app=~"med-tracker(-canary)?"}'
+  queries:
+    by_event_id:
+      window: 15m
+      logql: >-
+        {namespace="home", app=~"med-tracker(-canary)?"}
+        | json | line_format "{{.message}}" | json
+        | event_id="$EVENT_ID"
+    by_workflow_id:
+      window: 15m
+      logql: >-
+        {namespace="home", app=~"med-tracker(-canary)?"}
+        | json | line_format "{{.message}}" | json
+        | medtracker_workflow_id="$WORKFLOW_ID"
+    by_request_id:
+      window: 15m
+      logql: >-
+        {namespace="home", app=~"med-tracker(-canary)?"}
+        | json | line_format "{{.message}}" | json
+        | medtracker_request_id="$REQUEST_ID"
+    by_job_id:
+      window: 15m
+      logql: >-
+        {namespace="home", app=~"med-tracker(-canary)?"}
+        | json | line_format "{{.message}}" | json
+        | medtracker_job_id="$JOB_ID"
+    by_trace_id:
+      window: 15m
+      logql: >-
+        {namespace="home", app=~"med-tracker(-canary)?"}
+        | json | line_format "{{.message}}" | json
+        | trace_id="$TRACE_ID"
+    deployment_identity:
+      window: 15m
+      logql: >-
+        {namespace="home", app=~"med-tracker(-canary)?"}
+        | json | line_format "{{.message}}" | json
+        | event_name="observability.canary"
+        | service_version="$APP_VERSION"
+        | kubernetes_container_image_id=~".*$IMAGE_DIGEST.*"
+    ingestion_duplicates:
+      window: 15m
+      logql: >-
+        sum by (event_id) (
+          count_over_time(
+            {namespace="home", app=~"med-tracker(-canary)?"}
+            | json | line_format "{{.message}}" | json
+            | event_name="observability.canary" [15m]
+          )
+        ) > 1
+    outer_parser_failures:
+      window: 15m
+      logql: >-
+        {namespace="home", app=~"med-tracker(-canary)?"}
+        | json | __error__ != ""
+    canonical_parser_failures:
+      window: 15m
+      logql: >-
+        {namespace="home", app=~"med-tracker(-canary)?"}
+        |= "\"event.name\""
+        | json | line_format "{{.message}}" | json
+        | __error__ != ""
+    missing_severity:
+      window: 15m
+      logql: >-
+        {namespace="home", app=~"med-tracker(-canary)?"}
+        |= "\"event.name\""
+        | json | line_format "{{.message}}" | json
+        | log_level=""
+    producer_scoped_counts:
+      window: 15m
+      logql: >-
+        sum by (event_dataset) (
+          count_over_time(
+            {namespace="home", app=~"med-tracker(-canary)?"}
+            |= "\"event.dataset\""
+            | json | line_format "{{.message}}" | json [15m]
+          )
+        )
+
+tempo:
+  required: true
+  datasource: Tempo
+  queries:
+    by_trace_id: '{ trace:id = "$TRACE_ID" }'
+    canary_trace: '{ resource.service.name = "medtracker" && name = "observability.canary" }'
+
+prometheus:
+  datasource: Prometheus
+  window: 15m
+  canary_metric: >-
+    sum(increase(medtracker_observability_canary_total{canary_kind=~"application_event|job"}[15m]))

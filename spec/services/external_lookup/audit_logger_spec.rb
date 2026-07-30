@@ -107,13 +107,18 @@ RSpec.describe ExternalLookup::AuditLogger do
 
     it 'silently rescues errors and logs them' do
       allow(PaperTrail::Version).to receive(:insert).and_raise(ActiveRecord::StatementInvalid)
-      allow(Rails.logger).to receive(:error)
+      allow(Observability::DiagnosticEvent).to receive(:emit)
 
       expect do
         audit_logger.record(source: 'nhs_dmd', event: 'search', query: 'test', result_status: 'success')
       end.not_to raise_error
 
-      expect(Rails.logger).to have_received(:error).with(/ExternalLookup::AuditLogger failed/)
+      expect(Observability::DiagnosticEvent).to have_received(:emit).with(
+        component: :external_lookup,
+        reason: :operation_failed,
+        severity: :error,
+        error: instance_of(ActiveRecord::StatementInvalid)
+      )
     end
   end
 end

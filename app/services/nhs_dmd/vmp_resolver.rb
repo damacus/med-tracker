@@ -16,7 +16,12 @@ module NhsDmd
       results = @client.search(de_branded)
       results.find { |item| item[:concept_class] == 'VMP' }
     rescue Client::ApiError, StandardError => e
-      Rails.logger.error("NhsDmd::VmpResolver failed: #{e.class}: #{e.message}")
+      Observability::DiagnosticEvent.emit(
+        component: :nhs_dmd_vmp,
+        reason: :operation_failed,
+        severity: :error,
+        error: e
+      )
       nil
     end
 

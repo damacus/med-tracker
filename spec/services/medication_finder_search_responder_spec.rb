@@ -144,16 +144,17 @@ RSpec.describe MedicationFinderSearchResponder do
           make_search_result(code: 'DMD456', display: 'Second result')
         ]
         allow(search).to receive(:call).and_return(successful_nhs_result(results: search_results))
-        allow(Rails.logger).to receive(:error)
+        allow(Observability::DiagnosticEvent).to receive(:failure)
 
         result = mixed_responder.call(query: 'medicine')
 
         expect(result.status).to eq(:ok)
         expect(result.body[:results]).to match_array(mixed_result_matchers)
         expect(result.body[:review_guidance]).to eq(status: 'unavailable')
-        expect(Rails.logger).to have_received(:error)
-          .with('Medication review enrichment failed: Errno::ENOENT')
-          .once
+        expect(Observability::DiagnosticEvent).to have_received(:failure).with(
+          component: :medication_finder,
+          error: instance_of(Errno::ENOENT)
+        ).once
       end
 
       it 'uses resolved_query from the search result when present' do
@@ -223,12 +224,15 @@ RSpec.describe MedicationFinderSearchResponder do
     context 'when search raises an error' do
       it 'returns service_unavailable and logs the error' do
         allow(search).to receive(:call).and_raise(StandardError, 'connection refused')
-        allow(Rails.logger).to receive(:error)
+        allow(Observability::DiagnosticEvent).to receive(:failure)
 
         result = responder.call(query: 'paracetamol')
 
         expect(result.status).to eq(:service_unavailable)
-        expect(Rails.logger).to have_received(:error).with(/Medication finder search failed/)
+        expect(Observability::DiagnosticEvent).to have_received(:failure).with(
+          component: :medication_finder,
+          error: instance_of(StandardError)
+        )
       end
     end
 

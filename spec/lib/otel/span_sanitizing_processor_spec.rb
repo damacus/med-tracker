@@ -60,6 +60,20 @@ RSpec.describe Otel::SpanSanitizingProcessor do
 
       expect(span.attributes['client.address']).to eq('[IP REDACTED]')
     end
+
+    it 'emits a bounded warning without interrupting the traced operation' do
+      span = fake_span_class.new({ 'user.email' => 'john@example.com' })
+      allow(span).to receive(:set_attribute).and_raise(RuntimeError, 'private source data')
+      allow(Observability::DiagnosticEvent).to receive(:emit)
+
+      expect { processor.on_start(span, OpenTelemetry::Context.current) }.not_to raise_error
+      expect(Observability::DiagnosticEvent).to have_received(:emit).with(
+        component: :span_sanitizer,
+        reason: :operation_failed,
+        severity: :warn,
+        error: instance_of(RuntimeError)
+      )
+    end
   end
 
   describe '#on_finish' do

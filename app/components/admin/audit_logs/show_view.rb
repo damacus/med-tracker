@@ -278,7 +278,12 @@ module Components
         rescue StandardError => e
           # If YAML parsing fails, return original string
           # This can happen with corrupted data or schema changes
-          Rails.logger.warn("Failed to parse audit log object: #{e.message}")
+          Observability::DiagnosticEvent.emit(
+            component: :audit_log,
+            reason: :invalid_payload,
+            severity: :warn,
+            error: e
+          )
           object_yaml
         end
 

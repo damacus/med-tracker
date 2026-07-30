@@ -10,7 +10,12 @@ class NhsDmdImportJob < ApplicationJob
     fail_import(import_run, e)
   rescue StandardError => e
     fail_import(import_run, e)
-    Rails.logger.error("NhsDmdImportJob failed: #{e.class}: #{e.message}")
+    Observability::DiagnosticEvent.emit(
+      component: :nhs_dmd_import,
+      reason: :operation_failed,
+      severity: :error,
+      error: e
+    )
   end
 
   private

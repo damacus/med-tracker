@@ -61,8 +61,8 @@ RSpec.describe 'Zitadel OIDC Enhancements' do # rubocop:disable RSpec/DescribeCl
     end
 
     it 'logs a warning when professional title sync fails instead of raising' do
-      expect(rodauth_source).to include('Rails.logger.warn')
-      expect(rodauth_source).to include('Professional title sync failed')
+      expect(rodauth_source).to include('Observability::DiagnosticEvent.emit')
+      expect(rodauth_source).to include('component: :oidc')
     end
 
     it 'uses find_by to avoid raising on missing account' do

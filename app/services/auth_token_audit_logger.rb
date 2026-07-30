@@ -15,7 +15,12 @@ class AuthTokenAuditLogger
       end
     end
   rescue StandardError => e
-    Rails.logger.error("AuthTokenAuditLogger failed: #{e.class}: #{e.message}")
+    Observability::DiagnosticEvent.emit(
+      component: :auth_token_audit,
+      reason: :operation_failed,
+      severity: :error,
+      error: e
+    )
   end
 
   private

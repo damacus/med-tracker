@@ -15,6 +15,8 @@
 #   :invalid_amount, :selection_required, :invalid_source, :create_failed)
 module MedicationAdministration
   class RecordDose
+    include RecordDoseObservability
+
     Result = Data.define(:success, :take, :error)
     PreparedTake = Data.define(
       :source, :amount, :unit, :medication, :taken_at, :client_uuid, :error, :decision_context
@@ -38,21 +40,26 @@ module MedicationAdministration
     end
 
     def call(source:, amount_override:, taken_from_medication_id:, user:, **options)
-      Households::LifecycleCutoffLock.with(household_id: source.household_id) do
-        source = freshly_loaded_operational_source(source)
-        return failure(:household_unavailable) unless source
-
-        record_dose_with_savepoint(
-          source: source,
-          amount_override: amount_override,
-          taken_from_medication_id: taken_from_medication_id,
-          user: user,
-          options: options
-        )
+      with_observability_attempt do
+        publish_attempt(source:, user:, options:)
+        record_with_household_lock(source:, amount_override:, taken_from_medication_id:, user:, options:)
       end
+    rescue StandardError => e
+      publish_unexpected_failure(source:, error: e)
+      raise
     end
 
     private
+
+    def record_with_household_lock(source:, **arguments)
+      Households::LifecycleCutoffLock.with(household_id: source.household_id) do
+        source_type = source_category(source)
+        source = freshly_loaded_operational_source(source)
+        return unavailable_household_failure(source_type:) unless source
+
+        record_dose_with_savepoint(source:, **arguments)
+      end
+    end
 
     def record_dose_with_savepoint(**arguments)
       return record_dose(**arguments) unless ActiveRecord::Base.connection.transaction_open?
@@ -61,7 +68,6 @@ module MedicationAdministration
     end
 
     def record_dose(source:, amount_override:, taken_from_medication_id:, user:, options:)
-      publish_take_metric('take_attempted.med_tracker', source:, user:, options:)
       prepared_take = prepare_take(
         source: source,
         amount_override: amount_override,
@@ -90,28 +96,22 @@ module MedicationAdministration
 
     def rule_blocked_failure(prepared_take, source:, user:, options:)
       publish_rule_blocked_metric(prepared_take, source:, user:, options:)
-      log_outcome('blocked', source:, reason: prepared_take.error)
       failure(prepared_take.error)
     end
 
     def persistence_failure(source:, user:, options:)
       publish_take_metric('take_errors.med_tracker', source:, user:, options:, error: :create_failed)
-      log_outcome('failed', source:, reason: :create_failed)
       failure(:create_failed)
     end
 
     def success(take, source:, user:, options:)
-      publish_dose_taken(take)
       publish_take_metric('take_recorded.med_tracker', source:, user:, options:)
-      log_outcome('recorded', source:)
+      Observability::MedicationTransactionOutcome.register(
+        dose_payload: dose_taken_payload(take),
+        source_category: source_category(source),
+        context: Current.observability_context
+      )
       Result.new(success: true, take: take, error: nil)
-    end
-
-    def log_outcome(outcome, source:, reason: nil)
-      message = "[MedicationAdministration::RecordDose] outcome=#{outcome} " \
-                "source_type=#{source.class.model_name.singular}"
-      message += " reason=#{reason}" if reason
-      Rails.logger.info(message)
     end
 
     def prepare_take(source:, amount_override:, taken_from_medication_id:, user:, options:)
@@ -195,64 +195,6 @@ module MedicationAdministration
 
     def invalid_amount?(amount)
       amount.nil? || amount <= 0
-    end
-
-    def publish_dose_taken(take)
-      ActiveSupport::Notifications.instrument('dose_taken.med_tracker', dose_taken_payload(take))
-    end
-
-    def publish_take_metric(event_name, source:, user:, options:, error: nil)
-      ActiveSupport::Notifications.instrument(
-        event_name,
-        take_metric_payload(source:, user:, options:, error:, decision_context: nil)
-      )
-    end
-
-    def publish_rule_blocked_metric(prepared_take, source:, user:, options:)
-      ActiveSupport::Notifications.instrument(
-        'take_blocked_by_rules.med_tracker',
-        take_metric_payload(
-          source: source,
-          user: user,
-          options: options,
-          error: prepared_take.error,
-          decision_context: prepared_take.decision_context
-        )
-      )
-    end
-
-    def take_metric_payload(source:, user:, options:, error:, decision_context:)
-      {
-        environment: Rails.env.to_s,
-        role: metric_role(user),
-        route: options[:route],
-        medicine_context_class: source.class.name,
-        source_type: source.class.model_name.singular,
-        error: error&.to_s
-      }.merge(decision_context || {})
-    end
-
-    def metric_role(user)
-      return user.membership&.role if user.is_a?(AuthorizationContext)
-      return unless user.respond_to?(:person)
-
-      account = user.person&.account
-      account&.first_active_household_membership&.role
-    end
-
-    def dose_taken_payload(take)
-      {
-        take_id: take.id,
-        source_type: take.source_type,
-        source_id: take.source_record_id,
-        person_id: take.person&.id,
-        medication_id: take.medication&.id,
-        inventory_medication_id: take.inventory_medication&.id,
-        inventory_location_id: take.inventory_location&.id,
-        dose_amount: take.dose_amount&.to_f,
-        dose_unit: take.dose_unit,
-        taken_at: take.taken_at
-      }
     end
   end
 end
