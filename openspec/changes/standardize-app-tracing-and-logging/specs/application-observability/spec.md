@@ -23,6 +23,32 @@ The system SHALL preserve supported application events from emission through pro
 - **WHEN** the production observability contract tests run
 - **THEN** they prove that application info, warning, error, request, and job events are preserved
 
+### Requirement: Application-owned event coverage is exhaustive and declared
+The system SHALL maintain a reviewed registry of every application-owned event publisher, subscriber, and direct logger call site, and SHALL prevent application-owned events from existing without a production-visible, privacy-safe operational disposition.
+
+#### Scenario: Custom event publisher exists
+- **GIVEN** application code publishes a custom event
+- **WHEN** observability coverage is validated
+- **THEN** the registry identifies its publisher, payload contract, subscribers, transaction semantics, operational sink, privacy classification, owner, and verification
+- **AND** a production observer translates the event into the canonical safe application-event envelope
+
+#### Scenario: Publisher has no production sink
+- **GIVEN** a custom application event has no registered production log, trace, metric, or subscriber-outcome adapter
+- **WHEN** observability coverage validation runs
+- **THEN** validation fails
+- **AND** a test-only subscriber does not satisfy the production-sink requirement
+
+#### Scenario: Direct application logger call exists
+- **GIVEN** application code writes directly to the configured logger
+- **WHEN** logging coverage is validated
+- **THEN** the call site is registered as retained, migrated, or removed
+- **AND** retained calls have a tested production output shape, severity, privacy classification, and correlation behavior
+
+#### Scenario: New event or logger path is introduced
+- **GIVEN** a change adds an application-owned publisher, subscriber, or direct logger call
+- **WHEN** the observability coverage contract runs
+- **THEN** it fails until the registry, safe mapping, and production verification are complete
+
 ### Requirement: Application events use one queryable envelope
 The system SHALL emit application events as a single structured object using a documented field contract rather than nested JSON or incompatible message shapes.
 
@@ -117,6 +143,39 @@ The system SHALL maintain a reviewed inventory of critical workflows and emit ev
 - **WHEN** the inventory is reviewed
 - **THEN** the gap is added to the implementation scope with an owner and verification scenario
 
+### Requirement: Event delivery and transactional outcomes are truthful
+The system SHALL make application event dispatch and subscriber outcomes observable without reporting an uncommitted or rolled-back side effect as successful.
+
+#### Scenario: Event is dispatched to production subscribers
+- **GIVEN** an application-owned event is published
+- **WHEN** registered production subscribers handle it
+- **THEN** the canonical event identifies the event and dispatch outcome exactly once
+- **AND** externally meaningful subscriber decisions or side effects emit correlated stage outcomes
+
+#### Scenario: Subscriber raises an exception
+- **GIVEN** a registered subscriber raises while handling an event
+- **WHEN** event dispatch handles the exception
+- **THEN** a correlated failure event identifies the subscriber stage and allowlisted error type
+- **AND** the failure policy states whether the originating operation fails, continues, or retries
+
+#### Scenario: Side effect is retried
+- **GIVEN** a subscriber or job retries an externally meaningful side effect
+- **WHEN** attempts and outcomes are emitted
+- **THEN** every attempt is distinguishable
+- **AND** one successful side effect is not reported as multiple successful outcomes
+
+#### Scenario: Event occurs inside a transaction
+- **GIVEN** an event describes a domain write inside an open transaction
+- **WHEN** the event is observed before the outermost transaction completes
+- **THEN** it is not labelled as a committed success
+- **AND** committed success is emitted only after commit
+
+#### Scenario: Transaction rolls back
+- **GIVEN** an event-related domain write is rolled back
+- **WHEN** the transaction terminates
+- **THEN** no committed-success event is emitted
+- **AND** a correlated rollback or failure outcome remains queryable
+
 ### Requirement: Trace retention reflects operational importance
 The system SHALL retain traces for defined critical paths and failures using a documented, testable sampling policy.
 
@@ -161,7 +220,7 @@ The system SHALL provide automated and operational checks that demonstrate the e
 
 #### Scenario: Production-like contract test
 - **GIVEN** the application boots with production-equivalent logging configuration and synthetic data
-- **WHEN** representative request, job, domain, warning, and error events are exercised
+- **WHEN** every registered custom event and representative request, job, domain, warning, and error path is exercised
 - **THEN** captured output contains parseable events with the required fields
 - **AND** forbidden data and nested JSON messages are absent
 
