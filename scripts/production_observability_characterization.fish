@@ -163,6 +163,7 @@ end
 
 curl --silent --show-error \
     --header 'X-Request-Id: observability-characterization-request' \
+    --header 'traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01' \
     "$app_url/login" \
     --output /dev/null
 or exit 1
@@ -230,6 +231,7 @@ jq --raw-input --slurp --exit-status \
     ($requests[0]["service.version"] == $image) and
     ($requests[0]["http.route"] == "/login") and
     ($requests[0]["http.response.status_code"] == 200) and
+    ($requests[0]["trace.id"] == "4bf92f3577b34da6a3ce929d0e0e4736") and
     ($requests[0]["event.duration"] >= 0) and
     ($requests[0]["event.id"] | test("^[0-9a-f-]{36}$"))
 ' $OBSERVABILITY_CHARACTERIZATION_TMP/app.log >/dev/null
