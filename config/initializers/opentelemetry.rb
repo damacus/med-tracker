@@ -57,6 +57,11 @@ module OpenTelemetryConfig
     pool_class.prepend(Otel::ConnectionPoolTimeoutInstrumentation) unless pool_class < Otel::ConnectionPoolTimeoutInstrumentation
   end
 
+  def install_rack_middleware(application: Rails.application)
+    middleware_args = OpenTelemetry::Instrumentation::Rack::Instrumentation.instance.middleware_args
+    application.config.middleware.insert_before(0, *middleware_args)
+  end
+
   def trace_sampler(environment: Rails.env, env: ENV)
     Otel::CriticalPathSampler.new(
       delegate: delegate_trace_sampler(environment:, env:),
@@ -184,6 +189,8 @@ if Rails.env.test?
     )
   end
 
+  OpenTelemetryConfig.install_rack_middleware
+
 elsif Rails.env.production? || ENV['OTEL_EXPORTER_OTLP_ENDPOINT'].present?
   require 'opentelemetry/sdk'
   require 'opentelemetry/exporter/otlp'
@@ -257,6 +264,8 @@ elsif Rails.env.production? || ENV['OTEL_EXPORTER_OTLP_ENDPOINT'].present?
       'process.pid' => Process.pid.to_s
     )
   end
+
+  OpenTelemetryConfig.install_rack_middleware
 
   if otlp_endpoint.present?
     metric_exporter = OpenTelemetry::Exporter::OTLP::Metrics::MetricsExporter.new

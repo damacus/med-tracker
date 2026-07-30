@@ -70,6 +70,28 @@ RSpec.describe 'Test-mode observability output characterization', type: :request
     )
   end
 
+  it 'correlates request completion with an incoming sampled trace context' do
+    ActiveSupport::Notifications.subscribed(
+      Observability::RequestCompletionSubscriber.method(:call),
+      'process_action.action_controller'
+    ) do
+      get '/observability_characterization',
+          headers: {
+            'X-Request-Id' => 'traced-characterization-request',
+            'traceparent' => '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01'
+          }
+    end
+
+    expect(json_records).to include(
+      include(
+        'event.name' => 'http.request.completed',
+        'medtracker.request.id' => 'traced-characterization-request',
+        'trace.id' => '4bf92f3577b34da6a3ce929d0e0e4736',
+        'span.id' => match(/\A[0-9a-f]{16}\z/)
+      )
+    )
+  end
+
   it 'exposes job execution as a structured record' do
     ActiveSupport::Notifications.subscribed(
       Observability::JobCompletionSubscriber.method(:call),
