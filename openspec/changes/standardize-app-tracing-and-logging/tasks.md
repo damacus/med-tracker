@@ -1,66 +1,53 @@
-## 1. Characterize the Production Pipeline
+## 1. Freeze and Characterize the Baseline
 
-- [ ] 1.1 Add failing production-equivalent contract specs that capture direct info, warning, and error events, an Active Support subscriber event, and request and Active Job lifecycle events.
-- [ ] 1.2 Extend the failing contract specs to identify duplicate events, nested JSON messages, missing severity, missing correlation, and unintended subscriber suppression.
-- [ ] 1.3 Add a failing discovery spec that inventories every application-owned Active Support publisher and subscriber, direct logger call, application event, custom metric, trace annotation, and operational job entrypoint.
-- [ ] 1.4 Record the observed ownership and final shape of Rails, Lograge, proxy or supervisor, job, subscriber, custom event, metric, direct logger, and OpenTelemetry output in the signal registry.
-- [ ] 1.5 Baseline the eight current custom event types and prove which production subscribers and sinks are absent without treating temporary test subscribers as production coverage.
+- [ ] 1.1 Add a registry-census spec that pins the source revision and enumerates Thruster, Rails/ECS with Lograge, Puma, Solid Queue, OpenTelemetry SDK output, the eight custom event types, every direct logger site, and the bounded workflows.
+- [ ] 1.2 Add failing test-mode characterization specs for request, job, custom-event, warning, error, exception, subscriber-failure, and valid, invalid, and unsampled trace-context output.
+- [ ] 1.3 Add a failing final production-image characterization task, without a source bind mount, that captures real stdout and exporter traffic from the production logger, request server, job backend, and telemetry configuration.
+- [ ] 1.4 Record the frozen producers, transports, event mappings, direct logger dispositions, privacy classifications, transaction timing, failure policy, and owners; record any discovery outside that baseline as a named follow-up change.
 
-## 2. Define the Canonical Application Event
+## 2. Establish the Correlated Fail-Open Boundary
 
-- [ ] 2.1 Add failing unit specs for the canonical ECS-compatible field schema, registered event names, allowed value types, bounded cardinality, and schema version.
-- [ ] 2.2 Add failing privacy specs using synthetic marker values for health data, credentials, tokens, cookies, raw domain identifiers, schedule timestamps, and unsafe exception text.
-- [ ] 2.3 Implement the application-event boundary and serializer with stable event names, severity, outcome, safe reasons, service metadata, and optional human-readable messages.
-- [ ] 2.4 Add request, job, trace, and span context enrichment that omits unavailable identifiers and preserves events when traces are unsampled.
-- [ ] 2.5 Add failing registry specs requiring every discovered custom event to declare its payload contract, subscribers, transaction timing, failure policy, safe mapping, production sink, owner, and verification.
-- [ ] 2.6 Add production observers and event-specific safe adapters for every registered Active Support notification, plus current-span annotations where appropriate, without serializing raw payloads or duplicating events.
-- [ ] 2.7 Add failing coverage for new unregistered publishers, subscribers, and direct logger calls so the contract cannot silently regress.
-- [ ] 2.8 Refactor the event boundary and registry while keeping all focused schema, privacy, correlation, discovery, and exact-count specs green.
+- [ ] 2.1 Add failing schema and correlation specs for collision-resistant `event.id` generation and non-reuse, ECS fields, severity, outcome, safe reasons, service metadata, schema version, and the generation, propagation, lifetime, rotation, expiry, and retry semantics of `workflow.id`, `causation.id`, and `attempt.id`.
+- [ ] 2.2 Add failing privacy specs for health data, credentials, tokens, cookies, network identifiers, job arguments, raw domain identifiers, schedule timestamps, unsafe exception text, and the complete exported span surface.
+- [ ] 2.3 Add failing resilience specs proving canonical logging and emergency-diagnostic failures never alter, block, or roll back a medication or health-data operation and never recurse.
+- [ ] 2.4 Implement the operational-event boundary, serializer, context enrichment, event-specific safe mappings, and bounded non-recursive emergency diagnostic.
+- [ ] 2.5 Enforce the frozen registry and add duplicate-ingestion fixtures proving collector retries are detectable and deduplicatable by stable event identifier without becoming another application attempt.
 
-## 3. Normalize HTTP Request Logging
+## 3. Normalize Request and Process Output
 
-- [ ] 3.1 Add a failing production-equivalent request spec requiring exactly one parseable Rails completion event with route template, status, duration, severity, request identifier, and available trace context.
-- [ ] 3.2 Reconfigure, replace, or remove Lograge according to the characterization evidence so Rails emits the canonical request event without nested JSON or suppressed application events.
-- [ ] 3.3 Remove the unused `keep_appenders` configuration and document the tested behavior of any retained Lograge settings.
-- [ ] 3.4 Give proxy or supervisor access events a distinct documented dataset and verify they are distinguishable from Rails request events.
-- [ ] 3.5 Suppress or sample routine successful health-check events at each controlled layer while retaining failures.
-- [ ] 3.6 Run the focused production-equivalent logging contract and request specs and confirm exact event counts and parseable fields.
+- [ ] 3.1 Use failing final-image request specs to reconfigure, replace, or remove Lograge so Rails emits one canonical request event with route template, status, duration, severity, request identifier, deployment identity, and safe trace context.
+- [ ] 3.2 Remove unused request-logging options and retain Thruster access output only if its fields meet the privacy contract; otherwise disable it and rely on the canonical Rails request event.
+- [ ] 3.3 Give Rails/ECS, Thruster if retained, Puma, Solid Queue, and the OpenTelemetry SDK distinct datasets and tested severity contracts, and suppress routine successful health-check output while preserving failures.
+- [ ] 3.4 Run the test-mode and final-image request contracts and prove producer-scoped counts, parseable fields, privacy, request-tag propagation, deployment identity, and no nested JSON message.
 
-## 4. Close Event Pipeline and Critical Workflow Visibility Gaps
+## 4. Connect Domain Events and Transaction Outcomes
 
-- [ ] 4.1 Complete the exhaustive signal registry across the repository and separately complete the workflow matrix for medication administration, reminders, low stock, authentication, rate limiting, audit delivery, external lookups, mail, push, scheduled imports, and every additional operational workflow discovered.
-- [ ] 4.2 Add failing production-observer specs for all current medication, low-stock, audit-backlog, and rate-limit events, then connect each to a canonical privacy-safe sink.
-- [ ] 4.3 Add failing subscriber-pipeline specs for dispatch success, subscriber exception propagation or isolation, retries, and correlated stage outcomes.
-- [ ] 4.4 Add failing outer-transaction specs proving provisional persistence is not reported as committed success and rollback produces no committed event.
-- [ ] 4.5 Add failing outcome-event specs for medication recording attempt, commit, blocking, rejection, rollback, and unexpected failure, then migrate its legacy free-text logs.
-- [ ] 4.6 Add failing outcome-event specs for reminder scheduling, eligibility, suppression, deduplication, retry, send, and delivery failure, then instrument the missing boundaries.
-- [ ] 4.7 Add failing outcome-event specs for low-stock decisions and delivery, then instrument the missing boundaries.
-- [ ] 4.8 Add failing PHI-safe outcome-event specs for authentication, token exchange, rate limiting, audit delivery, and audit backlog health, then instrument the missing boundaries.
-- [ ] 4.9 Add failing outcome-event specs for external medication, identity, mail, and push operations, then migrate legacy logs without recording bodies or upstream health data.
-- [ ] 4.10 Add or update exact-count specs for retry and idempotency paths so retries remain visible without reporting one side effect as multiple successful outcomes.
-- [ ] 4.11 Review the migrated workflows for transaction rollback, authorization, cross-household isolation, subscriber failure policy, and accidental audit-log replacement.
+- [ ] 4.1 Add failing safe-mapping specs for `take_attempted`, `take_recorded`, `take_blocked_by_rules`, `take_errors`, `dose_taken`, `low_stock_threshold_reached`, `audit_delivery_backlog`, and `rack_attack.throttled`.
+- [ ] 4.2 Publish operational records for all eight events without replacing Active Support as the domain-event bus, and use a publisher-side rescue boundary that records subscriber failure while preserving the original propagation semantics.
+- [ ] 4.3 Add failing medication outcome specs for attempt, rule blocking, provisional persistence, committed success, rollback, persistence failure, unavailable household, and unexpected failure.
+- [ ] 4.4 Implement outer-transaction-aware medication outcomes so attempt and provisional events remain queryable after rollback while committed success is emitted only after the outermost commit.
+- [ ] 4.5 Remove replaced medication free-text logs and verify authorization, household isolation, idempotency, stable causation, distinct retry attempts, and exact application-emission counts.
 
-## 5. Align Trace Coverage and Privacy
+## 5. Trace Reminder, Low-Stock, and Push Outcomes
 
-- [ ] 5.1 Add failing sampler specs for every critical medication, reminder, notification, authentication, and audit path identified by the coverage matrix.
-- [ ] 5.2 Extend critical-path matching and job trace naming or linking only where the failing coverage specs prove a gap.
-- [ ] 5.3 Add failing span-attribute privacy specs for each newly traced workflow and update the allowlist processor with bounded, non-sensitive attributes.
-- [ ] 5.4 Verify that unsampled failures still emit correlated structured error events and document the head-sampling limitation.
-- [ ] 5.5 Run the focused OpenTelemetry integration, active-job continuity, sampler, exporter-allowlist, and application-event specs.
+- [ ] 5.1 Add safe outcome events for reminder enqueue, eligibility, past-occurrence handling, suppression, deduplication, retry, and job failure using stable reason codes.
+- [ ] 5.2 Propagate one workflow identifier across scheduling, missed-dose evaluation, notification intent, recipient and channel attempts, and provider outcomes; join a later medication action only through a trusted stored or client-carried occurrence association, otherwise start a new workflow without guessed causation.
+- [ ] 5.3 Add push outcomes for attempted, provider accepted, partial failure, permanent failure, and delivery unknown without claiming device delivery.
+- [ ] 5.4 Add low-stock evaluation and delivery outcomes plus retry and idempotency coverage, migrate the bounded notification logger sites, and capture notification-state, timezone, preference-ownership, and channel-parity correctness gaps as named follow-up changes.
 
-## 6. Operational Verification and Documentation
+## 6. Close Baseline Privacy Gaps and Document the Contract
 
-- [ ] 6.1 Document the application-event schema, severity policy, event naming rules, privacy allowlist, correlation model, and ownership of request, job, proxy, log, trace, metric, and audit signals.
-- [ ] 6.2 Document the exhaustive signal registry, workflow matrix, production-sink rule, subscriber failure policies, and transaction outcome semantics.
-- [ ] 6.3 Add a synthetic, non-mutating smoke workflow that emits safe named events without creating medication history or sending real notifications.
-- [ ] 6.4 Document Loki queries for event name, dispatch and subscriber stage, severity, request identifier, job identifier, trace identifier, missing fields, nested JSON, and duplicate counts.
-- [ ] 6.5 Add post-deployment acceptance steps proving each registered custom-event family survives ingestion independently of its HTTP request and that important saved queries work with the new schema.
-- [ ] 6.6 Document the request-logger rollback switch and the compatibility window for legacy queries.
+- [ ] 6.1 Add Active Job and exporter allowlist specs covering job arguments and the complete span surface, including names, attributes, events, exception attributes, status descriptions, links, and resource data.
+- [ ] 6.2 Migrate or remove unsafe infrastructure, telemetry, boot, and database-pool logger sites, including repeated-noise and recovery behavior.
+- [ ] 6.3 Migrate or remove unsafe authentication, authorization, security, rate-limit, and administrative logger sites without adding new out-of-baseline workflow events.
+- [ ] 6.4 Migrate or remove unsafe external lookup, import, mail, audit-export, rendering, and UI logger sites without recording upstream bodies or health data.
+- [ ] 6.5 Run the final census and prove every frozen baseline path plus every canonical boundary, emergency diagnostic, request subscriber, publisher helper, workflow-stage event, and trace surface introduced by this change is registered and has a tested disposition.
+- [ ] 6.6 Amend ADR 0004 with a follow-up note preserving Active Support as the domain-event mechanism, then document the operational schema, identifiers, privacy, severity, transaction, failure-isolation, ownership, rollback, and verification contracts.
 
-## 7. Quality Gates and Deployment Acceptance
+## 7. Verify the Exact Production Revision
 
-- [ ] 7.1 Run focused specs after each Red-Green-Refactor slice using the repository task wrapper.
-- [ ] 7.2 Run `task rubocop` and `task test` and fix every regression before publication.
-- [ ] 7.3 Deploy with the previous request logger available as a rollback path and run the synthetic Loki acceptance checks.
-- [ ] 7.4 Compare event volume, duplicate counts, unknown-severity counts, registry coverage, subscriber failures, transaction outcomes, and critical-workflow coverage before and after deployment.
-- [ ] 7.5 Remove compatibility output only after production verification is green and the operational queries have been updated.
+- [ ] 7.1 Add a synthetic safe deployed canary and bounded Loki and trace queries for identifiers, deployment identity, ingestion duplicates, parser failures, missing severity, absent retained traces, and producer-scoped counts.
+- [ ] 7.2 Run focused Red-Green-Refactor specs, `task rubocop`, `task test`, `git diff --check`, strict OpenSpec validation, and the final production-image observability smoke.
+- [ ] 7.3 Deploy the exact verified image with the previous request logger and compatibility queries available for rollback, then confirm every target process runs its immutable digest.
+- [ ] 7.4 Run the finite production matrix: poll the safe canaries for at most fifteen minutes, then record safe naturally occurring workflow evidence for twenty-four hours and mark unsafe or absent outcomes not applicable with a final-image contract reference.
+- [ ] 7.5 Keep this change active and unarchived until that matrix passes for the exact deployed revision with its stated zero-failure thresholds; confirm the frozen baseline and all newly introduced signal paths are registered and every out-of-baseline discovery has a separate follow-up change.
