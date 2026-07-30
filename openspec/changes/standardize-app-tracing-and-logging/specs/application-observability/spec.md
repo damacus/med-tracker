@@ -4,19 +4,32 @@ Defines a reliable, correlated, and privacy-safe observability contract for trac
 
 ## ADDED Requirements
 
-### Requirement: Application events survive the production logging pipeline
-The system SHALL preserve supported application events from emission through production formatting and collection so they remain queryable in the configured log backend.
+### Requirement: Application events survive an available production logging pipeline
+When the configured operational output path is available, the system SHALL preserve supported application events from emission through production formatting and collection so they remain queryable in the configured log backend. Total output failure MAY lose an operational event but SHALL NOT alter the domain operation.
 
 #### Scenario: Event emitted during an HTTP request
 - **GIVEN** an application event is emitted while handling an HTTP request
 - **WHEN** production logging formats and collects the event
-- **THEN** the event is present exactly once as a parseable structured application event
+- **THEN** the application emits one parseable structured record for its stable event identifier
 - **AND** request-log condensation does not suppress it
 
 #### Scenario: Event emitted outside an HTTP request
 - **GIVEN** an application event is emitted by a background job, scheduled task, subscriber, or service process
 - **WHEN** production logging formats and collects the event
-- **THEN** the event is present exactly once without requiring controller request context
+- **THEN** the application emits one parseable structured record for its stable event identifier without requiring controller request context
+
+#### Scenario: Collector retries delivery
+- **GIVEN** the application emitted one event and the collection pipeline retries delivery
+- **WHEN** more than one backend record has the same event identifier
+- **THEN** operators can detect and deduplicate the repeated ingestion
+- **AND** the duplicate is not interpreted as another application attempt or outcome
+
+#### Scenario: Application emits a new occurrence
+- **GIVEN** an application operation reaches an observable occurrence
+- **WHEN** its operational event is constructed
+- **THEN** one collision-resistant event identifier is generated before serialization
+- **AND** formatter or transport retries preserve that identifier
+- **AND** a new application attempt or re-emission receives a new event identifier
 
 #### Scenario: Production logging configuration changes
 - **GIVEN** a logger, formatter, subscriber, middleware, or collector configuration change
@@ -24,13 +37,13 @@ The system SHALL preserve supported application events from emission through pro
 - **THEN** they prove that application info, warning, error, request, and job events are preserved
 
 ### Requirement: Application-owned event coverage is exhaustive and declared
-The system SHALL maintain a reviewed registry of every application-owned event publisher, subscriber, and direct logger call site, and SHALL prevent application-owned events from existing without a production-visible, privacy-safe operational disposition.
+The system SHALL maintain a reviewed registry for a frozen implementation baseline of production output producers, application-owned event publishers and subscribers, and direct logger call sites, and SHALL prevent baseline application-owned events from existing without a production-visible, privacy-safe operational disposition.
 
 #### Scenario: Custom event publisher exists
 - **GIVEN** application code publishes a custom event
 - **WHEN** observability coverage is validated
 - **THEN** the registry identifies its publisher, payload contract, subscribers, transaction semantics, operational sink, privacy classification, owner, and verification
-- **AND** a production observer translates the event into the canonical safe application-event envelope
+- **AND** its registered operational mapping emits the canonical safe application-event envelope independently of business-subscriber ordering
 
 #### Scenario: Publisher has no production sink
 - **GIVEN** a custom application event has no registered production log, trace, metric, or subscriber-outcome adapter
@@ -47,7 +60,25 @@ The system SHALL maintain a reviewed registry of every application-owned event p
 #### Scenario: New event or logger path is introduced
 - **GIVEN** a change adds an application-owned publisher, subscriber, or direct logger call
 - **WHEN** the observability coverage contract runs
-- **THEN** it fails until the registry, safe mapping, and production verification are complete
+- **THEN** the pre-deployment gate fails until the registry, safe mapping, and automated verification are complete
+
+#### Scenario: Completion census runs
+- **GIVEN** the frozen baseline has been migrated and the change has introduced new operational signal paths
+- **WHEN** final registry coverage is validated
+- **THEN** every frozen baseline path has a tested disposition
+- **AND** every publisher, subscriber, logger, emergency diagnostic, request subscriber, and stage event introduced by this change is registered and verified
+
+#### Scenario: Baseline workflow inventory is frozen
+- **GIVEN** implementation begins from the reviewed signal and workflow inventory
+- **WHEN** the baseline is recorded
+- **THEN** it identifies the source revision, production output producers, eight custom event types, direct logger call sites, and bounded workflows covered by this change
+- **AND** completion is measured against that fixed inventory
+
+#### Scenario: Out-of-baseline workflow gap is discovered
+- **GIVEN** implementation discovers a silent domain decision outside the frozen workflow baseline
+- **WHEN** the discovery is reviewed
+- **THEN** it is captured as a follow-up change with an owner
+- **AND** it does not silently expand this change's completion boundary
 
 ### Requirement: Application events use one queryable envelope
 The system SHALL emit application events as a single structured object using a documented field contract rather than nested JSON or incompatible message shapes.
@@ -72,7 +103,7 @@ The system SHALL emit application events as a single structured object using a d
 - **AND** automation can still identify the event using structured fields
 
 ### Requirement: Events and traces are correlated across execution boundaries
-The system SHALL attach the available correlation context to application events without inventing invalid identifiers.
+The system SHALL attach opaque workflow, event, causation, and attempt identifiers plus available request, job, trace, and span context without inventing invalid identifiers or exposing domain identity.
 
 #### Scenario: Event emitted in a traced request
 - **GIVEN** a valid request identifier and sampled trace and span are active
@@ -84,6 +115,7 @@ The system SHALL attach the available correlation context to application events 
 - **WHEN** the job executes
 - **THEN** job events contain the job identifier
 - **AND** the job trace is linked to the originating trace using the configured propagation contract
+- **AND** the workflow identifier is propagated even when the originating trace is not retained
 
 #### Scenario: Scheduled work has no originating request
 - **GIVEN** scheduled work begins without request or parent trace context
@@ -96,6 +128,27 @@ The system SHALL attach the available correlation context to application events 
 - **WHEN** the application event is emitted
 - **THEN** the event remains queryable by its non-trace correlation identifiers
 
+#### Scenario: Workflow crosses requests and jobs
+- **GIVEN** one logical workflow spans scheduling, later job execution, delivery attempts, and a related action in another request
+- **WHEN** each stage emits an event
+- **THEN** every stage shares one workflow identifier
+- **AND** each emitted occurrence has its own event identifier
+- **AND** each non-root event identifies its immediate cause
+- **AND** each retry or external side-effect attempt has its own attempt identifier
+
+#### Scenario: Later action has no trusted workflow association
+- **GIVEN** a medication action occurs after a reminder workflow
+- **WHEN** no trusted stored or client-carried occurrence association links the action to that workflow
+- **THEN** the action starts a new workflow
+- **AND** it omits reminder causation rather than inferring a relationship from time proximity or domain identity
+
+#### Scenario: Correlation identifier privacy
+- **GIVEN** an opaque correlation identifier is created
+- **WHEN** it is stored, propagated, logged, or expired
+- **THEN** its purpose, generation, lifetime, and rotation policy follow the documented contract
+- **AND** it cannot be reversed into a raw person, medication, schedule, household, or notification identifier
+- **AND** it is not used as a metric label
+
 ### Requirement: HTTP request completion has one application-level record
 The system SHALL produce one canonical application-level request-completion event per non-silenced HTTP request.
 
@@ -106,7 +159,7 @@ The system SHALL produce one canonical application-level request-completion even
 - **AND** it excludes raw query strings and unfiltered parameters
 
 #### Scenario: Infrastructure also records the request
-- **GIVEN** a proxy or process supervisor emits its own access event
+- **GIVEN** Thruster or another infrastructure layer emits its own access event
 - **WHEN** both access and application events are collected
 - **THEN** each event identifies its layer and dataset
 - **AND** the two events are not indistinguishable duplicates
@@ -141,7 +194,8 @@ The system SHALL maintain a reviewed inventory of critical workflows and emit ev
 #### Scenario: Silent workflow discovered during inventory
 - **GIVEN** the observability inventory finds a critical decision or side effect with no observable outcome
 - **WHEN** the inventory is reviewed
-- **THEN** the gap is added to the implementation scope with an owner and verification scenario
+- **THEN** an in-baseline gap is completed with an owner and verification scenario
+- **AND** an out-of-baseline gap is captured as a follow-up change
 
 ### Requirement: Event delivery and transactional outcomes are truthful
 The system SHALL make application event dispatch and subscriber outcomes observable without reporting an uncommitted or rolled-back side effect as successful.
@@ -149,7 +203,7 @@ The system SHALL make application event dispatch and subscriber outcomes observa
 #### Scenario: Event is dispatched to production subscribers
 - **GIVEN** an application-owned event is published
 - **WHEN** registered production subscribers handle it
-- **THEN** the canonical event identifies the event and dispatch outcome exactly once
+- **THEN** the application emits one canonical publication record identified by its event identifier
 - **AND** externally meaningful subscriber decisions or side effects emit correlated stage outcomes
 
 #### Scenario: Subscriber raises an exception
@@ -166,18 +220,33 @@ The system SHALL make application event dispatch and subscriber outcomes observa
 
 #### Scenario: Event occurs inside a transaction
 - **GIVEN** an event describes a domain write inside an open transaction
-- **WHEN** the event is observed before the outermost transaction completes
-- **THEN** it is not labelled as a committed success
+- **WHEN** the available operational output path observes it before the outermost transaction completes
+- **THEN** its attempt and provisional-persistence events remain queryable
+- **AND** neither is labelled as a committed success
 - **AND** committed success is emitted only after commit
 
 #### Scenario: Transaction rolls back
 - **GIVEN** an event-related domain write is rolled back
-- **WHEN** the transaction terminates
+- **WHEN** the transaction terminates while the operational output path is available
 - **THEN** no committed-success event is emitted
+- **AND** the original attempt remains queryable
 - **AND** a correlated rollback or failure outcome remains queryable
 
+#### Scenario: Operational logging fails
+- **GIVEN** the canonical operational logger or observer fails
+- **WHEN** a medication or health-data operation continues
+- **THEN** the observability failure does not block, roll back, or alter the domain operation
+- **AND** a bounded non-recursive emergency diagnostic is attempted without sensitive payload data
+- **AND** if both output paths fail, the operational event may be absent rather than falsely reported as preserved
+
+#### Scenario: Business subscriber fails before another subscriber runs
+- **GIVEN** a business subscriber raises during synchronous event dispatch
+- **WHEN** later subscribers cannot run
+- **THEN** the publication record and subscriber failure remain observable
+- **AND** operational visibility does not depend on subscriber ordering
+
 ### Requirement: Trace retention reflects operational importance
-The system SHALL retain traces for defined critical paths and failures using a documented, testable sampling policy.
+The system SHALL retain traces for defined critical paths using a documented, testable sampling policy and SHALL preserve structured failure events when traces are not retained.
 
 #### Scenario: Critical medication or authentication path
 - **GIVEN** an operation matches the configured critical-path policy
@@ -209,6 +278,21 @@ The system SHALL enforce an allowlist for event and trace attributes and SHALL t
 - **WHEN** request logging or tracing runs
 - **THEN** those values are absent from logs and trace attributes
 
+#### Scenario: Job arguments contain health context
+- **GIVEN** a background job carries raw domain identifiers or schedule-revealing values
+- **WHEN** job lifecycle logging runs
+- **THEN** those arguments are absent from operational output
+
+#### Scenario: Infrastructure access record contains request metadata
+- **GIVEN** an access logger can emit raw query strings, network identifiers, user agents, or path identifiers
+- **WHEN** its output is retained
+- **THEN** the same allowlist and privacy contract applies to that dataset
+
+#### Scenario: Trace contains exception or event data
+- **GIVEN** a span contains events, exception attributes, a status description, links, or resource metadata
+- **WHEN** the span is exported
+- **THEN** the complete exported span surface complies with the privacy allowlist
+
 #### Scenario: Exception message contains sensitive input
 - **GIVEN** an exception message may contain user or upstream input
 - **WHEN** an error event is constructed
@@ -216,19 +300,44 @@ The system SHALL enforce an allowlist for event and trace attributes and SHALL t
 - **AND** raw exception text is included only when explicitly proven safe
 
 ### Requirement: Operators can verify and use the observability contract
-The system SHALL provide automated and operational checks that demonstrate the emitted data is useful after deployment.
+The system SHALL provide test-mode, final production-image, and post-deployment checks that demonstrate the emitted data is useful, and the observability change SHALL remain incomplete until production acceptance succeeds for the exact deployed revision.
 
-#### Scenario: Production-like contract test
-- **GIVEN** the application boots with production-equivalent logging configuration and synthetic data
-- **WHEN** every registered custom event and representative request, job, domain, warning, and error path is exercised
-- **THEN** captured output contains parseable events with the required fields
-- **AND** forbidden data and nested JSON messages are absent
+#### Scenario: Test-mode contract
+- **GIVEN** the automated test environment exercises registered adapters and representative request, job, domain, warning, and error paths
+- **WHEN** the observability contract runs
+- **THEN** schema, correlation, privacy, transaction, subscriber-failure, retry, and exact application-emission behavior are verified
+
+#### Scenario: Final production-image contract
+- **GIVEN** the final application image boots with its production logger, request server, job backend, and telemetry configuration
+- **WHEN** synthetic safe request, application-event, job, warning, error, and trace canaries run
+- **THEN** captured output and exporter traffic contain the required fields and deployment identity
+- **AND** forbidden data and nested application JSON are absent
 
 #### Scenario: Post-deployment smoke verification
-- **GIVEN** a revision containing observability changes is deployed
+- **GIVEN** a revision containing observability changes is deployed and every target process reports the expected immutable image identity
 - **WHEN** the documented smoke workflow emits synthetic safe events
-- **THEN** operators can locate them by event name, request identifier, job identifier, and trace identifier where applicable
-- **AND** the verification detects duplicates and missing severity
+- **THEN** operators can locate them by event, workflow, request, job, and trace identifiers where applicable
+- **AND** the verification detects ingestion duplicates, parser failures, missing severity, missing traces, and mismatched deployment identity
+
+#### Scenario: Production completion gate
+- **GIVEN** automated checks and final-image checks are green
+- **WHEN** production acceptance has not passed for the exact deployed revision
+- **THEN** the change remains incomplete and is not archived
+- **AND** rollback compatibility remains available
+
+#### Scenario: Finite production evidence matrix
+- **GIVEN** every target process runs the verified immutable image
+- **WHEN** one safe request, application-event, job, log, metric, and sampled-trace canary is emitted
+- **THEN** the deployment gate polls for at most fifteen minutes for all expected signals
+- **AND** acceptance requires zero parser, schema, privacy, missing-severity, or deployment-identity failures for the canary identifiers
+- **AND** collector duplicates are reported and deduplicatable rather than counted as application attempts
+- **AND** every referenced sampled trace exists in the trace backend
+
+#### Scenario: Unsafe or infrequent workflow outcome
+- **GIVEN** a bounded workflow outcome cannot be induced safely or does not occur during the first twenty-four hours after deployment
+- **WHEN** production evidence is recorded
+- **THEN** the outcome is marked not applicable for production induction with its reason and final-image contract reference
+- **AND** absence of that natural event does not extend the acceptance window
 
 #### Scenario: Operational investigation
 - **GIVEN** an operator starts with any supported correlation identifier
