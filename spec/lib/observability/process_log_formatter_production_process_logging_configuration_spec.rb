@@ -9,6 +9,12 @@ RSpec.describe Observability::ProcessLogFormatter do
     )
   end
 
+  it 'configures the Puma Solid Queue plugin from the supervisor mode environment' do
+    expect(Rails.root.join('config/puma.rb').read).to include(
+      "solid_queue_mode ENV.fetch('SOLID_QUEUE_SUPERVISOR_MODE', 'fork')"
+    )
+  end
+
   it 'configures Solid Queue with a warning-only structured dataset logger' do
     configuration = Rails.root.join('config/initializers/observability_process_logging.rb').read
 
