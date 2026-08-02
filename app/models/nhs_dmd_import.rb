@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'fileutils'
-
 class NhsDmdImport < ApplicationRecord
   PROGRESS_COUNTER_KEYS = %i[
     total_records
@@ -15,6 +13,9 @@ class NhsDmdImport < ApplicationRecord
     skipped_missing_name_count
     skipped_invalid_count
   ].freeze
+  ARCHIVE_REFERENCE_FIELDS = %i[
+    archive_service_name archive_key archive_checksum archive_byte_size
+  ].freeze
 
   enum :status, {
     queued: 0,
@@ -26,18 +27,24 @@ class NhsDmdImport < ApplicationRecord
   }, default: :queued, validate: true
 
   validates :uploaded_filename, presence: true
+  validate :complete_archive_reference
 
   def self.latest_first
     order(created_at: :desc)
   end
 
-  def persist_archive!(uploaded_file)
-    source_path = uploaded_file.respond_to?(:path) ? uploaded_file.path : uploaded_file.to_s
-    raise ArgumentError, 'Import archive is missing.' if source_path.blank?
+  def persist_archive!(uploaded_file, store: NhsDmd::ArchiveStore.new, service_name: nil)
+    options = { import_run: self, uploaded_file: }
+    options[:service_name] = service_name if service_name
+    store.persist(**options)
+  end
 
-    FileUtils.mkdir_p(archive_directory)
-    FileUtils.cp(source_path, archive_destination_path)
-    update!(archive_path: archive_destination_path.to_s)
+  def archive_reference?
+    archive_reference_values.all?(&:present?)
+  end
+
+  def legacy_archive?
+    archive_path.present? && !archive_reference?
   end
 
   def start!
@@ -92,16 +99,14 @@ class NhsDmdImport < ApplicationRecord
     result.imported_count + result.skipped_count + result.unchanged_count
   end
 
-  def archive_directory
-    Rails.root.join('storage', 'nhs_dmd', 'imports', id.to_s)
+  def complete_archive_reference
+    return if archive_reference_values.none?(&:present?) || archive_reference?
+
+    ARCHIVE_REFERENCE_FIELDS.select { public_send(it).blank? }.each { errors.add(it, :blank) }
   end
 
-  def archive_destination_path
-    archive_directory.join(sanitized_filename)
-  end
-
-  def sanitized_filename
-    File.basename(uploaded_filename.to_s).gsub(/[^A-Za-z0-9.\-_]/, '_').presence || 'release.zip'
+  def archive_reference_values
+    ARCHIVE_REFERENCE_FIELDS.map { public_send(it) }
   end
 
   def appended_log(message)

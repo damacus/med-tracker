@@ -73,6 +73,36 @@ RSpec.describe Observability::OperationalEvent do
     expect(labels).to eq('outcome' => 'success', 'source_category' => 'schedule')
   end
 
+  it 'keeps storage events aggregate and excludes protected migration inputs' do
+    serialized = storage_event.to_json
+
+    markers.each_value { |marker| expect(serialized).not_to include(marker) }
+    expect(JSON.parse(serialized)).to include(
+      'event.name' => 'storage.stage',
+      'medtracker.storage.processed_count' => 7,
+      'medtracker.storage.failed_count' => 1,
+      'error.type' => 'RuntimeError'
+    )
+  end
+
+  def storage_event
+    operational_event_class.build(
+      name: :storage_stage,
+      outcome: :failure,
+      severity: :error,
+      reason: :failed,
+      attributes: markers.merge(
+        storage_operation: :migration,
+        storage_backend: :dual,
+        storage_phase: :persistent_with_s3_mirror,
+        processed_count: 7,
+        verified_count: 6,
+        failed_count: 1
+      ),
+      error: RuntimeError.new(markers.fetch(:exception_text))
+    )
+  end
+
   def operational_event_class
     Observability::OperationalEvent
   end

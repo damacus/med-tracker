@@ -5,23 +5,37 @@ require 'rails_helper'
 RSpec.describe ProductionStorage, '.documentation' do
   let(:adr) { Rails.root.join('docs/adrs/0008-production-upload-storage.md').read }
   let(:runbook) { Rails.root.join('docs/operations/upload-storage-backup-and-restore.md').read }
+  let(:home_ops_handoff) { Rails.root.join('docs/operations/home-ops-portable-storage-handoff.md').read }
   let(:compose) { Rails.root.join('compose.yaml').read }
   let(:deploy) { Rails.root.join('config/deploy.yml').read }
 
-  it 'records the accepted single-node persistent-volume decision' do
-    expect(adr).to include('Status: Accepted')
-    expect(adr).to include('ReadWriteOnce')
-    expect(adr).to include('Recreate')
-    expect(adr).to include('Horizontal web scaling is not supported')
-    expect(adr).to include('Object storage')
+  it 'amends the accepted decision with both steady modes and symmetric migration' do
+    expect(adr).to include(
+      'Status: Accepted', 'ReadWriteOnce', 'Recreate', '`persistent`', '`s3`',
+      'Disk to S3', 'S3 to Disk', 'in-window rollback', 'new migration'
+    )
   end
 
   it 'documents coordinated database and blob backups with retention' do
-    expect(runbook).to include('active_storage_attachments')
-    expect(runbook).to include('active_storage_blobs')
-    expect(runbook).to include('/app/storage')
-    expect(runbook).to include('35 daily backups')
-    expect(runbook).to include('12 monthly backups')
+    expect(runbook).to include(
+      'active_storage_attachments', 'active_storage_blobs', '/app/storage',
+      '35 daily backups', '12 monthly backups', 'Disk-only', 'S3-only',
+      'Mirror or rollback-window', 'DISK_RECOVERY_REFERENCE', 'S3_RECOVERY_REFERENCE'
+    )
+  end
+
+  it 'provides a bounded home-ops handoff without making S3 mandatory' do
+    expect(home_ops_handoff).to include(
+      'Disk-only deployment',
+      'S3-only deployment',
+      'canary',
+      'production',
+      'least privilege',
+      'maintenance',
+      'rollback',
+      'MUST NOT delete'
+    )
+    expect(home_ops_handoff).to include(*ProductionStorage::SERVICES.map { "`#{it}`" })
   end
 
   it 'documents and exposes the restored-attachment smoke check' do
@@ -57,8 +71,11 @@ RSpec.describe ProductionStorage, '.documentation' do
     storage = Rails.root.join('config/storage.yml').read
 
     expect(production).to include('ProductionStorage.resolve')
-    expect(storage).to include("persistent:\n  service: Disk")
-    expect(storage).to include("test:\n  service: Disk")
-    expect(storage).to include("local:\n  service: Disk")
+    expect(storage).to include(
+      "persistent:\n  service: Disk", "s3:\n  service: S3",
+      "persistent_with_s3_mirror:\n  service: Mirror",
+      "s3_with_persistent_mirror:\n  service: Mirror",
+      "test:\n  service: Disk", "local:\n  service: Disk"
+    )
   end
 end

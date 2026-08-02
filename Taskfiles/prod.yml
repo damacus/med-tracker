@@ -49,6 +49,98 @@ tasks:
           APP_IMAGE_REF: '{{ .IMAGE_REF }}'
       - ./scripts/production_observability_characterization.fish '{{ .IMAGE_REF }}'
 
+  storage-disk-smoke:
+    desc: Verify Disk storage from the final production image
+    vars:
+      IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:storage-disk-smoke" }}'
+    cmds:
+      - task: build
+        vars:
+          APP_IMAGE_REF: '{{ .IMAGE_REF }}'
+      - ./scripts/production_storage_smoke.fish '{{ .IMAGE_REF }}' disk
+
+  storage-s3-smoke:
+    desc: Verify S3 storage from the final production image
+    vars:
+      IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:storage-s3-smoke" }}'
+    cmds:
+      - task: build
+        vars:
+          APP_IMAGE_REF: '{{ .IMAGE_REF }}'
+      - ./scripts/production_storage_smoke.fish '{{ .IMAGE_REF }}' s3
+
+  storage-migration-start:
+    desc: Start or dry-run a portable storage migration
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner STORAGE_MIGRATION_ACTION=start STORAGE_MIGRATION_SOURCE="{{ .SOURCE }}" STORAGE_MIGRATION_DESTINATION="{{ .DESTINATION }}" STORAGE_MIGRATION_PHASE="{{ .PHASE }}" STORAGE_MIGRATION_APPLY="{{ .APPLY }}" STORAGE_MIGRATION_CONFIRM="{{ .CONFIRM }}" rails storage:migration'
+
+  storage-migration-resume:
+    desc: Resume or dry-run a portable storage migration
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner STORAGE_MIGRATION_ACTION=resume STORAGE_MIGRATION_RUN_ID="{{ .RUN_ID }}" STORAGE_MIGRATION_SOURCE="{{ .SOURCE }}" STORAGE_MIGRATION_DESTINATION="{{ .DESTINATION }}" STORAGE_MIGRATION_PHASE="{{ .PHASE }}" STORAGE_MIGRATION_APPLY="{{ .APPLY }}" STORAGE_MIGRATION_CONFIRM="{{ .CONFIRM }}" rails storage:migration'
+
+  storage-migration-reconcile:
+    desc: Reconcile or dry-run a stable portable storage set
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner STORAGE_MIGRATION_ACTION=reconcile STORAGE_MIGRATION_RUN_ID="{{ .RUN_ID }}" STORAGE_MIGRATION_SOURCE="{{ .SOURCE }}" STORAGE_MIGRATION_DESTINATION="{{ .DESTINATION }}" STORAGE_MIGRATION_PHASE="{{ .PHASE }}" STORAGE_MIGRATION_APPLY="{{ .APPLY }}" STORAGE_MIGRATION_CONFIRM="{{ .CONFIRM }}" STORAGE_MIGRATION_MUTATIONS_QUIESCED="{{ .MUTATIONS_QUIESCED }}" STORAGE_MIGRATION_MIRROR_QUEUE_DRAINED="{{ .MIRROR_QUEUE_DRAINED }}" rails storage:migration'
+
+  storage-migration-cutover-eligibility:
+    desc: Report portable storage cutover eligibility
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner STORAGE_MIGRATION_ACTION=cutover_eligibility STORAGE_MIGRATION_RUN_ID="{{ .RUN_ID }}" STORAGE_MIGRATION_SOURCE="{{ .SOURCE }}" STORAGE_MIGRATION_DESTINATION="{{ .DESTINATION }}" STORAGE_MIGRATION_PHASE="{{ .PHASE }}" rails storage:migration'
+
+  storage-migration-cutover:
+    desc: Cut over or dry-run portable storage
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner STORAGE_MIGRATION_ACTION=cutover STORAGE_MIGRATION_RUN_ID="{{ .RUN_ID }}" STORAGE_MIGRATION_SOURCE="{{ .SOURCE }}" STORAGE_MIGRATION_DESTINATION="{{ .DESTINATION }}" STORAGE_MIGRATION_PHASE="{{ .PHASE }}" STORAGE_MIGRATION_APPLY="{{ .APPLY }}" STORAGE_MIGRATION_CONFIRM="{{ .CONFIRM }}" rails storage:migration'
+
+  storage-migration-rollback:
+    desc: Roll back or dry-run portable storage inside the rollback window
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner STORAGE_MIGRATION_ACTION=rollback STORAGE_MIGRATION_RUN_ID="{{ .RUN_ID }}" STORAGE_MIGRATION_SOURCE="{{ .SOURCE }}" STORAGE_MIGRATION_DESTINATION="{{ .DESTINATION }}" STORAGE_MIGRATION_PHASE="{{ .PHASE }}" STORAGE_MIGRATION_APPLY="{{ .APPLY }}" STORAGE_MIGRATION_CONFIRM="{{ .CONFIRM }}" STORAGE_MIGRATION_SOURCE_VERIFIED="{{ .SOURCE_VERIFIED }}" STORAGE_MIGRATION_MIRROR_QUEUE_DRAINED="{{ .MIRROR_QUEUE_DRAINED }}" rails storage:migration'
+
+  storage-migration-finalize:
+    desc: Finalize or dry-run portable storage after its rollback window
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner STORAGE_MIGRATION_ACTION=finalize STORAGE_MIGRATION_RUN_ID="{{ .RUN_ID }}" STORAGE_MIGRATION_SOURCE="{{ .SOURCE }}" STORAGE_MIGRATION_DESTINATION="{{ .DESTINATION }}" STORAGE_MIGRATION_PHASE="{{ .PHASE }}" STORAGE_MIGRATION_APPLY="{{ .APPLY }}" STORAGE_MIGRATION_CONFIRM="{{ .CONFIRM }}" STORAGE_MIGRATION_ACCEPTANCE_VERIFIED="{{ .ACCEPTANCE_VERIFIED }}" STORAGE_MIGRATION_RECOVERY_VERIFIED="{{ .RECOVERY_VERIFIED }}" STORAGE_MIGRATION_FINAL_RECONCILED="{{ .FINAL_RECONCILED }}" rails storage:migration'
+
+  storage-migration-retirement-eligibility:
+    desc: Report whether the inactive source can be retired
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner STORAGE_MIGRATION_ACTION=retirement_eligibility STORAGE_MIGRATION_RUN_ID="{{ .RUN_ID }}" STORAGE_MIGRATION_SOURCE="{{ .SOURCE }}" STORAGE_MIGRATION_DESTINATION="{{ .DESTINATION }}" STORAGE_MIGRATION_PHASE="{{ .PHASE }}" STORAGE_MIGRATION_LIVE_SOURCE_DEPENDENCY="{{ .LIVE_SOURCE_DEPENDENCY }}" rails storage:migration'
+
+  storage-convert-nhs-dmd-archives:
+    desc: Convert or report every live path-backed NHS dm+d archive
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner NHS_DMD_ARCHIVE_SERVICE="{{ .SERVICE }}" NHS_DMD_ARCHIVE_APPLY="{{ .APPLY }}" rails storage:convert_nhs_dmd_archives'
+
   up:
     desc: Start production server (local validation)
     summary: |
@@ -137,7 +229,7 @@ tasks:
       - task: :internal:run
         vars:
           ENVIRONMENT: prod
-          COMMAND: 'env DATABASE_ROLE=med_tracker_owner ATTACHMENT_ID="{{ .attachment_id }}" rails med_tracker:storage:verify_restore'
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner ATTACHMENT_ID="{{ .attachment_id }}" DATABASE_RECOVERY_REFERENCE="{{ .DATABASE_RECOVERY_REFERENCE }}" DISK_RECOVERY_REFERENCE="{{ .DISK_RECOVERY_REFERENCE }}" S3_RECOVERY_REFERENCE="{{ .S3_RECOVERY_REFERENCE }}" STORAGE_MIGRATION_RUN_ID="{{ .STORAGE_MIGRATION_RUN_ID }}" AUTHORIZED_RETRIEVAL_VERIFIED="{{ .AUTHORIZED_RETRIEVAL_VERIFIED }}" CROSS_HOUSEHOLD_DENIAL_VERIFIED="{{ .CROSS_HOUSEHOLD_DENIAL_VERIFIED }}" rails med_tracker:storage:verify_restore'
 
   import-dmd-barcodes:
     desc: Import NHS dm+d GTIN barcode mappings from CSV

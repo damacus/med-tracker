@@ -158,6 +158,50 @@ RSpec.describe 'Taskfiles' do
     expect(observability_characterization_script).to include(*observability_characterization_contract)
   end
 
+  it 'defines final production-image smokes for Disk and S3 storage' do
+    disk_task = prod_taskfile.dig('tasks', 'storage-disk-smoke')
+    s3_task = prod_taskfile.dig('tasks', 'storage-s3-smoke')
+
+    expect(disk_task.fetch('cmds')).to include(*storage_smoke_commands(:disk))
+    expect(s3_task.fetch('cmds')).to include(*storage_smoke_commands(:s3))
+    expect(storage_smoke_script).to include(
+      'ACTIVE_STORAGE_SERVICE=persistent',
+      'ACTIVE_STORAGE_SERVICE=s3',
+      'bin/rails db:prepare',
+      'ACTIVE_STORAGE_S3_ENDPOINT=http://rustfs:9000',
+      'service.upload(key, StringIO.new(payload), checksum: checksum)',
+      'raise "download mismatch" unless service.download(key) == payload',
+      'raise "delete failed" if service.exist?(key)',
+      'S3 smoke unexpectedly mounted /app/storage'
+    )
+  end
+
+  it 'exposes every bounded storage migration operator command' do
+    actions = %w[
+      start resume reconcile cutover-eligibility cutover rollback finalize retirement-eligibility
+    ]
+
+    actions.each do |action|
+      task = prod_taskfile.dig('tasks', "storage-migration-#{action}")
+      expect(task.dig('cmds', 0, 'vars', 'COMMAND')).to include(
+        'DATABASE_ROLE=med_tracker_owner',
+        "STORAGE_MIGRATION_ACTION=#{action.tr('-', '_')}",
+        'rails storage:migration'
+      )
+    end
+  end
+
+  it 'exposes the bounded NHS dm+d legacy archive conversion command' do
+    command = prod_taskfile.dig('tasks', 'storage-convert-nhs-dmd-archives', 'cmds', 0, 'vars', 'COMMAND')
+
+    expect(command).to include(
+      'DATABASE_ROLE=med_tracker_owner',
+      'NHS_DMD_ARCHIVE_SERVICE="{{ .SERVICE }}"',
+      'NHS_DMD_ARCHIVE_APPLY="{{ .APPLY }}"',
+      'rails storage:convert_nhs_dmd_archives'
+    )
+  end
+
   def dev_taskfile
     YAML.safe_load(Rails.root.join('Taskfiles/dev.yml').read, aliases: true, permitted_classes: [Symbol])
   end
@@ -202,6 +246,10 @@ RSpec.describe 'Taskfiles' do
     Rails.root.join('scripts/production_observability_characterization.fish').read
   end
 
+  def storage_smoke_script
+    Rails.root.join('scripts/production_storage_smoke.fish').read
+  end
+
   def observability_image_reference
     '{{ .APP_IMAGE_REF | default "med-tracker:observability-characterization" }}'
   end
@@ -227,5 +275,15 @@ RSpec.describe 'Taskfiles' do
       'Canonical job count or deployment identity is invalid',
       'Canonical records contain nested JSON messages'
     ]
+  end
+
+  def storage_smoke_commands(mode)
+    image = "{{ .APP_IMAGE_REF | default \"med-tracker:storage-#{mode}-smoke\" }}"
+    [
+      { 'task' => 'build', 'vars' => { 'APP_IMAGE_REF' => '{{ .IMAGE_REF }}' } },
+      "./scripts/production_storage_smoke.fish '{{ .IMAGE_REF }}' #{mode}"
+    ].tap do
+      expect(prod_taskfile.dig('tasks', "storage-#{mode}-smoke", 'vars', 'IMAGE_REF')).to eq(image)
+    end
   end
 end

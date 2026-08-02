@@ -115,8 +115,8 @@ RSpec.describe 'Admin::NhsDmdImports' do
       upload = uploaded_zip('nhsbsa_dmd_release.zip')
       import_run = nil
 
-      allow(NhsDmdImportJob).to receive(:perform_later) do |record|
-        import_run = record
+      allow(NhsDmdImportJob).to receive(:perform_later) do |record_id|
+        import_run = NhsDmdImport.find(record_id)
       end
 
       post admin_nhs_dmd_import_path, params: { nhs_dmd_import: { release_zip: upload } }
@@ -126,8 +126,13 @@ RSpec.describe 'Admin::NhsDmdImports' do
       expect(import_run).to be_a(NhsDmdImport)
       expect(import_run.uploaded_filename).to eq('nhsbsa_dmd_release.zip')
       expect(import_run).to be_queued
-      expect(import_run.archive_path).to be_present
-      expect(File.exist?(import_run.archive_path)).to be(true)
+      expect(import_run).to have_attributes(
+        archive_service_name: 'test',
+        archive_key: a_string_matching(%r{\Anhs-dmd/imports/[0-9a-f-]+\z}),
+        archive_checksum: be_present,
+        archive_byte_size: be_positive,
+        archive_path: nil
+      )
     end
 
     it 'redirects with an alert when no file is provided' do
@@ -140,11 +145,14 @@ RSpec.describe 'Admin::NhsDmdImports' do
     it 'marks the import as failed when the archive cannot be persisted' do
       upload = uploaded_zip('broken_release.zip')
       failed_import = nil
+      archive_store = instance_double(NhsDmd::ArchiveStore)
+      allow(archive_store).to receive(:persist)
+        .and_raise(NhsDmd::ArchiveStore::Error, 'archive_persistence_failed')
+      allow(NhsDmd::ArchiveStore).to receive(:new).and_return(archive_store)
 
       allow(NhsDmdImport).to receive(:create!).and_wrap_original do |original, *args|
         original.call(*args).tap do |import_run|
           failed_import = import_run
-          allow(import_run).to receive(:persist_archive!).and_raise(SystemCallError.new('disk full'))
         end
       end
 
@@ -153,7 +161,7 @@ RSpec.describe 'Admin::NhsDmdImports' do
       end.to change(NhsDmdImport, :count).by(1)
 
       expect(response).to redirect_to(new_admin_nhs_dmd_import_path)
-      expect(flash[:alert]).to include('disk full')
+      expect(flash[:alert]).to eq('archive_persistence_failed')
       expect(failed_import.reload).to be_failed
       expect(failed_import).not_to be_active
     end

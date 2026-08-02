@@ -145,6 +145,13 @@ introduced_signal_paths:
     failure_policy: log_and_trace_emission_are_fail_open_and_metric_failure_emits_a_bounded_diagnostic
     owner: platform_observability
     verification: deployed_canary_unit_final_image_and_production_acceptance_contracts
+  - type: storage_stage_adapter
+    source: lib/observability/storage_event.rb
+    operational_sink: canonical_operational_event_publisher
+    privacy_classification: fixed_storage_modes_phases_and_aggregate_counts_only
+    failure_policy: fail_open_through_the_operational_publisher
+    owner: platform_storage
+    verification: storage_event_and_privacy_contract_specs
   - type: bounded_metric_label_mapper
     source: lib/observability/metric_labels.rb
     operational_sink: opentelemetry_metrics

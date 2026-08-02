@@ -3,6 +3,42 @@
 require 'rails_helper'
 
 RSpec.describe NhsDmdImport do
+  describe 'durable archive reference' do
+    it 'accepts a complete service-neutral reference' do
+      import = described_class.new(
+        uploaded_filename: 'release.zip',
+        archive_service_name: 'persistent',
+        archive_key: SecureRandom.uuid,
+        archive_checksum: Digest::MD5.base64digest('archive'),
+        archive_byte_size: 7
+      )
+
+      expect(import).to be_valid
+    end
+
+    it 'rejects partial service-neutral references' do
+      import = described_class.new(uploaded_filename: 'release.zip', archive_service_name: 'persistent')
+
+      expect(import).not_to be_valid
+      expect(import.errors[:archive_key]).to be_present
+    end
+
+    it 'retains bounded compatibility with an existing archive path' do
+      import = described_class.new(uploaded_filename: 'release.zip', archive_path: '/legacy/release.zip')
+
+      expect(import).to be_valid
+      expect(import).to be_legacy_archive
+    end
+
+    it 'filters archive keys and checksums from framework parameter logging' do
+      filtered = ActiveSupport::ParameterFilter
+                 .new(Rails.application.config.filter_parameters)
+                 .filter(archive_key: 'opaque-key', archive_checksum: 'private-checksum')
+
+      expect(filtered).to eq(archive_key: '[FILTERED]', archive_checksum: '[FILTERED]')
+    end
+  end
+
   describe '#start!' do
     it 'sets started_at to current time when blank' do
       import = described_class.create!(uploaded_filename: 'release.zip')

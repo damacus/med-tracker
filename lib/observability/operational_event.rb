@@ -23,7 +23,8 @@ module Observability
       diagnostic: 'diagnostic.occurred',
       observability_canary: 'observability.canary',
       http_request_completed: 'http.request.completed',
-      job_completed: 'job.completed'
+      job_completed: 'job.completed',
+      storage_stage: 'storage.stage'
     }.freeze
     SEVERITIES = %i[debug info warn error fatal].freeze
     OUTCOMES = %i[success failure unknown].freeze
@@ -58,7 +59,13 @@ module Observability
       notification_provider: 'medtracker.notification.provider',
       recipient_count: 'medtracker.notification.recipient_count',
       canary_kind: 'medtracker.canary.kind',
-      diagnostic_component: 'medtracker.diagnostic.component'
+      diagnostic_component: 'medtracker.diagnostic.component',
+      storage_operation: 'medtracker.storage.operation',
+      storage_backend: 'medtracker.storage.backend',
+      storage_phase: 'medtracker.storage.phase',
+      processed_count: 'medtracker.storage.processed_count',
+      verified_count: 'medtracker.storage.verified_count',
+      failed_count: 'medtracker.storage.failed_count'
     }.freeze
     EVENT_ATTRIBUTE_KEYS = {
       medication_take_attempted: %i[source_category actor_role],
@@ -77,7 +84,10 @@ module Observability
       diagnostic: %i[diagnostic_component],
       observability_canary: %i[canary_kind],
       http_request_completed: %i[http_method route status_code duration],
-      job_completed: %i[job_class job_queue duration]
+      job_completed: %i[job_class job_queue duration],
+      storage_stage: %i[
+        storage_operation storage_backend storage_phase processed_count verified_count failed_count
+      ]
     }.freeze
     CATEGORICAL_VALUES = {
       source_category: %w[schedule person_medication unknown],
@@ -95,6 +105,11 @@ module Observability
       notification_channel: %w[web_push native_push mixed none unknown],
       notification_provider: %w[web_push apns fcm unknown],
       canary_kind: %w[application_event job],
+      storage_operation: %w[configuration migration],
+      storage_backend: %w[disk s3 dual],
+      storage_phase: %w[
+        persistent persistent_with_s3_mirror s3_with_persistent_mirror s3
+      ],
       diagnostic_component: %w[
         audit_log medication_guard test_push nhs_dmd_import mcp_audit passkey_security
         opentelemetry ai_audit ai_suggestion auth_token_audit barcode_catalog external_lookup
