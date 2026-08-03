@@ -22,8 +22,8 @@ module Admin
           uploaded_filename: uploaded_file.original_filename.presence || File.basename(uploaded_file.path)
         )
       end
-      import_run.persist_archive!(uploaded_file)
-      NhsDmdImportJob.perform_later(import_run)
+      NhsDmd::ArchiveStore.new.persist(import_run:, uploaded_file:)
+      NhsDmdImportJob.perform_later(import_run.id)
 
       redirect_to new_admin_nhs_dmd_import_path,
                   notice: t('admin.nhs_dmd_imports.started')
