@@ -6,7 +6,7 @@ Canary runs the production Rails environment and Solid Queue inside Puma. Its pr
 
 Development seeding already loads realistic Rails fixtures through `SpecFixtureLoader` and `FixtureHouseholdSetup`, but `db/seeds.rb` deliberately restricts that behavior to local Rails environments. Those test-support files change for test needs and are not an appropriate direct deployment contract for a production-mode demo.
 
-The reset crosses two repositories. MedTracker owns the reset behavior and synthetic dataset. `damacus/home-ops` owns the canary schedule, database bootstrap, storage, and one-time destructive transition. The current bjw-s app-template 5.0.1 supports multiple controllers, including CronJobs, in one release and can mount an existing claim across selected controllers.
+The reset crosses two repositories. MedTracker owns the reset behavior and synthetic dataset. `damacus/home-ops` owns the canary schedule, database bootstrap, isolated object storage, and one-time destructive transition. The deployed MedTracker image supports an S3-compatible Active Storage backend, and bjw-s app-template 5.0.1 can run the web and CronJob controllers without a shared volume.
 
 ## Goals / Non-Goals
 
@@ -15,7 +15,7 @@ The reset crosses two repositories. MedTracker owns the reset behavior and synth
 - Make demo mode an explicit application configuration with a visible user-facing identity.
 - Make committed synthetic data the only source of canary application state.
 - Provide one guarded, repeatable reset operation for scheduled and manual use.
-- Replace database state atomically and remove unreachable uploaded files afterward.
+- Replace database state atomically and remove unreachable uploaded objects afterward.
 - Keep the reset runner independent of Solid Queue state that it deletes.
 - Preserve intentional notification testing for demo users.
 - Make the initial production-data removal explicit, auditable, and limited to canary resources.
@@ -61,7 +61,7 @@ Preflight requires all of the following:
 - an explicit `DEMO_MODE=true` application setting;
 - the exact canary application host;
 - the exact canary database host from the effective Active Record configuration;
-- the persistent storage root expected by the canary deployment; and
+- the exact S3 service, endpoint, and bucket dedicated to canary uploads; and
 - an owner-capable database connection dedicated to the reset runner.
 
 The command logs only stages, counts, durations, and synthetic fixture identifiers. It never logs database URLs, credentials, push endpoints, device tokens, health record values, or filenames.
@@ -70,13 +70,13 @@ The command logs only stages, counts, durations, and synthetic fixture identifie
 
 **Rejected:** Expose an admin reset endpoint. This unnecessarily makes cluster-wide destructive behavior reachable through the application authorization surface.
 
-### 4. Replace database state in one transaction and clean storage after commit
+### 4. Replace database state in one transaction and clean object storage after commit
 
 The reset runner acquires a PostgreSQL advisory lock before making changes. It enumerates the deployed application's primary tables from Active Record, excludes only schema/migration metadata, and truncates runtime tables with identity restart and foreign-key cascading inside a database transaction. The same transaction loads and validates the demo baseline. A load failure rolls the primary database back to its pre-reset state.
 
 PostgreSQL cannot provide one transaction across the separate primary, queue, cache, and cable databases. After the primary commit, the runner truncates every non-schema table in each configured auxiliary database. An auxiliary cleanup failure leaves the command failed and is safely retryable because the primary already contains the deterministic baseline.
 
-After database and auxiliary cleanup, the runner removes all objects below the verified canary storage root. At that point the new baseline contains no Active Storage records, so a storage-cleanup failure can leave only unreachable orphan files, not broken baseline attachments. The command remains failed until cleanup and post-reset verification succeed; retrying is safe.
+After database and auxiliary cleanup, the runner removes all objects from the verified canary S3 bucket. It refuses any other Active Storage service, endpoint, or bucket before destructive work. At that point the new baseline contains no Active Storage records, so a storage-cleanup failure can leave only unreachable orphan objects, not broken baseline attachments. The command remains failed until cleanup and post-reset verification succeed; retrying is safe.
 
 This is an environment reset boundary, not a domain deletion path. It intentionally removes immutable takes and audit records only because every record in this isolated environment is disposable synthetic demo state.
 
@@ -86,13 +86,13 @@ This is an environment reset boundary, not a domain deletion path. It intentiona
 
 ### 5. Schedule reset as a second controller in the canary HelmRelease
 
-Add a CronJob controller to the existing app-template HelmRelease. It reuses the exact candidate application image tag, canary secret, security context, and canary storage claim. It does not start Puma or Solid Queue; it runs only the reset command.
+Add a CronJob controller to the existing app-template HelmRelease. It reuses the exact candidate application image tag, canary secret, security context, and isolated canary S3 configuration. It does not start Puma or Solid Queue; it runs only the reset command and does not mount application storage.
 
-The controller must provide an exclusive mutation window around the destructive stages. It quiesces user mutation traffic and Solid Queue writers before invoking the reset, while retaining a health-only application path for the final `/up` check, then restores ordinary demo traffic after every invariant passes. Strict post-reset checks intentionally fail if a writer was not quiesced; they must not be weakened to accept rows or uploads whose origin cannot be proven.
+The controller must provide an exclusive mutation window around the destructive stages. It scales the web controller to zero and waits for its pods to terminate before invoking the reset. Rails verifies the database baseline, auxiliary databases, and empty canary bucket while web remains stopped. The wrapper then restores the web replica and verifies the real application `/up` endpoint before reporting success. Strict post-reset checks intentionally fail if a writer was not quiesced; they must not be weakened to accept rows or uploads whose origin cannot be proven.
 
 Schedule it for Sunday 04:15 with `Europe/London` as the explicit Kubernetes timezone. Use `Forbid` concurrency, one active execution, a bounded runtime, bounded retry history, and `restartPolicy: Never`. The application-level PostgreSQL advisory lock also prevents overlap between scheduled and manually triggered resets.
 
-Keeping the controller in the same HelmRelease allows YAML anchors and isolation checks to prove that the web and reset runners use the same image and `DEMO_MODE` setting. The existing `task kubernetes:med-tracker-canary-isolation` contract will be expanded to validate the schedule, demo mode, image identity, canary database secret, and storage mount.
+Keeping the controller in the same HelmRelease allows YAML anchors and isolation checks to prove that the web and reset runners use the same image, `DEMO_MODE` setting, and S3 target. The existing `task kubernetes:med-tracker-canary-isolation` contract will be expanded to validate the schedule, demo mode, image identity, canary database secret, absence of application PVCs, and isolated canary bucket.
 
 **Rejected:** Schedule the reset in `config/recurring.yml`. Reset deletes Solid Queue tables, including the scheduler state needed to execute and record the reset.
 
@@ -102,7 +102,7 @@ Keeping the controller in the same HelmRelease allows YAML anchors and isolation
 
 Change the canary CNPG manifest to one instance bootstrapped with clean `initdb`, owned by the canary application role. Retain only the database cluster, normal storage, and the monitoring required to operate it. Disable superuser access because the reset runs as the database owner. Remove its `externalClusters` production-backup reference, Barman WAL-archiver plugin, ScheduledBackup, ObjectStore, and canary RustFS credential/bootstrap resources.
 
-The deployed image's migration init container prepares the blank schema. The application reset command then loads the versioned baseline. This is also the disaster-recovery procedure: CNPG recreates blank storage, and the application reconstructs all intended data. Because canary is reproducible and disposable, it has no physical backup, logical dump, WAL archive, Backup or ScheduledBackup custom resource, object-store destination, or backup credential.
+The deployed image's migration init container prepares the blank schema. The application reset command then loads the versioned baseline. This is also the disaster-recovery procedure: CNPG recreates blank storage, and the application reconstructs all intended data. Because canary is reproducible and disposable, it has no physical backup, logical dump, WAL archive, Backup or ScheduledBackup custom resource, CNPG ObjectStore destination, or database-backup credential. Its S3 bucket is runtime upload storage only, is emptied by every reset, and is never a recovery source.
 
 **Rejected:** Continue restoring production and scrub selected tables. A deny-list can miss new sensitive tables or external delivery credentials, and every refresh would recreate the original incident class.
 
@@ -116,7 +116,7 @@ Remove the misleading canary `PUSH_NOTIFICATIONS_ENABLED=false` value rather tha
 
 ### 8. Verify reset through public and persistence boundaries
 
-Post-reset verification checks deterministic baseline counts and synthetic identifiers, successful demo authentication setup, representative scheduled and PRN records, zero baseline delivery registrations, tenancy/grant integrity, an empty upload root, and the canary health endpoint. The reset exits non-zero for any mismatch.
+Post-reset verification checks deterministic baseline counts and synthetic identifiers, successful demo authentication setup, representative scheduled and PRN records, zero baseline delivery registrations, tenancy/grant integrity, and an empty canary upload bucket. After the Rails command succeeds, the Kubernetes wrapper restores the web deployment and checks its real health endpoint. The reset exits non-zero for any mismatch.
 
 RSpec covers the demo-mode boundary and notice as well as the command's public result and persisted state, including safety refusal, transaction rollback, repeated execution, notification-registration removal, and PHI-safe failures. Browser verification covers the notice at mobile and desktop widths. Home-ops validation renders both repositories' deployment contract and checks the CronJob and production-free, backup-free CNPG configuration.
 
@@ -124,7 +124,7 @@ RSpec covers the demo-mode boundary and notice as well as the command's public r
 
 - **[Table discovery misses a non-Active Record persistence surface]** → Inventory all configured primary, cache, queue, and cable databases in tests and fail verification when an unexpected runtime table survives.
 - **[A reset overlaps an application or queue writer]** → Require the GitOps controller to quiesce mutation traffic and Solid Queue writers for the destructive window while retaining only the health probe path; strict verification detects an incomplete writer boundary.
-- **[Storage cleanup fails after database commit]** → Baseline contains no attachment records, so files are unreachable; report failure and make retry clear the remaining files idempotently.
+- **[Object cleanup fails after database commit]** → Baseline contains no attachment records, so objects are unreachable; report failure and make retry clear the remaining objects idempotently.
 - **[Known demo passwords are reachable externally]** → Retain the existing edge authentication boundary for canary and use only synthetic data. The demo credentials are not valid anywhere else.
 - **[App and home-ops changes deploy out of order]** → Land and publish the reset-capable app image first, then change home-ops. Keep the purged canary suspended until both the image and production-free manifests are available.
 - **[A future manifest reintroduces production recovery]** → Expand the canary-isolation task to reject `bootstrap.recovery`, production Barman references, canary backup resources, and mismatched reset targets.
@@ -138,7 +138,7 @@ RSpec covers the demo-mode boundary and notice as well as the command's public r
 2. Implement and verify the MedTracker demo-mode boundary and notice, demo baseline, guarded reset command, and tests using Red-Green-Refactor.
 3. Publish a candidate image containing the reset capability.
 4. In a fresh `home-ops` worktree, enable `DEMO_MODE` only for canary and update its HelmRelease and isolation task; reduce CNPG to one `initdb` instance; remove production recovery, WAL archiving, every database backup resource, ObjectStore, and canary backup credentials.
-5. Render and validate the app, database, storage, and monitoring trees without changing the live cluster.
+5. Provision a canary-only RustFS bucket identity, then render and validate the app, database, object-storage, and monitoring trees without changing the live cluster.
 6. Reconcile the database Kustomization first and allow CNPG to create a blank database. Reconcile the reset-capable application only after the database is healthy.
 7. Run migrations, then trigger the CronJob once manually to load and verify the baseline before enabling canary traffic.
 8. Start canary, sign in as a demo user, verify scheduled and PRN scenarios, register a test device, and verify one canary notification.

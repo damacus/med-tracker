@@ -38,12 +38,12 @@ The reset operation SHALL require independent explicit confirmation that applica
 
 #### Scenario: Canary safety assertions pass
 - **GIVEN** demo reset is explicitly enabled
-- **AND** the configured database and upload storage targets are the expected canary resources
+- **AND** the configured database and S3 upload targets are the expected canary resources
 - **WHEN** an operator invokes the reset
 - **THEN** the reset is permitted to proceed
 
 #### Scenario: Production-like target is rejected
-- **GIVEN** the database host, application URL, storage root, or environment marker does not identify the expected canary environment
+- **GIVEN** the database host, application URL, Active Storage service, S3 endpoint, S3 bucket, or environment marker does not identify the expected canary environment
 - **WHEN** an operator invokes the reset
 - **THEN** the operation exits unsuccessfully before deleting database records or uploaded files
 - **AND** the failure output contains target categories and safe identifiers but no credentials, health data, subscription endpoints, or file contents
@@ -54,7 +54,7 @@ Each successful reset SHALL remove all runtime records and uploaded files create
 #### Scenario: User-created data is removed
 - **GIVEN** test users have created accounts, medications, administrations, notification subscriptions, device tokens, sessions, jobs, cache entries, audit records, and uploads after the previous reset
 - **WHEN** the reset completes successfully
-- **THEN** none of those user-created records or uploaded files remain
+- **THEN** none of those user-created records or uploaded objects remain
 - **AND** only records defined by the current demo baseline remain
 
 #### Scenario: Database baseline load fails
@@ -80,8 +80,9 @@ The canary reset SHALL run every Sunday at 04:15 in the Europe/London timezone f
 - **GIVEN** canary web and queue processes can normally create runtime state
 - **WHEN** the scheduled reset enters its destructive stages
 - **THEN** user mutation traffic and queue writers are quiesced
-- **AND** only the health probe path remains available for final verification
-- **AND** ordinary demo traffic resumes only after every reset invariant passes
+- **AND** the Rails reset verifies the baseline and empty canary bucket while web remains stopped
+- **AND** ordinary demo traffic resumes only after those invariants pass
+- **AND** the wrapper verifies the real application health endpoint after web is restored
 
 #### Scenario: Previous reset is still active
 - **GIVEN** a canary reset is already running
@@ -110,6 +111,7 @@ The disposable canary environment SHALL NOT create or retain database backups, b
 - **THEN** a blank database is initialized and migrated
 - **AND** the deployed application loads and verifies the same committed baseline used by the weekly reset
 - **AND** no database backup or WAL archive is required
+- **AND** the empty canary upload bucket is not used as a recovery source
 
 #### Scenario: Mutable demo activity is reset
 - **GIVEN** canary contained mutable demo activity before a reset
@@ -122,7 +124,8 @@ A reset SHALL be successful only after verifying baseline identity, expected rep
 #### Scenario: Baseline verification passes
 - **GIVEN** cleanup and baseline loading have completed
 - **WHEN** post-reset verification runs
-- **THEN** it confirms demo mode is enabled, the expected synthetic accounts and medication scenarios, zero baseline notification registrations, and a healthy canary application
+- **THEN** it confirms demo mode is enabled, the expected synthetic accounts and medication scenarios, zero baseline notification registrations, and an empty canary upload bucket
+- **AND** the external reset wrapper restores the web deployment and confirms a healthy canary application
 - **AND** the reset reports success using counts, statuses, and synthetic identifiers only
 
 #### Scenario: Post-reset verification fails

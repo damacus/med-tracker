@@ -10,7 +10,9 @@ RSpec.describe DemoReset::Preflight do
       demo_mode: true,
       application_url: 'https://med-tracker-canary.damacus.io',
       database_host: 'med-tracker-canary-rw.home.svc.cluster.local',
-      storage_root: '/app/storage',
+      storage_service: 's3',
+      storage_endpoint: 'http://rustfs.storage.svc.cluster.local:9000',
+      storage_bucket: 'med-tracker-canary',
       database_role: 'med_tracker_owner'
     }
   end
@@ -18,7 +20,9 @@ RSpec.describe DemoReset::Preflight do
   it 'accepts only the complete canary target boundary' do
     expect(preflight.call).to eq(
       outcome: 'passed',
-      targets: %w[demo_mode application_host database_host storage_root database_role]
+      targets: %w[
+        demo_mode application_host database_host storage_service storage_endpoint storage_bucket database_role
+      ]
     )
   end
 
@@ -36,7 +40,9 @@ RSpec.describe DemoReset::Preflight do
     demo_mode: false,
     application_url: 'https://med-tracker.damacus.io',
     database_host: 'med-tracker-rw.home.svc.cluster.local',
-    storage_root: '/app/production-storage',
+    storage_service: 'persistent',
+    storage_endpoint: 'http://production-objects.storage.svc.cluster.local:9000',
+    storage_bucket: 'med-tracker-production',
     database_role: 'med_tracker_app'
   }.each do |target, unsafe_value|
     it "refuses a mismatched #{target} without mutating data or exposing the value" do

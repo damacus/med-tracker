@@ -4,9 +4,15 @@ require 'uri'
 
 module DemoReset
   class Preflight
+    Targets = Data.define(
+      :demo_mode, :application_url, :database_host, :storage_service, :storage_endpoint, :storage_bucket, :database_role
+    )
+
     APPLICATION_HOST = 'med-tracker-canary.damacus.io'
     DATABASE_HOST = 'med-tracker-canary-rw.home.svc.cluster.local'
-    STORAGE_ROOT = '/app/storage'
+    STORAGE_SERVICE = 's3'
+    STORAGE_ENDPOINT = 'http://rustfs.storage.svc.cluster.local:9000'
+    STORAGE_BUCKET = 'med-tracker-canary'
     DATABASE_ROLE = 'med_tracker_owner'
 
     def self.from_runtime
@@ -18,17 +24,15 @@ module DemoReset
         demo_mode: DemoMode.enabled?,
         application_url: ENV.fetch('APP_URL', nil),
         database_host: database_hosts,
-        storage_root: ENV.fetch('ACTIVE_STORAGE_ROOT', ProductionStorage::DEFAULT_ROOT),
+        storage_service: ENV.fetch('ACTIVE_STORAGE_SERVICE', nil),
+        storage_endpoint: ENV.fetch('ACTIVE_STORAGE_S3_ENDPOINT', nil),
+        storage_bucket: ENV.fetch('ACTIVE_STORAGE_S3_BUCKET', nil),
         database_role: connection.select_value('SELECT current_user')
       )
     end
 
-    def initialize(demo_mode:, application_url:, database_host:, storage_root:, database_role:)
-      @demo_mode = demo_mode
-      @application_url = application_url
-      @database_host = database_host
-      @storage_root = storage_root
-      @database_role = database_role
+    def initialize(**targets)
+      @targets = Targets.new(**targets)
     end
 
     def call
@@ -40,26 +44,28 @@ module DemoReset
 
     private
 
-    attr_reader :demo_mode, :application_url, :database_host, :storage_root, :database_role
+    attr_reader :targets
 
     def target_checks
       {
-        demo_mode: demo_mode,
+        demo_mode: targets.demo_mode,
         application_host: application_host == APPLICATION_HOST,
         database_host: database_hosts_valid?,
-        storage_root: storage_root == STORAGE_ROOT,
-        database_role: database_role == DATABASE_ROLE
+        storage_service: targets.storage_service == STORAGE_SERVICE,
+        storage_endpoint: targets.storage_endpoint == STORAGE_ENDPOINT,
+        storage_bucket: targets.storage_bucket == STORAGE_BUCKET,
+        database_role: targets.database_role == DATABASE_ROLE
       }
     end
 
     def application_host
-      URI.parse(application_url.to_s).host
+      URI.parse(targets.application_url.to_s).host
     rescue URI::InvalidURIError
       nil
     end
 
     def database_hosts_valid?
-      hosts = Array(database_host)
+      hosts = Array(targets.database_host)
       hosts.any? && hosts.all? { |host| host == DATABASE_HOST }
     end
   end
