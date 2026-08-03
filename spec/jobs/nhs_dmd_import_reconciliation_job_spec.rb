@@ -1,9 +1,12 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe NhsDmdImportReconciliationJob do
   it 'fails active imports unchanged for at least thirty minutes' do
-    import = NhsDmdImport.create!(uploaded_filename: 'stalled.zip', status: :importing)
-    import.update_column(:updated_at, 30.minutes.ago)
+    import = travel_to(30.minutes.ago) do
+      NhsDmdImport.create!(uploaded_filename: 'stalled.zip', status: :importing)
+    end
 
     described_class.perform_now
 
