@@ -56,10 +56,11 @@ gem 'opentelemetry-metrics-api'
 gem 'opentelemetry-metrics-sdk'
 gem 'opentelemetry-sdk'
 
-# Windows does not include zoneinfo files, so bundle the tzinfo-data gem
-gem 'tzinfo-data', platforms: %i[windows jruby]
+gem 'async', '>= 2.24'
 # Solid Queue is a database-based queuing backend for Active Job [https://github.com/rails/solid_queue]
 gem 'solid_queue'
+# Windows does not include zoneinfo files, so bundle the tzinfo-data gem
+gem 'tzinfo-data', platforms: %i[windows jruby]
 # Reduces boot times through caching; required in config/boot.rb
 gem 'bootsnap', require: false
 # Use Phlex for views [https://github.com/phlex-rb/phlex-rails]
