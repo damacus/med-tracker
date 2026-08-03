@@ -455,6 +455,7 @@ ga:
           actions: Gníomhartha
           view: Féach
     nhs_dmd_imports:
+      already_running: Tá iompórtáil NHS dm+d ar siúl cheana féin. Fan go gcríochnóidh sí.
       created: 'Scaoileadh NHS dm+d iompórtáilte: %{imported} taifead iompórtáilte,
         %{skipped} scipeáilte.'
       form:

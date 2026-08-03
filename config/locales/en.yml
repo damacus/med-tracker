@@ -445,6 +445,7 @@ en:
       subtitle: Upload the latest NHS dm+d ZIP and import AMPP names with GTIN barcode
         mappings.
       missing_file: Select an NHS dm+d release ZIP to import.
+      already_running: An NHS dm+d import is already running. Please wait for it to finish.
       created: 'Imported NHS dm+d release: %{imported} records imported, %{skipped}
         skipped.'
       started: NHS dm+d import started. Progress and logs will appear below.

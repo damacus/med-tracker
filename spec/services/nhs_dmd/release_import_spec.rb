@@ -463,6 +463,29 @@ RSpec.describe NhsDmd::ReleaseImport do
     )
   end
 
+  it 'does not serve barcode lookup selects from the query cache during an archive import' do
+    NhsDmdBarcode.create!(
+      gtin: '5016298210989', code: 'old', display: 'Old Name',
+      system: 'https://dmd.nhs.uk', concept_class: 'AMPP'
+    )
+    write_ampp_xml([{ appid: '777', nm: 'Updated Name' }])
+    write_single_gtin_xml(amppid: '777', gtin: '5016298210989', startdt: '2020-01-01')
+    barcode_selects = []
+    subscriber = lambda do |_name, _started, _finished, _unique_id, payload|
+      next unless payload[:sql].include?('FROM "nhs_dmd_barcodes"') && payload[:sql].start_with?('SELECT')
+
+      barcode_selects << payload
+    end
+
+    ActiveRecord::Base.cache do
+      NhsDmdBarcode.find_by(gtin: '5016298210989')
+      ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record') { importer.import(release_dir) }
+    end
+
+    expect(barcode_selects).not_to be_empty
+    expect(barcode_selects).not_to include(include(cached: true))
+  end
+
   it 'reports unchanged records when re-importing the same release' do
     write_ampp_xml([{ appid: '888', nm: 'Stable Product' }])
     write_single_gtin_xml(amppid: '888', gtin: '4444444444444', startdt: '2020-01-01')

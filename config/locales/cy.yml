@@ -672,6 +672,7 @@ cy:
           actions: Camau
           view: Gweld
     nhs_dmd_imports:
+      already_running: Mae mewnforiad NHS dm+d eisoes yn rhedeg. Arhoswch iddo orffen.
       created: 'Rhyddhad NHS dm+d wedi''i fewnforio: %{imported} cofnod wedi''i fewnforio,
         %{skipped} wedi''u hepgor.'
       form:

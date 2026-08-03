@@ -41,4 +41,13 @@ RSpec.describe NhsDmd::ReleaseArchiveImport do
 
     expect(returned_result).to eq(result)
   end
+
+  it 'runs the archive import with the query cache disabled' do
+    allow(extractor).to receive(:extract)
+    allow(importer).to receive(:import).and_return(result)
+
+    expect(ActiveRecord::Base).to receive(:uncached).and_yield
+
+    service.import(uploaded_file, progress_callback: ->(_payload) {})
+  end
 end

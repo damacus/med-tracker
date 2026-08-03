@@ -10,12 +10,14 @@ module NhsDmd
     end
 
     def import(uploaded_file_or_path, progress_callback: nil)
-      archive_path = resolve_archive_path(uploaded_file_or_path)
+      ActiveRecord::Base.uncached do
+        archive_path = resolve_archive_path(uploaded_file_or_path)
 
-      Dir.mktmpdir('nhs-dmd-release') do |release_dir|
-        progress_callback&.call(status: :extracting, message: 'Extracting release archive')
-        @extractor.extract(archive_path, release_dir)
-        @importer.import(release_dir, progress_callback: progress_callback)
+        Dir.mktmpdir('nhs-dmd-release') do |release_dir|
+          progress_callback&.call(status: :extracting, message: 'Extracting release archive')
+          @extractor.extract(archive_path, release_dir)
+          @importer.import(release_dir, progress_callback: progress_callback)
+        end
       end
     rescue ReleaseArchiveExtractor::Error => e
       raise Error, e.message

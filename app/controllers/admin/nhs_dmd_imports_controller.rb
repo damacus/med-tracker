@@ -17,14 +17,20 @@ module Admin
         return
       end
 
-      import_run = NhsDmdImport.create!(
-        uploaded_filename: uploaded_file.original_filename.presence || File.basename(uploaded_file.path)
-      )
-      NhsDmd::ArchiveStore.new.persist(import_run:, uploaded_file:)
-      NhsDmdImportJob.perform_later(import_run.id)
+      import_run = ActiveRecord::Base.transaction(requires_new: true) do
+        NhsDmdImport.create!(
+          uploaded_filename: uploaded_file.original_filename.presence || File.basename(uploaded_file.path)
+        )
+      end
+      import_run.persist_archive!(uploaded_file)
+      NhsDmdImportJob.perform_later(import_run)
 
       redirect_to new_admin_nhs_dmd_import_path,
                   notice: t('admin.nhs_dmd_imports.started')
+    rescue ActiveRecord::RecordNotUnique => e
+      raise unless e.message.include?('index_nhs_dmd_imports_one_active')
+
+      redirect_to new_admin_nhs_dmd_import_path, alert: t('admin.nhs_dmd_imports.already_running')
     rescue NhsDmd::ArchiveStore::Error, ArgumentError, ActiveRecord::ActiveRecordError, SystemCallError => e
       import_run&.fail!(e.message) if import_run&.queued?
       redirect_to new_admin_nhs_dmd_import_path, alert: e.message

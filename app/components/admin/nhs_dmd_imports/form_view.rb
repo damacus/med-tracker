@@ -5,6 +5,7 @@ module Components
     module NhsDmdImports
       class FormView < Components::Base
         include Phlex::Rails::Helpers::FormWith
+        include Phlex::Rails::Helpers::TurboStreamFrom
 
         def initialize(import_run: nil)
           @import_run = import_run
@@ -16,7 +17,7 @@ module Components
             render_header
             render_form
             render_import_run
-            render_auto_refresh
+            render_stream_subscription
           end
         end
 
@@ -167,12 +168,10 @@ module Components
           "#{@import_run.progress_percentage}%"
         end
 
-        def render_auto_refresh
+        def render_stream_subscription
           return unless @import_run&.active?
 
-          script do
-            plain 'window.setTimeout(function () { window.location.reload(); }, 5000);'
-          end
+          turbo_stream_from(@import_run)
         end
       end
     end

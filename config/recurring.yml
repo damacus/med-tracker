@@ -11,6 +11,10 @@ production:
     class: ExpireHouseholdExportsJob
     schedule: every hour
     queue: default
+  reconcile_nhs_dmd_imports:
+    class: NhsDmdImportReconciliationJob
+    schedule: every 5 minutes
+    queue: default
 
 # production:
 #   periodic_cleanup:

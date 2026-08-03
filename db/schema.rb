@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_29_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_03_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -844,6 +844,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_120000) do
     t.datetime "updated_at", null: false
     t.integer "updated_count", default: 0, null: false
     t.string "uploaded_filename", null: false
+    t.index "(1)", name: "index_nhs_dmd_imports_one_active", unique: true, where: "(status = ANY (ARRAY[0, 1, 2, 3]))"
   end
 
   create_table "nhs_dmd_supplementary_releases", force: :cascade do |t|
