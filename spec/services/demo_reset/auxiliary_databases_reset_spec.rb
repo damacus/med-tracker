@@ -16,10 +16,8 @@ RSpec.describe DemoReset::AuxiliaryDatabasesReset do
     ).call
 
     expect(result).to eq(queue: 2, cache: 1)
-    expect(queue).to have_received(:execute)
-      .with('TRUNCATE TABLE "solid_queue_jobs", "solid_queue_processes" RESTART IDENTITY CASCADE')
-    expect(cache).to have_received(:execute)
-      .with('TRUNCATE TABLE "solid_cache_entries" RESTART IDENTITY CASCADE')
+    expect(queue).to have_received(:truncate_tables).with('solid_queue_jobs', 'solid_queue_processes')
+    expect(cache).to have_received(:truncate_tables).with('solid_cache_entries')
   end
 
   it 'is idempotent when an auxiliary database has no runtime rows' do
@@ -36,12 +34,11 @@ RSpec.describe DemoReset::AuxiliaryDatabasesReset do
   def auxiliary_connection(tables)
     instance_double(
       ActiveRecord::ConnectionAdapters::PostgreSQLAdapter,
-      tables:,
-      quote_table_name: nil
+      tables:
     ).tap do |connection|
-      allow(connection).to receive(:quote_table_name) { |table| %("#{table}") }
       allow(connection).to receive(:transaction).and_yield
       allow(connection).to receive(:execute)
+      allow(connection).to receive(:truncate_tables)
     end
   end
 

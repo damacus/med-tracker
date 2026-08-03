@@ -7,6 +7,8 @@ RSpec.describe DemoReset::PrimaryDatabaseReset do
 
   fixtures :all
 
+  before { FixtureHouseholdSetup.apply! }
+
   after { restore_spec_fixtures }
 
   it 'atomically replaces runtime state with the committed baseline', :aggregate_failures do

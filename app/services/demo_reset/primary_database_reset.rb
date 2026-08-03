@@ -24,8 +24,7 @@ module DemoReset
 
     def truncate_runtime_tables
       tables = connection.tables - SCHEMA_TABLES
-      quoted_tables = tables.map { |table| connection.quote_table_name(table) }.join(', ')
-      connection.execute("TRUNCATE TABLE #{quoted_tables} RESTART IDENTITY CASCADE")
+      connection.truncate_tables(*tables)
     end
   end
 end

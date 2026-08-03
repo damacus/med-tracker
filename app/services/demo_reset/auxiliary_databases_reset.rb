@@ -59,8 +59,7 @@ module DemoReset
     def truncate(connection, tables)
       return if tables.empty?
 
-      quoted_tables = tables.map { |table| connection.quote_table_name(table) }.join(', ')
-      connection.execute("TRUNCATE TABLE #{quoted_tables} RESTART IDENTITY CASCADE")
+      connection.truncate_tables(*tables)
     end
 
     def with_connection(configuration)
