@@ -1,0 +1,23 @@
+demo_daily_tablet:
+  household: demo_household
+  location: demo_home
+  name: Demo Daily Tablet
+  category: Demonstration
+  dose_amount: 1
+  dose_unit: tablet
+  current_supply: 28
+  supply_at_last_restock: 28
+  expiry_date: <%= 1.year.from_now.to_date %>
+  portable_id: 00000000-0000-4000-8000-000000000020
+
+demo_as_needed_tablet:
+  household: demo_household
+  location: demo_home
+  name: Demo As-Needed Tablet
+  category: Demonstration
+  dose_amount: 1
+  dose_unit: tablet
+  current_supply: 16
+  supply_at_last_restock: 16
+  expiry_date: <%= 1.year.from_now.to_date %>
+  portable_id: 00000000-0000-4000-8000-000000000021

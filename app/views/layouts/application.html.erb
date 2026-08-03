@@ -49,6 +49,7 @@
     <% main_classes << "pb-28 md:ml-64 md:pb-0" if app_shell %>
     <%= render Components::Layouts::Sidebar.new(current_user: current_user) if app_shell %>
     <%= render Components::Layouts::Navigation.new(current_user: current_user) unless hide_signed_out_chrome %>
+    <%= render Components::Layouts::DemoNotice.new if app_shell && DemoMode.enabled? %>
 
     <% if content_for?(:flash) %>
       <%= yield :flash %>

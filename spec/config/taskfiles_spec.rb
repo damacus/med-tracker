@@ -105,6 +105,13 @@ RSpec.describe 'Taskfiles' do
     expect(command).to eq('env DATABASE_ROLE=med_tracker_app rails support_access:expire')
   end
 
+  it 'defines the canary demo reset operator task with the owner role' do
+    task = root_taskfile.dig('tasks', 'canary:demo-reset')
+    command = task.dig('cmds', 0, 'vars', 'COMMAND')
+
+    expect(command).to eq('env DATABASE_ROLE=med_tracker_owner rails canary:demo_reset')
+  end
+
   it 'passes export destinations as environment data instead of command text' do
     task = root_taskfile.dig('tasks', 'household-lifecycle:download') || {}
     command = task.dig('cmds', 0, 'vars', 'COMMAND')

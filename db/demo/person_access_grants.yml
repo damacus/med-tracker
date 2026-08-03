@@ -1,0 +1,40 @@
+demo_owner_self:
+  household: demo_household
+  household_membership: demo_owner
+  person: demo_owner_person
+  access_level: manage
+  relationship_type: self
+  granted_by_membership: demo_owner
+
+demo_owner_carer:
+  household: demo_household
+  household_membership: demo_owner
+  person: demo_carer_person
+  access_level: manage
+  relationship_type: family_member
+  granted_by_membership: demo_owner
+
+demo_owner_child:
+  household: demo_household
+  household_membership: demo_owner
+  person: demo_child
+  access_level: manage
+  relationship_type: family_member
+  granted_by_membership: demo_owner
+
+demo_carer_self:
+  household: demo_household
+  household_membership: demo_carer
+  person: demo_carer_person
+  access_level: manage
+  relationship_type: self
+  granted_by_membership: demo_owner
+
+demo_carer_child:
+  household: demo_household
+  household_membership: demo_carer
+  person: demo_child
+  access_level: record
+  relationship_type: carer
+  granted_by_membership: demo_owner
+  carer_relationship: demo_carer_for_child

@@ -1,0 +1,13 @@
+demo_as_needed_assignment:
+  household: demo_household
+  person: demo_child
+  medication: demo_as_needed_tablet
+  dose_amount: 1
+  dose_unit: tablet
+  position: 0
+  administration_kind: 1
+  max_daily_doses: 3
+  min_hours_between_doses: 4
+  dose_cycle: 0
+  active: true
+  portable_id: 00000000-0000-4000-8000-000000000031

@@ -1,0 +1,14 @@
+demo_owner_home:
+  household: demo_household
+  location: demo_home
+  person: demo_owner_person
+
+demo_carer_home:
+  household: demo_household
+  location: demo_home
+  person: demo_carer_person
+
+demo_child_home:
+  household: demo_household
+  location: demo_home
+  person: demo_child

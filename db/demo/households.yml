@@ -1,0 +1,8 @@
+demo_household:
+  name: Demo Household
+  slug: demo-household
+  status: active
+  lifecycle_state: active
+  timezone: Europe/London
+  subscription_plan: free
+  created_by_account: demo_owner

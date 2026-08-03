@@ -76,6 +76,10 @@ RSpec.describe ApplicationHarnessDependencies do
     expect(compose_yaml).to include('APP_URL: ${APP_URL:-http://localhost}')
   end
 
+  it 'passes explicit demo mode into the development application' do
+    expect(compose_yaml).to include('DEMO_MODE: ${DEMO_MODE:-false}')
+  end
+
   it 'migrates a new production database without loading tenant seeds' do
     production_services = compose_yaml.split('  # === Production (profile: prod) ===', 2).last
     migrate_service = production_services.split("  migrate-prod:\n", 2).last.split("  web-prod:\n", 2).first
