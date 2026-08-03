@@ -58,6 +58,18 @@ RSpec.describe 'Admin::NhsDmdImports' do
         expect(response.body).to include('500 / 900')
       end
 
+      it 'subscribes to the signed stream for an active latest import without inline polling' do
+        import = NhsDmdImport.create!(uploaded_filename: 'nhsbsa_dmd_release.zip', status: :importing)
+
+        get new_admin_nhs_dmd_import_path
+
+        expect(response.body).to include(
+          '<turbo-cable-stream-source',
+          Turbo::StreamsChannel.signed_stream_name(import)
+        )
+        expect(response.body).not_to include('window.setTimeout')
+      end
+
       it 'renders the full log in a scrollable fixed-height panel pinned to bottom' do
         log_lines = (1..15).map { |index| format('Entry %<index>02d', index: index) }.join("\n")
 
@@ -140,6 +152,15 @@ RSpec.describe 'Admin::NhsDmdImports' do
 
       expect(response).to redirect_to(new_admin_nhs_dmd_import_path)
       expect(flash[:alert]).to eq('Select an NHS dm+d release ZIP to import.')
+    end
+
+    it 'redirects with a friendly alert when another import is active' do
+      NhsDmdImport.create!(uploaded_filename: 'already_running.zip', status: :importing)
+
+      post admin_nhs_dmd_import_path, params: { nhs_dmd_import: { release_zip: uploaded_zip('next_release.zip') } }
+
+      expect(response).to redirect_to(new_admin_nhs_dmd_import_path)
+      expect(flash[:alert]).to eq('An NHS dm+d import is already running. Please wait for it to finish.')
     end
 
     it 'marks the import as failed when the archive cannot be persisted' do

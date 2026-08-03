@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class NhsDmdImport < ApplicationRecord
+  ACTIVE_STATUSES = %i[queued extracting counting importing].freeze
+
   PROGRESS_COUNTER_KEYS = %i[
     total_records
     processed_records
@@ -28,6 +30,8 @@ class NhsDmdImport < ApplicationRecord
 
   validates :uploaded_filename, presence: true
   validate :complete_archive_reference
+
+  after_update_commit :broadcast_refresh
 
   def self.latest_first
     order(created_at: :desc)
@@ -111,6 +115,10 @@ class NhsDmdImport < ApplicationRecord
 
   def appended_log(message)
     [log.presence, message].compact.join("\n")
+  end
+
+  def broadcast_refresh
+    broadcast_refresh_to(self)
   end
 
   def progress_attributes(progress)

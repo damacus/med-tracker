@@ -78,6 +78,53 @@ RSpec.describe NhsDmdImport do
     end
   end
 
+  describe 'active import invariant' do
+    it 'permits only one queued, extracting, counting, or importing record' do
+      described_class.create!(uploaded_filename: 'queued.zip', status: :queued)
+
+      expect do
+        described_class.create!(uploaded_filename: 'importing.zip', status: :importing)
+      end.to raise_error(ActiveRecord::RecordNotUnique)
+    end
+
+    it 'allows a new active import after the previous import has completed' do
+      import = described_class.create!(uploaded_filename: 'queued.zip', status: :queued)
+      import.update!(status: :completed, completed_at: Time.current)
+
+      expect do
+        described_class.create!(uploaded_filename: 'next.zip', status: :queued)
+      end.not_to raise_error
+    end
+  end
+
+  describe 'Turbo refresh broadcasts' do
+    it 'broadcasts after committed progress updates' do
+      import = described_class.create!(uploaded_filename: 'release.zip')
+      allow(import).to receive(:broadcast_refresh_to)
+
+      import.apply_progress!(status: :importing, message: 'Importing records')
+
+      expect(import).to have_received(:broadcast_refresh_to).with(import)
+    end
+
+    it 'broadcasts after committed terminal updates' do
+      import = described_class.create!(uploaded_filename: 'release.zip')
+      allow(import).to receive(:broadcast_refresh_to)
+      result = NhsDmd::ReleaseImport::Result.new(
+        created_count: 1,
+        updated_count: 0,
+        unchanged_count: 0,
+        skipped_expired_count: 0,
+        skipped_missing_name_count: 0,
+        skipped_invalid_count: 0
+      )
+
+      import.complete!(result)
+
+      expect(import).to have_received(:broadcast_refresh_to).with(import)
+    end
+  end
+
   describe '#progress_percentage' do
     subject(:import) { described_class.new }
 

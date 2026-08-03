@@ -33,7 +33,7 @@ RSpec.describe NhsDmd::ArchiveStore do
       checksum: Digest::MD5.base64digest(payload),
       byte_size: payload.bytesize
     )
-    expect(reference.key).not_to include(import_run.uploaded_filename, import_run.id.to_s)
+    expect_opaque_reference(reference)
     expect(import_run.reload).to have_attributes(
       archive_service_name: 'persistent',
       archive_key: reference.key,
@@ -46,7 +46,7 @@ RSpec.describe NhsDmd::ArchiveStore do
 
   it 'resolves retry-safe reads through either declared backend' do
     %i[persistent s3].each do |service_name|
-      run = NhsDmdImport.create!(uploaded_filename: 'release.zip')
+      run = NhsDmdImport.create!(uploaded_filename: 'release.zip', status: :completed)
       store.persist(import_run: run, uploaded_file: upload, service_name:)
 
       first = store.open(run) { |path| File.binread(path) }
@@ -134,6 +134,11 @@ RSpec.describe NhsDmd::ArchiveStore do
 
   def persistent_root
     @persistent_root ||= Dir.mktmpdir('nhs-dmd-persistent')
+  end
+
+  def expect_opaque_reference(reference)
+    expect(reference.key).not_to include(import_run.uploaded_filename)
+    expect(reference.key).to match(%r{\Anhs-dmd/imports/[0-9a-f-]{36}\z})
   end
 
   def s3_root

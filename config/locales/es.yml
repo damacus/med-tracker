@@ -678,6 +678,7 @@ es:
           actions: Acciones
           view: Ver
     nhs_dmd_imports:
+      already_running: Ya se está ejecutando una importación de NHS dm+d. Espere a que termine.
       created: 'Publicación NHS dm+d importada: %{imported} registros importados,
         %{skipped} omitidos.'
       form:

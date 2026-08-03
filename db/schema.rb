@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_29_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_03_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -825,7 +825,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_120000) do
   end
 
   create_table "nhs_dmd_imports", force: :cascade do |t|
+    t.bigint "archive_byte_size"
+    t.string "archive_checksum"
+    t.string "archive_key"
     t.string "archive_path"
+    t.string "archive_service_name"
     t.datetime "completed_at"
     t.datetime "created_at", null: false
     t.integer "created_count", default: 0, null: false
@@ -844,6 +848,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_120000) do
     t.datetime "updated_at", null: false
     t.integer "updated_count", default: 0, null: false
     t.string "uploaded_filename", null: false
+    t.index "(1)", name: "index_nhs_dmd_imports_one_active", unique: true, where: "(status = ANY (ARRAY[0, 1, 2, 3]))"
   end
 
   create_table "nhs_dmd_supplementary_releases", force: :cascade do |t|
@@ -1101,6 +1106,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_120000) do
     t.index ["household_id", "created_at"], name: "index_security_audit_events_on_household_id_and_created_at"
     t.index ["household_id"], name: "index_security_audit_events_on_household_id"
     t.index ["id", "household_id"], name: "index_security_audit_events_on_id_and_household_id", unique: true
+  end
+
+  create_table "storage_migration_runs", force: :cascade do |t|
+    t.datetime "acceptance_verified_at"
+    t.datetime "created_at", null: false
+    t.string "destination_service_name", null: false
+    t.bigint "failed_count", default: 0, null: false
+    t.datetime "final_reconciled_at"
+    t.datetime "finalized_at"
+    t.datetime "mirror_queue_drained_at"
+    t.string "phase", default: "backfill", null: false
+    t.bigint "processed_count", default: 0, null: false
+    t.datetime "reconciled_at"
+    t.datetime "recovery_verified_at"
+    t.datetime "rollback_deadline"
+    t.uuid "run_id", default: -> { "gen_random_uuid()" }, null: false
+    t.string "source_service_name", null: false
+    t.bigint "stable_blob_count"
+    t.datetime "updated_at", null: false
+    t.bigint "verified_count", default: 0, null: false
+    t.index ["run_id"], name: "index_storage_migration_runs_on_run_id", unique: true
   end
 
   create_table "support_access_sessions", force: :cascade do |t|
