@@ -1,0 +1,28 @@
+demo_owner_person:
+  household: demo_household
+  account: demo_owner
+  name: Alex Demo
+  email: demo.owner@example.com
+  date_of_birth: 1985-05-12
+  person_type: 0
+  has_capacity: true
+  portable_id: 00000000-0000-4000-8000-000000000001
+
+demo_carer_person:
+  household: demo_household
+  account: demo_carer
+  name: Casey Demo
+  email: demo.carer@example.com
+  date_of_birth: 1988-09-21
+  person_type: 0
+  has_capacity: true
+  professional_title: carer
+  portable_id: 00000000-0000-4000-8000-000000000002
+
+demo_child:
+  household: demo_household
+  name: Rowan Demo
+  date_of_birth: <%= 10.years.ago.to_date %>
+  person_type: 1
+  has_capacity: false
+  portable_id: 00000000-0000-4000-8000-000000000003

@@ -1,0 +1,15 @@
+demo_owner:
+  household: demo_household
+  account: demo_owner
+  person: demo_owner_person
+  role: owner
+  status: active
+  joined_at: <%= Time.current %>
+
+demo_carer:
+  household: demo_household
+  account: demo_carer
+  person: demo_carer_person
+  role: member
+  status: active
+  joined_at: <%= Time.current %>

@@ -91,6 +91,14 @@ tasks:
           ENVIRONMENT: prod
           COMMAND: 'env DATABASE_ROLE=med_tracker_app rails support_access:expire'
 
+  canary:demo-reset:
+    desc: Replace canary runtime state with the committed synthetic demo baseline
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner rails canary:demo_reset'
+
   household-lifecycle:export:
     desc: Generate a complete hosted household export
     requires:

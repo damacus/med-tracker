@@ -1,0 +1,9 @@
+demo_owner:
+  person: demo_owner_person
+  email_address: demo.owner@example.com
+  password_digest: <%= BCrypt::Password.create("password") %>
+
+demo_carer:
+  person: demo_carer_person
+  email_address: demo.carer@example.com
+  password_digest: <%= BCrypt::Password.create("password") %>

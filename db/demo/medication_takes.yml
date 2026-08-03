@@ -1,0 +1,19 @@
+demo_daily_take:
+  household: demo_household
+  schedule: demo_daily_schedule
+  taken_at: <%= Time.zone.now.beginning_of_day + 8.hours %>
+  dose_amount: 1
+  dose_unit: tablet
+  taken_from_location: demo_home
+  taken_from_medication: demo_daily_tablet
+  portable_id: 00000000-0000-4000-8000-000000000040
+
+demo_as_needed_take:
+  household: demo_household
+  person_medication: demo_as_needed_assignment
+  taken_at: <%= Time.zone.now.beginning_of_day + 12.hours %>
+  dose_amount: 1
+  dose_unit: tablet
+  taken_from_location: demo_home
+  taken_from_medication: demo_as_needed_tablet
+  portable_id: 00000000-0000-4000-8000-000000000041

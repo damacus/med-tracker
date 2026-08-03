@@ -1,0 +1,15 @@
+demo_daily_schedule:
+  household: demo_household
+  person: demo_child
+  medication: demo_daily_tablet
+  dose_amount: 1
+  dose_unit: tablet
+  frequency: Once daily
+  start_date: <%= Time.zone.today %>
+  end_date: <%= 1.year.from_now.to_date %>
+  max_daily_doses: 1
+  dose_cycle: 0
+  schedule_type: 0
+  schedule_config: <%= { times: ['08:00'] }.to_json %>
+  active: true
+  portable_id: 00000000-0000-4000-8000-000000000030

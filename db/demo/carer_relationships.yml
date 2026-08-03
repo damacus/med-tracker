@@ -1,0 +1,6 @@
+demo_carer_for_child:
+  household: demo_household
+  carer: demo_carer_person
+  patient: demo_child
+  relationship_type: professional_carer
+  active: true
