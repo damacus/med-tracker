@@ -23,13 +23,15 @@ module Observability
       return if ActiveSupport::IsolatedExecutionState[EXECUTION_STATE_KEY]
 
       ActiveSupport::IsolatedExecutionState[EXECUTION_STATE_KEY] = true
-      CanonicalLogger.write(event)
-      event
-    rescue StandardError => e
-      emergency(error: e, event_name: event.to_h['event.name'])
-      nil
-    ensure
-      ActiveSupport::IsolatedExecutionState.delete(EXECUTION_STATE_KEY)
+      begin
+        CanonicalLogger.write(event)
+        event
+      rescue StandardError => e
+        emergency(error: e, event_name: event.to_h['event.name'])
+        nil
+      ensure
+        ActiveSupport::IsolatedExecutionState.delete(EXECUTION_STATE_KEY)
+      end
     end
 
     def emergency(error:, event_name:)
