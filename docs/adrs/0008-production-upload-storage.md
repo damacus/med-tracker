@@ -2,63 +2,97 @@
 
 - Status: Accepted
 - Date: 2026-07-10
+- Amended: 2026-08-02
 
 ## Context
 
-Active Storage previously selected the development-oriented `local` service in
-production. Docker Compose happened to mount a named volume at `/app/storage`,
-while the hosted Kubernetes deployment used a 5 Gi Longhorn `ReadWriteOnce`
-claim. Rails did not distinguish that durable mount from the writable directory
-inside an application image, so a missing mount could silently accept uploads
-that disappeared with the pod.
+The original decision made production Disk storage fail closed. A real durable
+mount at `/app/storage`, a single web replica, a `ReadWriteOnce` claim, and a
+`Recreate` rollout prevented uploads from silently landing in an ephemeral
+container filesystem. Those constraints remain valid for Disk deployments.
 
-The hosted deployment already has one web replica, uses the `Recreate` strategy,
-and cannot mount its `ReadWriteOnce` claim from multiple nodes. That topology is
-deliberately single-node.
+MedTracker must also support customers that select S3-compatible object storage
+and must not make S3 a requirement for customers that continue to use Disk.
+Operators need a verified migration in either direction without rewriting
+logical blob keys, weakening attachment authorization, or assuming that a
+retired source is still current.
 
 ## Decision
 
-Production uses the `persistent` Active Storage disk service rooted at
-`ACTIVE_STORAGE_ROOT`, which defaults to `/app/storage`.
-`ACTIVE_STORAGE_SERVICE` may select only `persistent`. At runtime the application
-verifies that the root is absolute, exists, is writable, and is listed as a mount
-point by the Linux kernel. Production boot fails when any check fails. Asset
-compilation with `SECRET_KEY_BASE_DUMMY=1` skips only the runtime mount check.
+Production explicitly selects one of four Active Storage services:
 
-The deployment contract is:
+1. `persistent`: Disk-only steady state.
+2. `persistent_with_s3_mirror`: Disk-readable migration state.
+3. `s3_with_persistent_mirror`: S3-readable migration or rollback state.
+4. `s3`: S3-only steady state.
 
-- one web replica;
-- a `ReadWriteOnce` persistent volume;
-- `Recreate` deployment strategy;
-- coordinated backups of PostgreSQL Active Storage records and `/app/storage`;
-- encrypted off-cluster retention and regular isolated restore tests.
+Disk-inclusive modes retain the original fail-closed `ACTIVE_STORAGE_ROOT`
+checks. S3-inclusive modes require endpoint, bucket, region, access key, and
+secret key configuration. `persistent` remains the default, so a customer can
+run or upgrade MedTracker without S3 settings.
 
-Horizontal web scaling is not supported by this storage contract. Scaling web
-replicas requires either an RWX storage service with demonstrated cross-node
-semantics or a migration to object storage before replicas are increased.
+### Topology constraints
 
-## Rejected Alternative: Object Storage
+A Disk-only deployment may use the existing `ReadWriteOnce` and `Recreate`
+single-pod topology. Every process that performs storage work must see the same
+durable root. Horizontal web scaling is not supported by that topology unless
+the operator separately proves suitable shared-filesystem semantics.
 
-Object storage is a strong future choice for portable, horizontally scaled
-deployments, but adopting it now would add an S3 provider dependency, secrets,
-bucket lifecycle policy, and a live blob migration while the deployed topology
-remains single-replica. That operational expansion is not needed to make the
-current Longhorn-backed service durable and fail closed.
+S3-only deployments do not mount `/app/storage`; independently scheduled web
+and worker pods are permitted because the durable object service is shared.
+Selecting S3 does not itself require a web/worker split.
 
-Object storage remains the preferred migration path when horizontal scaling or
-cross-cluster portability becomes a requirement. Rails mirror services can be
-used during that migration, followed by a verified copy and service cutover.
+### Symmetric migration
+
+Disk to S3 uses `persistent` → `persistent_with_s3_mirror` →
+`s3_with_persistent_mirror` → `s3`. S3 to Disk uses the same states in reverse.
+Backfill copies by logical key, verifies recorded checksums, tolerates valid
+existing destinations, and resumes safely. Cutover requires quiesced storage
+mutations, drained mirror work, and a stable fully verified blob set. Blob
+service identities change in one database transaction.
+
+During the rollback window, writes continue to both services. An in-window rollback
+returns to the source-primary mirror state. After finalization,
+returning to the former backend is a new migration with a newly provisioned and
+fully reconciled destination; it is not rollback.
+
+Source retirement is optional and is never performed by the application. It is
+eligible only after the rollback window, acceptance, recovery proof, final
+reconciliation, and explicit operator sign-off.
+
+### Recovery
+
+Every recovery point coordinates PostgreSQL with the backends required by live
+blob service identities and the active migration phase:
+
+- Disk-only: database plus Disk recovery reference.
+- S3-only: database plus S3 recovery reference.
+- Mirror or rollback window: database plus both storage references.
+
+The existing 35-daily and 12-monthly retention objectives continue to apply.
+Every accepted recovery point must pass an isolated restore, integrity check,
+authorized retrieval, and cross-household denial check.
+
+## Rejected alternatives
+
+Making object storage mandatory would add infrastructure and credential
+requirements for customers whose durable Disk topology is sufficient. Keeping
+separate one-way migration implementations would duplicate verification,
+rollback, and privacy behavior. Copying the Disk directory directly would copy
+physical sharding rather than the Active Storage logical service contract.
 
 ## Consequences
 
-Uploads cannot be accepted when the production volume is absent or mounted at
-the wrong path. Compose, Kamal, and hosted Kubernetes must all mount the same
-root. Operators must back up the database and blob volume as one recovery set.
-Deployments remain single-replica until the storage decision changes.
+Operators choose and provision a supported backend explicitly. Disk remains a
+supported steady state. S3 enables storage-independent scheduling but adds
+provider-owned durability, access-policy, lifecycle, and recovery duties.
+Migration phases protect both backends and require maintenance gates. No
+deployment may delete a source merely because application finalization passed.
 
-## Related Documents
+## Related documents
 
 - `docs/operations/upload-storage-backup-and-restore.md`
+- `docs/operations/home-ops-portable-storage-handoff.md`
 - `config/storage.yml`
 - `config/environments/production.rb`
-- GitHub issue #1551
+- GitHub issues #1551 and #1774

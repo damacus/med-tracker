@@ -6,15 +6,21 @@ RSpec.describe NhsDmdImportJob do
   let(:import_run) do
     NhsDmdImport.create!(
       uploaded_filename: 'nhsbsa_dmd_release.zip',
-      archive_path: Rails.root.join('tmp/import-spec/release.zip').to_s,
+      archive_service_name: 'persistent',
+      archive_key: SecureRandom.uuid,
+      archive_checksum: Digest::MD5.base64digest('archive'),
+      archive_byte_size: 7,
       status: :queued
     )
   end
 
   let(:service) { instance_double(NhsDmd::ReleaseArchiveImport) }
+  let(:archive_store) { instance_double(NhsDmd::ArchiveStore, cleanup: nil) }
 
   before do
     allow(NhsDmd::ReleaseArchiveImport).to receive(:new).and_return(service)
+    allow(NhsDmd::ArchiveStore).to receive(:new).and_return(archive_store)
+    allow(archive_store).to receive(:open).with(import_run).and_yield('/private/tmp/opaque-release')
   end
 
   def progress_update(message, **overrides)
@@ -82,6 +88,27 @@ RSpec.describe NhsDmdImportJob do
     expect(import_run.log).to include('Starting AMPP name import')
       .and include('Starting GTIN import')
       .and include('Processed 880 import records')
+    expect(service).to have_received(:import).with('/private/tmp/opaque-release', progress_callback: anything)
+    expect(archive_store).to have_received(:cleanup).with(import_run)
+  end
+
+  it 'keeps a completed import successful when archive cleanup fails' do
+    complete_import_via(service)
+    allow(archive_store).to receive(:cleanup)
+      .and_raise(NhsDmd::ArchiveStore::Error, 'archive_cleanup_failed')
+    allow(Observability::DiagnosticEvent).to receive(:emit)
+
+    expect do
+      described_class.perform_now(import_run.id)
+    end.not_to raise_error
+
+    expect(import_run.reload).to have_attributes(completed_import_attributes)
+    expect(Observability::DiagnosticEvent).to have_received(:emit).with(
+      component: :nhs_dmd_import,
+      reason: :operation_failed,
+      severity: :error,
+      error: an_instance_of(NhsDmd::ArchiveStore::Error)
+    )
   end
 
   it 'marks the import as failed when the archive import errors' do
@@ -95,5 +122,6 @@ RSpec.describe NhsDmdImportJob do
     expect(import_run).to be_failed
     expect(import_run.error_message).to eq('bad zip')
     expect(import_run.completed_at).to be_present
+    expect(archive_store).to have_received(:cleanup).with(import_run)
   end
 end

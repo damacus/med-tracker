@@ -20,12 +20,12 @@ module Admin
       import_run = NhsDmdImport.create!(
         uploaded_filename: uploaded_file.original_filename.presence || File.basename(uploaded_file.path)
       )
-      import_run.persist_archive!(uploaded_file)
-      NhsDmdImportJob.perform_later(import_run)
+      NhsDmd::ArchiveStore.new.persist(import_run:, uploaded_file:)
+      NhsDmdImportJob.perform_later(import_run.id)
 
       redirect_to new_admin_nhs_dmd_import_path,
                   notice: t('admin.nhs_dmd_imports.started')
-    rescue ArgumentError, ActiveRecord::ActiveRecordError, SystemCallError => e
+    rescue NhsDmd::ArchiveStore::Error, ArgumentError, ActiveRecord::ActiveRecordError, SystemCallError => e
       import_run&.fail!(e.message) if import_run&.queued?
       redirect_to new_admin_nhs_dmd_import_path, alert: e.message
     end

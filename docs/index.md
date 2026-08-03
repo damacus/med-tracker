@@ -56,8 +56,9 @@ or unredacted logs publicly.
   stable operation IDs, and audience/resource tags when extending the OpenAPI contract.
 - [API Contract](api/openapi.v1.yaml): OpenAPI contract for hosted auth, portable IDs, sync, backups, admin APIs, and FHIR R4 reads.
 - [External Integration Architecture](adrs/0010-external-integration-architecture.md): choose `/api/v1`, `/mcp`, or SMART on FHIR by client audience.
-- [Production Upload Storage](adrs/0008-production-upload-storage.md): understand the single-node persistent-volume decision and scaling boundary.
-- [Upload Storage Backup and Restore](operations/upload-storage-backup-and-restore.md): back up and verify database records with stored blobs.
+- [Production Upload Storage](adrs/0008-production-upload-storage.md): understand optional Disk and S3 modes, topology, and migration boundaries.
+- [Upload Storage Backup and Restore](operations/upload-storage-backup-and-restore.md): record and verify backend-aware recovery sets.
+- [Home-Ops Portable Storage Handoff](operations/home-ops-portable-storage-handoff.md): apply the deployment inputs and maintenance gates safely.
 - [Pre-0.5 database upgrade](pre-0-5-database-upgrade.md): bootstrap existing PostgreSQL databases before the household/RLS cutover.
 
 ---

@@ -74,6 +74,7 @@ class SchemaInventory
     oauth_grants
     platform_admins
     push_subscriptions
+    storage_migration_runs
     support_access_sessions
     users
     versions

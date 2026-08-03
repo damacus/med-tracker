@@ -13,7 +13,10 @@ module Observability
       status_code: ->(value) { value.is_a?(Integer) && value.between?(100, 599) },
       duration: ->(value) { value.is_a?(Integer) && value >= 0 },
       job_class: ->(value) { value.to_s.match?(/\A[A-Z][A-Za-z0-9_:]{0,127}\z/) },
-      job_queue: ->(value) { value.to_s.match?(/\A[a-z0-9_-]{1,64}\z/) }
+      job_queue: ->(value) { value.to_s.match?(/\A[a-z0-9_-]{1,64}\z/) },
+      processed_count: ->(value) { value.is_a?(Integer) && value >= 0 },
+      verified_count: ->(value) { value.is_a?(Integer) && value >= 0 },
+      failed_count: ->(value) { value.is_a?(Integer) && value >= 0 }
     }.freeze
 
     private

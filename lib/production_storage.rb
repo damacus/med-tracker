@@ -5,14 +5,30 @@ module ProductionStorage
 
   Configuration = Data.define(:service, :root)
 
-  SERVICE = 'persistent'
+  SERVICES = %w[
+    persistent
+    persistent_with_s3_mirror
+    s3_with_persistent_mirror
+    s3
+  ].freeze
+  DISK_SERVICES = %w[persistent persistent_with_s3_mirror s3_with_persistent_mirror].freeze
+  S3_SERVICES = %w[persistent_with_s3_mirror s3_with_persistent_mirror s3].freeze
+  S3_SETTINGS = %w[
+    ACTIVE_STORAGE_S3_ENDPOINT
+    ACTIVE_STORAGE_S3_BUCKET
+    ACTIVE_STORAGE_S3_REGION
+    ACTIVE_STORAGE_S3_ACCESS_KEY_ID
+    ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY
+  ].freeze
+  DEFAULT_SERVICE = 'persistent'
   DEFAULT_ROOT = '/app/storage'
   DEFAULT_MOUNTINFO_PATH = '/proc/self/mountinfo'
 
   def self.resolve(environment: ENV, mountinfo_path: Pathname(DEFAULT_MOUNTINFO_PATH))
     service = service_name(environment)
-    root = storage_root(environment)
-    validate_mount!(root, mountinfo_path) unless asset_compilation?(environment)
+    root = storage_root(environment) if DISK_SERVICES.include?(service)
+    validate_mount!(root, mountinfo_path) if root && !asset_compilation?(environment)
+    validate_s3!(environment) if S3_SERVICES.include?(service)
 
     Configuration.new(service: service.to_sym, root: root)
   rescue Errno::ENOENT, Errno::EACCES => e
@@ -20,14 +36,18 @@ module ProductionStorage
   end
 
   def self.service_name(environment)
-    service = environment.fetch('ACTIVE_STORAGE_SERVICE', SERVICE)
-    unless service == SERVICE
-      raise ConfigurationError, "ACTIVE_STORAGE_SERVICE must be #{SERVICE.inspect} in production"
-    end
+    service = environment.fetch('ACTIVE_STORAGE_SERVICE', DEFAULT_SERVICE)
+    return service if SERVICES.include?(service)
 
-    service
+    raise ConfigurationError, "ACTIVE_STORAGE_SERVICE must be one of #{SERVICES.join(', ')} in production"
   end
   private_class_method :service_name
+
+  def self.validate_s3!(environment)
+    missing_setting = S3_SETTINGS.find { |name| environment[name].to_s.strip.empty? }
+    raise ConfigurationError, "#{missing_setting} is required" if missing_setting
+  end
+  private_class_method :validate_s3!
 
   def self.storage_root(environment)
     root = Pathname(environment.fetch('ACTIVE_STORAGE_ROOT', DEFAULT_ROOT)).cleanpath
