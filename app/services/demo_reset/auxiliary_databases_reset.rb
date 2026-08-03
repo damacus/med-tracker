@@ -4,6 +4,10 @@ module DemoReset
   class AuxiliaryDatabasesReset
     SCHEMA_TABLES = %w[ar_internal_metadata schema_migrations].freeze
 
+    class ConnectionRecord < ApplicationRecord
+      self.abstract_class = true
+    end
+
     def initialize(configurations: default_configurations, connection_provider: method(:with_connection))
       @configurations = configurations
       @connection_provider = connection_provider
@@ -63,13 +67,10 @@ module DemoReset
     end
 
     def with_connection(configuration)
-      connection_class = Class.new(ApplicationRecord) do
-        self.abstract_class = true
-      end
-      connection_class.establish_connection(configuration.configuration_hash)
-      yield connection_class.connection
+      ConnectionRecord.establish_connection(configuration.configuration_hash)
+      yield ConnectionRecord.connection
     ensure
-      connection_class&.connection_pool&.disconnect!
+      ConnectionRecord.connection_pool.disconnect!
     end
   end
 end

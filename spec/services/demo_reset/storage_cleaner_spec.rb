@@ -56,6 +56,16 @@ RSpec.describe DemoReset::StorageCleaner do
     expect(storage_root.join('upload.bin')).to exist
   end
 
+  it 'uses the production storage default when the environment override is absent' do
+    stub_const('ProductionStorage::DEFAULT_ROOT', storage_root.to_s)
+    allow(ENV).to receive(:fetch).and_call_original
+    allow(ENV).to receive(:fetch).with('ACTIVE_STORAGE_ROOT', storage_root.to_s).and_return(storage_root.to_s)
+    storage_root.join('upload.bin').write('synthetic upload')
+
+    expect(described_class.new(expected_root: storage_root, mount_checker: ->(_) { true }).call)
+      .to eq(files_removed: 1)
+  end
+
   def cleaner(remover: FileUtils.method(:rm_rf), mount_checker: ->(_) { true })
     described_class.new(root: storage_root, expected_root: storage_root, remover:, mount_checker:)
   end

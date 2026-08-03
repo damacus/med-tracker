@@ -88,6 +88,8 @@ This is an environment reset boundary, not a domain deletion path. It intentiona
 
 Add a CronJob controller to the existing app-template HelmRelease. It reuses the exact candidate application image tag, canary secret, security context, and canary storage claim. It does not start Puma or Solid Queue; it runs only the reset command.
 
+The controller must provide an exclusive mutation window around the destructive stages. It quiesces user mutation traffic and Solid Queue writers before invoking the reset, while retaining a health-only application path for the final `/up` check, then restores ordinary demo traffic after every invariant passes. Strict post-reset checks intentionally fail if a writer was not quiesced; they must not be weakened to accept rows or uploads whose origin cannot be proven.
+
 Schedule it for Sunday 04:15 with `Europe/London` as the explicit Kubernetes timezone. Use `Forbid` concurrency, one active execution, a bounded runtime, bounded retry history, and `restartPolicy: Never`. The application-level PostgreSQL advisory lock also prevents overlap between scheduled and manually triggered resets.
 
 Keeping the controller in the same HelmRelease allows YAML anchors and isolation checks to prove that the web and reset runners use the same image and `DEMO_MODE` setting. The existing `task kubernetes:med-tracker-canary-isolation` contract will be expanded to validate the schedule, demo mode, image identity, canary database secret, and storage mount.
@@ -121,7 +123,7 @@ RSpec covers the demo-mode boundary and notice as well as the command's public r
 ## Risks / Trade-offs
 
 - **[Table discovery misses a non-Active Record persistence surface]** → Inventory all configured primary, cache, queue, and cable databases in tests and fail verification when an unexpected runtime table survives.
-- **[A reset overlaps an application request]** → Use transactional database replacement; requests either observe pre-reset state or the committed baseline. Existing sessions become invalid and users sign in again.
+- **[A reset overlaps an application or queue writer]** → Require the GitOps controller to quiesce mutation traffic and Solid Queue writers for the destructive window while retaining only the health probe path; strict verification detects an incomplete writer boundary.
 - **[Storage cleanup fails after database commit]** → Baseline contains no attachment records, so files are unreachable; report failure and make retry clear the remaining files idempotently.
 - **[Known demo passwords are reachable externally]** → Retain the existing edge authentication boundary for canary and use only synthetic data. The demo credentials are not valid anywhere else.
 - **[App and home-ops changes deploy out of order]** → Land and publish the reset-capable app image first, then change home-ops. Keep the purged canary suspended until both the image and production-free manifests are available.

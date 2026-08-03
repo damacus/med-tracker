@@ -125,4 +125,34 @@ RSpec.describe MedicationDoseDecisionContext do
       expect(context.audit_payload).to eq(decision_source_count: 1)
     end
   end
+
+  context 'when a later dose in the same weekly cycle reaches the limit' do
+    let!(:related_person_medication) do
+      create(
+        :person_medication,
+        person: person,
+        medication: medication,
+        dosage: nil,
+        dose_amount: 500,
+        dose_unit: 'mg',
+        max_daily_doses: 1,
+        dose_cycle: 'weekly',
+        min_hours_between_doses: nil
+      )
+    end
+
+    before do
+      related_person_medication.medication_takes.create!(
+        taken_at: taken_at + 1.day,
+        dose_amount: 500,
+        dose_unit: 'mg',
+        taken_from_medication: medication,
+        taken_from_location: medication.location
+      )
+    end
+
+    it 'blocks a backdated dose from exceeding the cycle limit' do
+      expect(context.blocked?).to be(true)
+    end
+  end
 end

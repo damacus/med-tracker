@@ -18,7 +18,7 @@ module DemoReset
         demo_mode: DemoMode.enabled?,
         application_url: ENV.fetch('APP_URL', nil),
         database_host: database_hosts,
-        storage_root: ENV.fetch('ACTIVE_STORAGE_ROOT', nil),
+        storage_root: ENV.fetch('ACTIVE_STORAGE_ROOT', ProductionStorage::DEFAULT_ROOT),
         database_role: connection.select_value('SELECT current_user')
       )
     end

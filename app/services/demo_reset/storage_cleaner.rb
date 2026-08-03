@@ -6,7 +6,8 @@ module DemoReset
   class StorageCleaner
     MOUNTINFO_PATH = Pathname('/proc/self/mountinfo')
 
-    def initialize(root: ENV.fetch('ACTIVE_STORAGE_ROOT', nil), expected_root: Preflight::STORAGE_ROOT,
+    def initialize(root: ENV.fetch('ACTIVE_STORAGE_ROOT', ProductionStorage::DEFAULT_ROOT),
+                   expected_root: Preflight::STORAGE_ROOT,
                    remover: FileUtils.method(:rm_rf), mount_checker: method(:mounted?))
       @root = Pathname(root.to_s)
       @expected_root = Pathname(expected_root.to_s)

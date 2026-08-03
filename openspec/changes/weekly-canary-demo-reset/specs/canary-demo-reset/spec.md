@@ -76,6 +76,13 @@ The canary reset SHALL run every Sunday at 04:15 in the Europe/London timezone f
 - **WHEN** the weekly schedule is reached
 - **THEN** exactly one reset execution starts outside the application job queue
 
+#### Scenario: Reset has an exclusive mutation window
+- **GIVEN** canary web and queue processes can normally create runtime state
+- **WHEN** the scheduled reset enters its destructive stages
+- **THEN** user mutation traffic and queue writers are quiesced
+- **AND** only the health probe path remains available for final verification
+- **AND** ordinary demo traffic resumes only after every reset invariant passes
+
 #### Scenario: Previous reset is still active
 - **GIVEN** a canary reset is already running
 - **WHEN** another scheduled start is reached

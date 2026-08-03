@@ -18,7 +18,7 @@ module DemoReset
       http.open_timeout = TIMEOUT_SECONDS
       http.read_timeout = TIMEOUT_SECONDS
       http.request(Net::HTTP::Get.new(uri)).is_a?(Net::HTTPSuccess)
-    rescue URI::InvalidURIError, SocketError, SystemCallError, Timeout::Error
+    rescue URI::Error, SocketError, SystemCallError, Timeout::Error
       false
     end
 

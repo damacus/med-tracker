@@ -4,7 +4,7 @@ module DemoReset
   class Verifier
     def initialize(baseline_verifier: DemoBaseline::Loader.new.method(:verify!),
                    auxiliary_verifier: AuxiliaryDatabasesReset.new.method(:verify_empty!),
-                   storage_root: ENV.fetch('ACTIVE_STORAGE_ROOT', nil),
+                   storage_root: ENV.fetch('ACTIVE_STORAGE_ROOT', ProductionStorage::DEFAULT_ROOT),
                    health_checker: HealthChecker.new.method(:call), demo_mode: DemoMode.method(:enabled?))
       @baseline_verifier = baseline_verifier
       @auxiliary_verifier = auxiliary_verifier

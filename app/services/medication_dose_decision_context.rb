@@ -66,7 +66,7 @@ class MedicationDoseDecisionContext
       MedicationTake
       .where(schedule_id: schedule_ids)
       .or(MedicationTake.where(person_medication_id: person_medication_ids))
-      .where(taken_at: (taken_at - 31.days).beginning_of_day..taken_at.end_of_day)
+      .where(taken_at: (taken_at - 31.days).beginning_of_day..[taken_at, Time.current].max.end_of_day)
       .to_a
   end
 
