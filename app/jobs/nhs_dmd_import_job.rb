@@ -26,7 +26,7 @@ class NhsDmdImportJob < ApplicationJob
       archive_importer.import(archive_path, progress_callback: progress_callback_for(import_run))
     end
     import_run.reload.complete!(result)
-    archive_store.cleanup(import_run)
+    cleanup_archive(import_run)
   end
 
   def resolve_import_run(import_run_or_id)
@@ -51,7 +51,11 @@ class NhsDmdImportJob < ApplicationJob
 
   def fail_import(import_run, error)
     import_run&.reload&.fail!(error.message)
-    archive_store.cleanup(import_run) if import_run
+    cleanup_archive(import_run) if import_run
+  end
+
+  def cleanup_archive(import_run)
+    archive_store.cleanup(import_run)
   rescue NhsDmd::ArchiveStore::Error => e
     Observability::DiagnosticEvent.emit(
       component: :nhs_dmd_import,

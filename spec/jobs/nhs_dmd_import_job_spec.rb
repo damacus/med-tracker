@@ -92,6 +92,25 @@ RSpec.describe NhsDmdImportJob do
     expect(archive_store).to have_received(:cleanup).with(import_run)
   end
 
+  it 'keeps a completed import successful when archive cleanup fails' do
+    complete_import_via(service)
+    allow(archive_store).to receive(:cleanup)
+      .and_raise(NhsDmd::ArchiveStore::Error, 'archive_cleanup_failed')
+    allow(Observability::DiagnosticEvent).to receive(:emit)
+
+    expect do
+      described_class.perform_now(import_run.id)
+    end.not_to raise_error
+
+    expect(import_run.reload).to have_attributes(completed_import_attributes)
+    expect(Observability::DiagnosticEvent).to have_received(:emit).with(
+      component: :nhs_dmd_import,
+      reason: :operation_failed,
+      severity: :error,
+      error: an_instance_of(NhsDmd::ArchiveStore::Error)
+    )
+  end
+
   it 'marks the import as failed when the archive import errors' do
     allow(service).to receive(:import).and_raise(NhsDmd::ReleaseArchiveImport::Error, 'bad zip')
 

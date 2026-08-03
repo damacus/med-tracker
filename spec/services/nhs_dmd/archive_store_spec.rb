@@ -58,6 +58,29 @@ RSpec.describe NhsDmd::ArchiveStore do
     end
   end
 
+  it 'preserves errors raised by the archive consumer' do
+    store.persist(import_run:, uploaded_file: upload, service_name: :persistent)
+
+    expect do
+      store.open(import_run) { raise NhsDmd::ReleaseArchiveImport::Error, 'bad zip' }
+    end.to raise_error(NhsDmd::ReleaseArchiveImport::Error, 'bad zip')
+  end
+
+  it 'reports a missing configured service through the archive store contract' do
+    registry = ActiveStorage::Service::Registry.new({})
+    unavailable_store = described_class.new(service_registry: registry)
+    import_run.update!(
+      archive_service_name: 'missing',
+      archive_key: 'missing-key',
+      archive_checksum: Digest::MD5.base64digest('missing'),
+      archive_byte_size: 7
+    )
+
+    expect do
+      unavailable_store.open(import_run) { nil }
+    end.to raise_error(NhsDmd::ArchiveStore::Error, 'archive_service_unavailable')
+  end
+
   it 'deletes a durable archive only after the import becomes terminal' do
     store.persist(import_run:, uploaded_file: upload, service_name: :s3)
 

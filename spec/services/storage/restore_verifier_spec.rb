@@ -55,6 +55,33 @@ RSpec.describe Storage::RestoreVerifier do
     FileUtils.remove_entry(s3_root) if s3_root && File.exist?(s3_root)
   end
 
+  it 'requires recovery references for every live blob service' do
+    test_service = service_registry.fetch('test')
+    registry = { test: test_service, persistent_with_s3_mirror: test_service }.with_indifferent_access
+    allow(ActiveStorage::Blob).to receive(:services).and_return(registry)
+    other_blob = ActiveStorage::Blob.create_and_upload!(
+      io: StringIO.new('other restored object'),
+      filename: 'other.txt',
+      service_name: 'persistent_with_s3_mirror'
+    )
+
+    expect(verification.required_backends).to eq(%i[disk s3])
+  ensure
+    other_blob&.purge
+  end
+
+  it 'normalizes a missing Active Storage service as a verification failure' do
+    registry = ActiveStorage::Service::Registry.new({})
+
+    expect do
+      described_class.new(
+        attachment_id: attachment.id,
+        service_registry: registry,
+        access_verifier:
+      ).call
+    end.to raise_error(described_class::VerificationError, 'The restored blob service is unavailable')
+  end
+
   def storage_registry(s3_service)
     test_service = service_registry.fetch('test')
     { s3: s3_service, test: test_service, 's3' => s3_service, 'test' => test_service }

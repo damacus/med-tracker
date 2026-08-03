@@ -37,7 +37,7 @@ module Storage
         attachment_id: attachment.id,
         blob_id: blob.id,
         byte_size: blob.byte_size,
-        required_backends: RecoverySet.new(blob_scope: ActiveStorage::Blob.where(id: blob.id)).required_backends,
+        required_backends: RecoverySet.new.required_backends,
         **access
       )
     rescue ActiveStorage::IntegrityError, ActiveStorage::FileNotFoundError
@@ -60,13 +60,17 @@ module Storage
     end
 
     def verify_stored_object!(blob)
-      service = service_registry.fetch(blob.service_name.to_sym)
+      service = fetch_service(blob.service_name)
       unless service.exist?(blob.key)
         raise VerificationError, 'The restored attachment record exists but its stored object is missing'
       end
 
       service.open(blob.key, checksum: blob.checksum, verify: true) { it.read(1) }
-    rescue KeyError
+    end
+
+    def fetch_service(service_name)
+      service_registry.fetch(service_name.to_sym)
+    rescue KeyError, RuntimeError
       raise VerificationError, 'The restored blob service is unavailable'
     end
 

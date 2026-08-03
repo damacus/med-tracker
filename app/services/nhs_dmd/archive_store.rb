@@ -23,19 +23,16 @@ module NhsDmd
     end
 
     def open(import_run)
-      if import_run.archive_reference?
-        service = fetch_service(import_run.archive_service_name)
-        service.open(import_run.archive_key, checksum: import_run.archive_checksum, verify: true) do |file|
-          return yield(file.path)
-        end
+      value = nil
+      consumer_error = nil
+      read_archive(import_run) do |archive_path|
+        value = yield(archive_path)
+      rescue StandardError => e
+        consumer_error = e
       end
-      return yield(import_run.archive_path) if import_run.legacy_archive?
+      raise consumer_error if consumer_error
 
-      raise Error, 'archive_reference_missing'
-    rescue Error
-      raise
-    rescue StandardError
-      raise Error, 'archive_read_failed'
+      value
     end
 
     def cleanup(import_run)
@@ -69,9 +66,25 @@ module NhsDmd
 
     attr_reader :service_registry
 
+    def read_archive(import_run)
+      if import_run.archive_reference?
+        service = fetch_service(import_run.archive_service_name)
+        service.open(import_run.archive_key, checksum: import_run.archive_checksum, verify: true) do |file|
+          return yield(file.path)
+        end
+      end
+      return yield(import_run.archive_path) if import_run.legacy_archive?
+
+      raise Error, 'archive_reference_missing'
+    rescue Error
+      raise
+    rescue StandardError
+      raise Error, 'archive_read_failed'
+    end
+
     def fetch_service(service_name)
       service_registry.fetch(service_name.to_sym)
-    rescue KeyError
+    rescue KeyError, RuntimeError
       raise Error, 'archive_service_unavailable'
     end
 
