@@ -162,7 +162,7 @@ class Schedule < ApplicationRecord
   def uniquely_matching_dosage_option
     return if medication.blank? || dose_amount.blank? || dose_unit.blank?
 
-    matches = medication.dosage_records.where(amount: dose_amount, unit: dose_unit)
+    matches = medication.dosage_records.to_a.select { |record| record.amount.to_s == dose_amount.to_s && record.unit == dose_unit }
     return matches.first if matches.one?
 
     nil

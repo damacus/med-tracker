@@ -98,11 +98,11 @@ class PersonMedication < ApplicationRecord
     return if medication.blank?
 
     if child_person_type?
-      child_default = medication.dosage_records.child_default.first
+      child_default = medication.dosage_records.to_a.find(&:default_for_children?)
       return child_default if child_default
     end
 
-    medication.dosage_records.adult_default.first || medication.dosage_records.order(:amount, :id).first
+    medication.dosage_records.to_a.find(&:default_for_adults?) || medication.dosage_records.to_a.sort_by { |r| [r.amount || 0, r.id] }.first
   end
 
   def child_person_type?
@@ -133,7 +133,7 @@ class PersonMedication < ApplicationRecord
   def uniquely_matching_dosage_option
     return if medication.blank? || dose_amount.blank? || dose_unit.blank?
 
-    matches = medication.dosage_records.where(amount: dose_amount, unit: dose_unit)
+    matches = medication.dosage_records.to_a.select { |record| record.amount.to_s == dose_amount.to_s && record.unit == dose_unit }
     return matches.first if matches.one?
 
     nil
