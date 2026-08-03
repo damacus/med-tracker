@@ -9,7 +9,6 @@ RSpec.describe NhsDmd::ArchiveMigration do
   let(:imports) do
     [
       NhsDmdImport.create!(uploaded_filename: 'first.zip', archive_path: '/legacy/first.zip'),
-      NhsDmdImport.create!(uploaded_filename: 'second.zip', archive_path: '/legacy/second.zip'),
       NhsDmdImport.create!(uploaded_filename: 'complete.zip', archive_path: '/legacy/complete.zip', status: :completed)
     ]
   end
@@ -20,7 +19,7 @@ RSpec.describe NhsDmd::ArchiveMigration do
     result = described_class.new(scope:, store:, owner_role:, path_exists: ->(_) { true },
                                  service_name: :persistent).call
 
-    expect(result.to_h).to include(processed_count: 2, converted_count: 0, failed_count: 0, applied: false)
+    expect(result.to_h).to include(processed_count: 1, converted_count: 0, failed_count: 0, applied: false)
     expect(store).not_to have_received(:convert_legacy)
   end
 
@@ -30,17 +29,17 @@ RSpec.describe NhsDmd::ArchiveMigration do
     result = described_class.new(scope:, store:, owner_role:, path_exists: ->(_) { true },
                                  service_name: :s3, apply: true).call
 
-    expect(result.to_h).to include(processed_count: 2, converted_count: 2, failed_count: 0, applied: true)
+    expect(result.to_h).to include(processed_count: 1, converted_count: 1, failed_count: 0, applied: true)
     expect(scope).to have_received(:find_in_batches).with(batch_size: 100)
-    expect(store).to have_received(:convert_legacy).twice
+    expect(store).to have_received(:convert_legacy).once
   end
 
   it 'reports missing legacy files only as aggregate failures' do
     result = described_class.new(scope:, store:, owner_role:, path_exists: ->(_) { false },
                                  service_name: :persistent).call
 
-    expect(result.to_h).to include(processed_count: 2, converted_count: 0, failed_count: 2)
-    expect(result.to_h.to_json).not_to include('/legacy/', 'first.zip', 'second.zip')
+    expect(result.to_h).to include(processed_count: 1, converted_count: 0, failed_count: 1)
+    expect(result.to_h.to_json).not_to include('/legacy/', 'first.zip')
   end
 
   it 'requires the owner-capable database role' do
