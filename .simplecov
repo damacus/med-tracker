@@ -12,12 +12,12 @@ SimpleCov.configure do
   # without a recorded reason. Only enforced when COVERAGE=true (CI's non-system job).
   minimum_coverage line: 90, branch: 75
 
-  add_filter '/spec/'
-  add_filter '/config/'
-  add_filter '/vendor/'
-  add_filter '/tmp/'
+  skip '/spec/'
+  skip '/config/'
+  skip '/vendor/'
+  skip '/tmp/'
 
-  add_group 'API' do |source_file|
+  group 'API' do |source_file|
     filename = source_file.filename
 
     filename.include?('/app/controllers/api/') ||
@@ -26,16 +26,16 @@ SimpleCov.configure do
       filename.include?('/app/serializers/fhir/') ||
       filename.include?('/app/services/api/')
   end
-  add_group 'Components', 'app/components'
-  add_group 'Controllers', 'app/controllers'
-  add_group 'Domain', 'app/domain'
-  add_group 'Jobs', 'app/jobs'
-  add_group 'Mailers', 'app/mailers'
-  add_group 'Models', 'app/models'
-  add_group 'Policies', 'app/policies'
-  add_group 'Presenters', 'app/presenters'
-  add_group 'Serializers', 'app/serializers'
-  add_group 'Services', 'app/services'
+  group 'Components', 'app/components'
+  group 'Controllers', 'app/controllers'
+  group 'Domain', 'app/domain'
+  group 'Jobs', 'app/jobs'
+  group 'Mailers', 'app/mailers'
+  group 'Models', 'app/models'
+  group 'Policies', 'app/policies'
+  group 'Presenters', 'app/presenters'
+  group 'Serializers', 'app/serializers'
+  group 'Services', 'app/services'
 
   at_exit do
     result = SimpleCov.result
