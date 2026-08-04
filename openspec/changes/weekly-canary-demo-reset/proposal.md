@@ -7,13 +7,13 @@ Originating issue: [damacus/med-tracker#1780](https://github.com/damacus/med-tra
 ## What Changes
 
 - Add an explicit application-owned demo mode, disabled by default, that identifies canary as disposable and shows users when its data resets.
-- Add a demo-mode reset operation that removes all runtime data and uploaded files, then loads a deterministic synthetic baseline derived from an allow-listed subset of the existing fixture scenarios.
+- Add a demo-mode reset operation that removes all runtime data and uploads from the configured Active Storage backend, then loads a deterministic synthetic baseline derived from an allow-listed subset of the existing fixture scenarios.
 - Add a weekly Kubernetes CronJob that invokes the reset outside Solid Queue, prevents overlapping runs, and verifies the restored baseline.
 - Require demo mode plus exact canary target assertions before destructive reset work can begin.
 - Make the versioned application dataset the sole canary recovery baseline: a blank database is migrated and populated by the deployed application rather than restored from a database backup.
 - Simplify canary CNPG to a single clean-initialized instance with no production recovery source, physical or logical baseline backup, scheduled backup, object store, or WAL archiving.
 - Keep notifications available to test users; subscriptions and device tokens created during testing are ordinary demo data and are removed by the next reset.
-- Document and verify the one-time transition that destroys the current production-derived canary database, application storage, and canary-only backup objects before recreating the environment from synthetic data.
+- Document and verify the one-time transition that destroys the current production-derived canary database, application storage, and canary-only backup objects before recreating the environment from synthetic data and a new empty upload bucket.
 - **BREAKING**: Canary data is disposable. Any account, medication, take, subscription, token, audit record, job, cache entry, or upload created outside the committed baseline is removed by the weekly reset.
 
 Non-goals:
@@ -36,6 +36,6 @@ None.
 ## Impact
 
 - MedTracker demo-mode configuration and presentation, seed/reset services, fixture-derived demo data, Rake/Task entry points, Active Storage cleanup, and RSpec/system coverage.
-- The `med-tracker-canary` application and `med-tracker-canary-db` manifests in `damacus/home-ops`, including a minimal CNPG cluster, persistent storage, and a Kubernetes CronJob.
+- The `med-tracker-canary` application and `med-tracker-canary-db` manifests in `damacus/home-ops`, including a minimal CNPG cluster, isolated S3-compatible upload storage, and a Kubernetes CronJob.
 - Canary operations: the production-derived CNPG volumes, Longhorn application storage, Backup resources, and `s3://cnpg-med-tracker-canary/` were destroyed on 2026-08-03 after Flux reconciliation was suspended. Canary remains suspended until the replacement contracts are deployed.
 - No public API contract changes and no production runtime behavior changes.

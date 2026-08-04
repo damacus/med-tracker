@@ -11,8 +11,8 @@ RSpec.describe DemoReset::Runner do
       preflight: callable(outcome: 'passed'),
       primary_reset: callable(baseline: DemoBaseline::IDENTIFIER),
       auxiliary_reset: callable(queue: 2, cache: 1, cable: 1),
-      storage_cleaner: callable(files_removed: 3),
-      verifier: callable(baseline: DemoBaseline::IDENTIFIER, health: 'available'),
+      storage_cleaner: callable(files_removed: 2, objects_removed: 3),
+      verifier: callable(baseline: DemoBaseline::IDENTIFIER, storage_empty: true),
       reporter:
     }
   end
@@ -25,8 +25,8 @@ RSpec.describe DemoReset::Runner do
       baseline: DemoBaseline::IDENTIFIER,
       primary: { baseline: DemoBaseline::IDENTIFIER },
       auxiliary: { queue: 2, cache: 1, cable: 1 },
-      storage: { files_removed: 3 },
-      verification: { baseline: DemoBaseline::IDENTIFIER, health: 'available' }
+      storage: { files_removed: 2, objects_removed: 3 },
+      verification: { baseline: DemoBaseline::IDENTIFIER, storage_empty: true }
     )
     expect(reporter).to have_received(:stage).with('preflight', 'succeeded')
     expect(reporter).to have_received(:stage).with('verification', 'succeeded')

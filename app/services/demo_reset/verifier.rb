@@ -4,12 +4,10 @@ module DemoReset
   class Verifier
     def initialize(baseline_verifier: DemoBaseline::Loader.new.method(:verify!),
                    auxiliary_verifier: AuxiliaryDatabasesReset.new.method(:verify_empty!),
-                   storage_root: ENV.fetch('ACTIVE_STORAGE_ROOT', ProductionStorage::DEFAULT_ROOT),
-                   health_checker: HealthChecker.new.method(:call), demo_mode: DemoMode.method(:enabled?))
+                   storage_empty: StorageCleaner.new.method(:empty?), demo_mode: DemoMode.method(:enabled?))
       @baseline_verifier = baseline_verifier
       @auxiliary_verifier = auxiliary_verifier
-      @storage_root = Pathname(storage_root.to_s)
-      @health_checker = health_checker
+      @storage_empty = storage_empty
       @demo_mode = demo_mode
     end
 
@@ -18,26 +16,19 @@ module DemoReset
 
       baseline = baseline_verifier.call
       auxiliary = auxiliary_verifier.call
-      storage_entries = verify_storage!
-      verify_health!
+      verify_storage!
 
-      baseline.merge(auxiliary_databases: auxiliary, storage_entries:, health: 'available')
-    rescue Errno::ENOENT, Errno::EACCES
+      baseline.merge(auxiliary_databases: auxiliary, storage_empty: true)
+    rescue StorageCleanupError
       raise VerificationError, 'storage_unavailable'
     end
 
     private
 
-    attr_reader :baseline_verifier, :auxiliary_verifier, :storage_root, :health_checker, :demo_mode
+    attr_reader :baseline_verifier, :auxiliary_verifier, :storage_empty, :demo_mode
 
     def verify_storage!
-      storage_root.children.size.tap do |storage_entries|
-        raise VerificationError, 'storage_not_empty' if storage_entries.positive?
-      end
-    end
-
-    def verify_health!
-      raise VerificationError, 'application_unavailable' unless health_checker.call
+      raise VerificationError, 'storage_not_empty' unless storage_empty.call
     end
   end
 end

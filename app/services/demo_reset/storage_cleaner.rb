@@ -1,62 +1,59 @@
 # frozen_string_literal: true
 
-require 'fileutils'
-
 module DemoReset
   class StorageCleaner
-    MOUNTINFO_PATH = Pathname('/proc/self/mountinfo')
+    BACKENDS = {
+      'persistent' => %i[disk],
+      's3' => %i[s3],
+      'persistent_with_s3_mirror' => %i[disk s3],
+      's3_with_persistent_mirror' => %i[disk s3]
+    }.freeze
 
-    def initialize(root: ENV.fetch('ACTIVE_STORAGE_ROOT', ProductionStorage::DEFAULT_ROOT),
-                   expected_root: Preflight::STORAGE_ROOT,
-                   remover: FileUtils.method(:rm_rf), mount_checker: method(:mounted?))
-      @root = Pathname(root.to_s)
-      @expected_root = Pathname(expected_root.to_s)
-      @remover = remover
-      @mount_checker = mount_checker
+    def initialize(service_name: Rails.application.config.active_storage.service,
+                   expected_service_name: ENV.fetch('DEMO_RESET_EXPECTED_STORAGE_SERVICE', nil),
+                   disk_cleaner: nil, s3_cleaner: nil)
+      @service_name = service_name.to_s
+      @expected_service_name = expected_service_name.to_s
+      @disk_cleaner = disk_cleaner
+      @s3_cleaner = s3_cleaner
     end
 
     def call
-      verified_root = verify_target!
-      files_removed = file_count(verified_root)
-      verified_root.children.each { |entry| remover.call(entry) }
-      raise StorageCleanupError, 'storage cleanup failed' unless verified_root.children.empty?
+      active_cleaners.each_with_object({}) do |cleaner, result|
+        result.merge!(cleaner.call)
+      end
+    end
 
-      { files_removed: }
-    rescue UnsafeTargetError, StorageCleanupError
-      raise
-    rescue SystemCallError
-      raise StorageCleanupError, 'storage cleanup failed'
+    def empty?
+      active_cleaners.all?(&:empty?)
     end
 
     private
 
-    attr_reader :root, :expected_root, :remover, :mount_checker
+    attr_reader :service_name, :expected_service_name
 
-    def verify_target!
-      raise UnsafeTargetError, 'demo reset refused: storage_root' unless root.directory? && expected_root.directory?
-
-      resolved_root = root.realpath
-      expected = expected_root.realpath
-      raise UnsafeTargetError, 'demo reset refused: storage_root' unless resolved_root == expected
-      raise UnsafeTargetError, 'demo reset refused: storage_mount' unless mount_checker.call(resolved_root)
-
-      resolved_root
+    def active_cleaners
+      verify_service!
+      BACKENDS.fetch(service_name).map { |backend| cleaner_for(backend) }
     end
 
-    def file_count(directory)
-      directory.glob('**/*', File::FNM_DOTMATCH).count { |path| path.file? || path.symlink? }
+    def verify_service!
+      valid = ProductionStorage::SERVICES.include?(service_name) && service_name == expected_service_name
+      raise UnsafeTargetError, 'demo reset refused: storage_service' unless valid
     end
 
-    def mounted?(directory)
-      MOUNTINFO_PATH.each_line.any? do |line|
-        Pathname(unescape_mount_path(line.split.fetch(4))).cleanpath == directory
-      end
-    rescue Errno::ENOENT, Errno::EACCES, IndexError
-      false
+    def cleaner_for(backend)
+      return disk_cleaner if backend == :disk
+
+      s3_cleaner
     end
 
-    def unescape_mount_path(path)
-      path.gsub(/\\([0-7]{3})/) { Regexp.last_match(1).to_i(8).chr }
+    def disk_cleaner
+      @disk_cleaner ||= DiskStorageCleaner.new
+    end
+
+    def s3_cleaner
+      @s3_cleaner ||= S3StorageCleaner.new
     end
   end
 end

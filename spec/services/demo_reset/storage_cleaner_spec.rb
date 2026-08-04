@@ -3,70 +3,51 @@
 require 'rails_helper'
 
 RSpec.describe DemoReset::StorageCleaner do
-  let(:storage_root) { Pathname(Dir.mktmpdir('demo-reset-storage')) }
+  let(:disk_cleaner) { instance_double(DemoReset::DiskStorageCleaner, call: { files_removed: 2 }, empty?: true) }
+  let(:s3_cleaner) { instance_double(DemoReset::S3StorageCleaner, call: { objects_removed: 3 }, empty?: true) }
 
-  after { FileUtils.rm_rf(storage_root) }
+  {
+    'persistent' => %i[disk],
+    's3' => %i[s3],
+    'persistent_with_s3_mirror' => %i[disk s3],
+    's3_with_persistent_mirror' => %i[disk s3]
+  }.each do |service_name, backends|
+    it "cleans the configured #{service_name} backend" do
+      result = cleaner(service_name:).call
 
-  it 'removes every entry below the verified mount and leaves the root in place' do
-    storage_root.join('nested').mkpath
-    storage_root.join('nested/upload.bin').write('synthetic upload')
-    storage_root.join('orphan.bin').write('synthetic orphan')
-
-    result = cleaner.call
-
-    expect(result).to eq(files_removed: 2)
-    expect(storage_root).to be_directory
-    expect(storage_root.children).to be_empty
-  end
-
-  it 'can be retried safely after post-commit cleanup fails' do
-    storage_root.join('first.bin').write('synthetic first')
-    storage_root.join('second.bin').write('synthetic second')
-    attempts = 0
-    remover = lambda do |path|
-      attempts += 1
-      raise Errno::EIO, 'cleanup failed' if attempts == 1
-
-      FileUtils.rm_rf(path)
+      expect(result).to eq(expected_result(backends))
+      expect(disk_cleaner).to have_received(:call).exactly(backends.count(:disk)).times
+      expect(s3_cleaner).to have_received(:call).exactly(backends.count(:s3)).times
     end
 
-    expect { cleaner(remover:).call }.to raise_error(DemoReset::StorageCleanupError, 'storage cleanup failed')
-    expect(cleaner.call).to eq(files_removed: 2)
-    expect(storage_root.children).to be_empty
+    it "checks whether the configured #{service_name} backend is empty" do
+      expect(cleaner(service_name:)).to be_empty
+
+      expect(disk_cleaner).to have_received(:empty?).exactly(backends.count(:disk)).times
+      expect(s3_cleaner).to have_received(:empty?).exactly(backends.count(:s3)).times
+    end
   end
 
-  it 'refuses a configured root that resolves outside the verified canary mount' do
-    outside_root = Pathname(Dir.mktmpdir('outside-demo-storage'))
-    link = storage_root.dirname.join("#{storage_root.basename}-link")
-    FileUtils.ln_s(outside_root, link)
-
-    expect do
-      described_class.new(root: link, expected_root: storage_root, mount_checker: ->(_) { true }).call
-    end.to raise_error(DemoReset::UnsafeTargetError, /storage_root/)
-  ensure
-    FileUtils.rm_f(link) if link
-    FileUtils.rm_rf(outside_root) if outside_root
+  it 'refuses to clean when the configured service differs from the expected service' do
+    expect { cleaner(service_name: 's3', expected_service_name: 'persistent').call }
+      .to raise_error(DemoReset::UnsafeTargetError, /storage_service/)
+    expect(disk_cleaner).not_to have_received(:call)
+    expect(s3_cleaner).not_to have_received(:call)
   end
 
-  it 'refuses a root that is not the verified persistent mount' do
-    storage_root.join('upload.bin').write('synthetic upload')
-
-    expect { cleaner(mount_checker: ->(_) { false }).call }
-      .to raise_error(DemoReset::UnsafeTargetError, /storage_mount/)
-    expect(storage_root.join('upload.bin')).to exist
+  it 'refuses an unsupported configured service' do
+    expect { cleaner(service_name: 'test', expected_service_name: 'test').call }
+      .to raise_error(DemoReset::UnsafeTargetError, /storage_service/)
   end
 
-  it 'uses the production storage default when the environment override is absent' do
-    stub_const('ProductionStorage::DEFAULT_ROOT', storage_root.to_s)
-    allow(ENV).to receive(:fetch).and_call_original
-    allow(ENV).to receive(:fetch).with('ACTIVE_STORAGE_ROOT', storage_root.to_s).and_return(storage_root.to_s)
-    storage_root.join('upload.bin').write('synthetic upload')
-
-    expect(described_class.new(expected_root: storage_root, mount_checker: ->(_) { true }).call)
-      .to eq(files_removed: 1)
+  def cleaner(service_name:, expected_service_name: service_name)
+    described_class.new(service_name:, expected_service_name:, disk_cleaner:, s3_cleaner:)
   end
 
-  def cleaner(remover: FileUtils.method(:rm_rf), mount_checker: ->(_) { true })
-    described_class.new(root: storage_root, expected_root: storage_root, remover:, mount_checker:)
+  def expected_result(backends)
+    {}.tap do |result|
+      result[:files_removed] = 2 if backends.include?(:disk)
+      result[:objects_removed] = 3 if backends.include?(:s3)
+    end
   end
 end
