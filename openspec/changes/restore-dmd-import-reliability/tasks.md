@@ -32,10 +32,10 @@
 
 ## 4. Restack worker isolation above the canary rebuild
 
-- [ ] 4.1 Rebuild home-ops PR #3999 from the verified PR #3995 tip, retarget its base to the PR #3995 branch, and resolve overlapping canary configuration in favor of both the demo-reset and worker contracts.
-- [ ] 4.2 Add or update failing assertions proving production and canary web processes do not run Solid Queue, workers use `bin/jobs`, worker and web share the exact release configuration and durable storage contract, and each worker has an independent one GiB memory limit.
-- [ ] 4.3 Make the H2 topology assertions green without adding demo-reset behavior to the worker boundary or changing the lower canary database and reset contract.
-- [ ] 4.4 Run focused topology checks, YAML validation, full render/policy checks, and whitespace checks on the cumulative branch; review H2 against H1, document stack order and deferred activation, and keep PR #3999 draft until PR #3995 is accepted.
+- [x] 4.1 Rebuild home-ops PR #3999 from the verified PR #3995 tip, retarget its base to the PR #3995 branch, and resolve overlapping canary configuration in favor of both the demo-reset and worker contracts.
+- [x] 4.2 Add or update failing assertions proving production and canary web processes do not run Solid Queue, workers use `bin/jobs`, worker and web share the exact release configuration and durable storage contract, and each worker has an independent one GiB memory limit.
+- [x] 4.3 Make the H2 topology assertions green without adding demo-reset behavior to the worker boundary or changing the lower canary database and reset contract.
+- [x] 4.4 Run focused topology checks, YAML validation, full render/policy checks, and whitespace checks on the cumulative branch; review H2 against H1, document stack order and deferred activation, and keep PR #3999 draft until PR #3995 is accepted.
 
 ## 5. Land lower first and validate canary
 
