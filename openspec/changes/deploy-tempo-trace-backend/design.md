@@ -1,8 +1,8 @@
 ## Context
 
-See [proposal.md](proposal.md) for motivation. The live cluster currently provides Grafana, Loki, Vector, VictoriaMetrics, and Alertmanager, but no general OTLP receiver, trace backend, or Grafana trace data source. The existing OpenEBS-scoped Alloy daemon exposes only its own HTTP endpoint and is not an application trace gateway. Both MedTracker production and canary explicitly set `OTEL_TRACES_EXPORTER=none`.
+See [proposal.md](proposal.md) for motivation. The private Tempo backend, least-privilege RustFS storage, retention, network policy, alerts, Grafana correlation, canary exporter wiring, and focused validation planned here landed in `damacus/home-ops` PR #3974 at merge commit `517a51f668425115f89be9be98961005b4a99011`. This merged implementation boundary does not establish current operational acceptance: the final cumulative canary configuration after the current pause/migration-mount stack still requires the value-aware privacy gate, outage rollback, 24-hour evidence, and production promotion.
 
-`home-ops` is the deployment source of truth. It already owns the monitoring namespace, Grafana data-source provisioning, RustFS bucket identities, and the MedTracker HelmRelease configuration. This OpenSpec change is stored beside the originating application change for review, but implementation must be performed in a writable `home-ops` worktree.
+This MedTracker OpenSpec change is the single planning authority. The `damacus/home-ops` deployment repository owns runtime implementation and reconciliation under its own instructions; these planning artifacts remain here and are not copied into the deployment repository.
 
 Grafana documents a monolithic Kubernetes deployment as a supported Helm path and notes that Tempo has no built-in authentication layer. Grafana also supports provisioning Tempo as a built-in data source at the backend query URL and configuring trace-to-log correlation. The design therefore keeps ingestion and query services cluster-internal and enforces access at the network boundary.
 
@@ -21,12 +21,13 @@ Grafana documents a monolithic Kubernetes deployment as a supported Helm path an
 - Add span-derived metrics, service graphs, tail sampling, or multi-tenancy.
 - Make a single-binary deployment highly available.
 - Change application instrumentation or use traces as an audit record.
+- Expand this change into broader TLS or encryption hardening, which remains separately owned follow-up.
 
 ## Decisions
 
-### 1. Implement and apply the change in `home-ops`
+### 1. Keep planning in MedTracker and runtime implementation in `home-ops`
 
-The manifests, secret references, bucket provisioning, Grafana configuration, and rollout controls belong to `home-ops`. The application repository supplies the emitter and acceptance canary but does not own the backend.
+This MedTracker change remains the sole planning authority. Runtime manifests, secret references, bucket provisioning, Grafana configuration, and rollout controls belong to `damacus/home-ops` and must be changed under that repository's instructions without copying this OpenSpec ledger there. The application repository supplies the emitter and acceptance canary but does not own the backend runtime.
 
 Alternative considered: implement Tempo in MedTracker Compose. Rejected because it would not prove the production transport and would add local services the cluster can already host centrally.
 
@@ -44,7 +45,7 @@ Alternatives considered:
 
 ### 3. Send OTLP/HTTP directly from MedTracker to Tempo
 
-Expose the OTLP/HTTP receiver on cluster port `4318` and the Tempo query API on cluster port `3200`. MedTracker uses its existing `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_TRACES_EXPORTER` contract. No collector is introduced in this slice.
+Expose the OTLP/HTTP receiver on cluster port `4318` and the Tempo query API on cluster port `3200`. MedTracker uses its existing `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` and `OTEL_TRACES_EXPORTER` contract. No collector is introduced in this slice.
 
 A NetworkPolicy permits ingestion from the explicitly selected MedTracker canary and, only after promotion, production workload. Query access is limited to Grafana and bounded operator diagnostics. Neither service receives an HTTPRoute, Ingress, LoadBalancer, or external tunnel.
 
@@ -85,7 +86,7 @@ Canary uses:
 
 - `OTEL_TRACES_EXPORTER=otlp`
 - `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`
-- The cluster-internal OTLP endpoint through the existing secret-backed endpoint contract
+- The cluster-internal OTLP endpoint through the secret-backed `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` contract
 - The exact application image containing the approved tracing implementation
 
 Run the application's safe observability canary and retain only identifiers, image digests, timestamps, queries, counts, and pass/fail results as evidence. Do not record trace payloads containing health data.
@@ -117,5 +118,7 @@ Add a focused repository task that renders and asserts the Tempo, RustFS, Grafan
 5. Configure only MedTracker canary for OTLP/HTTP and deploy the exact approved application digest.
 6. Run the synthetic canary checks for at most 15 minutes, then collect the bounded naturally occurring evidence required by the application observability change.
 7. Promote the same exporter contract to production only after all gates pass and record the exact digest and configuration revision.
+
+Steps 1 through 5 of this implementation sequence landed through task 3.4 in `damacus/home-ops` PR #3974 at merge commit `517a51f668425115f89be9be98961005b4a99011`. The initial demonstrations are not final acceptance evidence because later canary/reset changes superseded them. After the current pause/migration-mount stack, the final cumulative canary configuration must be re-proven before production promotion.
 
 Rollback begins by restoring `OTEL_TRACES_EXPORTER=none` for the affected MedTracker lane. Backend and Grafana resources may remain available while export is disabled. If the Tempo release itself must be removed, stop exporters first and retain the bucket and credentials until the rollback decision and evidence-retention window are complete.
