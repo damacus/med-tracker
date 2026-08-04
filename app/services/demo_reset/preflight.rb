@@ -7,13 +7,9 @@ module DemoReset
     Targets = Data.define(
       :demo_mode, :application_url, :database_host, :storage_service, :storage_endpoint, :storage_bucket, :database_role
     )
-
-    APPLICATION_HOST = 'med-tracker-canary.damacus.io'
-    DATABASE_HOST = 'med-tracker-canary-rw.home.svc.cluster.local'
-    STORAGE_SERVICE = 's3'
-    STORAGE_ENDPOINT = 'http://rustfs.storage.svc.cluster.local:9000'
-    STORAGE_BUCKET = 'med-tracker-canary'
-    DATABASE_ROLE = 'med_tracker_owner'
+    ExpectedTargets = Data.define(
+      :application_host, :database_host, :storage_service, :storage_endpoint, :storage_bucket, :database_role
+    )
 
     def self.from_runtime
       connection = ActiveRecord::Base.connection
@@ -21,6 +17,7 @@ module DemoReset
         configuration.configuration_hash[:host]
       end
       new(
+        expected: expected_targets_from_runtime,
         demo_mode: DemoMode.enabled?,
         application_url: ENV.fetch('APP_URL', nil),
         database_host: database_hosts,
@@ -31,8 +28,20 @@ module DemoReset
       )
     end
 
-    def initialize(**targets)
+    def self.expected_targets_from_runtime
+      ExpectedTargets.new(
+        application_host: ENV.fetch('DEMO_RESET_EXPECTED_APPLICATION_HOST', nil),
+        database_host: ENV.fetch('DEMO_RESET_EXPECTED_DATABASE_HOST', nil),
+        storage_service: ENV.fetch('DEMO_RESET_EXPECTED_STORAGE_SERVICE', nil),
+        storage_endpoint: ENV.fetch('DEMO_RESET_EXPECTED_STORAGE_ENDPOINT', nil),
+        storage_bucket: ENV.fetch('DEMO_RESET_EXPECTED_STORAGE_BUCKET', nil),
+        database_role: ENV.fetch('DEMO_RESET_EXPECTED_DATABASE_ROLE', nil)
+      )
+    end
+
+    def initialize(expected:, **targets)
       @targets = Targets.new(**targets)
+      @expected = expected.is_a?(ExpectedTargets) ? expected : ExpectedTargets.new(**expected)
     end
 
     def call
@@ -44,17 +53,17 @@ module DemoReset
 
     private
 
-    attr_reader :targets
+    attr_reader :targets, :expected
 
     def target_checks
       {
         demo_mode: targets.demo_mode,
-        application_host: application_host == APPLICATION_HOST,
+        application_host: target_matches?(application_host, expected.application_host),
         database_host: database_hosts_valid?,
-        storage_service: targets.storage_service == STORAGE_SERVICE,
-        storage_endpoint: targets.storage_endpoint == STORAGE_ENDPOINT,
-        storage_bucket: targets.storage_bucket == STORAGE_BUCKET,
-        database_role: targets.database_role == DATABASE_ROLE
+        storage_service: target_matches?(targets.storage_service, expected.storage_service),
+        storage_endpoint: target_matches?(targets.storage_endpoint, expected.storage_endpoint),
+        storage_bucket: target_matches?(targets.storage_bucket, expected.storage_bucket),
+        database_role: target_matches?(targets.database_role, expected.database_role)
       }
     end
 
@@ -66,7 +75,11 @@ module DemoReset
 
     def database_hosts_valid?
       hosts = Array(targets.database_host)
-      hosts.any? && hosts.all? { |host| host == DATABASE_HOST }
+      expected.database_host.present? && hosts.any? && hosts.all? { |host| host == expected.database_host }
+    end
+
+    def target_matches?(actual, expected_value)
+      expected_value.present? && actual == expected_value
     end
   end
 end

@@ -25,7 +25,7 @@ RSpec.describe DemoReset::StorageCleaner do
 
     expect(result).to eq(objects_removed: 2)
     expect(objects).to be_empty
-    expect(client).to have_received(:delete_objects).with(hash_including(bucket: 'med-tracker-canary'))
+    expect(client).to have_received(:delete_objects).with(hash_including(bucket: 'demo-archive'))
   end
 
   it 'can be retried safely after post-commit cleanup fails' do
@@ -59,7 +59,7 @@ RSpec.describe DemoReset::StorageCleaner do
 
     expect(cleaner.call).to eq(objects_removed: 2)
     expect(client).to have_received(:list_objects_v2)
-      .with(bucket: 'med-tracker-canary', continuation_token: 'next-page')
+      .with(bucket: 'demo-archive', continuation_token: 'next-page')
   end
 
   it 'fails safely when the provider reports an object deletion error' do
@@ -71,7 +71,7 @@ RSpec.describe DemoReset::StorageCleaner do
   end
 
   it 'refuses any bucket other than the isolated canary bucket' do
-    expect { cleaner(bucket: 'med-tracker-production').call }
+    expect { cleaner(bucket: 'other-archive').call }
       .to raise_error(DemoReset::UnsafeTargetError, /storage_bucket/)
     expect(client).not_to have_received(:list_objects_v2)
   end
@@ -90,7 +90,10 @@ RSpec.describe DemoReset::StorageCleaner do
     expect(cleaner).to be_empty
   end
 
-  def cleaner(bucket: 'med-tracker-canary', endpoint: 'http://rustfs.storage.svc.cluster.local:9000')
-    described_class.new(client:, service: 's3', bucket:, endpoint:)
+  def cleaner(bucket: 'demo-archive', endpoint: 'https://objects.example.test')
+    described_class.new(
+      client:, service: 's3', bucket:, endpoint:,
+      expected_service: 's3', expected_endpoint: 'https://objects.example.test', expected_bucket: 'demo-archive'
+    )
   end
 end

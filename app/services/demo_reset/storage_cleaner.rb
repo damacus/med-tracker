@@ -8,10 +8,16 @@ module DemoReset
 
     def initialize(client: nil, service: ENV.fetch('ACTIVE_STORAGE_SERVICE', nil),
                    endpoint: ENV.fetch('ACTIVE_STORAGE_S3_ENDPOINT', nil),
-                   bucket: ENV.fetch('ACTIVE_STORAGE_S3_BUCKET', nil))
+                   bucket: ENV.fetch('ACTIVE_STORAGE_S3_BUCKET', nil),
+                   expected_service: ENV.fetch('DEMO_RESET_EXPECTED_STORAGE_SERVICE', nil),
+                   expected_endpoint: ENV.fetch('DEMO_RESET_EXPECTED_STORAGE_ENDPOINT', nil),
+                   expected_bucket: ENV.fetch('DEMO_RESET_EXPECTED_STORAGE_BUCKET', nil))
       @service = service
       @endpoint = endpoint
       @bucket = bucket
+      @expected_service = expected_service
+      @expected_endpoint = expected_endpoint
+      @expected_bucket = expected_bucket
       @client = client || Aws::S3::Client.new(client_options)
     end
 
@@ -39,12 +45,16 @@ module DemoReset
 
     private
 
-    attr_reader :client, :service, :endpoint, :bucket
+    attr_reader :client, :service, :endpoint, :bucket, :expected_service, :expected_endpoint, :expected_bucket
 
     def verify_target!
-      raise UnsafeTargetError, 'demo reset refused: storage_service' unless service == Preflight::STORAGE_SERVICE
-      raise UnsafeTargetError, 'demo reset refused: storage_endpoint' unless endpoint == Preflight::STORAGE_ENDPOINT
-      raise UnsafeTargetError, 'demo reset refused: storage_bucket' unless bucket == Preflight::STORAGE_BUCKET
+      raise UnsafeTargetError, 'demo reset refused: storage_service' unless target_matches?(service, expected_service)
+      raise UnsafeTargetError, 'demo reset refused: storage_endpoint' unless target_matches?(endpoint, expected_endpoint)
+      raise UnsafeTargetError, 'demo reset refused: storage_bucket' unless target_matches?(bucket, expected_bucket)
+    end
+
+    def target_matches?(actual, expected)
+      expected.present? && actual == expected
     end
 
     def object_keys(max_keys: nil)
