@@ -67,7 +67,7 @@ Long-running DM+D imports SHALL avoid retaining per-lookup database cache entrie
 - **GIVEN** a full DM+D release contains hundreds of thousands of distinct barcode lookups
 - **WHEN** the worker imports the archive
 - **THEN** database lookup results are not accumulated in a request-style query cache
-- **AND** the worker remains within its configured memory limit or fails independently from the web process
+- **AND** the worker completes the import within its configured one GiB memory limit
 
 ### Requirement: Canary gates production promotion
 The deployment SHALL NOT promote the worker topology to production until the same application image and worker contract complete a full public DM+D release in canary.
