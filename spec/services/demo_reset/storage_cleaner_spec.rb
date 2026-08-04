@@ -1,99 +1,53 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'aws-sdk-s3'
 
 RSpec.describe DemoReset::StorageCleaner do
-  let(:client) { instance_double(Aws::S3::Client) }
-  let(:objects) { %w[active-storage-key orphan-key] }
+  let(:disk_cleaner) { instance_double(DemoReset::DiskStorageCleaner, call: { files_removed: 2 }, empty?: true) }
+  let(:s3_cleaner) { instance_double(DemoReset::S3StorageCleaner, call: { objects_removed: 3 }, empty?: true) }
 
-  before do
-    allow(client).to receive(:list_objects_v2) do
-      Aws::S3::Types::ListObjectsV2Output.new(
-        contents: objects.map { |key| Aws::S3::Types::Object.new(key:) },
-        is_truncated: false
-      )
+  {
+    'persistent' => %i[disk],
+    's3' => %i[s3],
+    'persistent_with_s3_mirror' => %i[disk s3],
+    's3_with_persistent_mirror' => %i[disk s3]
+  }.each do |service_name, backends|
+    it "cleans the configured #{service_name} backend" do
+      result = cleaner(service_name:).call
+
+      expect(result).to eq(expected_result(backends))
+      expect(disk_cleaner).to have_received(:call).exactly(backends.count(:disk)).times
+      expect(s3_cleaner).to have_received(:call).exactly(backends.count(:s3)).times
     end
-    allow(client).to receive(:delete_objects) do |delete:, **|
-      objects.delete_if { |key| delete.fetch(:objects).pluck(:key).include?(key) }
-      Aws::S3::Types::DeleteObjectsOutput.new(errors: [])
+
+    it "checks whether the configured #{service_name} backend is empty" do
+      expect(cleaner(service_name:)).to be_empty
+
+      expect(disk_cleaner).to have_received(:empty?).exactly(backends.count(:disk)).times
+      expect(s3_cleaner).to have_received(:empty?).exactly(backends.count(:s3)).times
     end
   end
 
-  it 'removes every object from the verified canary bucket' do
-    result = cleaner.call
-
-    expect(result).to eq(objects_removed: 2)
-    expect(objects).to be_empty
-    expect(client).to have_received(:delete_objects).with(hash_including(bucket: 'demo-archive'))
+  it 'refuses to clean when the configured service differs from the expected service' do
+    expect { cleaner(service_name: 's3', expected_service_name: 'persistent').call }
+      .to raise_error(DemoReset::UnsafeTargetError, /storage_service/)
+    expect(disk_cleaner).not_to have_received(:call)
+    expect(s3_cleaner).not_to have_received(:call)
   end
 
-  it 'can be retried safely after post-commit cleanup fails' do
-    allow(client).to receive(:delete_objects).once.and_raise(
-      Aws::S3::Errors::InternalError.new(nil, 'unsafe provider detail')
-    )
+  it 'refuses an unsupported configured service' do
+    expect { cleaner(service_name: 'test', expected_service_name: 'test').call }
+      .to raise_error(DemoReset::UnsafeTargetError, /storage_service/)
+  end
 
-    expect { cleaner.call }.to raise_error(DemoReset::StorageCleanupError, 'storage cleanup failed')
+  def cleaner(service_name:, expected_service_name: service_name)
+    described_class.new(service_name:, expected_service_name:, disk_cleaner:, s3_cleaner:)
+  end
 
-    allow(client).to receive(:delete_objects) do |delete:, **|
-      objects.delete_if { |key| delete.fetch(:objects).pluck(:key).include?(key) }
-      Aws::S3::Types::DeleteObjectsOutput.new(errors: [])
+  def expected_result(backends)
+    {}.tap do |result|
+      result[:files_removed] = 2 if backends.include?(:disk)
+      result[:objects_removed] = 3 if backends.include?(:s3)
     end
-    expect(cleaner.call).to eq(objects_removed: 2)
-    expect(objects).to be_empty
-  end
-
-  it 'follows continuation tokens so every object is removed' do
-    first_page = Aws::S3::Types::ListObjectsV2Output.new(
-      contents: [Aws::S3::Types::Object.new(key: 'first-key')],
-      is_truncated: true,
-      next_continuation_token: 'next-page'
-    )
-    second_page = Aws::S3::Types::ListObjectsV2Output.new(
-      contents: [Aws::S3::Types::Object.new(key: 'second-key')],
-      is_truncated: false
-    )
-    empty_page = Aws::S3::Types::ListObjectsV2Output.new(contents: [], is_truncated: false)
-    allow(client).to receive(:list_objects_v2).and_return(first_page, second_page, empty_page)
-    allow(client).to receive(:delete_objects).and_return(Aws::S3::Types::DeleteObjectsOutput.new(errors: []))
-
-    expect(cleaner.call).to eq(objects_removed: 2)
-    expect(client).to have_received(:list_objects_v2)
-      .with(bucket: 'demo-archive', continuation_token: 'next-page')
-  end
-
-  it 'fails safely when the provider reports an object deletion error' do
-    provider_error = Aws::S3::Types::Error.new(key: 'secret-object-key', message: 'credential detail')
-    allow(client).to receive(:delete_objects)
-      .and_return(Aws::S3::Types::DeleteObjectsOutput.new(errors: [provider_error]))
-
-    expect { cleaner.call }.to raise_error(DemoReset::StorageCleanupError, 'storage cleanup failed')
-  end
-
-  it 'refuses any bucket other than the isolated canary bucket' do
-    expect { cleaner(bucket: 'other-archive').call }
-      .to raise_error(DemoReset::UnsafeTargetError, /storage_bucket/)
-    expect(client).not_to have_received(:list_objects_v2)
-  end
-
-  it 'refuses any endpoint other than the in-cluster object store' do
-    expect { cleaner(endpoint: 'https://production-objects.example.test').call }
-      .to raise_error(DemoReset::UnsafeTargetError, /storage_endpoint/)
-    expect(client).not_to have_received(:list_objects_v2)
-  end
-
-  it 'reports whether the verified bucket is empty' do
-    expect(cleaner).not_to be_empty
-
-    objects.clear
-
-    expect(cleaner).to be_empty
-  end
-
-  def cleaner(bucket: 'demo-archive', endpoint: 'https://objects.example.test')
-    described_class.new(
-      client:, service: 's3', bucket:, endpoint:,
-      expected_service: 's3', expected_endpoint: 'https://objects.example.test', expected_bucket: 'demo-archive'
-    )
   end
 end

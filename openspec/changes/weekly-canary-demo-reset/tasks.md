@@ -16,7 +16,7 @@
 - [x] 2.5 Write failing RSpec coverage for post-commit upload cleanup, safe retry after cleanup failure, empty-root verification, and failure when the storage target escapes the verified canary mount.
 - [x] 2.6 Implement verified canary storage cleanup and post-reset invariant checks, then make the storage/reset specs pass.
 - [x] 2.7 Add the operator Rake/Task entry point and a focused command contract spec proving it returns non-zero for safety, reset, cleanup, or verification failures.
-- [x] 2.8 Replace the persistent-mount reset boundary with exact canary S3 service, endpoint, and bucket assertions plus idempotent whole-bucket cleanup and empty-bucket verification.
+- [x] 2.8 Detect the configured Active Storage service, require its exact disk and/or S3 targets, and clean and verify every backend used by disk, S3, or mirror services.
 - [x] 2.9 Move the real `/up` verification out of the Rails command so it runs only after the Kubernetes wrapper restores the web deployment.
 
 ## 3. MedTracker verification and image publication

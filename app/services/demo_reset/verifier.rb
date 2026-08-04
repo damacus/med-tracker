@@ -18,7 +18,7 @@ module DemoReset
       auxiliary = auxiliary_verifier.call
       verify_storage!
 
-      baseline.merge(auxiliary_databases: auxiliary, storage_objects: 0)
+      baseline.merge(auxiliary_databases: auxiliary, storage_empty: true)
     rescue StorageCleanupError
       raise VerificationError, 'storage_unavailable'
     end

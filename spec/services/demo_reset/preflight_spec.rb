@@ -11,6 +11,7 @@ RSpec.describe DemoReset::Preflight do
       application_url: 'https://demo.example.test',
       database_host: 'demo-database.example.test',
       storage_service: 's3',
+      storage_root: nil,
       storage_endpoint: 'https://objects.example.test',
       storage_bucket: 'demo-archive',
       database_role: 'demo_owner'
@@ -21,6 +22,7 @@ RSpec.describe DemoReset::Preflight do
       application_host: 'demo.example.test',
       database_host: 'demo-database.example.test',
       storage_service: 's3',
+      storage_root: nil,
       storage_endpoint: 'https://objects.example.test',
       storage_bucket: 'demo-archive',
       database_role: 'demo_owner'
@@ -44,6 +46,47 @@ RSpec.describe DemoReset::Preflight do
 
     expect { described_class.new(expected: expected_targets, **targets, database_host: mixed_hosts).call }
       .to raise_error(DemoReset::UnsafeTargetError, /database_host/)
+  end
+
+  it 'accepts the expected persistent storage root without requiring S3 settings' do
+    disk_targets = targets.merge(
+      storage_service: 'persistent', storage_root: '/app/storage', storage_endpoint: nil, storage_bucket: nil
+    )
+    expected_disk_targets = expected_targets.merge(
+      storage_service: 'persistent', storage_root: '/app/storage', storage_endpoint: nil, storage_bucket: nil
+    )
+
+    expect(described_class.new(expected: expected_disk_targets, **disk_targets).call).to eq(
+      outcome: 'passed',
+      targets: %w[demo_mode application_host database_host storage_service storage_root database_role]
+    )
+  end
+
+  it 'requires both backend boundaries for a mirrored storage service' do
+    mirror_targets = targets.merge(storage_service: 'persistent_with_s3_mirror', storage_root: '/app/storage')
+    expected_mirror_targets = expected_targets.merge(
+      storage_service: 'persistent_with_s3_mirror', storage_root: '/app/storage'
+    )
+
+    expect(described_class.new(expected: expected_mirror_targets, **mirror_targets).call).to eq(
+      outcome: 'passed',
+      targets: %w[
+        demo_mode application_host database_host storage_service storage_root storage_endpoint storage_bucket
+        database_role
+      ]
+    )
+  end
+
+  it 'refuses a persistent root outside the expected storage boundary' do
+    disk_targets = targets.merge(
+      storage_service: 'persistent', storage_root: '/other/storage', storage_endpoint: nil, storage_bucket: nil
+    )
+    expected_disk_targets = expected_targets.merge(
+      storage_service: 'persistent', storage_root: '/app/storage', storage_endpoint: nil, storage_bucket: nil
+    )
+
+    expect { described_class.new(expected: expected_disk_targets, **disk_targets).call }
+      .to raise_error(DemoReset::UnsafeTargetError, /storage_root/)
   end
 
   {

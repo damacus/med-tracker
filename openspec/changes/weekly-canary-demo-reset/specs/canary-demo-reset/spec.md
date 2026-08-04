@@ -38,12 +38,12 @@ The reset operation SHALL require independent explicit confirmation that applica
 
 #### Scenario: Canary safety assertions pass
 - **GIVEN** demo reset is explicitly enabled
-- **AND** the configured database and S3 upload targets are the expected canary resources
+- **AND** the configured database and Active Storage targets are the expected canary resources
 - **WHEN** an operator invokes the reset
 - **THEN** the reset is permitted to proceed
 
 #### Scenario: Production-like target is rejected
-- **GIVEN** the database host, application URL, Active Storage service, S3 endpoint, S3 bucket, or environment marker does not identify the expected canary environment
+- **GIVEN** the database host, application URL, Active Storage service, required disk root, required S3 endpoint, required S3 bucket, or environment marker does not identify the expected canary environment
 - **WHEN** an operator invokes the reset
 - **THEN** the operation exits unsuccessfully before deleting database records or uploaded files
 - **AND** the failure output contains target categories and safe identifiers but no credentials, health data, subscription endpoints, or file contents

@@ -61,7 +61,7 @@ Preflight requires all of the following:
 - an explicit `DEMO_MODE=true` application setting;
 - the exact canary application host;
 - the exact canary database host from the effective Active Record configuration;
-- the exact S3 service, endpoint, and bucket dedicated to canary uploads; and
+- the exact configured Active Storage service and every disk or S3 target used by that service; and
 - an owner-capable database connection dedicated to the reset runner.
 
 The command logs only stages, counts, durations, and synthetic fixture identifiers. It never logs database URLs, credentials, push endpoints, device tokens, health record values, or filenames.
@@ -70,13 +70,13 @@ The command logs only stages, counts, durations, and synthetic fixture identifie
 
 **Rejected:** Expose an admin reset endpoint. This unnecessarily makes cluster-wide destructive behavior reachable through the application authorization surface.
 
-### 4. Replace database state in one transaction and clean object storage after commit
+### 4. Replace database state in one transaction and clean configured storage after commit
 
 The reset runner acquires a PostgreSQL advisory lock before making changes. It enumerates the deployed application's primary tables from Active Record, excludes only schema/migration metadata, and truncates runtime tables with identity restart and foreign-key cascading inside a database transaction. The same transaction loads and validates the demo baseline. A load failure rolls the primary database back to its pre-reset state.
 
 PostgreSQL cannot provide one transaction across the separate primary, queue, cache, and cable databases. After the primary commit, the runner truncates every non-schema table in each configured auxiliary database. An auxiliary cleanup failure leaves the command failed and is safely retryable because the primary already contains the deterministic baseline.
 
-After database and auxiliary cleanup, the runner removes all objects from the verified canary S3 bucket. It refuses any other Active Storage service, endpoint, or bucket before destructive work. At that point the new baseline contains no Active Storage records, so a storage-cleanup failure can leave only unreachable orphan objects, not broken baseline attachments. The command remains failed until cleanup and post-reset verification succeed; retrying is safe.
+After database and auxiliary cleanup, the runner detects the configured Active Storage service and cleans every backend it uses. Persistent services require the exact verified mount, S3 services require the exact endpoint and bucket, and mirror services require and clean both targets. It refuses a mismatched service or backend target before destructive work. At that point the new baseline contains no Active Storage records, so a storage-cleanup failure can leave only unreachable orphan uploads, not broken baseline attachments. The command remains failed until cleanup and post-reset verification succeed; retrying is safe.
 
 This is an environment reset boundary, not a domain deletion path. It intentionally removes immutable takes and audit records only because every record in this isolated environment is disposable synthetic demo state.
 
@@ -116,7 +116,7 @@ Remove the misleading canary `PUSH_NOTIFICATIONS_ENABLED=false` value rather tha
 
 ### 8. Verify reset through public and persistence boundaries
 
-Post-reset verification checks deterministic baseline counts and synthetic identifiers, successful demo authentication setup, representative scheduled and PRN records, zero baseline delivery registrations, tenancy/grant integrity, and an empty canary upload bucket. After the Rails command succeeds, the Kubernetes wrapper restores the web deployment and checks its real health endpoint. The reset exits non-zero for any mismatch.
+Post-reset verification checks deterministic baseline counts and synthetic identifiers, successful demo authentication setup, representative scheduled and PRN records, zero baseline delivery registrations, tenancy/grant integrity, and every configured upload backend is empty. After the Rails command succeeds, the Kubernetes wrapper restores the web deployment and checks its real health endpoint. The reset exits non-zero for any mismatch.
 
 RSpec covers the demo-mode boundary and notice as well as the command's public result and persisted state, including safety refusal, transaction rollback, repeated execution, notification-registration removal, and PHI-safe failures. Browser verification covers the notice at mobile and desktop widths. Home-ops validation renders both repositories' deployment contract and checks the CronJob and production-free, backup-free CNPG configuration.
 

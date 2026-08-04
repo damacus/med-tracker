@@ -7,7 +7,7 @@ Originating issue: [damacus/med-tracker#1780](https://github.com/damacus/med-tra
 ## What Changes
 
 - Add an explicit application-owned demo mode, disabled by default, that identifies canary as disposable and shows users when its data resets.
-- Add a demo-mode reset operation that removes all runtime data and objects from an isolated canary S3 bucket, then loads a deterministic synthetic baseline derived from an allow-listed subset of the existing fixture scenarios.
+- Add a demo-mode reset operation that removes all runtime data and uploads from the configured Active Storage backend, then loads a deterministic synthetic baseline derived from an allow-listed subset of the existing fixture scenarios.
 - Add a weekly Kubernetes CronJob that invokes the reset outside Solid Queue, prevents overlapping runs, and verifies the restored baseline.
 - Require demo mode plus exact canary target assertions before destructive reset work can begin.
 - Make the versioned application dataset the sole canary recovery baseline: a blank database is migrated and populated by the deployed application rather than restored from a database backup.
