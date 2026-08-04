@@ -19,7 +19,7 @@
 
 - [ ] 2.1 Re-review MedTracker PR #1785 against current `main`, verify its S3 reset safety and removal of the stopped-web health dependency, and keep its full CI green.
 - [x] 2.2 Create the M2 integration branch from the verified PR #1785 tip and move only this OpenSpec change's artifacts onto it; confirm the focused diff contains no duplicate application implementation and no home-ops filesystem or manifest paths.
-- [ ] 2.3 Run `task openspec:validate`, `task docs:build`, and `git diff --check`, then open M2 as a dependent draft PR whose base is the PR #1785 branch and whose description records the full MedTracker and home-ops stack order.
+- [x] 2.3 Run `task openspec:validate`, `task docs:build`, and `git diff --check`, then open M2 as a dependent draft PR whose base is the PR #1785 branch and whose description records the full MedTracker and home-ops stack order.
 - [ ] 2.4 After PR #1785 lands, replay only M2 onto current MedTracker `main`, rerun its checks, verify the focused diff, retarget it to `main`, and merge it only with explicit authorization.
 
 ## 3. Align the lower home-ops boundary with the application reset contract
