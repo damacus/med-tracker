@@ -1,6 +1,6 @@
 ## Why
 
-MedTracker now emits correlated OpenTelemetry spans, but production and canary both disable trace export because the cluster has no OTLP receiver or trace backend. This blocks production acceptance of the tracing work prompted by the missed-dose investigation and [issue #1707](https://github.com/damacus/med-tracker/issues/1707).
+MedTracker emits correlated OpenTelemetry spans, and the private trace-backend implementation planned here merged in `damacus/home-ops` PR #3974 at merge commit `517a51f668425115f89be9be98961005b4a99011`. Production acceptance remains blocked because the final cumulative canary configuration after the current pause/migration-mount stack has not yet been re-proven through the operational acceptance matrix prompted by the missed-dose investigation and [issue #1707](https://github.com/damacus/med-tracker/issues/1707).
 
 ## What Changes
 
@@ -10,6 +10,7 @@ MedTracker now emits correlated OpenTelemetry spans, but production and canary b
 - Provision Tempo as a Grafana data source and configure trace-to-log navigation to the existing Loki data source.
 - Enable OTLP export for MedTracker canary first, prove an exact deployed revision end to end, and promote the same configuration contract to production only after the canary acceptance matrix passes.
 - Add focused repository and live-cluster verification for rendering, credentials wiring, health, ingestion, querying, privacy, retention, and rollback.
+- Keep this MedTracker change as the single planning authority while runtime implementation and reconciliation remain in the deployment repository under that repository's instructions.
 
 Explicit non-goals:
 
@@ -19,6 +20,7 @@ Explicit non-goals:
 - Changing MedTracker instrumentation, sampling policy, application event schemas, or domain behavior.
 - Enabling trace export for other applications.
 - Treating traces as an audit record or clinically reliable medication history.
+- Expanding this change into broader TLS or encryption hardening; that work remains separately owned follow-up.
 - Keeping the change open for broader observability-platform improvements discovered during implementation; those require separate changes.
 
 ## Capabilities
@@ -33,7 +35,8 @@ None.
 
 ## Impact
 
-- Implementation belongs in the `home-ops` repository, principally under `kubernetes/apps/monitoring/tempo/`, the RustFS bucket and secret provisioning, Grafana data-source provisioning, MedTracker canary and production HelmRelease configuration, and focused Taskfile validation.
+- MedTracker owns the planning artifacts for this change. Runtime implementation belongs in the `damacus/home-ops` deployment repository and follows that repository's instructions; the planning artifacts are not copied there.
+- Implementation tasks 1.1 through 3.4 landed in `damacus/home-ops` PR #3974 at merge commit `517a51f668425115f89be9be98961005b4a99011`; operational acceptance and production promotion remain incomplete.
 - Adds the official monolithic Tempo Helm chart and a single low-volume trace-backend workload to the monitoring namespace.
 - Adds a dedicated RustFS bucket and credentials; no health data, trace payloads, or credentials may be committed to Git.
 - Changes MedTracker canary, and later production, from `OTEL_TRACES_EXPORTER=none` to OTLP/HTTP export through a cluster-internal endpoint.
