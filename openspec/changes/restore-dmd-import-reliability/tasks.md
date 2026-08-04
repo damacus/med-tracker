@@ -17,33 +17,33 @@
 
 ## 2. Build the MedTracker stack above the merged baseline
 
-- [x] 2.1 Re-review MedTracker PR #1785 against current `main`, verify its S3 reset safety and removal of the stopped-web health dependency, and keep its full CI green.
+- [x] 2.1 Re-review MedTracker PR #1785 against current `main`, verify its configured-storage reset safety and removal of the stopped-web health dependency, and keep its full CI green.
 - [x] 2.2 Create the M2 integration branch from the verified PR #1785 tip and move only this OpenSpec change's artifacts onto it; confirm the focused diff contains no duplicate application implementation and no home-ops filesystem or manifest paths.
 - [x] 2.3 Run `task openspec:validate`, `task docs:build`, and `git diff --check`, then open M2 as a dependent draft PR whose base is the PR #1785 branch and whose description records the full MedTracker and home-ops stack order.
-- [ ] 2.4 After PR #1785 lands, replay only M2 onto current MedTracker `main`, rerun its checks, verify the focused diff, retarget it to `main`, and merge it only with explicit authorization.
+- [x] 2.4 After PR #1785 landed, replayed M2 onto current MedTracker `main`, reran its checks, verified the focused diff, retargeted it to `main`, and merged it as PR #1786 with explicit authorization.
 
 ## 3. Align the lower home-ops boundary with the application reset contract
 
-- [ ] 3.1 Update home-ops PR #3995 from current upstream `main` and record its focused scope: production-data-free canary rebuild, S3-backed application reset contract, removal of obsolete shared-filesystem assumptions, and no worker-topology changes.
-- [ ] 3.2 Add or update failing deployment assertions for exact application image identity, canary-only S3 targets, reset-controller isolation, production-data exclusion, and continued suspension before changing deployment configuration.
-- [ ] 3.3 Update PR #3995 to consume the verified PR #1785 image and behavior, make its focused assertions green, and preserve the suspended, non-reconciled release state.
-- [ ] 3.4 Run the home-ops focused topology checks, YAML validation, full render/policy checks, and whitespace checks; review the diff against `main` and keep PR #3995 green and review-ready.
-- [ ] 3.5 Prove in the lower deployment boundary that removing canary database recovery, WAL, and backup state does not remove or misidentify the selected application blob-storage mode or durable DM+D archive contract; keep canary suspended until this evidence is green.
+- [x] 3.1 Updated and merged home-ops PR #3995 from current upstream `main` with its focused scope: production-data-free canary rebuild, configured application-storage reset contract, removal of obsolete shared-filesystem assumptions, and no worker-topology changes.
+- [x] 3.2 Added or updated deployment assertions for exact application image identity, configured application-storage reset behavior, reset-controller isolation, production-data exclusion, and continued suspension before changing deployment configuration.
+- [x] 3.3 Updated PR #3995 to consume the verified PR #1785 image and behavior, made its focused assertions green, preserved the suspended, non-reconciled release state, and retained persistent storage as the current canary selection.
+- [x] 3.4 Ran the home-ops focused topology checks, YAML validation, full render/policy checks, and whitespace checks; reviewed the diff against `main`, kept PR #3995 green, and merged it.
+- [x] 3.5 Proved in the lower deployment boundary that removing canary database recovery, WAL, and backup state does not remove or misidentify persistent application blob storage or the durable DM+D archive contract; canary remains suspended pending operational acceptance.
 
 ## 4. Restack worker isolation above the canary rebuild
 
 - [x] 4.1 Rebuild home-ops PR #3999 from the verified PR #3995 tip, retarget its base to the PR #3995 branch, and resolve overlapping canary configuration in favor of both the demo-reset and worker contracts.
 - [x] 4.2 Add or update failing assertions proving production and canary web processes do not run Solid Queue, workers use `bin/jobs`, worker and web share the exact release configuration and durable storage contract, and each worker has an independent one GiB memory limit.
 - [x] 4.3 Make the H2 topology assertions green without adding demo-reset behavior to the worker boundary or changing the lower canary database and reset contract.
-- [x] 4.4 Run focused topology checks, YAML validation, full render/policy checks, and whitespace checks on the cumulative branch; review H2 against H1, document stack order and deferred activation, and keep PR #3999 draft until PR #3995 is accepted.
+- [x] 4.4 Ran focused topology checks, YAML validation, full render/policy checks, and whitespace checks on the cumulative branch; reviewed H2 against H1, documented stack order and deferred activation, kept PR #3999 green, and merged it after PR #3995.
 
 ## 5. Land lower first and validate canary
 
-- [ ] 5.1 With explicit merge authorization, merge MedTracker M1 before M2 and home-ops H1 before H2; after every lower merge, replay and reverify only the remaining upper boundary against current `main`.
-- [ ] 5.2 Publish or resolve the exact cumulative MedTracker image, confirm both canary deployment boundaries are green, and obtain separate authorization before reconciling the suspended canary.
+- [x] 5.1 With explicit merge authorization, merged MedTracker M1 before M2 and home-ops H1 before H2; after every lower merge, replayed and reverified only the remaining upper boundary against current `main`.
+- [ ] 5.2 Use the resolved candidate image mapping, confirm the landed deployment boundaries remain green, and obtain separate authorization before reconciling the suspended canary.
 - [ ] 5.3 Import a full public DM+D release in canary and capture PHI-safe evidence that progress updates without reload, the worker stays within one GiB, the web process remains healthy without restarts, the import completes, and final counts and log match persisted data.
 - [ ] 5.4 Complete issue #1775's applicable canary storage/restore, archive, and background-job evidence using the cumulative image and deployment contract; record only PHI-safe results.
-- [ ] 5.5 Exercise the weekly canary reset around ordinary web and worker execution, verify the S3 cleanup and synthetic baseline remain correct, and correct any failure in its owning lower boundary before restacking upward.
+- [ ] 5.5 Exercise the weekly canary reset around ordinary web and worker execution, verify configured application-storage cleanup and the synthetic baseline remain correct, and correct any failure in its owning lower boundary before restacking upward.
 - [ ] 5.6 Collect synthetic medication-administration persistence, reminder-event, and delivery evidence with PHI-safe logs and traces; retain this as a separately owned follow-up if the upstream persistence question remains unresolved rather than attributing it to DM+D import behavior.
 
 ## 6. Promote and close the incident

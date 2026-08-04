@@ -2,7 +2,9 @@
 
 See [proposal.md](proposal.md) for the incident and motivation and [the capability specification](specs/dmd-import-reliability/spec.md) for observable behavior.
 
-The application repair in `damacus/med-tracker#1784` is merged. It replaced the production-CSP-blocked reload, bounded importer caching, added the active-import invariant, and scheduled stale-run reconciliation. Portable storage is also merged as `damacus/med-tracker#1782`; its original branch commit was squash-merged, so the current `main` merge commit is the only valid prerequisite identity. The remaining deployment work in `damacus/home-ops#3999` overlaps `damacus/home-ops#3995`, while the related application-side canary reset correction is under review in `damacus/med-tracker#1785`.
+The application repair in `damacus/med-tracker#1784` is merged. It replaced the production-CSP-blocked reload, bounded importer caching, added the active-import invariant, and scheduled stale-run reconciliation. Portable storage is also merged as `damacus/med-tracker#1782`; its original branch commit was squash-merged, so the current `main` merge commit is the only valid prerequisite identity. The related application-side canary reset correction is merged as `damacus/med-tracker#1785`, and its OpenSpec integration is merged as `damacus/med-tracker#1786`. The deployment boundaries `damacus/home-ops#3995` and `damacus/home-ops#3999` are also merged, with green checks.
+
+The release candidate is resolved but not yet accepted operationally: `ghcr.io/damacus/med-tracker:beta` and `ghcr.io/damacus/med-tracker:sha-2b0c7327e1958f7c828f84951efe45105abadc26` both resolve to OCI index digest `sha256:60f9997464e2bcffc844adcaf4e59c47f94dc52d7c8f64d35ec21cf0d94d2cbc`. The current canary pin predates this landed stack; no canary reconciliation, canary acceptance, or production promotion is recorded here.
 
 The two repositories have different code ownership and cannot form one GitHub branch stack. MedTracker owns import and reset behavior; `damacus/home-ops` contains the process topology and release activation needed to run that behavior in production. This OpenSpec change remains rooted in MedTracker as the single planning authority for the MedTracker production capability, while its explicitly authorized implementation scope crosses the repository boundary. It records deployment requirements without naming or depending on home-ops filesystem or manifest paths.
 
@@ -49,11 +51,11 @@ No MedTracker artifact or implementation shall name home-ops directories, manife
 
 ### 3. Integrate the canary reset before restacking worker topology
 
-PR #1785 changes the reset operation to clean the canary-only S3 target directly and removes its impossible application-health dependency while web is stopped. The corresponding lower deployment boundary, PR #3995, must be updated to consume that application contract and remove obsolete shared-filesystem assumptions before PR #3999 is rebuilt above it.
+PR #1785 changes the reset operation to clean the configured application-storage backend directly and removes its impossible application-health dependency while web is stopped. The current canary selection is persistent storage. The corresponding lower deployment boundary, PR #3995, consumed that application contract and removed obsolete shared-filesystem assumptions before PR #3999 was rebuilt above it. Both deployment boundaries are merged with green checks; the canary remains unreconciled.
 
 The worker remains independent of the reset controller. The reset quiesces web and queue writers for its destructive window; the worker topology supplies ordinary asynchronous execution outside that window.
 
-**Rejected:** Merge PR #3999 directly into the current PR #3995 diff. Keeping the worker layer separate gives focused ownership for Puma isolation and allows lower canary-reset corrections to propagate upward deliberately.
+**Rejected:** Merge PR #3999 directly into the PR #3995 diff. Keeping the worker layer separate gives focused ownership for Puma isolation and allows lower canary-reset corrections to propagate upward deliberately.
 
 ### 4. Use two repository-local stacks and one release dependency
 
@@ -72,22 +74,23 @@ This MedTracker OpenSpec change is the single planning source for both stacks. T
 | --- | --- | --- | --- | --- | --- | --- |
 | P0 | Portable storage, PR #1782 | `main` | Durable, service-neutral application archive contract | - | Landed application and storage smoke evidence | Landed historical prerequisite |
 | M0 | MedTracker DM+D reliability, PR #1784 | `main` | Live progress, bounded import, exclusivity, stale reconciliation | - | Full MedTracker CI | Landed |
-| M1 | Canary S3 reset, PR #1785 | current MedTracker `main` | Reset safety and S3 cleanup behavior | M0 application baseline | Full MedTracker CI | Review-ready |
-| M2 | DM+D OpenSpec integration | PR #1785 branch | This proposal, capability, design, tasks, and combined acceptance contract | M1 | OpenSpec validation, docs build, diff check | Draft until M1 is accepted |
-| H1 | Canary demo rebuild, PR #3995 | current home-ops `main` | Production-data-free canary aligned with M1, kept suspended | Published M1 image contract | Focused topology checks and full render/policy CI | Review-ready after alignment |
-| H2 | Worker isolation, PR #3999 | target: PR #3995 branch; current: `main` | Production and canary worker sidecars plus topology assertions | H1 configuration contract | Focused topology checks and full render/policy CI | Current: open against `main`; target: dependent draft until H1 is accepted |
+| M1 | Canary configured-storage reset, PR #1785 | `main` | Reset safety and configured application-storage cleanup behavior | M0 application baseline | Full MedTracker CI | Landed with green checks |
+| M2 | DM+D OpenSpec integration, PR #1786 | `main` | This proposal, capability, design, tasks, and combined acceptance contract | M1 | OpenSpec validation, docs build, diff check | Landed with green checks |
+| H1 | Canary demo rebuild, PR #3995 | `main` | Production-data-free canary aligned with M1, kept suspended | Published M1 image contract | Focused topology checks and full render/policy CI | Landed with green checks; canary not reconciled |
+| H2 | Worker isolation, PR #3999 | `main` | Production and canary worker sidecars plus topology assertions | H1 configuration contract | Focused topology checks and full render/policy CI | Landed with green checks; canary not reconciled |
+| R1 | Candidate image mapping | `main` commit `2b0c7327e1958f7c828f84951efe45105abadc26` | Same OCI index for `beta` and the immutable candidate tag | M1, M2, H1, H2 | Verified OCI index digest `sha256:60f9997464e2bcffc844adcaf4e59c47f94dc52d7c8f64d35ec21cf0d94d2cbc` | Resolved; current canary pin predates it |
 | E1 | Portable-storage canary evidence, issue #1775 | cumulative canary state | Storage round trips, restore, archive, and background-job evidence | P0, M1, H1, H2 | PHI-safe canary acceptance evidence | Operational gate |
 | O1 | Medication-administration persistence observation | separate evidence lane | Distinguish persisted administrations from reminder events and delivery | Synthetic canary baseline | PHI-safe persisted-data, event, log, and trace evidence | Non-stack follow-up |
 
-P0 and M0 are already on `main`; do not recreate their historical branches or claim that their pre-squash commits remain active parents. Review and land M1 before M2 in MedTracker, and H1 before H2 in home-ops. E1 converges the two stacks at canary acceptance. O1 is deliberately integrated into the release evidence ledger but not forced into a Git stack because the session established no code patch or hard lineage; its unresolved outcome must remain visible and PHI-safe. Changes to a lower boundary are made there and propagated upward; upper branches do not carry workarounds for lower defects. Application images are published before a deployment boundary consumes them. The live cluster remains unchanged until the cumulative branches are green and activation is separately authorized.
+P0 and M0 are already on `main`; do not recreate their historical branches or claim that their pre-squash commits remain active parents. M1 landed before M2 in MedTracker, and H1 landed before H2 in home-ops. E1 converges the landed stacks at canary acceptance. O1 is deliberately integrated into the release evidence ledger but not forced into a Git stack because the session established no code patch or hard lineage; its unresolved outcome must remain visible and PHI-safe. The resolved candidate mapping proves image identity only: the live canary remains unchanged until reconciliation is separately authorized, and production remains unchanged until all acceptance invariants pass.
 
 ### 5. Preserve all active-session evidence without inventing branch lineage
 
 The three active sessions are one release ledger:
 
 - **Portable storage and missed-dose investigation (`019fafbe-9a8f-7291-81e7-4f29d7603dc9`)** established the durable, service-neutral application archive contract now landed as PR #1782 and identified issue #1775 for separately deployed canary evidence. Its historical dependency on PR #1766 is closed because #1766 is merged. The session also found that reminder events matched persisted data but could not prove the upstream administration-persistence path.
-- **Canary reset design and purge runbook (`019fb872-27db-7121-828c-8108c2dbb966`)** established M1/H1 as the lower boundaries, confirmed that no destructive purge or replacement deployment ran in that session, and requires the canary to remain suspended until the production-derived recovery and backup configuration is replaced. It distinguishes backup-free CNPG recovery from application blob storage.
-- **DM+D integration (`019fc792-51a7-73a3-897d-b997229e24a1`)** established M0 as merged and H2 as the upper worker-isolation boundary, then requires all three session outcomes to converge at canary acceptance.
+- **Canary reset design and purge runbook (`019fb872-27db-7121-828c-8108c2dbb966`)** established M1/H1 as the lower boundaries, confirmed that no destructive purge or replacement deployment ran in that session, and distinguished backup-free CNPG recovery from application blob storage. M1 and H1 have since landed; canary reconciliation and acceptance remain outstanding.
+- **DM+D integration (`019fc792-51a7-73a3-897d-b997229e24a1`)** established M0 as merged and H2 as the upper worker-isolation boundary. M2 and H2 have since landed, leaving all three session outcomes to converge at canary acceptance.
 
 The ledger does not assert a technical dependency merely because sessions are active together. It records each owner and gate, preserves an unresolved observation, and uses a stacked branch only where M1→M2 or H1→H2 has real lineage.
 
@@ -130,14 +133,13 @@ Every implementer receives only its objective, owned files, relevant interfaces,
 ## Migration Plan
 
 1. Treat merged PRs #1782 and #1784 as immutable baselines; record their merge identities and do not recreate the historical storage branch or rewrite the merged DM+D branch.
-2. Finish review of MedTracker PR #1785 and publish its exact application image.
-3. Create the MedTracker OpenSpec integration branch from PR #1785, move only this change's artifacts onto it, validate, and open it as the upper dependent PR.
-4. Update home-ops PR #3995 to the S3-reset application contract, preserve the distinction between database recovery removal and application blob storage, rerun its focused and full checks, and keep canary suspended.
-5. Rebuild home-ops PR #3999 on the verified PR #3995 tip, resolve overlap in favor of the combined demo-reset and worker contracts, retarget it to the lower branch, and rerun cumulative checks.
-6. Merge each repository stack lower first. After each lower merge, rebase or replay only the upper boundary onto current `main`, verify its focused diff, and retarget it before merge.
-7. Reconcile canary only after the candidate image and cumulative deployment configuration are available. Run the full DM+D acceptance import and issue #1775 storage/restore evidence.
-8. Capture synthetic medication-administration persistence, reminder-event, delivery, log, and trace evidence as O1; retain a separately owned follow-up if the original persistence question remains unresolved.
-9. Promote the identical image and worker contract to production only after required canary acceptance passes, then verify a production import and automatic reconciliation of old interrupted runs.
+2. Merged MedTracker PR #1785, then replayed, reverified, retargeted, and merged the OpenSpec integration as PR #1786.
+3. Merged home-ops PR #3995 with the configured application-storage reset contract while preserving the distinction between database recovery removal and persistent application blob storage.
+4. Merged home-ops PR #3999 above PR #3995 after resolving the demo-reset and worker-contract overlap and rerunning cumulative checks.
+5. Resolve the exact cumulative MedTracker image mapping: `beta` and `sha-2b0c7327e1958f7c828f84951efe45105abadc26` both identify OCI index digest `sha256:60f9997464e2bcffc844adcaf4e59c47f94dc52d7c8f64d35ec21cf0d94d2cbc`.
+6. Obtain separate authorization and reconcile canary only after the candidate image and cumulative deployment configuration are available. Run the full DM+D acceptance import and issue #1775 storage/restore evidence.
+7. Capture synthetic medication-administration persistence, reminder-event, delivery, log, and trace evidence as O1; retain a separately owned follow-up if the original persistence question remains unresolved.
+8. Promote the identical image and worker contract to production only after required canary acceptance passes, then verify a production import and automatic reconciliation of old interrupted runs.
 
 For every implementation task, the coordinating agent creates the brief and report, dispatches the selected model, obtains independent task review, records the reviewed result in the progress ledger, and only then dispatches the next task. A final Sol whole-branch review precedes any merge request update or production activation.
 
