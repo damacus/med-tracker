@@ -14,7 +14,7 @@ No dedicated incident issue was filed; the production evidence and implemented a
 - Keep the boundary between backup-free canary database recovery and optional application blob storage explicit: removing database backup/archive resources MUST NOT be interpreted as disabling durable application archives or S3-compatible application storage.
 - Keep this OpenSpec change rooted in MedTracker because it defines delivery of a MedTracker production capability. Its authorized implementation scope crosses into `damacus/home-ops`, whose deployment configuration is production code required to ship and operate the application.
 - Keep code ownership explicit inside that single MedTracker-owned plan: MedTracker owns application behavior and tests; `damacus/home-ops` owns deployment topology and release activation. MedTracker artifacts may reference the deployment repository, PRs, and behavioral contract but MUST NOT encode home-ops filesystem or manifest paths.
-- Deliver the overlap as repository-local stacked work: the merged MedTracker DM+D contract precedes the canary reset integration, while [damacus/home-ops#3995](https://github.com/damacus/home-ops/pull/3995) is the planned lower deployment boundary and [damacus/home-ops#3999](https://github.com/damacus/home-ops/pull/3999) is planned to be rebuilt above it from its current `main` base.
+- Deliver the overlap as repository-local stacked work: MedTracker PRs [#1785](https://github.com/damacus/med-tracker/pull/1785) and [#1786](https://github.com/damacus/med-tracker/pull/1786), plus [damacus/home-ops#3995](https://github.com/damacus/home-ops/pull/3995) and [#3999](https://github.com/damacus/home-ops/pull/3999), are merged with green checks. The current canary pin predates that landed stack and has not been reconciled.
 - Execute the remaining plan through agent-orchestrated development: this coordinating agent owns architecture, stack lineage, integration, and final verification; fresh bounded subagents implement and independently review each task under adaptive model routing.
 
 Non-goals:
@@ -38,7 +38,7 @@ None.
 ## Impact
 
 - MedTracker DM+D import presentation, persistence lifecycle, archive importer, background jobs, recurring schedule, database invariant, and automated coverage.
-- The `damacus/home-ops` production code for the canary and production worker topology represented by PR #3999, planned to be restacked above the demo-reset deployment contract in PR #3995.
+- The `damacus/home-ops` production code for the canary and production worker topology landed through PR #3995 followed by PR #3999; its operational canary acceptance remains outstanding.
 - Release sequencing: the application image is available before deployment activation; canary proves progress, completion, counts, logs, memory bounds, and web stability before production promotion.
 - Release evidence: portable storage, DM+D reliability, canary reset, worker isolation, and the unresolved reminder-persistence observation each retain an explicit owner, current state, and acceptance disposition even when they do not belong in the same Git branch stack.
 - Delivery process: a durable progress ledger, task-specific agent briefs, independent task review, and final whole-branch review prevent stack or concurrency decisions from being delegated without parent judgment.
