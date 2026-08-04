@@ -250,6 +250,7 @@ task mutation:since REF=HEAD~3
 ```
 
 Notes:
+
 - **Day-to-day, use `task mutation:since`** (or the advisory CI `mutation` job) —
   it only mutates changed subjects, so it's fast. Full per-class runs are a
   one-off baseline activity, and DB-backed subjects (policies/models) are slow
