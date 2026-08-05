@@ -31,6 +31,23 @@ RSpec.describe DemoBaseline::Loader do
     expect(ActiveStorage::Blob.count).to be_zero
   end
 
+  it 'loads under the non-superuser owner role with forced row-level security', :aggregate_failures do
+    ActiveRecord::Base.connection.execute('SET LOCAL ROLE med_tracker_owner')
+
+    result = described_class.load!
+
+    expect_baseline_summary(result)
+    expect_demo_records
+  end
+
+  it 'verifies the baseline under the non-superuser owner role after loading' do
+    described_class.load!
+    ActiveRecord::Base.connection.execute("SELECT set_config('med_tracker.current_household_id', '', true)")
+    ActiveRecord::Base.connection.execute('SET LOCAL ROLE med_tracker_owner')
+
+    expect_baseline_summary(described_class.new.verify!)
+  end
+
   def expect_baseline_summary(result)
     expect(result).to eq(
       baseline: DemoBaseline::IDENTIFIER,
