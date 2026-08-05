@@ -5,9 +5,7 @@ module DemoBaseline
     class InvalidBaselineError < StandardError; end
 
     class << self
-      def load!
-        new.load!
-      end
+      delegate :load!, to: :new
     end
 
     def initialize(connection: ActiveRecord::Base.connection)
