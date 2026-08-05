@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.5.18](https://github.com/damacus/med-tracker/compare/v0.5.17...v0.5.18) (2026-08-05)
+
+
+### Features
+
+* **canary:** add guarded weekly demo reset ([#1781](https://github.com/damacus/med-tracker/issues/1781)) ([94177a5](https://github.com/damacus/med-tracker/commit/94177a5518715647ea0b78498e20a6da686f091a))
+* **dmd:** support trade family continuity ([#1758](https://github.com/damacus/med-tracker/issues/1758)) ([df00512](https://github.com/damacus/med-tracker/commit/df005120b12bfb1e68f95cb9300b62a7ccf3f2fc))
+* **jobs:** use fiber workers ([#1783](https://github.com/damacus/med-tracker/issues/1783)) ([32e1be9](https://github.com/damacus/med-tracker/commit/32e1be994c4e5ae4690b859d9bc22e729aae8cf2))
+* **observability:** standardize tracing and logging ([3e4dfd1](https://github.com/damacus/med-tracker/commit/3e4dfd109cda155ff2e5056648291f8d61d1493a))
+* **storage:** support portable production backends ([#1782](https://github.com/damacus/med-tracker/issues/1782)) ([f1accf6](https://github.com/damacus/med-tracker/commit/f1accf6b8222aa485193584d4339a3a082c845ae))
+
+
+### Bug Fixes
+
+* **canary:** load demo baseline without superuser ([#1796](https://github.com/damacus/med-tracker/issues/1796)) ([8a31fbb](https://github.com/damacus/med-tracker/commit/8a31fbb1775e8e4b3532e972e3160910864a0f24))
+* **canary:** reset isolated S3 storage ([#1785](https://github.com/damacus/med-tracker/issues/1785)) ([b96aa9b](https://github.com/damacus/med-tracker/commit/b96aa9bf90664da1fe0914b380b109148050426c))
+* **medications:** preserve search results ([#1759](https://github.com/damacus/med-tracker/issues/1759)) ([02af04b](https://github.com/damacus/med-tracker/commit/02af04bf66e0079440637e015faaaa5473a1b33f))
+* **nhs-dmd:** restore live import progress ([#1784](https://github.com/damacus/med-tracker/issues/1784)) ([f9aa1a7](https://github.com/damacus/med-tracker/commit/f9aa1a79093bc8ea8dca34f1c89e3f4a1a0e768e))
+* **notifications:** trace missed doses ([#1764](https://github.com/damacus/med-tracker/issues/1764)) ([71e8c87](https://github.com/damacus/med-tracker/commit/71e8c8707343694f5b6812212915c4528e0d414f))
+* **observability:** export labelled pool metrics ([436c992](https://github.com/damacus/med-tracker/commit/436c992c58d1bc7c9a569121f6a180bbb9bc938b))
+* **observability:** harden pool metric collection ([318f193](https://github.com/damacus/med-tracker/commit/318f1935fc6b0ae7aefe52c92b0688d691f5324e))
+* **observability:** propagate request trace context ([7fbaaae](https://github.com/damacus/med-tracker/commit/7fbaaae59ede03d0d6cb8dbe10fa0b23c75952ac))
+* **observability:** resolve live database pools ([80e6e1a](https://github.com/damacus/med-tracker/commit/80e6e1ad48566e88bfeee62447683e24bc7f7b1b))
+* **queue:** allow asynchronous Puma supervision ([d083333](https://github.com/damacus/med-tracker/commit/d0833339879b05d772662dffdebd63895e9bc0d5))
+* **test:** support Playwright browser revision ([679430c](https://github.com/damacus/med-tracker/commit/679430cd0040d25ee1c7b064f64f0ede321de9ef))
+
 ## [0.5.17](https://github.com/damacus/med-tracker/compare/v0.5.16...v0.5.17) (2026-07-29)
 
 
