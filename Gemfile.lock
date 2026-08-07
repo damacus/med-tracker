@@ -199,7 +199,7 @@ GEM
       dry-logic (~> 1.4)
       zeitwerk (~> 2.6)
     ecs-logging (1.0.0)
-    erb (6.0.6)
+    erb (6.0.7)
     erubi (1.13.1)
     et-orbi (1.4.1)
       tzinfo
@@ -623,7 +623,7 @@ GEM
     rodauth-omniauth (0.6.2)
       omniauth (~> 2.0)
       rodauth (~> 2.36)
-    rodauth-rails (2.2.0)
+    rodauth-rails (2.2.1)
       railties (>= 5.2)
       roda (~> 3.76)
       rodauth (~> 2.36)
