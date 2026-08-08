@@ -68,6 +68,34 @@ RSpec.describe MedicationReminderJob do
     expect(event.metadata).to include('delivery_status' => 'delivery_unknown')
   end
 
+  context 'when a delivered serialized legacy job deadlocks' do
+    around do |example|
+      original_queue_adapter = ActiveJob::Base.queue_adapter
+      ActiveJob::Base.queue_adapter = :test
+      example.run
+    ensure
+      clear_enqueued_jobs
+      ActiveJob::Base.queue_adapter = original_queue_adapter
+    end
+
+    it 'preserves the occurrence when the queued retry runs' do
+      create_vitamin_schedule(
+        time: '07:15', start_date: Date.new(2026, 5, 11), end_date: Date.new(2026, 6, 12)
+      )
+      deadlock_next_update
+      perform_deadlocked_legacy_retry
+
+      event = NotificationEvent.find_by!(event_type: 'dose_due')
+      expect(PushNotificationService).to have_received(:send_to_account).once
+      expect(NotificationEvent.where(event_type: 'dose_due').count).to eq(1)
+      expect(event).to have_attributes(
+        event_key: "dose-due:#{person.id}:2026-05-12T06:15:00Z",
+        sent_at: nil
+      )
+      expect(event.metadata).to include('delivery_status' => 'delivery_unknown')
+    end
+  end
+
   it 'normalizes explicit London occurrences across summer and winter offsets' do
     create_vitamin_schedule(
       time: '07:15', start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 12, 31)
@@ -326,6 +354,29 @@ RSpec.describe MedicationReminderJob do
 
   def perform_explicit_occurrence(intended_at)
     described_class.perform_now(household.id, person.id, :scheduled, '07:15', intended_at)
+  end
+
+  def deadlock_next_update
+    deadlock_pending = true
+    allow(NotificationEvent).to receive(:record_once!).and_wrap_original do |original, **attributes|
+      event = original.call(**attributes)
+      if event && deadlock_pending
+        deadlock_pending = false
+        allow(event).to receive(:update!).and_raise(ActiveRecord::Deadlocked)
+      end
+      event
+    end
+  end
+
+  def perform_deadlocked_legacy_retry
+    Time.use_zone('Europe/London') do
+      intended_at = Time.zone.local(2026, 5, 12, 7, 15)
+      executed_at = intended_at + 45.minutes
+      travel_to executed_at do
+        perform_serialized(legacy_scheduled_job, intended_at)
+        perform_enqueued_jobs(only: described_class, at: executed_at + 10.seconds)
+      end
+    end
   end
 
   def create_routine_vitamin
