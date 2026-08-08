@@ -39,11 +39,13 @@ class ScheduleDailyRemindersJob < ApplicationJob
   end
 
   def enqueue_reminders_for(pref)
-    enqueue_period_reminders_for(pref) if pref.dose_due_enabled
-    enqueue_schedule_time_reminders_for(pref)
+    period_reminder_times = pref.dose_due_enabled ? enqueue_period_reminders_for(pref) : []
+    enqueue_schedule_time_reminders_for(pref, period_reminder_times)
   end
 
   def enqueue_period_reminders_for(pref)
+    scheduled_times = []
+
     PERIODS.each do |period|
       time = pref.time_for_period(period)
       next unless time
@@ -59,21 +61,24 @@ class ScheduleDailyRemindersJob < ApplicationJob
         send_at:,
         kind: :dose_due
       )
+      scheduled_times << send_at
     end
+
+    scheduled_times
   end
 
-  def enqueue_schedule_time_reminders_for(pref)
+  def enqueue_schedule_time_reminders_for(pref, period_reminder_times)
     configured_times_for(pref.person).each do |time|
-      enqueue_configured_time_for(pref, time)
+      enqueue_configured_time_for(pref, time, period_reminder_times)
     end
   end
 
-  def enqueue_configured_time_for(pref, time)
+  def enqueue_configured_time_for(pref, time, period_reminder_times)
     send_at = build_send_time_from_configured_time(time)
     return record_invalid_schedule(:unknown) if send_at.blank?
     return record_past_occurrence(schedule_kind(pref)) if send_at < Time.current
 
-    enqueue_scheduled_dose_due(pref, send_at, time) if pref.dose_due_enabled
+    enqueue_scheduled_dose_due(pref, send_at, time) if pref.dose_due_enabled && !period_reminder_times.include?(send_at)
     enqueue_missed_dose_check_for(pref.person, send_at, time) if pref.missed_dose_enabled
   end
 

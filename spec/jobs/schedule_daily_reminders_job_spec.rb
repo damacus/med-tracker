@@ -50,6 +50,57 @@ RSpec.describe ScheduleDailyRemindersJob do
       .at(Time.zone.local(2026, 5, 12, 8, 0))
   end
 
+  it 'keeps the London period reminder at a configured-time collision while preserving other reminders' do
+    Time.use_zone('Europe/London') do
+      travel_to Time.zone.local(2026, 5, 12, 6, 0) do
+        create(:notification_preference, person: person, morning_time: '07:15:00', afternoon_time: '14:00:00',
+                                         evening_time: nil, night_time: nil, dose_due_enabled: true,
+                                         missed_dose_enabled: true)
+        create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
+                          frequency: 'Twice daily', schedule_type: :multiple_daily,
+                          schedule_config: { 'times' => %w[07:15 19:45] })
+        create(:person_medication, :routine, person: person, medication: medications(:paracetamol),
+                                             dosage: dosages(:paracetamol_adult))
+        allow(PushNotificationService).to receive(:send_to_account)
+
+        expect do
+          described_class.perform_now
+        end.to have_enqueued_job(MedicationReminderJob)
+          .with(household.id, person.id, :morning)
+          .at(Time.zone.local(2026, 5, 12, 7, 15))
+          .and(
+            have_enqueued_job(MedicationReminderJob)
+              .with(household.id, person.id, :afternoon)
+              .at(Time.zone.local(2026, 5, 12, 14, 0))
+          )
+          .and(
+            have_enqueued_job(MedicationReminderJob)
+              .with(household.id, person.id, :scheduled, '19:45')
+              .at(Time.zone.local(2026, 5, 12, 19, 45))
+          )
+          .and(
+            have_enqueued_job(MissedDoseNotificationJob)
+              .with(household.id, person.id, '2026-05-12', '07:15')
+              .at(Time.zone.local(2026, 5, 12, 7, 45))
+          )
+          .and(
+            have_enqueued_job(MissedDoseNotificationJob)
+              .with(household.id, person.id, '2026-05-12', '19:45')
+              .at(Time.zone.local(2026, 5, 12, 20, 15))
+          )
+
+        expect(enqueued_jobs.count { |entry| entry.fetch(:job) == MedicationReminderJob }).to eq(3)
+
+        MedicationReminderJob.perform_now(household.id, person.id, :morning)
+
+        expect(PushNotificationService).to have_received(:send_to_account).with(
+          person.account,
+          hash_including(body: 'Morning medications: Vitamin D, Paracetamol')
+        )
+      end
+    end
+  end
+
   it 'records a past occurrence instead of enqueuing it' do
     events = []
     allow(Observability::CanonicalLogger).to receive(:write) { |event| events << event.to_h }
