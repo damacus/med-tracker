@@ -65,7 +65,7 @@ class ScheduleDailyRemindersJob < ApplicationJob
 
   def enqueue_period_reminder(pref, period, send_at)
     enqueue_notification_job(
-      MedicationReminderJob.new(pref.household_id, pref.person_id, period),
+      MedicationReminderJob.new(pref.household_id, pref.person_id, period, nil, send_at),
       send_at:,
       kind: :dose_due
     )
@@ -92,7 +92,7 @@ class ScheduleDailyRemindersJob < ApplicationJob
 
   def enqueue_scheduled_dose_due(pref, send_at, time)
     enqueue_notification_job(
-      MedicationReminderJob.new(pref.household_id, pref.person_id, :scheduled, time),
+      MedicationReminderJob.new(pref.household_id, pref.person_id, :scheduled, time, send_at),
       send_at:,
       kind: :dose_due
     )
