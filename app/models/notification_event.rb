@@ -8,13 +8,15 @@ class NotificationEvent < ApplicationRecord
   validates :event_key, presence: true, uniqueness: { scope: :event_type }
 
   def self.record_once!(household:, person:, event_type:, event_key:, metadata: {})
-    create!(
-      household: household,
-      person: person,
-      event_type: event_type,
-      event_key: event_key,
-      metadata: metadata
-    )
+    transaction(requires_new: true) do
+      create!(
+        household: household,
+        person: person,
+        event_type: event_type,
+        event_key: event_key,
+        metadata: metadata
+      )
+    end
   rescue ActiveRecord::RecordNotUnique
     nil
   rescue ActiveRecord::RecordInvalid => e

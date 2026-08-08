@@ -37,7 +37,9 @@ RSpec.describe 'tenant safety architecture' do
     reminder_source = Rails.root.join('app/jobs/medication_reminder_job.rb').read
     scheduler_source = Rails.root.join('app/jobs/schedule_daily_reminders_job.rb').read
 
-    expect(reminder_source).to include('def perform(household_id, person_id, period, scheduled_time = nil)')
+    expect(reminder_source).to include(
+      'def perform(household_id, person_id, period, scheduled_time = nil, intended_at = nil)'
+    )
     expect(scheduler_source).to include('MedicationReminderJob.new(pref.household_id, pref.person_id')
     expect(scheduler_source).not_to include('MedicationReminderJob.new(pref.person_id')
   end
