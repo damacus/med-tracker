@@ -56,15 +56,19 @@ class ScheduleDailyRemindersJob < ApplicationJob
         next
       end
 
-      enqueue_notification_job(
-        MedicationReminderJob.new(pref.household_id, pref.person_id, period),
-        send_at:,
-        kind: :dose_due
-      )
+      enqueue_period_reminder(pref, period, send_at)
       scheduled_times << send_at
     end
 
     scheduled_times
+  end
+
+  def enqueue_period_reminder(pref, period, send_at)
+    enqueue_notification_job(
+      MedicationReminderJob.new(pref.household_id, pref.person_id, period),
+      send_at:,
+      kind: :dose_due
+    )
   end
 
   def enqueue_schedule_time_reminders_for(pref, period_reminder_times)
@@ -78,7 +82,7 @@ class ScheduleDailyRemindersJob < ApplicationJob
     return record_invalid_schedule(:unknown) if send_at.blank?
     return record_past_occurrence(schedule_kind(pref)) if send_at < Time.current
 
-    enqueue_scheduled_dose_due(pref, send_at, time) if pref.dose_due_enabled && !period_reminder_times.include?(send_at)
+    enqueue_scheduled_dose_due(pref, send_at, time) if pref.dose_due_enabled && period_reminder_times.exclude?(send_at)
     enqueue_missed_dose_check_for(pref.person, send_at, time) if pref.missed_dose_enabled
   end
 
