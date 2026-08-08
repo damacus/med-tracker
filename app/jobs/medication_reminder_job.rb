@@ -46,6 +46,8 @@ class MedicationReminderJob < ApplicationJob
     @intended_at = intended_occurrence_at(intended_at)
     return record_unavailable(:invalid_occurrence) unless @intended_at
 
+    preserve_legacy_occurrence_for_retry
+
     true
   end
 
@@ -123,6 +125,10 @@ class MedicationReminderJob < ApplicationJob
   def intended_occurrence_at(explicit_intended_at)
     occurrence = explicit_intended_at.presence || scheduled_at || legacy_occurrence_at
     normalize_occurrence(occurrence)
+  end
+
+  def preserve_legacy_occurrence_for_retry
+    arguments[4] = @intended_at if arguments.length < 5
   end
 
   def legacy_occurrence_at
