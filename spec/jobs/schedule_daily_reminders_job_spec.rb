@@ -50,6 +50,17 @@ RSpec.describe ScheduleDailyRemindersJob do
       .at(Time.zone.local(2026, 5, 12, 8, 0))
   end
 
+  it 'keeps the London period reminder at a configured-time collision while preserving other reminders' do
+    Time.use_zone('Europe/London') do
+      travel_to Time.zone.local(2026, 5, 12, 6, 0) do
+        prepare_london_collision
+        described_class.perform_now
+        expect_london_collision_jobs
+        expect_collision_delivery
+      end
+    end
+  end
+
   it 'records a past occurrence instead of enqueuing it' do
     events = []
     allow(Observability::CanonicalLogger).to receive(:write) { |event| events << event.to_h }
@@ -203,6 +214,63 @@ RSpec.describe ScheduleDailyRemindersJob do
 
   def enable_missed_dose_notifications(target)
     create(:notification_preference, person: target, dose_due_enabled: false, missed_dose_enabled: true)
+  end
+
+  def prepare_london_collision
+    create(:notification_preference, person: person, morning_time: '07:15:00', afternoon_time: '14:00:00',
+                                     evening_time: nil, night_time: nil, dose_due_enabled: true,
+                                     missed_dose_enabled: true)
+    create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
+                      frequency: 'Twice daily', schedule_type: :multiple_daily,
+                      schedule_config: { 'times' => %w[07:15 19:45] })
+    create(:person_medication, :routine, person: person, medication: medications(:paracetamol),
+                                         dosage: dosages(:paracetamol_adult))
+    allow(PushNotificationService).to receive(:send_to_account)
+  end
+
+  def expect_london_collision_jobs
+    expect_due_collision_jobs
+    expect_missed_collision_jobs
+    expect(enqueued_jobs.count { |entry| entry.fetch(:job) == MedicationReminderJob }).to eq(3)
+  end
+
+  def expect_due_collision_jobs
+    expect_morning_due_job
+    expect_afternoon_due_job
+    expect_scheduled_due_job
+  end
+
+  def expect_morning_due_job
+    expect_enqueued_at(MedicationReminderJob, [household.id, person.id, :morning], 7, 15)
+  end
+
+  def expect_afternoon_due_job
+    expect_enqueued_at(MedicationReminderJob, [household.id, person.id, :afternoon], 14)
+  end
+
+  def expect_scheduled_due_job
+    expect_enqueued_at(MedicationReminderJob, [household.id, person.id, :scheduled, '19:45'], 19, 45)
+  end
+
+  def expect_missed_collision_jobs
+    expect_enqueued_at(MissedDoseNotificationJob, [household.id, person.id, '2026-05-12', '07:15'], 7, 45)
+    expect_enqueued_at(MissedDoseNotificationJob, [household.id, person.id, '2026-05-12', '19:45'], 20, 15)
+  end
+
+  def expect_enqueued_at(job_class, arguments, hour, min = 0)
+    expect(job_class).to have_been_enqueued.with(*arguments).at(london_time(hour, min))
+  end
+
+  def london_time(hour, min = 0)
+    Time.zone.local(2026, 5, 12, hour, min)
+  end
+
+  def expect_collision_delivery
+    MedicationReminderJob.perform_now(household.id, person.id, :morning)
+    expect(PushNotificationService).to have_received(:send_to_account).with(
+      person.account,
+      hash_including(body: 'Morning medications: Vitamin D, Paracetamol')
+    )
   end
 
   def reminder_enqueue_event(events)
