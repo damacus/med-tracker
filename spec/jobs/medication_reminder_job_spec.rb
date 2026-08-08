@@ -36,6 +36,75 @@ RSpec.describe MedicationReminderJob do
     )
   end
 
+  it 'sends one due notification when the same occurrence is replayed sequentially' do
+    create_vitamin_schedule(
+      time: '07:15', start_date: Date.new(2026, 5, 11), end_date: Date.new(2026, 6, 12)
+    )
+
+    Time.use_zone('Europe/London') do
+      travel_to Time.zone.local(2026, 5, 12, 7, 15) do
+        2.times { described_class.perform_now(household.id, person.id, :scheduled, '07:15') }
+      end
+    end
+
+    expect(PushNotificationService).to have_received(:send_to_account).once
+    expect(NotificationEvent.where(event_type: 'dose_due').count).to eq(1)
+  end
+
+  it 'canonicalizes equivalent serialized three- and four-argument jobs' do
+    person.notification_preference.update!(morning_time: '07:15:00')
+    create_vitamin_schedule(
+      time: '07:15', start_date: Date.new(2026, 5, 11), end_date: Date.new(2026, 6, 12)
+    )
+
+    Time.use_zone('Europe/London') do
+      intended_at = Time.zone.local(2026, 5, 12, 7, 15)
+      travel_to(intended_at) { perform_serialized_legacy_jobs(intended_at) }
+    end
+
+    event = NotificationEvent.find_by!(event_type: 'dose_due')
+    expect(PushNotificationService).to have_received(:send_to_account).once
+    expect(event.event_key).to eq("dose-due:#{person.id}:2026-05-12T06:15:00Z")
+    expect(event.metadata).to include('delivery_status' => 'delivery_unknown')
+  end
+
+  it 'normalizes explicit London occurrences across summer and winter offsets' do
+    create_vitamin_schedule(
+      time: '07:15', start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 12, 31)
+    )
+
+    Time.use_zone('Europe/London') do
+      [Time.zone.local(2026, 5, 12, 7, 15), Time.zone.local(2026, 12, 12, 7, 15)].each do |intended_at|
+        travel_to intended_at do
+          described_class.perform_now(household.id, person.id, :scheduled, '07:15', intended_at)
+        end
+      end
+    end
+
+    expect(NotificationEvent.where(event_type: 'dose_due').order(:event_key).pluck(:event_key)).to contain_exactly(
+      "dose-due:#{person.id}:2026-05-12T06:15:00Z",
+      "dose-due:#{person.id}:2026-12-12T07:15:00Z"
+    )
+    expect(PushNotificationService).to have_received(:send_to_account).twice
+  end
+
+  it 'keeps an unknown delivery reserved when the application delivery raises' do
+    create_vitamin_schedule(
+      time: '07:15', start_date: Date.new(2026, 5, 11), end_date: Date.new(2026, 6, 12)
+    )
+    allow(PushNotificationService).to receive(:send_to_account).and_raise(IOError, 'provider result unknown')
+
+    Time.use_zone('Europe/London') do
+      intended_at = Time.zone.local(2026, 5, 12, 7, 15)
+      travel_to(intended_at) { perform_unknown_delivery_replay(intended_at) }
+    end
+
+    event = NotificationEvent.find_by!(event_type: 'dose_due')
+    expect(PushNotificationService).to have_received(:send_to_account).once
+    expect(event).to have_attributes(sent_at: nil)
+    expect(event.metadata).to include('delivery_status' => 'delivery_unknown')
+  end
+
   it 'does not send scheduled-time reminders for doses already taken today' do
     schedule = create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
                                  frequency: 'Once daily', schedule_type: :daily,
@@ -227,10 +296,36 @@ RSpec.describe MedicationReminderJob do
     end
   end
 
-  def create_vitamin_schedule(time:)
+  def create_vitamin_schedule(time:, start_date: Time.zone.today, end_date: 1.year.from_now.to_date)
     create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
                       frequency: 'Once daily', schedule_type: :daily,
-                      schedule_config: { 'times' => [time] })
+                      schedule_config: { 'times' => [time] }, start_date:, end_date:)
+  end
+
+  def perform_serialized_legacy_jobs(intended_at)
+    [legacy_period_job, legacy_scheduled_job].each { |job| perform_serialized(job, intended_at) }
+  end
+
+  def legacy_period_job
+    described_class.new(household.id, person.id, :morning)
+  end
+
+  def legacy_scheduled_job
+    described_class.new(household.id, person.id, :scheduled, '07:15')
+  end
+
+  def perform_serialized(job, intended_at)
+    job.scheduled_at = intended_at
+    ActiveJob::Base.deserialize(job.serialize).perform_now
+  end
+
+  def perform_unknown_delivery_replay(intended_at)
+    expect { perform_explicit_occurrence(intended_at) }.to raise_error(IOError, 'provider result unknown')
+    expect { perform_explicit_occurrence(intended_at) }.not_to raise_error
+  end
+
+  def perform_explicit_occurrence(intended_at)
+    described_class.perform_now(household.id, person.id, :scheduled, '07:15', intended_at)
   end
 
   def create_routine_vitamin

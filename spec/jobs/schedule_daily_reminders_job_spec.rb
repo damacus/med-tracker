@@ -46,7 +46,7 @@ RSpec.describe ScheduleDailyRemindersJob do
     expect do
       described_class.perform_now
     end.to have_enqueued_job(MedicationReminderJob)
-      .with(household.id, person.id, :morning)
+      .with(household.id, person.id, :morning, nil, Time.zone.local(2026, 5, 12, 8, 0))
       .at(Time.zone.local(2026, 5, 12, 8, 0))
   end
 
@@ -88,7 +88,7 @@ RSpec.describe ScheduleDailyRemindersJob do
     expect do
       described_class.perform_now
     end.to have_enqueued_job(MedicationReminderJob)
-      .with(household.id, person.id, :scheduled, '07:15')
+      .with(household.id, person.id, :scheduled, '07:15', Time.zone.local(2026, 5, 12, 7, 15))
       .at(Time.zone.local(2026, 5, 12, 7, 15))
   end
 
@@ -160,7 +160,7 @@ RSpec.describe ScheduleDailyRemindersJob do
     expect do
       described_class.perform_now
     end.not_to have_enqueued_job(MedicationReminderJob)
-      .with(household.id, person.id, :scheduled, '07:15')
+      .with(household.id, person.id, :scheduled, '07:15', Time.zone.local(2026, 5, 12, 7, 15))
   end
 
   it 'does not enqueue exact reminders for schedules that do not apply today' do
@@ -173,7 +173,7 @@ RSpec.describe ScheduleDailyRemindersJob do
     expect do
       described_class.perform_now
     end.not_to have_enqueued_job(MedicationReminderJob)
-      .with(household.id, person.id, :scheduled, '07:15')
+      .with(household.id, person.id, :scheduled, '07:15', Time.zone.local(2026, 5, 12, 7, 15))
   end
 
   it 'does not enqueue exact reminders for paused schedules' do
@@ -186,7 +186,7 @@ RSpec.describe ScheduleDailyRemindersJob do
     expect do
       described_class.perform_now
     end.not_to have_enqueued_job(MedicationReminderJob)
-      .with(household.id, person.id, :scheduled, '07:15')
+      .with(household.id, person.id, :scheduled, '07:15', Time.zone.local(2026, 5, 12, 7, 15))
   end
 
   it 'loads schedule times once for enabled notification preferences' do
@@ -241,15 +241,21 @@ RSpec.describe ScheduleDailyRemindersJob do
   end
 
   def expect_morning_due_job
-    expect_enqueued_at(MedicationReminderJob, [household.id, person.id, :morning], 7, 15)
+    expect_enqueued_at(
+      MedicationReminderJob, [household.id, person.id, :morning, nil, london_time(7, 15)], 7, 15
+    )
   end
 
   def expect_afternoon_due_job
-    expect_enqueued_at(MedicationReminderJob, [household.id, person.id, :afternoon], 14)
+    expect_enqueued_at(
+      MedicationReminderJob, [household.id, person.id, :afternoon, nil, london_time(14)], 14
+    )
   end
 
   def expect_scheduled_due_job
-    expect_enqueued_at(MedicationReminderJob, [household.id, person.id, :scheduled, '19:45'], 19, 45)
+    expect_enqueued_at(
+      MedicationReminderJob, [household.id, person.id, :scheduled, '19:45', london_time(19, 45)], 19, 45
+    )
   end
 
   def expect_missed_collision_jobs
