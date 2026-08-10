@@ -1,11 +1,9 @@
 project_name: "med-tracker"
-languages: [ruby]
 encoding: "utf-8"
 line_ending: native
 language_backend: LSP
 ignore_all_files_in_gitignore: true
 ls_specific_settings: {}
-additional_workspace_folders: []
 ignored_paths: []
 read_only: false
 excluded_tools: []
@@ -17,3 +15,10 @@ initial_prompt: ""
 symbol_info_budget:
 read_only_memory_patterns: []
 ignored_memory_patterns: []
+ls_additional_workspace_folders: []
+language_servers:
+- ruby
+ls_workspace_folders:
+- .
+activation_command:
+activation_command_timeout: 180.0
