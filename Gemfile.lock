@@ -715,7 +715,7 @@ GEM
     ruby_parser (3.22.0)
       racc (~> 1.5)
       sexp_processor (~> 4.16)
-    ruby_ui (1.4.0)
+    ruby_ui (1.6.0)
     rubycritic (5.0.0)
       flay (~> 2.13)
       flog (~> 4.7)
