@@ -533,13 +533,10 @@ export default class extends Controller {
     }
   }
 
-  escapeHtml(value) {
-    return String(value || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;')
+  escapeHtml(str) {
+    const div = document.createElement('div')
+    div.appendChild(document.createTextNode(String(str || '')))
+    return div.innerHTML
   }
 
   hrefAttribute(url) {

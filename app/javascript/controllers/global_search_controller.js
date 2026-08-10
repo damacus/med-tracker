@@ -342,12 +342,9 @@ export default class extends Controller {
   }
 
   escapeHtml(value) {
-    return String(value || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;')
+    const div = document.createElement("div")
+    div.appendChild(document.createTextNode(String(value || "")))
+    return div.innerHTML
   }
 
   hrefAttribute(url) {
