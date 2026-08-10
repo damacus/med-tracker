@@ -517,7 +517,8 @@ RSpec.describe 'API v1 household administration' do
       name: 'API access change client',
       client_id: "api-access-change-#{SecureRandom.hex(8)}",
       redirect_uri: 'https://client.example/callback',
-      scopes: 'patient/*.rs'
+      scopes: 'patient/*.rs',
+      token_endpoint_auth_method: 'none'
     )
   end
 end

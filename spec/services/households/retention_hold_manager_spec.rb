@@ -140,7 +140,8 @@ RSpec.describe Households::RetentionHoldManager do
           name: 'Offboard test app',
           client_id: SecureRandom.hex(16),
           redirect_uri: 'https://example.test/callback',
-          scopes: 'patient/*.rs'
+          scopes: 'patient/*.rs',
+          token_endpoint_auth_method: 'none'
         ),
         expires_in: 1.hour.from_now,
         permissions_version: membership.permissions_version,

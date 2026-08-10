@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_03_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_10_203000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -906,9 +906,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_03_150000) do
     t.string "name", null: false
     t.string "redirect_uri", null: false
     t.string "scopes", null: false
+    t.string "token_endpoint_auth_method", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_oauth_applications_on_account_id"
     t.index ["client_id"], name: "index_oauth_applications_on_client_id", unique: true
+    t.check_constraint "(token_endpoint_auth_method = 'none' AND NULLIF(client_secret, '') IS NULL AND NULLIF(client_secret_hash, '') IS NULL) OR (token_endpoint_auth_method IN ('client_secret_basic', 'client_secret_post', 'client_secret_basic client_secret_post') AND (NULLIF(client_secret, '') IS NOT NULL OR NULLIF(client_secret_hash, '') IS NOT NULL))", name: "chk_oauth_applications_token_auth_method"
   end
 
   create_table "oauth_grants", force: :cascade do |t|
