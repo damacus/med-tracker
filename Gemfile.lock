@@ -80,7 +80,7 @@ GEM
     aes_key_wrap (1.1.0)
     android_key_attestation (0.3.0)
     ast (2.4.3)
-    async (2.44.0)
+    async (2.44.1)
       console (~> 1.29)
       fiber-annotation
       io-event (~> 1.11)
