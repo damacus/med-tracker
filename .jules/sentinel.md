@@ -27,3 +27,9 @@
 **Vulnerability:** DOM-based Stored XSS in `app/javascript/controllers/schedule_form_controller.js`. User-controlled dosage properties were interpolated directly into a string mapped to an HTML payload which was then directly assigned to `element.innerHTML`, executing malicious inputs.
 **Learning:** Raw Javascript template literals injected into `.innerHTML` are dangerous. Even if the expected value is alphanumeric (like unit amounts), it must be treated as untrusted and safely escaped. When writing custom escape methods, ensure quotes (`"` and `'`) are covered so attribute injection attacks are also prevented.
 **Prevention:** Use a robust `escapeHtml` function that replaces `&, <, >, ", '` with their entity equivalents. Apply escaping strictly to the output context (HTML strings) while using raw values for logical internal state comparisons to avoid breaking app functionality.
+
+## 2026-06-25 - Prevent DOM-based Stored XSS via InnerHTML
+
+**Vulnerability:** DOM-based Stored XSS via `.innerHTML` rendering. User-controlled strings were interpolated directly into a string mapped to an HTML payload which was then directly assigned to `element.innerHTML`, executing malicious inputs. The custom `escapeHtml` function failed to properly escape the input because it used `document.createTextNode(value)` combined with `.innerHTML`, which only escaped `<`, `>`, and `&`, but failed to escape quotes (`"` and `'`).
+**Learning:** Using `document.createTextNode(value)` and then returning `.innerHTML` does not prevent attribute injection attacks since it doesn't escape quotes. Any data rendered into attributes using this method is still vulnerable to XSS.
+**Prevention:** Use a robust `escapeHtml` function that replaces `&, <, >, ", '` with their entity equivalents via regex. Apply escaping strictly to the output context (HTML strings) while using raw values for logical internal state comparisons to avoid breaking app functionality.
