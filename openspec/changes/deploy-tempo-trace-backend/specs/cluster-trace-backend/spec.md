@@ -69,9 +69,9 @@ Grafana SHALL provision a healthy trace data source that supports trace-ID looku
 - **THEN** matching traces are returned without searching unrelated services
 
 #### Scenario: Operator navigates from a trace to logs
-- **GIVEN** a displayed span has a trace identifier and matching Loki records exist
+- **GIVEN** a displayed span has a trace identifier, a non-empty deployment-generated `host.name` mapped to the Kubernetes pod label, and matching Loki records exist
 - **WHEN** the operator follows the trace-to-logs link
-- **THEN** Grafana opens a time-bounded Loki query scoped to the trace and MedTracker service
+- **THEN** Grafana opens a time-bounded Loki query scoped to the trace, MedTracker service, and Kubernetes pod
 
 #### Scenario: Operator navigates from a log to a trace
 - **GIVEN** a Loki record contains a valid retained trace identifier

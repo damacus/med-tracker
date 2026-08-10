@@ -12,6 +12,7 @@ Production investigations cannot reliably connect a user-visible outcome to the 
 - Make attempts, provisional persistence, commit, rollback, subscriber outcomes, retries, and failures observable without reporting an uncommitted side effect as successful.
 - Keep logging fail-open so an observability failure cannot block or roll back a medication or health-data operation.
 - Define severity, event naming, outcome, error, sampling, redaction, cardinality, and retention expectations suitable for health data.
+- Preserve deployment-generated `host.name` as the sole pod-correlation resource attribute needed for trace-to-Loki navigation while continuing to remove process, client, network, and unapproved runtime resource data.
 - Separate test-mode contracts, final production-image checks, and post-deployment acceptance; the change is not complete until the exact deployed revision passes production ingestion checks.
 - Document migration and rollback criteria for retaining, reconfiguring, or removing Lograge based on evidence.
 

@@ -24,6 +24,9 @@ set -g OBSERVABILITY_CHARACTERIZATION_APP "$OBSERVABILITY_CHARACTERIZATION_PREFI
 set -g OBSERVABILITY_CHARACTERIZATION_WORKER "$OBSERVABILITY_CHARACTERIZATION_PREFIX-worker"
 set -g OBSERVABILITY_CHARACTERIZATION_STORAGE "$OBSERVABILITY_CHARACTERIZATION_PREFIX-storage"
 
+mkdir -p $OBSERVABILITY_CHARACTERIZATION_TMP/otlp
+or exit 1
+
 function cleanup_observability_characterization --on-event fish_exit
     docker rm -f \
         $OBSERVABILITY_CHARACTERIZATION_APP \
@@ -40,10 +43,20 @@ end
 
 string join \n \
     'events {}' \
+    'user root;' \
     'http {' \
-    '  access_log /dev/stdout combined;' \
+    '  client_body_in_file_only on;' \
+    '  client_body_temp_path /var/cache/nginx/client_temp 1 2;' \
+    "  log_format otlp '\$request_method \$uri \$request_body_file \$http_content_encoding';" \
+    '  access_log /dev/stdout otlp;' \
     '  server {' \
     '    listen 4318;' \
+    '    location / {' \
+    '      proxy_pass http://127.0.0.1:4319;' \
+    '    }' \
+    '  }' \
+    '  server {' \
+    '    listen 4319;' \
     '    location / {' \
     '      return 200;' \
     '    }' \
@@ -85,6 +98,7 @@ docker run --detach \
     --network $OBSERVABILITY_CHARACTERIZATION_NETWORK \
     --network-alias otel-receiver \
     --volume "$OBSERVABILITY_CHARACTERIZATION_TMP/nginx.conf:/etc/nginx/nginx.conf:ro" \
+    --volume "$OBSERVABILITY_CHARACTERIZATION_TMP/otlp:/var/cache/nginx/client_temp" \
     nginx:1.29-alpine >/dev/null
 or exit 1
 
@@ -217,6 +231,61 @@ or begin
     cat $OBSERVABILITY_CHARACTERIZATION_TMP/worker.log
     cat $OBSERVABILITY_CHARACTERIZATION_TMP/receiver.log
     echo 'OpenTelemetry trace exporter traffic was not captured' >&2
+    exit 1
+end
+
+docker run --rm \
+    --entrypoint ruby \
+    $OBSERVABILITY_CHARACTERIZATION_IMAGE \
+    -e 'abort "Final image does not contain the host.name resource assignment" unless File.read("config/initializers/opentelemetry.rb").include?("host.name")'
+or exit 1
+
+set -l trace_body_paths (
+    awk '$1 == "POST" && $2 == "/v1/traces" && $3 != "-" { sub("^/var/cache/nginx/client_temp", "/otlp", $3); print $3 }' \
+        $OBSERVABILITY_CHARACTERIZATION_TMP/receiver.log
+)
+
+if test (count $trace_body_paths) -eq 0
+    cat $OBSERVABILITY_CHARACTERIZATION_TMP/receiver.log
+    echo 'OpenTelemetry trace exporter body was not captured' >&2
+    exit 1
+end
+
+set -l trace_body_paths_env (string join : $trace_body_paths)
+
+set -l trace_decoder 'require "opentelemetry/exporter/otlp"
+require "opentelemetry/proto/collector/trace/v1/trace_service_pb"
+require "zlib"
+trace_files = ENV.fetch("OTLP_TRACE_FILES").split(":")
+resource_keys = {}
+has_host_name = trace_files.any? do |path|
+  payload = File.binread(path)
+  payload = Zlib.gunzip(payload) if payload.start_with?("\x1F\x8B".b)
+  request = Opentelemetry::Proto::Collector::Trace::V1::ExportTraceServiceRequest.decode(payload)
+  resource_keys[path] = request.resource_spans.map do |resource_span|
+    resource_span.resource.attributes.map(&:key).sort
+  end
+  request.resource_spans.any? do |resource_span|
+    resource_span.resource.attributes.any? do |attribute|
+      attribute.key == "host.name" && !attribute.value.string_value.empty?
+    end
+  end
+rescue Google::Protobuf::ParseError
+  false
+end
+warn "OTLP trace resource keys by request body: #{resource_keys}"
+raise "OpenTelemetry trace export has no host.name resource attribute (resource keys: #{resource_keys})" unless has_host_name'
+
+docker run --rm \
+    --entrypoint ruby \
+    --volume "$OBSERVABILITY_CHARACTERIZATION_TMP/otlp:/otlp:ro" \
+    --env "OTLP_TRACE_FILES=$trace_body_paths_env" \
+    $OBSERVABILITY_CHARACTERIZATION_IMAGE \
+    -e "$trace_decoder"
+or begin
+    cat $OBSERVABILITY_CHARACTERIZATION_TMP/receiver.log >&2
+    find $OBSERVABILITY_CHARACTERIZATION_TMP/otlp -type f -maxdepth 3 -print >&2
+    echo 'OpenTelemetry trace export has no host.name resource attribute' >&2
     exit 1
 end
 

@@ -23,6 +23,24 @@ RSpec.describe OpenTelemetryConfig do
       )
     end
 
+    it 'assigns the production resource before configuring the sampler or exporter' do
+      initializer = Rails.root.join('config/initializers/opentelemetry.rb').read
+      production_configuration = initializer.split('elsif Rails.env.production?').last
+      resource_assignment = production_configuration.index(
+        'c.resource = OpenTelemetry::SDK::Resources::Resource.create'
+      )
+
+      materializing_configuration_calls = [
+        'OpenTelemetryConfig.apply_trace_sampler',
+        'c.add_span_processor'
+      ].filter_map { |call| production_configuration.index(call) }
+
+      expect(materializing_configuration_calls).not_to be_empty
+      materializing_configuration_calls.each do |configuration_call|
+        expect(resource_assignment).to be < configuration_call
+      end
+    end
+
     it 'enables Rails instrumentation' do
       instrumentation = OpenTelemetry::Instrumentation::Rails::Instrumentation.instance
       expect(instrumentation).not_to be_nil

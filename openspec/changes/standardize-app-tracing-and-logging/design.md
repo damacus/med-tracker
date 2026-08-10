@@ -56,6 +56,8 @@ The first implementation slice will characterize both the test environment and t
 
 The characterization will record which producer owns each line, whether the application emitted one record for its event identifier, and the final parsed shape. It will separately identify duplicates introduced by collection retries. Tests will assert the desired contract only after the baseline has demonstrated the actual failure.
 
+The final-image trace check decodes the emitted OTLP payload and requires a non-empty deployment-generated `host.name` resource attribute for Kubernetes pod correlation. `host.name` is safe deployment metadata; `process.pid`, client and network identifiers, and every other unapproved runtime resource attribute remain excluded by the exporter allowlist.
+
 Alternative considered: remove Lograge immediately. Rejected because it would replace a suspected cause with an unverified one and could restore noisy framework subscribers without preserving a canonical request event.
 
 ### 2. Introduce one fail-open operational-event boundary

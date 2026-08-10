@@ -73,7 +73,7 @@ Add a provisioned Tempo data source with stable UID `tempo` and query URL `http:
 Configure:
 
 - Trace-ID lookup and TraceQL search.
-- Trace-to-logs using Loki UID `loki`, a narrow time window, MedTracker service identity, and the trace identifier.
+- Trace-to-logs using Loki UID `loki`, a narrow time window, MedTracker service identity, the trace identifier, and `host.name` mapped to the Kubernetes pod label.
 - A Loki derived field that recognizes the canonical `trace.id` field and opens the matching Tempo trace.
 
 Do not enable service graphs or trace-to-metrics in this change because no span-metrics generator is being deployed.

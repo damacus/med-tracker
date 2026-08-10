@@ -31,6 +31,7 @@ module Otel
         service.name
         service.namespace
         service.version
+        host.name
         deployment.environment
         telemetry.sdk.language
         telemetry.sdk.name
