@@ -54,7 +54,7 @@ fn print_table(value: &Value) {
 
 fn print_rows(items: &[Value]) {
     let mut table = Table::new();
-    table.load_preset(UTF8_FULL);
+    table.load_style(UTF8_FULL);
     table.set_header(vec!["id", "name", "type", "summary"]);
 
     for item in items {
@@ -71,7 +71,7 @@ fn print_rows(items: &[Value]) {
 
 fn print_key_values(value: &Value) {
     let mut table = Table::new();
-    table.load_preset(UTF8_FULL);
+    table.load_style(UTF8_FULL);
     table.set_header(vec!["field", "value"]);
 
     if let Value::Object(object) = value {
