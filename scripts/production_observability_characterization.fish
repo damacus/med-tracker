@@ -253,41 +253,13 @@ end
 
 set -l trace_body_paths_env (string join : $trace_body_paths)
 
-set -l trace_decoder 'require "opentelemetry/exporter/otlp"
-require "opentelemetry/proto/collector/trace/v1/trace_service_pb"
-require "zlib"
-trace_files = ENV.fetch("OTLP_TRACE_FILES").split(":")
-resource_keys = {}
-has_host_name = trace_files.any? do |path|
-  payload = File.binread(path)
-  payload = Zlib.gunzip(payload) if payload.start_with?("\x1F\x8B".b)
-  request = Opentelemetry::Proto::Collector::Trace::V1::ExportTraceServiceRequest.decode(payload)
-  resource_keys[path] = request.resource_spans.map do |resource_span|
-    resource_span.resource.attributes.map(&:key).sort
-  end
-  request.resource_spans.any? do |resource_span|
-    resource_span.resource.attributes.any? do |attribute|
-      attribute.key == "host.name" && !attribute.value.string_value.empty?
-    end
-  end
-rescue Google::Protobuf::ParseError
-  false
-end
-warn "OTLP trace resource keys by request body: #{resource_keys}"
-raise "OpenTelemetry trace export has no host.name resource attribute (resource keys: #{resource_keys})" unless has_host_name'
-
 docker run --rm \
     --entrypoint ruby \
     --volume "$OBSERVABILITY_CHARACTERIZATION_TMP/otlp:/otlp:ro" \
     --env "OTLP_TRACE_FILES=$trace_body_paths_env" \
     $OBSERVABILITY_CHARACTERIZATION_IMAGE \
-    -e "$trace_decoder"
-or begin
-    cat $OBSERVABILITY_CHARACTERIZATION_TMP/receiver.log >&2
-    find $OBSERVABILITY_CHARACTERIZATION_TMP/otlp -type f -maxdepth 3 -print >&2
-    echo 'OpenTelemetry trace export has no host.name resource attribute' >&2
-    exit 1
-end
+    scripts/verify_otlp_trace_resources.rb
+or exit 1
 
 jq --raw-input --slurp --exit-status \
     --arg image $OBSERVABILITY_CHARACTERIZATION_IMAGE '
