@@ -280,7 +280,8 @@ RSpec.describe 'Admin user mutation boundary' do
       name: 'Access change spec client',
       client_id: "access-change-#{SecureRandom.hex(8)}",
       redirect_uri: 'https://client.example/callback',
-      scopes: 'patient/*.rs'
+      scopes: 'patient/*.rs',
+      token_endpoint_auth_method: 'none'
     )
   end
 end

@@ -110,6 +110,15 @@ class RodauthMain < Rodauth::Rails::Auth
     auth_class_eval do
       public :password_hash
 
+      def supports_auth_method?(oauth_application, auth_method)
+        method_column = oauth_applications_token_endpoint_auth_method_column
+        configured_methods = oauth_application&.fetch(method_column, nil).to_s.split
+        return false unless configured_methods.include?(auth_method)
+
+        super
+      end
+      private :supports_auth_method?
+
       def resource_owner_params
         membership = Account.find(account_id).first_active_household_membership
         super.merge(

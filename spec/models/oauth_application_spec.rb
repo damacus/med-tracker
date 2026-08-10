@@ -8,7 +8,8 @@ RSpec.describe OauthApplication do
       name: 'SMART client',
       client_id: 'smart-client',
       redirect_uri: 'https://client.example/callback',
-      scopes: 'launch/patient patient/*.rs offline_access'
+      scopes: 'launch/patient patient/*.rs offline_access',
+      token_endpoint_auth_method: 'none'
     )
   end
 
@@ -38,5 +39,24 @@ RSpec.describe OauthApplication do
     application.scopes = 'patient/*.cruds'
 
     expect(application).not_to be_valid
+  end
+
+  it 'requires public clients to use the none authentication method' do
+    application.token_endpoint_auth_method = 'client_secret_post'
+
+    expect(application).not_to be_valid
+  end
+
+  it 'requires confidential clients to use a client secret authentication method' do
+    application.client_secret_hash = 'hashed-secret'
+
+    expect(application).not_to be_valid
+  end
+
+  it 'accepts confidential clients with explicit secret authentication methods' do
+    application.client_secret_hash = 'hashed-secret'
+    application.token_endpoint_auth_method = 'client_secret_basic client_secret_post'
+
+    expect(application).to be_valid
   end
 end

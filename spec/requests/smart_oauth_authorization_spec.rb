@@ -20,7 +20,8 @@ RSpec.describe 'SMART OAuth authorization' do
       name: 'Trusted SMART client',
       client_id: 'smart-client',
       redirect_uri: 'https://client.example/callback',
-      scopes: 'launch/patient patient/*.rs offline_access'
+      scopes: 'launch/patient patient/*.rs offline_access',
+      token_endpoint_auth_method: 'none'
     )
   end
   let(:authorization_params) do
@@ -74,6 +75,28 @@ RSpec.describe 'SMART OAuth authorization' do
       'scopes' => oauth_application.scopes
     )
     expect(audit_event.metadata.keys).not_to include('token', 'refresh_token', 'code')
+  end
+
+  it 'requires the configured secret authentication method for confidential clients' do
+    client_secret = 'confidential-client-secret'
+    oauth_application.update!(
+      client_secret_hash: BCrypt::Password.create(client_secret).to_s,
+      token_endpoint_auth_method: 'client_secret_post'
+    )
+    code = authorization_code
+    token_params = {
+      grant_type: 'authorization_code',
+      client_id: oauth_application.client_id,
+      redirect_uri: oauth_application.redirect_uri,
+      code: code,
+      code_verifier: code_verifier
+    }
+
+    post '/token', params: token_params, as: :json
+    expect(response).to have_http_status(:unauthorized), response.body
+
+    post '/token', params: token_params.merge(client_secret: client_secret), as: :json
+    expect(response).to have_http_status(:ok), response.body
   end
 
   it 'rotates refresh tokens and revokes the resulting grant' do

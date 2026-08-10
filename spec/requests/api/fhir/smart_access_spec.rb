@@ -29,7 +29,8 @@ RSpec.describe 'SMART FHIR access' do
       name: 'SMART FHIR client',
       client_id: SecureRandom.uuid,
       redirect_uri: 'https://client.example/callback',
-      scopes: 'patient/Patient.rs patient/Medication.rs'
+      scopes: 'patient/Patient.rs patient/Medication.rs',
+      token_endpoint_auth_method: 'none'
     )
     grant = OauthGrant.create!(
       account: account,

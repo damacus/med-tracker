@@ -18,6 +18,7 @@ RSpec.describe RodauthMain do
       expect(auth.oauth_refresh_token_expires_in).to eq(30.days)
       expect(auth.oauth_refresh_token_protection_policy).to eq('rotation')
       expect(auth.oauth_applications_client_secret_hash_column).to eq(:client_secret_hash)
+      expect(auth.oauth_applications_token_endpoint_auth_method_column).to eq(:token_endpoint_auth_method)
     end
 
     it 'exposes authorization, token, and revocation routes' do
