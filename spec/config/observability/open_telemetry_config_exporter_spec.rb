@@ -24,18 +24,20 @@ RSpec.describe OpenTelemetryConfig do
     end
 
     it 'assigns the production resource before configuring the sampler or exporter' do
-      initializer = Rails.root.join('config/initializers/opentelemetry.rb').read
-      production_configuration = initializer.split('elsif Rails.env.production?').last
-      resource_assignment = production_configuration.index(
+      resource_assignment = production_configuration_position(
         'c.resource = OpenTelemetry::SDK::Resources::Resource.create'
+      )
+      sampler_assignment = production_configuration_position(
+        'OpenTelemetryConfig.apply_trace_sampler(c, OpenTelemetryConfig.trace_sampler)'
       )
 
       materializing_configuration_calls = [
-        'OpenTelemetryConfig.apply_trace_sampler',
-        'c.add_span_processor'
-      ].filter_map { |call| production_configuration.index(call) }
+        sampler_assignment,
+        production_configuration_position('c.add_span_processor')
+      ].compact
 
-      expect(materializing_configuration_calls).not_to be_empty
+      expect(production_configuration).not_to include('OpenTelemetry.tracer_provider.sampler =')
+      expect(sampler_assignment).to be_present
       materializing_configuration_calls.each do |configuration_call|
         expect(resource_assignment).to be < configuration_call
       end
@@ -128,5 +130,13 @@ RSpec.describe OpenTelemetryConfig do
       result = described_class.parse_otlp_headers(headers_string)
       expect(result).to eq(expected)
     end
+  end
+
+  def production_configuration
+    Rails.root.join('config/initializers/opentelemetry.rb').read.split('elsif Rails.env.production?').last
+  end
+
+  def production_configuration_position(source)
+    production_configuration.index(source)
   end
 end

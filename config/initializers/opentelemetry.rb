@@ -228,6 +228,7 @@ elsif Rails.env.production? || ENV['OTEL_EXPORTER_OTLP_ENDPOINT'].present?
       'host.name' => Socket.gethostname,
       'process.pid' => Process.pid.to_s
     )
+    OpenTelemetryConfig.apply_trace_sampler(c, OpenTelemetryConfig.trace_sampler)
 
     if otlp_trace_endpoint.present?
       span_exporter = OpenTelemetry::Exporter::OTLP::Exporter.new(
@@ -262,8 +263,6 @@ elsif Rails.env.production? || ENV['OTEL_EXPORTER_OTLP_ENDPOINT'].present?
       untraced_hosts: ['127.0.0.1', 'localhost']
     )
   end
-
-  OpenTelemetry.tracer_provider.sampler = OpenTelemetryConfig.trace_sampler
 
   OpenTelemetryConfig.install_rack_middleware
 

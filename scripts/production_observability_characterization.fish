@@ -253,6 +253,9 @@ end
 
 set -l trace_body_paths_env (string join : $trace_body_paths)
 
+docker exec $OBSERVABILITY_CHARACTERIZATION_RECEIVER chmod -R a+rX /var/cache/nginx/client_temp
+or exit 1
+
 docker run --rm \
     --entrypoint ruby \
     --volume "$OBSERVABILITY_CHARACTERIZATION_TMP/otlp:/otlp:ro" \
