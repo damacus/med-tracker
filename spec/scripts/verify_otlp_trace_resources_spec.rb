@@ -1,9 +1,11 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 require 'open3'
 require 'tmpdir'
 require 'zlib'
 
-RSpec.describe 'OTLP trace resource verification' do
+RSpec.describe 'OTLP trace resource verification' do # rubocop:disable RSpec/DescribeClass
   it 'accepts plain and gzip trace bodies when every resource has host.name' do
     Dir.mktmpdir do |directory|
       plain_path = File.join(directory, 'plain.otlp')
