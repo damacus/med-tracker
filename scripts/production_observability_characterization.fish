@@ -24,6 +24,9 @@ set -g OBSERVABILITY_CHARACTERIZATION_APP "$OBSERVABILITY_CHARACTERIZATION_PREFI
 set -g OBSERVABILITY_CHARACTERIZATION_WORKER "$OBSERVABILITY_CHARACTERIZATION_PREFIX-worker"
 set -g OBSERVABILITY_CHARACTERIZATION_STORAGE "$OBSERVABILITY_CHARACTERIZATION_PREFIX-storage"
 
+mkdir -p $OBSERVABILITY_CHARACTERIZATION_TMP/otlp
+or exit 1
+
 function cleanup_observability_characterization --on-event fish_exit
     docker rm -f \
         $OBSERVABILITY_CHARACTERIZATION_APP \
@@ -40,10 +43,20 @@ end
 
 string join \n \
     'events {}' \
+    'user root;' \
     'http {' \
-    '  access_log /dev/stdout combined;' \
+    '  client_body_in_file_only on;' \
+    '  client_body_temp_path /var/cache/nginx/client_temp 1 2;' \
+    "  log_format otlp '\$request_method \$uri \$request_body_file \$http_content_encoding';" \
+    '  access_log /dev/stdout otlp;' \
     '  server {' \
     '    listen 4318;' \
+    '    location / {' \
+    '      proxy_pass http://127.0.0.1:4319;' \
+    '    }' \
+    '  }' \
+    '  server {' \
+    '    listen 4319;' \
     '    location / {' \
     '      return 200;' \
     '    }' \
@@ -85,6 +98,7 @@ docker run --detach \
     --network $OBSERVABILITY_CHARACTERIZATION_NETWORK \
     --network-alias otel-receiver \
     --volume "$OBSERVABILITY_CHARACTERIZATION_TMP/nginx.conf:/etc/nginx/nginx.conf:ro" \
+    --volume "$OBSERVABILITY_CHARACTERIZATION_TMP/otlp:/var/cache/nginx/client_temp" \
     nginx:1.29-alpine >/dev/null
 or exit 1
 
@@ -219,6 +233,36 @@ or begin
     echo 'OpenTelemetry trace exporter traffic was not captured' >&2
     exit 1
 end
+
+docker run --rm \
+    --entrypoint ruby \
+    $OBSERVABILITY_CHARACTERIZATION_IMAGE \
+    -e 'abort "Final image does not contain the host.name resource assignment" unless File.read("config/initializers/opentelemetry.rb").include?("host.name")'
+or exit 1
+
+set -l trace_body_paths (
+    awk '$1 == "POST" && $2 == "/v1/traces" && $3 != "-" { sub("^/var/cache/nginx/client_temp", "/otlp", $3); print $3 }' \
+        $OBSERVABILITY_CHARACTERIZATION_TMP/receiver.log
+)
+
+if test (count $trace_body_paths) -eq 0
+    cat $OBSERVABILITY_CHARACTERIZATION_TMP/receiver.log
+    echo 'OpenTelemetry trace exporter body was not captured' >&2
+    exit 1
+end
+
+set -l trace_body_paths_env (string join : $trace_body_paths)
+
+docker exec $OBSERVABILITY_CHARACTERIZATION_RECEIVER chmod -R a+rX /var/cache/nginx/client_temp
+or exit 1
+
+docker run --rm \
+    --entrypoint ruby \
+    --volume "$OBSERVABILITY_CHARACTERIZATION_TMP/otlp:/otlp:ro" \
+    --env "OTLP_TRACE_FILES=$trace_body_paths_env" \
+    $OBSERVABILITY_CHARACTERIZATION_IMAGE \
+    scripts/verify_otlp_trace_resources.rb
+or exit 1
 
 jq --raw-input --slurp --exit-status \
     --arg image $OBSERVABILITY_CHARACTERIZATION_IMAGE '

@@ -268,6 +268,8 @@ RSpec.describe 'Taskfiles' do
       'docker logs $OBSERVABILITY_CHARACTERIZATION_WORKER',
       'docker logs $OBSERVABILITY_CHARACTERIZATION_RECEIVER',
       'Application container has a repository bind mount',
+      'docker exec $OBSERVABILITY_CHARACTERIZATION_RECEIVER chmod -R a+rX /var/cache/nginx/client_temp',
+      'scripts/verify_otlp_trace_resources.rb',
       'Canonical request count or deployment identity is invalid',
       'Routine health-check output was not suppressed',
       'Thruster request output was not disabled',

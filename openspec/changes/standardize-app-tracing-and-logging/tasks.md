@@ -48,6 +48,7 @@
 
 - [x] 7.1 Add a synthetic safe deployed canary and bounded Loki and trace queries for identifiers, deployment identity, ingestion duplicates, parser failures, missing severity, absent retained traces, and producer-scoped counts.
 - [x] 7.2 Run focused Red-Green-Refactor specs, `task rubocop`, `task test`, `git diff --check`, strict OpenSpec validation, and the final production-image observability smoke.
+- [x] 7.2.1 Correct the trace exporter resource allowlist so deployment-generated `host.name` survives for Kubernetes pod correlation while `process.pid` and every unapproved resource attribute remain removed; decode final-image OTLP traffic to enforce the non-empty resource value.
 - [ ] 7.3 Deploy the exact verified image with the previous request logger and compatibility queries available for rollback, then confirm every target process runs its immutable digest.
 - [ ] 7.4 Run the finite production matrix: poll the safe canaries for at most fifteen minutes, then record safe naturally occurring workflow evidence for twenty-four hours and mark unsafe or absent outcomes not applicable with a final-image contract reference.
 - [ ] 7.5 Keep this change active and unarchived until that matrix passes for the exact deployed revision with its stated zero-failure thresholds; confirm the frozen baseline and all newly introduced signal paths are registered and every out-of-baseline discovery has a separate follow-up change.

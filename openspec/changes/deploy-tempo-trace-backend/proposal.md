@@ -7,7 +7,7 @@ MedTracker emits correlated OpenTelemetry spans, and the private trace-backend i
 - Add a Flux-managed, single-binary Grafana Tempo deployment to the `home-ops` monitoring stack.
 - Store trace blocks in a dedicated RustFS bucket using a least-privilege identity and a bounded 14-day retention policy.
 - Expose Tempo's OTLP HTTP receiver and query API only inside the cluster, with network policy limiting ingestion to explicitly authorized workloads.
-- Provision Tempo as a Grafana data source and configure trace-to-log navigation to the existing Loki data source.
+- Provision Tempo as a Grafana data source and configure trace-to-log navigation to the existing Loki data source using deployment-generated `host.name` mapped to the Kubernetes pod label.
 - Enable OTLP export for MedTracker canary first, prove an exact deployed revision end to end, and promote the same configuration contract to production only after the canary acceptance matrix passes.
 - Add focused repository and live-cluster verification for rendering, credentials wiring, health, ingestion, querying, privacy, retention, and rollback.
 - Keep this MedTracker change as the single planning authority while runtime implementation and reconciliation remain in the deployment repository under that repository's instructions.

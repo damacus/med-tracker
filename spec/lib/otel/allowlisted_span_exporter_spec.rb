@@ -5,7 +5,7 @@ require 'opentelemetry/exporter/otlp'
 require 'otel/allowlisted_span_exporter'
 
 RSpec.describe Otel::AllowlistedSpanExporter do
-  let(:fake_span_class) { Struct.new(:name, :attributes) }
+  let(:fake_span_class) { Struct.new(:name, :attributes, :resource) }
   let(:fake_exporter_class) do
     Class.new do
       attr_reader :exported
@@ -90,6 +90,28 @@ RSpec.describe Otel::AllowlistedSpanExporter do
     expect(fake_exporter.exported.sole.attributes).to eq('error.type' => 'RuntimeError')
   end
 
+  it 'preserves host.name from attribute-enumerator resources without mutating the source resource' do
+    resource = OpenTelemetry::SDK::Resources::Resource.create(
+      'host.name' => 'med-tracker-canary-7d5c8d7c8b-abcde',
+      'process.pid' => 42,
+      'unsafe.resource' => 'private-value'
+    )
+
+    expect_allowlisted_resource(resource, 'med-tracker-canary-7d5c8d7c8b-abcde')
+  end
+
+  it 'preserves host.name from attribute resources without mutating the source resource' do
+    resource = Struct.new(:attributes).new(
+      {
+        'host.name' => 'med-tracker-canary-7d5c8d7c8b-fghij',
+        'process.pid' => 43,
+        'unsafe.resource' => 'private-value'
+      }
+    )
+
+    expect_allowlisted_resource(resource, 'med-tracker-canary-7d5c8d7c8b-fghij')
+  end
+
   it 'preserves the OTLP encoding contract for SDK span data' do
     marker = 'private-exporter-marker'
     provider, spans = sdk_span_data(marker)
@@ -156,6 +178,26 @@ RSpec.describe Otel::AllowlistedSpanExporter do
   def expect_complete_surface_sanitized(exported, marker)
     expect(exported.to_json).not_to include(marker)
     expect_exported_surface_empty(exported)
+  end
+
+  def expect_allowlisted_resource(resource, host_name)
+    source_attributes = resource_attributes(resource).dup
+    exported_resource = export_resource(resource)
+
+    expect(resource_attributes(exported_resource)).to eq('host.name' => host_name)
+    expect(exported_resource).not_to equal(resource)
+    expect(resource_attributes(resource)).to eq(source_attributes)
+  end
+
+  def export_resource(resource)
+    exporter.export([fake_span_class.new('medication_take.create', {}, resource)])
+    fake_exporter.exported.sole.resource
+  end
+
+  def resource_attributes(resource)
+    return resource.attribute_enumerator.to_h if resource.respond_to?(:attribute_enumerator)
+
+    resource.attributes
   end
 
   def expect_exported_surface_empty(exported)

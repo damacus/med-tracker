@@ -293,6 +293,12 @@ The system SHALL enforce an allowlist for event and trace attributes and SHALL t
 - **WHEN** the span is exported
 - **THEN** the complete exported span surface complies with the privacy allowlist
 
+#### Scenario: Trace retains safe Kubernetes pod correlation
+- **GIVEN** a span resource contains deployment-generated `host.name` together with process or arbitrary runtime attributes
+- **WHEN** the span is exported
+- **THEN** the non-empty `host.name` value is retained as safe deployment metadata
+- **AND** `process.pid`, client and network identifiers, and unapproved resource attributes are absent
+
 #### Scenario: Exception message contains sensitive input
 - **GIVEN** an exception message may contain user or upstream input
 - **WHEN** an error event is constructed
@@ -311,6 +317,7 @@ The system SHALL provide test-mode, final production-image, and post-deployment 
 - **GIVEN** the final application image boots with its production logger, request server, job backend, and telemetry configuration
 - **WHEN** synthetic safe request, application-event, job, warning, error, and trace canaries run
 - **THEN** captured output and exporter traffic contain the required fields and deployment identity
+- **AND** decoded OTLP trace resource data contains a non-empty `host.name` for Kubernetes pod correlation
 - **AND** forbidden data and nested application JSON are absent
 
 #### Scenario: Post-deployment smoke verification

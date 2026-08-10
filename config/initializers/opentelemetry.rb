@@ -221,6 +221,13 @@ elsif Rails.env.production? || ENV['OTEL_EXPORTER_OTLP_ENDPOINT'].present?
   OpenTelemetry::SDK.configure do |c|
     c.service_name = 'medtracker'
     c.service_version = ENV.fetch('APP_VERSION', '1.0.0')
+    c.resource = OpenTelemetry::SDK::Resources::Resource.create(
+      'service.name' => 'medtracker',
+      'service.namespace' => 'medtracker',
+      'deployment.environment' => Rails.env.to_s,
+      'host.name' => Socket.gethostname,
+      'process.pid' => Process.pid.to_s
+    )
     OpenTelemetryConfig.apply_trace_sampler(c, OpenTelemetryConfig.trace_sampler)
 
     if otlp_trace_endpoint.present?
@@ -254,14 +261,6 @@ elsif Rails.env.production? || ENV['OTEL_EXPORTER_OTLP_ENDPOINT'].present?
     c.use(
       'OpenTelemetry::Instrumentation::Net::HTTP',
       untraced_hosts: ['127.0.0.1', 'localhost']
-    )
-
-    c.resource = OpenTelemetry::SDK::Resources::Resource.create(
-      'service.name' => 'medtracker',
-      'service.namespace' => 'medtracker',
-      'deployment.environment' => Rails.env.to_s,
-      'host.name' => Socket.gethostname,
-      'process.pid' => Process.pid.to_s
     )
   end
 
