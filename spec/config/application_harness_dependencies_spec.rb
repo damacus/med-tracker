@@ -34,6 +34,11 @@ RSpec.describe ApplicationHarnessDependencies do
     expect(gemfile).not_to include("gem 'rails-controller-testing'")
   end
 
+  it 'keeps editor language server tooling outside the application bundle' do
+    expect(gemfile_dependencies).not_to include('ruby-lsp')
+    expect(gemfile_dependencies).not_to include('ruby-lsp-rails')
+  end
+
   it 'keeps code quality tooling available in local bundles' do
     expect(gemfile).to include("gem 'simplecov', require: false")
     expect(gemfile).to include("gem 'rubycritic', require: false")
