@@ -55,9 +55,7 @@ class SupplyLevel
     return 0 if low_stock?
 
     surplus = current - reorder_threshold
-    return 0 if surplus <= 0
-
-    (surplus.to_f / daily_consumption).ceil
+    (surplus / daily_consumption).ceil
   end
 
   def days_until_out_of_stock(daily_consumption:)
