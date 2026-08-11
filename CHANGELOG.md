@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.19](https://github.com/damacus/med-tracker/compare/v0.5.18...v0.5.19) (2026-08-11)
+
+
+### Bug Fixes
+
+* **observability:** classify allowlisted export failures ([a79c89b](https://github.com/damacus/med-tracker/commit/a79c89be85aaee5be992fcdc1383fbd59b351faa))
+* **observability:** isolate canary trace verification ([f863603](https://github.com/damacus/med-tracker/commit/f863603116b1a9a11051765b0ad57913737f0171))
+* **observability:** preserve canary telemetry before exit ([f4f3031](https://github.com/damacus/med-tracker/commit/f4f30310ea07dede5f7f946510f7e13bd267f2f6))
+* **observability:** verify exporter and worker paths ([e8b30c3](https://github.com/damacus/med-tracker/commit/e8b30c3135a36abb05746d25c997e17600075c44))
+* **seeds:** preserve local audit verification evidence ([#1821](https://github.com/damacus/med-tracker/issues/1821)) ([195c157](https://github.com/damacus/med-tracker/commit/195c15705985d275ebe937a1c6ef31c8c51d1e78))
+* **stock:** correct threshold forecast boundaries ([#1822](https://github.com/damacus/med-tracker/issues/1822)) ([6aa42f0](https://github.com/damacus/med-tracker/commit/6aa42f0ea3c34f8fd3bdf03f97ccc125fe127eed))
+
 ## [0.5.18](https://github.com/damacus/med-tracker/compare/v0.5.17...v0.5.18) (2026-08-10)
 
 
