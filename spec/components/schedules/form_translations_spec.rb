@@ -50,7 +50,8 @@ RSpec.describe Components::Schedules::Form, type: :component do
       {
         'schedule_medication_id' => 'change->schedule-form#updateDosages',
         'schedule_dose_option_key' => 'change->schedule-form#onDosageChange',
-        'schedule_start_date' => 'input->schedule-form#validate'
+        'schedule_start_date' => 'input->schedule-form#validate',
+        'schedule_end_date' => 'input->schedule-form#validate'
       }.each do |input_id, schedule_action|
         input = rendered.at_css("##{input_id}")
         field = input.ancestors.find { |ancestor| ancestor['data-controller'] == 'ruby-ui--form-field' }
@@ -59,6 +60,18 @@ RSpec.describe Components::Schedules::Form, type: :component do
           expect(field.at_css("[data-ruby-ui--form-field-target='error']")).to be_present
           expect(input['data-action']).to include(schedule_action, 'invalid->ruby-ui--form-field#onInvalid')
         end
+      end
+    end
+
+    it 'renders server-side end date error attributes' do
+      schedule.errors.add(:end_date, "can't be blank")
+
+      rendered = render_inline(described_class.new(schedule:, person:, medications: [medication]))
+      input = rendered.at_css('#schedule_end_date')
+
+      aggregate_failures do
+        expect(input['aria-invalid']).to eq('true')
+        expect(input['aria-describedby']).to eq('schedule_end_date_error')
       end
     end
   end

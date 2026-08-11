@@ -357,6 +357,7 @@ module Components
             required: true,
             placeholder: t('schedules.form.select_date'),
             class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
+            **field_error_attributes(schedule, :end_date, input_id: 'schedule_end_date'),
             data: {
               controller: 'ruby-ui--calendar-input',
               action: 'input->schedule-form#validate change->schedule-form#validate'
