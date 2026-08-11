@@ -8,6 +8,25 @@ RSpec.describe 'Admin::Invitations' do
   let(:admin) { users(:admin) }
   let(:regular_user) { users(:jane) }
 
+  describe 'POST /admin/invitations' do
+    before { sign_in(admin) }
+
+    it 'replaces the invitation form with Email feedback for invalid Turbo submissions' do
+      post admin_invitations_path,
+           params: { invitation: { email: '', membership_role: 'member', access_level: 'record' } },
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      aggregate_failures do
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+        expect(response.body).to include('target="admin_invitations"')
+        expect(response.body).to include('aria-invalid="true"')
+        expect(response.body).to include('aria-describedby="invitation_email_error"')
+        expect(response.body).to include('id="invitation_email_error"')
+      end
+    end
+  end
+
   describe 'DELETE /admin/invitations/:id' do
     context 'when authenticated as administrator' do
       before { sign_in(admin) }

@@ -124,6 +124,7 @@ module Components
               end
             end
           end
+          FormFieldError(id: 'schedule_medication_id_error')
         end
       end
 
@@ -283,6 +284,7 @@ module Components
               end
             end
           end
+          FormFieldError(id: 'schedule_dose_option_key_error')
         end
       end
 
@@ -334,6 +336,7 @@ module Components
             date_format: 'yyyy-MM-dd',
             class: 'rounded-shape-sm border shadow-elevation-2 bg-surface-container-high'
           )
+          FormFieldError(id: 'schedule_start_date_error')
         end
       end
 

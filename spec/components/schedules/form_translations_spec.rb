@@ -38,4 +38,28 @@ RSpec.describe Components::Schedules::Form, type: :component do
     expect(preview.text).to include('This means:')
     expect(preview.text).to include('Up to 3 times per week, with at least 12 hours between doses')
   end
+
+  describe Components::Schedules::Fields do
+    let(:person) { create(:person) }
+    let(:medication) { create(:medication, household: person.household) }
+    let(:schedule) { create(:schedule, person:, medication:) }
+
+    it 'keeps form-field feedback actions alongside schedule actions' do
+      rendered = render_inline(described_class.new(schedule:, person:, medications: [medication]))
+
+      {
+        'schedule_medication_id' => 'change->schedule-form#updateDosages',
+        'schedule_dose_option_key' => 'change->schedule-form#onDosageChange',
+        'schedule_start_date' => 'input->schedule-form#validate'
+      }.each do |input_id, schedule_action|
+        input = rendered.at_css("##{input_id}")
+        field = input.ancestors.find { |ancestor| ancestor['data-controller'] == 'ruby-ui--form-field' }
+
+        aggregate_failures do
+          expect(field.at_css("[data-ruby-ui--form-field-target='error']")).to be_present
+          expect(input['data-action']).to include(schedule_action, 'invalid->ruby-ui--form-field#onInvalid')
+        end
+      end
+    end
+  end
 end

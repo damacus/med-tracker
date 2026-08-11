@@ -17,6 +17,8 @@ export default class extends Controller {
   onInvalid(error) {
     error.preventDefault();
 
+    if (!this.hasErrorTarget) return;
+
     this.shouldValidateValue = true;
     this.#setErrorMessage();
   }
@@ -30,14 +32,20 @@ export default class extends Controller {
   }
 
   #setErrorMessage() {
-    if (!this.shouldValidateValue) return;
+    if (!this.shouldValidateValue || !this.hasErrorTarget) return;
 
     if (this.inputTarget.validity.valid) {
       this.errorTarget.textContent = "";
       this.errorTarget.classList.add("hidden");
+      this.inputTarget.removeAttribute("aria-invalid");
+      if (this.inputTarget.getAttribute("aria-describedby") === this.errorTarget.id) {
+        this.inputTarget.removeAttribute("aria-describedby");
+      }
     } else {
       this.errorTarget.textContent = this.#getValidationMessage();
       this.errorTarget.classList.remove("hidden");
+      this.inputTarget.setAttribute("aria-invalid", "true");
+      this.inputTarget.setAttribute("aria-describedby", this.errorTarget.id);
     }
   }
 

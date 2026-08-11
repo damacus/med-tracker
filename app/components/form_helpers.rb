@@ -30,7 +30,7 @@ module Components
     def field_error_attributes(model, field, input_id: nil)
       return {} unless model.errors[field].any?
 
-      attributes = { aria: { invalid: true } }
+      attributes = { aria: { invalid: 'true' } }
       attributes[:aria][:describedby] = field_error_id(input_id) if input_id.present?
       attributes
     end
