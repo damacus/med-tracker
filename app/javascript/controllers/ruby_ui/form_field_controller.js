@@ -15,10 +15,9 @@ export default class extends Controller {
   }
 
   onInvalid(error) {
-    error.preventDefault();
-
     if (!this.hasErrorTarget) return;
 
+    error.preventDefault();
     this.shouldValidateValue = true;
     this.#setErrorMessage();
   }
