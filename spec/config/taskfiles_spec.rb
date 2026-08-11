@@ -289,7 +289,10 @@ RSpec.describe 'Taskfiles' do
   def canary_observability_characterization_contract
     [
       'bin/rails observability:canary',
-      'Canary command did not export a new OpenTelemetry trace request'
+      'OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-receiver:4318/canary',
+      '$2 == "/canary/v1/traces"',
+      'OTLP_REQUIRED_SPAN_NAME=observability.canary',
+      'Canary command did not export an enqueue-side observability trace'
     ]
   end
 
