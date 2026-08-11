@@ -5,11 +5,46 @@
 # The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
 
 # Seed reference medicine data in all environments
-Rails.logger.debug 'Seeding default locations...'
-load Rails.root.join('db/seeds/seed_locations.rb')
+if Rails.env.local?
+  PaperTrail.request(enabled: false) do
+    Rails.logger.debug 'Seeding default locations...'
+    load Rails.root.join('db/seeds/seed_locations.rb')
 
-Rails.logger.debug 'Seeding medicines...'
-load Rails.root.join('db/seeds/seed_medications.rb')
+    Rails.logger.debug 'Seeding medicines...'
+    load Rails.root.join('db/seeds/seed_medications.rb')
+
+    Rails.logger.debug 'Loading fixtures...'
+
+    # Load fixtures in order to respect foreign key constraints
+    SpecFixtureLoader.load(
+      :accounts,
+      :account_otp_keys,
+      :people,
+      :users,
+      :locations,
+      :location_memberships,
+      :medications,
+      :dosages,
+      :schedules,
+      :person_medications,
+      :carer_relationships,
+      :medication_takes
+    )
+    FixtureHouseholdSetup.apply!
+
+    Rails.logger.debug 'Fixtures loaded successfully!'
+    Rails.logger.debug "\nYou can now login with:"
+    Rails.logger.debug '  Email: jane.doe@example.com (no 2FA)'
+    Rails.logger.debug '  Password: password'
+    Rails.logger.debug '  Note: damacus@example.com has TOTP enabled'
+  end
+else
+  Rails.logger.debug 'Seeding default locations...'
+  load Rails.root.join('db/seeds/seed_locations.rb')
+
+  Rails.logger.debug 'Seeding medicines...'
+  load Rails.root.join('db/seeds/seed_medications.rb')
+end
 
 if Rails.env.production?
   # In production, invite initial users from db/seeds/users.yml.
@@ -17,32 +52,4 @@ if Rails.env.production?
   # custom users.yml via a k8s ConfigMap volume at /app/db/seeds/users.yml.
   Rails.logger.debug 'Seeding initial users via invitations...'
   load Rails.root.join('db/seeds/seed_users.rb')
-end
-
-# Load fixtures from spec/fixtures for development/test environments
-if Rails.env.local?
-  Rails.logger.debug 'Loading fixtures...'
-
-  # Load fixtures in order to respect foreign key constraints
-  SpecFixtureLoader.load(
-    :accounts,
-    :account_otp_keys,
-    :people,
-    :users,
-    :locations,
-    :location_memberships,
-    :medications,
-    :dosages,
-    :schedules,
-    :person_medications,
-    :carer_relationships,
-    :medication_takes
-  )
-  FixtureHouseholdSetup.apply!
-
-  Rails.logger.debug 'Fixtures loaded successfully!'
-  Rails.logger.debug "\nYou can now login with:"
-  Rails.logger.debug '  Email: jane.doe@example.com (no 2FA)'
-  Rails.logger.debug '  Password: password'
-  Rails.logger.debug '  Note: damacus@example.com has TOTP enabled'
 end
