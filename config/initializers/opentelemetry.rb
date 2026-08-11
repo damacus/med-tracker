@@ -14,6 +14,9 @@ OpenTelemetry.logger = Observability::DatasetLogger.new(
   dataset: 'medtracker.opentelemetry',
   level: Rails.env.test? ? Logger::WARN : Logger::ERROR
 )
+OpenTelemetry.error_handler = lambda do |exception: nil, message: nil|
+  OpenTelemetry.logger.error(exception || message)
+end
 
 module OpenTelemetryConfig
   DEFAULT_PRODUCTION_TRACE_SAMPLE_RATE = 0.1

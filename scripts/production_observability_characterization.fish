@@ -225,6 +225,24 @@ or begin
     exit 1
 end
 
+for attempt in (seq 1 30)
+    if docker logs $OBSERVABILITY_CHARACTERIZATION_WORKER 2>&1 |
+            jq --raw-input --slurp --exit-status '
+                [split("\n")[] | fromjson?] as $records |
+                any($records[]; .["event.name"] == "job.completed" and
+                                   .["medtracker.job.class"] == "ObservabilityCanaryJob") and
+                ([$records[] | select(.["event.name"] == "observability.canary")] | length) == 2
+            ' >/dev/null
+        break
+    end
+    if test $attempt -eq 30
+        docker logs $OBSERVABILITY_CHARACTERIZATION_WORKER
+        echo 'Canary worker did not emit both correlated observability records' >&2
+        exit 1
+    end
+    sleep 1
+end
+
 set -l canary_trace_body_paths_after (
     docker logs $OBSERVABILITY_CHARACTERIZATION_RECEIVER 2>&1 |
         awk '$1 == "POST" && $2 == "/canary/v1/traces" && $3 != "-" { sub("^/var/cache/nginx/client_temp", "/otlp", $3); print $3 }'
@@ -380,6 +398,29 @@ jq --raw-input --slurp --exit-status \
 or begin
     cat $OBSERVABILITY_CHARACTERIZATION_TMP/worker.log
     echo 'Canonical job count or deployment identity is invalid' >&2
+    exit 1
+end
+
+jq --raw-input --slurp --exit-status \
+    --arg image $OBSERVABILITY_CHARACTERIZATION_IMAGE '
+    [split("\n")[] | fromjson? |
+      select(.["event.name"] == "observability.canary")] as $canaries |
+    ($canaries | length) == 2 and
+    ([$canaries[]["medtracker.canary.kind"]] | sort) == ["application_event", "job"] and
+    ([$canaries[]["medtracker.workflow.id"]] | unique | length) == 1 and
+    ([$canaries[]["medtracker.attempt.id"]] | unique | length) == 2 and
+    all($canaries[];
+        .["event.dataset"] == "medtracker.application" and
+        .["event.outcome"] == "success" and
+        .["medtracker.reason"] == "canary_emitted" and
+        .["service.environment"] == "production" and
+        .["service.version"] == $image and
+        (.["medtracker.workflow.id"] | type) == "string" and
+        (.["medtracker.attempt.id"] | type) == "string")
+' $OBSERVABILITY_CHARACTERIZATION_TMP/worker.log >/dev/null
+or begin
+    cat $OBSERVABILITY_CHARACTERIZATION_TMP/worker.log
+    echo 'Canary worker did not emit both correlated observability records' >&2
     exit 1
 end
 
