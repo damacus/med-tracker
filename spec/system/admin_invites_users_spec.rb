@@ -42,16 +42,16 @@ RSpec.describe 'Admin invites users' do
   end
 
   it 'shows accessible Email feedback when a blank invitation is submitted', :js do
-    capture_browser_errors
     login_as(admin)
 
     visit admin_invitations_path
+    capture_browser_errors
     click_button 'Send invitation'
 
     expect(page).to have_css('#invitation_email[aria-invalid="true"][aria-describedby="invitation_email_error"]')
     expect(page).to have_css('#invitation_email_error[role="alert"]', text: /\S+/)
     expect(page.evaluate_script('document.querySelector("#invitation_email").matches(":invalid")')).to be(true)
-    expect(browser_errors).not_to include(/Missing target element "error"/)
+    expect(browser_errors).to be_empty
   end
 
   it 'allows an invitee to accept an invitation' do
