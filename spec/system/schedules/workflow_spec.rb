@@ -8,7 +8,11 @@ RSpec.describe 'Schedules workflow' do
   let(:person) { people(:bob) }
   let(:schedule) { schedules(:bob_aspirin) }
   let(:selected_dosage_option) do
-    MedicationDosageOption.find_by!(medication: schedule.medication, amount: schedule.dose_amount, unit: schedule.dose_unit)
+    MedicationDosageOption.find_by!(
+      medication: schedule.medication,
+      amount: schedule.dose_amount,
+      unit: schedule.dose_unit
+    )
   end
 
   before do |example|
@@ -105,10 +109,18 @@ RSpec.describe 'Schedules workflow' do
     visit person_path(person)
 
     within("##{tenant_dom_id(schedule)}") do
-      find("[data-testid='schedule-actions-#{schedule.id}']").click
-      find("[data-testid='edit-schedule-#{schedule.id}']").click
+      open_schedule_actions
+      edit_schedule
     end
 
     expect(page).to have_text(/edit schedule/i)
+  end
+
+  def open_schedule_actions
+    find("[data-testid='schedule-actions-#{schedule.id}']").click
+  end
+
+  def edit_schedule
+    find("[data-testid='edit-schedule-#{schedule.id}']").click
   end
 end
