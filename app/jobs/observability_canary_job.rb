@@ -4,6 +4,7 @@ class ObservabilityCanaryJob < ApplicationJob
   queue_as :default
 
   def perform
+    Observability::DeployedCanary.emit(kind: :application_event)
     Observability::DeployedCanary.emit(kind: :job)
   end
 end

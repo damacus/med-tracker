@@ -267,6 +267,13 @@ RSpec.describe 'Taskfiles' do
       'docker logs $OBSERVABILITY_CHARACTERIZATION_APP',
       'docker logs $OBSERVABILITY_CHARACTERIZATION_WORKER',
       'docker logs $OBSERVABILITY_CHARACTERIZATION_RECEIVER',
+      *canary_observability_characterization_contract,
+      *observability_characterization_validation_contract
+    ]
+  end
+
+  def observability_characterization_validation_contract
+    [
       'Application container has a repository bind mount',
       'docker exec $OBSERVABILITY_CHARACTERIZATION_RECEIVER chmod -R a+rX /var/cache/nginx/client_temp',
       'scripts/verify_otlp_trace_resources.rb',
@@ -276,6 +283,13 @@ RSpec.describe 'Taskfiles' do
       'Production Puma output is not producer-scoped',
       'Canonical job count or deployment identity is invalid',
       'Canonical records contain nested JSON messages'
+    ]
+  end
+
+  def canary_observability_characterization_contract
+    [
+      'bin/rails observability:canary',
+      'Canary command did not export a new OpenTelemetry trace request'
     ]
   end
 

@@ -208,6 +208,34 @@ for attempt in (seq 1 30)
     sleep 1
 end
 
+set -l canary_trace_count_before (
+    docker logs $OBSERVABILITY_CHARACTERIZATION_RECEIVER 2>&1 |
+        awk '$1 == "POST" && $2 == "/v1/traces" { count += 1 } END { print count + 0 }'
+)
+
+docker run --rm \
+    --network $OBSERVABILITY_CHARACTERIZATION_NETWORK \
+    $OBSERVABILITY_CHARACTERIZATION_ENV \
+    $OBSERVABILITY_CHARACTERIZATION_MOUNTS \
+    $OBSERVABILITY_CHARACTERIZATION_IMAGE \
+    bin/rails observability:canary >$OBSERVABILITY_CHARACTERIZATION_TMP/canary.log 2>&1
+or begin
+    cat $OBSERVABILITY_CHARACTERIZATION_TMP/canary.log
+    exit 1
+end
+
+set -l canary_trace_count_after (
+    docker logs $OBSERVABILITY_CHARACTERIZATION_RECEIVER 2>&1 |
+        awk '$1 == "POST" && $2 == "/v1/traces" { count += 1 } END { print count + 0 }'
+)
+
+if test $canary_trace_count_after -le $canary_trace_count_before
+    cat $OBSERVABILITY_CHARACTERIZATION_TMP/canary.log
+    docker logs $OBSERVABILITY_CHARACTERIZATION_RECEIVER
+    echo 'Canary command did not export a new OpenTelemetry trace request' >&2
+    exit 1
+end
+
 docker logs $OBSERVABILITY_CHARACTERIZATION_APP \
     >$OBSERVABILITY_CHARACTERIZATION_TMP/app.log 2>&1
 docker logs $OBSERVABILITY_CHARACTERIZATION_WORKER \

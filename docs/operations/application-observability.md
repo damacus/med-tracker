@@ -116,6 +116,9 @@ original exception is re-raised.
 Repeated database-pool collection failures emit at most one warning per minute.
 The first successful collection after degradation emits one recovery event.
 
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` enables trace export only. Set the generic
+`OTEL_EXPORTER_OTLP_ENDPOINT` separately when metrics must also be exported.
+
 ## Ownership
 
 | Area | Owner |
@@ -197,11 +200,12 @@ kubectl -n home exec deploy/med-tracker -c app -- \
   bin/rails observability:canary
 ```
 
-The task creates a new opaque workflow, emits an `application_event` canary
-inside an always-retained `observability.canary` span, increments the bounded
-canary metric, and enqueues one no-argument job. The job inherits the workflow
-and emits its own canary; normal job completion supplies its job identifier.
-It reads and changes no account or medication data.
+The task creates a new opaque workflow, enqueues one no-argument job, and
+flushes the remaining enqueue trace before the short-lived command exits. The
+job inherits the workflow and emits both `application_event` and `job` canaries
+inside always-retained `observability.canary` spans, with distinct attempts.
+The application-event and job canaries increment the bounded metric. It reads
+and changes no account or medication data.
 
 Use the catalogue queries with the emitted event, workflow, request, job, and
 trace identifiers. Poll only until all expected signals appear or fifteen
