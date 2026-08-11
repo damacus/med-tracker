@@ -345,21 +345,29 @@ module Components
           render RubyUI::FormFieldLabel.new(
             for: 'schedule_end_date',
             class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
-          ) { t('schedules.form.end_date') }
+          ) do
+            plain t('schedules.form.end_date')
+            span(class: 'text-error ml-0.5') { ' *' }
+          end
           m3_input(
             type: :string,
             name: 'schedule[end_date]',
             id: 'schedule_end_date',
             value: schedule.end_date&.to_fs(:db),
+            required: true,
             placeholder: t('schedules.form.select_date'),
             class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
-            data: { controller: 'ruby-ui--calendar-input' }
+            data: {
+              controller: 'ruby-ui--calendar-input',
+              action: 'input->schedule-form#validate change->schedule-form#validate'
+            }
           )
           Calendar(
             input_id: '#schedule_end_date',
             date_format: 'yyyy-MM-dd',
             class: 'rounded-shape-sm border shadow-elevation-2 bg-surface-container-high'
           )
+          FormFieldError(id: 'schedule_end_date_error')
         end
       end
 
