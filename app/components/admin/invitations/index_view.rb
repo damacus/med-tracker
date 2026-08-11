@@ -90,8 +90,11 @@ module Components
               value: @invitation.email,
               required: true,
               class: 'rounded-shape-sm border-border bg-card py-4 px-4 focus:ring-2 ' \
-                     'focus:ring-primary/10 focus:border-primary transition-all'
+                     'focus:ring-primary/10 focus:border-primary transition-all ' \
+                     "#{field_error_class(@invitation, :email)}",
+              **field_error_attributes(@invitation, :email, input_id: 'invitation_email')
             )
+            FormFieldError(id: 'invitation_email_error') { @invitation.errors[:email].first }
           end
         end
 

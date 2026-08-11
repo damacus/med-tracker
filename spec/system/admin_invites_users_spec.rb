@@ -6,6 +6,7 @@ RSpec.describe 'Admin invites users' do
   fixtures :accounts, :people, :users
 
   let(:admin) { users(:admin) }
+  let(:browser_errors) { [] }
 
   before do |example|
     driven_by(example.metadata[:js] ? :playwright : :rack_test)
@@ -38,6 +39,19 @@ RSpec.describe 'Admin invites users' do
     click_link 'Invitations'
 
     expect(page).to have_no_select('Role', with_options: ['Minor'])
+  end
+
+  it 'shows accessible Email feedback when a blank invitation is submitted', :js do
+    capture_browser_errors
+    login_as(admin)
+
+    visit admin_invitations_path
+    click_button 'Send invitation'
+
+    expect(page).to have_css('#invitation_email[aria-invalid="true"][aria-describedby="invitation_email_error"]')
+    expect(page).to have_css('#invitation_email_error[role="alert"]', text: /\S+/)
+    expect(page.evaluate_script('document.querySelector("#invitation_email").matches(":invalid")')).to be(true)
+    expect(browser_errors).not_to include(/Missing target element "error"/)
   end
 
   it 'allows an invitee to accept an invitation' do
@@ -109,7 +123,7 @@ RSpec.describe 'Admin invites users' do
     invitation = create(
       :household_invitation,
       household: browser_household,
-      invited_by_membership: browser_household.household_memberships.owner.sole,
+      invited_by_membership: browser_membership,
       email: 'resend.me@example.com',
       expires_at: 1.day.ago
     )
@@ -139,5 +153,12 @@ RSpec.describe 'Admin invites users' do
 
     visit accept_invitation_path(token: new_token)
     expect(page).to have_text("You've been invited as a Member.")
+  end
+
+  def capture_browser_errors
+    page.driver.with_playwright_page do |playwright_page|
+      playwright_page.on('console', ->(message) { browser_errors << message.text if message.type == 'error' })
+      playwright_page.on('pageerror', ->(error) { browser_errors << error.message })
+    end
   end
 end
