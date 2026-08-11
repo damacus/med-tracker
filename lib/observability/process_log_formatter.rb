@@ -1,11 +1,15 @@
 # frozen_string_literal: true
 
 require 'json'
+require 'openssl'
 require 'time'
 
 module Observability
   module ProcessLogFormatter
     DATASETS = %w[medtracker.puma medtracker.solid_queue medtracker.opentelemetry].freeze
+    ERROR_TYPES = {
+      OpenSSL::SSL::SSLError => 'OpenSSL::SSL::SSLError'
+    }.freeze
 
     module_function
 
@@ -29,7 +33,7 @@ module Observability
         'event.name' => 'process.message',
         'event.dataset' => dataset,
         'process.pid' => Process.pid
-      }.merge(opentelemetry_diagnostic(dataset:, log_level:)).to_json
+      }.merge(opentelemetry_diagnostic(message:, dataset:, log_level:)).to_json
     end
     private_class_method :format
 
@@ -43,14 +47,16 @@ module Observability
         'event.name' => 'process.message',
         'event.dataset' => dataset,
         'process.pid' => Process.pid
-      }.merge(opentelemetry_diagnostic(dataset:, log_level:)).to_json
+      }.merge(opentelemetry_diagnostic(message: nil, dataset:, log_level:)).to_json
     end
     private_class_method :minimal_format
 
-    def opentelemetry_diagnostic(dataset:, log_level:)
+    def opentelemetry_diagnostic(message:, dataset:, log_level:)
       return {} unless dataset == 'medtracker.opentelemetry' && log_level == 'error'
 
-      { 'event.reason' => 'export_failed' }
+      { 'event.reason' => 'export_failed' }.tap do |diagnostic|
+        diagnostic['error.type'] = ERROR_TYPES[message.class] if ERROR_TYPES.key?(message.class)
+      end
     end
     private_class_method :opentelemetry_diagnostic
 
