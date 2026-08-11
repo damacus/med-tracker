@@ -9,6 +9,18 @@ RSpec.describe SupplyLevel do
 
       expect(supply_level.current).to eq(0)
     end
+
+    it 'normalizes a string current supply' do
+      supply_level = described_class.new(current: '9.0', reorder_threshold: 10, last_restock: nil)
+
+      expect(supply_level.current).to eq(BigDecimal('9.0'))
+    end
+
+    it 'normalizes a float current supply without losing its decimal value' do
+      supply_level = described_class.new(current: 10.000000000000002, reorder_threshold: 10, last_restock: nil)
+
+      expect(supply_level.current).to eq(BigDecimal('10.000000000000002'))
+    end
   end
 
   describe '#percentage' do
@@ -50,6 +62,12 @@ RSpec.describe SupplyLevel do
       supply_level = described_class.new(current: 9, reorder_threshold: 10, last_restock: 50)
 
       expect(supply_level.crossed_low_stock_threshold_from?(previous_current: 11)).to be true
+    end
+
+    it 'normalizes supply values returned by the stock query' do
+      supply_level = described_class.new(current: '9.0', reorder_threshold: '10.0', last_restock: 50)
+
+      expect(supply_level.crossed_low_stock_threshold_from?(previous_current: '11.0')).to be true
     end
 
     it 'returns false when supply remains above the reorder threshold' do
@@ -152,6 +170,22 @@ RSpec.describe SupplyLevel do
       supply_level = described_class.new(current: 5, reorder_threshold: 1, last_restock: 10)
 
       expect(supply_level.days_until_out_of_stock(daily_consumption: 2)).to eq(3)
+    end
+
+    it 'returns zero when supply is below zero' do
+      supply_level = described_class.new(current: -3, reorder_threshold: 10, last_restock: 50)
+
+      expect(supply_level.days_until_out_of_stock(daily_consumption: 2)).to eq(0)
+    end
+
+    it 'does not add a day when decimal consumption divides the supply exactly' do
+      supply_level = described_class.new(
+        current: BigDecimal('0.07'),
+        reorder_threshold: 0,
+        last_restock: 1
+      )
+
+      expect(supply_level.days_until_out_of_stock(daily_consumption: 0.01)).to eq(7)
     end
   end
 end

@@ -10,7 +10,9 @@ class SupplyLevel
   end
 
   def current
-    raw_current || BigDecimal('0')
+    return BigDecimal('0') unless tracked?
+
+    BigDecimal(raw_current.to_s)
   end
 
   def tracked?
@@ -62,7 +64,7 @@ class SupplyLevel
     return nil unless forecast_available?(daily_consumption:)
     return 0 if out_of_stock?
 
-    (current.to_f / daily_consumption).ceil
+    (current / daily_consumption).ceil
   end
 
   def forecast_available?(daily_consumption:)
