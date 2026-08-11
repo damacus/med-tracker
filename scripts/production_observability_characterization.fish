@@ -208,15 +208,16 @@ for attempt in (seq 1 30)
     sleep 1
 end
 
-set -l canary_trace_count_before (
+set -l canary_trace_body_paths_before (
     docker logs $OBSERVABILITY_CHARACTERIZATION_RECEIVER 2>&1 |
-        awk '$1 == "POST" && $2 == "/v1/traces" { count += 1 } END { print count + 0 }'
+        awk '$1 == "POST" && $2 == "/canary/v1/traces" && $3 != "-" { sub("^/var/cache/nginx/client_temp", "/otlp", $3); print $3 }'
 )
 
 docker run --rm \
     --network $OBSERVABILITY_CHARACTERIZATION_NETWORK \
     $OBSERVABILITY_CHARACTERIZATION_ENV \
     $OBSERVABILITY_CHARACTERIZATION_MOUNTS \
+    --env OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-receiver:4318/canary \
     $OBSERVABILITY_CHARACTERIZATION_IMAGE \
     bin/rails observability:canary >$OBSERVABILITY_CHARACTERIZATION_TMP/canary.log 2>&1
 or begin
@@ -224,15 +225,37 @@ or begin
     exit 1
 end
 
-set -l canary_trace_count_after (
+set -l canary_trace_body_paths_after (
     docker logs $OBSERVABILITY_CHARACTERIZATION_RECEIVER 2>&1 |
-        awk '$1 == "POST" && $2 == "/v1/traces" { count += 1 } END { print count + 0 }'
+        awk '$1 == "POST" && $2 == "/canary/v1/traces" && $3 != "-" { sub("^/var/cache/nginx/client_temp", "/otlp", $3); print $3 }'
 )
 
-if test $canary_trace_count_after -le $canary_trace_count_before
-    cat $OBSERVABILITY_CHARACTERIZATION_TMP/canary.log
-    docker logs $OBSERVABILITY_CHARACTERIZATION_RECEIVER
-    echo 'Canary command did not export a new OpenTelemetry trace request' >&2
+set -l canary_trace_body_paths
+for path in $canary_trace_body_paths_after
+    if not contains -- $path $canary_trace_body_paths_before
+        set --append canary_trace_body_paths $path
+    end
+end
+
+if test (count $canary_trace_body_paths) -eq 0
+    echo 'Canary command did not export an enqueue-side observability trace' >&2
+    exit 1
+end
+
+set -l canary_trace_body_paths_env (string join : $canary_trace_body_paths)
+
+docker exec $OBSERVABILITY_CHARACTERIZATION_RECEIVER chmod -R a+rX /var/cache/nginx/client_temp
+or exit 1
+
+docker run --rm \
+    --entrypoint ruby \
+    --volume "$OBSERVABILITY_CHARACTERIZATION_TMP/otlp:/otlp:ro" \
+    --env "OTLP_TRACE_FILES=$canary_trace_body_paths_env" \
+    --env OTLP_REQUIRED_SPAN_NAME=observability.canary \
+    $OBSERVABILITY_CHARACTERIZATION_IMAGE \
+    scripts/verify_otlp_trace_resources.rb
+or begin
+    echo 'Canary command did not export an enqueue-side observability trace' >&2
     exit 1
 end
 

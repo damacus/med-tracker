@@ -44,17 +44,42 @@ RSpec.describe 'OTLP trace resource verification' do # rubocop:disable RSpec/Des
     end
   end
 
-  def verify_trace_bodies(*paths)
+  it 'rejects a trace body without the required safe span name' do
+    Dir.mktmpdir do |directory|
+      trace_path = File.join(directory, 'unrelated.otlp')
+      write_trace_body(trace_path, resources: [resource_with_host_name], span_names: ['unrelated.operation'])
+
+      _output, error, status = verify_trace_bodies(trace_path, required_span_name: 'observability.canary')
+
+      expect(status).not_to be_success
+      expect(error).to include('required span contract')
+      expect(error).not_to include('unrelated.operation')
+    end
+  end
+
+  def verify_trace_bodies(*paths, required_span_name: nil)
+    environment = { 'OTLP_TRACE_FILES' => paths.join(':') }
+    environment['OTLP_REQUIRED_SPAN_NAME'] = required_span_name if required_span_name
+
     Open3.capture3(
-      { 'OTLP_TRACE_FILES' => paths.join(':') },
+      environment,
       'ruby',
       Rails.root.join('scripts/verify_otlp_trace_resources.rb').to_s
     )
   end
 
-  def write_trace_body(path, resources:, gzip: false)
+  def write_trace_body(path, resources:, span_names: [], gzip: false)
     body = Opentelemetry::Proto::Collector::Trace::V1::ExportTraceServiceRequest.new(
-      resource_spans: resources.map { |resource| Opentelemetry::Proto::Trace::V1::ResourceSpans.new(resource:) }
+      resource_spans: resources.map do |resource|
+        Opentelemetry::Proto::Trace::V1::ResourceSpans.new(
+          resource:,
+          scope_spans: [
+            Opentelemetry::Proto::Trace::V1::ScopeSpans.new(
+              spans: span_names.map { |name| Opentelemetry::Proto::Trace::V1::Span.new(name:) }
+            )
+          ]
+        )
+      end
     ).to_proto
     body = Zlib.gzip(body) if gzip
     File.binwrite(path, body)
