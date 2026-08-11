@@ -6,14 +6,16 @@ module Observability
 
     def run
       previous_context = Current.observability_context
-      Current.observability_context = CorrelationContext.start.next_attempt
-      emit(kind: :application_event)
-      ObservabilityCanaryJob.perform_later
+      Current.observability_context = CorrelationContext.start
+      tracer.in_span('observability.canary') { ObservabilityCanaryJob.perform_later }
     ensure
+      flush_trace_provider
       Current.observability_context = previous_context
     end
 
     def emit(kind:)
+      previous_context = Current.observability_context
+      Current.observability_context = (previous_context || CorrelationContext.start).next_attempt
       tracer.in_span('observability.canary') do
         event = Publisher.emit(
           name: :observability_canary,
@@ -25,6 +27,8 @@ module Observability
         record_metric(kind)
         event
       end
+    ensure
+      Current.observability_context = previous_context
     end
 
     def tracer
@@ -51,6 +55,12 @@ module Observability
         error: e
       )
     end
-    private_class_method :record_metric
+
+    def flush_trace_provider
+      OpenTelemetry.tracer_provider.force_flush
+    rescue StandardError
+      nil
+    end
+    private_class_method :record_metric, :flush_trace_provider
   end
 end
