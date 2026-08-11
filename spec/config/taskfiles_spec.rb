@@ -292,7 +292,12 @@ RSpec.describe 'Taskfiles' do
       'OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-receiver:4318/canary',
       '$2 == "/canary/v1/traces"',
       'OTLP_REQUIRED_SPAN_NAME=observability.canary',
-      'Canary command did not export an enqueue-side observability trace'
+      'Canary command did not export an enqueue-side observability trace',
+      'ObservabilityCanaryJob',
+      'medtracker.canary.kind',
+      'medtracker.workflow.id',
+      'medtracker.attempt.id',
+      'Canary worker did not emit both correlated observability records'
     ]
   end
 

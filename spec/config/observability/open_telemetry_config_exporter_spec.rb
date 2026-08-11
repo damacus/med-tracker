@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'openssl'
 
 RSpec.describe OpenTelemetryConfig do
   context 'when configuring the OpenTelemetry SDK' do
@@ -129,6 +130,36 @@ RSpec.describe OpenTelemetryConfig do
 
       result = described_class.parse_otlp_headers(headers_string)
       expect(result).to eq(expected)
+    end
+  end
+
+  context 'when handling exporter errors' do
+    let(:error_output) { StringIO.new }
+
+    around do |example|
+      original_logger = OpenTelemetry.logger
+      OpenTelemetry.logger = Observability::DatasetLogger.new(
+        error_output,
+        dataset: 'medtracker.opentelemetry',
+        level: Logger::ERROR
+      )
+
+      example.run
+    ensure
+      OpenTelemetry.logger = original_logger
+    end
+
+    it 'preserves only the fixed type of an allowlisted exporter exception' do
+      error = OpenSSL::SSL::SSLError.new('private exporter endpoint')
+
+      OpenTelemetry.handle_error(exception: error, message: 'private exporter payload')
+
+      record = JSON.parse(error_output.string)
+      expect(record).to include(
+        'event.reason' => 'export_failed',
+        'error.type' => 'OpenSSL::SSL::SSLError'
+      )
+      expect(record.to_json).not_to include('private', 'endpoint', 'payload')
     end
   end
 
