@@ -1,11 +1,18 @@
 import { Controller } from "@hotwired/stimulus";
 
+let formFieldErrorId = 0;
+
 export default class extends Controller {
   static targets = ["input", "error"];
   static values = { shouldValidate: false };
 
   connect() {
     if (this.hasErrorTarget) {
+      if (!this.errorTarget.id) {
+        formFieldErrorId += 1;
+        this.errorTarget.id = `${this.inputTarget.id || "ruby-ui-form-field"}-error-${formFieldErrorId}`;
+      }
+
       if (this.errorTarget.textContent) {
         this.shouldValidateValue = true;
       } else {
