@@ -605,6 +605,42 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       )
     end
 
+    it 'types web push subscription registration, revocation, and testing' do
+      path = '/households/{household_id}/push_subscription'
+      create_operation = described_class.operation(path, 'post')
+      delete_operation = described_class.operation(path, 'delete')
+      test_operation = described_class.operation("#{path}/test", 'post')
+
+      expect(create_operation.dig('requestBody', 'content', 'application/json', 'schema', '$ref')).to eq(
+        '#/components/schemas/PushSubscriptionCreateRequest'
+      )
+      expect(delete_operation.fetch('parameters')).to include(
+        { '$ref' => '#/components/parameters/push_subscription_endpoint' }
+      )
+      expect(test_operation.dig('responses', '503', 'content', 'application/json', 'schema', '$ref')).to eq(
+        '#/components/schemas/PushTestFailedErrorEnvelope'
+      )
+    end
+
+    it 'requires the web push endpoint and keys without allowing secret response fields' do
+      valid_request = {
+        push_subscription: {
+          endpoint: 'https://fcm.googleapis.com/fcm/send/subscription',
+          keys: { p256dh: 'public-key', auth: 'auth-secret' }
+        }
+      }
+      invalid_request = valid_request.deep_merge(push_subscription: { keys: { unexpected: 'secret' } })
+      failed_response = {
+        error: { code: 'push_test_failed', message: 'Unable to send test notification.', request_id: 'request-id' }
+      }
+
+      expect(described_class.schema_errors('PushSubscriptionCreateRequest', valid_request)).to be_empty
+      expect(described_class.schema_errors('PushSubscriptionCreateRequest', invalid_request)).to include(
+        '/push_subscription/keys/unexpected'
+      )
+      expect(described_class.schema_errors('PushTestFailedErrorEnvelope', failed_response)).to be_empty
+    end
+
     it 'references typed representative person request and response schemas' do
       create_person = described_class.operation('/households/{household_id}/people', 'post')
       show_person = described_class.operation('/households/{household_id}/people/{id}', 'get')

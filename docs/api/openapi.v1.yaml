@@ -1001,9 +1001,23 @@ paths:
       summary: Register a web push subscription.
       parameters:
         - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushSubscriptionCreateRequest'
       responses:
         '201':
           description: Push subscription registered.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     delete:
       operationId: deletePushSubscription
       tags:
@@ -1012,9 +1026,16 @@ paths:
       summary: Revoke a web push subscription.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/push_subscription_endpoint'
       responses:
         '204':
           description: Push subscription revoked.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/push_subscription/test:
     post:
       operationId: testPushSubscription
@@ -1027,6 +1048,18 @@ paths:
       responses:
         '204':
           description: Test notification queued.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          description: The test notification could not be sent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushTestFailedErrorEnvelope'
   /households/{household_id}/medication_lookup:
     get:
       operationId: searchMedicationLookup
@@ -1396,6 +1429,14 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/DeviceTokenIdentifier'
+    push_subscription_endpoint:
+      name: endpoint
+      in: query
+      required: true
+      schema:
+        type: string
+        format: uri
+        pattern: '^https://'
     page:
       name: page
       in: query
@@ -2052,6 +2093,65 @@ components:
       properties:
         native_device_token:
           $ref: '#/components/schemas/NativeDeviceTokenAttributes'
+    PushSubscriptionKeys:
+      type: object
+      additionalProperties: false
+      required:
+        - p256dh
+        - auth
+      properties:
+        p256dh:
+          type: string
+          minLength: 1
+        auth:
+          type: string
+          minLength: 1
+    PushSubscriptionAttributes:
+      type: object
+      additionalProperties: false
+      required:
+        - endpoint
+        - keys
+      properties:
+        endpoint:
+          type: string
+          format: uri
+          pattern: '^https://'
+        keys:
+          $ref: '#/components/schemas/PushSubscriptionKeys'
+    PushSubscriptionCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - push_subscription
+      properties:
+        push_subscription:
+          $ref: '#/components/schemas/PushSubscriptionAttributes'
+    PushTestFailedError:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+        - request_id
+      properties:
+        code:
+          type: string
+          const: push_test_failed
+        message:
+          type: string
+          const: Unable to send test notification.
+        request_id:
+          type: string
+          minLength: 1
+    PushTestFailedErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/PushTestFailedError'
     ValidationErrors:
       type: object
       additionalProperties:
