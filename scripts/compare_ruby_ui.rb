@@ -1,104 +1,119 @@
 #!/usr/bin/env ruby
 
+require 'active_support/inflector'
+require 'bundler/setup'
 require 'fileutils'
 require 'open3'
 require 'optparse'
 require 'pathname'
 require 'tmpdir'
+require 'yaml'
 
 class RubyUiComparison
   def initialize(arguments, root: Pathname.pwd, stdout: $stdout, stderr: $stderr)
     @arguments = arguments
-    @root = root
+    @root = root.expand_path
     @stdout = stdout
     @stderr = stderr
   end
 
   def run
-    options, components = parse_options
-    return 1 unless valid_request?(options, components)
-
-    output = isolated_output(options)
+    output, components = parse_options
+    return 1 unless components
+    return 1 unless load_generator
+    return 1 unless validate_components(components)
     return 1 unless safe_output?(output)
-    return 1 if dirty_checkout? && !options[:output]
-    return 1 unless create_output(output, options)
 
-    generated_root, generated_paths, registrations = generate(output, options, components)
+    workspace = create_workspace
+    generated_root = generate(workspace, components)
     return 1 unless generated_root
 
-    report(generated_root, generated_paths, components, options, registrations)
+    destination = persist_generated_files(generated_root, output, components)
+    report(destination, components)
     0
   ensure
-    FileUtils.remove_entry(output) if output && !options&.fetch(:output, nil)
+    FileUtils.remove_entry(workspace) if workspace&.exist?
   end
 
   private
 
   def parse_options
-    options = { all: false }
+    options = {}
     parser = OptionParser.new do |opts|
-      opts.on('--all', 'Compare every RubyUI component') { options[:all] = true }
-      opts.on('--output DIRECTORY', 'Use an isolated output directory') { |directory| options[:output] = directory }
-      opts.on('--from-task-environment', 'Read task inputs from the environment') do
-        options[:all] = ENV['RUBY_UI_ALL'] == '1'
-        options[:output] = ENV['RUBY_UI_OUTPUT'] unless ENV['RUBY_UI_OUTPUT'].to_s.empty?
-        options[:components] = ENV.fetch('RUBY_UI_COMPONENTS', '').split
+      opts.on('--output DIRECTORY', 'Keep generated files in a new external directory') do |directory|
+        options[:output] = Pathname.new(directory).expand_path
       end
     end
-    components = parser.parse(@arguments)
-    [options, options.fetch(:components, components)]
+    components = parser.parse(@arguments).uniq
+    if components.empty?
+      @stderr.puts 'Pass one or more RubyUI component names.'
+      return [nil, nil]
+    end
+
+    [options[:output], components]
   rescue OptionParser::ParseError => error
     @stderr.puts error.message
-    [options, []]
+    [nil, nil]
   end
 
-  def valid_request?(options, components)
-    return true if options[:all] || components.any?
+  def load_generator
+    spec = Gem.loaded_specs['ruby_ui']
+    unless spec
+      @stderr.puts 'Could not load the Bundler-activated RubyUI dependency.'
+      return false
+    end
 
-    @stderr.puts 'Pass one or more RubyUI component names or --all.'
+    @generator_version = spec.version.to_s
+    @generator_source = Pathname.new(spec.full_gem_path)
+    @dependencies = YAML.safe_load(@generator_source.join('lib/generators/ruby_ui/dependencies.yml').read)
+    return true if @generator_version == locked_version
+
+    @stderr.puts "Bundler-activated RubyUI version #{@generator_version} does not match Gemfile.lock #{locked_version}."
     false
   end
 
-  def isolated_output(options)
-    return Pathname.new(options[:output]).expand_path if options[:output]
+  def locked_version
+    @root.join('Gemfile.lock').read[/ruby_ui \(([^)]+)\)/, 1]
+  end
 
-    Pathname.new(Dir.mktmpdir('med-tracker-ruby-ui-'))
+  def validate_components(components)
+    unknown = components.reject { canonical_component?(it) }
+    return true if unknown.empty?
+
+    @stderr.puts "Unknown RubyUI component: #{unknown.join(', ')}"
+    false
+  end
+
+  def canonical_component?(component)
+    component.match?(/\A[A-Za-z][A-Za-z0-9_]*\z/) && component_source(component).directory?
+  end
+
+  def external_temp_parent
+    %w[/private/tmp /tmp].filter_map do |candidate|
+      path = Pathname.new(candidate)
+      path.realpath if path.directory? && !within?(path.realpath, @root.realpath)
+    rescue Errno::ENOENT, Errno::EACCES
+      nil
+    end.first || raise('No external temporary directory is available')
+  end
+
+  def create_workspace
+    Pathname.new(Dir.mktmpdir('med-tracker-ruby-ui-generator-', external_temp_parent))
   end
 
   def safe_output?(output)
-    return true unless output_option?
+    return true unless output
+    return unsafe_output(output, 'parent directory must already exist') unless output.dirname.directory?
+    return unsafe_output(output, 'must not already exist') if output.exist? || output.symlink?
+    return unsafe_output(output, 'must not traverse symbolic links') if symlink_in_path?(output.dirname)
 
-    return unsafe_output('parent directory must already exist') unless output.dirname.directory?
-    return unsafe_output('must not traverse symbolic links') if symlink_in_path?(output.dirname)
-
-    canonical_root = @root.realpath
-    canonical_parent = output.dirname.realpath
-    canonical_output = canonical_parent.join(output.basename)
-    return unsafe_output('must be outside the application checkout') if within?(canonical_output, canonical_root)
-    return unsafe_output('must not already exist') if output.exist? || output.symlink?
+    canonical_output = output.dirname.realpath.join(output.basename)
+    return unsafe_output(output, 'must be outside the application checkout') if within?(canonical_output, @root.realpath)
 
     @output = canonical_output
     true
   rescue Errno::ENOENT, Errno::EACCES => error
-    unsafe_output("is not a usable isolated destination: #{error.message}")
-  end
-
-  def create_output(output, options)
-    return true unless options[:output]
-
-    Dir.mkdir(@output || output)
-    created = @output || output
-    return true if created.directory? && !created.symlink? && created.realpath == created
-
-    unsafe_output('must resolve to the newly created isolated directory')
-  rescue Errno::EEXIST
-    unsafe_output('must not already exist')
-  rescue SystemCallError => error
-    unsafe_output("could not be created: #{error.message}")
-  end
-
-  def output_option?
-    !@arguments.empty? && @arguments.each_cons(2).any? { |flag, _value| flag == '--output' } || ENV['RUBY_UI_OUTPUT'].to_s != '' && @arguments.include?('--from-task-environment')
+    unsafe_output(output, "is not a usable isolated destination: #{error.message}")
   end
 
   def symlink_in_path?(path)
@@ -107,7 +122,6 @@ class RubyUiComparison
       current = current.join(name)
       return true if current.symlink?
     end
-
     false
   end
 
@@ -115,204 +129,154 @@ class RubyUiComparison
     path == root || path.to_s.start_with?("#{root}/")
   end
 
-  def unsafe_output(reason)
-    @stderr.puts "Output directory #{requested_output} #{reason}."
+  def unsafe_output(output, reason)
+    @stderr.puts "Output directory #{output} #{reason}."
     false
   end
 
-  def requested_output
-    @output || @arguments.each_cons(2).find { |flag, _value| flag == '--output' }&.last || ENV['RUBY_UI_OUTPUT']
-  end
-
-  def dirty_checkout?
-    output, _error, status = Open3.capture3('git', 'status', '--porcelain', chdir: @root)
-    return false unless status.success?
-
-    return false if output.empty?
-
-    @stderr.puts 'Checkout has uncommitted changes. Pass --output DIRECTORY outside the application checkout.'
-    true
-  end
-
-  def generate(output, options, components)
-    copy_application(output)
-    install_recording_shims(output)
-    return [nil, [], []] unless generator_spec(output)
-
-    generator = options[:all] ? 'ruby_ui:component:all' : 'ruby_ui:component'
-    registration_before = registration_files(output)
+  def generate(workspace, components)
+    copy_application(workspace)
+    generator_loader = install_read_only_generator(workspace)
     command = [
-      bundle_command, 'exec', 'bin/rails', 'generate', generator, *components, '--force',
-      '--destination-root', output.to_s
+      Gem.bin_path('bundler', 'bundle'), 'exec', workspace.join('bin/rails').to_s, 'generate',
+      'ruby_ui:comparison_component', *components, '--force'
     ]
-    stdout, error, status = capture_in_output_bundle(output, *command)
-    if status.success?
-      side_effects = recorded_dependency_changes(output) + changed_registration_files(output, registration_before)
-      return [output, generated_paths(stdout), side_effects.uniq.sort]
-    end
+    environment = {
+      'BUNDLE_GEMFILE' => workspace.join('Gemfile').to_s,
+      'RUBYOPT' => [ENV['RUBYOPT'], "-r#{generator_loader}"].compact.join(' ')
+    }
+    _output, error, status = Open3.capture3(environment, *command, chdir: workspace)
+    return workspace if status.success?
 
     @stderr.puts "RubyUI generator failed: #{error.strip}"
-    [nil, [], []]
+    nil
   end
 
-  def copy_application(output)
-    output.mkpath
+  def copy_application(workspace)
     %w[app bin config lib Gemfile Gemfile.lock Rakefile].each do |entry|
-      FileUtils.cp_r(@root.join(entry), output)
+      FileUtils.cp_r(@root.join(entry), workspace)
     end
   end
 
-  def install_recording_shims(output)
-    record = output.join('.ruby-ui-comparison-side-effects')
-    record.write('')
-    install_bundle_shim(output, record)
-    install_importmap_shim(output, record)
-  end
+  def install_read_only_generator(workspace)
+    path = workspace.join('.ruby_ui_comparison_generator.rb')
+    path.write(<<~RUBY)
+      require 'rails/generators'
+      require 'generators/ruby_ui/component_generator'
 
-  def install_bundle_shim(output, record)
-    output.join('bin/bundle').write(<<~RUBY)
-      #!/usr/bin/env ruby
-      record = #{record.to_s.inspect}
-      case ARGV.first
-      when 'show'
-        ENV['BUNDLE_GEMFILE'] = #{output.join('Gemfile').to_s.inspect}
-        exec #{bundle_command.inspect}, *ARGV
-      when 'add'
-        File.open(record, 'a') { it.puts("gem \#{ARGV.drop(1).join(' ')}") }
-        exit 0
-      else
-        ENV['BUNDLE_GEMFILE'] = #{output.join('Gemfile').to_s.inspect}
-        exec #{bundle_command.inspect}, *ARGV
-      end
-    RUBY
-    FileUtils.chmod('+x', output.join('bin/bundle'))
-  end
+      module RubyUI
+        module Generators
+          class ComparisonComponentGenerator < ComponentGenerator
+            namespace 'ruby_ui:comparison_component'
+            source_root ComponentGenerator.source_root
 
-  def install_importmap_shim(output, record)
-    original = output.join('bin/importmap.ruby-ui-comparison-original')
-    FileUtils.mv(output.join('bin/importmap'), original)
-    output.join('bin/importmap').write(<<~RUBY)
-      #!/usr/bin/env ruby
-      if ARGV.first == 'pin'
-        package = ARGV[1]
-        source = File.read(#{output.join('config/importmap.rb').to_s.inspect})
-        unless source.match?(/^\\s*pin\\s+['\"]\#{Regexp.escape(package)}['\"]/)
-          File.open(#{record.to_s.inspect}, 'a') { it.puts("javascript \#{ARGV.drop(1).join(' ')}") }
+            private
+
+            def install_dependencies(*) = nil
+            def update_stimulus_manifest = nil
+          end
         end
-        exit 0
       end
-
-      exec #{original.to_s.inspect}, *ARGV
     RUBY
-    FileUtils.chmod('+x', output.join('bin/importmap'))
+    path
   end
 
-  def report(generated_root, generated_paths, components, options, registrations)
-    generated_files = ruby_ui_files(generated_root)
-    local_files = ruby_ui_files(@root)
-    generated = generated_files.slice(*generated_paths)
-    local = options[:all] ? local_files : local_files.slice(*component_scope(generated_paths, generated_files, local_files, components))
-    upstream_only = generated.keys - local.keys
+  def persist_generated_files(workspace, output, components)
+    return workspace unless output
+
+    Dir.mkdir(@output)
+    expected_paths(components).each_key do |path|
+      source = workspace.join(path)
+      next unless source.file?
+
+      destination = @output.join(path)
+      destination.dirname.mkpath
+      FileUtils.cp(source, destination)
+    end
+    @output
+  end
+
+  def report(generated_root, components)
+    generated = generated_files(generated_root, components)
+    local = local_files(components)
+    common = generated.keys & local.keys
+    unchanged = common.select { FileUtils.compare_file(generated[it], local[it]) }
+    changed = common - unchanged
+    missing = generated.keys - local.keys
     local_only = local.keys - generated.keys
-    changed = (generated.keys & local.keys).select { |path| !FileUtils.compare_file(generated[path], local[path]) }
 
     @stdout.puts "RubyUI version: #{@generator_version}"
-    @stdout.puts "Generator: bin/rails generate ruby_ui:component#{':all' if options[:all]}"
+    @stdout.puts 'Generator: RubyUI::Generators::ComponentGenerator (read-only dependency hooks)'
     @stdout.puts "Generator source: #{@generator_source}"
-    @stdout.puts "Requested components: #{options[:all] ? 'all' : components.join(', ')}"
-    print_files('Generated files', generated.keys)
-    print_files('Local-only files', local_only)
-    print_files('Upstream-only files', upstream_only)
+    @stdout.puts "Requested components: #{components.join(', ')}"
+    components.each { print_dependencies(it) }
+    print_files('Unchanged files', unchanged)
     print_files('Changed files', changed)
-    print_files('Dependency or controller-registration changes', registrations)
+    print_files('Missing locally', missing)
+    print_files('Local-only files', local_only)
   end
 
-  def locked_version
-    @root.join('Gemfile.lock').read[/ruby_ui \(([^)]+)\)/, 1]
+  def generated_files(root, components)
+    expected_paths(components).to_h do |path, _source|
+      [path, root.join(path)]
+    end.select { |_path, file| file.file? }
   end
 
-  def generator_spec(output)
-    command = [
-      bundle_command, 'exec', 'ruby', '-e',
-      "spec = Gem::Specification.find_by_name('ruby_ui'); puts spec.version; puts spec.full_gem_path"
-    ]
-    stdout, error, status = capture_in_output_bundle(output, *command)
-    unless status.success?
-      @stderr.puts "Could not load the Bundler-activated RubyUI generator: #{error.strip}"
-      return false
+  def local_files(components)
+    components.each_with_object({}) do |component, files|
+      family = family_name(component)
+      directory = @root.join('app/components/ruby_ui', family)
+      directory.glob('*.rb').each { files[it.relative_path_from(@root).to_s] = it } if directory.directory?
+      expected_paths([component]).each_key do |path|
+        file = @root.join(path)
+        files[path] = file if path.end_with?('.js') && file.file?
+      end
+      local_controller_files(family).each do |file|
+        files[file.relative_path_from(@root).to_s] = file
+      end
     end
-
-    @generator_version, @generator_source = stdout.lines(chomp: true)
-    return true if @generator_version == locked_version
-
-    @stderr.puts "Bundler-activated RubyUI version #{@generator_version.inspect} does not match Gemfile.lock #{locked_version.inspect}."
-    false
   end
 
-  def capture_in_output_bundle(output, *command)
-    environment = {
-      'BUNDLE_GEMFILE' => output.join('Gemfile').to_s,
-      'PATH' => [output.join('bin'), ENV.fetch('PATH')].join(File::PATH_SEPARATOR)
+  def local_controller_files(family)
+    root = @root.join('app/javascript/controllers/ruby_ui')
+    return [] unless root.directory?
+
+    root.glob("#{family}{,_*}.js").select(&:file?)
+  end
+
+  def expected_paths(components)
+    components.each_with_object({}) do |component, files|
+      family = family_name(component)
+      component_source(component).glob('*.rb').reject { it.basename.to_s.end_with?('_docs.rb') }.each do |source|
+        files["app/components/ruby_ui/#{family}/#{source.basename}"] = source
+      end
+      component_source(component).glob('*.js').each do |source|
+        files["app/javascript/controllers/ruby_ui/#{source.basename}"] = source
+      end
+    end
+  end
+
+  def component_source(component)
+    @generator_source.join('lib/ruby_ui', family_name(component))
+  end
+
+  def family_name(component)
+    component.underscore
+  end
+
+  def print_dependencies(component)
+    dependencies = @dependencies.fetch(family_name(component), {})
+    fields = {
+      components: dependencies.fetch('components', []),
+      gems: dependencies.fetch('gems', []),
+      javascript: dependencies.fetch('js_packages', [])
     }
-    Open3.capture3(environment, *command, chdir: output)
-  end
-
-  def bundle_command
-    Gem.bin_path('bundler', 'bundle')
-  end
-
-  def ruby_ui_files(root)
-    component_root = root.join('app/components/ruby_ui')
-    controller_root = root.join('app/javascript/controllers/ruby_ui')
-    files_in(component_root, root).merge(files_in(controller_root, root))
-  end
-
-  def files_in(directory, root)
-    return {} unless directory.exist?
-
-    directory.glob('**/*').select(&:file?).to_h { |path| [path.relative_path_from(root).to_s, path] }
-  end
-
-  def registration_files(root)
-    %w[Gemfile package.json config/importmap.rb app/javascript/controllers/index.js].to_h do |path|
-      candidate = root.join(path)
-      [path, candidate.exist? ? candidate.binread : nil]
-    end
-  end
-
-  def changed_registration_files(root, before)
-    registration_files(root).filter_map { |path, content| path if before[path] != content }
-  end
-
-  def recorded_dependency_changes(root)
-    root.join('.ruby-ui-comparison-side-effects').read.lines(chomp: true)
-  end
-
-  def component_scope(generated_paths, generated_files, local_files, components)
-    component_directories = generated_paths.filter_map { |path| path[%r{\A(app/components/ruby_ui/[^/]+/)}] }
-    component_directories.concat(components.map { |component| "app/components/ruby_ui/#{underscore(component)}/" })
-    controller_prefixes = generated_paths.filter_map do |path|
-      path[%r{\A(app/javascript/controllers/ruby_ui/[^/]+?)(?:_controller\.js)?\z}, 1]
-    end
-    candidates = generated_files.keys | local_files.keys
-
-    candidates.select do |path|
-      component_directories.any? { path.start_with?(it) } || controller_prefixes.any? { path.start_with?(it) }
-    end
-  end
-
-  def underscore(component)
-    component.gsub(/([a-z\d])([A-Z])/, '\\1_\\2').downcase
-  end
-
-  def generated_paths(output)
-    output.each_line.filter_map do |line|
-      line.match(/\A\s*(?:create|force|identical)\s+(app\/(?:components\/ruby_ui|javascript\/controllers\/ruby_ui)\/\S+)/)&.captures&.first
-    end.uniq.sort
+    summary = fields.map { |name, values| "#{name}=#{values.any? ? values.join(', ') : 'none'}" }.join('; ')
+    @stdout.puts "Declared dependencies (#{component}): #{summary}"
   end
 
   def print_files(label, files)
-    @stdout.puts "#{label}: #{files.empty? ? 'none' : files.join(', ')}"
+    @stdout.puts "#{label}: #{files.empty? ? 'none' : files.sort.join(', ')}"
   end
 end
 
