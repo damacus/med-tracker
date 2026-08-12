@@ -537,6 +537,43 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       ).to include('/data/unexpected')
     end
 
+    it 'types notification preference reads and updates' do
+      path = '/households/{household_id}/notification_preference'
+      get_operation = described_class.operation(path, 'get')
+      patch_operation = described_class.operation(path, 'patch')
+      put_operation = described_class.operation(path, 'put')
+
+      expect(get_operation.dig('responses', '200', 'content', 'application/json', 'schema', '$ref')).to eq(
+        '#/components/schemas/NotificationPreferenceResponse'
+      )
+      [patch_operation, put_operation].each do |operation|
+        expect(operation.dig('requestBody', 'content', 'application/json', 'schema', '$ref')).to eq(
+          '#/components/schemas/NotificationPreferenceUpdateRequest'
+        )
+        expect(operation.dig('responses', '200', 'content', 'application/json', 'schema', '$ref')).to eq(
+          '#/components/schemas/NotificationPreferenceResponse'
+        )
+      end
+    end
+
+    it 'matches the notification preference Rails payload and rejects request drift' do
+      login_data = api_login(users(:admin))
+      household_id = login_data.dig('household', 'id')
+      headers = api_auth_headers(login_data.fetch('access_token'))
+      create(:notification_preference, person: users(:admin).person)
+
+      get api_v1_household_notification_preference_path(household_id), headers:, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('NotificationPreferenceResponse', response.parsed_body)).to be_empty
+      expect(
+        described_class.schema_errors(
+          'NotificationPreferenceUpdateRequest',
+          notification_preference: { enabled: true, unexpected: true }
+        )
+      ).to include('/notification_preference/unexpected')
+    end
+
     it 'references typed representative person request and response schemas' do
       create_person = described_class.operation('/households/{household_id}/people', 'post')
       show_person = described_class.operation('/households/{household_id}/people/{id}', 'get')
