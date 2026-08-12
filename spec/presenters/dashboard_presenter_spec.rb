@@ -124,6 +124,30 @@ RSpec.describe DashboardPresenter do
       expect(presenter.active_schedules).not_to include(schedules(:jane_ibuprofen))
     end
 
+    it 'filters active direct medications to the selected person only' do
+      presenter = presenter_for(
+        admin_user,
+        selected_person_id: people(:john).id,
+        people_scope: Person.all
+      )
+
+      expect(presenter.active_person_medications).to include(person_medications(:john_vitamin_d))
+      expect(presenter.active_person_medications).not_to include(person_medications(:jane_vitamin_d))
+    end
+
+    it 'excludes direct medications outside the dashboard household' do
+      foreign_person_medication = build_foreign_person_medication
+      foreign_person = foreign_person_medication.person
+      presenter = described_class.new(
+        current_user: admin_user,
+        selected_person_id: foreign_person.id,
+        people_scope: Person.where(id: foreign_person.id),
+        household: households(:fixture_household)
+      )
+
+      expect(presenter.active_person_medications).not_to include(foreign_person_medication)
+    end
+
     it 'keeps all selectable people available for the selector while the dashboard is filtered' do
       presenter = parent_presenter(selected_person_id: people(:child_user_person).id)
 
@@ -315,6 +339,14 @@ RSpec.describe DashboardPresenter do
 
     presenter_for(parent_user, selected_person_id: selected_person_id,
                                people_scope: Person.where(id: [person.id] + child_ids))
+  end
+
+  def build_foreign_person_medication
+    household = create(:household)
+    person = create(:person, household: household)
+    medication = create(:medication, household: household)
+
+    create(:person_medication, household: household, person: person, medication: medication)
   end
 
   def stub_dashboard_schedule(routine_rows:, as_needed_rows:)

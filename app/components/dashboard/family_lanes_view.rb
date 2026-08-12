@@ -14,6 +14,7 @@ module Components
 
       def view_template
         div(
+          id: 'dashboard',
           class: 'container mx-auto max-w-6xl px-4 py-6',
           data: { testid: 'dashboard-variant-family-lanes' }
         ) do
@@ -173,8 +174,12 @@ module Components
             m3_text(variant: :body_medium, class: 'truncate font-black') { medication_for(entry).display_name }
             m3_text(variant: :body_small, class: 'text-on-surface-variant') { dose_label_for(entry) }
           end
-          render_status_badge_for(entry)
+          render_lane_action(entry)
         end
+      end
+
+      def take_action_context(row)
+        super.merge(dashboard_grouping: grouping)
       end
 
       def status_heading_classes(entry)

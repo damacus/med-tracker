@@ -443,17 +443,25 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     person = people(:john)
     instance_double(
       DashboardPresenter,
-      people: [person],
-      active_schedules: active_schedules,
-      current_user: admin_user,
+      **dashboard_presenter_context(person, active_schedules:),
       **dashboard_action_metrics,
       smart_insights: insight_result || learning_insight_result,
       can_view_reports?: can_view_reports,
-      dashboard_person_options: [],
       routine_tasks_by_person: { person => [routine_dashboard_row(person, status: routine_status)] },
       as_needed_by_person: { person => [as_needed_dashboard_row(person)] },
       today_takes_by_person: { person => [dashboard_today_take] }
     )
+  end
+
+  def dashboard_presenter_context(person, active_schedules:)
+    {
+      people: [person],
+      active_schedules: active_schedules,
+      active_person_medications: [],
+      current_user: admin_user,
+      selected_person_id: nil,
+      dashboard_person_options: []
+    }
   end
 
   def dashboard_action_metrics
