@@ -1,29 +1,5 @@
 {
-  "ignored_warnings": [
-    {
-      "warning_type": "Mass Assignment",
-      "warning_code": 105,
-      "fingerprint": "23c1f0599434e550bc148902abf71ad56d2f1e3d9d39b94877e5be534d6b0e2e",
-      "check_name": "PermitAttributes",
-      "message": "Potentially dangerous key allowed for mass assignment",
-      "file": "app/controllers/admin/users_controller.rb",
-      "line": 118,
-      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
-      "code": "params.permit(:search, :role, :status, :sort, :direction)",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "Admin::UsersController",
-        "method": "search_params"
-      },
-      "user_input": ":role",
-      "confidence": "Medium",
-      "cwe_id": [
-        915
-      ],
-      "note": "False positive: these params are used for search/filter/sort, not mass assignment. Actual user updates use user_params which is protected by Pundit authorization."
-    }
-  ],
-  "updated": "2025-11-27 12:25:00 +0000",
-  "brakeman_version": "7.1.1"
+  "ignored_warnings": [],
+  "updated": "2026-08-12 14:30:00 +0000",
+  "brakeman_version": "8.0.5"
 }
