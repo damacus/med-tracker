@@ -956,9 +956,23 @@ paths:
       summary: Register a native device token.
       parameters:
         - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NativeDeviceTokenCreateRequest'
       responses:
         '201':
           description: Device token registered.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/native_device_tokens/{id}:
     delete:
       operationId: deleteNativeDeviceToken
@@ -972,6 +986,12 @@ paths:
       responses:
         '204':
           description: Device token revoked.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/push_subscription:
     post:
       operationId: createPushSubscription
@@ -2009,6 +2029,29 @@ components:
       properties:
         notification_preference:
           $ref: '#/components/schemas/NotificationPreferenceAttributes'
+    NativeDeviceTokenAttributes:
+      type: object
+      additionalProperties: false
+      required:
+        - device_token
+        - platform
+      properties:
+        device_token:
+          type: string
+          minLength: 1
+        platform:
+          type: string
+          enum:
+            - ios
+            - android
+    NativeDeviceTokenCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - native_device_token
+      properties:
+        native_device_token:
+          $ref: '#/components/schemas/NativeDeviceTokenAttributes'
     ValidationErrors:
       type: object
       additionalProperties:
