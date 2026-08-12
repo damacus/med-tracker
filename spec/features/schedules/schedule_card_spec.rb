@@ -22,8 +22,7 @@ RSpec.describe 'Schedule Card', type: :system do
       find("[data-testid='edit-schedule-#{schedule.id}']").click
     end
 
-    expect(page).to have_text(/edit schedule/i)
-    expect(page).to have_css('div[data-state="open"]')
+    expect(page).to have_css('dialog[open][role="dialog"]', text: /edit schedule/i)
   end
 
   it 'updates the persisted dose when changing the selected dose in the edit modal', :js do

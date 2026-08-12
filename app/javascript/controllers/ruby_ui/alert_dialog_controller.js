@@ -1,53 +1,125 @@
-import { Controller } from "@hotwired/stimulus";
+import { Controller } from "@hotwired/stimulus"
+
+let alertDialogId = 0
 
 // Connects to data-controller="ruby-ui--alert-dialog"
 export default class extends Controller {
-  static targets = ["content"];
+  static targets = ["content"]
   static values = {
     open: {
       type: Boolean,
       default: false,
     },
-  };
+  }
 
   connect() {
-    this.portalElement = null;
+    this.sourceFrame = this.element.closest("turbo-frame")
+
     if (this.openValue) {
-      this.open();
+      this.open()
     }
   }
 
   disconnect() {
-    this.cleanup();
+    if (this.contentTarget.open) {
+      this.contentTarget.close()
+    }
+
+    this.updateBodyScrollLock()
   }
 
-  open() {
-    if (this.portalElement) return;
+  open(e) {
+    e?.preventDefault()
 
-    document.body.insertAdjacentHTML("beforeend", this.contentTarget.innerHTML);
-    this.portalElement = document.body.lastElementChild;
-    // prevent scroll on body
-    document.body.classList.add("overflow-hidden");
+    if (this.contentTarget.open) return
+
+    this.connectNaming()
+    this.contentTarget.hidden = false
+    this.contentTarget.showModal()
+    this.updateBodyScrollLock()
   }
 
   dismiss(e) {
-    this.cleanup();
+    e?.preventDefault()
+
+    if (this.contentTarget.open) {
+      this.contentTarget.close()
+    }
+    this.contentTarget.hidden = true
+    this.updateBodyScrollLock()
+
+    if (this.sourceFrame?.id === "modal") {
+      this.sourceFrame.removeAttribute("src")
+      this.sourceFrame.innerHTML = ""
+    }
+
   }
 
-  cleanup() {
-    // allow scroll on body
-    document.body.classList.remove("overflow-hidden");
-    
-    if (this.portalElement) {
-      this.portalElement.remove();
-      this.portalElement = null;
+  trapFocus(e) {
+    if (e.key !== "Tab") return
+
+    const tabbableElements = Array.from(
+      this.contentTarget.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((element) => this.usableTabbable(element))
+    const firstElement = tabbableElements[0]
+    const lastElement = tabbableElements.at(-1)
+
+    if (!firstElement || !lastElement) return
+
+    if (e.shiftKey && document.activeElement === firstElement) {
+      e.preventDefault()
+      lastElement.focus({ preventScroll: true })
+    } else if (!e.shiftKey && document.activeElement === lastElement) {
+      e.preventDefault()
+      firstElement.focus({ preventScroll: true })
     }
-    
-    // Also remove this element if it's not the one we just removed
-    // (In case this was called from a child action)
-    if (this.element.isConnected && this.element !== document.body) {
-      // Don't remove the trigger container usually, but RubyUI's original code did it
-      // Actually, if we're in a Turbo Stream replace, the element will be removed anyway.
+  }
+
+  connectNaming() {
+    alertDialogId += 1
+    const idPrefix = `ruby-ui-alert-dialog-${alertDialogId}`
+
+    this.connectRelationship(
+      "aria-labelledby",
+      this.contentTarget.querySelector("[data-ruby-ui-alert-dialog-title]"),
+      `${idPrefix}-title`
+    )
+    this.connectRelationship(
+      "aria-describedby",
+      this.contentTarget.querySelector("[data-ruby-ui-alert-dialog-description]"),
+      `${idPrefix}-description`
+    )
+  }
+
+  updateBodyScrollLock() {
+    document.body.classList.toggle("overflow-hidden", Boolean(document.querySelector("dialog:modal")))
+  }
+
+  usableTabbable(element) {
+    if (element.tabIndex < 0 || element.matches(":disabled") || element.closest('[aria-hidden="true"], [hidden], [inert]')) {
+      return false
     }
+
+    for (let ancestor = element; ancestor && ancestor !== this.contentTarget.parentElement; ancestor = ancestor.parentElement) {
+      const style = window.getComputedStyle(ancestor)
+
+      if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse") {
+        return false
+      }
+    }
+
+    return element.getClientRects().length > 0
+  }
+
+  connectRelationship(attribute, element, id) {
+    if (!element) {
+      this.contentTarget.removeAttribute(attribute)
+      return
+    }
+
+    element.id = id
+    this.contentTarget.setAttribute(attribute, id)
   }
 }

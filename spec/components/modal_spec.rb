@@ -9,8 +9,8 @@ RSpec.describe Components::Modal, type: :component do
     end)
   end
 
-  it 'renders an open RubyUI dialog instead of the legacy native dialog wrapper' do
-    expect(rendered.at_css('dialog')).to be_nil
+  it 'renders an open native dialog through RubyUI' do
+    expect(rendered.at_css('dialog[role="dialog"]')).to be_present
     expect(rendered.css('[data-controller="modal"]')).to be_empty
     expect(rendered.css('[data-controller="ruby-ui--dialog"]')).to be_present
   end

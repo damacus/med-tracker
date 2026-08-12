@@ -17,14 +17,22 @@ module RubyUI
     end
 
     def view_template
-      template(data: { ruby_ui__dialog_target: 'content' }) do
-        div(data_controller: 'ruby-ui--dialog') do
-          backdrop
-          div(**attrs) do
-            yield
-            close_button
-          end
-        end
+      dialog(
+        role: 'dialog',
+        aria: {
+          modal: 'true'
+        },
+        tabindex: '-1',
+        hidden: true,
+        data: {
+          ruby_ui__dialog_target: 'content',
+          action: 'cancel->ruby-ui--dialog#dismiss click->ruby-ui--dialog#backdropClick ' \
+                  'keydown->ruby-ui--dialog#trapFocus'
+        },
+        **attrs
+      ) do
+        yield
+        close_button
       end
     end
 
@@ -34,7 +42,7 @@ module RubyUI
       {
         data_state: 'open',
         class: [
-          'fixed flex flex-col pointer-events-auto left-[50%] top-[50%] z-50 w-full max-h-screen overflow-y-auto translate-x-[-50%] translate-y-[-50%] border border-border/70 bg-popover text-foreground shadow-elevation-5 duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-shape-xl md:w-full',
+          'fixed flex flex-col left-[50%] top-[50%] z-50 w-full max-h-screen overflow-y-auto translate-x-[-50%] translate-y-[-50%] border border-border/70 bg-popover text-foreground shadow-elevation-5 duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-shape-xl md:w-full backdrop:bg-foreground/10 backdrop:backdrop-blur-[1.5px]',
           SIZES[@size]
         ]
       }
@@ -49,14 +57,6 @@ module RubyUI
       ) do
         render ::Components::Icons::X.new(size: 16, aria_hidden: 'true')
       end
-    end
-
-    def backdrop
-      div(
-        data_state: 'open',
-        data_action: 'click->ruby-ui--dialog#dismiss esc->ruby-ui--dialog#dismiss',
-        class: 'fixed pointer-events-auto inset-0 z-50 bg-foreground/10 backdrop-blur-[1.5px] data-[state=open]:animate-in data-[state=open]:fade-in-0'
-      )
     end
   end
 end

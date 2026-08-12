@@ -10,6 +10,7 @@ module RubyUI
 
     def default_attrs
       {
+        data: { ruby_ui_dialog_description: true },
         class: 'text-base leading-relaxed text-on-surface-variant'
       }
     end
