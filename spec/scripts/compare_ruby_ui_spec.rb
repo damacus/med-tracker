@@ -1,10 +1,14 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 require 'open3'
 require 'tmpdir'
 require 'stringio'
 require Rails.root.join('scripts/compare_ruby_ui')
 
+# rubocop:disable RSpec/DescribeClass
 RSpec.describe 'RubyUI comparison command' do
+  # rubocop:enable RSpec/DescribeClass
   it 'requires explicit components unless all components are explicitly requested' do
     _output, error, status = compare
 
@@ -40,15 +44,8 @@ RSpec.describe 'RubyUI comparison command' do
       generated = Pathname.new(directory).join('generated')
       output, error, status = compare('--output', generated.to_s, 'Button')
 
-      expect(checkout_dirty?).to be(true)
-      expect(status).to be_success, error
-      expect(output).to include('RubyUI version: 1.6.0')
-      expect(output).to include('Generator: bin/rails generate ruby_ui:component')
-      expect(output).to include('Requested components: Button')
-      expect(output).to include('Generated files:')
-      expect(output).to include('Changed files:')
-      expect(output).to include('Dependency or controller-registration changes:')
-      expect(generated).to exist
+      expect_isolated_comparison_output(output)
+      expect_isolated_comparison_state(error, status, generated)
     end
   end
 
@@ -107,11 +104,12 @@ RSpec.describe 'RubyUI comparison command' do
       first_output = StringIO.new
 
       expect(RubyUiComparison.new(['--output', generated.to_s, 'Button'], root:, stdout: first_output).run).to eq(0)
-      FileUtils.cp(generated.join('app/components/ruby_ui/button/button.rb'), root.join('app/components/ruby_ui/button/button.rb'))
+      copy_generated_button(generated, root)
 
       second_output = StringIO.new
       second_generated = Pathname.new(directory).join('generated-second')
-      expect(RubyUiComparison.new(['--output', second_generated.to_s, 'Button'], root:, stdout: second_output).run).to eq(0)
+      comparison = RubyUiComparison.new(['--output', second_generated.to_s, 'Button'], root:, stdout: second_output)
+      expect(comparison.run).to eq(0)
       expect(second_output.string).to include('Changed files: none')
     end
   end
@@ -123,11 +121,7 @@ RSpec.describe 'RubyUI comparison command' do
       copy_application(root)
 
       expect(RubyUiComparison.new(['--output', generated.to_s, 'Dialog'], root:, stdout: StringIO.new).run).to eq(0)
-      FileUtils.cp_r(generated.join('app/components/ruby_ui/dialog'), root.join('app/components/ruby_ui'))
-      FileUtils.cp(
-        generated.join('app/javascript/controllers/ruby_ui/dialog_controller.js'),
-        root.join('app/javascript/controllers/ruby_ui/dialog_controller.js')
-      )
+      copy_generated_dialog(generated, root)
       File.write(root.join('app/javascript/controllers/ruby_ui/dialog_controller.js'), 'local change')
 
       output = StringIO.new
@@ -163,14 +157,7 @@ RSpec.describe 'RubyUI comparison command' do
 
       expect(RubyUiComparison.new(['--output', generated.to_s, '--all'], root:, stdout: output).run).to eq(0)
 
-      expect(output.string).to include('Requested components: all')
-      expect(runtime_files(root)).to eq(before)
-      expect(dependency_files(root)).to eq(dependency_files_before)
-      expect(output.string).to include('Dependency or controller-registration changes: config/importmap.rb')
-      expect(output.string).to match(%r{Local-only files: .*app/javascript/controllers/ruby_ui/focus_scope\.js})
-      generated_files = output.string.lines.find { it.start_with?('Generated files:') }
-      expect(generated_files).not_to include('app/javascript/controllers/ruby_ui/focus_scope.js')
-      expect(generated.join('config/importmap.rb').binread).not_to eq(dependency_files_before.fetch('config/importmap.rb'))
+      expect_all_components_comparison(output, root, before, dependency_files_before, generated)
     end
   end
 
@@ -211,20 +198,14 @@ RSpec.describe 'RubyUI comparison command' do
       output = Pathname.new(directory).join('generated')
       copy_application(root)
       comparison = RubyUiComparison.new(['--output', output.to_s, 'Button'], root:, stdout: StringIO.new)
-
       comparison.send(:copy_application, output)
       comparison.send(:install_recording_shims, output)
 
       _stdout, _error, status = Open3.capture3(output.join('bin/bundle').to_s, 'show', 'ruby_ui')
       expect(status).to be_success
-      Open3.capture3(output.join('bin/bundle').to_s, 'add', 'example-gem')
-      Open3.capture3(output.join('bin/importmap').to_s, 'pin', 'example-package')
-      File.open(output.join('config/importmap.rb'), 'a') { it.puts('pin "already-pinned"') }
-      Open3.capture3(output.join('bin/importmap').to_s, 'pin', 'already-pinned')
+      record_dependency_requests(output)
 
-      expect(comparison.send(:recorded_dependency_changes, output)).to eq(['gem example-gem', 'javascript example-package'])
-      expect(output.join('Gemfile').binread).to eq(root.join('Gemfile').binread)
-      expect(output.join('Gemfile.lock').binread).to eq(root.join('Gemfile.lock').binread)
+      expect_recorded_dependency_changes(comparison, output, root)
     end
   end
 
@@ -241,8 +222,8 @@ RSpec.describe 'RubyUI comparison command' do
     end
   end
 
-  def compare(*arguments)
-    Open3.capture3('ruby', command_path.to_s, *arguments, chdir: Rails.root)
+  def compare(*)
+    Open3.capture3('ruby', command_path.to_s, *, chdir: Rails.root)
   end
 
   def command_path
@@ -258,8 +239,10 @@ RSpec.describe 'RubyUI comparison command' do
 
   def runtime_files(root = Rails.root)
     paths = %w[app/components/ruby_ui app/javascript/controllers/ruby_ui]
-    paths.to_h do |path|
-      [path, root.join(path).glob('**/*').select(&:file?).to_h { |file| [file.relative_path_from(root).to_s, file.binread] }]
+    paths.index_with do |path|
+      root.join(path).glob('**/*').select(&:file?).to_h do |file|
+        [file.relative_path_from(root).to_s, file.binread]
+      end
     end
   end
 
@@ -284,8 +267,88 @@ RSpec.describe 'RubyUI comparison command' do
     end
   end
 
-  def run_git(root, *arguments)
-    _output, error, status = Open3.capture3('git', *arguments, chdir: root)
+  def run_git(root, *)
+    _output, error, status = Open3.capture3('git', *, chdir: root)
     raise error unless status.success?
+  end
+
+  def expect_isolated_comparison_output(output)
+    expect(output).to include('RubyUI version: 1.6.0')
+    expect(output).to include('Generator: bin/rails generate ruby_ui:component')
+    expect(output).to include('Requested components: Button')
+    expect(output).to include('Generated files:', 'Changed files:')
+    expect(output).to include('Dependency or controller-registration changes:')
+  end
+
+  def expect_isolated_comparison_state(error, status, generated)
+    expect(checkout_dirty?).to be(true)
+    expect(status).to be_success, error
+    expect(generated).to exist
+  end
+
+  def copy_generated_button(generated, root)
+    FileUtils.cp(
+      generated.join('app/components/ruby_ui/button/button.rb'),
+      root.join('app/components/ruby_ui/button/button.rb')
+    )
+  end
+
+  def copy_generated_dialog(generated, root)
+    FileUtils.cp_r(generated.join('app/components/ruby_ui/dialog'), root.join('app/components/ruby_ui'))
+    FileUtils.cp(
+      generated.join('app/javascript/controllers/ruby_ui/dialog_controller.js'),
+      root.join('app/javascript/controllers/ruby_ui/dialog_controller.js')
+    )
+  end
+
+  def expect_all_components_comparison(output, root, before, dependency_files_before, generated)
+    expect_all_components_output(output, generated, dependency_files_before)
+    expect_all_components_state(root, before, dependency_files_before)
+  end
+
+  def expect_all_components_output(output, generated, dependency_files_before)
+    expect(output.string).to include('Requested components: all')
+    expect(output.string).to include('Dependency or controller-registration changes: config/importmap.rb')
+    expect(output.string).to match(%r{Local-only files: .*app/javascript/controllers/ruby_ui/focus_scope\.js})
+    expect_generated_importmap_changed(output, generated, dependency_files_before)
+  end
+
+  def expect_generated_importmap_changed(output, generated, dependency_files_before)
+    expect(generated_files(output)).not_to include('app/javascript/controllers/ruby_ui/focus_scope.js')
+    expect(generated.join('config/importmap.rb').binread).not_to eq(
+      dependency_files_before.fetch('config/importmap.rb')
+    )
+  end
+
+  def expect_all_components_state(root, before, dependency_files_before)
+    expect(runtime_files(root)).to eq(before)
+    expect(dependency_files(root)).to eq(dependency_files_before)
+  end
+
+  def generated_files(output)
+    output.string.lines.find { it.start_with?('Generated files:') }
+  end
+
+  def record_dependency_requests(output)
+    Open3.capture3(output.join('bin/bundle').to_s, 'add', 'example-gem')
+    Open3.capture3(output.join('bin/importmap').to_s, 'pin', 'example-package')
+    File.open(output.join('config/importmap.rb'), 'a') { it.puts('pin "already-pinned"') }
+    Open3.capture3(output.join('bin/importmap').to_s, 'pin', 'already-pinned')
+  end
+
+  def expect_recorded_dependency_changes(comparison, output, root)
+    expect_recorded_dependencies(comparison, output)
+    expect_root_manifests_unchanged(output, root)
+  end
+
+  def expect_recorded_dependencies(comparison, output)
+    expect(comparison.send(:recorded_dependency_changes, output)).to eq(
+      ['gem example-gem', 'javascript example-package']
+    )
+  end
+
+  def expect_root_manifests_unchanged(output, root)
+    expect(output.join('Gemfile').binread).to eq(root.join('Gemfile').binread)
+    expect(output.join('Gemfile.lock').binread).to eq(root.join('Gemfile.lock').binread)
   end
 end

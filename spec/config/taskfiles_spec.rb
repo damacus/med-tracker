@@ -139,7 +139,12 @@ RSpec.describe 'Taskfiles' do
     expect(command).not_to include('.OUTPUT', '.COMPONENTS')
 
     wrapper = Rails.root.join('scripts/run_ruby_ui_comparison.fish').read
-    expect(wrapper).to eq("#!/usr/bin/env fish\n\nmise exec -- bundle exec ruby scripts/compare_ruby_ui.rb --from-task-environment\n")
+    expected_wrapper = <<~FISH
+      #!/usr/bin/env fish
+
+      mise exec -- bundle exec ruby scripts/compare_ruby_ui.rb --from-task-environment
+    FISH
+    expect(wrapper).to eq(expected_wrapper)
   end
 
   it 'defines a restore rehearsal with explicit evidence inputs and no raw restore command' do
