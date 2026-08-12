@@ -35,9 +35,10 @@ RSpec.describe 'RubyUI comparison command' do
     end
   end
 
-  it 'permits explicit isolated output on a dirty checkout' do
+  it 'permits a newly created isolated output on a dirty checkout' do
     Dir.mktmpdir do |directory|
-      output, error, status = compare('--output', directory, 'Button')
+      generated = Pathname.new(directory).join('generated')
+      output, error, status = compare('--output', generated.to_s, 'Button')
 
       expect(checkout_dirty?).to be(true)
       expect(status).to be_success, error
@@ -47,6 +48,54 @@ RSpec.describe 'RubyUI comparison command' do
       expect(output).to include('Generated files:')
       expect(output).to include('Changed files:')
       expect(output).to include('Dependency or controller-registration changes:')
+      expect(generated).to exist
+    end
+  end
+
+  it 'refuses an existing output directory before copying application files' do
+    Dir.mktmpdir do |directory|
+      output = Pathname.new(directory).join('existing')
+      output.mkpath
+      marker = output.join('keep.txt')
+      File.write(marker, 'do not overwrite')
+
+      _stdout, error, status = compare('--output', output.to_s, 'Button')
+
+      expect(status).not_to be_success
+      expect(error).to include('must not already exist')
+      expect(marker.read).to eq('do not overwrite')
+    end
+  end
+
+  it 'refuses a symlinked output path without following it' do
+    Dir.mktmpdir do |directory|
+      destination = Pathname.new(directory).join('destination')
+      destination.mkpath
+      marker = destination.join('keep.txt')
+      File.write(marker, 'do not overwrite')
+      output = Pathname.new(directory).join('output')
+      File.symlink(destination, output)
+
+      _stdout, error, status = compare('--output', output.to_s, 'Button')
+
+      expect(status).not_to be_success
+      expect(error).to include('must not already exist')
+      expect(marker.read).to eq('do not overwrite')
+    end
+  end
+
+  it 'refuses an output path that traverses a symbolic link' do
+    Dir.mktmpdir do |directory|
+      destination = Pathname.new(directory).join('destination')
+      destination.mkpath
+      output_parent = Pathname.new(directory).join('output-parent')
+      File.symlink(destination, output_parent)
+
+      _stdout, error, status = compare('--output', output_parent.join('generated').to_s, 'Button')
+
+      expect(status).not_to be_success
+      expect(error).to include('must not traverse symbolic links')
+      expect(destination.join('generated')).not_to exist
     end
   end
 
@@ -54,14 +103,15 @@ RSpec.describe 'RubyUI comparison command' do
     Dir.mktmpdir do |directory|
       root = Pathname.new(directory).join('source')
       copy_application(root)
-      generated = Pathname.new(directory).join('generated')
+      generated = Pathname.new(directory).join('generated-first')
       first_output = StringIO.new
 
       expect(RubyUiComparison.new(['--output', generated.to_s, 'Button'], root:, stdout: first_output).run).to eq(0)
       FileUtils.cp(generated.join('app/components/ruby_ui/button/button.rb'), root.join('app/components/ruby_ui/button/button.rb'))
 
       second_output = StringIO.new
-      expect(RubyUiComparison.new(['--output', generated.to_s, 'Button'], root:, stdout: second_output).run).to eq(0)
+      second_generated = Pathname.new(directory).join('generated-second')
+      expect(RubyUiComparison.new(['--output', second_generated.to_s, 'Button'], root:, stdout: second_output).run).to eq(0)
       expect(second_output.string).to include('Changed files: none')
     end
   end
@@ -69,7 +119,7 @@ RSpec.describe 'RubyUI comparison command' do
   it 'reports a generated Stimulus controller difference' do
     Dir.mktmpdir do |directory|
       root = Pathname.new(directory).join('source')
-      generated = Pathname.new(directory).join('generated')
+      generated = Pathname.new(directory).join('generated-first')
       copy_application(root)
 
       expect(RubyUiComparison.new(['--output', generated.to_s, 'Dialog'], root:, stdout: StringIO.new).run).to eq(0)
@@ -81,7 +131,8 @@ RSpec.describe 'RubyUI comparison command' do
       File.write(root.join('app/javascript/controllers/ruby_ui/dialog_controller.js'), 'local change')
 
       output = StringIO.new
-      expect(RubyUiComparison.new(['--output', generated.to_s, 'Dialog'], root:, stdout: output).run).to eq(0)
+      next_generated = Pathname.new(directory).join('generated-second')
+      expect(RubyUiComparison.new(['--output', next_generated.to_s, 'Dialog'], root:, stdout: output).run).to eq(0)
       expect(output.string).to include('Changed files: app/javascript/controllers/ruby_ui/dialog_controller.js')
     end
   end
@@ -90,7 +141,8 @@ RSpec.describe 'RubyUI comparison command' do
     before = tracked_application_diff
 
     Dir.mktmpdir do |directory|
-      _output, error, status = compare('--output', directory, 'NotARealRubyUiComponent')
+      generated = Pathname.new(directory).join('generated')
+      _output, error, status = compare('--output', generated.to_s, 'NotARealRubyUiComponent')
 
       expect(status).not_to be_success
       expect(error).to include('RubyUI generator failed')
@@ -98,11 +150,95 @@ RSpec.describe 'RubyUI comparison command' do
     expect(tracked_application_diff).to eq(before)
   end
 
-  it 'allows all-components comparison only through --all' do
-    command = File.read(command_path)
+  it 'compares all components only through the public --all option without writing application runtime files' do
+    Dir.mktmpdir do |directory|
+      root = Pathname.new(directory).join('source')
+      generated = Pathname.new(directory).join('generated')
+      copy_application(root)
+      focus_scope = root.join('app/javascript/controllers/ruby_ui/focus_scope.js')
+      focus_scope.write('export const focusScope = true\n')
+      before = runtime_files(root)
+      dependency_files_before = dependency_files(root)
+      output = StringIO.new
 
-    expect(command).to include("'ruby_ui:component:all'")
-    expect(command).to include("options[:all]")
+      expect(RubyUiComparison.new(['--output', generated.to_s, '--all'], root:, stdout: output).run).to eq(0)
+
+      expect(output.string).to include('Requested components: all')
+      expect(runtime_files(root)).to eq(before)
+      expect(dependency_files(root)).to eq(dependency_files_before)
+      expect(output.string).to include('Dependency or controller-registration changes: config/importmap.rb')
+      expect(output.string).to match(%r{Local-only files: .*app/javascript/controllers/ruby_ui/focus_scope\.js})
+      generated_files = output.string.lines.find { it.start_with?('Generated files:') }
+      expect(generated_files).not_to include('app/javascript/controllers/ruby_ui/focus_scope.js')
+      expect(generated.join('config/importmap.rb').binread).not_to eq(dependency_files_before.fetch('config/importmap.rb'))
+    end
+  end
+
+  it 'limits named-component local-only reporting to generated component paths' do
+    Dir.mktmpdir do |directory|
+      root = Pathname.new(directory).join('source')
+      generated = Pathname.new(directory).join('generated')
+      copy_application(root)
+      local_only = root.join('app/components/ruby_ui/button/local_only.rb')
+      local_only.dirname.mkpath
+      File.write(local_only, "module RubyUI\n  class LocalOnly\n  end\nend\n")
+      unrelated = root.join('app/components/ruby_ui/unrelated.rb')
+      File.write(unrelated, "module RubyUI\n  class Unrelated\n  end\nend\n")
+
+      output = StringIO.new
+      expect(RubyUiComparison.new(['--output', generated.to_s, 'Button'], root:, stdout: output).run).to eq(0)
+
+      expect(output.string).to include('Local-only files: app/components/ruby_ui/button/local_only.rb')
+      expect(output.string).not_to include('app/components/ruby_ui/unrelated.rb')
+    end
+  end
+
+  it 'reports the Bundler-activated locked generator version and source' do
+    Dir.mktmpdir do |directory|
+      generated = Pathname.new(directory).join('generated')
+
+      output, error, status = compare('--output', generated.to_s, 'Button')
+
+      expect(status).to be_success, error
+      expect(output).to include('RubyUI version: 1.6.0')
+      expect(output).to match(%r{Generator source: .*/ruby_ui-1\.6\.0})
+    end
+  end
+
+  it 'reports dependency requests intercepted by the disposable command shims' do
+    Dir.mktmpdir do |directory|
+      root = Pathname.new(directory).join('source')
+      output = Pathname.new(directory).join('generated')
+      copy_application(root)
+      comparison = RubyUiComparison.new(['--output', output.to_s, 'Button'], root:, stdout: StringIO.new)
+
+      comparison.send(:copy_application, output)
+      comparison.send(:install_recording_shims, output)
+
+      _stdout, _error, status = Open3.capture3(output.join('bin/bundle').to_s, 'show', 'ruby_ui')
+      expect(status).to be_success
+      Open3.capture3(output.join('bin/bundle').to_s, 'add', 'example-gem')
+      Open3.capture3(output.join('bin/importmap').to_s, 'pin', 'example-package')
+      File.open(output.join('config/importmap.rb'), 'a') { it.puts('pin "already-pinned"') }
+      Open3.capture3(output.join('bin/importmap').to_s, 'pin', 'already-pinned')
+
+      expect(comparison.send(:recorded_dependency_changes, output)).to eq(['gem example-gem', 'javascript example-package'])
+      expect(output.join('Gemfile').binread).to eq(root.join('Gemfile').binread)
+      expect(output.join('Gemfile.lock').binread).to eq(root.join('Gemfile.lock').binread)
+    end
+  end
+
+  it 'reports a real Codeblock dependency request without changing root manifests' do
+    Dir.mktmpdir do |directory|
+      generated = Pathname.new(directory).join('generated')
+      before = dependency_files
+
+      output, error, status = compare('--output', generated.to_s, 'Codeblock')
+
+      expect(status).to be_success, error
+      expect(output).to include('Dependency or controller-registration changes: gem rouge')
+      expect(dependency_files).to eq(before)
+    end
   end
 
   def compare(*arguments)
@@ -118,6 +254,20 @@ RSpec.describe 'RubyUI comparison command' do
     raise 'Could not inspect tracked application changes' unless status.success?
 
     output
+  end
+
+  def runtime_files(root = Rails.root)
+    paths = %w[app/components/ruby_ui app/javascript/controllers/ruby_ui]
+    paths.to_h do |path|
+      [path, root.join(path).glob('**/*').select(&:file?).to_h { |file| [file.relative_path_from(root).to_s, file.binread] }]
+    end
+  end
+
+  def dependency_files(root = Rails.root)
+    %w[Gemfile Gemfile.lock package.json yarn.lock config/importmap.rb].to_h do |path|
+      file = root.join(path)
+      [path, file.exist? ? file.binread : nil]
+    end
   end
 
   def checkout_dirty?

@@ -73,11 +73,12 @@ tasks:
       Usage: task ruby-ui:compare COMPONENTS="Button Card"
       Usage: task ruby-ui:compare COMPONENTS="Button Card" OUTPUT=/tmp/ruby-ui-compare
       Usage: task ruby-ui:compare ALL=1 OUTPUT=/tmp/ruby-ui-compare
+    env:
+      RUBY_UI_COMPONENTS: '{{ .COMPONENTS | default "" }}'
+      RUBY_UI_OUTPUT: '{{ .OUTPUT | default "" }}'
+      RUBY_UI_ALL: '{{ .ALL | default "" }}'
     cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: test
-          COMMAND: 'ruby scripts/compare_ruby_ui.rb {{ if .OUTPUT }}--output {{ .OUTPUT }}{{ end }} {{ if .ALL }}--all{{ else }}{{ .COMPONENTS }}{{ end }}'
+      - ./scripts/run_ruby_ui_comparison.fish
 
   households:migrate_local:
     desc: Migrate the local pre-household database into one household
