@@ -24,14 +24,14 @@ RSpec.describe 'Historical dose recording', :browser do
         click_button 'Log a past dose'
       end
 
-      expect(page).to have_text('Record a dose from a previous day')
+      dialog = find('dialog[open][role="dialog"]', text: 'Record a dose from a previous day')
 
-      field = find("input[name='medication_take[taken_at]'][type='datetime-local']", visible: :all)
+      field = dialog.find("input[name='medication_take[taken_at]'][type='datetime-local']", visible: :all)
       expect(field[:value]).to eq('2026-04-28T14:45')
       expect(field[:max]).to eq('2026-04-28T14:45')
 
       expect do
-        within("form[action='#{take_path(schedule)}']") do
+        within(dialog) do
           fill_in 'Date and time taken', with: submitted_time.strftime('%Y-%m-%dT%H:%M')
           click_button I18n.t('medications.prior_day_take_action.submit')
         end
@@ -40,6 +40,22 @@ RSpec.describe 'Historical dose recording', :browser do
 
       expect(MedicationTake.order(:id).last.taken_at).to be_within(1.second).of(submitted_time)
     end
+  end
+
+  it 'dismisses the historical dose dialog with Escape' do
+    schedule = build_schedule
+    build_alternate_medication
+
+    visit person_path(person)
+    trigger = find("[data-testid='log-past-dose-schedule-#{schedule.id}']")
+    trigger.click
+
+    expect(page).to have_css('[role="dialog"]', text: 'Record a dose from a previous day')
+
+    find('body').send_keys(:escape)
+
+    expect(page).to have_no_css('[role="dialog"]')
+    expect(page.evaluate_script('document.activeElement.dataset.testid')).to eq("log-past-dose-schedule-#{schedule.id}")
   end
 
   def build_schedule

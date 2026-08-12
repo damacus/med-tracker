@@ -103,6 +103,40 @@ RSpec.describe 'Schedules workflow' do
     end
   end
 
+  it 'dismisses only the delete confirmation before closing its actions menu with Escape', :js do
+    visit person_path(person)
+
+    within("##{tenant_dom_id(schedule)}") do
+      open_schedule_actions
+      find("[data-testid='delete-schedule-#{schedule.id}']").click
+    end
+
+    expect(page).to have_css('[role="alertdialog"]')
+
+    find('body').send_keys(:escape)
+
+    expect(page).to have_no_css('[role="alertdialog"]')
+    expect(page).to have_css("[data-testid='schedule-actions-menu-#{schedule.id}']:not(.hidden)")
+    expect(page.evaluate_script('document.activeElement.dataset.testid')).to eq("delete-schedule-#{schedule.id}")
+
+    find('body').send_keys(:escape)
+
+    expect(page).to have_no_css("[data-testid='schedule-actions-menu-#{schedule.id}']", visible: :visible)
+    expect(page.evaluate_script('document.activeElement.dataset.testid')).to eq("schedule-actions-#{schedule.id}")
+  end
+
+  it 'closes its actions menu when an ordinary item opens the edit dialog', :js do
+    visit person_path(person)
+
+    within("##{tenant_dom_id(schedule)}") do
+      open_schedule_actions
+      edit_schedule
+    end
+
+    expect(page).to have_css('[role="dialog"]')
+    expect(page).to have_no_css("[data-testid='schedule-actions-menu-#{schedule.id}']", visible: :visible)
+  end
+
   private
 
   def open_edit_form

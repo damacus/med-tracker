@@ -28,6 +28,8 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this.#removeEventListeners();
+
     if (this.autoUpdateCleanup) {
       this.autoUpdateCleanup();
     }
@@ -76,13 +78,25 @@ export default class extends Controller {
     this.contentTarget.classList.remove("hidden");
   }
 
-  close() {
+  close(event) {
+    if (event?.type === "click" && event.target.closest('[data-ruby-ui-overlay-trigger]')) return;
+
     this.openValue = false;
     this.#removeEventListeners();
     this.contentTarget.classList.add("hidden");
   }
 
   #handleKeydown(e) {
+    if (e.key === "Escape") {
+      if (document.querySelector("dialog:modal")) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      this.close();
+      this.#focusTrigger();
+      return;
+    }
+
     if (!this.hasMenuItemTarget) return;
 
     if (e.key === "ArrowDown") {
@@ -142,5 +156,13 @@ export default class extends Controller {
 
   #removeEventListeners() {
     document.removeEventListener("keydown", this.boundHandleKeydown);
+  }
+
+  #focusTrigger() {
+    const trigger = this.triggerTarget.matches('a[href], button, input, select, textarea, [tabindex]')
+      ? this.triggerTarget
+      : this.triggerTarget.querySelector('a[href], button, input, select, textarea, [tabindex]');
+
+    trigger?.focus({ preventScroll: true });
   }
 }

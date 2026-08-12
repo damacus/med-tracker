@@ -13,7 +13,8 @@ RSpec.describe 'CSP Compliance', type: :unit do
       # Check alert dialog content
       alert_dialog_html = RubyUI::AlertDialogContent.new.call
       expect(alert_dialog_html).not_to include('style=')
-      expect(alert_dialog_html).to include('pointer-events-auto')
+      expect(alert_dialog_html).to include('backdrop:bg-foreground/10')
+      expect(alert_dialog_html).to include('backdrop:backdrop-blur-[1.5px]')
 
       # Check sheet content
       sheet_html = RubyUI::SheetContent.new.call

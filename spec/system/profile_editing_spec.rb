@@ -75,6 +75,36 @@ RSpec.describe 'Profile Editing' do
       expect(page).to have_text('My Profile')
     end
 
+    it 'keeps keyboard focus inside the account closure alert dialog' do
+      click_on 'Close Account'
+
+      dialog = find('dialog[open][role="alertdialog"]')
+      tabbable_count = dialog.all(
+        'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), ' \
+        'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      ).count
+
+      expect(tabbable_count).to be_positive
+      expect(page).to have_css('[role="alertdialog"] :focus')
+      expect(page.evaluate_script("document.activeElement.closest('[role=alertdialog]') !== null")).to be(true)
+
+      (tabbable_count + 1).times do
+        page.active_element.send_keys(:tab)
+        active_element_in_dialog = page.evaluate_script(
+          "document.activeElement.closest('[role=alertdialog]') === arguments[0]", dialog
+        )
+        expect(active_element_in_dialog).to be(true)
+      end
+
+      (tabbable_count + 1).times do
+        page.active_element.send_keys(%i[shift tab])
+        active_element_in_dialog = page.evaluate_script(
+          "document.activeElement.closest('[role=alertdialog]') === arguments[0]", dialog
+        )
+        expect(active_element_in_dialog).to be(true)
+      end
+    end
+
     it 'closes the account and prevents future login' do
       expect(page).to have_css('[data-ruby-ui--alert-dialog-target="content"]', visible: :hidden, wait: 5)
 

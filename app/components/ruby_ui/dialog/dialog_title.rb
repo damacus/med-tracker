@@ -10,6 +10,7 @@ module RubyUI
 
     def default_attrs
       {
+        data: { ruby_ui_dialog_title: true },
         class: 'text-3xl font-semibold leading-tight tracking-tight text-foreground'
       }
     end

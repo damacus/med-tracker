@@ -54,8 +54,7 @@ RSpec.describe 'Person Medications', type: :system do
         find("[data-testid='edit-person-medication-#{person_medication.id}']").click
       end
 
-      expect(page).to have_text(/edit medication/i)
-      expect(page).to have_css('div[data-state="open"]')
+      expect(page).to have_css('dialog[open][role="dialog"]', text: /edit medication/i)
     end
   end
 end

@@ -11,11 +11,15 @@ RSpec.describe 'Navigation', :browser do
   end
 
   context 'when user is not authenticated' do
-    it 'shows navigation with a login link' do
+    it 'keeps account verification in the auth shell with a login return' do
       page.current_window.resize_to(375, 667)
       visit '/verify-account-resend'
 
-      expect(page).to have_link('Login')
+      expect(page).to have_field('Email address')
+      expect(page).to have_link('Welcome back', href: '/login')
+      expect(page).to have_no_css('[data-responsive-shell-role="sidebar"]')
+      expect(page).to have_no_css('[data-testid="mobile-rail"]')
+      expect(page).to have_no_css('nav.nav')
     end
   end
 end

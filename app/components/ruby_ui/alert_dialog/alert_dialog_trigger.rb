@@ -10,7 +10,10 @@ module RubyUI
 
     def default_attrs
       {
-        data: { action: 'click->ruby-ui--alert-dialog#open' },
+        data: {
+          action: 'click->ruby-ui--alert-dialog#open',
+          ruby_ui_overlay_trigger: true
+        },
         class: 'inline-block'
       }
     end
