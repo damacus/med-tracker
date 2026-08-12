@@ -52,6 +52,7 @@ RSpec.describe 'Timeline refresh after taking medication' do
 
     it 'refreshes the dashboard aggregates in the response' do
       post take_medication_person_schedule_path(person, schedule),
+           params: { dashboard_context: '1' },
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
       expect(response.body).to include('target="dashboard"')
@@ -70,6 +71,7 @@ RSpec.describe 'Timeline refresh after taking medication' do
         carer_account.update!(dashboard_variant: variant)
 
         post take_medication_person_schedule_path(person, schedule),
+             params: { dashboard_context: '1' },
              headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
         expect(response.body).to include('target="dashboard"')
@@ -81,7 +83,7 @@ RSpec.describe 'Timeline refresh after taking medication' do
       carer_account.update!(dashboard_variant: 'family_lanes')
 
       post take_medication_person_schedule_path(person, schedule),
-           params: { dashboard_grouping: 'unexpected' },
+           params: { dashboard_context: '1', dashboard_grouping: 'unexpected' },
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
       expect(response.body).to include('dashboard-variant-family-lanes')
@@ -90,7 +92,7 @@ RSpec.describe 'Timeline refresh after taking medication' do
 
     it 'ignores a dashboard person outside the permitted scope' do
       post take_medication_person_schedule_path(person, schedule),
-           params: { dashboard_person_id: people(:john).id },
+           params: { dashboard_context: '1', dashboard_person_id: people(:john).id },
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
       expect(response.body).to include(person.name)
@@ -158,6 +160,7 @@ RSpec.describe 'Timeline refresh after taking medication' do
 
     it 'refreshes the dashboard aggregates in the response' do
       post take_medication_person_person_medication_path(person, person_medication),
+           params: { dashboard_context: '1' },
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
       expect(response.body).to include('target="dashboard"')
@@ -165,6 +168,13 @@ RSpec.describe 'Timeline refresh after taking medication' do
       expect(response.body).to include('Due Now')
       expect(response.body).to include('Tasks Left')
       expect(turbo_stream_targets).to end_with('dashboard', 'flash')
+    end
+
+    it 'does not render a dashboard stream for a take outside the dashboard' do
+      post take_medication_person_person_medication_path(person, person_medication),
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(turbo_stream_targets).not_to include('dashboard')
     end
 
     it 'refreshes an as-needed item into cooldown after a take' do

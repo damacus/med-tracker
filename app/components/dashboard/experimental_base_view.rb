@@ -261,6 +261,7 @@ module Components
         {
           person: row[:person],
           current_user: current_user,
+          dashboard_context: true,
           dashboard_person_id: presenter.selected_person_id
         }
       end

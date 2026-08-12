@@ -25,12 +25,10 @@ module TimelineRefreshable
   def build_timeline_streams_for(taken_source, take)
     medication = taken_source.medication.reload
 
-    streams = [
-      update_timeline_item_stream(taken_source, take),
-      update_medication_card_stream(taken_source)
-    ]
-
-    streams + other_timeline_streams(taken_source, medication) + [refresh_dashboard_stream(taken_source)]
+    streams = [update_timeline_item_stream(taken_source, take), update_medication_card_stream(taken_source)]
+    streams += other_timeline_streams(taken_source, medication)
+    streams << refresh_dashboard_stream(taken_source) if params[:dashboard_context] == '1'
+    streams
   end
 
   def refresh_dashboard_stream(source)

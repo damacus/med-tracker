@@ -93,7 +93,7 @@ module Components
 
         render Components::Medications::TakeAction.new(
           source: source,
-          context: { person: dose[:person], current_user: current_user },
+          context: { person: dose[:person], current_user: current_user, dashboard_context: true },
           amount: amount,
           button: {
             label: take_label,

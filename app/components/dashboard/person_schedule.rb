@@ -117,7 +117,7 @@ module Components
                 end
         render Components::Medications::TakeAction.new(
           source: schedule,
-          context: { person: person, current_user: current_user },
+          context: { person: person, current_user: current_user, dashboard_context: true },
           amount: schedule.dose_amount,
           button: {
             label: t('dashboard.person_schedule.take_now'),
