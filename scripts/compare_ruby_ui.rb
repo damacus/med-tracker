@@ -136,14 +136,14 @@ class RubyUiComparison
 
   def generate(workspace, components)
     copy_application(workspace)
-    generator_loader = install_read_only_generator(workspace)
+    install_read_only_generator(workspace)
     command = [
       Gem.bin_path('bundler', 'bundle'), 'exec', workspace.join('bin/rails').to_s, 'generate',
       'ruby_ui:comparison_component', *components, '--force'
     ]
     environment = {
       'BUNDLE_GEMFILE' => workspace.join('Gemfile').to_s,
-      'RUBYOPT' => [ENV['RUBYOPT'], "-r#{generator_loader}"].compact.join(' ')
+      'RUBYOPT' => '-r./.ruby_ui_comparison_generator'
     }
     _output, error, status = Open3.capture3(environment, *command, chdir: workspace)
     return workspace if status.success?
