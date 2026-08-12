@@ -35,7 +35,9 @@ module Components
       private
 
       def render_admin_menu_item
-        render RubyUI::DropdownMenuItem.new(href: admin_root_path) { t('layouts.profile_menu.administration') }
+        render RubyUI::DropdownMenuItem.new(href: household_navigation_path(:admin_root_path)) do
+          t('layouts.profile_menu.administration')
+        end
       end
 
       def render_logout_menu_item

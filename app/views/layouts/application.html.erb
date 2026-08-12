@@ -44,11 +44,20 @@
   </head>
 
     <body class="bg-background text-foreground transition-colors duration-300"<% if app_shell %> data-controller="global-search responsive-shell"<% end %>>
-    <% hide_signed_out_chrome = request.path == "/login" %>
+    <% navigation_membership = shell_membership %>
+    <% navigation_household = shell_household %>
     <% main_classes = ["transition-all duration-500"] %>
     <% main_classes << "pb-28 md:ml-64 md:pb-0" if app_shell %>
-    <%= render Components::Layouts::Sidebar.new(current_user: current_user) if app_shell %>
-    <%= render Components::Layouts::Navigation.new(current_user: current_user) unless hide_signed_out_chrome %>
+    <%= render Components::Layouts::Sidebar.new(
+      current_user: current_user,
+      membership: navigation_membership,
+      household: navigation_household
+    ) if app_shell %>
+    <%= render Components::Layouts::Navigation.new(
+      current_user: current_user,
+      membership: navigation_membership,
+      household: navigation_household
+    ) if app_shell %>
     <%= render Components::Layouts::DemoNotice.new if app_shell && DemoMode.enabled? %>
 
     <% if content_for?(:flash) %>
@@ -64,7 +73,7 @@
         <%= yield %>
       </div>
     </main>
-    <%= render Components::GlobalSearch::Palette.new if app_shell %>
+    <%= render Components::GlobalSearch::Palette.new(household: navigation_household) if app_shell %>
     <turbo-frame id="modal"></turbo-frame>
   </body>
 </html>

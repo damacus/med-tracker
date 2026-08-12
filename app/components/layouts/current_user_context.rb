@@ -3,10 +3,12 @@
 module Components
   module Layouts
     module CurrentUserContext
-      attr_reader :current_user
+      attr_reader :current_user, :membership, :household
 
-      def initialize(current_user: nil)
+      def initialize(current_user: nil, membership: nil, household: nil)
         @current_user = current_user
+        @membership = membership
+        @household = household
         super()
       end
 
@@ -17,7 +19,7 @@ module Components
       end
 
       def user_is_admin?
-        Current.membership&.owner? || Current.membership&.administrator? || false
+        current_membership&.owner? || current_membership&.administrator? || false
       end
 
       def current_user_name
@@ -25,7 +27,15 @@ module Components
       end
 
       def current_membership_role_name
-        (Current.membership&.role.presence || 'member').to_s.humanize
+        (current_membership&.role.presence || 'member').to_s.humanize
+      end
+
+      def current_membership
+        membership || Current.membership
+      end
+
+      def current_household
+        household || Current.household
       end
     end
   end

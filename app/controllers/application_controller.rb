@@ -11,7 +11,7 @@ class ApplicationController < ActionController::Base
   before_action :set_paper_trail_whodunnit
   around_action :with_current_context
   after_action :verify_pundit_authorization, if: :pundit_verification_required?
-  helper_method :current_household, :current_membership
+  helper_method :current_household, :current_membership, :shell_membership, :shell_household
 
   rescue_from ActionController::InvalidAuthenticityToken, with: :handle_invalid_authenticity_token
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
@@ -81,6 +81,14 @@ class ApplicationController < ActionController::Base
 
   def current_account_time_zone
     current_account&.preferred_time_zone || Rails.application.config.time_zone
+  end
+
+  def shell_membership
+    Current.membership
+  end
+
+  def shell_household
+    Current.household || shell_membership&.household
   end
 
   def active_household_membership

@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Login layout' do
+  fixtures :accounts, :people, :users
+
   it 'uses one non-empty CSP nonce across the anonymous response' do
     get login_path
 
@@ -36,6 +38,34 @@ RSpec.describe 'Login layout' do
     expect(response.body).not_to include('nav__brand-link')
   end
 
+  it 'keeps an authenticated owner in the household shell while setting up MFA' do
+    user = users(:admin)
+    household = ensure_api_household_for(user)
+    sign_in(user)
+
+    household_queries = with_runtime_role do
+      capture_household_queries { get '/otp-setup' }
+    end
+
+    expect(response).to have_http_status(:ok)
+    expect(household_queries.length).to eq(1)
+    expect(response.body).to include('data-responsive-shell-role="sidebar"')
+    expect(response.body).to include('data-testid="mobile-rail"')
+    expect(response.body).to include(user.name)
+    expect(response.body).to include('Owner')
+    expect(response.body).to include('Administration')
+    expect(response.body).to include("/households/#{household.slug}/dashboard")
+  end
+
+  it 'keeps anonymous password recovery in the auth shell' do
+    get '/reset-password-request'
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include('data-responsive-shell-role="sidebar"')
+    expect(response.body).not_to include('data-testid="mobile-rail"')
+    expect(response.body).not_to include('class="nav"')
+  end
+
   it 'redirects unauthenticated users to login without routine login-required flash' do
     get dashboard_path
 
@@ -47,5 +77,28 @@ RSpec.describe 'Login layout' do
 
     expect(response.body).not_to include('Please login to continue')
     expect(response.body.scan('role="alert"').count).to eq(0)
+  end
+
+  def capture_household_queries(&)
+    queries = []
+    subscriber = lambda do |_name, _started, _finished, _unique_id, payload|
+      next if payload[:cached] || payload[:name] == 'SCHEMA'
+      next unless payload[:sql].match?(/household_memberships|households/)
+
+      queries << payload[:sql]
+    end
+
+    ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
+    queries
+  end
+
+  def with_runtime_role
+    result = nil
+    ActiveRecord::Base.connection.transaction(requires_new: true) do
+      ActiveRecord::Base.connection.execute('SET LOCAL ROLE med_tracker_app')
+      result = yield
+      raise ActiveRecord::Rollback
+    end
+    result
   end
 end
