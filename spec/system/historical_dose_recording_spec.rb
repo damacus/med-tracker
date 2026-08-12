@@ -17,14 +17,15 @@ RSpec.describe 'Historical dose recording', :browser do
     travel_to(Time.zone.local(2026, 4, 28, 14, 45)) do
       schedule = build_schedule
       build_alternate_medication
-      submitted_time = Time.zone.local(2026, 4, 27, 8, 30)
+      submitted_time = Time.zone.local(2026, 4, 28, 8, 30)
 
       visit person_path(person)
       within("##{tenant_dom_id(schedule)}") do
         click_button 'Log a past dose'
       end
 
-      dialog = find('dialog[open][role="dialog"]', text: 'Record a dose from a previous day')
+      dialog = find('dialog[open][role="dialog"]', text: 'Record a past dose')
+      expect(dialog).to have_text('Record a dose taken earlier today or on a previous day.')
 
       field = dialog.find("input[name='medication_take[taken_at]'][type='datetime-local']", visible: :all)
       expect(field[:value]).to eq('2026-04-28T14:45')
@@ -50,7 +51,7 @@ RSpec.describe 'Historical dose recording', :browser do
     trigger = find("[data-testid='log-past-dose-schedule-#{schedule.id}']")
     trigger.click
 
-    expect(page).to have_css('[role="dialog"]', text: 'Record a dose from a previous day')
+    expect(page).to have_css('[role="dialog"]', text: 'Record a past dose')
 
     find('body').send_keys(:escape)
 
