@@ -106,6 +106,38 @@ RSpec.describe 'People' do
       expect(page).to have_text('People')
       expect(page).to have_no_text('How is this medication taken?')
     end
+
+    it 'opens Edit Person in a modal and cancels without saving', :browser do
+      driven_by(:playwright)
+      login_as(user)
+      person = people(:john)
+      original_name = person.name
+      unsaved_name = 'Unsaved person name'
+
+      visit person_path(person)
+      expect(page).to have_link(
+        'Edit Person',
+        href: edit_person_path(person, return_to: person_path(person))
+      )
+      click_link 'Edit Person'
+
+      page.driver.with_playwright_page do |playwright_page|
+        dialog = playwright_page.get_by_role('dialog', name: 'Edit Person')
+
+        dialog.wait_for(state: 'visible', timeout: 5_000)
+        expect(dialog).to be_visible
+        expect(dialog.get_by_role('textbox', name: 'Name').input_value).to eq(original_name)
+        expect(dialog.get_by_role('button', name: 'Update Person')).to be_visible
+        dialog.get_by_role('textbox', name: 'Name').fill(unsaved_name)
+        dialog.get_by_role('button', name: 'Cancel').click
+        expect(dialog).not_to be_visible
+      end
+
+      expect(page).to have_current_path(person_path(person))
+      expect(page).to have_text(original_name)
+      expect(page).to have_no_text(unsaved_name)
+      expect(person.reload.name).to eq(original_name)
+    end
   end
 
   describe 'patients without carers' do
