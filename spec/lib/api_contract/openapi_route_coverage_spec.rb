@@ -580,6 +580,31 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       ).to include('/notification_preference')
     end
 
+    it 'types native device token registration and revocation' do
+      create_operation = described_class.operation('/households/{household_id}/native_device_tokens', 'post')
+      delete_operation = described_class.operation('/households/{household_id}/native_device_tokens/{id}', 'delete')
+
+      expect(create_operation.dig('requestBody', 'content', 'application/json', 'schema', '$ref')).to eq(
+        '#/components/schemas/NativeDeviceTokenCreateRequest'
+      )
+      expect(create_operation.fetch('responses').keys).to include('201', '401', '403', '422')
+      expect(delete_operation.fetch('responses').keys).to include('204', '401', '403')
+    end
+
+    it 'accepts only the native device token fields supported by Rails' do
+      valid_request = {
+        native_device_token: { device_token: 'opaque-device-token', platform: 'ios' }
+      }
+      invalid_request = {
+        native_device_token: { device_token: 'opaque-device-token', platform: 'windows', secret: 'private' }
+      }
+
+      expect(described_class.schema_errors('NativeDeviceTokenCreateRequest', valid_request)).to be_empty
+      expect(described_class.schema_errors('NativeDeviceTokenCreateRequest', invalid_request)).to contain_exactly(
+        '/native_device_token/platform', '/native_device_token/secret'
+      )
+    end
+
     it 'references typed representative person request and response schemas' do
       create_person = described_class.operation('/households/{household_id}/people', 'post')
       show_person = described_class.operation('/households/{household_id}/people/{id}', 'get')
