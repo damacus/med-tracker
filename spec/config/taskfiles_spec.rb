@@ -130,21 +130,25 @@ RSpec.describe 'Taskfiles' do
     task = root_taskfile.dig('tasks', 'ruby-ui:compare')
     command = task.dig('cmds', 0)
 
-    expect(task.fetch('env')).to include(
+    expect(task.fetch('env')).to eq(
       'RUBY_UI_COMPONENTS' => '{{ .COMPONENTS | default "" }}',
-      'RUBY_UI_OUTPUT' => '{{ .OUTPUT | default "" }}',
-      'RUBY_UI_ALL' => '{{ .ALL | default "" }}'
+      'RUBY_UI_OUTPUT' => '{{ .OUTPUT | default "" }}'
     )
     expect(command).to eq('./scripts/run_ruby_ui_comparison.fish')
     expect(command).not_to include('.OUTPUT', '.COMPONENTS')
+  end
 
+  it 'uses an executable Fish wrapper without evaluating task input' do
     wrapper = Rails.root.join('scripts/run_ruby_ui_comparison.fish').read
-    expected_wrapper = <<~FISH
-      #!/usr/bin/env fish
 
-      mise exec -- bundle exec ruby scripts/compare_ruby_ui.rb --from-task-environment
-    FISH
-    expect(wrapper).to eq(expected_wrapper)
+    expect(wrapper).to include('string split', 'mise exec -- bundle exec ruby scripts/compare_ruby_ui.rb $arguments')
+    expect(wrapper).not_to include('eval', '--from-task-environment')
+    expect(Rails.root.join('scripts/run_ruby_ui_comparison.fish')).to be_executable
+  end
+
+  it 'does not define a whole-library or secondary RubyUI comparison task' do
+    expect(root_taskfile.dig('tasks', 'ruby-ui:compare:contract')).to be_nil
+    expect(root_taskfile.dig('tasks', 'ruby-ui:compare').to_json).not_to include('ALL', 'component:all')
   end
 
   it 'defines a restore rehearsal with explicit evidence inputs and no raw restore command' do
