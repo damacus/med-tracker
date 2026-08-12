@@ -512,6 +512,31 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(described_class.schema_errors('ErrorEnvelope', response.parsed_body)).to be_empty
     end
 
+    it 'types the public capability response and no-store header' do
+      operation = described_class.operation('/capabilities', 'get')
+
+      expect(operation.fetch('security')).to eq([])
+      expect(operation.dig('responses', '200', 'content', 'application/json', 'schema', '$ref')).to eq(
+        '#/components/schemas/CapabilitiesResponse'
+      )
+      expect(operation.dig('responses', '200', 'headers', 'Cache-Control', 'schema')).to include(
+        'type' => 'string', 'const' => 'no-store'
+      )
+    end
+
+    it 'matches the public Rails capability payload without allowing drift' do
+      get api_v1_capabilities_path, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('CapabilitiesResponse', response.parsed_body)).to be_empty
+      expect(
+        described_class.schema_errors(
+          'CapabilitiesResponse',
+          response.parsed_body.deep_merge('data' => { 'unexpected' => true })
+        )
+      ).to include('/data/unexpected')
+    end
+
     it 'references typed representative person request and response schemas' do
       create_person = described_class.operation('/households/{household_id}/people', 'post')
       show_person = described_class.operation('/households/{household_id}/people/{id}', 'get')
