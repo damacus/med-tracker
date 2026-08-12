@@ -72,6 +72,17 @@ paths:
       responses:
         '200':
           description: API capability document, including CLI and MCP availability.
+          headers:
+            Cache-Control:
+              description: Prevent capability responses from being stored by intermediaries or clients.
+              required: true
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilitiesResponse'
   /auth/login:
     post:
       operationId: createLoginSession
@@ -1564,6 +1575,287 @@ components:
             $ref: '#/components/schemas/Person'
         meta:
           $ref: '#/components/schemas/PaginationMeta'
+    CapabilitiesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Capabilities'
+    Capabilities:
+      type: object
+      additionalProperties: false
+      required:
+        - format
+        - api_version
+        - authentication
+        - administration
+        - portable_formats
+        - backups
+        - fhir
+        - sync
+        - client_tools
+      properties:
+        format:
+          type: string
+          const: medtracker.api.capabilities.v1
+        api_version:
+          type: string
+          const: v1
+        authentication:
+          $ref: '#/components/schemas/CapabilityAuthentication'
+        administration:
+          $ref: '#/components/schemas/CapabilityAdministration'
+        portable_formats:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - medtracker.portable.v1
+              - medtracker.portable.encrypted.v1
+              - medtracker.portable.v2
+        backups:
+          $ref: '#/components/schemas/CapabilityBackups'
+        fhir:
+          $ref: '#/components/schemas/CapabilityFhir'
+        sync:
+          $ref: '#/components/schemas/CapabilitySync'
+        client_tools:
+          $ref: '#/components/schemas/CapabilityClientTools'
+    CapabilityAuthentication:
+      type: object
+      additionalProperties: false
+      required:
+        - methods
+        - hosted_mobile
+        - password_login
+        - oidc_exchange
+      properties:
+        methods:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - bearer_session
+              - api_app_token
+        hosted_mobile:
+          type: string
+          const: oidc_authorization_code_pkce
+        password_login:
+          type: string
+          const: development_or_migration
+        oidc_exchange:
+          $ref: '#/components/schemas/CapabilityOidcExchange'
+    CapabilityOidcExchange:
+      type: object
+      additionalProperties: false
+      required:
+        - supported
+        - pkce_required
+        - session_listing
+        - session_revocation
+      properties:
+        supported:
+          type: boolean
+          const: true
+        pkce_required:
+          type: boolean
+          const: true
+        session_listing:
+          type: boolean
+          const: true
+        session_revocation:
+          type: boolean
+          const: true
+    CapabilityAdministration:
+      type: object
+      additionalProperties: false
+      required:
+        - household
+        - fresh_mfa_required
+        - app_tokens
+        - audit_logs
+        - invitations
+        - person_access_grants
+      properties:
+        household:
+          type: boolean
+          const: true
+        fresh_mfa_required:
+          type: boolean
+          const: true
+        app_tokens:
+          type: boolean
+          const: true
+        audit_logs:
+          type: boolean
+          const: true
+        invitations:
+          type: boolean
+          const: true
+        person_access_grants:
+          type: boolean
+          const: true
+    CapabilityBackups:
+      type: object
+      additionalProperties: false
+      required:
+        - encrypted_migration_bundle
+        - unencrypted_zip
+        - health_data_json
+      properties:
+        encrypted_migration_bundle:
+          type: boolean
+          const: true
+        unencrypted_zip:
+          type: boolean
+          const: true
+        health_data_json:
+          type: boolean
+          const: true
+    CapabilityFhir:
+      type: object
+      additionalProperties: false
+      required:
+        - version
+        - resources
+      properties:
+        version:
+          type: string
+          const: R4
+        resources:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - Patient
+              - Medication
+              - MedicationRequest
+              - MedicationStatement
+              - MedicationAdministration
+    CapabilitySync:
+      type: object
+      additionalProperties: false
+      required:
+        - portable_ids
+        - numeric_ids
+        - mobile_snapshot
+        - dry_run_import
+        - idempotency_keys
+        - etag_conflicts
+        - change_feed
+        - batch_mutations
+        - tombstones
+      properties:
+        portable_ids:
+          type: boolean
+          const: true
+        numeric_ids:
+          type: string
+          const: backward_compatible
+        mobile_snapshot:
+          type: boolean
+          const: true
+        dry_run_import:
+          type: boolean
+          const: true
+        idempotency_keys:
+          type: boolean
+          const: true
+        etag_conflicts:
+          type: boolean
+          const: true
+        change_feed:
+          type: boolean
+          const: true
+        batch_mutations:
+          type: boolean
+          const: true
+        tombstones:
+          type: boolean
+          const: true
+    CapabilityClientTools:
+      type: object
+      additionalProperties: false
+      required:
+        - cli
+        - mcp_server
+        - diagnostics
+      properties:
+        cli:
+          $ref: '#/components/schemas/CapabilityCli'
+        mcp_server:
+          $ref: '#/components/schemas/CapabilityMcpServer'
+        diagnostics:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - request_id
+              - retry_after
+    CapabilityCli:
+      type: object
+      additionalProperties: false
+      required:
+        - supported
+        - status
+        - binary
+        - api_boundary
+        - distribution
+      properties:
+        supported:
+          type: boolean
+          const: true
+        status:
+          type: string
+          const: available
+        binary:
+          type: string
+          const: medtracker
+        api_boundary:
+          type: string
+          const: /api/v1
+        distribution:
+          type: string
+          const: github_release
+    CapabilityMcpServer:
+      type: object
+      additionalProperties: false
+      required:
+        - supported
+        - transport
+        - endpoint
+        - stdio_binary
+        - tools
+        - resources
+      properties:
+        supported:
+          type: boolean
+          const: true
+        transport:
+          type: string
+          const: streamable_http
+        endpoint:
+          type: string
+          const: /mcp
+        stdio_binary:
+          type: string
+          const: medtracker-mcp
+        tools:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        resources:
+          type: array
+          items:
+            type: string
+            minLength: 1
     ValidationErrors:
       type: object
       additionalProperties:
