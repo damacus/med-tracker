@@ -3,6 +3,10 @@
 module Components
   module GlobalSearch
     class Palette < Components::Base
+      def initialize(household: nil)
+        @household = household
+      end
+
       def view_template
         div(
           id: 'global_search_panel',
@@ -101,10 +105,7 @@ module Components
       end
 
       def household_route_options
-        @household_route_options ||= begin
-          household = Current.household || Current.account&.first_active_household
-          household ? { household_slug: household.slug } : {}
-        end
+        @household_route_options ||= @household ? { household_slug: @household.slug } : {}
       end
     end
   end

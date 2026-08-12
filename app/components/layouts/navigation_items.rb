@@ -21,7 +21,7 @@ module Components
       def admin_navigation_items
         return [] unless user_is_admin?
 
-        [navigation_item(t('layouts.sidebar.administration'), admin_root_path, Icons::Settings)]
+        [navigation_item(t('layouts.sidebar.administration'), household_navigation_path(:admin_root_path), Icons::Settings)]
       end
 
       def profile_navigation_item
@@ -57,22 +57,7 @@ module Components
       end
 
       def household_slug
-        Current.household&.slug || account_household_slug || default_household_slug
-      end
-
-      def account_household_slug
-        navigation_account&.first_active_household&.slug
-      end
-
-      def navigation_account
-        return unless current_user.respond_to?(:person)
-
-        current_user&.person&.account
-      end
-
-      def default_household_slug
-        options = view_context.default_url_options
-        options[:household_slug] || options['household_slug']
+        current_household&.slug
       end
     end
   end

@@ -22,7 +22,13 @@ module Components
           end
         end
 
-        render Components::Layouts::MobileRail.new(current_user: current_user) if authenticated?
+        return unless authenticated?
+
+        render Components::Layouts::MobileRail.new(
+          current_user: current_user,
+          membership: membership,
+          household: household
+        )
       end
 
       private
@@ -37,7 +43,13 @@ module Components
 
       def render_left_section
         div(class: 'nav__left flex items-center gap-6') do
-          render Components::Layouts::MobileMenu.new(current_user: current_user) if authenticated?
+          if authenticated?
+            render Components::Layouts::MobileMenu.new(
+              current_user: current_user,
+              membership: membership,
+              household: household
+            )
+          end
           render_brand
         end
       end
@@ -70,7 +82,11 @@ module Components
 
         div(class: 'nav__user-menu hidden md:block') do
           if authenticated?
-            render Components::Layouts::ProfileMenu.new(current_user: current_user)
+            render Components::Layouts::ProfileMenu.new(
+              current_user: current_user,
+              membership: membership,
+              household: household
+            )
           else
             link_to(t('layouts.navigation.login'), '/login', class: 'nav__link text-sm font-medium')
           end

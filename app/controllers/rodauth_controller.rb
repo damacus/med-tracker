@@ -4,6 +4,7 @@ class RodauthController < ApplicationController
   # Skip authentication for Rodauth routes to prevent redirect loops
   allow_unauthenticated_access
   skip_after_action :verify_pundit_authorization
+  before_action :preload_shell_membership, if: :authenticated?
 
   # Used by Rodauth for rendering views, CSRF protection, running any
   # registered action callbacks and rescue handlers, instrumentation etc.
@@ -23,4 +24,21 @@ class RodauthController < ApplicationController
   #     "application"
   #   end
   # end
+
+  private
+
+  def preload_shell_membership
+    @shell_membership = TenantContext.with(
+      account: current_account,
+      household: nil,
+      request_id: request.request_id
+    ) do
+      current_account.first_active_household_membership
+    end
+    @default_household_for_urls = @shell_membership&.household
+  end
+
+  def shell_membership
+    @shell_membership || super
+  end
 end
