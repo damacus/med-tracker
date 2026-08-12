@@ -923,8 +923,8 @@ en:
       untracked_inventory: Untracked
     prior_day_take_action:
       menu_item: Log a past dose
-      title: Record a dose from a previous day
-      description: Backdate a dose taken before today.
+      title: Record a past dose
+      description: Record a dose taken earlier today or on a previous day.
       taken_at: Date and time taken
       submit: Record historical dose
     card:

@@ -923,8 +923,8 @@ cy:
       title: Cofnodi dos
     prior_day_take_action:
       menu_item: Cofnodi dos blaenorol
-      title: Cofnodi dos o ddiwrnod blaenorol
-      description: Cofnodi dos a gymerwyd cyn heddiw.
+      title: Cofnodi dos blaenorol
+      description: Cofnodwch ddos a gymerwyd yn gynharach heddiw neu ar ddiwrnod blaenorol.
       taken_at: Dyddiad ac amser
       submit: Cofnodi dos hanesyddol
     card:

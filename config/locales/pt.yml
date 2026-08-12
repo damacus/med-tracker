@@ -931,8 +931,8 @@ pt:
       title: Registar dose
     prior_day_take_action:
       menu_item: Registar dose anterior
-      title: Registar uma dose de um dia anterior
-      description: Retroceda uma dose tomada antes de hoje.
+      title: Registar uma dose anterior
+      description: Registe uma dose tomada mais cedo hoje ou num dia anterior.
       taken_at: Data e hora
       submit: Registar dose histórica
     card:

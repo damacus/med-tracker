@@ -26,12 +26,19 @@ RSpec.describe Components::Medications::PriorDayTakeAction, type: :component do
       rendered = render_component
       timestamp_field = rendered.at_css("input[type='datetime-local'][name='medication_take[taken_at]']")
 
-      expect(rendered.text).to include('Record a dose from a previous day')
       expect(rendered.at_css("form[action='#{take_path}']")).not_to be_nil
       expect(timestamp_field).not_to be_nil
       expect(timestamp_field['value']).to eq('2026-04-28T14:45')
       expect(timestamp_field['max']).to eq('2026-04-28T14:45')
     end
+  end
+
+  it 'describes historical doses as earlier today or on a previous day' do
+    build_alternate_medication
+    rendered = render_component
+
+    expect(rendered.text).to include('Record a past dose')
+    expect(rendered.text).to include('Record a dose taken earlier today or on a previous day.')
   end
 
   it 'renders a menuitem trigger with the configured testid and a calendar icon' do

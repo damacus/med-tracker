@@ -25,11 +25,11 @@ module Components
             DialogHeader do
               DialogTitle do
                 t('medications.prior_day_take_action.title',
-                  default: 'Record a dose from a previous day')
+                  default: 'Record a past dose')
               end
               DialogDescription do
                 t('medications.prior_day_take_action.description',
-                  default: 'Backdate a dose taken before today.')
+                  default: 'Record a dose taken earlier today or on a previous day.')
               end
             end
 

@@ -926,8 +926,8 @@ ga:
       title: Taifead dos
     prior_day_take_action:
       menu_item: Logáil dáileog roimhe seo
-      title: Cláraigh dáileog ó lá roimhe seo
-      description: Cláraigh dáileog a tógadh roimh inniu.
+      title: Cláraigh dáileog roimhe seo
+      description: Cláraigh dáileog a tógadh níos luaithe inniu nó ar lá roimhe seo.
       taken_at: Dáta agus am
       submit: Cláraigh dáileog stairiúil
     card:
