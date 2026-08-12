@@ -3,6 +3,7 @@
 module Reports
   class DateRange
     class RangeTooLarge < ArgumentError; end
+    class EndBeforeStart < ArgumentError; end
 
     MAX_RANGE_DAYS = 180
     DEFAULT_RANGE_DAYS = 6
@@ -21,7 +22,7 @@ module Reports
     end
 
     def validate!
-      raise ArgumentError, 'end_date must be on or after start_date' if end_date < start_date
+      raise EndBeforeStart, 'end_date must be on or after start_date' if end_date < start_date
       raise RangeTooLarge if (end_date - start_date).to_i > MAX_RANGE_DAYS
 
       self

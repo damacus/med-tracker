@@ -3,12 +3,12 @@
 module Components
   module Reports
     class FilterForm < Components::Base
-      def initialize(action_path:, people:, selected_person_id:, start_date:, end_date:)
+      def initialize(action_path:, people:, selected_person_id:, date_values:, error_message: nil)
         @action_path = action_path
         @people = people
         @selected_person_id = selected_person_id
-        @start_date = start_date
-        @end_date = end_date
+        @start_date, @end_date = date_values
+        @error_message = error_message
         super()
       end
 
@@ -17,6 +17,7 @@ module Components
           render_person_field
           render_date_field(name: 'start_date', label: translate('start_date_label'), value: @start_date)
           render_date_field(name: 'end_date', label: translate('end_date_label'), value: @end_date)
+          render_error
           m3_button(
             type: 'submit',
             class: 'rounded-xl shadow-elevation-1',
@@ -58,6 +59,12 @@ module Components
             class: 'h-9 min-h-[36px] px-3 py-2 text-sm shadow-sm'
           )
         end
+      end
+
+      def render_error
+        return if @error_message.blank?
+
+        render RubyUI::Alert.new(variant: :destructive, class: 'w-full') { @error_message }
       end
 
       def label_classes

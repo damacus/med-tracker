@@ -83,6 +83,21 @@ RSpec.describe 'Reports' do
         expect(flash[:alert]).to eq('Invalid date format provided.')
       end
 
+      it 'renders a preserved filter error when the end date is before the start date' do
+        person = people(:john)
+
+        get reports_path, params: { start_date: '2026-02-01', end_date: '2026-01-01', person_id: person.id }
+
+        expect(response).to have_http_status(:unprocessable_content)
+
+        page = response.parsed_body
+        expect(page.at_css('#start_date')['value']).to eq('2026-02-01')
+        expect(page.at_css('#end_date')['value']).to eq('2026-01-01')
+        expect(page.at_css('#person_id option[selected]')['value']).to eq(person.id.to_s)
+        expect(page.at_css('[role="alert"]').text).to include('End date must be on or after start date.')
+        expect(page.at_css("a[href*='/reports/health-history']")).to be_nil
+      end
+
       it 'redirects with alert when the report date range exceeds 180 days' do
         get reports_path, params: { start_date: '2026-01-01', end_date: '2026-07-01' }
 
@@ -143,6 +158,25 @@ RSpec.describe 'Reports' do
 
       expect(response).to redirect_to(reports_path)
       expect(flash[:alert]).to eq('Invalid date format provided.')
+    end
+
+    it 'returns reversed export filters to the report form with one dedicated alert' do
+      person = people(:john)
+
+      get health_history_report_path,
+          params: { start_date: '2026-02-01', end_date: '2026-01-01', person_id: person.id }
+
+      expect(response).to redirect_to(
+        reports_path(start_date: '2026-02-01', end_date: '2026-01-01', person_id: person.id)
+      )
+
+      follow_redirect!
+
+      expect(response).to have_http_status(:unprocessable_content)
+
+      alerts = response.parsed_body.css('[role="alert"]')
+      expect(alerts.size).to eq(1)
+      expect(alerts.first.text).to include('End date must be on or after start date.')
     end
 
     it 'redirects with alert when the PDF date range exceeds 180 days' do

@@ -28,6 +28,6 @@ RSpec.describe Reports::DateRange do
   it 'rejects end dates before start dates' do
     expect do
       described_class.parse(start_date: '2026-02-01', end_date: '2026-01-01')
-    end.to raise_error(ArgumentError)
+    end.to raise_error(described_class::EndBeforeStart)
   end
 end

@@ -9,8 +9,7 @@ RSpec.describe Components::Reports::FilterForm, type: :component do
         action_path: '/reports',
         people: [],
         selected_person_id: nil,
-        start_date: nil,
-        end_date: nil
+        date_values: [nil, nil]
       )
     )
     apply_button = rendered.at_css(%(button[aria-label="#{I18n.t('reports.index.apply_filters_aria_label')}"]))
