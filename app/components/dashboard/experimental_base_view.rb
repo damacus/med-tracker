@@ -84,7 +84,7 @@ module Components
       def render_task_action(row, label:, variant: :filled, size: :md, class_name: '')
         render Components::Medications::TakeAction.new(
           source: row[:source],
-          context: { person: row[:person], current_user: current_user },
+          context: take_action_context(row),
           amount: row[:source].dose_amount,
           button: {
             label: label,
@@ -254,7 +254,15 @@ module Components
       end
 
       def stock_medications
-        active_schedules.map(&:medication).uniq(&:id)
+        (active_schedules + active_person_medications).map(&:medication).uniq(&:id)
+      end
+
+      def take_action_context(row)
+        {
+          person: row[:person],
+          current_user: current_user,
+          dashboard_person_id: presenter.selected_person_id
+        }
       end
 
       def stock_count(medication)

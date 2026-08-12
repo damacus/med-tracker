@@ -14,7 +14,7 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto max-w-6xl px-4 py-6', data: { testid: 'dashboard' }) do
+        div(id: 'dashboard', class: 'container mx-auto max-w-6xl px-4 py-6', data: { testid: 'dashboard' }) do
           render_header
           render_person_selector
           render_stats_section
@@ -37,7 +37,7 @@ module Components
 
       private
 
-      delegate :people, :active_schedules, :upcoming_schedules,
+      delegate :people, :active_schedules, :active_person_medications, :upcoming_schedules,
                :current_user, :doses, :next_due_value, :due_now_count, :tasks_left_count,
                :routine_tasks_by_person, :as_needed_by_person, :today_takes_by_person,
                :dashboard_person_options, to: :presenter
@@ -283,7 +283,8 @@ module Components
                   person: person,
                   routine_tasks: routine_tasks_by_person.fetch(person, []),
                   as_needed_items: as_needed_by_person.fetch(person, []),
-                  current_user: current_user
+                  current_user: current_user,
+                  dashboard_person_id: presenter.selected_person_id
                 )
               end
             end
@@ -301,7 +302,9 @@ module Components
 
       def people_with_dashboard_items
         people.select do |person|
-          routine_tasks_by_person.fetch(person, []).any? || as_needed_by_person.fetch(person, []).any?
+          routine_tasks_by_person.fetch(person, []).any? ||
+            as_needed_by_person.fetch(person, []).any? ||
+            today_takes_by_person.fetch(person, []).any?
         end
       end
 
@@ -536,8 +539,8 @@ module Components
                    'duration-300 hover:shadow-elevation-2 cursor-default'
           ) do
             div(class: 'space-y-8') do
-              active_schedules.take(3).each do |p|
-                render_supply_item(p.medication)
+              stock_medications.take(3).each do |medication|
+                render_supply_item(medication)
               end
               m3_link(
                 href: medications_path,
@@ -573,6 +576,10 @@ module Components
             testid: 'dashboard-stock-meter'
           )
         end
+      end
+
+      def stock_medications
+        (active_schedules + active_person_medications).map(&:medication).uniq(&:id)
       end
 
       def greeting_key

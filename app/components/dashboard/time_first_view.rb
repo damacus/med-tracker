@@ -5,6 +5,7 @@ module Components
     class TimeFirstView < ExperimentalBaseView
       def view_template
         div(
+          id: 'dashboard',
           class: 'container mx-auto max-w-6xl px-4 py-6',
           data: { testid: 'dashboard-variant-time-first' }
         ) do

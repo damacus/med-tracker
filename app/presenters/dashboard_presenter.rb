@@ -55,6 +55,13 @@ class DashboardPresenter
                           .to_a
   end
 
+  def active_person_medications
+    scope = PersonMedication.active.where(person_id: people.map(&:id))
+    scope = scope.where(household: household) if household
+
+    @active_person_medications ||= scope.includes(person: :user, medication: %i[schedules person_medications]).to_a
+  end
+
   def upcoming_schedules
     @upcoming_schedules ||= active_schedules.group_by(&:person)
   end
@@ -193,5 +200,71 @@ class DashboardPresenter
 
   def dashboard_schedule
     @dashboard_schedule ||= FamilyDashboard::ScheduleQuery.new(people, current_user: current_user).tap(&:call)
+  end
+
+  class Projection
+    def initialize(current_user:, people_scope:, household:, dashboard_variant:)
+      @current_user = current_user
+      @people_scope = people_scope
+      @household = household
+      @dashboard_variant = dashboard_variant
+    end
+
+    def call(selected_person_id:, grouping: nil)
+      dashboard_view(selected_person_id:, grouping:)
+    end
+
+    def call_for(source:, selected_person_id:, grouping:)
+      call(selected_person_id: selection_for(source, selected_person_id), grouping: grouping_for(grouping))
+    end
+
+    private
+
+    attr_reader :current_user, :people_scope, :household, :dashboard_variant
+
+    def dashboard_view(selected_person_id:, grouping:)
+      presenter = presenter_for(selected_person_id)
+
+      case dashboard_variant
+      when 'time_first'
+        Components::Dashboard::TimeFirstView.new(presenter: presenter)
+      when 'family_lanes'
+        Components::Dashboard::FamilyLanesView.new(presenter: presenter, grouping: grouping)
+      when 'calm_focus'
+        Components::Dashboard::CalmFocusView.new(presenter: presenter)
+      else
+        Components::Dashboard::IndexView.new(presenter: presenter)
+      end
+    end
+
+    def presenter_for(selected_person_id)
+      DashboardPresenter.new(
+        current_user: current_user,
+        selected_person_id: selected_person_id,
+        people_scope: people_scope,
+        household: household
+      )
+    end
+
+    def selection_for(source, requested_person_id)
+      return requested_person_id if selection_allowed?(requested_person_id)
+      return ALL_FAMILY_PERSON_ID if dashboard_variant == 'family_lanes'
+
+      source.person_id
+    end
+
+    def selection_allowed?(person_id)
+      return false if person_id.blank?
+      return true if person_id == ALL_FAMILY_PERSON_ID
+
+      people_scope.exists?(id: person_id)
+    end
+
+    def grouping_for(grouping)
+      return unless dashboard_variant == 'family_lanes'
+      return unless Components::Dashboard::FamilyLanesView::GROUPINGS.include?(grouping)
+
+      grouping
+    end
   end
 end

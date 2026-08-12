@@ -50,6 +50,53 @@ RSpec.describe 'Timeline refresh after taking medication' do
       expect(response.body).to include('Taken')
     end
 
+    it 'refreshes the dashboard aggregates in the response' do
+      post take_medication_person_schedule_path(person, schedule),
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response.body).to include('target="dashboard"')
+      expect(response.body).to include('Next Due')
+      expect(response.body).to include('Due Now')
+      expect(response.body).to include('Tasks Left')
+      expect(turbo_stream_targets).to end_with('dashboard', 'flash')
+    end
+
+    {
+      'time_first' => 'dashboard-variant-time-first',
+      'family_lanes' => 'dashboard-variant-family-lanes',
+      'calm_focus' => 'dashboard-variant-calm-focus'
+    }.each do |variant, testid|
+      it "refreshes the #{variant} dashboard variant" do
+        carer_account.update!(dashboard_variant: variant)
+
+        post take_medication_person_schedule_path(person, schedule),
+             headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+        expect(response.body).to include('target="dashboard"')
+        expect(response.body).to include("data-testid=\"#{testid}\"")
+      end
+    end
+
+    it 'ignores an unrecognised dashboard grouping' do
+      carer_account.update!(dashboard_variant: 'family_lanes')
+
+      post take_medication_person_schedule_path(person, schedule),
+           params: { dashboard_grouping: 'unexpected' },
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response.body).to include('dashboard-variant-family-lanes')
+      expect(response.body).not_to include('dashboard-family-time')
+    end
+
+    it 'ignores a dashboard person outside the permitted scope' do
+      post take_medication_person_schedule_path(person, schedule),
+           params: { dashboard_person_id: people(:john).id },
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response.body).to include(person.name)
+      expect(response.body).not_to include(people(:john).name)
+    end
+
     it 'does not include unauthorized same-medication timeline items in the response' do
       unauthorized_schedule = schedules(:john_paracetamol)
       child_paracetamol = Schedule.create!(
@@ -109,6 +156,17 @@ RSpec.describe 'Timeline refresh after taking medication' do
       expect(response.body).to include('Taken')
     end
 
+    it 'refreshes the dashboard aggregates in the response' do
+      post take_medication_person_person_medication_path(person, person_medication),
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response.body).to include('target="dashboard"')
+      expect(response.body).to include('Next Due')
+      expect(response.body).to include('Due Now')
+      expect(response.body).to include('Tasks Left')
+      expect(turbo_stream_targets).to end_with('dashboard', 'flash')
+    end
+
     it 'refreshes an as-needed item into cooldown after a take' do
       travel_to Time.zone.local(2026, 6, 30, 16, 45) do
         person_medication.update!(
@@ -125,5 +183,9 @@ RSpec.describe 'Timeline refresh after taking medication' do
       expect(response.body).to include('Available at 20:45')
       expect(response.body).not_to include("take-dose-personmedication_#{person_medication.id}")
     end
+  end
+
+  def turbo_stream_targets
+    response.body.scan(/<turbo-stream[^>]*target="([^"]+)"/).flatten
   end
 end

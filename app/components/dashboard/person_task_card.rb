@@ -3,13 +3,14 @@
 module Components
   module Dashboard
     class PersonTaskCard < Components::Base
-      attr_reader :person, :routine_tasks, :as_needed_items, :current_user
+      attr_reader :person, :routine_tasks, :as_needed_items, :current_user, :dashboard_person_id
 
-      def initialize(person:, routine_tasks:, as_needed_items:, current_user: nil)
+      def initialize(person:, routine_tasks:, as_needed_items:, current_user: nil, dashboard_person_id: nil)
         @person = person
         @routine_tasks = routine_tasks
         @as_needed_items = as_needed_items
         @current_user = current_user
+        @dashboard_person_id = dashboard_person_id
         super()
       end
 
@@ -99,7 +100,7 @@ module Components
 
         render Components::Medications::TakeAction.new(
           source: row[:source],
-          context: { person: person, current_user: current_user },
+          context: { person: person, current_user: current_user, dashboard_person_id: dashboard_person_id },
           amount: row[:source].dose_amount,
           button: {
             label: take_label,

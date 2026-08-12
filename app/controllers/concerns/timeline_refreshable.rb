@@ -5,6 +5,23 @@ module TimelineRefreshable
 
   private
 
+  def dashboard_projection(selected_person_id:, grouping: nil)
+    dashboard_projection_builder.call(selected_person_id:, grouping:)
+  end
+
+  def dashboard_projection_for(source)
+    dashboard_projection_builder.call_for(source:, selected_person_id: params[:dashboard_person_id], grouping: params[:dashboard_grouping])
+  end
+
+  def dashboard_projection_builder
+    DashboardPresenter::Projection.new(
+      current_user: current_user,
+      people_scope: policy_scope(Person),
+      household: current_household,
+      dashboard_variant: current_account.dashboard_variant
+    )
+  end
+
   def build_timeline_streams_for(taken_source, take)
     medication = taken_source.medication.reload
 
@@ -13,7 +30,11 @@ module TimelineRefreshable
       update_medication_card_stream(taken_source)
     ]
 
-    streams + other_timeline_streams(taken_source, medication)
+    streams + other_timeline_streams(taken_source, medication) + [refresh_dashboard_stream(taken_source)]
+  end
+
+  def refresh_dashboard_stream(source)
+    turbo_stream.replace('dashboard', dashboard_projection_for(source))
   end
 
   def update_timeline_item_stream(source, take)

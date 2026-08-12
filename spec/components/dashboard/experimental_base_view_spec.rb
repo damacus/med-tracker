@@ -25,6 +25,7 @@ RSpec.describe Components::Dashboard::ExperimentalBaseView, type: :component do
       DashboardPresenter,
       people: [person],
       active_schedules: [schedules(:john_paracetamol)],
+      active_person_medications: [person_medications(:john_vitamin_d)],
       current_user: current_user,
       selected_person_id: nil,
       dashboard_person_options: [],

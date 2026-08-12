@@ -8,7 +8,7 @@ module Components
 
       attr_reader :source, :person, :current_user, :amount, :button_label, :button_variant, :button_size,
                   :button_class, :button_icon, :disabled, :disabled_label, :disabled_icon, :testid,
-                  :disabled_testid, :form_class
+                  :disabled_testid, :form_class, :dashboard_grouping, :dashboard_person_id
 
       def initialize(source:, context:, amount:, button:, state: {})
         @source = source
@@ -26,6 +26,8 @@ module Components
         @testid = button.fetch(:testid)
         @disabled_testid = button.fetch(:disabled_testid, "#{testid}-disabled")
         @form_class = button.fetch(:form_class, 'flex-1')
+        @dashboard_grouping = context[:dashboard_grouping]
+        @dashboard_person_id = context[:dashboard_person_id]
         super()
       end
 
@@ -90,6 +92,8 @@ module Components
                 div(class: 'space-y-5') do
                   input(type: :hidden, name: 'dose_amount', value: formatted_amount)
                   input(type: :hidden, name: 'dose_unit', value: source_dose_unit)
+                  input(type: :hidden, name: 'dashboard_grouping', value: dashboard_grouping) if dashboard_grouping
+                  input(type: :hidden, name: 'dashboard_person_id', value: dashboard_person_id) if dashboard_person_id
                   render_context
                   render_taken_at_field
                   render_stock_source_selection
