@@ -66,6 +66,19 @@ tasks:
           COMMAND: 'bundle exec rspec --profile 20 --format documentation {{ .TEST_FILE | default "spec" }}'
           TEST_FILE: '{{ .TEST_FILE | default "spec" }}'
 
+  ruby-ui:compare:
+    desc: Compare selected RubyUI components with the locked gem in isolated output
+    summary: |
+      Generate requested RubyUI components into a disposable directory and report differences.
+      Usage: task ruby-ui:compare COMPONENTS="Button Card"
+      Usage: task ruby-ui:compare COMPONENTS="Button Card" OUTPUT=/tmp/ruby-ui-compare
+      Usage: task ruby-ui:compare ALL=1 OUTPUT=/tmp/ruby-ui-compare
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          COMMAND: 'ruby scripts/compare_ruby_ui.rb {{ if .OUTPUT }}--output {{ .OUTPUT }}{{ end }} {{ if .ALL }}--all{{ else }}{{ .COMPONENTS }}{{ end }}'
+
   households:migrate_local:
     desc: Migrate the local pre-household database into one household
     summary: |
