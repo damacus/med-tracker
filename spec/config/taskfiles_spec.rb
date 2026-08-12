@@ -126,6 +126,22 @@ RSpec.describe 'Taskfiles' do
     expect(command).not_to include('DESTINATION')
   end
 
+  it 'passes RubyUI comparison input as environment data instead of shell command text' do
+    task = root_taskfile.dig('tasks', 'ruby-ui:compare')
+    command = task.dig('cmds', 0)
+
+    expect(task.fetch('env')).to include(
+      'RUBY_UI_COMPONENTS' => '{{ .COMPONENTS | default "" }}',
+      'RUBY_UI_OUTPUT' => '{{ .OUTPUT | default "" }}',
+      'RUBY_UI_ALL' => '{{ .ALL | default "" }}'
+    )
+    expect(command).to eq('./scripts/run_ruby_ui_comparison.fish')
+    expect(command).not_to include('.OUTPUT', '.COMPONENTS')
+
+    wrapper = Rails.root.join('scripts/run_ruby_ui_comparison.fish').read
+    expect(wrapper).to eq("#!/usr/bin/env fish\n\nmise exec -- bundle exec ruby scripts/compare_ruby_ui.rb --from-task-environment\n")
+  end
+
   it 'defines a restore rehearsal with explicit evidence inputs and no raw restore command' do
     task = root_taskfile.dig('tasks', 'hosted-restore:rehearse') || {}
     required = task.dig('requires', 'vars') || []
