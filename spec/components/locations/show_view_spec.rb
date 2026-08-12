@@ -52,11 +52,27 @@ RSpec.describe Components::Locations::ShowView, type: :component do
     expect(rendered.at_css('button[aria-label="Add member"] svg[aria-hidden="true"]')).to be_present
   end
 
+  it 'hides the header edit link from non-managers' do
+    rendered = render_location
+
+    expect(rendered.at_css("a[href^='#{location_edit_path}']")).to be_nil
+  end
+
+  it 'renders the header edit link for managers' do
+    rendered = render_location(update_allowed: true)
+
+    expect(rendered.at_css("a[href^='#{location_edit_path}']")).to be_present
+  end
+
   def render_location(available_people: [], update_allowed: false)
     vc = view_context
     policy_stub = Struct.new(:update?, :refill?).new(update_allowed, false)
     vc.singleton_class.define_method(:policy) { |_record| policy_stub }
     html = vc.render(described_class.new(location: location, available_people: available_people))
     Nokogiri::HTML::DocumentFragment.parse(html)
+  end
+
+  def location_edit_path
+    Rails.application.routes.url_helpers.edit_location_path(household_slug: 'test-household', id: location)
   end
 end

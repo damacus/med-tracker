@@ -22,6 +22,9 @@ RSpec.describe 'Locations' do
         get locations_path
         expect(response).to have_http_status(:success)
         expect(response.body).to include('id="locations_index"')
+        expect(response.body).to include('Add Location')
+        expect(response.body).to include('aria-label="Edit location"')
+        expect(response.body).to include('aria-label="Delete location"')
       end
     end
 
@@ -46,7 +49,11 @@ RSpec.describe 'Locations' do
 
         get locations_path
         expect(response.body).to include('Home')
+        expect(response.body).to include('View')
         expect(response.body).not_to include('Foreign School')
+        expect(response.body).not_to include('Add Location')
+        expect(response.body).not_to include('aria-label="Edit location"')
+        expect(response.body).not_to include('aria-label="Delete location"')
       end
     end
   end
@@ -61,6 +68,7 @@ RSpec.describe 'Locations' do
         get location_path(location)
         expect(response).to have_http_status(:success)
         expect(response.body).to include("id=\"#{household_dom_target("location_show_#{location.id}")}\"")
+        expect(response_html.at_css("a[href^='#{edit_location_path(location)}']")).to be_present
       end
     end
 
@@ -73,6 +81,7 @@ RSpec.describe 'Locations' do
       it 'returns HTTP success' do
         get location_path(location)
         expect(response).to have_http_status(:success)
+        expect(response_html.at_css("a[href^='#{edit_location_path(location)}']")).to be_nil
       end
     end
 
@@ -191,6 +200,21 @@ RSpec.describe 'Locations' do
         expect(response).to have_http_status(:unprocessable_content)
       end
     end
+
+    context 'when authenticated as a carer who can read the location' do
+      let(:carer) { users(:carer) }
+
+      before { sign_in(carer) }
+
+      it 'does not update the location' do
+        original_name = location.name
+
+        patch location_path(location), params: { location: { name: 'Unauthorized update' } }
+
+        expect(response).to have_http_status(:found)
+        expect(location.reload.name).to eq(original_name)
+      end
+    end
   end
 
   describe 'DELETE /locations/:id' do
@@ -246,10 +270,28 @@ RSpec.describe 'Locations' do
         expect(response).to have_http_status(:found)
       end
     end
+
+    context 'when authenticated as a carer who can read the location' do
+      let(:carer) { users(:carer) }
+
+      before { sign_in(carer) }
+
+      it 'does not delete the location' do
+        expect do
+          delete location_path(location)
+        end.not_to change(Location, :count)
+
+        expect(response).to have_http_status(:found)
+      end
+    end
   end
 
   def household_location_named(name)
     household = Household.find_by!(slug: default_request_household_slug)
     household.locations.find_by!(name: name)
+  end
+
+  def response_html
+    Nokogiri::HTML::DocumentFragment.parse(response.body)
   end
 end

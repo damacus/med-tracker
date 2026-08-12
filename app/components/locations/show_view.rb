@@ -59,9 +59,12 @@ module Components
           end
 
           div(class: 'flex gap-3') do
-            Link(href: edit_location_path(location, return_to: location_path(location)), variant: :outlined, size: :lg,
-                 class: 'rounded-2xl font-bold text-sm bg-card') do
-              t('locations.show.edit_location')
+            if view_context.policy(location).update?
+              Link(href: edit_location_path(location, return_to: location_path(location)),
+                   variant: :outlined, size: :lg,
+                   class: 'rounded-2xl font-bold text-sm bg-card') do
+                t('locations.show.edit_location')
+              end
             end
             Link(href: locations_path, variant: :text, size: :lg,
                  class: 'rounded-2xl font-bold text-sm text-on-surface-variant hover:text-foreground') do
