@@ -89,9 +89,9 @@ class RubyUiComparison
   end
 
   def external_temp_parent
-    %w[/private/tmp /tmp].filter_map do |candidate|
+    %w[/tmp /private/tmp].filter_map do |candidate|
       path = Pathname.new(candidate)
-      path.realpath if path.directory? && !within?(path.realpath, @root.realpath)
+      path.realpath if path.directory? && path.writable? && !within?(path.realpath, @root.realpath)
     rescue Errno::ENOENT, Errno::EACCES
       nil
     end.first || raise('No external temporary directory is available')
