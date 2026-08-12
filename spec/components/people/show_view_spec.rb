@@ -34,6 +34,8 @@ RSpec.describe Components::People::ShowView, type: :component do
     view_context_helper.singleton_class.define_method(:pundit_user) { admin }
   end
 
+  def route_helpers = Rails.application.routes.url_helpers
+
   it 'renders the person name and type' do
     rendered = render_view
     expect(rendered.text).to include(person.name)
@@ -51,6 +53,17 @@ RSpec.describe Components::People::ShowView, type: :component do
     rendered = render_view
     expect(rendered.text).to include('Care Actions')
     expect(rendered.text).to include('Add Medication')
+  end
+
+  it 'opens the existing person editor in the modal frame' do
+    rendered = render_view
+    edit_link = rendered.css('a').find { |link| link.text.include?('Edit Person') }
+    person_path = route_helpers.person_path(person, household_slug: 'test-household')
+    edit_path = route_helpers.edit_person_path(person, household_slug: 'test-household', return_to: person_path)
+
+    expect(edit_link).to be_present
+    expect(edit_link['href']).to eq(edit_path)
+    expect(edit_link['data-turbo-frame']).to eq('modal')
   end
 
   it 'renders the unified medications section' do

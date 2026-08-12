@@ -62,8 +62,13 @@ module Components
 
           div(class: 'flex gap-3') do
             if view_context.policy(person).update?
-              m3_link(href: person_path(person, editing: true), variant: :outlined, size: :lg,
-                      class: 'font-bold bg-surface-container-low transition-all') do
+              m3_link(
+                href: edit_person_path(person, return_to: person_path(person)),
+                variant: :outlined,
+                size: :lg,
+                class: 'font-bold bg-surface-container-low transition-all',
+                data: { turbo_frame: 'modal' }
+              ) do
                 t('people.show.edit_person')
               end
             end
