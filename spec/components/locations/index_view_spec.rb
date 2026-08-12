@@ -6,7 +6,7 @@ RSpec.describe Components::Locations::IndexView, type: :component do
   fixtures :locations
 
   it 'renders location card actions with shared M3 sizing and shape', :aggregate_failures do
-    rendered = render_inline(described_class.new(locations: [locations(:home)]))
+    rendered = render_locations_index
     action_elements = rendered.css('a, button').select do |element|
       element.text.match?(/View/) || element['aria_label'].present?
     end
@@ -21,13 +21,31 @@ RSpec.describe Components::Locations::IndexView, type: :component do
   end
 
   it 'hides icons inside labelled location action controls', :aggregate_failures do
-    rendered = render_inline(described_class.new(locations: [locations(:home)]))
+    rendered = render_locations_index
 
     edit_link = rendered.at_css('a[aria-label="Edit location"]')
     delete_button = rendered.at_css('button[aria-label="Delete location"]')
 
     expect(edit_link.at_css('svg[aria-hidden="true"]')).to be_present
     expect(delete_button.at_css('svg[aria-hidden="true"]')).to be_present
+  end
+
+  it 'renders only the view action for non-managers', :aggregate_failures do
+    rendered = render_locations_index(create_allowed: false, update_allowed: false, destroy_allowed: false)
+
+    expect(rendered.text).to include('View')
+    expect(rendered.text).not_to include('Add Location')
+    expect(rendered.at_css('a[aria-label="Edit location"]')).to be_nil
+    expect(rendered.at_css('button[aria-label="Delete location"]')).to be_nil
+  end
+
+  def render_locations_index(create_allowed: true, update_allowed: true, destroy_allowed: true)
+    vc = view_context
+    policy_stub = Struct.new(:create?, :update?, :destroy?).new(create_allowed, update_allowed, destroy_allowed)
+    vc.singleton_class.define_method(:policy) { |_record| policy_stub }
+    html = vc.render(described_class.new(locations: [locations(:home)]))
+
+    Nokogiri::HTML::DocumentFragment.parse(html)
   end
 
   def include_touch_target_class

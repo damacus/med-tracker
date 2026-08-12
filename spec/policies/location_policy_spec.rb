@@ -20,7 +20,12 @@ RSpec.describe LocationPolicy, type: :policy do
     expect(described_class.new(owner.fetch(:context), location).update?).to be(true)
     expect(described_class.new(owner.fetch(:context), location).destroy?).to be(true)
     expect(described_class.new(owner.fetch(:context), other_location).update?).to be(false)
+  end
+
+  it 'does not allow ordinary members to manage locations' do
+    expect(described_class.new(member.fetch(:context), Location).create?).to be(false)
     expect(described_class.new(member.fetch(:context), location).update?).to be(false)
+    expect(described_class.new(member.fetch(:context), location).destroy?).to be(false)
   end
 
   it 'scopes locations to the active household' do

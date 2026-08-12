@@ -31,14 +31,16 @@ module Components
             end
             m3_heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') { t('locations.index.title') }
           end
-          div(class: 'hidden md:block') do
-            m3_link(
-              href: new_location_path,
-              variant: :filled,
-              size: :lg,
-              class: 'font-bold text-sm shadow-elevation-2'
-            ) do
-              span { t('locations.index.add_location') }
+          if view_context.policy(Location).create?
+            div(class: 'hidden md:block') do
+              m3_link(
+                href: new_location_path,
+                variant: :filled,
+                size: :lg,
+                class: 'font-bold text-sm shadow-elevation-2'
+              ) do
+                span { t('locations.index.add_location') }
+              end
             end
           end
         end
@@ -113,6 +115,8 @@ module Components
       end
 
       def render_location_actions(location)
+        location_policy = view_context.policy(location)
+
         div(class: 'flex items-center gap-2 w-full') do
           m3_link(
             href: location_path(location),
@@ -123,18 +127,20 @@ module Components
           ) do
             t('locations.index.view')
           end
-          m3_link(
-            href: edit_location_path(location, return_to: locations_path),
-            variant: :outlined,
-            size: :lg,
-            icon: true,
-            class: 'border-border ' \
-                   'bg-card hover:bg-tertiary-container text-on-surface-variant',
-            aria_label: t('locations.index.edit', default: 'Edit location')
-          ) do
-            render Icons::Pencil.new(size: 16, aria_hidden: 'true')
+          if location_policy.update?
+            m3_link(
+              href: edit_location_path(location, return_to: locations_path),
+              variant: :outlined,
+              size: :lg,
+              icon: true,
+              class: 'border-border ' \
+                     'bg-card hover:bg-tertiary-container text-on-surface-variant',
+              aria_label: t('locations.index.edit', default: 'Edit location')
+            ) do
+              render Icons::Pencil.new(size: 16, aria_hidden: 'true')
+            end
           end
-          render_delete_dialog(location)
+          render_delete_dialog(location) if location_policy.destroy?
         end
       end
 
