@@ -36,12 +36,14 @@ RSpec.describe Households::ExportExpiryProcessor do
     due_export = ready_export(expires_at: expiry_time)
     operator = Account.create!(email: 'expiry-operator@example.test', status: :verified)
     PlatformAdmin.create!(account: operator)
-    Households::RetentionHoldManager.place!(
-      household: household, actor_account: operator, reason: 'Approved preservation',
-      review_on: expiry_time.to_date + 30.days
-    )
+    travel_to(expiry_time) do
+      Households::RetentionHoldManager.place!(
+        household: household, actor_account: operator, reason: 'Approved preservation',
+        review_on: expiry_time.to_date + 30.days
+      )
 
-    travel_to(expiry_time) { expect(described_class.call).to eq(0) }
+      expect(described_class.call).to eq(0)
+    end
 
     expect(due_export.reload).to be_ready
     expect(due_export.artifact).to be_attached
