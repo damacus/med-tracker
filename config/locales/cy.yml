@@ -2041,6 +2041,7 @@ cy:
     update_failed: Methwyd â chadw'r gosodiadau hysbysiadau.
   reports:
     invalid_date: Darparwyd fformat dyddiad annilys.
+    end_before_start: Rhaid i'r dyddiad gorffen fod ar neu ar ôl y dyddiad dechrau.
     date_range_too_large: Ni chaiff ystod dyddiadau'r adroddiad fod yn fwy na 180 diwrnod.
     health_history:
       title: Adroddiad hanes iechyd MedTracker

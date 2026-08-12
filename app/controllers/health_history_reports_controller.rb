@@ -10,6 +10,8 @@ class HealthHistoryReportsController < ApplicationController
               disposition: 'attachment'
   rescue Reports::DateRange::RangeTooLarge
     redirect_to reports_path, alert: t('reports.date_range_too_large')
+  rescue Reports::DateRange::EndBeforeStart
+    redirect_to reports_path(start_date: params[:start_date], end_date: params[:end_date], person_id: params[:person_id])
   rescue ArgumentError
     redirect_to reports_path, alert: t('reports.invalid_date')
   end

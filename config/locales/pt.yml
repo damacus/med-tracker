@@ -1484,6 +1484,7 @@ pt:
     update_failed: Falha ao guardar as definições de notificação.
   reports:
     invalid_date: Foi fornecido um formato de data inválido.
+    end_before_start: A data de fim deve ser igual ou posterior à data de início.
     date_range_too_large: O intervalo de datas do relatorio nao pode exceder 180 dias.
     health_history:
       title: Relatório do historial de saúde do MedTracker

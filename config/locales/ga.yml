@@ -1755,6 +1755,7 @@ ga:
       save: Sábháil taifead an athbhreithnithe
   reports:
     invalid_date: Soláthraíodh formáid dáta neamhbhailí.
+    end_before_start: Caithfidh an dáta deiridh a bheith ar nó tar éis an dáta tosaigh.
     date_range_too_large: Ni feidir le raon datai na tuarascola dul thar 180 la.
     health_history:
       title: Tuarascáil staire sláinte MedTracker

@@ -19,10 +19,10 @@ module Views
       def view_template
         div(class: 'container mx-auto px-4 py-12 max-w-5xl space-y-12') do
           render_header
-          render_today_section
-          render_summary_card
-          render_compliance_section
-          render_insights_grid
+          render_today_section if @daily_data
+          render_summary_card if @daily_data
+          render_compliance_section if @daily_data
+          render_insights_grid if @daily_data
         end
       end
 
@@ -35,20 +35,22 @@ module Views
               t('reports.index.eyebrow')
             end
             m3_heading(level: 1, size: '8', class: 'font-extrabold tracking-tight text-foreground') { t('reports.index.title') }
-            p(class: 'text-on-surface-variant') { "#{@start_date.strftime('%B %d')} — #{@end_date.strftime('%B %d, %Y')}" }
+            p(class: 'text-on-surface-variant') { formatted_date_range } if @daily_data
           end
 
           render Components::Reports::FilterForm.new(
             action_path: view_context.reports_path,
             people: @people,
             selected_person_id: @selected_person_id,
-            start_date: @start_date,
-            end_date: @end_date
+            date_values: [@start_date, @end_date],
+            error_message: @daily_data ? nil : t('reports.end_before_start')
           )
         end
       end
 
       def render_today_section = render Components::Reports::TodaySection.new(today_taken_medications: @today_taken_medications)
+
+      def formatted_date_range = "#{@start_date.strftime('%B %d')} — #{@end_date.strftime('%B %d, %Y')}"
 
       # rubocop:disable Metrics/AbcSize
       def render_summary_card
