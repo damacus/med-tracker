@@ -574,6 +574,12 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       ).to include('/notification_preference/unexpected')
     end
 
+    it 'rejects empty notification preference updates' do
+      expect(
+        described_class.schema_errors('NotificationPreferenceUpdateRequest', notification_preference: {})
+      ).to include('/notification_preference')
+    end
+
     it 'references typed representative person request and response schemas' do
       create_person = described_class.operation('/households/{household_id}/people', 'post')
       show_person = described_class.operation('/households/{household_id}/people/{id}', 'get')
