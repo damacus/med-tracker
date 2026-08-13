@@ -1209,6 +1209,16 @@ paths:
       responses:
         '200':
           description: Household settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdAdminSettingsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     patch:
       operationId: updateHouseholdAdminSettings
       tags:
@@ -1217,9 +1227,29 @@ paths:
       summary: Update household administration settings.
       parameters:
         - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HouseholdAdminSettingsUpdateRequest'
       responses:
         '200':
           description: Household settings updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdAdminSettingsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     put:
       operationId: replaceHouseholdAdminSettings
       tags:
@@ -1228,9 +1258,29 @@ paths:
       summary: Replace household administration settings.
       parameters:
         - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HouseholdAdminSettingsUpdateRequest'
       responses:
         '200':
           description: Household settings updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdAdminSettingsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/admin/memberships:
     get:
       operationId: listMemberships
@@ -1499,6 +1549,12 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
+    AdminWriteForbidden:
+      description: The credential cannot manage the household, or fresh MFA or OIDC MFA proof is required.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AdminWriteForbiddenErrorEnvelope'
     NotFound:
       description: The resource does not exist inside the authorized scope.
       content:
@@ -1600,6 +1656,67 @@ components:
             - dependent_adult
         has_capacity:
           type: boolean
+    HouseholdAdminSettings:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - slug
+        - timezone
+        - subscription_plan
+        - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        name:
+          type: string
+          minLength: 1
+        slug:
+          type: string
+          minLength: 1
+        timezone:
+          type: string
+          minLength: 1
+        subscription_plan:
+          type: string
+          enum:
+            - free
+            - family_plus
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+    HouseholdAdminSettingsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/HouseholdAdminSettings'
+    HouseholdAdminSettingsAttributes:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+        timezone:
+          type: string
+          minLength: 1
+        subscription_plan:
+          type: string
+          enum:
+            - free
+            - family_plus
+    HouseholdAdminSettingsUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - household
+      properties:
+        household:
+          $ref: '#/components/schemas/HouseholdAdminSettingsAttributes'
     Person:
       type: object
       additionalProperties: false
@@ -2193,6 +2310,33 @@ components:
       properties:
         error:
           $ref: '#/components/schemas/Error'
+    AdminWriteForbiddenError:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+        - request_id
+      properties:
+        code:
+          type: string
+          enum:
+            - forbidden
+            - fresh_privileged_action_required
+        message:
+          type: string
+          minLength: 1
+        request_id:
+          type: string
+          minLength: 1
+    AdminWriteForbiddenErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/AdminWriteForbiddenError'
     RateLimitError:
       type: object
       additionalProperties: false
