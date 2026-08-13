@@ -1406,6 +1406,16 @@ paths:
       responses:
         '200':
           description: Invitation collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdInvitationCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     post:
       operationId: createInvitation
       tags:
@@ -1414,9 +1424,29 @@ paths:
       summary: Create a household invitation.
       parameters:
         - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HouseholdInvitationCreateRequest'
       responses:
         '201':
           description: Invitation created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdInvitationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/admin/invitations/{id}:
     delete:
       operationId: deleteInvitation
@@ -1430,6 +1460,14 @@ paths:
       responses:
         '204':
           description: Invitation revoked.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/admin/person_access_grants:
     get:
       operationId: listPersonAccessGrants
@@ -1875,6 +1913,77 @@ components:
       properties:
         household_membership:
           $ref: '#/components/schemas/HouseholdMembershipAttributes'
+    HouseholdInvitation:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - email
+        - membership_role
+        - pending
+        - accepted_at
+        - revoked_at
+        - expires_at
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        email:
+          type: string
+          format: email
+        membership_role:
+          type: string
+          enum:
+            - administrator
+            - member
+        pending:
+          type: boolean
+        accepted_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        revoked_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        expires_at:
+          $ref: '#/components/schemas/Timestamp'
+    HouseholdInvitationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/HouseholdInvitation'
+    HouseholdInvitationCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/HouseholdInvitation'
+    HouseholdInvitationAttributes:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - membership_role
+      properties:
+        email:
+          type: string
+          format: email
+        membership_role:
+          type: string
+          enum:
+            - administrator
+            - member
+    HouseholdInvitationCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - household_invitation
+      properties:
+        household_invitation:
+          $ref: '#/components/schemas/HouseholdInvitationAttributes'
     Person:
       type: object
       additionalProperties: false
