@@ -617,6 +617,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(delete_operation.fetch('parameters')).to include(
         { '$ref' => '#/components/parameters/push_subscription_endpoint' }
       )
+      expect(delete_operation.dig('responses', '400', '$ref')).to eq('#/components/responses/BadRequest')
       expect(test_operation.dig('responses', '503', 'content', 'application/json', 'schema', '$ref')).to eq(
         '#/components/schemas/PushTestFailedErrorEnvelope'
       )

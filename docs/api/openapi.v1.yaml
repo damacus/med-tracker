@@ -1030,6 +1030,8 @@ paths:
       responses:
         '204':
           description: Push subscription revoked.
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1479,6 +1481,12 @@ components:
         type: integer
         minimum: 1
   responses:
+    BadRequest:
+      description: A required request parameter is missing or invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
     Unauthorized:
       description: The bearer credential is absent, invalid, expired, revoked, or no longer active.
       content:

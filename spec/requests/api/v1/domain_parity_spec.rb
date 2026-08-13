@@ -372,6 +372,15 @@ RSpec.describe 'API v1 domain parity' do
     expect(response.parsed_body.dig('error', 'code')).to eq('push_test_failed')
   end
 
+  it 'returns an API error when the push subscription endpoint is missing' do
+    delete api_v1_household_push_subscription_path(household_id),
+           headers: headers,
+           as: :json
+
+    expect(response).to have_http_status(:bad_request)
+    expect(response.parsed_body.dig('error', 'code')).to eq('bad_request')
+  end
+
   it 'uses household-scoped medication lookup from the API' do
     responder = instance_double(
       MedicationFinderSearchResponder,

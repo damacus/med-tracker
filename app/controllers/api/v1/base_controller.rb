@@ -13,6 +13,7 @@ module Api
       class InvalidFilterValue < StandardError; end
 
       rescue_from ActiveRecord::RecordNotFound, with: :render_not_found
+      rescue_from ActionController::ParameterMissing, with: :render_bad_request
       rescue_from InvalidFilterValue, with: :render_invalid_filter
       rescue_from Pundit::NotAuthorizedError, with: :render_forbidden
 
@@ -204,6 +205,10 @@ module Api
 
       def render_not_found
         render_api_error(code: 'not_found', message: 'Record not found', status: :not_found)
+      end
+
+      def render_bad_request(exception)
+        render_api_error(code: 'bad_request', message: exception.message, status: :bad_request)
       end
 
       def render_forbidden
