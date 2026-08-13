@@ -1556,6 +1556,16 @@ paths:
       responses:
         '200':
           description: API app token collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiAppTokenCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     post:
       operationId: createAppToken
       tags:
@@ -1564,9 +1574,29 @@ paths:
       summary: Create an API app token.
       parameters:
         - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiAppTokenCreateRequest'
       responses:
         '201':
           description: API app token created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiAppTokenCreateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/admin/app_tokens/{id}:
     delete:
       operationId: deleteAppToken
@@ -1580,6 +1610,14 @@ paths:
       responses:
         '204':
           description: API app token revoked.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/admin/audit_logs:
     get:
       operationId: listAuditLogs
@@ -2119,6 +2157,90 @@ components:
       properties:
         person_access_grant:
           $ref: '#/components/schemas/PersonAccessGrantAttributes'
+    ApiAppTokenSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - last_used_at
+        - revoked_at
+        - permissions_version
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        name:
+          type: string
+          minLength: 1
+        last_used_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        revoked_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        permissions_version:
+          type: integer
+          minimum: 0
+    ApiAppTokenCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiAppTokenSummary'
+    ApiAppTokenAttributes:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+    ApiAppTokenCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - api_app_token
+      properties:
+        api_app_token:
+          $ref: '#/components/schemas/ApiAppTokenAttributes'
+    ApiAppTokenCreated:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - last_used_at
+        - revoked_at
+        - permissions_version
+        - token
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        name:
+          type: string
+          minLength: 1
+        last_used_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        revoked_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        permissions_version:
+          type: integer
+          minimum: 0
+        token:
+          type: string
+          pattern: '^mt_app_'
+          description: One-time bearer token. Store it securely because later responses omit it.
+    ApiAppTokenCreateResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ApiAppTokenCreated'
     Person:
       type: object
       additionalProperties: false
