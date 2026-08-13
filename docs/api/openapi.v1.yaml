@@ -1480,6 +1480,16 @@ paths:
       responses:
         '200':
           description: Access grant collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonAccessGrantCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     post:
       operationId: createPersonAccessGrant
       tags:
@@ -1488,9 +1498,29 @@ paths:
       summary: Create a person access grant.
       parameters:
         - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonAccessGrantCreateRequest'
       responses:
         '201':
           description: Access grant created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonAccessGrantResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/admin/person_access_grants/{id}:
     delete:
       operationId: deletePersonAccessGrant
@@ -1504,6 +1534,16 @@ paths:
       responses:
         '204':
           description: Access grant revoked.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/admin/app_tokens:
     get:
       operationId: listAppTokens
@@ -1984,6 +2024,101 @@ components:
       properties:
         household_invitation:
           $ref: '#/components/schemas/HouseholdInvitationAttributes'
+    PersonAccessGrant:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - household_membership_id
+        - person_id
+        - person_name
+        - access_level
+        - relationship_type
+        - expires_at
+        - revoked_at
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        household_membership_id:
+          $ref: '#/components/schemas/NumericId'
+        person_id:
+          $ref: '#/components/schemas/NumericId'
+        person_name:
+          type: string
+          minLength: 1
+        access_level:
+          type: string
+          enum:
+            - view
+            - record
+            - manage
+        relationship_type:
+          type: string
+          enum:
+            - self
+            - parent
+            - family_member
+            - carer
+            - professional
+        expires_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        revoked_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+    PersonAccessGrantResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/PersonAccessGrant'
+    PersonAccessGrantCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PersonAccessGrant'
+    PersonAccessGrantAttributes:
+      type: object
+      additionalProperties: false
+      required:
+        - household_membership_id
+        - person_id
+        - access_level
+        - relationship_type
+      properties:
+        household_membership_id:
+          $ref: '#/components/schemas/NumericId'
+        person_id:
+          $ref: '#/components/schemas/NumericId'
+        access_level:
+          type: string
+          enum:
+            - view
+            - record
+            - manage
+        relationship_type:
+          type: string
+          enum:
+            - self
+            - parent
+            - family_member
+            - carer
+            - professional
+        expires_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+    PersonAccessGrantCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - person_access_grant
+      properties:
+        person_access_grant:
+          $ref: '#/components/schemas/PersonAccessGrantAttributes'
     Person:
       type: object
       additionalProperties: false
