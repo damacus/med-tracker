@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.5.20](https://github.com/damacus/med-tracker/compare/v0.5.19...v0.5.20) (2026-08-13)
+
+
+### Bug Fixes
+
+* **api:** reject empty notification updates ([1555f46](https://github.com/damacus/med-tracker/commit/1555f462d53594744b3b5ee6c09f3c151c7daf7e))
+* **api:** render missing parameter errors ([357583b](https://github.com/damacus/med-tracker/commit/357583b665abab47d34448b4c301a22cce025898))
+* **auth:** retain household context on security pages ([e15cac3](https://github.com/damacus/med-tracker/commit/e15cac3f047c798d831a6006b1af051a3ecaeb01))
+* **dashboard:** refresh aggregates after recording a dose ([756c5e3](https://github.com/damacus/med-tracker/commit/756c5e33314dbb854ea33e5fd546fc0ff60ce111))
+* **forms:** preserve native validation without error target ([f3f96b4](https://github.com/damacus/med-tracker/commit/f3f96b40c856b218eacfc621f9933b5ae82506d4))
+* **forms:** show field-level validation feedback ([8953737](https://github.com/damacus/med-tracker/commit/8953737d01843fdb6391ba47f91d47c51f37f4b9))
+* **locations:** hide management controls from members ([7b351a2](https://github.com/damacus/med-tracker/commit/7b351a2ff418766021d29299857c365928d73ba4))
+* **medications:** clarify past dose timing ([3b614b8](https://github.com/damacus/med-tracker/commit/3b614b8c6c35d516648038b007980cede9c3f676))
+* **people:** open person editor in modal ([2957714](https://github.com/damacus/med-tracker/commit/295771490b68485b8cbcb4d72770b0768114ed67))
+* **reports:** explain reversed date ranges ([b17b7a1](https://github.com/damacus/med-tracker/commit/b17b7a14ba0204cde5c8a4de371dd08ddc2f337c))
+* **ruby-ui:** avoid dynamic generator loader options ([09bb80e](https://github.com/damacus/med-tracker/commit/09bb80eac672de58b865b8d4d061e082a0f2158f))
+* **ruby-ui:** choose a writable generator workspace ([b9ced69](https://github.com/damacus/med-tracker/commit/b9ced695d9d3d1f9f41cb5435bae3460d8faed8f))
+* **ruby-ui:** isolate comparison generator side effects ([51eefaa](https://github.com/damacus/med-tracker/commit/51eefaa2e0e0befaab7f8f6f093e6b4c3eeb0f36))
+* **ruby-ui:** satisfy comparison spec lint ([6d8e011](https://github.com/damacus/med-tracker/commit/6d8e011e42435d713e45bc788e608a3d4dc624e8))
+* **ruby-ui:** use native modal overlays ([8d55a77](https://github.com/damacus/med-tracker/commit/8d55a77f791de099ef59cbae9e510ff8fd4b1a42))
+* **schedules:** clean workflow spec style ([0b30eb9](https://github.com/damacus/med-tracker/commit/0b30eb9bd4fcaae6a338ec29de4b1e92f3b169bc))
+* **schedules:** make required dates explicit ([63d2281](https://github.com/damacus/med-tracker/commit/63d22818f0fa160420d5113183e473462eeaaa2d))
+* **schedules:** render end date server errors ([7711fac](https://github.com/damacus/med-tracker/commit/7711facf68482584b1b07b6361a047f422fadc04))
+* **ui:** scope dashboard refreshes to dashboard takes ([9b3cef3](https://github.com/damacus/med-tracker/commit/9b3cef3c8bf780cdefdfacdfe4002295e279eb8d))
+
 ## [0.5.19](https://github.com/damacus/med-tracker/compare/v0.5.18...v0.5.19) (2026-08-11)
 
 
