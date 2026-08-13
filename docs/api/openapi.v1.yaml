@@ -1293,6 +1293,16 @@ paths:
       responses:
         '200':
           description: Membership collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdMembershipCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/admin/memberships/{id}:
     patch:
       operationId: updateMembership
@@ -1303,9 +1313,31 @@ paths:
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HouseholdMembershipUpdateRequest'
       responses:
         '200':
           description: Membership updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdMembershipResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     put:
       operationId: replaceMembership
       tags:
@@ -1315,9 +1347,31 @@ paths:
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HouseholdMembershipUpdateRequest'
       responses:
         '200':
           description: Membership updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdMembershipResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     delete:
       operationId: deleteMembership
       tags:
@@ -1330,6 +1384,16 @@ paths:
       responses:
         '204':
           description: Membership revoked.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/admin/invitations:
     get:
       operationId: listInvitations
@@ -1613,6 +1677,10 @@ components:
     Timestamp:
       type: string
       format: date-time
+    NullableTimestamp:
+      oneOf:
+        - $ref: '#/components/schemas/Timestamp'
+        - type: 'null'
     Date:
       type: string
       format: date
@@ -1717,6 +1785,96 @@ components:
       properties:
         household:
           $ref: '#/components/schemas/HouseholdAdminSettingsAttributes'
+    HouseholdMembership:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - account_id
+        - email
+        - person_id
+        - person_name
+        - role
+        - status
+        - permissions_version
+        - joined_at
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        account_id:
+          $ref: '#/components/schemas/NumericId'
+        email:
+          type: string
+          format: email
+        person_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        person_name:
+          type:
+            - string
+            - 'null'
+          minLength: 1
+        role:
+          type: string
+          enum:
+            - owner
+            - administrator
+            - member
+        status:
+          type: string
+          enum:
+            - active
+            - suspended
+            - revoked
+        permissions_version:
+          type: integer
+          minimum: 0
+        joined_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+    HouseholdMembershipResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/HouseholdMembership'
+    HouseholdMembershipCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/HouseholdMembership'
+    HouseholdMembershipAttributes:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        role:
+          type: string
+          enum:
+            - owner
+            - administrator
+            - member
+        status:
+          type: string
+          enum:
+            - active
+            - suspended
+            - revoked
+        person_id:
+          $ref: '#/components/schemas/NullableNumericId'
+    HouseholdMembershipUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - household_membership
+      properties:
+        household_membership:
+          $ref: '#/components/schemas/HouseholdMembershipAttributes'
     Person:
       type: object
       additionalProperties: false
