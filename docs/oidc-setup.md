@@ -1,221 +1,159 @@
-# OpenID Connect (OIDC) Setup Guide
+# OpenID Connect Setup
 
-MedTracker supports authentication via any OpenID Connect provider (Zitadel,
-Keycloak, Authentik, Google, Azure AD, etc.) using the `omniauth_openid_connect`
-gem with automatic provider discovery.
+MedTracker can use an OpenID Connect (OIDC) provider for browser sign-in. The
+provider must publish discovery metadata and support the authorization code
+flow.
 
-## Overview
+This guide covers the server-side browser flow. The hosted mobile API exchange
+is a separate contract and is not part of this setup.
 
-OIDC authentication is handled by [Rodauth](https://rodauth.jeremyevans.net/)
-with the [OmniAuth](https://github.com/omniauth/omniauth) integration. The
-implementation supports:
+## Browser flow
 
-- **Any OIDC-compliant provider** via `.well-known/openid-configuration` discovery
-- **Authorization code flow** for secure server-side token exchange
-- **Account linking and creation** subject to MedTracker's registration policy
-- **ID token verification** using provider JWKS (JSON Web Key Set)
+MedTracker uses Rodauth, OmniAuth, and `omniauth_openid_connect`. The browser
+flow requests the `openid`, `email`, and `profile` scopes.
 
-## Configuration
+1. A person selects **Continue with _provider_** on the login page.
+2. MedTracker redirects the browser to the provider.
+3. The provider returns an authorization code to MedTracker.
+4. MedTracker exchanges the code on the server and validates the returned
+   identity.
+5. MedTracker links the provider identity to an eligible account.
 
-### Required Environment Variables
+The provider does not grant household roles or person access. MedTracker keeps
+those decisions in household memberships and person access grants.
 
-```bash
-OIDC_ISSUER_URL=https://your-provider.com    # Discovery endpoint base URL
-OIDC_CLIENT_ID=your-client-id
-OIDC_CLIENT_SECRET=your-client-secret
+## Provider registration
+
+Create a confidential web application in the provider. Register this callback:
+
+```text
+https://medtracker.example.com/auth/oidc/callback
 ```
 
-### Optional Environment Variables
+Use the exact public MedTracker origin. The scheme, host, port, and path must
+match the configured redirect URI.
 
-```dotenv
-APP_URL=https://medtracker.example.com
-OIDC_REDIRECT_URI=https://medtracker.example.com/auth/oidc/callback
-OIDC_PROVIDER_NAME="Your Identity Provider"
+The provider must supply:
+
+- an HTTPS issuer URL with OpenID discovery metadata;
+- a client ID;
+- a client secret;
+- the subject and email claims requested by the configured scopes.
+
+HTTP issuer and redirect URLs are accepted only for `localhost` development.
+
+## MedTracker configuration
+
+Set these required values:
+
+```fish
+set -x APP_URL "https://medtracker.example.com"
+set -x OIDC_ISSUER_URL "https://identity.example.com"
+set -x OIDC_CLIENT_ID "your-client-id"
+set -x OIDC_CLIENT_SECRET "your-client-secret"
 ```
 
-`OIDC_REDIRECT_URI` defaults to `${APP_URL}/auth/oidc/callback`.
+`APP_URL` is required in production. MedTracker derives the callback as
+`$APP_URL/auth/oidc/callback`.
 
-### Local development with Portless
+These optional values change the callback or the login button label:
 
-Register this callback with the provider:
+```fish
+set -x OIDC_REDIRECT_URI "https://medtracker.example.com/auth/oidc/callback"
+set -x OIDC_PROVIDER_NAME "Your identity provider"
+```
 
-`https://med-tracker.localhost/auth/oidc/callback`
+You can store the OIDC provider settings in Rails encrypted credentials
+instead:
 
-Export the local URLs before starting the development container so OIDC sees
-the same stable origin as the browser:
+```yaml
+oidc:
+  issuer_url: https://identity.example.com
+  client_id: your-client-id
+  client_secret: your-client-secret
+```
+
+Environment variables and encrypted credentials are both supported. Never put
+the client secret in source files, container images, or public logs.
+
+## Local development
+
+For Portless development, register this callback with the provider:
+
+```text
+https://med-tracker.localhost/auth/oidc/callback
+```
+
+Set the stable URLs before you start MedTracker:
 
 ```fish
 set -x APP_URL "https://med-tracker.localhost"
 set -x OIDC_REDIRECT_URI "https://med-tracker.localhost/auth/oidc/callback"
-set -x OIDC_ISSUER_URL "https://your-provider.com"
+set -x OIDC_ISSUER_URL "https://identity.example.com"
 set -x OIDC_CLIENT_ID "your-client-id"
 set -x OIDC_CLIENT_SECRET "your-client-secret"
 task dev:portless
 ```
 
-### Option 1: Rails Credentials (Recommended for Production)
+The issuer must be reachable from the MedTracker container. A host-only
+`localhost` issuer will not work unless the container can resolve and reach it.
 
-```bash
-EDITOR="code --wait" bin/rails credentials:edit
-```
+For Zitadel-specific steps, see
+[Test local MedTracker with Zitadel](zitadel-local-testing.md).
 
-Add the following structure:
+## Account and access rules
 
-```yaml
-oidc:
-  issuer_url: https://your-provider.com
-  client_id: your-client-id
-  client_secret: your-client-secret
-```
+MedTracker can link a provider identity to an existing account with the same
+email. New accounts remain subject to the registration policy. When
+invitation-only registration is active, an uninvited provider identity cannot
+create an account.
 
-### Option 2: Environment Variables (Development/CI)
+An inactive account or a person without an active household membership cannot
+use OIDC to bypass those restrictions.
 
-Set environment variables directly or via a `.env` file (not tracked in git):
+Zitadel project roles named `doctor` or `nurse` can update a person's
+professional title. They do not become MedTracker household roles.
 
-```bash
-set -x OIDC_ISSUER_URL "https://your-provider.com"
-set -x OIDC_CLIENT_ID "your-client-id"
-set -x OIDC_CLIENT_SECRET "your-client-secret"
-```
+## Verification
 
-> **Security**: Never commit OIDC credentials to version control. Use Rails
-> credentials or environment variables.
+After configuration:
 
-## Authentication Flow
+1. Open `/login` and confirm that the provider button appears.
+2. Sign in with an invited or existing account.
+3. Confirm that the provider returns to `/auth/oidc/callback`.
+4. Confirm that MedTracker opens the expected household dashboard.
+5. Sign out and confirm that the local session ends.
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant MedTracker
-    participant Provider as OIDC Provider
-
-    User->>MedTracker: Click "Continue with [Provider]"
-    MedTracker->>Provider: Redirect to authorization endpoint
-    Provider->>User: Show consent screen
-    User->>Provider: Grant permission
-    Provider->>MedTracker: Redirect with authorization code
-    MedTracker->>Provider: Exchange code for tokens (server-side)
-    Provider->>MedTracker: Return ID token + access token
-    MedTracker->>MedTracker: Verify ID token (JWKS signature)
-    MedTracker->>MedTracker: Validate claims (iss, aud, exp, nonce)
-    MedTracker->>MedTracker: Create/link account
-    MedTracker->>User: Redirect to dashboard
-```
-
-## Account Creation
-
-MedTracker validates the provider identity and links it to an existing account
-with the same email when appropriate. New OIDC accounts are subject to the
-configured registration policy. When invitation-only registration is enabled,
-uninvited identities cannot create accounts through single sign-on.
-
-Household roles and person-level access remain controlled by MedTracker; they
-are not granted from arbitrary provider role claims.
-
-## OIDC Scopes and Claims
-
-| Scope     | Purpose                                 | Claims Provided                        |
-| --------- | --------------------------------------- | -------------------------------------- |
-| `openid`  | Required for OIDC, enables ID token     | sub (unique user ID)                   |
-| `email`   | Access user's email address             | email, email_verified                  |
-| `profile` | Access user's basic profile information | name, picture, given_name, family_name |
-
-## Provider-Specific Setup
-
-### Zitadel (Recommended for Local Development)
-
-See [Zitadel Local Testing Guide](zitadel-local-testing.md).
-
-### Keycloak
-
-1. Create a new realm or use an existing one
-2. Create a new client with **Client authentication** enabled
-3. Set **Valid redirect URIs** to `${APP_URL}/auth/oidc/callback`
-4. Copy the client ID and secret
-5. Set `OIDC_ISSUER_URL` to `https://keycloak.example.com/realms/your-realm`
-
-### Authentik
-
-1. Create a new OAuth2/OpenID Provider
-2. Set redirect URI to `${APP_URL}/auth/oidc/callback`
-3. Copy the client ID and secret
-4. Set `OIDC_ISSUER_URL` to `https://authentik.example.com/application/o/your-app/`
-
-### Google
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create OAuth 2.0 credentials (Web application)
-3. Set redirect URI to `${APP_URL}/auth/oidc/callback`
-4. Set `OIDC_ISSUER_URL` to `https://accounts.google.com`
-
-### Azure AD / Entra ID
-
-1. Register an application in Azure Portal
-2. Add redirect URI `${APP_URL}/auth/oidc/callback`
-3. Create a client secret
-4. Set `OIDC_ISSUER_URL` to `https://login.microsoftonline.com/{tenant-id}/v2.0`
-
-## Security
-
-### Built-in Protections
-
-The `omniauth_openid_connect` gem and Rodauth OmniAuth provide:
-
-- **Token signature verification** via JWKS (automatic with discovery)
-- **Issuer validation** — `iss` claim must match configured issuer
-- **Audience validation** — `aud` claim must match client ID
-- **Expiration validation** — expired tokens are rejected
-- **State parameter** — CSRF protection via random state in session
-- **Nonce** — replay attack prevention
-- **Authorization code flow** — tokens never exposed in browser
-
-### Credential Storage
-
-- Production: Use Rails encrypted credentials (`credentials.yml.enc`)
-- Development: Environment variables or `.env` file (gitignored)
-- Client secrets are never logged or exposed in error messages
-
-### Security Audit
-
-Run the security audit script to verify your configuration:
-
-```bash
-ruby scripts/audit_oidc_security.rb
-```
+Do not use a production account to test an untrusted or development provider.
 
 ## Troubleshooting
 
-### "OIDC issuer URL must use HTTPS"
+### Provider button is missing
 
-The issuer URL must use HTTPS in production. HTTP is only allowed for
-`localhost` during development.
+Both `OIDC_CLIENT_ID` and `OIDC_ISSUER_URL` must be present. Restart the service
+after changing its environment.
 
-### "Redirect URI mismatch"
+### Redirect URI mismatch
 
-The redirect URI registered with your provider must exactly match:
+Compare the provider registration with the effective MedTracker callback. Check
+the scheme, host, port, and `/auth/oidc/callback` path.
 
-- Protocol (`http` vs `https`)
-- Domain and port
-- Path: `/auth/oidc/callback`
+### Discovery fails
 
-### Provider discovery fails
+Confirm that this URL returns valid provider metadata and is reachable from the
+MedTracker container:
 
-Verify the issuer URL serves a valid `.well-known/openid-configuration`:
-
-```bash
-curl -s https://your-provider.com/.well-known/openid-configuration | jq .
+```text
+https://identity.example.com/.well-known/openid-configuration
 ```
 
-### Debug logging
+### Production reports an insecure URL
 
-```ruby
-# config/initializers/omniauth.rb
-OmniAuth.config.logger = Rails.logger
-```
+Production issuer and redirect URLs must use HTTPS. HTTP is allowed only for
+`localhost`, `127.0.0.1`, and `::1`.
 
-## Related Documentation
+## Related documentation
 
-- [Architecture](design.md)
-- [Zitadel Local Testing](zitadel-local-testing.md)
-- [Rodauth Documentation](https://rodauth.jeremyevans.net/documentation.html)
-- [omniauth_openid_connect](https://github.com/omniauth/omniauth_openid_connect)
+- [Test local MedTracker with Zitadel](zitadel-local-testing.md)
+- [Authentication and authorization](adrs/0002-authentication-and-authorization-strategy.md)
+- [External identity provider decision](adrs/0005-external-identity-provider.md)
