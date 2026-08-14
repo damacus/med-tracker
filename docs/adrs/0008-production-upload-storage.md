@@ -1,8 +1,11 @@
 # ADR 0008: Production Upload Storage
 
-- Status: Accepted
-- Date: 2026-07-10
-- Amended: 2026-08-02
+- Status
+  Accepted
+- Date
+  2026-07-10
+- Amended
+  2026-08-02
 
 ## Context
 
@@ -21,8 +24,8 @@ retired source is still current.
 
 Production explicitly selects one of four Active Storage services:
 
-1. `persistent`: Disk-only steady state.
-2. `persistent_with_s3_mirror`: Disk-readable migration state.
+1. `persistent`: disk-only steady state.
+2. `persistent_with_s3_mirror`: disk-readable migration state.
 3. `s3_with_persistent_mirror`: S3-readable migration or rollback state.
 4. `s3`: S3-only steady state.
 
@@ -46,15 +49,15 @@ Selecting S3 does not itself require a web/worker split.
 
 Disk to S3 uses `persistent` → `persistent_with_s3_mirror` →
 `s3_with_persistent_mirror` → `s3`. S3 to Disk uses the same states in reverse.
-Backfill copies by logical key, verifies recorded checksums, tolerates valid
-existing destinations, and resumes safely. Cutover requires quiesced storage
+Backfill copies by logical key and verifies recorded checksums. It tolerates
+valid existing destinations and resumes safely. Cutover requires quiesced storage
 mutations, drained mirror work, and a stable fully verified blob set. Blob
 service identities change in one database transaction.
 
 During the rollback window, writes continue to both services. An in-window rollback
 returns to the source-primary mirror state. After finalization,
 returning to the former backend is a new migration with a newly provisioned and
-fully reconciled destination; it is not rollback.
+fully reconciled destination. It is not a rollback.
 
 Source retirement is optional and is never performed by the application. It is
 eligible only after the rollback window, acceptance, recovery proof, final

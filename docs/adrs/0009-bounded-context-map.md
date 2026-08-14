@@ -1,7 +1,9 @@
 # ADR 0009: Bounded Context Map
 
-- Status: Accepted
-- Date: 2026-07-13
+- Status
+  Accepted
+- Date
+  2026-07-13
 
 ## Context
 
@@ -28,7 +30,7 @@ than one context without making those contexts the same domain.
 
 | Context | Present responsibility and ownership | Current code landmarks |
 | --- | --- | --- |
-| Medication Administration | Defines scheduled and direct administration sources, applies dose and timing rules, owns regimen defaults, and records immutable dose history. It owns `Schedule`, `PersonMedication`, and `MedicationTake` semantics. | `MedicationAdministration::RecordDose`, `MedicationAdministration::RestoreHistory`, `MedicationAdministration::HistoricalDataMigration`, `MedicationDoseSource`, `DoseTimingPolicy`, `DoseCycle`, administration defaults on `Medication` and `MedicationDosageOption`, medication-take controllers |
+| Medication Administration | Defines scheduled and direct administration sources and applies dose and timing rules. It owns regimen defaults and immutable dose history. It owns `Schedule`, `PersonMedication`, and `MedicationTake` semantics. | `MedicationAdministration::RecordDose`, `MedicationAdministration::RestoreHistory`, `MedicationAdministration::HistoricalDataMigration`, `MedicationDoseSource`, `DoseTimingPolicy`, `DoseCycle`, administration defaults on `Medication` and `MedicationDosageOption`, medication-take controllers |
 | Medication Catalogue | Defines medicine/product identity, catalogue codes, display data, and selectable dose identity. It does not own household stock, regimen defaults, or administration history. | Catalogue attributes on `Medication`, dose identity on `MedicationDosageOption`, `BarcodeCatalogEntry`, `NhsDmdBarcode`, `NhsDmd::*`, `BarcodeCatalog::*` |
 | Inventory | Tracks location-bound quantities, restocks, reorder state, thresholds, and the tracked stock source consumed by an administration. | Inventory attributes on `Medication` and `MedicationDosageOption`, `SupplyLevel`, `RestockMedicationService`, `AdjustMedicationInventoryService`, `MedicationStockSourceResolver`, `MedicationTakeStockMutation` |
 | Health and Medication Safety | Owns recorded illnesses and suspected side effects, medication-interaction evidence, and the practitioner-review state and immutable evidence snapshots created from that evidence. It does not own administration history or medicine identity. | `HealthEvent`, `HealthEventMedication`, `HealthEvents::*`, `MedicationReviewEvidenceRecord`, `MedicationReviewPrompt`, `MedicationReviewPromptSync` |
@@ -38,7 +40,7 @@ than one context without making those contexts the same domain.
 | Interoperability | Translates authenticated, authorized domain data for external clients and applies imports through domain persistence boundaries. It does not own medication history, stock, people, or grants. | `Api::V1::*`, `Api::Fhir::R4::*`, `Fhir::R4::Serializer`, `PortableData::*`, `Api::SyncSnapshot`, MCP tools and resources |
 | Reporting and Insights (supporting) | Builds read-only report projections and derived insights from records owned by other contexts. It owns presentation-specific calculations and detector results, not the underlying administration, inventory, health, or safety facts. | `Reports::*`, `SmartInsights::*`, report controllers and report views |
 | Notifications (supporting) | Owns person notification preferences, delivery deduplication, subscriptions, and push transport. It consumes administration and inventory outcomes without owning the rule or fact that triggered a message. | `NotificationPreference`, `NotificationEvent`, `PushNotificationService`, `NativePush::*`, reminder and stock notification jobs |
-| Audit and Compliance | Observes security and domain outcomes, preserves attributable change history and append-only evidence, and exports or verifies that evidence. It does not make medication or authorization decisions. | PaperTrail versions, `SecurityAuditEvent`, `Audit::Event`, `AuditLedgerEntry`, `AuditCheckpoint`, `Audit::EvidenceExporter`, audit verification and Object Lock services |
+| Audit and Compliance | Observes security and domain outcomes and preserves attributable change history. It also exports or verifies append-only evidence. It does not make medication or authorization decisions. | PaperTrail versions, `SecurityAuditEvent`, `Audit::Event`, `AuditLedgerEntry`, `AuditCheckpoint`, `Audit::EvidenceExporter`, audit verification and Object Lock services |
 
 ## Ownership Rules
 
@@ -53,14 +55,14 @@ Access for the caller scope.
 
 `Schedule` is a date-bounded source that supports scheduled types and the
 retained `prn` type. `PersonMedication` is the direct routine or as-needed
-source; it is not the only current representation of as-needed administration.
+source. `PersonMedication` also represents current as-needed administration.
 
 `MedicationAdministration::RecordDose` is the sole normal creator of
 `MedicationTake` records. `MedicationAdministration::RestoreHistory` restores
 immutable portable history without replaying stock mutation, while
 `MedicationAdministration::HistoricalDataMigration` is limited to legacy
 household and location metadata repair. These are explicit restoration and
-migration exceptions, not alternative dose-recording workflows.
+migration exceptions. Normal dose recording must use `RecordDose`.
 
 ### Medication Catalogue and Inventory
 
@@ -78,7 +80,7 @@ optional supply and threshold fields belong to Inventory.
 
 Inventory may depend on Catalogue identifiers to determine which product or
 dose is stocked. Catalogue lookup and import code must not infer household
-stock, a person's regimen, or dose history.
+stock or a person's regimen. It must not infer dose history.
 
 ### Health and Medication Safety
 
@@ -132,7 +134,7 @@ affected household before credentials are revoked.
 Interoperability is an adapter around the domain contexts. API, FHIR, portable
 data, sync, and MCP paths authenticate through Identity and authorize through
 Household Access. Each adapter reads or writes according to its published
-contract; the hosted MCP surface is currently read-only. Importers may
+contract. The hosted MCP surface is currently read-only. Importers may
 coordinate a transaction, but imported clinical history remains owned by
 Medication Administration and imported stock remains owned by Inventory.
 
@@ -155,39 +157,36 @@ rules that trigger delivery.
 
 ### Record lifecycle ownership
 
-[Record lifecycle operational contract](../operations/record-lifecycle.md)
-defines retirement and reactivation as lifecycle and visibility transitions for
-Medication, Person, and Location roots. Medication Catalogue owns the
-Medication root lifecycle; Medication Administration owns only the retirement
-of its `Schedule` and `PersonMedication` child sources while preserving
-`MedicationTake` history. People and Care Delegation owns Person lifecycle and
-outbound care-relationship changes, Identity owns linked-user account
-deactivation, Inventory owns Location availability and stock-placement
-preconditions, Household Access remains the authority source, Interoperability
-preserves retired identity across sync and import/restore, and Audit and
-Compliance records the immutable transition evidence.
+Medication Administration owns the current retirement of `Schedule` and
+`PersonMedication` sources while preserving `MedicationTake` history.
+
+The [record lifecycle operational contract](../operations/record-lifecycle.md)
+describes a proposed future lifecycle for Medication, Person, and Location
+roots. Those root records do not yet have the proposed retirement fields or
+product routes. The context ownership in that proposal does not become current
+until the lifecycle work is delivered.
 
 ## Dependency Direction
 
 - Web and API controllers are delivery adapters and call application services
-  or domain records; controllers do not own domain rules.
+  or domain records. Controllers do not own domain rules.
 - Medication Administration depends on Catalogue, Inventory, People, and
   Household Access, not the reverse.
 - Health and Medication Safety depends on People and Catalogue identity and may
-  consume Administration history; it owns its health-event and review records.
+  consume Administration history. It owns its health-event and review records.
 - Inventory depends on Catalogue identity, not on administration history for
   product meaning. An administration may trigger an inventory mutation.
 - People and Care Delegation may coordinate Household Access writes, while
   Household Access remains the authority source.
-- Identity establishes the actor; Household Access establishes the actor's
+- Identity establishes the actor. Household Access establishes the actor's
   tenant and person scope.
 - Interoperability depends on the owning contexts and must not become a second
   source of truth for their records.
 - Reporting and Insights reads owning-context records and produces derived
-  projections; it does not write back new source facts.
+  projections. It does not write back new source facts.
 - Notifications owns preferences and delivery mechanics while consuming
   outcomes from the contexts that define administration and inventory rules.
-- Audit and Compliance observes outcomes and preserves evidence; it does not
+- Audit and Compliance observes outcomes and preserves evidence. It does not
   decide whether a dose or access request is allowed.
 
 ## Consequences
