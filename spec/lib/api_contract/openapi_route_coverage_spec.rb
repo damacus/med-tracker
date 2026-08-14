@@ -1314,6 +1314,33 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(described_class.schema_errors('SyncBatchRequest', request)).to be_empty
     end
 
+    it 'types encrypted portable exports and imports' do
+      export = described_class.operation('/households/{household_id}/portable_export', 'get')
+      dry_run = described_class.operation('/households/{household_id}/portable_imports/dry_run', 'post')
+      import = described_class.operation('/households/{household_id}/portable_imports', 'post')
+
+      expect(auth_response_schema(export, '200')).to eq('#/components/schemas/PortableEnvelopeResponse')
+      expect(auth_request_schema(dry_run)).to eq('#/components/schemas/PortableImportRequest')
+      expect(auth_response_schema(dry_run, '200')).to eq('#/components/schemas/PortableImportResultResponse')
+      expect(auth_request_schema(import)).to eq('#/components/schemas/PortableImportRequest')
+      expect(auth_response_schema(import, '201')).to eq('#/components/schemas/PortableImportResultResponse')
+    end
+
+    it 'accepts only the encrypted portable envelope fields' do
+      envelope = {
+        bundle: {
+          format: 'medtracker.portable.encrypted.v1', encrypted_at: Time.current.iso8601,
+          cipher: 'aes-256-gcm', kdf: 'pbkdf2_sha256', salt: 'salt', checksum: 'a' * 64,
+          ciphertext: 'secret'
+        }
+      }
+
+      expect(described_class.schema_errors('PortableImportRequest', envelope)).to be_empty
+      expect(
+        described_class.schema_errors('PortableImportRequest', envelope.deep_merge(bundle: { passphrase: 'secret' }))
+      ).to include('/bundle/passphrase')
+    end
+
     it 'references typed representative person request and response schemas' do
       create_person = described_class.operation('/households/{household_id}/people', 'post')
       show_person = described_class.operation('/households/{household_id}/people/{id}', 'get')

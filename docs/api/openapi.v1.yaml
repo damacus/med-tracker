@@ -1930,9 +1930,24 @@ paths:
       summary: Export an encrypted portable household bundle.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/portable_passphrase'
       responses:
         '200':
           description: Encrypted portable bundle.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortableEnvelopeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/mobile_snapshot:
     get:
       operationId: getMobileSnapshot
@@ -1954,9 +1969,32 @@ paths:
       summary: Validate an encrypted portable import without writing data.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/portable_passphrase'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PortableImportRequest'
       responses:
         '200':
           description: Import validation summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortableImportResultResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/portable_imports:
     post:
       operationId: createPortableImport
@@ -1966,9 +2004,38 @@ paths:
       summary: Apply an encrypted portable import transactionally.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/portable_passphrase'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PortableImportRequest'
       responses:
         '201':
           description: Import applied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortableImportResultResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: The import was not applied or its encrypted bundle is invalid.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/PortableImportResultResponse'
+                  - $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/data_exports/{mode}:
     get:
       operationId: getDataExport
@@ -2623,6 +2690,14 @@ components:
       required: false
       schema:
         type: string
+    portable_passphrase:
+      name: X-MedTracker-Portable-Passphrase
+      in: header
+      required: true
+      description: Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
+      schema:
+        type: string
+        minLength: 1
   headers:
     etag:
       description: Version identifier for optimistic concurrency.
@@ -5796,6 +5871,110 @@ components:
       properties:
         error:
           $ref: '#/components/schemas/RateLimitError'
+    PortableEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - format
+        - encrypted_at
+        - cipher
+        - kdf
+        - salt
+        - checksum
+        - ciphertext
+      properties:
+        format:
+          type: string
+          const: medtracker.portable.encrypted.v1
+        encrypted_at:
+          $ref: '#/components/schemas/Timestamp'
+        cipher:
+          type: string
+          const: aes-256-gcm
+        kdf:
+          type: string
+          const: pbkdf2_sha256
+        salt:
+          type: string
+          minLength: 1
+        checksum:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        ciphertext:
+          type: string
+          minLength: 1
+    PortableEnvelopeResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/PortableEnvelope'
+    PortableImportRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - bundle
+      properties:
+        bundle:
+          $ref: '#/components/schemas/PortableEnvelope'
+    PortableImportResultResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/PortableImportResult'
+    PortableImportResult:
+      type: object
+      additionalProperties: false
+      required:
+        - applied
+        - counts
+        - conflicts
+        - errors
+      properties:
+        applied:
+          type: boolean
+        counts:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortableImportConflict'
+        errors:
+          type: array
+          items:
+            type: string
+    PortableImportConflict:
+      type: object
+      additionalProperties: false
+      required:
+        - record_type
+        - portable_id
+        - field
+        - existing_portable_id
+      properties:
+        record_type:
+          type: string
+          enum:
+            - people
+            - locations
+            - medications
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        field:
+          type: string
+          enum:
+            - name
+            - email
+        existing_portable_id:
+          $ref: '#/components/schemas/PortableId'
     SyncChangesResponse:
       type: object
       additionalProperties: false
