@@ -1121,6 +1121,49 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(described_class.schema_errors('MedicationCollectionResponse', response.parsed_body)).to be_empty
     end
 
+    it 'types dosage option collections, resources, and writes' do
+      collection_path = '/households/{household_id}/dosage_options'
+      resource_path = "#{collection_path}/{id}"
+      collection = described_class.operation(collection_path, 'get')
+      create = described_class.operation(collection_path, 'post')
+      resource = described_class.operation(resource_path, 'get')
+      updates = %w[patch put].map { |method| described_class.operation(resource_path, method) }
+
+      expect(auth_response_schema(collection, '200')).to eq('#/components/schemas/DosageOptionCollectionResponse')
+      expect(auth_response_schema(resource, '200')).to eq('#/components/schemas/DosageOptionResponse')
+      expect(auth_request_schema(create)).to eq('#/components/schemas/DosageOptionCreateRequest')
+      expect(updates).to all(satisfy do |operation|
+        auth_request_schema(operation) == '#/components/schemas/DosageOptionUpdateRequest'
+      end)
+      expect([create, *updates]).to all(satisfy { |operation| operation.fetch('responses').key?('422') })
+    end
+
+    it 'accepts only supported dosage option write fields' do
+      valid_create = {
+        dosage_option: {
+          medication_id: SecureRandom.uuid, amount: 500, unit: 'mg', frequency: 'Twice daily',
+          default_max_daily_doses: 2, default_min_hours_between_doses: 6, default_dose_cycle: 'daily'
+        }
+      }
+      invalid_create = valid_create.deep_merge(dosage_option: { household_id: 99 })
+
+      expect(described_class.schema_errors('DosageOptionCreateRequest', valid_create)).to be_empty
+      expect(described_class.schema_errors('DosageOptionCreateRequest', invalid_create)).to include(
+        '/dosage_option/household_id'
+      )
+    end
+
+    it 'matches the Rails dosage option collection' do
+      login_data = api_login(users(:admin))
+      household_id = login_data.dig('household', 'id')
+      headers = api_auth_headers(login_data.fetch('access_token'))
+
+      get api_v1_household_dosage_options_path(household_id), headers:, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('DosageOptionCollectionResponse', response.parsed_body)).to be_empty
+    end
+
     it 'references typed representative person request and response schemas' do
       create_person = described_class.operation('/households/{household_id}/people', 'post')
       show_person = described_class.operation('/households/{household_id}/people/{id}', 'get')
