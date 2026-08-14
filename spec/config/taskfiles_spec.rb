@@ -53,6 +53,12 @@ RSpec.describe 'Taskfiles' do
     )
   end
 
+  it 'runs RuboCop through the repository binstub' do
+    command = root_taskfile.dig('tasks', 'rubocop', 'cmds', 0, 'vars', 'COMMAND')
+
+    expect(command).to start_with('bin/rubocop --force-exclusion')
+  end
+
   it 'serializes Docker Compose runs within each worktree environment' do
     command = internal_taskfile.dig('tasks', 'run', 'cmds', 0)
 
