@@ -4,6 +4,19 @@ This runbook covers the hosted private beta target: one Rails application and on
 PostgreSQL database serving multiple independent households. The beta must remain
 closed until the hosted hardening audit is green.
 
+## Current status
+
+The hosted private beta is **NO-GO**. Onboarding is blocked by these controls:
+
+- issue [#1621](https://github.com/damacus/med-tracker/issues/1621) requires a
+  production-like restore rehearsal with durable evidence.
+- issue [#1892](https://github.com/damacus/med-tracker/issues/1892) requires an
+  audited operator flow for creating another household and inviting its first
+  owner.
+
+Do not disable invitation-only registration or use public sign-up to work
+around the missing provisioning flow.
+
 ## Go/No-Go
 
 Before onboarding another household, verify:
@@ -20,7 +33,8 @@ Before onboarding another household, verify:
 - Support access is only available through the audited Platform admin flow.
 - The audit exporter and verifier use dedicated credentials and cannot read clinical tables or mutate ledger history.
 - A signed `legacy-baseline` manifest has been retained outside PostgreSQL with its limitation recorded.
-- Full database and WORM verification pass; no delivery is older than five minutes.
+- Full database and WORM verification pass. No delivery is older than five
+  minutes.
 - The records manager/DPO has approved the versioned retention schedule and Object Lock mode.
 
 ## Tenant/RLS foundation verification
@@ -96,14 +110,27 @@ also runs `task test TEST_FILE=spec/lib/schema_inventory_spec.rb`,
 `task test TEST_FILE=spec/config/yaml_compose_spec.rb`, and
 `task test TEST_FILE=spec/config/database_role_config_spec.rb`.
 
+## Command scope
+
+Repository `task` commands start MedTracker's local Docker Compose production
+service. They do not select or connect to a deployed Kubernetes workload by
+themselves.
+
+Use those commands for local production-image checks. For a hosted deployment,
+run the corresponding Rails task inside an approved Job or application pod and
+set the documented environment values there. Confirm the target cluster,
+namespace, workload, database, and storage mount before any lifecycle command.
+Never assume that running `task` on an operator workstation changes the hosted
+service.
+
 ## Onboarding
 
-1. Confirm the release branch has passed the go/no-go checklist.
-2. Create or select the target household through the hosted onboarding flow.
-3. Create the first owner by invitation only.
-4. Require the owner to configure MFA/passkey before any household admin page is usable.
-5. Confirm the household owner can sign in, view only their household dashboard, and invite members.
-6. Confirm another household account cannot access the new household by slug, API id, direct record id, or attachment URL.
+Onboarding another household is not supported yet. Issue #1892 must provide an
+audited operator flow before this section can contain executable steps.
+
+The final flow must create the household under fresh-MFA platform authority and
+send a single-use invitation to its first owner. It must then verify the new
+owner's household isolation before the household receives health data.
 
 ## Support access
 
@@ -113,9 +140,11 @@ also runs `task test TEST_FILE=spec/lib/schema_inventory_spec.rb`,
 4. The audit event records support-session start/end without raw health data or the free-text reason.
 5. Support mode is visually and technically distinct from household membership.
 6. Platform admin cannot browse health or medicine data outside an active support access session.
-7. Explicit support access end records `support_access_session.ended`; it never doubles as natural expiry evidence.
-8. Run `task support-access:expire` on the deployment scheduler and after any scheduler outage. The command uses
-   `DATABASE_ROLE=med_tracker_app`, is safe to retry, and records each natural expiry exactly once.
+7. Explicit support access end records `support_access_session.ended`. It never
+   doubles as natural expiry evidence.
+8. Run `rails support_access:expire` in an approved deployment scheduler and
+   after any scheduler outage. Set `DATABASE_ROLE=med_tracker_app`. The task is
+   safe to retry and records each natural expiry exactly once.
 9. Retain the sanitized JSON output containing `event_type`, `outcome`, and `processed_count`. A successful run reports
    `support_access_session.expired`, `success`, and a non-negative count; the corresponding audit metadata contains only
    the support access session identifier, expiry timestamp, and outcome. It excludes the reason, account email, tokens,
@@ -144,7 +173,7 @@ Retain the sanitized JSON fields `event_type`, `outcome`, `household_id`,
 `export_id`, and `attachment_count`. The export lifecycle record and immutable
 audit ledger preserve request, generation, ready, download, expiry, and failure
 transitions. Attachment entries use identifiers, byte counts, archive paths, and
-SHA-256 checksums; verify the artifact checksum before transferring it.
+SHA-256 checksums. Verify the artifact checksum before transferring it.
 
 Set `HOUSEHOLD_EXPORT_OUTPUT_ROOT` to the protected persistent directory used for
 operator export transfers; it defaults to `/app/storage/exports`. Create any
@@ -200,8 +229,8 @@ purgeable `SchemaInventory` tenant table and household-owned attachment is empty
 The `medication_takes` step crosses the validated
 `med_tracker.purge_medication_takes(bigint)` maintenance boundary. The function
 requires matching transaction-local household context and an active platform
-administrator account context, validates the archived/purging/offboarded lifecycle
-and retention hold state, and deletes only the target household's dose history.
+administrator account context. It validates the household lifecycle and
+retention hold state. It deletes only the target household's dose history.
 It is a `SECURITY DEFINER` boundary for the existing shared database login, not
 credential isolation or a general bypass for immutable medication history.
 Immutable `security_audit_events` and `versions` audit history are never updated or
@@ -226,7 +255,7 @@ Never retain free-text reasons, attachment contents, credentials, or health data
 Restore a current database backup and its matching attachment backup into an isolated,
 production-like target using the approved platform recovery procedure. Do not point the
 workflow below at a live environment. The repository command verifies an already-restored
-target; it does not accept or run a raw restore command.
+target. It does not accept or run a raw restore command.
 
 Before running it, select two households that each contain a representative person,
 immutable security audit event, and attachment. Obtain the latest signed WORM checkpoint
