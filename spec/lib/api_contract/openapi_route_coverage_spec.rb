@@ -1164,6 +1164,77 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(described_class.schema_errors('DosageOptionCollectionResponse', response.parsed_body)).to be_empty
     end
 
+    it 'types schedule and person medication operations' do
+      schedule_path = '/households/{household_id}/schedules'
+      person_medication_path = '/households/{household_id}/person_medications'
+
+      expect(auth_response_schema(described_class.operation(schedule_path, 'get'), '200')).to eq(
+        '#/components/schemas/ScheduleCollectionResponse'
+      )
+      expect(auth_request_schema(described_class.operation(schedule_path, 'post'))).to eq(
+        '#/components/schemas/ScheduleCreateRequest'
+      )
+      expect(auth_response_schema(described_class.operation(person_medication_path, 'get'), '200')).to eq(
+        '#/components/schemas/PersonMedicationCollectionResponse'
+      )
+      expect(auth_request_schema(described_class.operation(person_medication_path, 'post'))).to eq(
+        '#/components/schemas/PersonMedicationCreateRequest'
+      )
+    end
+
+    it 'types medication take operations and idempotent success' do
+      path = '/households/{household_id}/medication_takes'
+      collection = described_class.operation(path, 'get')
+      create = described_class.operation(path, 'post')
+
+      expect(auth_response_schema(collection, '200')).to eq('#/components/schemas/MedicationTakeCollectionResponse')
+      expect(auth_request_schema(create)).to eq('#/components/schemas/MedicationTakeCreateRequest')
+      expect(auth_response_schema(create, '201')).to eq('#/components/schemas/MedicationTakeResponse')
+      expect(auth_response_schema(create, '200')).to eq('#/components/schemas/MedicationTakeResponse')
+    end
+
+    it 'rejects unsupported schedule fields' do
+      schedule = {
+        schedule: {
+          person_id: SecureRandom.uuid, medication_id: 1, dose_amount: 5, dose_unit: 'ml',
+          start_date: Date.current.iso8601, end_date: 1.month.from_now.to_date.iso8601
+        }
+      }
+
+      invalid_schedule = schedule.deep_merge(schedule: { secret: true })
+
+      expect(described_class.schema_errors('ScheduleCreateRequest', schedule)).to be_empty
+      expect(described_class.schema_errors('ScheduleCreateRequest', invalid_schedule)).to include('/schedule/secret')
+    end
+
+    it 'rejects unsupported person medication fields' do
+      person_medication = {
+        person_medication: { person_id: 1, medication_id: SecureRandom.uuid, administration_kind: 'routine' }
+      }
+
+      expect(described_class.schema_errors('PersonMedicationCreateRequest', person_medication)).to be_empty
+      expect(
+        described_class.schema_errors(
+          'PersonMedicationCreateRequest', person_medication.deep_merge(person_medication: { household_id: 9 })
+        )
+      ).to include('/person_medication/household_id')
+    end
+
+    it 'matches Rails medication administration collections' do
+      login_data = api_login(users(:admin))
+      household_id = login_data.dig('household', 'id')
+      headers = api_auth_headers(login_data.fetch('access_token'))
+
+      get api_v1_household_schedules_path(household_id), headers:, as: :json
+      expect(described_class.schema_errors('ScheduleCollectionResponse', response.parsed_body)).to be_empty
+
+      get api_v1_household_person_medications_path(household_id), headers:, as: :json
+      expect(described_class.schema_errors('PersonMedicationCollectionResponse', response.parsed_body)).to be_empty
+
+      get api_v1_household_medication_takes_path(household_id), headers:, as: :json
+      expect(described_class.schema_errors('MedicationTakeCollectionResponse', response.parsed_body)).to be_empty
+    end
+
     it 'references typed representative person request and response schemas' do
       create_person = described_class.operation('/households/{household_id}/people', 'post')
       show_person = described_class.operation('/households/{household_id}/people/{id}', 'get')

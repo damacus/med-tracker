@@ -981,9 +981,26 @@ paths:
       summary: List visible schedules.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - $ref: '#/components/parameters/updated_since'
       responses:
         '200':
           description: Schedules collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     post:
       operationId: createSchedule
       tags:
@@ -992,9 +1009,34 @@ paths:
       summary: Create a schedule.
       parameters:
         - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleCreateRequest'
       responses:
         '201':
           description: Schedule created.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/schedules/{id}:
     get:
       operationId: getSchedule
@@ -1011,6 +1053,18 @@ paths:
           headers:
             ETag:
               $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     patch:
       operationId: updateSchedule
       tags:
@@ -1021,14 +1075,36 @@ paths:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
         - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleUpdateRequest'
       responses:
         '200':
           description: Schedule updated.
           headers:
             ETag:
               $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     put:
       operationId: replaceSchedule
       tags:
@@ -1039,14 +1115,36 @@ paths:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
         - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleUpdateRequest'
       responses:
         '200':
           description: Schedule updated.
           headers:
             ETag:
               $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/schedules/{id}/pause:
     patch:
       operationId: pauseSchedule
@@ -1060,6 +1158,20 @@ paths:
       responses:
         '200':
           description: Schedule paused.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/schedules/{id}/resume:
     patch:
       operationId: resumeSchedule
@@ -1073,6 +1185,20 @@ paths:
       responses:
         '200':
           description: Schedule resumed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/person_medications:
     get:
       operationId: listPersonMedications
@@ -1082,9 +1208,26 @@ paths:
       summary: List visible person medication assignments.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - $ref: '#/components/parameters/updated_since'
       responses:
         '200':
           description: Person medication collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMedicationCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     post:
       operationId: createPersonMedication
       tags:
@@ -1093,9 +1236,34 @@ paths:
       summary: Create a person medication assignment.
       parameters:
         - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonMedicationCreateRequest'
       responses:
         '201':
           description: Person medication created.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMedicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/person_medications/{id}:
     get:
       operationId: getPersonMedication
@@ -1112,6 +1280,18 @@ paths:
           headers:
             ETag:
               $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMedicationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     patch:
       operationId: updatePersonMedication
       tags:
@@ -1122,14 +1302,36 @@ paths:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
         - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonMedicationUpdateRequest'
       responses:
         '200':
           description: Person medication updated.
           headers:
             ETag:
               $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMedicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     put:
       operationId: replacePersonMedication
       tags:
@@ -1140,14 +1342,36 @@ paths:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
         - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonMedicationUpdateRequest'
       responses:
         '200':
           description: Person medication updated.
           headers:
             ETag:
               $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMedicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/person_medications/{id}/pause:
     patch:
       operationId: pausePersonMedication
@@ -1161,6 +1385,20 @@ paths:
       responses:
         '200':
           description: Person medication paused.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMedicationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/person_medications/{id}/resume:
     patch:
       operationId: resumePersonMedication
@@ -1174,6 +1412,20 @@ paths:
       responses:
         '200':
           description: Person medication resumed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMedicationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/person_medications/{id}/reorder:
     patch:
       operationId: reorderPersonMedication
@@ -1184,9 +1436,31 @@ paths:
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonMedicationReorderRequest'
       responses:
         '200':
           description: Person medication reordered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMedicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/medication_takes:
     get:
       operationId: listMedicationTakes
@@ -1196,9 +1470,26 @@ paths:
       summary: List visible medication takes.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - $ref: '#/components/parameters/updated_since'
       responses:
         '200':
           description: Medication takes collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationTakeCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     post:
       operationId: createMedicationTake
       tags:
@@ -1207,9 +1498,43 @@ paths:
       summary: Record a medication take.
       parameters:
         - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationTakeCreateRequest'
       responses:
+        '200':
+          description: Existing medication take returned for a repeated client UUID.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationTakeResponse'
         '201':
           description: Medication take created.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationTakeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/notification_preference:
     get:
       operationId: getNotificationPreference
@@ -4040,6 +4365,518 @@ components:
           $ref: '#/components/schemas/DecimalValue'
         reorder_threshold:
           $ref: '#/components/schemas/DecimalValue'
+    Schedule:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - person_id
+        - person_portable_id
+        - medication_id
+        - medication_portable_id
+        - dose_amount
+        - dose_unit
+        - frequency
+        - dose_cycle
+        - start_date
+        - end_date
+        - active
+        - paused
+        - notes
+        - updated_at
+        - max_daily_doses
+        - min_hours_between_doses
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        person_id:
+          $ref: '#/components/schemas/NumericId'
+        person_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        medication_id:
+          $ref: '#/components/schemas/NumericId'
+        medication_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        dose_amount:
+          $ref: '#/components/schemas/DecimalValue'
+        dose_unit:
+          type: string
+          minLength: 1
+        frequency:
+          type:
+            - string
+            - 'null'
+        dose_cycle:
+          type:
+            - string
+            - 'null'
+          enum:
+            - daily
+            - weekly
+            - monthly
+            - null
+        start_date:
+          $ref: '#/components/schemas/Date'
+        end_date:
+          $ref: '#/components/schemas/Date'
+        active:
+          type: boolean
+        paused:
+          type: boolean
+        notes:
+          type:
+            - string
+            - 'null'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        max_daily_doses:
+          type:
+            - integer
+            - 'null'
+          minimum: 1
+        min_hours_between_doses:
+          $ref: '#/components/schemas/NullableDecimalValue'
+    ScheduleResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Schedule'
+    ScheduleCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Schedule'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    ScheduleCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - schedule
+      properties:
+        schedule:
+          allOf:
+            - $ref: '#/components/schemas/ScheduleAttributes'
+            - required:
+                - person_id
+                - medication_id
+                - dose_amount
+                - dose_unit
+                - start_date
+                - end_date
+    ScheduleUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - schedule
+      properties:
+        schedule:
+          allOf:
+            - $ref: '#/components/schemas/ScheduleAttributes'
+            - not:
+                required:
+                  - person_id
+    ScheduleAttributes:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        person_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        medication_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        source_dosage_option_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        dose_amount:
+          $ref: '#/components/schemas/DecimalValue'
+        dose_unit:
+          type: string
+          minLength: 1
+        frequency:
+          type: string
+        start_date:
+          $ref: '#/components/schemas/Date'
+        end_date:
+          $ref: '#/components/schemas/Date'
+        notes:
+          type: string
+        max_daily_doses:
+          type: integer
+          minimum: 1
+        min_hours_between_doses:
+          $ref: '#/components/schemas/DecimalValue'
+        dose_cycle:
+          type: string
+          enum:
+            - daily
+            - weekly
+            - monthly
+        schedule_type:
+          type: string
+          enum:
+            - daily
+            - multiple_daily
+            - weekly
+            - specific_dates
+            - prn
+            - tapering
+            - every_other_day
+        schedule_config:
+          $ref: '#/components/schemas/ScheduleConfig'
+    ScheduleConfig:
+      type: object
+      additionalProperties: false
+      properties:
+        times:
+          type: array
+          items:
+            type: string
+            pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+        weekdays:
+          type: array
+          items:
+            oneOf:
+              - type: integer
+                minimum: 0
+                maximum: 7
+              - type: string
+                minLength: 1
+        dates:
+          type: array
+          items:
+            $ref: '#/components/schemas/Date'
+        as_needed:
+          type: boolean
+        taper_steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleTaperStep'
+    ScheduleTaperStep:
+      type: object
+      additionalProperties: false
+      required:
+        - start_date
+        - end_date
+      properties:
+        start_date:
+          $ref: '#/components/schemas/Date'
+        end_date:
+          $ref: '#/components/schemas/Date'
+        amount:
+          $ref: '#/components/schemas/DecimalValue'
+        dose_amount:
+          $ref: '#/components/schemas/DecimalValue'
+        unit:
+          type: string
+        dose_unit:
+          type: string
+        max_daily_doses:
+          type: integer
+          minimum: 1
+        min_hours_between_doses:
+          $ref: '#/components/schemas/DecimalValue'
+        times:
+          type: array
+          items:
+            type: string
+            pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+    PersonMedication:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - person_id
+        - person_portable_id
+        - medication_id
+        - medication_portable_id
+        - dose_amount
+        - dose_unit
+        - active
+        - paused
+        - dose_cycle
+        - administration_kind
+        - notes
+        - position
+        - updated_at
+        - max_daily_doses
+        - min_hours_between_doses
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        person_id:
+          $ref: '#/components/schemas/NumericId'
+        person_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        medication_id:
+          $ref: '#/components/schemas/NumericId'
+        medication_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        dose_amount:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        dose_unit:
+          type:
+            - string
+            - 'null'
+        active:
+          type: boolean
+        paused:
+          type: boolean
+        dose_cycle:
+          type:
+            - string
+            - 'null'
+          enum:
+            - daily
+            - weekly
+            - monthly
+            - null
+        administration_kind:
+          type: string
+          enum:
+            - routine
+            - as_needed
+        notes:
+          type:
+            - string
+            - 'null'
+        position:
+          type:
+            - integer
+            - 'null'
+          minimum: 0
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        max_daily_doses:
+          type:
+            - integer
+            - 'null'
+          minimum: 1
+        min_hours_between_doses:
+          $ref: '#/components/schemas/NullableDecimalValue'
+    PersonMedicationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/PersonMedication'
+    PersonMedicationCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PersonMedication'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    PersonMedicationCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - person_medication
+      properties:
+        person_medication:
+          allOf:
+            - $ref: '#/components/schemas/PersonMedicationAttributes'
+            - required:
+                - person_id
+                - medication_id
+    PersonMedicationUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - person_medication
+      properties:
+        person_medication:
+          allOf:
+            - $ref: '#/components/schemas/PersonMedicationAttributes'
+            - not:
+                required:
+                  - person_id
+    PersonMedicationAttributes:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        person_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        medication_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        source_dosage_option_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        dose_amount:
+          $ref: '#/components/schemas/DecimalValue'
+        dose_unit:
+          type: string
+          minLength: 1
+        administration_kind:
+          type: string
+          enum:
+            - routine
+            - as_needed
+        notes:
+          type: string
+        max_daily_doses:
+          type: integer
+          minimum: 1
+        min_hours_between_doses:
+          $ref: '#/components/schemas/DecimalValue'
+        dose_cycle:
+          type: string
+          enum:
+            - daily
+            - weekly
+            - monthly
+    PersonMedicationReorderRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - direction
+      properties:
+        direction:
+          type: string
+          enum:
+            - up
+            - down
+    MedicationTake:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - client_uuid
+        - schedule_id
+        - schedule_portable_id
+        - person_medication_id
+        - person_medication_portable_id
+        - taken_from_medication_id
+        - taken_from_medication_portable_id
+        - taken_from_location_id
+        - taken_from_location_portable_id
+        - dose_amount
+        - dose_unit
+        - taken_at
+        - updated_at
+        - person_id
+        - person_portable_id
+        - medication_id
+        - medication_portable_id
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        client_uuid:
+          $ref: '#/components/schemas/NullablePortableId'
+        schedule_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        schedule_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+        person_medication_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        person_medication_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+        taken_from_medication_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        taken_from_medication_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+        taken_from_location_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        taken_from_location_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+        dose_amount:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        dose_unit:
+          type:
+            - string
+            - 'null'
+        taken_at:
+          oneOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        person_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        person_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+        medication_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        medication_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+    MedicationTakeResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/MedicationTake'
+    MedicationTakeCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicationTake'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    MedicationTakeCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - medication_take
+      properties:
+        medication_take:
+          type: object
+          additionalProperties: false
+          required:
+            - source_type
+            - source_id
+            - taken_at
+          properties:
+            client_uuid:
+              $ref: '#/components/schemas/PortableId'
+            source_type:
+              type: string
+              enum:
+                - schedule
+                - person_medication
+            source_id:
+              $ref: '#/components/schemas/ResourceIdentifier'
+            taken_at:
+              $ref: '#/components/schemas/Timestamp'
+            dose_amount:
+              $ref: '#/components/schemas/DecimalValue'
+            dose_unit:
+              type: string
+              minLength: 1
+            taken_from_medication_id:
+              $ref: '#/components/schemas/NumericId'
     Person:
       type: object
       additionalProperties: false
