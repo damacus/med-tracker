@@ -2007,9 +2007,31 @@ paths:
       summary: Read sync changes after a cursor.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - name: cursor
+          in: query
+          required: true
+          description: Return changes and tombstones at or after this timestamp.
+          schema:
+            $ref: '#/components/schemas/Timestamp'
       responses:
         '200':
           description: Change feed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncChangesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/sync/batches:
     post:
       operationId: createSyncBatch
@@ -2028,10 +2050,26 @@ paths:
       responses:
         '201':
           description: Batch applied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncBatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
         '428':
           $ref: '#/components/responses/PreconditionRequired'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/admin/settings:
     get:
       operationId: getHouseholdAdminSettings
@@ -5758,6 +5796,88 @@ components:
       properties:
         error:
           $ref: '#/components/schemas/RateLimitError'
+    SyncChangesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - cursor
+            - changes
+            - tombstones
+          properties:
+            cursor:
+              $ref: '#/components/schemas/Timestamp'
+            changes:
+              type: array
+              items:
+                $ref: '#/components/schemas/SyncChange'
+            tombstones:
+              type: array
+              items:
+                $ref: '#/components/schemas/SyncTombstone'
+    SyncChange:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - record_type
+        - record_id
+        - record_portable_id
+        - action
+        - occurred_at
+        - metadata
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        record_type:
+          type: string
+          minLength: 1
+        record_id:
+          $ref: '#/components/schemas/NumericId'
+        record_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        action:
+          type: string
+          enum:
+            - create
+            - update
+            - delete
+        occurred_at:
+          $ref: '#/components/schemas/Timestamp'
+        metadata:
+          type: object
+          additionalProperties: true
+    SyncTombstone:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - record_type
+        - record_portable_id
+        - action
+        - deleted_at
+        - metadata
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        record_type:
+          type: string
+          minLength: 1
+        record_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        action:
+          type: string
+          const: delete
+        deleted_at:
+          $ref: '#/components/schemas/Timestamp'
+        metadata:
+          type: object
+          additionalProperties: true
     SyncBatchRequest:
       type: object
       additionalProperties: false
@@ -5781,12 +5901,11 @@ components:
       required:
         - action
         - resource_type
-        - id
-        - if_match
       properties:
         action:
           type: string
           enum:
+            - create
             - update
             - delete
         resource_type:
@@ -5794,11 +5913,63 @@ components:
           enum:
             - medication
             - health_event
+            - medication_take
         id:
           $ref: '#/components/schemas/ResourceIdentifier'
         if_match:
           type: string
-          description: Exact ETag from the snapshot or latest resource response.
+          description: Required for update and delete operations. Use the exact latest ETag.
         attributes:
           type: object
           additionalProperties: true
+          description: Fields accepted by the selected resource and action.
+    SyncBatchResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - applied
+            - results
+          properties:
+            applied:
+              type: boolean
+              const: true
+            results:
+              type: array
+              items:
+                $ref: '#/components/schemas/SyncBatchResult'
+    SyncBatchResult:
+      type: object
+      additionalProperties: false
+      required:
+        - index
+        - action
+        - record_type
+        - record_portable_id
+      properties:
+        index:
+          type: integer
+          minimum: 0
+        action:
+          type: string
+          enum:
+            - create
+            - update
+            - delete
+        record_type:
+          type: string
+          enum:
+            - Medication
+            - HealthEvent
+            - MedicationTake
+        record_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        etag:
+          type: string
+        replayed:
+          type: boolean
