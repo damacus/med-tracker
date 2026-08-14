@@ -313,6 +313,25 @@ RSpec.describe 'People' do
   describe 'PATCH /people/:id with turbo_stream format' do
     before { sign_in(users(:admin)) }
 
+    it 'targets the household-qualified containers rendered on the current pages' do
+      person = people(:john)
+      card_target = household_target("person_#{person.id}")
+      show_target = household_target("person_show_#{person.id}")
+
+      get people_path
+      expect(response.body).to include(%(id="#{card_target}"))
+
+      get person_path(person)
+      expect(response.body).to include(%(id="#{show_target}"))
+
+      patch person_path(person),
+            params: { person: { name: 'Household Target Name' } },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response.body).to include(%(target="#{card_target}"))
+      expect(response.body).to include(%(target="#{show_target}"))
+    end
+
     it 'returns turbo_stream and updates card, show container, and flash on success' do
       person = people(:john)
 
