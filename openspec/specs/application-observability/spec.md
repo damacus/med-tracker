@@ -2,7 +2,7 @@
 
 Defines a reliable, correlated, and privacy-safe observability contract for tracing application outcomes across requests, background jobs, domain decisions, and external effects.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Application events survive an available production logging pipeline
 When the configured operational output path is available, the system SHALL preserve supported application events from emission through production formatting and collection so they remain queryable in the configured log backend. Total output failure MAY lose an operational event but SHALL NOT alter the domain operation.
@@ -37,7 +37,10 @@ When the configured operational output path is available, the system SHALL prese
 - **THEN** they prove that application info, warning, error, request, and job events are preserved
 
 ### Requirement: Application-owned event coverage is exhaustive and declared
-The system SHALL maintain a reviewed registry for a frozen implementation baseline of production output producers, application-owned event publishers and subscribers, and direct logger call sites, and SHALL prevent baseline application-owned events from existing without a production-visible, privacy-safe operational disposition.
+The system SHALL maintain a reviewed registry for a frozen code baseline of
+production output producers, application-owned event publishers and subscribers,
+and direct logger call sites. Every baseline application event SHALL have a
+production-visible, privacy-safe operational disposition.
 
 #### Scenario: Custom event publisher exists
 - **GIVEN** application code publishes a custom event
@@ -69,13 +72,13 @@ The system SHALL maintain a reviewed registry for a frozen implementation baseli
 - **AND** every publisher, subscriber, logger, emergency diagnostic, request subscriber, and stage event introduced by this change is registered and verified
 
 #### Scenario: Baseline workflow inventory is frozen
-- **GIVEN** implementation begins from the reviewed signal and workflow inventory
+- **GIVEN** work begins from the reviewed signal and workflow inventory
 - **WHEN** the baseline is recorded
 - **THEN** it identifies the source revision, production output producers, eight custom event types, direct logger call sites, and bounded workflows covered by this change
 - **AND** completion is measured against that fixed inventory
 
 #### Scenario: Out-of-baseline workflow gap is discovered
-- **GIVEN** implementation discovers a silent domain decision outside the frozen workflow baseline
+- **GIVEN** the work reveals a silent domain decision outside the frozen workflow baseline
 - **WHEN** the discovery is reviewed
 - **THEN** it is captured as a follow-up change with an owner
 - **AND** it does not silently expand this change's completion boundary
@@ -84,7 +87,7 @@ The system SHALL maintain a reviewed registry for a frozen implementation baseli
 The system SHALL emit application events as a single structured object using a documented field contract rather than nested JSON or incompatible message shapes.
 
 #### Scenario: Successful domain outcome
-- **GIVEN** a domain operation reaches a meaningful successful outcome
+- **GIVEN** a domain operation reaches an important successful outcome
 - **WHEN** its application event is emitted
 - **THEN** the event contains a timestamp, severity, stable event name, outcome, service identity, deployment environment, and schema version
 - **AND** each field is queryable without reparsing JSON stored inside a message string
@@ -171,7 +174,8 @@ The system SHALL produce one canonical application-level request-completion even
 - **AND** failures remain visible
 
 ### Requirement: Critical workflows expose decisions and outcomes
-The system SHALL maintain a reviewed inventory of critical workflows and emit events at their externally meaningful decision and side-effect boundaries.
+The system SHALL maintain a reviewed inventory of critical workflows and emit
+events at their externally visible decision and side-effect boundaries.
 
 #### Scenario: Medication administration attempt
 - **GIVEN** a medication administration is attempted
@@ -204,7 +208,7 @@ The system SHALL make application event dispatch and subscriber outcomes observa
 - **GIVEN** an application-owned event is published
 - **WHEN** registered production subscribers handle it
 - **THEN** the application emits one canonical publication record identified by its event identifier
-- **AND** externally meaningful subscriber decisions or side effects emit correlated stage outcomes
+- **AND** externally visible subscriber decisions or side effects emit correlated stage outcomes
 
 #### Scenario: Subscriber raises an exception
 - **GIVEN** a registered subscriber raises while handling an event
@@ -213,7 +217,7 @@ The system SHALL make application event dispatch and subscriber outcomes observa
 - **AND** the failure policy states whether the originating operation fails, continues, or retries
 
 #### Scenario: Side effect is retried
-- **GIVEN** a subscriber or job retries an externally meaningful side effect
+- **GIVEN** a subscriber or job retries an externally visible side effect
 - **WHEN** attempts and outcomes are emitted
 - **THEN** every attempt is distinguishable
 - **AND** one successful side effect is not reported as multiple successful outcomes
@@ -227,7 +231,7 @@ The system SHALL make application event dispatch and subscriber outcomes observa
 
 #### Scenario: Transaction rolls back
 - **GIVEN** an event-related domain write is rolled back
-- **WHEN** the transaction terminates while the operational output path is available
+- **WHEN** the transaction ends while the operational output path is available
 - **THEN** no committed-success event is emitted
 - **AND** the original attempt remains queryable
 - **AND** a correlated rollback or failure outcome remains queryable
@@ -284,7 +288,7 @@ The system SHALL enforce an allowlist for event and trace attributes and SHALL t
 - **THEN** those arguments are absent from operational output
 
 #### Scenario: Infrastructure access record contains request metadata
-- **GIVEN** an access logger can emit raw query strings, network identifiers, user agents, or path identifiers
+- **GIVEN** an access logger can emit raw request or network metadata, including user agents and path identifiers
 - **WHEN** its output is retained
 - **THEN** the same allowlist and privacy contract applies to that dataset
 
