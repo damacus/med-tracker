@@ -877,6 +877,55 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(described_class.schema_errors('PushTestFailedErrorEnvelope', failed_response)).to be_empty
     end
 
+    it 'types medication lookup filters and outcomes' do
+      operation = described_class.operation('/households/{household_id}/medication_lookup', 'get')
+      query_parameters = operation.fetch('parameters').filter_map do |parameter|
+        parameter['name'] if parameter['in'] == 'query'
+      end
+
+      expect(query_parameters).to contain_exactly('q', 'form', 'strength')
+      expect(operation.fetch('responses').keys).to include('200', '401', '403', '404', '429', '503')
+      expect(operation.dig('responses', '200', 'content', 'application/json', 'schema', '$ref')).to eq(
+        '#/components/schemas/MedicationLookupResponse'
+      )
+      expect(operation.dig('responses', '503', 'content', 'application/json', 'schema', '$ref')).to eq(
+        '#/components/schemas/MedicationLookupUnavailableResponse'
+      )
+    end
+
+    it 'matches empty and successful medication lookup Rails responses' do
+      household_id, headers = manager_api_context
+
+      get api_v1_household_medication_lookup_path(household_id), headers:, as: :json
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('MedicationLookupResponse', response.parsed_body)).to be_empty
+
+      allow(NhsDmd::Search).to receive(:new).and_return(contract_medication_search)
+      get api_v1_household_medication_lookup_path(household_id), params: { q: 'aspirin' }, headers:, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('MedicationLookupResponse', response.parsed_body)).to be_empty
+    end
+
+    it 'matches the medication lookup Rails unavailable response' do
+      household_id, headers = manager_api_context
+      search_result = NhsDmd::Search::Result.new(results: [], error: 'unavailable')
+      allow(NhsDmd::Search).to receive(:new).and_return(instance_double(NhsDmd::Search, call: search_result))
+
+      get api_v1_household_medication_lookup_path(household_id), params: { q: 'aspirin' }, headers:, as: :json
+
+      expect(response).to have_http_status(:service_unavailable)
+      expect(described_class.schema_errors('MedicationLookupUnavailableResponse', response.parsed_body)).to be_empty
+    end
+
+    it 'keeps web navigation fields optional in medication lookup matches' do
+      existing_medication = described_class.schema('MedicationLookupExistingMedication')
+      related_medication = described_class.schema('MedicationLookupRelatedMedication')
+
+      expect(existing_medication.fetch('required')).not_to include('path', 'refill_path')
+      expect(related_medication.fetch('required')).not_to include('path')
+    end
+
     it 'references typed representative person request and response schemas' do
       create_person = described_class.operation('/households/{household_id}/people', 'post')
       show_person = described_class.operation('/households/{household_id}/people/{id}', 'get')
@@ -958,6 +1007,22 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
         created_at: timestamp,
         updated_at: timestamp
       }
+    end
+
+    def contract_medication_search
+      search_result = NhsDmd::SearchResult.new(
+        code: '39720311000001101',
+        display: 'Aspirin 300mg tablets',
+        system: 'https://dmd.nhs.uk',
+        concept_class: 'VMP',
+        package_quantity: 28,
+        package_unit: 'tablet',
+        directions: 'Take with water',
+        warnings: 'Follow the medicine label.'
+      )
+      outcome = NhsDmd::Search::Result.new(results: [search_result], error: nil, resolved_query: 'aspirin')
+
+      instance_double(NhsDmd::Search, call: outcome)
     end
 
     def expect_private_audit_diagnostics(payload)
