@@ -86,6 +86,9 @@ for required settings, database roles, registration policy, and process sizing.
 
 ## External API credentials
 
+See [optional integration configuration](operations/optional-integrations.md)
+for the complete service inventory and privacy boundaries.
+
 ### NHS dm+d medicine search
 
 The medicine search feature requires a system-to-system account
