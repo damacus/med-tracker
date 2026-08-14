@@ -106,7 +106,7 @@ The descriptive reason stored on a `PersonAccessGrant`.
   `family_member` to `manage`/`family_member`, and `professional_carer` to
   `record`/`professional`.
 - A valid explicit non-self access level overrides only the default access
-  level; the mapped grant relationship metadata does not change.
+  level. The mapped grant relationship metadata does not change.
 - Account-backed self delegation always ensures a standalone
   `manage`/`self` grant rather than a relationship-owned grant. Care delegation
   does not currently create the `carer` grant metadata value.
@@ -207,22 +207,27 @@ The persisted record of one completed administration event.
 - Avoid introducing a separate `DoseRecord` model name unless an ADR changes
   the persistence boundary.
 
-## Record Lifecycle Terms
+## Proposed Record Lifecycle Terms
+
+The terms in this section describe an unimplemented design for Medication,
+Person, and Location roots. Only Schedule and PersonMedication retirement is
+available today. See the [proposal](operations/record-lifecycle.md) for the
+current status.
 
 ### Retirement
 
-An explicit, reversible lifecycle transition for a Medication, Person, or
+A proposed reversible lifecycle transition for a Medication, Person, or
 Location root.
 
 - Retirement moves a root to logical cold storage and excludes it from active
   selectors and future activity while preserving authorized historical access.
 - Retirement must not cascade to dependent records beyond the root-specific
-  lifecycle rules in the [record lifecycle contract](operations/record-lifecycle.md).
+  lifecycle rules in the [record lifecycle proposal](operations/record-lifecycle.md).
 
 ### Logical cold storage
 
-A lifecycle and visibility state for a retired root, not a separate database
-tier.
+A proposed lifecycle and visibility state for a retired root. It would use the
+existing database rather than a separate storage tier.
 
 - Retired roots remain resolvable to authorized historical, administrative,
   reporting, sync, export/import, and restoration workflows with a retired
@@ -230,7 +235,8 @@ tier.
 
 ### Reactivation
 
-The explicit transition that returns one selected retired root to active state.
+The proposed transition that would return one selected retired root to active
+state.
 
 - Reactivation changes only that root and must not cascade to dependent records.
 - It never silently restores schedules, assignments, stock placement,
@@ -273,7 +279,7 @@ A person's choices for reminder and stock-notification delivery.
 - Notifications own preferences, subscription and delivery mechanics,
   delivery deduplication, and push transport.
 - The context that produces an administration or inventory outcome retains
-  ownership of the fact that triggered a notification.
+  ownership of the event that triggered a notification.
 
 ## Usage Guidance
 
