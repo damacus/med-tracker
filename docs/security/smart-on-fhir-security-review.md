@@ -28,7 +28,7 @@ CLI, and MCP credentials retain their existing authentication paths.
 
 ## Residual boundaries
 
-Only standalone launch is advertised. EHR launch context, dynamic client
+Only standalone launch is advertised. EHR launch context, automatic client
 registration, write scopes, bulk data, and OpenID Connect identity scopes are
 not implemented and do not appear in discovery metadata. OAuth grant lookup
 must occur before tenant context is known, so the grant table is not protected

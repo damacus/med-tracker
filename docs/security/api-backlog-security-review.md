@@ -1,5 +1,9 @@
 # API Backlog Security Review
 
+> **Historical review:** This report records the repository and tool results
+> from 7 July 2026. It is not a statement about the current branch or deployed
+> service. Use the current security guides and CI results for present controls.
+
 ## Executive Summary
 
 | Field | Value |
@@ -7,14 +11,17 @@
 | Application | MedTracker |
 | Review Date | 2026-07-07 |
 | Reviewer | Codex |
-| Scope | Local Rails API implementation for issues #551, #1480, #1485, #1486, #1487, #1488, #1489, and #1491 |
+| Scope | Local Rails API work for issues #551, #1480, #1485, #1486, #1487, #1488, #1489, and #1491 |
 | Overall Risk Level | Low after local verification, with accepted scanner caveats |
 
-This review is limited to the local repository, local development/test services, and GitHub CI evidence. It does not authorize production penetration testing, destructive testing, data exfiltration attempts, or testing against third-party services beyond mocked/local request specs.
+This review covers the local repository and its development and test services.
+It also uses GitHub CI results from the review date. It does not authorise
+production penetration tests, destructive tests, data extraction attempts, or
+tests against third-party services beyond mocked or local request specs.
 
 ## Attack Surface
 
-The implementation touches these security-critical paths:
+The reviewed work touches these security-critical paths:
 
 - API bearer authentication, API app tokens, OIDC exchange, refresh, revocation, and household session selection.
 - Household-scoped API resource reads and writes, including portable ID lookup and cross-household rejection.
@@ -30,7 +37,7 @@ The implementation touches these security-critical paths:
 | Bundler Audit | `bundler-audit check` | Pass | Host tool reported no vulnerabilities. `task test:exec CMD='bundle exec bundler-audit check'` could not run because the test container does not include the executable. |
 | Gitleaks | `gitleaks detect --source . --verbose` | Reviewed findings | History scan reported five findings in a deleted `_bmad` commit: one expired example JWT and four manifest hashes. Working-tree scan with `gitleaks dir . --verbose` reported ignored runtime files under `log/` and `tmp/`, primarily test token digests, idempotency keys, and Bootsnap cache strings. No current tracked application source finding was identified. |
 | Semgrep | `semgrep --config=auto .` | Tool failure | Semgrep was installed but failed before scanning with `Failed to create system store X509 authenticator: ca-certs: empty trust anchors`. No Semgrep result was available. |
-| RuboCop | `task rubocop` | Pass | 1354 files inspected, no offenses detected. |
+| RuboCop | `task rubocop` | Pass | All 1,354 inspected files passed. |
 | RSpec | `task test` | Pass | 3821 examples, 0 failures, 1 expected pending OIDC configuration example. |
 
 ## Manual Review Checklist
@@ -58,6 +65,8 @@ No confirmed high-severity findings in the implemented local API backlog pass.
 
 ## Accepted Risks
 
-- Full external OIDC issuer key discovery is not exercised in local tests; this pass validates the local exchange contract and records the hosted-OIDC direction for CI/provider integration follow-up.
+- Local tests do not exercise full external OIDC issuer key discovery. This
+  review checks the local exchange contract and records the hosted OIDC
+  direction for later CI and provider integration work.
 - Gitleaks history findings are accepted as pre-existing non-current-source noise from a deleted `_bmad` commit. Current-tree findings are ignored runtime artifacts in `log/` and `tmp/`.
 - Semgrep produced no scan result because the local installation failed during CA trust-store initialization before rule execution.
