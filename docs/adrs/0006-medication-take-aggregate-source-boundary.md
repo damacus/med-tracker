@@ -1,7 +1,9 @@
 # ADR 0006: MedicationTake Aggregate Source Boundary
 
-- Status: Accepted
-- Date: 2026-07-02
+- Status
+  Accepted
+- Date
+  2026-07-02
 
 ## Context
 

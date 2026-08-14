@@ -1,7 +1,9 @@
 # ADR 0004: Domain Events with ActiveSupport::Notifications
 
-- Status: Accepted
-- Date: 2026-04-14
+- Status
+  Accepted
+- Date
+  2026-04-14
 
 ## Context
 
@@ -14,7 +16,8 @@ Issue `#1051` identifies four initial domain events:
 - `ScheduleCreated`
 - `LowStockThresholdReached`
 
-The minimum tranche needed now is to choose an event mechanism and implement `DoseTaken` plus `LowStockThresholdReached`.
+The first delivery needed to choose an event mechanism and add `DoseTaken` and
+`LowStockThresholdReached`.
 
 ## Decision
 
@@ -29,7 +32,9 @@ Event names for the initial tranche:
 - `take_blocked_by_rules.med_tracker`
 - `take_errors.med_tracker`
 
-Publishers will emit raw notification payloads directly at the domain/service boundary. We are not introducing a custom event bus, wrapper object, or subscriber framework in this tranche.
+Publishers emit raw notification payloads at the domain or service boundary.
+This decision does not add a custom event bus or subscriber framework. It also
+does not add event wrapper objects.
 
 ## Rationale
 
@@ -54,11 +59,12 @@ An additional gem would add dependency and pattern overhead for a problem Rails 
 
 - Domain intent is published at the point where it occurs.
 - Notifications and analytics can subscribe without coupling themselves to controllers or models.
-- The implementation stays small and aligned with current Rails conventions.
+- The event mechanism stays small and aligned with current Rails conventions.
 
 ### Negative
 
-- These are best-effort in-process events, not durable integration events.
+- These events run in the application process and provide best-effort delivery.
+  They do not provide durable integration delivery.
 - Subscribers are not replayable if the process crashes after the database commit.
 - We still need follow-up work for additional publishers and subscribers.
 
@@ -76,7 +82,7 @@ Deferred from this ADR tranche:
 
 The application observability work completed after this decision adds a
 privacy-safe operational-event boundary beside domain publication.
-`ActiveSupport::Notifications remains the in-process domain-event mechanism`.
+ActiveSupport::Notifications remains the in-process domain-event mechanism.
 The operational boundary does not replace, wrap, or become a subscriber framework.
 It records safe attempts and outcomes independently so that a
 logging failure cannot alter domain behaviour and subscriber ordering cannot
