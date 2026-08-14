@@ -9,6 +9,8 @@ application origin, database, registration policy, and process sizing.
 
 Notification provider settings are documented in
 [Notification delivery configuration](notification-delivery.md).
+Medication data services, AI help, and OIDC settings are documented in
+[Optional integration configuration](optional-integrations.md).
 
 ## Required settings
 
