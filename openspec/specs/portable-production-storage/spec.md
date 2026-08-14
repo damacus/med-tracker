@@ -2,7 +2,7 @@
 
 Defines portable production blob storage so operators can run MedTracker with durable Disk or private S3-compatible storage and migrate safely between them without changing medication or attachment behavior.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Production storage backend selection is explicit and portable
 The system SHALL support durable Disk and private S3-compatible storage as first-class production backends. The selected backend MUST be explicit, MUST validate its own required configuration, and MUST NOT require configuration for an unselected backend or silently fall back to another backend.

@@ -2,7 +2,7 @@
 
 Defines a disposable, production-data-free canary environment that returns to a verified synthetic demo baseline every week without affecting production systems.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Demo mode is explicit and visible
 The application SHALL enable disposable demo behavior only when explicitly
