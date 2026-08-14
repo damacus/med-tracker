@@ -5,7 +5,7 @@ families, and carers. It supports household medication schedules, dose
 recording, stock tracking, reminders, and auditable history.
 
 !!! important "MedTracker is in beta"
-    MedTracker should supplement—not replace—your existing medication routine.
+    MedTracker should supplement, not replace, your existing medication routine.
     Do not depend on it for clinical decisions, emergency information, or your
     sole medication reminders.
 
@@ -56,6 +56,8 @@ or unredacted logs publicly.
 - [API Contract Conventions](api/README.md): use canonical API addressing,
   stable operation IDs, and audience/resource tags when extending the OpenAPI contract.
 - [API Contract](api/openapi.v1.yaml): OpenAPI contract for hosted auth, portable IDs, sync, backups, admin APIs, and FHIR R4 reads.
+- [Portable Data Format](api/portable-data.md): understand snapshot, export,
+  import, and incremental sync record fields.
 - [External Integration Architecture](adrs/0010-external-integration-architecture.md): choose `/api/v1`, `/mcp`, or SMART on FHIR by client audience.
 - [Production Upload Storage](adrs/0008-production-upload-storage.md): understand optional Disk and S3 modes, topology, and migration boundaries.
 - [Upload Storage Backup and Restore](operations/upload-storage-backup-and-restore.md): record and verify backend-aware recovery sets.
