@@ -38,8 +38,8 @@ responsive width used by the journey (desktop and, where relevant, mobile).
 
 - [ ] Use only synthetic data. Do not enter real names, dates of birth,
       addresses, NHS numbers, medication identifiers, or health notes.
-- [ ] Use the repository's fixture/test account and the password documented in
-      `docs/testing.md`; never copy production data into a test environment.
+- [ ] Use the repository's fixture or test account and the password documented
+      in `docs/testing.md`. Never copy production data into a test environment.
 - [ ] Turn off browser extensions that alter accessibility output unless the
       extension is the subject of the test.
 - [ ] Reset zoom to 100%, then repeat one journey at 200% zoom if the change

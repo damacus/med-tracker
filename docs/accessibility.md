@@ -1,6 +1,7 @@
 # Accessibility Guidelines
 
-This document outlines the accessibility standards and implementation guidelines for MedTracker.
+This document defines the accessibility standards and development guidance for
+MedTracker.
 
 ## WCAG 2.2 Compliance Target
 
@@ -15,7 +16,7 @@ All interactive elements (buttons, links, form controls) must meet **WCAG 2.5.8 
 - **Minimum size**: 24×24 CSS pixels
 - **Recommended size**: 44×44 CSS pixels (matches iOS/Android touch guidelines)
 
-### Implementation
+### Component sizes
 
 #### Button Component Sizes
 
@@ -26,7 +27,7 @@ All interactive elements (buttons, links, form controls) must meet **WCAG 2.5.8 
 | `:lg` | 40px (`h-10`) | ✅ Passes              | ⚠️ Below recommended        |
 | `:xl` | 48px (`h-12`) | ✅ Passes + 2.5.5      | ✅ Meets recommendation      |
 
-**Note:** Use `:xl` or add `min-h-[44px]` for primary mobile/touch targets.
+Use `:xl` or add `min-h-[44px]` for primary mobile and touch targets.
 
 #### Touch Target Guidelines
 
@@ -64,9 +65,10 @@ When targets are undersized, ensure adequate spacing:
 
 The following are exempt from size requirements:
 
-1. **Inline text links** - Links within paragraphs constrained by line-height
-2. **User agent controls** - Default browser form controls
-3. **Essential positioning** - When size/position is fundamental to meaning
+1. **Inline text links**: links within paragraphs constrained by line-height
+2. **User agent controls**: default browser form controls
+3. **Essential positioning**: use this exception when size or position is
+   fundamental to meaning
 
 ## Testing
 
@@ -92,6 +94,6 @@ document.querySelectorAll('button, a, [role="button"]').forEach(el => {
 
 ## References
 
-- [WCAG 2.5.8: Target Size (Minimum)](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html)
-- [WCAG 2.5.5: Target Size (Enhanced)](https://www.w3.org/WAI/WCAG22/Understanding/target-size-enhanced.html)
-- [Technique C42: Using min-height and min-width](https://www.w3.org/WAI/WCAG22/Techniques/css/C42)
+- [WCAG 2.5.8 target size (minimum)](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html)
+- [WCAG 2.5.5 target size (enhanced)](https://www.w3.org/WAI/WCAG22/Understanding/target-size-enhanced.html)
+- [Technique C42 for minimum height and width](https://www.w3.org/WAI/WCAG22/Techniques/css/C42)
