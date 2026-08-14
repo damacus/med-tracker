@@ -1,161 +1,120 @@
-# MedTracker LLM Context Index (llms.txt)
+# MedTracker LLM Context Index
 
-## PROJECT
-- Name: MedTracker
-- Purpose: Safety-first medication tracking for carers, families, and clinicians.
-- Primary outcomes:
-  - Record prescriptions and non-prescription medicines.
-  - Enforce dosage timing and daily limits.
-  - Keep an auditable medication history.
-- Repo: https://github.com/damacus/med-tracker
+## Project
 
-## STACK
-- Backend: Ruby on Rails
-- Frontend: Hotwire (Turbo + Stimulus) + Phlex
-- Database: PostgreSQL (all environments)
-- Auth: Rodauth + password, OIDC, passkeys, TOTP
-- Testing: RSpec + Capybara/Playwright
-- Docs build: Zensical (`task docs:serve`, `task docs:build`)
+- Repository: <https://github.com/damacus/med-tracker>
+- Purpose: self-hosted medication tracking for individuals, households, and
+  carers.
+- Core outcomes: plan medication, record doses, track stock, and keep an
+  attributable history.
 
-## ARCHITECTURE
+## Stack
+
+- Ruby 4.0.6 and Rails 8.1.3
+- PostgreSQL 18
+- Hotwire, Phlex, RubyUI, and Tailwind CSS
+- Rodauth passwords, passkeys, TOTP, recovery codes, and optional OIDC
+- Pundit authorization
+- RSpec, Capybara, and Playwright
+- Zensical documentation
+
+Use Task commands for development, tests, linting, security checks, and docs.
+
+## Architecture
+
 - Server-side domain logic is authoritative.
-- UI renders server-sent HTML; Turbo Streams for interactive updates.
-- Critical identity and medication flows are audited.
-- Role-based authorization controls admin/clinical actions.
-- The `/api/v1` surface supports hosted OIDC session exchange, portable IDs, idempotent writes, sync feeds,
-  transactional batches, self-service exports, household administration, and protected FHIR R4 read endpoints.
+- Phlex components render HTML. Turbo and Stimulus handle browser updates.
+- Core care records belong to a household and are protected by row-level
+  security and Pundit policies.
+- Household roles live on `HouseholdMembership`.
+- `PersonAccessGrant` gives a member view, record, or manage access to one
+  person.
+- Critical authentication, medication, and administrative actions are audited.
+- `/api/v1` uses bearer sessions, portable IDs, idempotent writes, sync feeds,
+  transactional batches, encrypted portability, and protected FHIR reads.
 
-Key entry points:
+## Domain model
+
+- `Account`: authentication identity and credentials.
+- `Household`: tenant and care boundary.
+- `HouseholdMembership`: links an account to a household as owner,
+  administrator, or member.
+- `Person`: the health and care identity.
+- `User`: application profile linked to a person. It does not hold a role.
+- `PersonAccessGrant`: delegated access to one person.
+- `Medication`: stock held at one location.
+- `Dosage`: reusable dose option for a medication.
+- `Schedule`: fixed or recurring medication plan.
+- `PersonMedication`: routine or as-needed medication without a fixed schedule.
+- `MedicationTake`: immutable administration event with a dose snapshot.
+- `HealthEvent`: dated health record for a person.
+- `CarerRelationship`: care relationship used by delegated access.
+
+Person types are `adult`, `minor`, and `dependent_adult`. Minors and dependent
+adults do not have capacity to manage their own medication.
+
+## Source map
+
 - Routes: `config/routes.rb`
 - API contract: `docs/api/openapi.v1.yaml`
-- API capabilities: `/api/v1/capabilities`
 - Dashboard: `app/controllers/dashboard_controller.rb`
-- Admin area: `app/controllers/admin/*`
-- Medication models: `app/models/medicine.rb`, `app/models/prescription.rb`, `app/models/person_medicine.rb`, `app/models/medication_take.rb`
+- Policies: `app/policies/`
+- Household and access models: `app/models/household.rb`,
+  `app/models/household_membership.rb`, `app/models/person_access_grant.rb`
+- Care models: `app/models/person.rb`, `app/models/medication.rb`,
+  `app/models/dosage.rb`, `app/models/schedule.rb`,
+  `app/models/person_medication.rb`, `app/models/medication_take.rb`
+- MCP server: `app/mcp/med_tracker_mcp/`
+- Architecture: `docs/design.md`
+- Database map: `docs/database-relationships.md`
+- Household access: `docs/user-management.md`
 
-## DOMAIN_MODEL
-- `Account`: authentication credential record (email + password hash, status); linked to Person
-- `Person`: care identity (demographics, capacity, care context)
-- `User`: sign-in identity, linked to Person; holds role for authorization
-- `Medicine`: catalog and stock/supply context
-- `Prescription`: prescribed regimen for a person
-- `PersonMedicine`: ad-hoc/non-prescription regimen
-- `MedicationTake`: dose event record
-- `CarerRelationship`: active/inactive care links
+## Production seeding
 
-Person types:
-- `adult`, `minor`, `dependent_adult`
+The first-owner bootstrap uses:
 
-User roles:
-- `administrator`, `doctor`, `nurse`, `carer`, `parent`, `minor`
+- command: `rails med_tracker:bootstrap_admin`
+- task: `lib/tasks/admin_bootstrap.rake`
+- service: `app/services/admin/bootstrap_service.rb`
+- variables: `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME`, and `ADMIN_DOB`
 
-Safety invariants:
-- Enforce `max_daily_doses` and `min_hours_between_doses` before saving dose records.
-- Authorization and care-capacity rules gate who can administer/manage.
+It refuses to run when any active household owner already exists.
 
-## SEEDING_MODEL (IMPORTANT)
-Seeding has two distinct flows:
+Production `rails db:seed` loads reference data and then invitations from
+`db/seeds/users.yml`. Invitation entries use `membership_role` with
+`administrator` or `member`. Set `HOUSEHOLD_ID` or `HOUSEHOLD_SLUG`; otherwise
+the seed selects the oldest household.
 
-1) Bootstrap first system administrator
-- Command: `rails med_tracker:bootstrap_admin`
-- Task definition: `lib/tasks/admin_bootstrap.rake`
-- Service logic: `app/services/admin/bootstrap_service.rb`
-- Required env:
-  - `ADMIN_EMAIL`
-  - `ADMIN_PASSWORD`
-  - `ADMIN_NAME`
-  - `ADMIN_DOB` (YYYY-MM-DD)
-- Behavior:
-  - Fails if an administrator already exists.
-  - Fails if email already exists.
-  - Creates account + person + administrator user transactionally.
+See `docs/kubernetes-user-seeding.md` before running either command in a
+cluster.
 
-2) Invite initial users from YAML
-- Command path: `rails db:seed` in production
-- Loader: `db/seeds.rb` -> `db/seeds/seed_users.rb`
-- Input file: `db/seeds/users.yml`
-- Behavior (idempotent):
-  - Skips emails that already have an account.
-  - Skips emails with pending invitations.
-  - Creates invitations and sends invite emails.
+## Common workflows
 
-Kubernetes pattern:
-- Mount `users.yml` via ConfigMap at `/app/db/seeds/users.yml`.
-- Provide env via Secret or ExternalSecret target Secret.
-- Run one-off Job for bootstrap admin, then one-off Job for `rails db:seed`.
-- Full runbook: `docs/kubernetes-user-seeding.md`
+- Start development: `task dev:portless`, then `task dev:seed`
+- Test preflight: `task test:preflight`
+- Full test suite: `task test`
+- Browser tests: `task playwright`
+- Ruby lint: `task rubocop`
+- Security scan: `task brakeman`
+- Documentation: `task docs:serve` or `task docs:build`
 
-## CORE_WORKFLOWS
-- Authentication/session lifecycle:
-  - Login/logout and MFA flows via Rodauth integrations.
-- Medication management:
-  - Create medicines and dosages.
-  - Assign prescriptions/person medicines.
-  - Record medication takes with safety checks.
-- Admin operations:
-  - Manage users and invitations.
-  - Manage carer relationships.
-  - Review audit logs.
+## Change checks
 
-## SOURCE_MAP
-High-value files for fast orientation:
-- Architecture/design: `docs/design.md`
-- User roles/types: `docs/user-management.md`
-- Deployment: `docs/deployment.md`
-- K8s seeding runbook: `docs/kubernetes-user-seeding.md`
-- MCP setup and usage: `docs/mcp.md`
-- Routes: `config/routes.rb`
-- Hosted MCP server: `app/mcp/med_tracker_mcp/*`
-- Seeds:
-  - `db/seeds.rb`
-  - `db/seeds/seed_users.rb`
-  - `db/seeds/users.yml`
-- Admin bootstrap:
-  - `lib/tasks/admin_bootstrap.rake`
-  - `app/services/admin/bootstrap_service.rb`
-- Tests:
-  - Feature/system specs: `spec/features/`, `spec/system/`
-  - MCP request contract: `spec/requests/mcp/server_spec.rb`
+- Access changes: review policies, household grant tests, and
+  `docs/user-management.md`.
+- Medication changes: review schedule, person-medication, dose, stock, and
+  audit behavior.
+- Seed changes: review `db/seeds/`, the bootstrap task, and
+  `docs/kubernetes-user-seeding.md`.
+- API changes: update `docs/api/openapi.v1.yaml` and its public contract specs.
+- Visible UI changes: verify the real browser flow at desktop and mobile sizes.
 
-## OPS_RUNBOOK
-- Dev start: `task dev:up` then `task dev:seed`
-- Test: `task test`
-- Local Playwright browser tests: `task playwright`
-- Lint: `task rubocop`
-- Docs: `task docs:serve`, `task docs:build`
+## Documentation
 
-Release/deploy context:
-- Release automation: `.github/workflows/release-please.yml`
-- Container publish: `.github/workflows/docker-publish.yml`
+- Published site: <https://damacus.github.io/med-tracker/>
+- Documentation index: `docs/index.md`
+- API index: `docs/api/README.md`
+- Testing guide: `docs/testing.md`
 
-## TESTING_AND_QUALITY
-- TDD required: Red -> Green -> Refactor.
-- Use task commands instead of direct test runner commands.
-- Validate behavior through public APIs and user flows.
-- Keep changes small and focused.
-
-## AGENT_GUARDRAILS
-- Do not weaken safety constraints around medication timing/dose limits.
-- Keep authorization boundaries explicit and tested.
-- Prefer root-cause fixes over UI-only workarounds.
-- Preserve production seeding idempotency behavior.
-- For infrastructure docs, include copy-pasteable manifests and verification commands.
-
-## CHANGE_IMPACT_GUIDE
-When changing these areas, also review:
-- Seeding/bootstrap changes ->
-  - `docs/kubernetes-user-seeding.md`
-  - `docs/deployment.md`
-  - `db/seeds/*`
-  - `lib/tasks/admin_bootstrap.rake`
-- Role/capacity logic changes ->
-  - `docs/user-management.md`
-  - policy specs + feature specs
-- Medication safety changes ->
-  - model validations/callbacks
-  - `spec/features/*medication*`, `spec/system/*prescription*`
-
-## DOCUMENTATION INDEX
-- Docs home: `docs/index.md`
-- Published docs: https://damacus.github.io/med-tracker/
-- This file is intended for both humans and coding agents needing rapid repository context.
+Treat this file as a fast orientation map. Verify details against the named
+source files before changing behavior.
