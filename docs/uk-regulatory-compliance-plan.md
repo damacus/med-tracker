@@ -1,154 +1,126 @@
-# UK Regulatory Compliance and Open‑Source Deployment Plan
+# UK regulatory planning guide
 
-Version: 1.0
-Date: 2025-11-12
+- Status
+  Planning guide, not legal or clinical safety approval
+- Last reviewed
+  2026-08-14
 
-## Executive summary
+## Purpose
 
-This document outlines the compliance strategy for operating MedTracker in the UK health context and as an open-source project. It covers regulatory determination (medical device vs. non-device), mandatory applications/registrations, clinical safety, information governance and privacy, security baseline, accessibility, auditability, interoperability, and an implementation backlog for the repository and deployers.
+This guide identifies the decisions a UK deployer must make before using
+MedTracker with real health data. The repository cannot decide a deployer's
+legal role, intended purpose, clinical setting, or procurement duties.
 
-MedTracker’s compliance posture depends primarily on its intended use. The plan below treats both tracks:
+Get advice from a qualified data-protection lead, Clinical Safety Officer, and
+medical-device specialist where the deployment needs it.
 
-- Non-medical device track (recordkeeping and workflow support only)
-- Software as a Medical Device (SaMD) track (if the app performs safety‑critical clinical decision support beyond simple reminders/recording)
+## Start with intended purpose
 
-## 1. Intended use and scope (decision point)
+Write and approve an intended-purpose statement for the deployed product. Keep
+it aligned with the features, claims, user groups, and clinical setting.
 
-- Draft intended use statement (to ratify):
-  - “MedTracker is a software application that helps carers and patients schedule, record, and review medication administration, enforcing configured rules (e.g., max daily doses, minimum intervals) and providing safety prompts. It does not diagnose conditions or recommend treatments; clinical decisions remain with healthcare professionals.”
-- Decision criteria:
-  - If the app computes or recommends dosing, contraindications, or interactions as a basis for clinical decisions, classify as SaMD.
-  - If it provides reminders, logging, and rule-based checks configured by clinicians without autonomous recommendations, likely non‑medical device administrative software.
-- Action:
-  - Approve a written intended use statement and freeze scope. If any feature moves it into SaMD, follow the SaMD track below.
+The MHRA states that software may be a medical device when its intended purpose
+fits the medical-device definition. A record storage or patient-management
+system does not become a device only because it stores health information.
+Features that diagnose, recommend treatment, or drive a clinical decision need
+a fresh classification assessment.
 
-## 2. Regulatory pathways (UK)
+Do not describe MedTracker as a medical device, or as outside medical-device
+rules, without that assessment.
 
-- Non‑medical device track:
-  - UK GDPR and Data Protection Act 2018 compliance
-  - NHS Digital Technology Assessment Criteria (DTAC) evidence for NHS procurement
-  - Clinical safety DCB0129 (manufacturer) and DCB0160 (deploying organisation) if used in NHS settings
-  - NHS Data Security and Protection Toolkit (DSPT) completed by the deploying organisation
-- SaMD track (if applicable):
-  - Device classification; likely Class I/IIa depending on functionality
-  - Quality Management System (QMS) (ISO 13485‑aligned), ISO 14971 risk management, IEC 62304 software lifecycle (proportionate)
-  - Technical documentation (“technical file”), clinical evaluation, post‑market surveillance plan
-  - MHRA registration and UKCA marking via an Approved Body where required
-  - Continue to meet DTAC, DCB0129/0160, DSPT, and UK GDPR obligations
+## Data protection
 
-## 3. Required applications and registrations
+Each deployer must identify whether it acts as a controller, processor, or both.
+It must record the lawful basis and special-category condition for each use of
+health data.
 
-- ICO registration (data controller): required for organisations deploying MedTracker in production with personal data.
-- NHS DSP Toolkit (DSPT): required for NHS bodies and suppliers processing NHS patient data; completed by the deploying organisation.
-- DCB0129/0160 safety case approvals: manufacturer (supplier) and deploying care organisation sign‑off with appointed Clinical Safety Officers (CSOs).
-- MHRA manufacturer registration and UKCA marking: only if MedTracker is SaMD.
-- Cyber Essentials / Cyber Essentials Plus: recommended for supplier trust and some procurement pathways.
-- SNOMED CT / TRUD licensing: if using SNOMED CT codes; ensure adopters have appropriate licences. Avoid embedding full SNOMED content in the repo.
-- NHS BSA dm+d (Dictionary of Medicines and Devices): verify licensing (typically OGL) and update acknowledgements if dm+d is used.
-- DTAC evidence pack: prepare and submit as part of NHS procurement.
+Complete a Data Protection Impact Assessment when the planned processing is
+likely to create high risk. The ICO also recommends a DPIA for major projects
+that use sensitive data or involve vulnerable people. The assessment must cover
+the real hosting model, users, integrations, retention, support access, and
+international transfers.
 
-## 4. Information governance and privacy (UK GDPR)
+Also prepare:
 
-- Lawful basis and special category condition selection (likely Art. 6(1)(e) or (f) and Art. 9(2)(h) or (c)/(g) depending on deployer context).
-- Data Protection Impact Assessment (DPIA) template and guidance for adopters.
-- Records of Processing Activities (ROPA) template.
-- Privacy Notice and transparency materials; plain English content design.
-- Data Subject Rights procedures: access, rectification, erasure, restriction, portability, objection.
-- Children’s data and Age Appropriate Design Code: accommodate minors with high‑privacy defaults.
-- Data retention schedules and deletion workflows; configurable policies.
-- Data processing agreements and subprocessor disclosures for hosted models.
-- International transfers assessment (SCCs/IDTA) if applicable.
+- a privacy notice and data-subject-rights process;
+- records of processing activities;
+- processor and subprocessor terms;
+- a retention and disposal schedule; and
+- incident response and breach assessment procedures.
 
-## 5. Security baseline (OWASP ASVS L2 target)
+Check current ICO guidance because UK data-protection law changed after the
+Data (Use and Access) Act received Royal Assent in 2025.
 
-- Authentication and session security; RBAC with least privilege; audit authorization rules.
-- TLS 1.2+ everywhere; HSTS; secure cookies; CSRF protection.
-- Secret management (12‑factor); key rotation; no secrets in source control.
-- Encryption at rest for databases and backups; KMS‑managed keys.
-- Logging: structured, redacted; no secrets/health data in logs; centralised log management.
-- Vulnerability management: SCA (bundler‑audit), SAST (CodeQL), DAST (optional), dependency updates (Dependabot/Renovate).
-- Supply chain: SBOM (CycloneDX), signature verification, reproducible builds.
-- Backups, disaster recovery, RPO/RTO objectives; tested restores.
-- Monitoring, alerting, and incident response runbooks with 72‑hour breach notification procedure.
+## NHS clinical safety and procurement
 
-## 6. Clinical safety and human factors (DCB0129/0160)
+DCB0129 applies clinical risk management to organisations that develop and
+maintain health IT systems for use in health and care. DCB0160 covers the
+deployment and use of those systems. NHS England is reviewing both standards,
+so a safety case must follow the current release and track later changes.
 
-DCB0129 and DCB0160 remain applicable, but NHS England is actively reviewing them. The clinical safety case must track the revised or replacement standard and must not treat the current audit implementation as compliance on its own.
+The supplier and deploying organisation must agree their responsibilities.
+They should maintain a hazard log and clinical safety case. Release evidence
+and appointed Clinical Safety Officer oversight are also needed where the standards
+apply.
 
-- Appoint a Clinical Safety Officer (CSO) for manufacturer and for each deploying organisation.
-- Create a Safety Case and Hazard Log; use ISO 14971 risk management.
-- Human factors: implement the “five rights” prompts, clear error states, and confirmation flows.
-- Safety controls already in product scope (examples): max daily doses, minimum hours between doses; ensure these have tests and are traceable in the hazard log.
-- Labeling and limitations: disclaimers for non‑emergency use; do not replace professional judgement.
-- Post‑market surveillance plan: collect field feedback, near‑misses, and safety incidents.
+NHS procurement may also require:
 
-## 7. Accessibility and inclusivity
+- Digital Technology Assessment Criteria evidence;
+- Data Security and Protection Toolkit evidence;
+- accessibility evidence;
+- penetration-test and vulnerability-management evidence; and
+- interoperability and service-management evidence.
 
-- Target WCAG 2.2 AA; run automated checks and manual audits.
-- Screen reader compatibility, keyboard navigation, focus management, colour contrast, error messaging.
-- Plain language; support for timezones and internationalisation of units (mg/mL).
+These artefacts do not replace product safety, legal, or security work.
 
-## 8. Auditability and accountability
+## Medical-device path
 
-- Persistent audit trails for create/update/delete and key access events (who/what/when/where/IP/UA), with immutable retention.
-- Avoid logging clinical data in access logs; store audit metadata separately from PHI where possible.
-- Provide export of audit records for investigations and regulator requests.
-- Tamper‑evidence (append‑only storage or cryptographic sealing) for high‑assurance deployments.
+If the intended purpose makes MedTracker medical-device software, confirm the
+route with an appropriate specialist. The assessment must cover classification,
+the quality-management system, risk management, clinical evidence, technical
+documentation, post-market surveillance, registration, and the correct market
+marking for the target UK nation.
 
-## 9. Interoperability (optional roadmap)
+Do not assume a device class or conformity route from this guide. Great Britain
+and Northern Ireland can have different requirements, and the rules continue to
+change.
 
-- Use NHS dm+d identifiers for medicines where possible.
-- Consider FHIR resources (Medication, MedicationRequest, MedicationStatement, MedicationAdministration) for integration.
-- If using SNOMED CT, ensure licence compliance and avoid redistributing restricted content.
+## Repository evidence
 
-## 10. Open‑source governance and licensing
+Use repository documents as inputs to a deployment assessment:
 
-- Licence decision: Apache‑2.0 (chosen to maximize adoption and avoid legal barriers to use).
-- Alternative (not chosen): AGPL‑3.0 for stronger network copyleft.
-- Project governance: MAINTAINERS.md, CODE_OF_CONDUCT.md, CONTRIBUTING.md, SECURITY.md (vulnerability disclosure and embargo policy).
-- Release engineering: changelog, SemVer, signed tags, SBOMs and checksums for releases.
-- Compliance kit for adopters: docs/compliance/ with DPIA template, ROPA template, DCB0129/0160 starter packs, DTAC mapping, DSPT guidance.
+- [Hosted multi-tenant security gate](security/hosted-multi-tenant-hardening-audit.md)
+- [Hosted private beta runbook](operations/hosted-private-beta-runbook.md)
+- [Audit trail](audit-trail.md)
+- [Audit retention policy](compliance/audit-retention-policy.md)
+- [DPIA audit evidence](compliance/dpia-audit-evidence.md)
+- [DCB0129 audit evidence](compliance/dcb0129-audit-evidence.md)
+- [Accessibility guidelines](accessibility.md)
+- [Production environment](operations/production-environment.md)
 
-## 11. Repository implementation backlog (product changes)
+Repository evidence proves only the stated code or operational control. It does
+not approve a deployment. The hosted private beta remains closed while its
+security gate is `NO-GO`.
 
-- RBAC authorization review and tests per Authorization Completion Plan.
-- Audit trail hardening: adopt a proven auditing solution or equivalent access logging; define retention policy and export.
-- Data retention settings: configurable schedules, purge jobs, user‑initiated deletion workflows.
-- Security controls in code and CI: Brakeman, bundler‑audit, CodeQL, dependency update automation.
-- Accessibility: WCAG 2.2 AA audit and fixes; add system tests where reasonable.
-- Privacy by design: logging redaction, metrics vs. PHI separation, error reporting configuration.
-- Operational: health checks, backup/restore scripts, monitoring hooks, incident response runbooks.
+## Deployment decision record
 
-## 12. Deployment and adopter checklist
+Before go-live, record:
 
-- Determine role (controller/processor) and complete ICO registration if controller.
-- Complete DSPT (for NHS data) and assemble DTAC evidence pack.
-- Appoint CSO and complete local DCB0160 activities; obtain supplier’s DCB0129 evidence.
-- Complete DPIA and ROPA; publish Privacy Notice; sign DPAs.
-- Implement security baseline: TLS, RBAC, secrets, backups, monitoring, incident response.
-- Validate accessibility (WCAG 2.2 AA) and usability with representative users.
-- Run vulnerability scans and pen test prior to go‑live; track remediation.
+- the approved intended purpose and device-classification advice;
+- controller and processor roles, lawful basis, and DPIA approval;
+- applicable DCB0129 and DCB0160 responsibilities;
+- the completed procurement and accessibility evidence;
+- the accepted security and recovery evidence; and
+- the people authorised to accept residual clinical, privacy, and operational
+  risk.
 
-## 13. Milestones and timeline (suggested)
+Revisit the decision after material feature, hosting, integration, user, or
+regulatory changes.
 
-- 0–30 days: Intended use decision; DPIA/ROPA templates; baseline security in CI; audit trail plan; RBAC review; draft DCB0129 skeleton; create compliance kit folder.
-- 30–60 days: Accessibility audit and fixes; data retention; incident response; backups/DR; DTAC mapping; DSPT guidance for adopters.
-- 60–90 days: Clinical safety evidence drafts complete; monitoring and alerting; SBOM in releases; optional Cyber Essentials submission.
-- If SaMD: establish QMS and begin MHRA/UKCA planning in parallel; extend timeline accordingly.
+## Current sources
 
-## 14. Documentation to add to repository (next steps)
-
-- SECURITY.md (vuln disclosure and support windows)
-- GOVERNANCE/MAINTAINERS.md
-- docs/compliance/ with templates: DPIA, ROPA, DCB0129/0160 starter, DTAC mapping, DSPT checklist
-- Deployment Guide with compliance checklist for adopters
-
-## References
-
-- UK GDPR and Data Protection Act 2018
-- NHS DTAC (Digital Technology Assessment Criteria)
-- NHS DSP Toolkit
-- DCB0129 (Clinical Risk Management: Manufacturers of Health IT Systems)
-- DCB0160 (Clinical Risk Management: Deployment and Use of Health IT Systems)
-- ISO 14971, IEC 62304, ISO 13485 (if SaMD)
-- NHS BSA dm+d, SNOMED CT licensing and TRUD
+- [MHRA guidance for software applications](https://www.gov.uk/government/publications/medical-devices-software-applications-apps)
+- [MHRA software and AI medical-device guidance](https://www.gov.uk/government/publications/software-and-artificial-intelligence-ai-as-a-medical-device)
+- [ICO DPIA guidance](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/accountability-and-governance/data-protection-impact-assessments-dpias/)
+- [NHS England DCB0129 standard](https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dcb0129-clinical-risk-management-its-application-in-the-manufacture-of-health-it-systems/)
+- [NHS England DTAC](https://www.england.nhs.uk/digital-technology-assessment-criteria-dtac/)
