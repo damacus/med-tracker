@@ -1,114 +1,85 @@
 # ADR 0002: Authentication and Authorization Strategy
 
-- Status: Accepted; six-role hierarchy, role-based policy examples, and obsolete
-  migration status superseded by [ADR 0009](0009-bounded-context-map.md)
+- Status: accepted and partly superseded by [ADR 0009](0009-bounded-context-map.md)
 - Date: 2025-11-27
 
-ADR 0009 supersedes this ADR's six-role authorization hierarchy, role-based
-policy examples, and obsolete migration-status section. The Rodauth
-authentication, deny-by-default Pundit framework, and base PaperTrail audit
-decisions remain accepted.
+ADR 0009 replaced the original global role hierarchy with household membership
+and person access boundaries. This record keeps the accepted identity,
+authorization, and audit decisions.
 
 ## Context
 
-MedTracker requires robust authentication and authorization to protect sensitive medication data. The application serves multiple user roles (administrators, doctors, nurses, carers, parents) with different access levels. UK healthcare compliance (GDPR, DTAC) mandates strong identity verification and audit trails.
+MedTracker must protect medication and health data without treating an account,
+a person, and a household role as the same concept.
 
-Key requirements:
-
-- Role-based access control for 6 user roles
-- Support for email/password and OAuth (Google) authentication
-- Email verification for account security
-- Audit logging of authentication events
-- Future support for two-factor authentication (2FA)
+Authentication must support account verification, recovery, multi-factor
+methods, and optional external identity providers. Authorization must apply the
+active household and person access rules to every request.
 
 ## Decision
 
-### Authentication: Rodauth
+### Rodauth manages account authentication
 
-We adopt **Rodauth** (`rodauth-rails`) as the primary authentication framework, replacing the initial `has_secure_password` implementation.
+Rodauth is the primary web authentication system. `Account` stores the
+authentication identity. `Person` stores demographic information, and `User`
+connects the person to application access.
 
-**Rationale:**
+Rodauth provides:
 
-1. **Feature-complete**: Built-in support for email verification, password reset, remember me, OAuth, and 2FA
-2. **Security-focused**: Designed with security as the primary concern, not bolted on
-3. **PostgreSQL-optimized**: Works excellently with our PostgreSQL-only strategy
-4. **Extensible**: Easy to customize flows without monkey-patching
-5. **Maintained**: Active development with strong security track record
+- verified email and password sign-in;
+- password reset and account recovery;
+- remembered and active session management;
+- TOTP, recovery codes, and passkeys;
+- optional OpenID Connect sign-in through OmniAuth.
 
-**Implementation:**
+The supported flows are documented in
+[Two-factor authentication](../two-factor-authentication.md),
+[Passkey setup](../passkey-setup.md), and
+[OpenID Connect setup](../oidc-setup.md).
 
-- `Account` model for authentication (separate from `Person` for demographics)
-- `rodauth-omniauth` for Google OAuth integration
-- Environment-specific email verification (strict in production, 7-day grace period in development)
-- Legacy `User` model retained during transition period
+### Pundit enforces household and person access
 
-### Authorization: Pundit
+Pundit policies deny access by default. Controllers use policy checks and policy
+scopes for records that belong to a household.
 
-We adopt **Pundit** for authorization with deny-by-default policies.
+Authorization uses:
 
-**Rationale:**
+- one active `HouseholdMembership` with the role `owner`, `administrator`, or
+  `member`;
+- household ownership on tenant records;
+- active person access grants for delegated care;
+- separate record and manage permissions where the workflow needs them.
 
-1. **Simple and explicit**: Plain Ruby objects, easy to test and understand
-2. **Rails conventions**: Follows Rails patterns, integrates cleanly
-3. **Flexible**: Supports complex authorization logic without framework constraints
-4. **Testable**: Policies are easily unit-tested with RSpec
+Professional titles such as doctor or nurse describe a person. They do not
+grant a household role or access to another person's records.
 
-**Implementation:**
+The current model is documented in
+[Manage people and household access](../user-management.md) and
+[ADR 0009](0009-bounded-context-map.md).
 
-- Policy classes for each resource (`UserPolicy`, `PersonPolicy`, `PrescriptionPolicy`, etc.)
-- `ApplicationPolicy` with deny-by-default approach
-- `policy_scope` for data filtering based on user role
-- Comprehensive policy tests using `pundit-matchers`
+### Audit records remain separate from access checks
 
-### Role Hierarchy
+PaperTrail records version history for audited model changes. MedTracker also
+stores append-only audit evidence for security and health-data workflows.
+Neither audit system grants access. Pundit remains the authorization boundary.
 
-| Role          | Access Level                               |
-|---------------|--------------------------------------------|
-| Administrator | Full system access, user management        |
-| Doctor        | All patients, prescriptions, clinical data |
-| Nurse         | All patients, medication recording         |
-| Carer         | Assigned patients only                     |
-| Parent        | Own children only                          |
-| Minor         | Own data only (limited)                    |
-
-### Audit Trail: PaperTrail
-
-We use **PaperTrail** for audit logging of all authentication and data changes.
-
-**Rationale:**
-
-1. **Battle-tested**: Widely used in production healthcare applications
-2. **Compliance**: Meets UK healthcare audit requirements
-3. **Integration**: Works seamlessly with Pundit and Rodauth
+See [Audit trail](../audit-trail.md) for the current evidence model.
 
 ## Consequences
 
-### Positive
+- Authentication identity stays separate from demographic and household data.
+- Household and person access can change without changing the account identity.
+- Policy scopes must be applied consistently to list and record endpoints.
+- External identity providers cannot grant MedTracker data access by themselves.
+- Authentication and data changes produce reviewable audit evidence.
 
-- Strong security foundation for healthcare compliance
-- Clear separation of authentication (Rodauth) and authorization (Pundit)
-- Comprehensive audit trail for regulatory requirements
-- Testable, maintainable authorization logic
-- Future-ready for 2FA and advanced security features
+## Superseded content
 
-### Negative
+The original six global roles, legacy authentication migration phases, and
+links to delivery plans no longer describe MedTracker. Git history keeps
+that earlier decision text.
 
-- Dual authentication systems during migration (legacy + Rodauth)
-- Learning curve for Rodauth's Roda-based DSL
-- Additional complexity in Account/Person/User relationships
+## Related decisions
 
-### Migration Path
-
-1. **Phase 1** (Complete): Pundit authorization framework
-2. **Phase 2** (In Progress): Rodauth foundation installed, login working
-3. **Phase 3** (Pending): Rodauth signup with Person creation
-4. **Phase 4** (Pending): Google OAuth integration
-5. **Phase 5** (Pending): Legacy auth removal, user migration
-
-## Related Documents
-
-- `docs/plans/USER_MANAGEMENT_PLAN.md` - Overall user management strategy
-- `docs/plans/USER_SIGNUP_PLAN.md` - Rodauth signup implementation status
-- `docs/plans/RODAUTH_SIGNUP_IMPLEMENTATION.md` - Detailed implementation plan
-- `docs/plans/USER_SIGNUP_AND_2FA_PLAN.md` - 2FA implementation plan
-- `docs/plans/AUTHORIZATION_COMPLETION_PLAN.md` - Pundit implementation details
+- [External identity provider](0005-external-identity-provider.md)
+- [Bounded context map](0009-bounded-context-map.md)
