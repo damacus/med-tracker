@@ -5,7 +5,12 @@ Defines serialization and atomic replay behavior for concurrent idempotent API m
 ## Requirements
 
 ### Requirement: Matching concurrent mutations execute once
-The system SHALL serialize authenticated mutating API requests before controller mutation when they have the same routed household, authenticated account scope, request path, HTTP method, and `Idempotency-Key`. After the first request commits, every matching waiter SHALL replay its stored status and body with `Idempotency-Replayed: true` without executing the mutation again.
+The system SHALL serialize authenticated mutating API requests before controller
+mutation when their request identity matches. This identity contains the routed
+household and authenticated account scope. It also contains the request path,
+HTTP method, and `Idempotency-Key`. After the first request commits, every
+matching waiter SHALL replay its stored status and body with
+`Idempotency-Replayed: true` without executing the mutation again.
 
 #### Scenario: Concurrent People creates converge
 - **GIVEN** two database connections submit the same valid People create for the same household and authenticated account with the same path, method, key, and request digest
@@ -58,7 +63,11 @@ The system SHALL replay a stored response only when the authenticated account sc
 - **AND** neither request can observe the other household's response or health data
 
 ### Requirement: Failed attempts do not poison an idempotency key
-The system SHALL release transaction-scoped serialization on commit, rollback, database disconnect, or raised exception. Responses below HTTP 500 MAY be stored as completed outcomes under the existing response policy; HTTP 500 responses and raised exceptions SHALL NOT store a completed response and SHALL leave the key retryable.
+The system SHALL release transaction-scoped serialization on commit, rollback,
+database disconnect, or raised exception. Responses below HTTP 500 MAY be stored
+as completed outcomes under the existing response policy. HTTP 500 responses
+and raised exceptions SHALL NOT store a completed response and SHALL leave the
+key retryable.
 
 #### Scenario: A deterministic client error is replayed
 - **GIVEN** a keyed mutation completes with a deterministic HTTP 4xx response that is eligible for storage
