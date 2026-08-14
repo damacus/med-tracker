@@ -1,8 +1,11 @@
 # ADR 0010: External Integration Architecture
 
-- Status: Accepted
-- Date: 2026-07-14
-- Supersedes: [ADR 0007](0007-external-app-integration-contract.md)
+- Status
+  Accepted
+- Date
+  2026-07-14
+- Supersedes
+  [ADR 0007](0007-external-app-integration-contract.md)
 
 ## Context
 
@@ -11,8 +14,8 @@ clients, and external healthcare applications. These clients require different
 payloads, compatibility guarantees, credentials, and consent boundaries.
 
 ADR 0007 established separate product and FHIR surfaces, but it was written
-across the delivery of SMART on FHIR. It consequently describes SMART support
-as both deferred and implemented. The shipped architecture now includes a
+across the delivery of SMART on FHIR. It describes SMART support as both
+deferred and implemented. The current architecture now includes a
 registered-client SMART App Launch flow, so one current decision must replace
 that contradictory record.
 
@@ -95,7 +98,7 @@ without FHIR payloads or raw credentials.
 
 ## Deliberate boundaries
 
-Only the shipped contract is advertised:
+Only the current contract is advertised:
 
 - standalone launch is supported; EHR launch is not supported;
 - read scopes are supported; FHIR write scopes are not supported;
@@ -103,9 +106,9 @@ Only the shipped contract is advertised:
 - bulk-data export is not part of the SMART contract;
 - OpenID Connect identity scopes are not part of the SMART contract; and
 - `/api/v1` credentials do not become SMART grants, and SMART grants do not
-  authorize `/api/v1` product operations.
+  authorise `/api/v1` product operations.
 
-Registered-client onboarding is therefore an explicit trust and operational
+Registered-client onboarding is an explicit trust and operational
 process. Expanding any boundary above requires a new decision or an amendment
 that covers consent, tenant isolation, revocation, audit, and compatibility.
 
