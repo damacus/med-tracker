@@ -581,6 +581,164 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       )
     end
 
+    it 'types household membership administration' do
+      collection = described_class.operation('/households/{household_id}/admin/memberships', 'get')
+      resource_path = '/households/{household_id}/admin/memberships/{id}'
+      writes = %w[patch put delete].map { |method| described_class.operation(resource_path, method) }
+
+      expect(collection.fetch('responses').keys).to include('200', '401', '403', '404', '429')
+      expect(collection.dig('responses', '200', 'content', 'application/json', 'schema', '$ref')).to eq(
+        '#/components/schemas/HouseholdMembershipCollectionResponse'
+      )
+      expect(writes).to all(satisfy { |operation| operation.fetch('responses').key?('409') })
+      expect(writes).to all(satisfy { |operation| operation.fetch('responses').key?('404') })
+    end
+
+    it 'matches the household membership Rails collection' do
+      household_id, headers = manager_api_context
+
+      get api_v1_household_admin_memberships_path(household_id), headers:, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('HouseholdMembershipCollectionResponse', response.parsed_body)).to be_empty
+      expect(
+        described_class.schema_errors(
+          'HouseholdMembershipCollectionResponse', response.parsed_body.merge('meta' => {})
+        )
+      ).to include('/meta')
+    end
+
+    it 'rejects unsupported household membership request fields' do
+      valid_request = { household_membership: { role: 'member', person_id: nil } }
+      invalid_request = valid_request.deep_merge(household_membership: { unexpected: true })
+
+      expect(described_class.schema_errors('HouseholdMembershipUpdateRequest', valid_request)).to be_empty
+      expect(described_class.schema_errors('HouseholdMembershipUpdateRequest', invalid_request)).to include(
+        '/household_membership/unexpected'
+      )
+    end
+
+    it 'types household invitation administration' do
+      collection_path = '/households/{household_id}/admin/invitations'
+      collection = described_class.operation(collection_path, 'get')
+      create = described_class.operation(collection_path, 'post')
+      revoke = described_class.operation("#{collection_path}/{id}", 'delete')
+
+      expect(collection.fetch('responses').keys).to include('200', '401', '403', '404', '429')
+      expect(create.fetch('responses').keys).to include('201', '400', '401', '403', '404', '409', '422', '429')
+      expect(revoke.fetch('responses').keys).to include('204', '401', '403', '404', '409', '429')
+      expect(create.dig('requestBody', 'content', 'application/json', 'schema', '$ref')).to eq(
+        '#/components/schemas/HouseholdInvitationCreateRequest'
+      )
+    end
+
+    it 'matches household invitation Rails responses' do
+      household_id, headers, session = manager_api_context
+      session.update!(oidc_mfa_verified: true, mfa_verified_at: Time.current)
+
+      post api_v1_household_admin_invitations_path(household_id),
+           params: { household_invitation: { email: 'contract.invitation@example.test', membership_role: 'member' } },
+           headers:, as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(described_class.schema_errors('HouseholdInvitationResponse', response.parsed_body)).to be_empty
+
+      get api_v1_household_admin_invitations_path(household_id), headers:, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('HouseholdInvitationCollectionResponse', response.parsed_body)).to be_empty
+    end
+
+    it 'rejects invitation request fields that could expose secrets' do
+      valid_request = { household_invitation: { email: 'invite@example.test', membership_role: 'member' } }
+      invalid_request = valid_request.deep_merge(household_invitation: { token: 'private' })
+
+      expect(described_class.schema_errors('HouseholdInvitationCreateRequest', valid_request)).to be_empty
+      expect(described_class.schema_errors('HouseholdInvitationCreateRequest', invalid_request)).to include(
+        '/household_invitation/token'
+      )
+    end
+
+    it 'types person access grant administration' do
+      collection_path = '/households/{household_id}/admin/person_access_grants'
+      collection = described_class.operation(collection_path, 'get')
+      create = described_class.operation(collection_path, 'post')
+      revoke = described_class.operation("#{collection_path}/{id}", 'delete')
+
+      expect(collection.fetch('responses').keys).to include('200', '401', '403', '404', '429')
+      expect(create.fetch('responses').keys).to include('201', '400', '401', '403', '404', '409', '422', '429')
+      expect(revoke.fetch('responses').keys).to include('204', '401', '403', '404', '409', '422', '429')
+      expect(create.dig('requestBody', 'content', 'application/json', 'schema', '$ref')).to eq(
+        '#/components/schemas/PersonAccessGrantCreateRequest'
+      )
+    end
+
+    it 'matches person access grant Rails responses' do
+      household_id, headers, session = manager_api_context
+      session.update!(oidc_mfa_verified: true, mfa_verified_at: Time.current)
+      membership = contract_membership(household_id)
+
+      post api_v1_household_admin_person_access_grants_path(household_id),
+           params: { person_access_grant: contract_grant_attributes(membership) }, headers:, as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(described_class.schema_errors('PersonAccessGrantResponse', response.parsed_body)).to be_empty
+
+      get api_v1_household_admin_person_access_grants_path(household_id), headers:, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('PersonAccessGrantCollectionResponse', response.parsed_body)).to be_empty
+    end
+
+    it 'rejects unsupported person access grant request fields' do
+      valid_request = { person_access_grant: contract_grant_attributes(contract_membership(manager_api_context.first)) }
+      invalid_request = valid_request.deep_merge(person_access_grant: { unexpected: true })
+
+      expect(described_class.schema_errors('PersonAccessGrantCreateRequest', valid_request)).to be_empty
+      expect(described_class.schema_errors('PersonAccessGrantCreateRequest', invalid_request)).to include(
+        '/person_access_grant/unexpected'
+      )
+    end
+
+    it 'types API app token administration without advertising unsupported validation' do
+      collection_path = '/households/{household_id}/admin/app_tokens'
+      collection = described_class.operation(collection_path, 'get')
+      create = described_class.operation(collection_path, 'post')
+      revoke = described_class.operation("#{collection_path}/{id}", 'delete')
+
+      expect(collection.fetch('responses').keys).to include('200', '401', '403', '404', '429')
+      expect(create.fetch('responses').keys).to include('201', '400', '401', '403', '404', '409', '429')
+      expect(create.fetch('responses')).not_to include('422')
+      expect(revoke.fetch('responses').keys).to include('204', '401', '403', '404', '409', '429')
+    end
+
+    it 'matches API app token Rails responses without leaking listed tokens' do
+      household_id, headers, session = manager_api_context
+      session.update!(oidc_mfa_verified: true, mfa_verified_at: Time.current)
+
+      post api_v1_household_admin_app_tokens_path(household_id),
+           params: { api_app_token: { name: 'Contract token' } }, headers:, as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(described_class.schema_errors('ApiAppTokenCreateResponse', response.parsed_body)).to be_empty
+
+      get api_v1_household_admin_app_tokens_path(household_id), headers:, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('ApiAppTokenCollectionResponse', response.parsed_body)).to be_empty
+      expect(response.parsed_body.fetch('data')).to all(satisfy { |token| token.exclude?('token') })
+    end
+
+    it 'rejects unsupported API app token request fields' do
+      valid_request = { api_app_token: { name: 'Client token' } }
+      invalid_request = valid_request.deep_merge(api_app_token: { token: 'private' })
+
+      expect(described_class.schema_errors('ApiAppTokenCreateRequest', valid_request)).to be_empty
+      expect(described_class.schema_errors('ApiAppTokenCreateRequest', invalid_request)).to include(
+        '/api_app_token/token'
+      )
+    end
+
     it 'types notification preference reads and updates' do
       path = '/households/{household_id}/notification_preference'
       get_operation = described_class.operation(path, 'get')
@@ -733,6 +891,27 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
 
       expect(diagnostics).to include('/data')
       expect(diagnostics).not_to include('Private Patient Name', 'private@example.test', 'not-an-id')
+    end
+
+    def manager_api_context
+      login_data = api_login(users(:admin))
+      session = ApiSession.lookup_by_access_token(login_data.fetch('access_token'))
+
+      [login_data.dig('household', 'id'), api_auth_headers(login_data.fetch('access_token')), session]
+    end
+
+    def contract_membership(household_id)
+      account = Account.create!(email: "contract-member-#{SecureRandom.hex(4)}@example.test", status: :verified)
+      Household.find(household_id).household_memberships.create!(account:, role: :member)
+    end
+
+    def contract_grant_attributes(membership)
+      {
+        household_membership_id: membership.id,
+        person_id: people(:john).id,
+        access_level: 'manage',
+        relationship_type: 'carer'
+      }
     end
   end
 end
