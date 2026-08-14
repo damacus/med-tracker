@@ -1960,6 +1960,18 @@ paths:
       responses:
         '200':
           description: Mobile snapshot payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortableSnapshotResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/portable_imports/dry_run:
     post:
       operationId: dryRunPortableImport
@@ -2050,9 +2062,37 @@ paths:
           required: true
           schema:
             type: string
+            enum:
+              - encrypted_migration_bundle
+              - backup_zip
+              - health_data_json
+        - $ref: '#/components/parameters/optional_portable_passphrase'
       responses:
         '200':
           description: Export payload.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/PortableEnvelopeResponse'
+                  - $ref: '#/components/schemas/BackupZipResponse'
+                  - $ref: '#/components/schemas/HealthDataExportResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/sync/snapshot:
     get:
       operationId: getSyncSnapshot
@@ -2065,6 +2105,18 @@ paths:
       responses:
         '200':
           description: Sync snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncSnapshotResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/sync/changes:
     get:
       operationId: getSyncChanges
@@ -2695,6 +2747,14 @@ components:
       in: header
       required: true
       description: Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
+      schema:
+        type: string
+        minLength: 1
+    optional_portable_passphrase:
+      name: X-MedTracker-Portable-Passphrase
+      in: header
+      required: false
+      description: Required only for the encrypted migration bundle mode.
       schema:
         type: string
         minLength: 1
@@ -5871,6 +5931,180 @@ components:
       properties:
         error:
           $ref: '#/components/schemas/RateLimitError'
+    PortableRecord:
+      type: object
+      description: A format-specific portable record. Every record has a portable identity and version.
+      additionalProperties: true
+      required:
+        - portable_id
+        - updated_at
+        - etag
+      properties:
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        etag:
+          type: string
+          minLength: 1
+    PortableRecords:
+      type: object
+      additionalProperties: false
+      required:
+        - people
+        - locations
+        - medications
+        - dosage_options
+        - schedules
+        - person_medications
+        - medication_takes
+        - notification_preferences
+      properties:
+        people:
+          $ref: '#/components/schemas/PortableRecordCollection'
+        locations:
+          $ref: '#/components/schemas/PortableRecordCollection'
+        medications:
+          $ref: '#/components/schemas/PortableRecordCollection'
+        dosage_options:
+          $ref: '#/components/schemas/PortableRecordCollection'
+        schedules:
+          $ref: '#/components/schemas/PortableRecordCollection'
+        person_medications:
+          $ref: '#/components/schemas/PortableRecordCollection'
+        medication_takes:
+          $ref: '#/components/schemas/PortableRecordCollection'
+        notification_preferences:
+          $ref: '#/components/schemas/PortableRecordCollection'
+        health_events:
+          $ref: '#/components/schemas/PortableRecordCollection'
+    PortableRecordCollection:
+      type: array
+      items:
+        $ref: '#/components/schemas/PortableRecord'
+    PortableSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+        - format
+        - scope
+        - exported_at
+        - source_instance_id
+        - records
+      properties:
+        format:
+          type: string
+          const: medtracker.portable.v1
+        scope:
+          type: string
+          enum:
+            - single_person
+            - household
+        exported_at:
+          $ref: '#/components/schemas/Timestamp'
+        source_instance_id:
+          type: string
+          minLength: 1
+        records:
+          $ref: '#/components/schemas/PortableRecords'
+    PortableSnapshotResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/PortableSnapshot'
+    SyncSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+        - format
+        - scope
+        - exported_at
+        - source_instance_id
+        - records
+        - cursor
+      properties:
+        format:
+          type: string
+          const: medtracker.portable.v2
+        scope:
+          type: string
+          enum:
+            - single_person
+            - household
+        exported_at:
+          $ref: '#/components/schemas/Timestamp'
+        source_instance_id:
+          type: string
+          minLength: 1
+        records:
+          $ref: '#/components/schemas/PortableRecords'
+        cursor:
+          $ref: '#/components/schemas/Timestamp'
+    SyncSnapshotResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/SyncSnapshot'
+    BackupZipResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - filename
+            - content_type
+            - base64
+          properties:
+            filename:
+              type: string
+              pattern: '^medtracker-backup-[0-9]{14}\\.zip$'
+            content_type:
+              type: string
+              const: application/zip
+            base64:
+              type: string
+              format: byte
+    HealthDataExportResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - format
+            - scope
+            - exported_at
+            - source_instance_id
+            - records
+          properties:
+            format:
+              type: string
+              const: medtracker.health_data.v1
+            scope:
+              type: string
+              enum:
+                - single_person
+                - household
+            exported_at:
+              $ref: '#/components/schemas/Timestamp'
+            source_instance_id:
+              type: string
+              minLength: 1
+            records:
+              $ref: '#/components/schemas/PortableRecords'
     PortableEnvelope:
       type: object
       additionalProperties: false

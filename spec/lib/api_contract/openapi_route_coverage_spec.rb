@@ -151,7 +151,8 @@ module OpenapiStructure
     '#/components/schemas/SecurityAuditEvent/properties/metadata',
     '#/components/schemas/SyncBatchOperation/properties/attributes',
     '#/components/schemas/SyncChange/properties/metadata',
-    '#/components/schemas/SyncTombstone/properties/metadata'
+    '#/components/schemas/SyncTombstone/properties/metadata',
+    '#/components/schemas/PortableRecord'
   ].freeze
   LOCATOR_PATHS = %w[
     /households/{household_id}/locations/{id}
@@ -1339,6 +1340,45 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(
         described_class.schema_errors('PortableImportRequest', envelope.deep_merge(bundle: { passphrase: 'secret' }))
       ).to include('/bundle/passphrase')
+    end
+
+    it 'types mobile and consistent sync snapshots' do
+      mobile = described_class.operation('/households/{household_id}/mobile_snapshot', 'get')
+      sync = described_class.operation('/households/{household_id}/sync/snapshot', 'get')
+
+      expect(auth_response_schema(mobile, '200')).to eq('#/components/schemas/PortableSnapshotResponse')
+      expect(auth_response_schema(sync, '200')).to eq('#/components/schemas/SyncSnapshotResponse')
+      expect(mobile.fetch('responses').keys).to include('200', '401', '403', '404', '429')
+      expect(sync.fetch('responses').keys).to include('200', '401', '403', '404', '429')
+    end
+
+    it 'types the profile export modes and response shapes' do
+      export = described_class.operation('/households/{household_id}/data_exports/{mode}', 'get')
+      mode_schema = export.fetch('parameters').find { |parameter| parameter['name'] == 'mode' }.fetch('schema')
+      response_schema = export.dig('responses', '200', 'content', 'application/json', 'schema')
+
+      expect(mode_schema.fetch('enum')).to contain_exactly(
+        'encrypted_migration_bundle', 'backup_zip', 'health_data_json'
+      )
+      expect(response_schema.fetch('oneOf').pluck('$ref')).to contain_exactly(
+        '#/components/schemas/PortableEnvelopeResponse',
+        '#/components/schemas/BackupZipResponse',
+        '#/components/schemas/HealthDataExportResponse'
+      )
+      expect(export.dig('responses', '200', 'headers', 'Cache-Control', 'schema')).to include(
+        'type' => 'string', 'const' => 'no-store'
+      )
+    end
+
+    it 'matches the Rails mobile snapshot' do
+      login_data = api_login(users(:admin))
+      household_id = login_data.dig('household', 'id')
+      headers = api_auth_headers(login_data.fetch('access_token'))
+
+      get api_v1_household_mobile_snapshot_path(household_id), headers:, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('PortableSnapshotResponse', response.parsed_body)).to be_empty
     end
 
     it 'references typed representative person request and response schemas' do
