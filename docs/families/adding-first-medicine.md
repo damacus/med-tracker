@@ -1,7 +1,7 @@
 # Add Your First Medicine
 
-Once you've set up MedTracker, the next step is adding a medicine for
-one of your family members.
+Add a medication to a person's profile before you create a schedule or record
+a dose.
 
 ## Step 1: Log in
 Open [https://med-tracker.localhost](https://med-tracker.localhost) in your web
@@ -11,34 +11,41 @@ Sign in with the local demo account you selected during setup, or with the
 account your administrator invited. Do not use development fixture accounts on
 a public or shared server.
 
-## Step 2: Open the Dashboard
-The **Dashboard** is the main page where you see your family. You'll see
-names like "John Doe" or "Jane Doe". Click on the name of the person you want
-to add a medicine for.
+## Step 2: Open the person's profile
 
-## Step 3: Add a new medicine
-On their profile page, look for the **"Add Medicine"** or **"Add Prescription"** button.
+Open **People**, then select the person who uses the medication.
 
----
+## Step 3: Start the medication workflow
 
-## 📅 Adding a Daily Prescription
-If this is a medicine that needs to be taken regularly (like an antibiotic or blood pressure pill):
-1.  **Name:** Enter the medicine name (e.g., "Amoxicillin").
-2.  **Dosage:** How much should be taken (e.g., "500mg").
-3.  **Frequency:** How often it's taken (e.g., "Twice a day").
-4.  **Instructions:** Any special notes (e.g., "Take with food").
-
-## 💊 Adding an As-Needed Medicine
-If this is something taken only when needed (like Paracetamol for a fever):
-1.  **Name:** Enter the medicine name.
-2.  **Max Doses:** What is the maximum number of doses allowed in 24 hours? (e.g., "4").
-3.  **Wait Time:** How many hours must you wait between doses? (e.g., "4 hours").
+Select **Add Medication** on the person's profile. MedTracker asks how the
+medication is taken.
 
 ---
 
-## 💾 Save your medicine
-Once you've filled in the details, click **"Save"**.
-You'll now see this medicine listed on the person's profile, ready to use!
+## Add a prescribed or scheduled medication
 
-## What's next?
-- [**Record a dose**](taking-first-dose.md)
+Choose **Prescribed / Scheduled** when the medication has a fixed schedule.
+
+1. Search for and select the medication.
+2. Choose the dose.
+3. Set the active dates and schedule.
+4. Review the plan before you save it.
+
+## Add an as-needed medication
+
+Choose **As needed** when the medication does not have a fixed schedule.
+
+1. Search for and select the medication.
+2. Choose the dose.
+3. Add any guidance, such as a dose limit or minimum time between doses.
+4. Choose **Add Medication**.
+
+---
+
+The saved medication appears on the person's profile. A scheduled medication
+also appears as a task when a dose is due.
+
+## Record a dose
+
+Follow [Record a dose](taking-first-dose.md) when the person takes the
+medication.
