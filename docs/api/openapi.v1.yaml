@@ -91,11 +91,23 @@ paths:
         - Authentication
       summary: Exchange development or migration password credentials for API tokens.
       security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLoginRequest'
       responses:
         '201':
           description: API session created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthLoginResponse'
         '401':
-          description: Credentials are invalid or password login is unavailable.
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/refresh:
     post:
       operationId: refreshSession
@@ -104,11 +116,23 @@ paths:
         - Authentication
       summary: Rotate an API session refresh token.
       security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRefreshRequest'
       responses:
         '200':
           description: New access and refresh tokens.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthRefreshResponse'
         '401':
-          description: Refresh token is invalid or expired.
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/oidc_exchange:
     post:
       operationId: exchangeOidcSession
@@ -117,9 +141,23 @@ paths:
         - Authentication
       summary: Exchange a hosted OIDC ID token for an API session.
       security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthOidcExchangeRequest'
       responses:
         '201':
           description: API session created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthLoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/households:
     get:
       operationId: listHouseholds
@@ -130,6 +168,14 @@ paths:
       responses:
         '200':
           description: Household collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthHouseholdCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/sessions:
     get:
       operationId: listSessions
@@ -140,6 +186,14 @@ paths:
       responses:
         '200':
           description: API session collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/sessions/{id}:
     delete:
       operationId: deleteSession
@@ -152,6 +206,12 @@ paths:
       responses:
         '204':
           description: API session revoked.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/logout:
     delete:
       operationId: logoutSession
@@ -162,6 +222,8 @@ paths:
       responses:
         '204':
           description: Credential revoked.
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/me:
     get:
       operationId: getCurrentProfile
@@ -174,6 +236,18 @@ paths:
       responses:
         '200':
           description: Current user profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/people:
     get:
       operationId: listPeople
@@ -2925,6 +2999,275 @@ components:
         title:
           type: string
           minLength: 1
+    AuthLoginRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+        device_name:
+          type:
+            - string
+            - 'null'
+        household_id:
+          $ref: '#/components/schemas/NumericId'
+    AuthRefreshRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          minLength: 1
+    AuthOidcExchangeRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - id_token
+        - nonce
+        - code_verifier
+      properties:
+        id_token:
+          type: string
+          minLength: 1
+        nonce:
+          type: string
+          minLength: 1
+        code_verifier:
+          type: string
+          minLength: 1
+        device_name:
+          type:
+            - string
+            - 'null'
+        household_id:
+          $ref: '#/components/schemas/NumericId'
+        provider:
+          type: string
+          minLength: 1
+    AuthHousehold:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - slug
+        - name
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        slug:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          minLength: 1
+    AuthHouseholdMembership:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - slug
+        - name
+        - role
+        - membership_id
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        slug:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          minLength: 1
+        role:
+          type: string
+          enum:
+            - owner
+            - administrator
+            - member
+        membership_id:
+          $ref: '#/components/schemas/NumericId'
+    AuthHouseholdCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthHouseholdMembership'
+    AuthSession:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - device_name
+        - household_id
+        - last_used_at
+        - access_token_expires_at
+        - refresh_token_expires_at
+        - created_at
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        device_name:
+          type:
+            - string
+            - 'null'
+        household_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        last_used_at:
+          $ref: '#/components/schemas/Timestamp'
+        access_token_expires_at:
+          $ref: '#/components/schemas/Timestamp'
+        refresh_token_expires_at:
+          $ref: '#/components/schemas/Timestamp'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    AuthSessionCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthSession'
+    AuthRefreshData:
+      type: object
+      additionalProperties: false
+      required:
+        - access_token
+        - access_token_expires_at
+        - refresh_token
+        - refresh_token_expires_at
+        - household
+      properties:
+        access_token:
+          type: string
+          minLength: 1
+        access_token_expires_at:
+          $ref: '#/components/schemas/Timestamp'
+        refresh_token:
+          type: string
+          minLength: 1
+        refresh_token_expires_at:
+          $ref: '#/components/schemas/Timestamp'
+        household:
+          oneOf:
+            - $ref: '#/components/schemas/AuthHousehold'
+            - type: 'null'
+    AuthRefreshResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/AuthRefreshData'
+    AuthLoginData:
+      type: object
+      additionalProperties: false
+      required:
+        - access_token
+        - access_token_expires_at
+        - refresh_token
+        - refresh_token_expires_at
+        - household
+        - me
+      properties:
+        access_token:
+          type: string
+          minLength: 1
+        access_token_expires_at:
+          $ref: '#/components/schemas/Timestamp'
+        refresh_token:
+          type: string
+          minLength: 1
+        refresh_token_expires_at:
+          $ref: '#/components/schemas/Timestamp'
+        household:
+          oneOf:
+            - $ref: '#/components/schemas/AuthHousehold'
+            - type: 'null'
+        me:
+          $ref: '#/components/schemas/Me'
+    AuthLoginResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/AuthLoginData'
+    MeAccount:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - email
+        - status
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        email:
+          type: string
+          format: email
+        status:
+          type: string
+          enum:
+            - unverified
+            - verified
+            - closed
+    Me:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - email_address
+        - membership_role
+        - active
+        - person
+        - account
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        email_address:
+          type: string
+          format: email
+        membership_role:
+          type:
+            - string
+            - 'null'
+          enum:
+            - owner
+            - administrator
+            - member
+            - null
+        active:
+          type: boolean
+        person:
+          $ref: '#/components/schemas/Person'
+        account:
+          $ref: '#/components/schemas/MeAccount'
+    MeResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Me'
     Person:
       type: object
       additionalProperties: false
