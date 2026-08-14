@@ -147,7 +147,10 @@ end
 module OpenapiStructure
   HTTP_METHODS = %w[delete get head options patch post put trace].freeze
   AUDIENCE_TAGS = ['Public', 'Account', 'Household', 'Household administration'].freeze
-  ALLOWED_FREE_FORM_PATHS = ['#/components/schemas/SyncBatchOperation/properties/attributes'].freeze
+  ALLOWED_FREE_FORM_PATHS = [
+    '#/components/schemas/SecurityAuditEvent/properties/metadata',
+    '#/components/schemas/SyncBatchOperation/properties/attributes'
+  ].freeze
   LOCATOR_PATHS = %w[
     /households/{household_id}/locations/{id}
     /households/{household_id}/medications/{id}
@@ -739,6 +742,36 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       )
     end
 
+    it 'types the bounded household security audit event feed' do
+      operation = described_class.operation('/households/{household_id}/admin/audit_logs', 'get')
+
+      expect(operation.fetch('responses').keys).to include('200', '401', '403', '404', '429')
+      expect(operation.dig('responses', '200', 'content', 'application/json', 'schema', '$ref')).to eq(
+        '#/components/schemas/SecurityAuditEventCollectionResponse'
+      )
+      expect(described_class.schema('SecurityAuditEvent').fetch('additionalProperties')).to be(false)
+      expect(described_class.schema('SecurityAuditEvent').dig('properties', 'metadata')).to eq(
+        'type' => 'object', 'additionalProperties' => true
+      )
+      collection_schema = described_class.schema('SecurityAuditEventCollectionResponse')
+      expect(collection_schema.dig('properties', 'data', 'maxItems')).to eq(100)
+    end
+
+    it 'matches the bounded descending Rails security audit event feed without leaking diagnostics' do
+      household_id, headers = manager_api_context
+      rows = 101.times.map { |index| contract_security_audit_event(household_id, index) }
+      rows.each { |row| SecurityAuditEvent.create!(row) }
+
+      get api_v1_household_admin_audit_logs_path(household_id), headers:, as: :json
+
+      expect(response).to have_http_status(:ok)
+      payload = response.parsed_body
+      expect(described_class.schema_errors('SecurityAuditEventCollectionResponse', payload)).to be_empty
+      expect(payload.fetch('data').size).to eq(100)
+      expect(payload.fetch('data').pluck('created_at')).to eq(payload.fetch('data').pluck('created_at').sort.reverse)
+      expect_private_audit_diagnostics(payload)
+    end
+
     it 'types notification preference reads and updates' do
       path = '/households/{household_id}/notification_preference'
       get_operation = described_class.operation(path, 'get')
@@ -912,6 +945,27 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
         access_level: 'manage',
         relationship_type: 'carer'
       }
+    end
+
+    def contract_security_audit_event(household_id, index)
+      timestamp = 2.hours.from_now + index.seconds
+      {
+        household_id:,
+        event_type: "contract.audit.#{index}",
+        metadata: { 'sequence' => index },
+        audit_context: {},
+        request_id: "contract-request-#{index}",
+        created_at: timestamp,
+        updated_at: timestamp
+      }
+    end
+
+    def expect_private_audit_diagnostics(payload)
+      invalid_payload = payload.deep_dup
+      invalid_payload.dig('data', 0)['id'] = 'private-audit-payload-value'
+      diagnostics = described_class.schema_errors('SecurityAuditEventCollectionResponse', invalid_payload).join(' ')
+      expect(diagnostics).to include('/data/0/id')
+      expect(diagnostics).not_to include('private-audit-payload-value')
     end
   end
 end
