@@ -1,92 +1,116 @@
-# Design System & Theming
+# Design system and theming
 
-MedTracker uses a custom design system based on **Material Design 3 (M3)**, implemented with **Phlex components** and **Tailwind CSS v4**. All colors are defined using the **OKLCH** color space for perceptual uniformity and accessibility.
+MedTracker combines local RubyUI components with a small Material 3 layer.
+Phlex views render both component families. Tailwind CSS maps the design tokens
+to utility classes.
 
-## Core Principles
+## Source of truth
 
-- **Material 3 Foundation**: We follow M3 guidelines for surface hierarchy, elevation, and interaction states.
-- **OKLCH Semantic Tokens**: Every color is a semantic token (e.g., `primary`, `on-surface-variant`) instead of literal hex codes or generic Tailwind colors.
-- **Component-First**: Use `Components::M3` wrappers instead of legacy `RubyUI` components or raw Tailwind classes for consistent UI patterns.
-- **State Layers**: Interactive elements use the `.state-layer` utility to handle hover, focus, and pressed states with standard opacity overlays.
+Use these files when changing the interface:
 
-## CSS Tokens (OKLCH)
+- `app/assets/tailwind/application.css` defines colour, shape, elevation,
+  motion, and typography tokens.
+- `app/components/ruby_ui/` contains the locally installed RubyUI components.
+- `app/components/m3/` contains MedTracker's Material 3 specialisations.
+- `app/components/m3_helpers.rb` exposes the `m3_*` rendering helpers.
 
-Tokens are defined in `app/assets/tailwind/application.css`. They are automatically mapped to Tailwind colors (e.g., `bg-primary`, `text-on-surface`).
+The local RubyUI files are application code. They can differ from the installed
+gem, so compare them with the locked RubyUI version before replacing or
+regenerating a component.
 
-### Semantic Roles
-- `primary` / `on-primary`: Main brand color and its contrasting text.
-- `secondary-container` / `on-secondary-container`: Subtle backgrounds for secondary UI elements.
-- `error` / `error-container` / `on-error-container`: Destructive actions and critical alerts.
-- `warning-container` / `on-warning-container`: Cautionary alerts.
-- `success-container` / `on-success-container`: Positive feedback.
+## Choose a component
 
-### Surface Hierarchy
-M3 uses a tiered surface system instead of a single "card" background. Use these to create depth:
-- `surface-container-lowest`: Main page background.
-- `surface-container-low`: Default card background.
-- `surface-container`: Default secondary containers.
-- `surface-container-high`: Modals and floating elements.
-- `surface-container-highest`: Accent containers.
+Use an existing RubyUI component when it already provides the required
+structure and behaviour. Use the Material 3 wrapper when the interface needs
+MedTracker's standard visual treatment.
 
-## Components (M3)
+The Material 3 layer currently provides helpers for:
 
-Always prefer the `m3_` helpers defined in `Components::M3Helpers`.
+- buttons, links, badges, and cards;
+- headings and body text;
+- inputs, selects, and selectable options.
 
-### M3::Button
-Wraps `RubyUI::Button` with M3 styling and state layers.
-- **Variants**: `:filled`, `:tonal`, `:outlined`, `:elevated`, `:text`, `:destructive`.
-- **Usage**: `m3_button(variant: :filled) { "Save Changes" }`
+Do not recreate an existing component with raw HTML and utility classes. A
+specialised view can add layout classes around a component when no shared
+wrapper fits.
 
-### M3::Card
-Provides elevated or outlined containers. Inherits from `RubyUI::Card` but enforces M3 tokens.
-- **Variants**: `:elevated` (default), `:outlined`, `:filled`.
-- **Sub-components**: `m3_card_header`, `m3_card_title`, `m3_card_description`, `m3_card_content`, `m3_card_footer`.
-- **Usage**:
-  ```ruby
-  m3_card(variant: :elevated) do
-    m3_card_header do
-      m3_card_title { "Inventory Status" }
-      m3_card_description { "Current stock levels for this location" }
-    end
-    m3_card_content { "..." }
-  end
-  ```
+## Semantic colours
 
-### M3::Typography
-Standardizes text sizes and weights according to the M3 scale. This replaces legacy `RubyUI` `size` and `weight` attributes.
-- **Heading Variants**: `:display_large/medium/small`, `:headline_large/medium/small`, `:title_large/medium/small`.
-- **Text Variants**: `:body_large/medium/small`, `:label_large/medium/small`.
-- **Usage**: `m3_heading(variant: :display_small, level: 1) { "Medication Name" }`
+Use semantic token utilities instead of literal colours. Common roles include:
 
-### M3::Link
-Accessible links that support button-like variants for primary actions.
-- **Variants**: `:filled`, `:tonal`, `:outlined`, `:text`.
-- **Usage**: `m3_link(href: path, variant: :outlined) { "Edit Details" }`
+- `primary`, `on-primary`, `primary-container`, and `on-primary-container`;
+- `secondary-container` and `on-secondary-container`;
+- `error`, `error-container`, and their matching `on-*` tokens;
+- `warning-container` and `success-container`;
+- `surface`, `on-surface`, `outline`, and `outline-variant`.
 
-## Utilities & Styles
+The surface container scale runs from `surface-container-lowest` to
+`surface-container-highest`. Use it to show hierarchy without introducing a
+new colour.
 
-### State Layers
-The `.state-layer` class adds a `::after` pseudo-element that provides a standard 8% opacity overlay on hover and 12% on press. It should be applied to all custom interactive elements.
+Do not add literal hex, HSL, or generic Tailwind palette colours to a view. Add
+or adjust a semantic token when the design needs a new shared meaning.
 
-### Shape Tokens
-Use `rounded-shape-*` classes for consistent corner radiuses:
-- `rounded-shape-xs`: 4px
-- `rounded-shape-sm`: 8px
-- `rounded-shape-md`: 12px
-- `rounded-shape-lg`: 16px (Buttons)
-- `rounded-shape-xl`: 28px (Main Cards)
-- `rounded-shape-full`: 9999px (Pills)
+## Shape and elevation
 
-### Elevation
-Use `shadow-elevation-*` (0 to 5) for M3-style elevation shadows.
+Use the shared shape utilities:
 
-## Changing the Theme
-Theme updates must be done by modifying the OKLCH values in `application.css`. 
+- `rounded-shape-xs`
+- `rounded-shape-sm`
+- `rounded-shape-md`
+- `rounded-shape-lg`
+- `rounded-shape-xl`
+- `rounded-shape-full`
 
-**Note**: Avoid hardcoding hex colors, `hsl()`, or literal Tailwind colors (e.g., `bg-blue-500`) in views. Always use semantic tokens.
+Use `shadow-elevation-0` through `shadow-elevation-5` for elevation. Choose the
+lowest level that communicates the required hierarchy.
 
-```css
-:root {
-  --primary: oklch(0.57 0.21 260); /* Update primary using OKLCH */
-}
+## Interaction states
+
+The `state-layer` utility supplies the shared hover, active, and keyboard-focus
+overlay. The Material 3 button and link components include it. Do not add a
+second state layer to those components.
+
+Keep the visible focus ring supplied by the component. Preserve disabled and
+`aria-disabled` behaviour when changing variants or classes.
+
+## Material component examples
+
+```ruby
+m3_button(variant: :filled) { "Save changes" }
+m3_link(href: person_path(person), variant: :outlined) { "View person" }
 ```
+
+Button variants include `filled`, `tonal`, `elevated`, `outlined`, `text`, and
+destructive treatments. Link variants include `filled`, `tonal`, `outlined`,
+and `text`.
+
+```ruby
+m3_card(variant: :elevated) do
+  m3_card_header do
+    m3_card_title { "Inventory status" }
+    m3_card_description { "Current stock at this location" }
+  end
+  m3_card_content { "..." }
+end
+```
+
+Card variants are `elevated`, `outlined`, and `filled`.
+
+```ruby
+m3_heading(variant: :headline_small, level: 2) { "Medication" }
+m3_text(variant: :body_medium) { "Take with food." }
+```
+
+Choose the HTML heading level from the page structure. The visual variant does
+not determine the semantic level.
+
+## Change the theme
+
+Update the OKLCH token values in `app/assets/tailwind/application.css`. Check
+both light and dark themes after a colour change. Confirm text and control
+contrast, visible focus states, and destructive action styling.
+
+For visible interface changes, use the real browser flow at desktop width and
+at 390 by 844 pixels. Save the required review screenshots under
+`docs/screenshots/`.
