@@ -22,7 +22,7 @@ own datasets.
 | --- | --- |
 | `@timestamp` | UTC ISO 8601 timestamp with milliseconds. |
 | `log.level` | One of `debug`, `info`, `warn`, `error`, or `fatal`. |
-| `event.name` | Registered stable event name; never inferred from message text. |
+| `event.name` | Registered stable event name. It is never inferred from message text. |
 | `event.outcome` | `success`, `failure`, or `unknown`. |
 | `event.dataset` | Producer-scoped dataset. |
 | `event.id` | Fresh UUID for one application emission. Transport retries preserve it. |
@@ -31,7 +31,7 @@ own datasets.
 | `service.environment` | Rails environment. |
 | `medtracker.schema.version` | Integer schema version. |
 | `medtracker.reason` | Registered stable reason code. |
-| `error.type` | Allowlisted exception class only; exception text is excluded. |
+| `error.type` | Allowlisted exception class only. Exception text is excluded. |
 
 Event-specific fields are accepted only when registered. A human-readable
 `message` is optional and comes from a fixed internal mapping. JSON encoded
@@ -41,7 +41,7 @@ inside `message` is invalid.
 
 | Identifier | Purpose and lifecycle |
 | --- | --- |
-| `event.id` | Identifies one emitted occurrence. Re-emission creates a new value; collector retries retain it so duplicate ingestion is detectable. |
+| `event.id` | Identifies one emitted occurrence. Re-emission creates a new value. Collector retries retain it so duplicate ingestion is detectable. |
 | `medtracker.workflow.id` | Opaque UUID shared by one logical workflow. It defaults to a twenty-four-hour lifetime and rotates when invalid or expired. |
 | `medtracker.causation.id` | The immediate causing event UUID. It is omitted when no trusted association exists. |
 | `medtracker.attempt.id` | Fresh UUID for each retry or external side-effect attempt. |
@@ -52,8 +52,8 @@ inside `message` is invalid.
 Request-to-job propagation serializes only the opaque workflow, causation,
 attempt, and expiry values. A scheduled reminder workflow carries the same
 workflow identifier through enqueue, evaluation, intent, recipient, channel,
-and provider stages. A later medication action joins it only through a trusted
-stored or client-carried occurrence association. Time proximity, person
+and provider stages. Later medication actions join that workflow only through a
+trusted stored or client-carried occurrence association. Time proximity, person
 identity, or medication identity must never be used to guess causation.
 
 Correlation values are not domain identifiers, are not reversible, expire with
@@ -63,16 +63,17 @@ their operational purpose, and must not be metric labels.
 
 Operational output is allowlist-only. It excludes account, household,
 membership, person, medication, schedule, notification-subscription, and
-medication-take identifiers; names; medicine identity; dose values; schedule
-times; request parameters; raw paths with identifiers; query strings; IP
-addresses; user agents; cookies; credentials; tokens; job arguments; provider
-endpoints; notification content; upstream bodies; and exception messages.
+medication-take identifiers. It also excludes names, medicine identity, dose
+values, schedule times, request parameters, raw paths with identifiers, query
+strings, IP addresses, user agents, cookies, credentials, tokens, job
+arguments, provider endpoints, notification content, upstream bodies, and
+exception messages.
 
 Unknown fields are discarded. Error records use a stable reason and exception
-class. Exported spans are copied through an allowlist covering the span name,
-attributes, events and event attributes, status description, links and link
-attributes, and resource attributes. Treat a proposed free-text or identifier
-field as sensitive until its registry and tests prove otherwise.
+class. Exported spans are copied through an allowlist. The allowlist covers the
+span name, attributes, status, events, links, and resource attributes. Treat a
+proposed free-text or identifier field as sensitive until its registry and
+tests prove otherwise.
 
 ## Severity policy
 
@@ -97,8 +98,12 @@ rollback outcome while leaving the attempt and provisional records queryable.
 
 Business-rule blocks, persistence failures, an unavailable household, and
 unexpected failures use separate stable outcomes. Idempotent re-entry does not
-multiply a committed side effect; a genuine retry receives a distinct attempt
+multiply a committed side effect. A subsequent retry receives a distinct attempt
 identifier.
+
+The exact medication workflow event sequence and safe query fields are in
+[Medication take observability](medication-take-observability.md). MedTracker
+does not provide medication-specific Prometheus metrics or dashboards.
 
 ## Failure isolation
 
@@ -130,9 +135,9 @@ The first successful collection after degradation emits one recovery event.
 | NHS, catalogue, barcode, mail, and external adapter diagnostics | `data_integrations` |
 | Audit backlog signals | `audit_security` |
 
-The signal registry is authoritative for individual paths and named follow-up
-changes. Out-of-baseline discoveries receive a bounded follow-up with an owner;
-they do not expand this implementation indefinitely.
+The signal registry is authoritative for individual paths and follow-up
+changes. Out-of-baseline discoveries receive a bounded follow-up with an owner.
+They do not expand this work indefinitely.
 
 ## Rollback and compatibility
 
@@ -175,8 +180,9 @@ active and unarchived until this matrix passes.
 ## Deployed canary procedure
 
 The query catalogue is
-`config/observability/production_acceptance_queries.yml`. It is scoped to the
-`home` namespace, the production and canary MedTracker apps, and either a
+`config/observability/production_acceptance_queries.yml`. Its checked-in values
+describe the Damacus reference deployment. Self-hosters must replace the
+namespace and application selectors for their deployment. The queries cover a
 fifteen-minute canary window or the fixed twenty-four-hour evidence window.
 
 Before emitting anything, record the expected application version and immutable
@@ -184,19 +190,23 @@ container digest for every web and worker pod. Confirm that a Tempo-compatible
 trace datasource is connected; absence of the required trace datasource blocks
 acceptance.
 
-Generate a UUID locally for `X-Request-ID`, then make one safe request to the
-login page:
+Set the target URL, Kubernetes namespace, and deployment name. Generate a UUID
+locally for `X-Request-ID`, then make one safe request to the login page:
 
 ```console
+APP_URL=https://medtracker.example.com
+NAMESPACE=medtracker
+DEPLOYMENT=med-tracker
+
 curl --fail --silent --show-error \
   -H "X-Request-ID: $REQUEST_ID" \
-  https://medtracker.damacus.io/login >/dev/null
+  "$APP_URL/login" >/dev/null
 ```
 
 Run the application-owned canary once in one pod:
 
 ```console
-kubectl -n home exec deploy/med-tracker -c app -- \
+kubectl -n "$NAMESPACE" exec "deploy/$DEPLOYMENT" -c app -- \
   bin/rails observability:canary
 ```
 
