@@ -733,9 +733,26 @@ paths:
       summary: List medication dosage options.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - $ref: '#/components/parameters/updated_since'
       responses:
         '200':
           description: Dosage option collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DosageOptionCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     post:
       operationId: createDosageOption
       tags:
@@ -744,9 +761,34 @@ paths:
       summary: Create a medication dosage option.
       parameters:
         - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DosageOptionCreateRequest'
       responses:
         '201':
           description: Dosage option created.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DosageOptionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/dosage_options/{id}:
     get:
       operationId: getDosageOption
@@ -763,6 +805,18 @@ paths:
           headers:
             ETag:
               $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DosageOptionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     patch:
       operationId: updateDosageOption
       tags:
@@ -773,14 +827,36 @@ paths:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
         - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DosageOptionUpdateRequest'
       responses:
         '200':
           description: Dosage option updated.
           headers:
             ETag:
               $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DosageOptionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     put:
       operationId: replaceDosageOption
       tags:
@@ -791,14 +867,36 @@ paths:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
         - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DosageOptionUpdateRequest'
       responses:
         '200':
           description: Dosage option updated.
           headers:
             ETag:
               $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DosageOptionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/health_events:
     get:
       operationId: listHealthEvents
@@ -3766,6 +3864,182 @@ components:
               $ref: '#/components/schemas/DecimalValue'
             expected_arrival_on:
               $ref: '#/components/schemas/Date'
+    DosageOption:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - medication_id
+        - medication_portable_id
+        - amount
+        - unit
+        - frequency
+        - description
+        - default_for_adults
+        - default_for_children
+        - default_max_daily_doses
+        - default_min_hours_between_doses
+        - default_dose_cycle
+        - current_supply
+        - reorder_threshold
+        - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        medication_id:
+          $ref: '#/components/schemas/NumericId'
+        medication_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        amount:
+          $ref: '#/components/schemas/DecimalValue'
+        unit:
+          type: string
+          minLength: 1
+        frequency:
+          type: string
+          minLength: 1
+        description:
+          type:
+            - string
+            - 'null'
+        default_for_adults:
+          type: boolean
+        default_for_children:
+          type: boolean
+        default_max_daily_doses:
+          type: integer
+          minimum: 1
+        default_min_hours_between_doses:
+          $ref: '#/components/schemas/DecimalValue'
+        default_dose_cycle:
+          type: string
+          enum:
+            - daily
+            - weekly
+            - monthly
+        current_supply:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        reorder_threshold:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+    DosageOptionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/DosageOption'
+    DosageOptionCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DosageOption'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    DosageOptionCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - dosage_option
+      properties:
+        dosage_option:
+          $ref: '#/components/schemas/DosageOptionCreateAttributes'
+    DosageOptionUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - dosage_option
+      properties:
+        dosage_option:
+          $ref: '#/components/schemas/DosageOptionUpdateAttributes'
+    DosageOptionCreateAttributes:
+      type: object
+      additionalProperties: false
+      required:
+        - medication_id
+        - amount
+        - unit
+        - frequency
+        - default_max_daily_doses
+        - default_min_hours_between_doses
+        - default_dose_cycle
+      properties:
+        medication_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        amount:
+          $ref: '#/components/schemas/DecimalValue'
+        unit:
+          type: string
+          minLength: 1
+        frequency:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        default_for_adults:
+          type: boolean
+        default_for_children:
+          type: boolean
+        default_max_daily_doses:
+          type: integer
+          minimum: 1
+        default_min_hours_between_doses:
+          $ref: '#/components/schemas/DecimalValue'
+        default_dose_cycle:
+          type: string
+          enum:
+            - daily
+            - weekly
+            - monthly
+        current_supply:
+          $ref: '#/components/schemas/DecimalValue'
+        reorder_threshold:
+          $ref: '#/components/schemas/DecimalValue'
+    DosageOptionUpdateAttributes:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        amount:
+          $ref: '#/components/schemas/DecimalValue'
+        unit:
+          type: string
+          minLength: 1
+        frequency:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        default_for_adults:
+          type: boolean
+        default_for_children:
+          type: boolean
+        default_max_daily_doses:
+          type: integer
+          minimum: 1
+        default_min_hours_between_doses:
+          $ref: '#/components/schemas/DecimalValue'
+        default_dose_cycle:
+          type: string
+          enum:
+            - daily
+            - weekly
+            - monthly
+        current_supply:
+          $ref: '#/components/schemas/DecimalValue'
+        reorder_threshold:
+          $ref: '#/components/schemas/DecimalValue'
     Person:
       type: object
       additionalProperties: false
