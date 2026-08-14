@@ -68,6 +68,9 @@ Kubernetes runbooks linked below.
 
 ## Environment and database notes
 
+See the [production environment reference](operations/production-environment.md)
+for required settings, database roles, registration policy, and process sizing.
+
 - All environments use PostgreSQL.
 - PostgreSQL version target is `18`.
 - Use Rails credentials and environment variables for secrets. Never commit
