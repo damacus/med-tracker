@@ -1,220 +1,111 @@
-# NHS dm+d Medication Search Integration
+# NHS dm+d and Medication Lookup
 
-MedTracker integrates with the NHS Dictionary of Medicines and
-Devices (dm+d) via the NHS England Terminology Server to let
-clinicians search for medications by name or active ingredient.
+MedTracker uses the NHS Dictionary of Medicines and Devices (dm+d) as its main
+UK medication catalogue. It combines dm+d with local barcode records, curated
+fallbacks, and Open Food Facts supplement data.
 
-## What is dm+d?
+## What dm+d provides
 
-The dm+d is the NHS standard catalogue of medicines used across
-the UK. It assigns every medication a unique SNOMED CT code and is
-the authoritative source for medication names in NHS systems.
+dm+d assigns SNOMED CT identifiers to medicines and packs used in the UK. The
+live terminology search can return:
 
-MedTracker queries two dm+d concept types:
+- virtual medicinal products (VMP);
+- actual medicinal products (AMP); and
+- actual medicinal product packs (AMPP).
 
-| Type    | Meaning                             |
-|---------|-------------------------------------|
-| **VMP** | Virtual Medicinal Product (generic) |
-| **AMP** | Actual Medicinal Product (branded)  |
+Imported release data adds GTIN barcode mappings and trade-family information.
+Every search result identifies its source and product. Depending on that source,
+it can also include package details, trade-family data, match reasons, product
+guidance links, directions, or warnings.
 
-Example VMP: `Aspirin 300mg tablets`
-Example AMP: `Aspirin 300mg tablets (Bayer)`
+dm+d is a product catalogue. It is not a drug-interaction checker and does not
+replace prescribing guidance.
 
-## What data comes back?
+## Lookup order
 
-Each search result contains four fields:
+`NhsDmd::Search` uses several sources:
 
-| Field           | Example                      |
-|-----------------|------------------------------|
-| `code`          | `39720311000001101` (SNOMED) |
-| `display`       | `Aspirin 300mg tablets`      |
-| `system`        | `https://dmd.nhs.uk`         |
-| `concept_class` | `VMP` or `AMP`               |
+1. A barcode query first checks the local barcode catalogue populated by dm+d
+   release imports and curated records.
+2. A barcode without a local match can use Open Food Facts.
+3. A text query uses the live NHS terminology service when credentials are
+   available.
+4. Supplement-like text queries can also use Open Food Facts.
 
-The dm+d API does **not** include dosage guidance,
-contraindications, or drug interaction data.
-See [Drug interactions](#drug-interactions) below.
+MedTracker merges and deduplicates suitable results. A supplement lookup can
+make a remote Open Food Facts request even when NHS credentials are absent.
+Do not state that disabling NHS credentials prevents every external lookup.
 
-## Getting credentials
+External lookups write source, outcome, and result-count metadata to the audit
+trail. Query text is handled by the external-lookup audit policy.
 
-Access to the dm+d API requires a **system-to-system account**
-from the NHS England Terminology Server. This is separate from
-the NHS API Platform (`digital.nhs.uk/developer`).
+## NHS terminology credentials
 
-### Step 1 — Read the account agreement
+Live dm+d text search needs a system-to-system account from the NHS England
+Terminology Server. This is separate from the NHS API Platform.
 
-Read the system-to-system account agreement before applying:
-<https://digital.nhs.uk/services/terminology-server/system-to-system-account-agreement>
+1. Read the [system-to-system account
+   agreement](https://digital.nhs.uk/services/terminology-server/system-to-system-account-agreement).
+2. Complete the [account request
+   form](https://digital.nhs.uk/services/terminology-server/request-a-system-to-system-account/request-form).
+3. Request read-only consumer access for the application's clinical use.
+4. Store the issued client ID and secret outside the repository.
 
-### Step 2 — Complete the request form
+Configure both values:
 
-Open the request form and fill it in:
-<https://digital.nhs.uk/services/terminology-server/request-a-system-to-system-account/request-form>
+| Variable | Purpose |
+| --- | --- |
+| `NHS_DMD_CLIENT_ID` | OAuth client ID from NHS England |
+| `NHS_DMD_CLIENT_SECRET` | OAuth client secret |
 
-When asked for your **purpose**, select **Consumer** —
-read-only access to published content. This is the correct
-category for an application that searches dm+d at runtime.
-
-You will need to provide:
-
-- Organisation name and type
-- Description of your system and its clinical use
-- Confirmation you have read the account agreement
-
-### Step 3 — Receive your credentials
-
-NHS England will issue an OAuth2 `client_id` and
-`client_secret` for the Analytic Production Server
-(`ontology.nhs.uk/production1/fhir`).
-
-> The service is **free of charge** for health and care
-> organisations. Approval typically takes a few working days.
-> Contact `information.standards@nhs.net` with questions.
-
-### Optional — interactive browser access
-
-You can browse dm+d content interactively without a
-system-to-system account by logging in with NHS.net,
-Microsoft, GitHub, LinkedIn, or Google at:
-<https://ontology.nhs.uk>
-
-This is useful for exploring what the API returns before
-writing code.
-
-## Environment variables
-
-Both variables must be set to enable the feature:
-
-| Variable                | Description                       |
-|-------------------------|-----------------------------------|
-| `NHS_DMD_CLIENT_ID`     | OAuth2 client ID from NHS England |
-| `NHS_DMD_CLIENT_SECRET` | OAuth2 client secret              |
-
-If either variable is absent the search feature is
-**automatically disabled** — no API calls are made and the
-UI shows an amber warning to administrators.
-
-### Local development (Fish shell)
-
-Export the variables in your shell before starting the server:
+Set Fish shell variables before starting local development:
 
 ```fish
 set -x NHS_DMD_CLIENT_ID "your-client-id"
 set -x NHS_DMD_CLIENT_SECRET "your-client-secret"
-task dev:portless
+task dev:up
 ```
 
-### Development environment
+Use a Secret or ExternalSecret in production. Never put either value in a
+ConfigMap, image, or committed environment file.
 
-The development stack inherits exported shell variables, so set them before
-`task dev:portless`. You can also add them to a `.env` file in the project root
-(never commit this file):
+When one of these values is absent, live NHS terminology search is unavailable.
+Local barcode data, curated data, and eligible supplement lookups can still
+return results.
 
-```sh
-NHS_DMD_CLIENT_ID=your-client-id
-NHS_DMD_CLIENT_SECRET=your-client-secret
-```
+## Import NHS release data
 
-### Production / Kubernetes
+Platform administrators can upload the NHSBSA release ZIP through **Admin**,
+then **Import NHS dm+d**. MedTracker stores the archive, queues the import,
+shows progress and record counts, and removes the archive when the run ends.
 
-Store credentials as a Kubernetes Secret:
+Kubernetes operators can use a one-off Job with an extracted release directory
+when the admin upload is unsuitable. See [Import an NHS dm+d
+release](kubernetes-nhs-dmd-import.md).
 
-```yaml
-env:
-  - name: NHS_DMD_CLIENT_ID
-    valueFrom:
-      secretKeyRef:
-        name: med-tracker-nhs-dmd
-        key: client-id
-  - name: NHS_DMD_CLIENT_SECRET
-    valueFrom:
-      secretKeyRef:
-        name: med-tracker-nhs-dmd
-        key: client-secret
-```
-
-## Feature gating
-
-The search feature is **off by default** when credentials are
-not configured. The UI shows:
-
-> *Medication search not available — NHS dm+d credentials are
-> not configured.*
-
-Once both environment variables are present the feature
-activates automatically on the next boot — no code change or
-restart flag required.
-
-## How the integration works
-
-```text
-Browser
-  → MedicationsController#search
-    → NhsDmd::Search
-      → NhsDmd::Client
-          POST /token  (OAuth2 client_credentials grant)
-          GET  /ValueSet/$expand?url=.../VMP&filter=...
-          GET  /ValueSet/$expand?url=.../AMP&filter=...
-          Combined + deduplicated results
-      ← NhsDmd::Search::Result
-  ← JSON { results: [...] }
-Stimulus controller renders result cards
-```
-
-The OAuth2 token is fetched once per `NhsDmd::Client` instance
-and memoised for the lifetime of that request.
-
-**Rate limit:** 5,000 requests per 5-minute window.
-Contact `information.standards@nhs.net` for higher limits.
-
-## Testing locally
-
-Without credentials the feature is gated off and the full test
-suite passes — WebMock blocks all real HTTP in the test
-environment.
-
-To test the live API locally:
-
-1. Obtain credentials (see [Getting credentials](#getting-credentials)).
-2. Export `NHS_DMD_CLIENT_ID` and `NHS_DMD_CLIENT_SECRET`.
-3. Run `task dev:portless` and sign in as a doctor or administrator.
-4. Visit `/medication-finder` and search for a medication name,
-   for example `Aspirin`.
-
-## Importing dm+d release GTIN data
-
-Barcode lookup uses imported NHS release files in addition to live
-Terminology Server search.
-
-Local development:
+Local development provides Task wrappers for a staged release:
 
 ```fish
 task dev:extract-dmd-release
 task dev:import-dmd-release RELEASE_DIR=storage/nhs_dmd/releases/current
 ```
 
-Production Kubernetes:
+## Verify the integration
 
-- use a one-off Job per release
-- stage extracted XML files or expand the GTIN ZIP in the Job init container
-- mount the release into the Job at a stable path
-- run `bundle exec rails runner db/seeds/import_nhs_dmd_release.rb /work/nhs-dmd/current`
+1. Search for a known generic medicine and confirm a VMP result.
+2. Search for a known branded product and confirm an AMP or AMPP result.
+3. Enter a GTIN from the imported release and confirm the expected pack.
+4. Try a supplement query and identify its source before saving it.
+5. Confirm that failed external lookups do not expose credentials in logs.
 
-See the full operational runbook:
-[Kubernetes NHS dm+d Release Import Runbook](kubernetes-nhs-dmd-import.md)
+Automated tests stub remote services. A green test suite does not prove that
+deployment credentials or NHS access are valid.
 
-## Drug interactions
+## Product guidance and interactions
 
-The dm+d API provides **no interaction data** — it is a
-medication catalogue only. A separate data source would be
-needed. Options for UK clinical use:
+Some source records include patient-information or product-characteristic
+links. Their presence depends on the returned product data.
 
-| Source                                     | Notes                         |
-|--------------------------------------------|-------------------------------|
-| [BNF/NICE](https://bnf.nice.org.uk)        | UK gold standard; NHS licence |
-| [OpenFDA](https://open.fda.gov/apis/drug/) | Free; US-focused              |
-| [DrugBank](https://go.drugbank.com)        | Comprehensive; commercial     |
-
-The SNOMED CT codes returned by dm+d serve as the bridge —
-look up a medication's code in whichever interactions database
-is chosen. Drug interaction lookup is tracked as **MLKP-015**.
+MedTracker does not provide a drug-interaction database. Any future interaction
+feature needs a separately licensed and clinically governed source. SNOMED CT
+or dm+d identifiers can link the selected medication to that source.
