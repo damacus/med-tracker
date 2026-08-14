@@ -1,99 +1,79 @@
 # ADR 0005: External Identity Provider for Web and Mobile Authentication
 
-- Status: Accepted
+- Status: accepted, with mobile PKCE delivery incomplete
 - Date: 2026-07-02
 
 ## Context
 
-MedTracker already supports web sign-in through Rodauth and an OIDC provider.
-It also exposes `POST /api/v1/auth/login`, which exchanges an email and
-password for internal API access and refresh tokens.
+MedTracker supports local Rodauth sign-in and optional browser sign-in through
+an OpenID Connect provider. It also provides internal API access and refresh
+tokens.
 
-That password-to-token endpoint is acceptable for internal transition work, but
-it should not become the primary authentication model for first-party mobile
-clients. A hosted deployment needs a dedicated identity provider for primary
-authentication, MFA, passkeys, recovery, and OAuth/OIDC client policy.
+A hosted mobile client should not collect a MedTracker password. It needs a
+provider-managed login while MedTracker keeps control of household access, API
+session revocation, and audit evidence.
 
 ## Decision
 
-External IdP owns primary authentication. Zitadel is the preferred provider for
-local and hosted deployments, but the integration remains OIDC-provider
-compatible.
+Hosted deployments can use an external OpenID Connect provider as the primary
+identity service. Zitadel is the preferred provider for MedTracker-operated
+deployments, but the browser integration remains provider-neutral.
 
-The web app remains a Rodauth OIDC client. Rodauth continues to own the browser
-session, account linking, and MedTracker-specific login lifecycle after the
-provider has authenticated the user.
+The web application remains a Rodauth OIDC client. Rodauth owns the browser
+session, account linking, and MedTracker login lifecycle after the provider
+authenticates the person.
 
-First-party mobile clients use Authorization Code with PKCE against the external
-provider; in other words, mobile clients use Authorization Code with PKCE.
-The mobile app must open the system browser or platform authentication session,
-complete the provider-managed login, and return with an authorization code
-through an app link, universal link, or custom scheme registered for that client.
+First-party mobile clients will use the authorization code flow with S256 PKCE
+against the external provider. The mobile client will use the system browser or
+platform authentication session. MedTracker will validate the provider result
+and create an internal API session linked to the eligible account and household
+membership.
 
-MedTracker will exchange external identity for internal API sessions. The API
-will validate the provider result server-side, link it to an internal account,
-and mint MedTracker access and refresh tokens backed by `ApiSession`.
+MedTracker remains responsible for:
 
-## Rationale
+- account and provider-subject linking;
+- household membership and person access;
+- internal access and refresh token rotation;
+- session revocation and lockout checks;
+- privacy-safe audit evidence.
 
-Keeping internal API sessions after external authentication fits the current
-`ApiSession` model and preserves MedTracker-owned revocation, audit logging, and
-token rotation behavior.
+## Current delivery status
 
-Directly accepting provider-issued access tokens at every API endpoint would
-push issuer, audience, scope, and key-rotation checks into the resource-server
-path before the rest of the API is ready for that responsibility.
+The browser authorization code flow is available and is documented in
+[OpenID Connect setup](../oidc-setup.md).
 
-## Implementation Notes
+The mobile API exposes an ID-token exchange, but it does not yet verify the
+relationship between `code_verifier` and an S256 challenge. Issue #1889 tracks
+the missing security contract. Until that issue is complete, clients and API
+documentation must not describe the endpoint as a complete PKCE exchange.
 
-- Register separate OIDC clients for the web app and each mobile platform.
-- Keep redirect URI configuration explicit per client and environment.
-- Require issuer, audience, expiry, nonce, and signature validation before
-  linking or provisioning a MedTracker account.
-- Store the provider subject through `AccountIdentity`; do not key access on an
-  email address alone.
-- Keep role, household, and person authorization in MedTracker policies.
-- Do not log provider tokens, authorization codes, medication data, or health
-  event payloads during the exchange.
+The password-based API login remains available for development, tests, and
+transition clients. Restricting it requires a separate compatibility decision.
 
-## Password Login Deprecation
+## Security requirements
 
-`POST /api/v1/auth/login` is deprecated as a first-party mobile authentication
-entrypoint.
+The completed mobile flow must:
 
-During transition it may remain available for local development, tests, or
-migration-only clients. Production mobile clients should move to external OIDC
-plus internal API session exchange before the endpoint is restricted further or
-removed.
+- register a separate provider client for each mobile platform;
+- use an exact redirect URI for each client and environment;
+- verify issuer, audience, expiry, nonce, signature, and the S256 PKCE
+  relationship;
+- store the provider subject in `AccountIdentity`;
+- keep provider roles separate from MedTracker access policy;
+- exclude tokens, codes, verifiers, and health data from logs and audit fields.
 
 ## Consequences
 
-### Positive
+- Browser and mobile clients can share an identity provider without sharing
+  their client credentials.
+- MedTracker keeps its existing API session and revocation model.
+- Mobile login cannot be declared complete until #1889 is resolved.
+- Local password authentication remains available where the deployment policy
+  permits it.
 
-- Authentication policy, MFA, recovery, and passkeys live in the external IdP.
-- Mobile clients avoid collecting MedTracker passwords directly.
-- MedTracker keeps existing API session revocation and audit behavior.
-- Web and mobile clients share one identity authority.
+## Related documents
 
-### Negative
-
-- Mobile login requires provider client registration and redirect URI handling.
-- The API needs a new exchange endpoint before password login can be removed.
-- Account linking and provisioning rules must be tested carefully.
-
-## Follow-up Work
-
-- Add the mobile identity-to-session exchange endpoint.
-- Register first-party mobile clients and document redirect URI conventions.
-- Add request specs for invalid issuer, audience, expiry, replay, and revoked
-  session behavior.
-- Restrict `POST /api/v1/auth/login` once mobile clients no longer depend on it.
-
-## Related Documents
-
-- `docs/oidc-setup.md`
-- `docs/zitadel-local-testing.md`
-- `docs/adrs/0002-authentication-and-authorization-strategy.md`
-- `app/misc/rodauth_main.rb`
-- `app/models/account_identity.rb`
-- `app/models/api_session.rb`
+- [OpenID Connect setup](../oidc-setup.md)
+- [Test local MedTracker with Zitadel](../zitadel-local-testing.md)
+- [Authentication and authorization](0002-authentication-and-authorization-strategy.md)
+- [External integration architecture](0010-external-integration-architecture.md)
