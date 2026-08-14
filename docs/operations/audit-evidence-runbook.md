@@ -6,14 +6,30 @@ Do not enable WORM delivery until the records manager/DPO has approved the reten
 
 Compliance mode requires a separate records-governance change approval and `AUDIT_WORM_COMPLIANCE_APPROVED=true`.
 
-The capacity record must include peak audited writes per second, p95 insert latency, daily event count, average and p95 ledger/object bytes, index and backup overhead, replication, checkpoint/export overhead, forecast assumptions, safety margin, estimated cost, and the date when the estimate must be reviewed. Do not infer production capacity from the six-thread serialization regression spec.
+The capacity record must include measured write volume and latency. Record the
+daily event count, ledger and object sizes, storage overhead, forecast
+assumptions, safety margin, estimated cost, and review date. Do not infer
+production capacity from the six-thread serialization regression spec.
+
+## Command scope
+
+The repository `task audit:*` commands start a local Docker Compose production
+service. They do not select a deployed database or Kubernetes workload.
+
+For a hosted deployment, schedule the matching `rails audit:*` task in an
+approved verifier Job. Give that Job the dedicated verifier database role and
+the required Object Lock credentials. Confirm its target environment before
+each manual run.
 
 ## Schedule
 
-- Run `SCOPE=database FORMAT=json task audit:verify` as a full daily check.
-- Run `SCOPE=worm FORMAT=json task audit:verify` on a rotating object sample daily and all objects at least monthly.
-- Run `task audit:monitor` at least once per minute.
-- Alert when the oldest pending delivery reaches five minutes; page at one hour.
+- Run `rails audit:verify` with `SCOPE=database` and `FORMAT=json` as a full
+  daily check.
+- Run `rails audit:verify` with `SCOPE=worm` and `FORMAT=json` on a rotating
+  object sample daily and all objects at least monthly.
+- Run `rails audit:monitor` at least once per minute.
+- Alert when the oldest pending delivery reaches five minutes. Page at one
+  hour.
 - Keep command output and alerts free of household, person, medication, event, and source identifiers.
 
 ## Baseline
@@ -55,7 +71,12 @@ time filtering is unchanged.
 
 ## Backlog response
 
-At five minutes, check exporter health, credentials, bucket owner/versioning/Object Lock/encryption, and delivery error codes. At one hour, page incident response. Do not discard rows, reset attempts, weaken retention, overwrite objects, or grant the exporter broader database access. Configuration/integrity failures require human resolution; temporary failures remain pending with bounded retry.
+At five minutes, check exporter health, credentials, bucket owner, versioning,
+Object Lock, encryption, and delivery error codes. At one hour, page incident
+response. Do not discard rows, reset attempts, weaken retention, overwrite
+objects, or grant the exporter broader database access. A person must resolve
+configuration and integrity failures. Temporary failures remain pending with
+bounded retry.
 
 ## Integrity incident
 
@@ -68,7 +89,11 @@ At five minutes, check exporter health, credentials, bucket owner/versioning/Obj
 
 ## Restore and disaster recovery
 
-After restoring PostgreSQL, run full database verification before enabling traffic. Compare every restored chain head and checkpoint with the latest signed WORM evidence. A backup that is internally valid but behind WORM is a restore-divergence incident; replay through an approved recovery process rather than deleting external evidence.
+After restoring PostgreSQL, run full database verification before enabling
+traffic. Compare every restored chain head and checkpoint with the latest
+signed WORM evidence. A backup that is internally valid but behind WORM is a
+restore-divergence incident. Replay through an approved recovery process rather
+than deleting external evidence.
 
 Record backup identifier, database/app version, restore point, verifier version, manifest/checkpoint IDs, result, operator, and incident/change reference. Test restore and divergence handling at least quarterly.
 

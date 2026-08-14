@@ -1,7 +1,7 @@
 # Upload Storage Backup and Restore
 
 Production supports durable Disk and S3-compatible storage. The selected
-backend and any active migration determine the recovery set; S3 is optional.
+backend and any active migration determine the recovery set. S3 is optional.
 
 ## Recovery set
 
@@ -36,6 +36,14 @@ and data-retention decision.
    passes.
 
 ## Isolated restore
+
+The `task prod:verify-storage-restore` command starts a local Docker Compose
+production service. Use it to check a local restored environment. It does not
+select a hosted restore target.
+
+For a deployed isolated restore, run `rails med_tracker:storage:verify_restore`
+inside the restored application Job or pod. Set the same evidence variables and
+confirm the target database and storage service first.
 
 1. Create an isolated database and storage destination with no production
    routes.

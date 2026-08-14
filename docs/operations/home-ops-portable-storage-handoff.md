@@ -30,12 +30,12 @@ not authority to alter production.
 
 The deployment value must match the operator workflow exactly:
 
-- `persistent`: Disk steady state.
-- `persistent_with_s3_mirror`: Disk primary, S3 mirror.
+- `persistent` means Disk steady state.
+- `persistent_with_s3_mirror` means Disk primary with an S3 mirror.
 - `s3_with_persistent_mirror`: S3 primary, Disk mirror.
 - `s3`: S3 steady state.
 
-Disk to S3 advances through the list; S3 to Disk moves through it in reverse.
+Disk to S3 advances through the list. S3 to Disk moves through it in reverse.
 Keep both storage systems available throughout either mirror phase and its
 rollback window.
 
@@ -47,7 +47,8 @@ export-expiry, and NHS dm+d work. Then run reconciliation, cutover eligibility,
 and the dry-run cutover command. Apply only with the direction-specific
 confirmation value.
 
-The application tasks are:
+These repository commands start a local Docker Compose production service. Use
+them only for local production-image checks:
 
 ```fish
 task prod:storage-migration-start
@@ -59,6 +60,11 @@ task prod:storage-migration-rollback
 task prod:storage-migration-finalize
 task prod:storage-migration-retirement-eligibility
 ```
+
+Home-Ops must run `rails storage:migration` in an approved Kubernetes Job for a
+deployed migration. Set `STORAGE_MIGRATION_ACTION` and the matching variables
+shown in `Taskfiles/prod.yml`. Confirm the cluster, namespace, workload,
+database, and both storage services before applying a change.
 
 The task input includes source, destination, current phase, run id where
 applicable, explicit gate values, `APPLY=true`, and `CONFIRM=persistent-to-s3`
