@@ -56,6 +56,8 @@ or unredacted logs publicly.
 - [API Contract Conventions](api/README.md): use canonical API addressing,
   stable operation IDs, and audience/resource tags when extending the OpenAPI contract.
 - [API Contract](api/openapi.v1.yaml): OpenAPI contract for hosted auth, portable IDs, sync, backups, admin APIs, and FHIR R4 reads.
+- [API Versioning Policy](api/versioning.md): classify compatible changes,
+  deprecations, breaking changes, and generated-client ownership.
 - [Portable Data Format](api/portable-data.md): understand snapshot, export,
   import, and incremental sync record fields.
 - [External Integration Architecture](adrs/0010-external-integration-architecture.md): choose `/api/v1`, `/mcp`, or SMART on FHIR by client audience.

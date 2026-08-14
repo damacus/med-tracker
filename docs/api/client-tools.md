@@ -1,12 +1,15 @@
 # MedTracker Client Tools
 
-MedTracker ships first-party Rust client tools for hosted API workflows.
+MedTracker provides first-party Rust client tools for hosted API workflows.
 
 - `medtracker` is a human-operated CLI.
 - `medtracker-mcp` is a stdio MCP server for agent clients.
 
-Both tools use the public `/api/v1` HTTP API. They do not read the Rails
-database, call Rails internals, shell into Rails, or depend on Rails constants.
+Both tools use the public `/api/v1` HTTP API. This keeps them outside the Rails
+database and internal code, with no Rails shell or constant dependency.
+
+The [API versioning policy](versioning.md) defines contract compatibility and
+the migration from handwritten transport types to generated bindings.
 
 ## Install
 
