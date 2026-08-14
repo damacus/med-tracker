@@ -110,10 +110,9 @@ group :test do
   # HTTP request stubbing [https://github.com/bblimke/webmock]
   gem 'webmock'
 
-  # Mutation testing [https://github.com/mbj/mutant] — lives in :test because it
-  # drives the RSpec suite against the app + database. mutant-license (the OSS
-  # licence gem) is added once the OSS token is available — see
-  # docs/superpowers/plans/2026-06-09-test-coverage-and-mutation-testing.md (Task 1.2).
+  # Mutation testing [https://github.com/mbj/mutant] lives in :test because it
+  # drives the RSpec suite against the app and database. Public open-source use
+  # is declared in config/mutant.yml and needs no licence gem or token.
   gem 'mutant', require: false
   gem 'mutant-rspec', require: false
 end
