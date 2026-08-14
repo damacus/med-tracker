@@ -9,9 +9,10 @@ families, and carers. It supports household medication schedules, dose
 recording, stock tracking, reminders, and auditable history.
 
 > [!IMPORTANT]
-> MedTracker is currently in beta. It should supplement—not replace—your
+> MedTracker is currently in beta. It should supplement your
 > existing medication routine. Do not depend on it for clinical decisions,
-> emergency information, or your sole medication reminders.
+> emergency information, or your sole medication reminders, and do not use it
+> as a replacement for established care.
 
 ![MedTracker dashboard showing today's medication schedule, dose status, and stock](docs/screenshots/dashboard-desktop.png)
 
@@ -23,7 +24,7 @@ are running low, and who recorded each action. MedTracker brings that context
 together without handing control of it to a hosted service.
 
 - See today's medication routine for everyone you care for in one place
-- Replace "has anyone given this?" guesswork with a clear dose history
+- Replace uncertainty about a dose with a clear history
 - Spot low stock before it becomes a last-minute problem
 - Coordinate care for children, dependent adults, and other household members
 - Keep an attributable record of who did what and when
@@ -31,9 +32,9 @@ together without handing control of it to a hosted service.
 
 ## Try the self-hosted beta
 
-We are looking for technically confident self-hosters who are willing to deploy
-MedTracker, try the journey from household setup to recording doses, and tell us
-where it is confusing or unreliable.
+We are looking for technically confident self-hosters to run MedTracker and try
+the journey from household setup to recording doses. Tell us where the app is
+confusing or unreliable.
 
 For a private local evaluation:
 
@@ -89,7 +90,7 @@ Key pages:
 - [Glossary](docs/glossary.md)
 - [LLM Context Index (llms.txt)](https://damacus.github.io/med-tracker/llms.txt)
 - [Kubernetes User Seeding](https://damacus.github.io/med-tracker/kubernetes-user-seeding/)
-- [Carer Onboarding: First Dose](https://damacus.github.io/med-tracker/user-onboarding-carer-first-dose/)
+- [Record a First Dose](docs/families/taking-first-dose.md)
 - [Testing](https://damacus.github.io/med-tracker/testing/)
 - [Client Tools](docs/api/client-tools.md)
 - [Design](https://damacus.github.io/med-tracker/design/)
@@ -97,8 +98,7 @@ Key pages:
 
 ### Build docs locally
 
-```bash
-pip install -r requirements.txt
+```fish
 task docs:serve
 ```
 
