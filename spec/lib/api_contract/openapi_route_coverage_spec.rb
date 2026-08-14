@@ -1055,6 +1055,72 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(described_class.schema_errors('MeResponse', response.parsed_body)).to be_empty
     end
 
+    it 'types location reads and their household errors' do
+      collection = described_class.operation('/households/{household_id}/locations', 'get')
+      resource = described_class.operation('/households/{household_id}/locations/{id}', 'get')
+
+      expect(auth_response_schema(collection, '200')).to eq('#/components/schemas/LocationCollectionResponse')
+      expect(auth_response_schema(resource, '200')).to eq('#/components/schemas/LocationResponse')
+      expect(collection.fetch('responses').keys).to include('200', '401', '403', '404', '422', '429')
+      expect(resource.fetch('responses').keys).to include('200', '401', '403', '404', '429')
+    end
+
+    it 'types medication collections, resources, and writes' do
+      collection_path = '/households/{household_id}/medications'
+      resource_path = "#{collection_path}/{id}"
+      collection = described_class.operation(collection_path, 'get')
+      create = described_class.operation(collection_path, 'post')
+      resource = described_class.operation(resource_path, 'get')
+      updates = %w[patch put].map { |method| described_class.operation(resource_path, method) }
+
+      expect(auth_response_schema(collection, '200')).to eq('#/components/schemas/MedicationCollectionResponse')
+      expect(auth_response_schema(resource, '200')).to eq('#/components/schemas/MedicationResponse')
+      expect(auth_request_schema(create)).to eq('#/components/schemas/MedicationCreateRequest')
+      expect(updates).to all(satisfy do |operation|
+        auth_request_schema(operation) == '#/components/schemas/MedicationUpdateRequest'
+      end)
+      expect([create, *updates]).to all(satisfy { |operation| operation.fetch('responses').key?('422') })
+    end
+
+    it 'types medication inventory and reorder actions' do
+      base_path = '/households/{household_id}/medications/{id}'
+      adjustment = described_class.operation("#{base_path}/adjust_inventory", 'patch')
+      ordered = described_class.operation("#{base_path}/mark_as_ordered", 'patch')
+      received = described_class.operation("#{base_path}/mark_as_received", 'patch')
+
+      expect(auth_request_schema(adjustment)).to eq('#/components/schemas/MedicationInventoryAdjustmentRequest')
+      expect(auth_request_schema(ordered)).to eq('#/components/schemas/MedicationOrderDetailsRequest')
+      expect(ordered.dig('requestBody', 'required')).to be(false)
+      expect(auth_response_schema(received, '200')).to eq('#/components/schemas/MedicationResponse')
+      expect([adjustment, ordered, received]).to all(satisfy { |operation| operation.fetch('responses').key?('429') })
+    end
+
+    it 'accepts only supported medication write fields' do
+      valid_create = {
+        medication: { name: 'Contract medicine', location_id: 1, current_supply: 20, reorder_threshold: 5 }
+      }
+      invalid_create = valid_create.deep_merge(medication: { household_id: 99 })
+      adjustment = { adjustment: { new_quantity: 10, reason: 'Stock count' } }
+
+      expect(described_class.schema_errors('MedicationCreateRequest', valid_create)).to be_empty
+      expect(described_class.schema_errors('MedicationCreateRequest', invalid_create)).to include(
+        '/medication/household_id'
+      )
+      expect(described_class.schema_errors('MedicationInventoryAdjustmentRequest', adjustment)).to be_empty
+    end
+
+    it 'matches Rails location and medication collections' do
+      login_data = api_login(users(:admin))
+      household_id = login_data.dig('household', 'id')
+      headers = api_auth_headers(login_data.fetch('access_token'))
+
+      get api_v1_household_locations_path(household_id), headers:, as: :json
+      expect(described_class.schema_errors('LocationCollectionResponse', response.parsed_body)).to be_empty
+
+      get api_v1_household_medications_path(household_id), headers:, as: :json
+      expect(described_class.schema_errors('MedicationCollectionResponse', response.parsed_body)).to be_empty
+    end
+
     it 'references typed representative person request and response schemas' do
       create_person = described_class.operation('/households/{household_id}/people', 'post')
       show_person = described_class.operation('/households/{household_id}/people/{id}', 'get')
