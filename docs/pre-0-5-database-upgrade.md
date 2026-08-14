@@ -171,10 +171,10 @@ Evidence that was omitted before this repair was not protected before repair.
 Integrity is established from the new repair checkpoint onward.
 
 Before accepting the repaired audit evidence, operators must sign and export
-both checkpoints, drain pending delivery records, and rerun database, WORM,
-and combined verification. Record the deployment version, migration time,
-checkpoint, key, manifest, and object identifiers, verification output, and
-operator in an external change or incident record.
+both checkpoints. They must also drain pending delivery records and rerun the
+database, WORM, and combined verification. Record the deployment version,
+migration time, checkpoint, key, manifest, and object identifiers. Include the
+verification output and operator in an external change or incident record.
 
 Verify the account access bootstrap:
 
@@ -228,8 +228,12 @@ backfills legacy rows, then restores forced RLS before it completes.
 This avoids the emergency-only workaround of granting `BYPASSRLS` to the
 migration role.
 
-If users can sign in but the app redirects to login, reports that their account
-is deactivated, or shows "You are not authorized to perform this action" for
-every account after a failed cutover, check the account access bootstrap queries
-above before changing account statuses. That symptom usually means the deployed
-app cannot see an active household membership for the signing-in account.
+After a failed cutover, users might see one of these symptoms:
+
+- the app redirects them to the login page;
+- the app reports that their account is deactivated;
+- every account gets a "You are not authorized to perform this action" message.
+
+Check the account access bootstrap queries above before changing account
+statuses. These symptoms usually mean the deployed app cannot see an active
+household membership for the signing-in account.
