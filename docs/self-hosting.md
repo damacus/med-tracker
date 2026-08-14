@@ -1,35 +1,43 @@
-# Self-Hosting Setup
+# Run MedTracker locally
 
-This guide walks through running MedTracker on your own computer for local evaluation only.
+Use this guide to run MedTracker on your own computer for local evaluation.
+This development setup is not a production deployment.
 
-## 🏁 Before you begin
+## Before you begin
 
-If you've never used your computer's "Terminal" before, don't worry! Here's how to find it:
+Run the commands in a terminal:
 
-- **Windows:** Search for "PowerShell" or "Command Prompt" in your Start menu.
-- **Mac:** Open "Finder", go to "Applications" → "Utilities", and double-click **Terminal**.
+- On Windows, open PowerShell or Command Prompt from the Start menu.
+- On macOS, open Terminal from **Applications > Utilities**.
 
 ### What you'll need
 
-You'll need to install these four tools before we start. They are the "engine" that runs MedTracker:
+Install these tools:
 
-1. **[Docker Desktop](https://www.docker.com/products/docker-desktop/):** download and install the version for your computer.
-2. **[Git](https://git-scm.com/downloads):** follow the instructions for your computer.
-3. **[Task](https://taskfile.dev/installation/):** follow the instructions for your computer (e.g., `brew install go-task/tap/go-task` on Mac).
-4. **[Portless](https://portless.sh/):** install it with `npm install -g portless`, then run `portless trust` once to trust its local HTTPS certificate.
+1. [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+2. [Git](https://git-scm.com/downloads)
+3. [Task](https://taskfile.dev/installation/)
+4. [Portless](https://portless.sh/)
+
+Install Portless and trust its local HTTPS certificate:
+
+```shell
+npm install -g portless
+portless trust
+```
 
 ---
 
-## 1. Download MedTracker
+## Download MedTracker
 
-Open your Terminal and paste these commands (one line at a time):
+Clone the repository and enter its directory:
 
 ```bash
 git clone https://github.com/damacus/med-tracker.git
 cd med-tracker
 ```
 
-## 2. Start the App
+## Start MedTracker
 
 > **Local evaluation only:** `task dev:portless` starts the development stack.
 > Do not run this stack on a public or shared network, and do not use it as a
@@ -38,29 +46,27 @@ cd med-tracker
 > through the bootstrap/invitation flow instead of loading development
 > fixtures.
 
-Now, let's start the app's services:
-
 ```fish
 task dev:portless
 ```
 
-*This might take a few minutes the first time as it downloads the necessary parts. If it asks for permission to access your files or network, click **Allow**.*
+The first start can take a few minutes while Docker downloads and builds the
+required images.
 
-## 3. Add Some Example Data
+## Add example data
 
-To make it easier to see how it works, you can add local-only "dummy" data
-(like example people and medicines). These fixtures include sample accounts and
-known passwords, so only run this command on a private development machine:
+You can load local example people and medications. The fixtures include sample
+accounts with known passwords. Only run this command on a private development
+machine:
 
 ```fish
 task dev:seed
 ```
 
-## 4. Open MedTracker in Your Browser
+## Open MedTracker
 
-Now, open your web browser and go to:
-
-👉 **[https://med-tracker.localhost](https://med-tracker.localhost)**
+Open [https://med-tracker.localhost](https://med-tracker.localhost) in a web
+browser.
 
 Sign in with a local demo account from the seed output, or use the account your
 administrator invited for a production deployment. If you loaded fixture data,
@@ -69,9 +75,7 @@ computer.
 
 ---
 
-## What's next?
+## Next steps
 
-Now that the app is running, you can:
-
-- [**Add your first medicine**](families/adding-first-medicine.md)
-- [**Record a dose**](families/taking-first-dose.md)
+- [Add your first medicine](families/adding-first-medicine.md)
+- [Record a dose](families/taking-first-dose.md)
