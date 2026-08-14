@@ -36,7 +36,7 @@ Store credentials in the deployment's secret manager. Do not commit them.
 ## Local development
 
 The development stack routes outgoing messages to its Mailpit service
-automatically; no local SMTP variables are required. Start MedTracker with:
+automatically. Local SMTP variables are not required. Start MedTracker with:
 
 ```fish
 task dev:portless

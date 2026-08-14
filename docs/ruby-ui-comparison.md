@@ -8,7 +8,7 @@ task ruby-ui:compare COMPONENTS="Button Dialog"
 task ruby-ui:compare COMPONENTS="Button Dialog" OUTPUT=/private/tmp/ruby-ui-compare
 ```
 
-The task accepts named component families only. It runs the locked RubyUI
+The task accepts selected component families only. It runs the locked RubyUI
 generator in a fresh external copy with dependency installation disabled, then
 reports unchanged, changed, missing locally, and local-only Ruby and JavaScript
 files for those families. Dependency declarations from RubyUI's own metadata

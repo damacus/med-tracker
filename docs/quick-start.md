@@ -67,7 +67,9 @@ If you encounter database issues or want to start fresh:
 ```fish
 task dev:rebuild
 ```
-*Warning: This removes all data and recreates the database.*
+**Warning**
+
+This command removes all data and recreates the database.
 
 ### Database migrations
 To apply new database changes without a full rebuild:
