@@ -2,7 +2,7 @@
 
 Defines a private, durable, retention-bounded trace path that lets operators query and correlate explicitly enabled MedTracker OpenTelemetry traces in the existing Grafana observability stack.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Trace ingestion is private and explicitly authorized
 The cluster trace backend SHALL accept OTLP/HTTP traces only through a cluster-internal endpoint and SHALL restrict ingestion to workloads explicitly authorized for trace export.
@@ -71,7 +71,7 @@ Grafana SHALL provision a healthy trace data source that supports trace-ID looku
 #### Scenario: Operator navigates from a trace to logs
 - **GIVEN** a displayed span has a trace identifier, a non-empty deployment-generated `host.name` mapped to the Kubernetes pod label, and matching Loki records exist
 - **WHEN** the operator follows the trace-to-logs link
-- **THEN** Grafana opens a time-bounded Loki query scoped to the trace, MedTracker service, and Kubernetes pod
+- **THEN** Grafana opens a time-bounded Loki query scoped by the trace and MedTracker service, with the Kubernetes pod as deployment context
 
 #### Scenario: Operator navigates from a log to a trace
 - **GIVEN** a Loki record contains a valid retained trace identifier
@@ -129,7 +129,7 @@ The deployment SHALL have pinned dependencies, explicit resources, health checks
 #### Scenario: Backend becomes unhealthy
 - **GIVEN** the trace backend is unavailable, repeatedly restarting, rejecting spans, or failing durable storage operations
 - **WHEN** cluster monitoring evaluates its health
-- **THEN** operators receive a bounded actionable signal
+- **THEN** operators receive a bounded diagnostic signal
 - **AND** the signal contains no trace payload data
 
 #### Scenario: Backend resources grow unexpectedly
