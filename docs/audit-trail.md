@@ -9,11 +9,17 @@ MedTracker records two audit sources:
 
 Both sources use the same versioned envelope. It identifies the event, outcome, time, household, affected entity, actor account/user/membership, active role, permissions version, authentication method, opaque session reference, request and trace identifiers, IP address, Pundit policy/query, support session, source row, redacted metadata, and retention decision. Secrets, bearer tokens, cookies, passwords, OIDC tokens, and raw session identifiers are not permitted in the envelope.
 
-The web and API controllers establish and clear the request context explicitly. Background work is identified as system activity; it is not represented as user-authorized activity.
+The web and API controllers establish and clear the request context explicitly.
+Background work is identified as system activity. It is not represented as
+user-authorised activity.
 
 ## Integrity boundary
 
-PostgreSQL `SECURITY DEFINER` triggers append both source tables to `audit_ledger_entries` in the same transaction. Each household has an independent chain; events without a household use the global chain. Every entry binds the chain epoch, sequence, previous hash, canonical envelope, source payload, hash/schema versions, and retention decision into a SHA-256 hash.
+PostgreSQL `SECURITY DEFINER` triggers append both source tables to
+`audit_ledger_entries` in the same transaction. Each household has an
+independent chain. Events without a household use the global chain. Every entry
+binds the chain epoch, sequence, previous hash, canonical envelope, source
+payload, hash/schema versions, and retention decision into a SHA-256 hash.
 
 The runtime application role can insert source events but cannot update or delete source or ledger rows. Household administrators read a tenant-filtered view. The audit exporter and verifier use separate database roles and credentials:
 
@@ -28,7 +34,9 @@ The medication-take deletion step is a validated `SECURITY DEFINER` maintenance
 boundary for the existing shared login; it does not provide credential isolation or
 a general medication-history bypass.
 
-- `med_tracker_audit_exporter` reads ledger/checkpoint data, signs checkpoints through a one-way database function, and updates delivery receipts. It cannot read source or clinical tables or modify ledger history.
+- `med_tracker_audit_exporter` reads ledger and checkpoint data and signs
+  checkpoints through a one-way database function. It also updates delivery
+  receipts. It cannot read source or clinical tables or modify ledger history.
 - `med_tracker_audit_verifier` is read-only. It needs complete visibility of
   both audit sources and ledger evidence, but no clinical-table access or
   authority to alter source, ledger, checkpoint, or delivery rows. It checks
@@ -36,7 +44,10 @@ a general medication-history bypass.
   visibility or isolation is insufficient, verification fails as a
   configuration error rather than reporting valid evidence.
 
-Database-owner access remains a break-glass capability. PostgreSQL cannot independently audit a malicious database owner who controls the database and its logs. Every owner-level audit-table operation therefore requires an incident or approved change record in a separate system.
+Database-owner access remains a break-glass capability. PostgreSQL cannot
+independently audit a malicious database owner who controls the database and
+its logs. Every owner-level audit-table operation requires an incident or
+approved change record in a separate system.
 
 ## Existing history
 
@@ -55,7 +66,10 @@ The exporter writes one deterministic, content-addressed JSON object per ledger 
 
 Temporary storage failures leave the transactional outbox pending for retry. Configuration, checksum, duplicate-version, and retention failures stop automatic retry and require operator action. The web process has no signing key or WORM credential.
 
-Governance mode is the default. `COMPLIANCE` mode requires `AUDIT_WORM_COMPLIANCE_APPROVED=true` after records-governance approval because its retention cannot be shortened. Object Lock configuration and permission validation is repeated while the exporter runs.
+Governance mode is the default. `COMPLIANCE` mode requires
+`AUDIT_WORM_COMPLIANCE_APPROVED=true` after records-governance approval because
+its retention cannot be shortened. The exporter checks Object Lock settings and
+permissions each time it runs.
 
 ## Verification
 
@@ -90,7 +104,13 @@ Run:
 task audit:export
 ```
 
-Set `OUTPUT`, optional `HOUSEHOLD_ID`, `FROM`, `TO`, and `FHIR=true` as required. The export contains deterministic native NDJSON and a signed manifest. `FHIR=true` also writes a FHIR R4 `Bundle` of `AuditEvent` resources. The native envelope remains authoritative for integrity; FHIR is an interoperability representation. FHIR defines AuditEvent as a security log and advises servers not to support update/delete because that compromises audit integrity: <https://hl7.org/fhir/R4/auditevent.html>.
+Set `OUTPUT`, optional `HOUSEHOLD_ID`, `FROM`, `TO`, and `FHIR=true` as
+required. The export contains deterministic native NDJSON and a signed
+manifest. `FHIR=true` also writes a FHIR R4 `Bundle` of `AuditEvent` resources.
+The native envelope remains authoritative for integrity. FHIR provides an
+interoperability representation. FHIR defines AuditEvent as a security log and
+advises servers not to support update or delete because that compromises audit
+integrity: <https://hl7.org/fhir/R4/auditevent.html>.
 
 Creating an export is itself written to `security_audit_events` without recording output paths or clinical content.
 
@@ -103,11 +123,19 @@ verification output, and operator.
 
 ## Retention
 
-Retention policy `clinical-security-v1` applies a ten-year default floor to clinical/security audit evidence. A related record schedule, legal hold, inquiry, litigation requirement, or approved local policy may require longer retention. This is a floor, not a universal claim that every record must be destroyed after ten years or kept forever.
+Retention policy `clinical-security-v1` applies a ten-year default floor to
+clinical and security audit evidence. A related record schedule, legal hold,
+inquiry, litigation requirement, or approved local policy may require longer
+retention. The floor does not require destruction after ten years or retention
+forever.
 
 Reaching `retain_until` makes evidence eligible for records-governance review. MedTracker does not automatically destroy expired audit evidence. A future governed disposal process must verify eligibility and legal holds and create an immutable destruction manifest.
 
-The policy must be approved by the deploying organisation's records manager and DPO before production retention is locked. NHS records guidance applies different schedules to different records, requires appraisal at the end of the minimum period, and warns against unjustified continued retention: <https://transform.england.nhs.uk/media/documents/NHSX_Records_Management_CoP_V7.pdf>.
+The deploying organisation's records manager and Data Protection Officer must
+approve the policy before production retention is locked. NHS records guidance
+applies different schedules to different records. It requires appraisal at the
+end of the minimum period and warns against unjustified continued retention:
+<https://transform.england.nhs.uk/media/documents/NHSX_Records_Management_CoP_V7.pdf>.
 
 ## Limits
 

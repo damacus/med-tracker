@@ -12,6 +12,8 @@ This record supplies technical evidence for the clinical safety case. It does no
 | Pre-migration evidence is treated as trustworthy | Incorrect historical assurance | `legacy-baseline` epoch and signed baseline limitation | Reviewers must preserve the label in reports |
 | Audit failure blocks or silently loses clinical work | Missed medication workflow or missing evidence | Local ledger is synchronous/fail-closed; WORM delivery is asynchronous and monitored | Capacity and failure-mode review before launch |
 
-The Clinical Safety Officer must link these controls to the hazard log, verify operating evidence, and assess new failure modes from storage, signing-key, and verifier dependencies.
+The Clinical Safety Officer must link these controls to the hazard log and
+verify operating evidence. The review must assess new failure modes from
+storage, signing-key, and verifier dependencies.
 
 NHS England is reviewing DCB0129 and DCB0160. The safety case owner must track the replacement/revised standard and update this evidence: <https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/review-of-digital-clinical-safety-standards-dcb0129-and-dcb0160>.
