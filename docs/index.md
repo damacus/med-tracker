@@ -47,7 +47,8 @@ or unredacted logs publicly.
 - [RubyUI comparison](ruby-ui-comparison.md): compare generated RubyUI files before choosing a manual update.
 - [Design & Architecture](design.md): explore the domain model and safety guardrails.
 - [Bounded Context Map](adrs/0009-bounded-context-map.md): see present domain ownership and dependency direction in the Rails modular monolith.
-- [Record lifecycle contract](operations/record-lifecycle.md): define safe retirement and explicit reactivation for medication, person, and location records.
+- [Proposed record lifecycle](operations/record-lifecycle.md): review the
+  unimplemented design for medication, person, and location retirement.
 - [Audit & Compliance](audit-trail.md): details on versioning and data history.
 - [MCP Integration](mcp.md): set up the hosted MCP server and connect Codex,
   Claude Code, or VS Code to read medication context.

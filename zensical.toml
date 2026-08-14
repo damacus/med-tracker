@@ -25,7 +25,7 @@ nav = [
     { Design = "design.md" },
     { "Database Relationships" = "database-relationships.md" },
     { "Audit Trail" = "audit-trail.md" },
-    { "Record lifecycle contract" = "operations/record-lifecycle.md" },
+    { "Proposed record lifecycle" = "operations/record-lifecycle.md" },
     { "Application observability" = "operations/application-observability.md" }
   ] },
   { "🩺 For Clinicians" = [

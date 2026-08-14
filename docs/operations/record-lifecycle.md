@@ -1,179 +1,113 @@
-# Record lifecycle contract
+# Proposed Root Record Lifecycle
 
-This operational contract defines the retirement and reactivation lifecycle for
-Medication, Person, and Location roots. It is the authoritative contract for
-implementation and acceptance tests.
+> [!WARNING]
+> This page records a future design. MedTracker does not currently support
+> retirement or reactivation for Medication, Person, or Location records.
 
-## Definitions and shared state machine
+## Current behaviour
 
-- Retirement is explicit and reversible.
-- Logical cold storage is a lifecycle and visibility state, not a separate
-  database tier.
-- Every root has the states `active`, `retired`, and `hard_deleted`.
-- Allowed transitions are `active -> retired` (retire), `retired -> active`
-  (reactivate), and `active -> hard_deleted` only when the hard-deletion gate
-  below is satisfied. `hard_deleted` is terminal and is never recreated by
-  reactivation, import, or restore.
-- The selected root itself changes lifecycle state in every retirement or
-  reactivation transition; changing a child source or relationship is not a
-  substitute for changing the selected root.
-- Repeating a completed same-state transition is idempotent. No transition
-  silently changes another root.
-- Reactivation changes only the selected root. It never silently restores
-  associated schedules, assignments, stock placement, memberships, or care
-  relationships.
-- Retired roots remain retained and labelled for authorized history, admin,
-  reports, API sync, export/import, and restoration. Active selectors and
-  future activity exclude them.
+`Schedule` and `PersonMedication` can be retired through their existing
+`retired_at` fields. Their dose history remains available.
 
-## Medication state machine
+Medication, Person, and Location do not have the root lifecycle states or
+routes described below. Do not promise users that these records can be retired,
+reactivated, or moved to logical cold storage.
 
-Medication Catalogue owns the Medication root lifecycle (product identity and
-its cold-storage state). Medication Administration owns only the child
-administration sources (`Schedule` and `PersonMedication`) and their rules;
-that child ownership is distinct from ownership of the Medication root.
+Household offboarding has its own lifecycle and retention process. It does not
+deliver the root lifecycle proposed here.
 
-| State | Allowed transition | Invariants |
-| --- | --- | --- |
-| `active` | `retire` -> `retired`; `hard_delete` -> `hard_deleted` only if the deletion gate passes | The selected Medication becomes retired or is permanently deleted; no Person changes. |
-| `retired` | `reactivate` -> `active` | The selected Medication becomes active; previously retired child sources remain retired or absent. |
-| `hard_deleted` | None | No historical identity, protected evidence, or dependent state existed. |
+## Proposed goal
 
-Retiring a Medication retires only that Medication's active `Schedule` and
-`PersonMedication` rows. Every `MedicationTake`, its source, and its root
-reference remain unchanged.
+The proposed design would let an authorized user remove a root record from
+future activity without erasing its protected history. It would apply the same
+high-level rules to Medication, Person, and Location:
 
-## Person state machine
+- retirement is explicit and reversible;
+- retired roots stay available to authorized historical views and exports;
+- active selectors and future activity exclude retired roots;
+- reactivation changes only the selected root; and
+- hard deletion is limited to never-used records with no protected state.
 
-People and Care Delegation owns the Person root lifecycle and outbound care
-relationship changes. Household Access remains the authority for grants and
-membership state; Identity owns linked-account authentication state.
+The design needs code changes, public behavior tests, API contract changes,
+audit evidence, and migration planning before it becomes a product contract.
 
-| State | Allowed transition | Invariants |
-| --- | --- | --- |
-| `active` | `retire` -> `retired`; `hard_delete` -> `hard_deleted` only if the deletion gate passes | The selected Person becomes retired; only that person's future schedules and medication assignments are retired. |
-| `retired` | `reactivate` -> `active` | The selected Person becomes active; schedules, assignments, memberships, and care relationships are not recreated. |
-| `hard_deleted` | None | No dependent state, protected history, audit, retention obligation, or legal hold existed. |
+## Proposed states
 
-Person retirement never retires, deactivates, deletes, or otherwise changes
-another Person. Dependants remain active and retain history even when they need
-a new carer assignment.
+| State | Meaning |
+| --- | --- |
+| `active` | The root is available for current activity. |
+| `retired` | The root is hidden from future activity but retained for authorized history. |
+| `hard_deleted` | The root no longer exists and cannot be restored. |
 
-## Location state machine
+Proposed transitions are `active` to `retired`, `retired` to `active`, and a
+guarded `active` to `hard_deleted`. Repeated requests should be idempotent.
 
-Inventory owns the Location root lifecycle and stock-placement preconditions.
-Location retirement is blocked while the location is primary or holds active
-stock; reassign both before retiring it.
+## Medication proposal
 
-| State | Allowed transition | Invariants |
-| --- | --- | --- |
-| `active` | `retire` -> `retired` only when the location is not primary and holds no active stock; `hard_delete` -> `hard_deleted` only if the deletion gate passes | The selected Location becomes retired; reassign primary status and active stock before retirement. |
-| `retired` | `reactivate` -> `active` | The selected Location becomes active; prior stock placement and memberships are not restored. |
-| `hard_deleted` | None | No protected history, stock, audit, retention obligation, or legal hold existed. |
+Retiring a Medication would retire that medication's active schedules and
+person-medication records. It would preserve every `MedicationTake`, dose
+snapshot, source identity, and stock history.
 
-## Linked users and carer relationships
+Reactivating the Medication would not restore its child plans. Each plan would
+need a separate, explicit decision.
 
-If the retiring Person or a deactivated linked user is a carer, People and Care
-Delegation ends only that carer's outbound active care relationships. A
-deactivation does not retire or deactivate the linked Person automatically and
-never cascades to the dependant.
+## Person proposal
 
-When a minor or dependent adult would lose their last active carer, before
-confirmation show this privacy-safe warning (without names, diagnoses,
-medication details, or other PHI):
+Retiring a Person would stop only that person's future medication activity. It
+would preserve their history and would not retire another person.
 
-> This action will remove the last active carer for one or more dependants.
-> Confirm to continue and assign replacement supervision.
+When the person is a carer, the workflow would need a privacy-safe warning if a
+dependent person would lose their last active carer. The dependent person would
+stay active and enter a needs-carer workflow.
 
-The warning is not an indefinite block: after explicit confirmation the
-transition may proceed. The dependant remains active, is visible in the
-needs-carer workflow, and requires a separate explicit assignment. This does
-not silently deactivate the dependant or require cascading retirement.
-Reactivation never recreates care relationships; relinking is explicit.
+Reactivation would not recreate memberships, grants, care relationships, or
+medication plans.
 
-## Authorization, confirmation, and evidence
+## Location proposal
 
-- The existing Household Access policy authorizes each root transition for the
-  selected household. Cross-household requests remain hidden or fail closed.
-- Retirement and reactivation use the existing policy authority for the
-  corresponding destructive or update action.
-- Household authority to manage a Person and linked account is limited to the
-  selected household and never authorizes global Account deactivation. That
-  authority may suspend or revoke only the selected HouseholdMembership and
-  end outbound care relationships in that household after the required warning
-  and confirmation.
-- Account deactivation is a global Identity transition.
-  Only the account holder or Identity-level platform operator may request it.
-  Identity locks and
-  revalidates the Account, its active memberships, and outbound relationships
-  in each affected household; it applies the confirmed relationship changes,
-  writes separate tenant-scoped audit evidence for each affected household,
-  and then revokes global credentials transactionally. Without that authority,
-  the request fails closed and may offer only the selected-membership action.
-- Retirement, reactivation, and hard deletion require an explicit operation;
-  a warning or page visit is never confirmation. Sole-carer transitions require
-  an explicit confirmation token/flag after the privacy-safe warning.
-- API mutations use the existing `Idempotency-Key` contract. Replaying the same
-  key and request returns the original outcome; repeating an already completed
-  same-state transition is a no-op and does not duplicate audit evidence.
-- Each actual transition writes one immutable PHI-safe audit event containing
-  actor, household, root type and id, transition, and time only. It must not
-  contain names, diagnoses, medication values, carer details, or warning text.
-  A required audit write failure rolls back the transition.
+Location retirement would be blocked while the location is a required primary
+location or holds active stock. Operators would first move the primary status
+and stock to another active location.
 
-## Visibility, exchange, and API conflicts
+Reactivation would not restore prior stock placement or person memberships.
 
-| Surface | Active root | Retired root |
-| --- | --- | --- |
-| Future activity and active selectors | Included | Excluded |
-| Historical and administrative views | Included | Included with a visible retired label |
-| Reports, sync, export/import, and restoration | Included | Included with retired state preserved |
-| Authorization and retrieval | Existing policy authority applies | Existing policy authority applies; historical identity remains resolvable |
+## Authorization and evidence
 
-API sync represents retirement without deleting historical identity while
-carrying retirement/cold-storage state. It preserves the same portable identity
-(`portable_id`) through changes, snapshots, export/import, and restore.
-Import and restore preserve retired state and never activate it implicitly.
+Every transition would use the existing household authorization boundary.
+Cross-household records would remain hidden or fail closed.
 
-Stale or concurrent lifecycle state, and a location precondition that is still
-blocked, return the existing API conflict contract: **HTTP 409 Conflict** with
-this stable JSON envelope (the request id is generated by the API):
+An actual state change would write one immutable audit event with the actor,
+household, root type, root identifier, transition, and time. It would not put
+names, diagnoses, medication values, or care details in audit metadata. A
+failed audit write would roll back the state change.
 
-```json
-{
-  "error": {
-    "code": "conflict",
-    "message": "Record has changed since it was last read",
-    "request_id": "<request id>"
-  }
-}
-```
+Account deactivation is a separate global identity action. Household authority
+must not gain the ability to deactivate an account across other households.
 
-No partial root, child, relationship, or audit writes are observable from a
-conflicted request.
+## API and concurrency proposal
 
-## Transaction, concurrency, and deletion gates
+API mutations would use the existing `Idempotency-Key` contract. A stale state
+or blocked location precondition would return HTTP 409 with the standard
+conflict envelope. No partial root, child, relationship, or audit writes would
+be visible.
 
-Lock and revalidate the selected root and affected associations in one
-transaction. A stale or concurrent state returns the stable conflict envelope
-above without partial writes. The lock covers the location's primary and stock
-checks, the carer's active relationship count, and every affected membership
-and relationship for a global Account deactivation.
+The transaction would lock and recheck the selected root together with every
+association used by its safety decision.
 
-Hard deletion is permitted only for a never-used root with no protected
-history, dependant state, audit evidence, retention obligation, export
-obligation, or legal hold. A root with any such state must be retired instead;
-retired roots are never hard-deleted.
+## Hard-deletion gate
 
-## Acceptance examples
+Hard deletion would be allowed only when the root has never been used. The root
+could have no protected or dependent state, including audit evidence,
+retention duties, export duties, or legal holds. Every other root would require
+retirement.
 
-| Given | When | Then |
-| --- | --- | --- |
-| A medication with active administration sources | Medication retirement | The selected Medication becomes retired; only its active `Schedule` and `PersonMedication` rows retire and `MedicationTake` history is unchanged. |
-| A Person with no dependants | Person retirement | Only the selected Person and that person's future sources retire; no other Person changes. |
-| A Person with dependants | Person retirement | The selected Person retires, dependants stay active, and any lost-care assignment is surfaced without cascading retirement. |
-| A sole carer linked to a user account | Linked-user deactivation | A privacy-safe last-carer warning is shown; explicit confirmation ends outbound relationships, leaves dependants active, and enters needs-carer discovery. |
-| A Location that is primary or holds active stock | Location retirement | The request returns the stable 409 conflict until reassignment is complete. |
-| A retired Person, Medication, or Location | Non-cascading reactivation | Only the selected root becomes active; prior schedules, assignments, placement, memberships, and care relationships remain retired or absent. |
-| A never-used root with no protected state | Hard deletion | The deletion gate passes and the root may be permanently deleted; it cannot later be restored. |
-| A repeated or stale retirement request | Concurrent application | A completed repeat is idempotent; stale state receives the stable 409 conflict with no partial writes. |
+## Work needed before adoption
+
+1. Add root lifecycle columns and database constraints.
+2. Define authorization and confirmation for each root.
+3. Add user-facing retired labels and active filters.
+4. Preserve lifecycle state in sync, export, import, and restore.
+5. Add audit events and rollback behavior.
+6. Add API operations, conflict behavior, and idempotency coverage.
+7. Prove non-cascading retirement and reactivation in public browser tests.
+8. Replace this proposal with an operator contract only after those checks pass.
