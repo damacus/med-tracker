@@ -1,20 +1,27 @@
 # ADR 0001: Adopt ADR practice and Apache-2.0 licensing
 
-- Status: Accepted
-- Date: 2025-11-12
+- Status
+  Accepted
+- Date
+  2025-11-12
 
 ## Context
 
-MedTracker is moving toward UK health-sector compliance and broader open-source adoption. We need a consistent way to record architectural and regulatory decisions so that contributors and deployers can understand why certain approaches were taken. The new compliance plan @docs/uk-regulatory-compliance-plan.md documents a preference for a permissive licence to minimise adoption friction.
+MedTracker needs a consistent record of architectural and regulatory decisions.
+Contributors and deployers must be able to understand why the project chose an
+approach. A permissive licence also makes adoption easier.
 
 ## Decision
 
-1. All significant architectural, regulatory, security, and product decisions will be captured as Architectural Decision Records (ADRs) stored under `docs/adrs/` using sequential numbering.
-2. The project will use the Apache License 2.0 as its governing licence. A repository-level `LICENSE` and `NOTICE` file will be added to formalise this decision, and future documentation (e.g., README, deployment guides) will reference the licence accordingly.
+1. Record architectural, regulatory, security, and product decisions as ADRs
+   under `docs/adrs/`. Use sequential numbers.
+2. Use the Apache License 2.0 as the project licence. Keep the repository-level
+   `LICENSE` and `NOTICE` files as the public source.
 
 ## Consequences
 
-- Contributors must document future impactful decisions via ADRs to maintain a clear audit trail.
-- We must add supporting licence artefacts (`LICENSE`, `NOTICE`) and update public documentation to reference Apache-2.0.
+- Contributors must use ADRs for decisions that change project architecture,
+  regulation, security, or product boundaries.
+- Public documentation must refer to the `LICENSE` and `NOTICE` files.
 - The permissive licence should encourage NHS trusts, carers, and third parties to adopt MedTracker without legal barriers, while still requiring attribution through the NOTICE file.
 - ADR numbering and format become part of the contribution guidelines and review checklist going forward.
