@@ -51,7 +51,7 @@ Production and canary deployments SHALL execute DM+D imports in a dedicated job 
 
 #### Scenario: Import worker exceeds its memory limit
 - **GIVEN** a DM+D import is executing in the dedicated worker
-- **WHEN** that worker is terminated or restarted because it exceeds its memory limit
+- **WHEN** that worker is stopped or restarted because it exceeds its memory limit
 - **THEN** the web process remains available and does not restart because of the worker failure
 - **AND** stale-import reconciliation can move the interrupted import to a failed state
 
@@ -101,32 +101,3 @@ The canary acceptance environment SHALL preserve durable application archive beh
 - **WHEN** operational acceptance captures evidence
 - **THEN** the record distinguishes persisted administration data from notification-event and delivery evidence
 - **AND** failures retain PHI-safe logs and traces for a separately owned follow-up rather than being silently attributed to DM+D import behavior
-
-### Requirement: Delivery is agent-orchestrated and independently reviewed
-The MedTracker-owned change SHALL be delivered through a coordinating parent agent that retains architecture, cross-repository scope, repository ownership, stacked-branch lineage, integration, and final verification authority. The parent SHALL implement the production capability across both the MedTracker application repository and its deployment repository while preserving each repository's local instructions, code ownership, commits, and pull-request lineage. Each bounded implementation task SHALL be assigned to a fresh subagent with explicit acceptance criteria and SHALL receive an independent task review before the next task begins.
-
-#### Scenario: Production delivery crosses the repository boundary
-- **GIVEN** the MedTracker capability requires both application behavior and deployment topology to ship
-- **WHEN** the coordinating agent applies this change
-- **THEN** this MedTracker OpenSpec change remains the single planning authority and progress ledger
-- **AND** application work is committed in the MedTracker repository
-- **AND** deployment work is committed in the deployment repository under that repository's own instructions
-- **AND** MedTracker artifacts do not encode deployment-repository filesystem or manifest paths
-
-#### Scenario: Bounded task is dispatched
-- **GIVEN** a task has explicit scope, owned files, constraints, acceptance evidence, and escalation conditions
-- **WHEN** the coordinating agent dispatches implementation
-- **THEN** the selected subagent receives a task-specific brief and writes a durable report with changed files, verification, and concerns
-- **AND** the coordinating agent records reviewed completion in the progress ledger
-
-#### Scenario: Task introduces cross-cutting risk
-- **GIVEN** a task exposes concurrency, deployment-control, destructive-state, public-contract, or stack-lineage ambiguity
-- **WHEN** the implementing or reviewing subagent reports that ambiguity
-- **THEN** the coordinating agent retains or resumes judgment using the highest necessary reasoning tier
-- **AND** no parallel implementation task proceeds until the decision and affected task briefs are updated
-
-#### Scenario: Task implementation is complete
-- **GIVEN** an implementing subagent reports a bounded task complete
-- **WHEN** the task diff and verification evidence are available
-- **THEN** an independent reviewer evaluates specification compliance and task quality against the task brief
-- **AND** critical or important findings are corrected and re-reviewed before another implementation task begins

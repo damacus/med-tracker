@@ -55,7 +55,7 @@ Every production job input that must survive beyond its originating request SHAL
 
 #### Scenario: S3-backed worker has no blob mount
 - **GIVEN** production selects S3-compatible storage and a worker has no persistent blob mount
-- **WHEN** it analyzes or purges an attachment, expires an export, or processes an NHS dm+d archive
+- **WHEN** it handles a stored attachment, export, or NHS dm+d archive
 - **THEN** it resolves the durable reference through the selected S3-compatible service
 
 ### Requirement: Migration is bidirectional, resumable, and idempotent
@@ -153,7 +153,7 @@ The production recovery contract SHALL coordinate PostgreSQL records with every 
 ### Requirement: Deployment topology matches the selected backend
 The deployment SHALL make the selected backend available to every process that performs storage work. Disk mode MUST NOT claim filesystem-independent scheduling unless those processes share the same durable filesystem. S3-compatible mode MUST support web and worker processes that are scheduled independently and have no shared blob mount.
 
-#### Scenario: Disk topology is declared honestly
+#### Scenario: Disk topology states its limits
 - **GIVEN** production selects Disk
 - **WHEN** deployment compatibility is evaluated
 - **THEN** each storage-dependent process is colocated with or mounted to the same durable root and no independent-scheduling claim is made without demonstrated shared access
@@ -164,7 +164,8 @@ The deployment SHALL make the selected backend available to every process that p
 - **THEN** both access the same private bucket without sharing a node-mounted blob filesystem
 
 ### Requirement: Development and test remain isolated
-Development and test SHALL continue to use environment-local Disk services and MUST NOT require production S3 credentials, production mounted storage, or access to hosted buckets.
+Development and test SHALL continue to use environment-local Disk services.
+They MUST NOT require production S3 credentials or access to production storage.
 
 #### Scenario: Test execution is isolated
 - **GIVEN** the automated test environment has no production storage credentials or mount

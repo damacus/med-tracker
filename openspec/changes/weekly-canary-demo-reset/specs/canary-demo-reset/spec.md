@@ -5,7 +5,9 @@ Defines a disposable, production-data-free canary environment that returns to a 
 ## ADDED Requirements
 
 ### Requirement: Demo mode is explicit and visible
-The application SHALL enable disposable demo behavior only when explicitly configured for demo mode. While demo mode is enabled, authenticated users SHALL be told that the environment contains synthetic data and resets every Sunday at 04:15 Europe/London.
+The application SHALL enable disposable demo behavior only when explicitly
+configured for demo mode. Authenticated demo users SHALL see that the environment
+contains synthetic data and resets every Sunday at 04:15 Europe/London.
 
 #### Scenario: User visits the demo environment
 - **GIVEN** application demo mode is enabled
@@ -43,7 +45,7 @@ The reset operation SHALL require independent explicit confirmation that applica
 - **THEN** the reset is permitted to proceed
 
 #### Scenario: Production-like target is rejected
-- **GIVEN** the database host, application URL, Active Storage service, required disk root, required S3 endpoint, required S3 bucket, or environment marker does not identify the expected canary environment
+- **GIVEN** a configured database, application, storage, or environment target does not identify the expected canary environment
 - **WHEN** an operator invokes the reset
 - **THEN** the operation exits unsuccessfully before deleting database records or uploaded files
 - **AND** the failure output contains target categories and safe identifiers but no credentials, health data, subscription endpoints, or file contents
