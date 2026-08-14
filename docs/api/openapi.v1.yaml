@@ -1670,6 +1670,18 @@ paths:
       responses:
         '200':
           description: Audit event collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecurityAuditEventCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
 components:
   securitySchemes:
     bearerAuth:
@@ -2281,6 +2293,48 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/ApiAppTokenCreated'
+    SecurityAuditEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - event_type
+        - actor_account_id
+        - actor_membership_id
+        - request_id
+        - metadata
+        - created_at
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        event_type:
+          type: string
+          minLength: 1
+        actor_account_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        actor_membership_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        request_id:
+          type:
+            - string
+            - 'null'
+          minLength: 1
+        metadata:
+          type: object
+          additionalProperties: true
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    SecurityAuditEventCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/SecurityAuditEvent'
     Person:
       type: object
       additionalProperties: false
