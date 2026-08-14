@@ -105,6 +105,45 @@ RSpec.describe 'Schedules' do
       expect(response).to redirect_to(person_path(schedule.person))
       expect(schedule.reload.frequency).to eq('Twice daily')
     end
+
+    it 'replaces the household-qualified person container for a Turbo request' do
+      schedule = schedules(:john_paracetamol)
+      target = household_dom_target("person_show_#{schedule.person.id}")
+
+      get person_path(schedule.person)
+      expect(response.body).to include(%(id="#{target}"))
+
+      patch person_schedule_path(schedule.person, schedule),
+            params: { schedule: { frequency: 'Three times daily' } },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include(%(target="#{target}"))
+      expect(response.body).to include('target="modal"')
+      expect(response.body).to include('target="flash"')
+    end
+
+    it 'rejects a schedule from another household without exposing its target' do
+      foreign_household = create(:household, name: 'Foreign Schedule Household')
+      foreign_person = create(:person, household: foreign_household)
+      foreign_medication = create(:medication, household: foreign_household)
+      foreign_schedule = create(
+        :schedule,
+        household: foreign_household,
+        person: foreign_person,
+        medication: foreign_medication,
+        frequency: 'Foreign frequency'
+      )
+
+      patch person_schedule_path(foreign_person, foreign_schedule),
+            params: { schedule: { frequency: 'Leaked update' } },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:not_found)
+      expect(foreign_schedule.reload.frequency).to eq('Foreign frequency')
+      expect(response.body).not_to include("person_show_#{foreign_person.id}")
+    end
   end
 
   describe 'PATCH /people/:person_id/schedules/:id/pause' do
