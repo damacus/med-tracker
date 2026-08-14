@@ -1119,9 +1119,31 @@ paths:
       summary: Generate medication setup suggestions.
       parameters:
         - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiMedicationSuggestionRequest'
       responses:
         '200':
           description: Suggestion payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiMedicationSuggestionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: The household or paid suggestion feature is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/portable_export:
     get:
       operationId: exportPortableHouseholdBundle
@@ -2753,6 +2775,156 @@ components:
         hidden_count:
           type: integer
           minimum: 0
+    AiMedicationSuggestionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        medication:
+          $ref: '#/components/schemas/AiMedicationIdentity'
+    AiMedicationIdentity:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        barcode:
+          type: string
+        dmd_code:
+          type: string
+        dmd_system:
+          type: string
+        dmd_concept_class:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+    AiMedicationSuggestionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/AiMedicationSuggestion'
+    AiMedicationSuggestion:
+      type: object
+      additionalProperties: false
+      required:
+        - medication
+        - doses
+        - sources
+        - errors
+      properties:
+        medication:
+          $ref: '#/components/schemas/AiMedicationAttributes'
+        doses:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiMedicationDoseSuggestion'
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiMedicationEvidenceSource'
+        errors:
+          type: array
+          items:
+            type: string
+            minLength: 1
+    AiMedicationAttributes:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        warnings:
+          type: string
+    AiMedicationDoseSuggestion:
+      type: object
+      additionalProperties: false
+      required:
+        - amount
+        - unit
+        - default_max_daily_doses
+        - default_min_hours_between_doses
+        - default_dose_cycle
+        - evidence
+      properties:
+        amount:
+          type:
+            - number
+            - string
+        unit:
+          type: string
+          enum:
+            - tablet
+            - capsule
+            - gummy
+            - mg
+            - ml
+            - g
+            - mcg
+            - IU
+            - spray
+            - drop
+            - sachet
+            - pad
+        description:
+          type: string
+        default_max_daily_doses:
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: string
+              pattern: '^[1-9][0-9]*$'
+        default_min_hours_between_doses:
+          type:
+            - number
+            - string
+        default_dose_cycle:
+          type: string
+          enum:
+            - daily
+            - weekly
+            - monthly
+        evidence:
+          $ref: '#/components/schemas/AiMedicationDoseEvidence'
+    AiMedicationDoseEvidence:
+      type: object
+      additionalProperties: false
+      required:
+        - url
+        - title
+        - text
+      properties:
+        url:
+          type: string
+          format: uri
+          pattern: '^https://'
+        title:
+          type: string
+          minLength: 1
+        text:
+          type: string
+          minLength: 1
+    AiMedicationEvidenceSource:
+      type: object
+      additionalProperties: false
+      required:
+        - url
+        - title
+      properties:
+        url:
+          type: string
+          format: uri
+          pattern: '^https://'
+        title:
+          type: string
+          minLength: 1
     Person:
       type: object
       additionalProperties: false
