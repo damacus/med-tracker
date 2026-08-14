@@ -906,9 +906,26 @@ paths:
       summary: List visible health events.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - $ref: '#/components/parameters/updated_since'
       responses:
         '200':
           description: Health event collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthEventCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     post:
       operationId: createHealthEvent
       tags:
@@ -917,9 +934,34 @@ paths:
       summary: Create a health event.
       parameters:
         - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HealthEventCreateRequest'
       responses:
         '201':
           description: Health event created.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthEventResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/health_events/{id}:
     get:
       operationId: getHealthEvent
@@ -936,6 +978,18 @@ paths:
           headers:
             ETag:
               $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthEventResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     patch:
       operationId: updateHealthEvent
       tags:
@@ -946,14 +1000,36 @@ paths:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
         - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HealthEventUpdateRequest'
       responses:
         '200':
           description: Health event updated.
           headers:
             ETag:
               $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthEventResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     put:
       operationId: replaceHealthEvent
       tags:
@@ -964,14 +1040,36 @@ paths:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
         - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HealthEventUpdateRequest'
       responses:
         '200':
           description: Health event updated.
           headers:
             ETag:
               $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthEventResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/schedules:
     get:
       operationId: listSchedules
@@ -4365,6 +4463,148 @@ components:
           $ref: '#/components/schemas/DecimalValue'
         reorder_threshold:
           $ref: '#/components/schemas/DecimalValue'
+    HealthEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - person_id
+        - person_portable_id
+        - event_kind
+        - severity
+        - title
+        - notes
+        - started_on
+        - ended_on
+        - updated_at
+        - medication_ids
+        - medication_portable_ids
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        person_id:
+          $ref: '#/components/schemas/NumericId'
+        person_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        event_kind:
+          type: string
+          enum:
+            - illness
+            - suspected_side_effect
+        severity:
+          type:
+            - string
+            - 'null'
+          enum:
+            - mild
+            - moderate
+            - severe
+            - null
+        title:
+          type: string
+          minLength: 1
+        notes:
+          type:
+            - string
+            - 'null'
+        started_on:
+          $ref: '#/components/schemas/Date'
+        ended_on:
+          oneOf:
+            - $ref: '#/components/schemas/Date'
+            - type: 'null'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        medication_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/NumericId'
+        medication_portable_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortableId'
+    HealthEventResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/HealthEvent'
+    HealthEventCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/HealthEvent'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    HealthEventCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - health_event
+      properties:
+        health_event:
+          allOf:
+            - $ref: '#/components/schemas/HealthEventAttributes'
+            - required:
+                - person_id
+                - event_kind
+                - title
+                - started_on
+    HealthEventUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - health_event
+      properties:
+        health_event:
+          allOf:
+            - $ref: '#/components/schemas/HealthEventAttributes'
+            - not:
+                required:
+                  - person_id
+    HealthEventAttributes:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        person_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        event_kind:
+          type: string
+          enum:
+            - illness
+            - suspected_side_effect
+        severity:
+          type: string
+          enum:
+            - mild
+            - moderate
+            - severe
+        title:
+          type: string
+          minLength: 1
+        notes:
+          type: string
+        started_on:
+          $ref: '#/components/schemas/Date'
+        ended_on:
+          $ref: '#/components/schemas/Date'
+        medication_ids:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ResourceIdentifier'
     Schedule:
       type: object
       additionalProperties: false

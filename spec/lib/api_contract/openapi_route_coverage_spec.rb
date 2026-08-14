@@ -1235,6 +1235,50 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(described_class.schema_errors('MedicationTakeCollectionResponse', response.parsed_body)).to be_empty
     end
 
+    it 'types health event collections, resources, and writes' do
+      collection_path = '/households/{household_id}/health_events'
+      resource_path = "#{collection_path}/{id}"
+      create = described_class.operation(collection_path, 'post')
+      updates = %w[patch put].map { |method| described_class.operation(resource_path, method) }
+
+      expect(auth_response_schema(described_class.operation(collection_path, 'get'), '200')).to eq(
+        '#/components/schemas/HealthEventCollectionResponse'
+      )
+      expect(auth_response_schema(described_class.operation(resource_path, 'get'), '200')).to eq(
+        '#/components/schemas/HealthEventResponse'
+      )
+      expect(auth_request_schema(create)).to eq('#/components/schemas/HealthEventCreateRequest')
+      expect(updates).to all(satisfy do |operation|
+        auth_request_schema(operation) == '#/components/schemas/HealthEventUpdateRequest'
+      end)
+    end
+
+    it 'rejects unsupported health event fields' do
+      valid_request = {
+        health_event: {
+          person_id: SecureRandom.uuid, event_kind: 'illness', severity: 'moderate',
+          title: 'Seasonal cold', started_on: Date.current.iso8601, medication_ids: [1]
+        }
+      }
+      invalid_request = valid_request.deep_merge(health_event: { household_id: 9 })
+
+      expect(described_class.schema_errors('HealthEventCreateRequest', valid_request)).to be_empty
+      expect(described_class.schema_errors('HealthEventCreateRequest', invalid_request)).to include(
+        '/health_event/household_id'
+      )
+    end
+
+    it 'matches the Rails health event collection' do
+      login_data = api_login(users(:admin))
+      household_id = login_data.dig('household', 'id')
+      headers = api_auth_headers(login_data.fetch('access_token'))
+
+      get api_v1_household_health_events_path(household_id), headers:, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('HealthEventCollectionResponse', response.parsed_body)).to be_empty
+    end
+
     it 'references typed representative person request and response schemas' do
       create_person = described_class.operation('/households/{household_id}/people', 'post')
       show_person = described_class.operation('/households/{household_id}/people/{id}', 'get')
