@@ -17,13 +17,13 @@ add or update those profiles.
 ## 2. Add a medicine
 
 Open the person's profile and follow [Add your first
-medicine](adding-first-medicine.md). Check the medicine, dose, schedule, and
-instructions before saving.
+medicine](adding-first-medicine.md). Choose whether the medication is scheduled
+or taken as needed, then check the dose and guidance before saving.
 
 ## 3. Record the first dose
 
-Follow [Record a dose](taking-first-dose.md). Confirm the person, medicine,
-dose, and time before submitting the record.
+Follow [Record a dose](taking-first-dose.md). Confirm the person, medication,
+dose, time, and stock source before submitting the record.
 
 ## 4. Verify the history
 

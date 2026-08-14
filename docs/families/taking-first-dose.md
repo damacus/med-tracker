@@ -1,44 +1,39 @@
 # Record a Dose
 
-Recording when someone takes their medicine is the core of MedTracker.
-This guide will show you how to do it safely and correctly.
+Record each dose when the person takes or receives their medication.
 
-## Step 1: Open the person's profile
-Log in to your **Dashboard** and click on the name of the person who is taking their medicine.
+## Step 1: Find the medication
 
-## Step 2: Choose the medicine
-Look for the medicine they are taking. You'll see two sections:
--   **Regular Medicines:** these are prescriptions taken at specific times.
--   **As-needed Medicines:** like pain relief for a headache.
+Use the **Dashboard** when a scheduled dose is due. You can also open the
+person's profile and find the medication there.
 
-## Step 3: Safety Checks
-MedTracker will automatically check if it's safe to give the medicine:
--   **Wait time:** Has enough time passed since the last dose? (e.g., 4 hours).
--   **Daily limit:** Has the maximum number of doses for today been reached?
+## Step 2: Check that the dose is available
 
-👉 **Note:** If it's too soon for another dose, the "Record Dose" button will be
-disabled, and you'll see a small message explaining why.
+Scheduled medication appears when it is due. As-needed medication appears
+when its dose rules allow another dose.
 
----
+MedTracker disables the action when a dose rule blocks it. The page explains
+why the dose is unavailable. Check the medicine instructions before you
+continue. MedTracker does not replace clinical advice.
 
-## 🕒 How to record a dose
-1.  **Click "Record Dose":** This will open a simple form.
-2.  **Verify the time:** The time is automatically set to "now".
-3.  **Submit:** Click the **"Save Dose"** button.
+## Step 3: Record the dose
+
+1. Select **Take** or **Give**.
+2. Confirm the person, medication, dose, and time in the **Record dose** dialog.
+3. Choose the stock source when more than one location is available.
+4. Submit the form.
 
 ---
 
-## 📈 Verify your entry
-After you've saved the dose, you'll see it appear in the **Medication History**
-on the person's profile. This creates a safe record for you and your family.
+## Step 4: Verify the record
 
-## What if you make a mistake?
-If you record a dose by mistake or with the wrong time:
--   **Edit the entry:** Use the "Edit" button next to the dose in the history.
--   **Add a note:** Briefly explain the error (e.g., "Accidentally clicked twice").
+Confirm that the dashboard and dose history show the dose. Check that the
+medicine, amount, and time are correct.
 
----
+## Record an earlier dose
 
-## You're all set!
-You've now successfully set up MedTracker, added a medicine, and recorded
-a dose. Your family's medication history is now safe and auditable.
+Open the medication's actions and select **Log a past dose**. You can record a
+dose from earlier today or a previous day.
+
+If an existing record is wrong, ask a household administrator to investigate
+it. Dose history is an audit record and should not be silently erased.
