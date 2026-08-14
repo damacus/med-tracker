@@ -537,6 +537,50 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       ).to include('/data/unexpected')
     end
 
+    it 'types household settings reads and updates' do
+      path = '/households/{household_id}/admin/settings'
+      get_operation = described_class.operation(path, 'get')
+      write_operations = %w[patch put].map { |method| described_class.operation(path, method) }
+
+      expect(get_operation.fetch('responses').keys).to include('200', '401', '403', '404', '429')
+      expect(get_operation.dig('responses', '200', 'content', 'application/json', 'schema', '$ref')).to eq(
+        '#/components/schemas/HouseholdAdminSettingsResponse'
+      )
+      write_operations.each do |operation|
+        expect(operation.fetch('responses').keys).to include('200', '400', '401', '403', '404', '409', '422', '429')
+        expect(operation.dig('requestBody', 'content', 'application/json', 'schema', '$ref')).to eq(
+          '#/components/schemas/HouseholdAdminSettingsUpdateRequest'
+        )
+      end
+    end
+
+    it 'matches the household settings Rails payload and fresh-proof error' do
+      login_data = api_login(users(:admin))
+      household_id = login_data.dig('household', 'id')
+      headers = api_auth_headers(login_data.fetch('access_token'))
+
+      get api_v1_household_admin_settings_path(household_id), headers:, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('HouseholdAdminSettingsResponse', response.parsed_body)).to be_empty
+
+      patch api_v1_household_admin_settings_path(household_id),
+            params: { household: { name: 'Contract update' } }, headers:, as: :json
+
+      expect(response).to have_http_status(:forbidden)
+      expect(described_class.schema_errors('AdminWriteForbiddenErrorEnvelope', response.parsed_body)).to be_empty
+    end
+
+    it 'rejects unsupported household settings request fields' do
+      valid_request = { household: { name: 'Household', subscription_plan: 'family_plus' } }
+      invalid_request = valid_request.deep_merge(household: { unexpected: true })
+
+      expect(described_class.schema_errors('HouseholdAdminSettingsUpdateRequest', valid_request)).to be_empty
+      expect(described_class.schema_errors('HouseholdAdminSettingsUpdateRequest', invalid_request)).to include(
+        '/household/unexpected'
+      )
+    end
+
     it 'types notification preference reads and updates' do
       path = '/households/{household_id}/notification_preference'
       get_operation = described_class.operation(path, 'get')
