@@ -412,9 +412,26 @@ paths:
       summary: List visible locations.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - $ref: '#/components/parameters/updated_since'
       responses:
         '200':
           description: Locations collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/locations/{id}:
     get:
       operationId: getLocation
@@ -428,6 +445,21 @@ paths:
       responses:
         '200':
           description: Location resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/medications:
     get:
       operationId: listMedications
@@ -437,9 +469,26 @@ paths:
       summary: List visible medications.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - $ref: '#/components/parameters/updated_since'
       responses:
         '200':
           description: Medications collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     post:
       operationId: createMedication
       tags:
@@ -448,9 +497,34 @@ paths:
       summary: Create a medication.
       parameters:
         - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationCreateRequest'
       responses:
         '201':
           description: Medication created.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/medications/{id}:
     get:
       operationId: getMedication
@@ -467,6 +541,18 @@ paths:
           headers:
             ETag:
               $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     patch:
       operationId: updateMedication
       tags:
@@ -477,14 +563,36 @@ paths:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
         - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationUpdateRequest'
       responses:
         '200':
           description: Medication updated.
           headers:
             ETag:
               $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     put:
       operationId: replaceMedication
       tags:
@@ -495,14 +603,36 @@ paths:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
         - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationUpdateRequest'
       responses:
         '200':
           description: Medication updated.
           headers:
             ETag:
               $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/medications/{id}/adjust_inventory:
     patch:
       operationId: adjustMedicationInventory
@@ -513,9 +643,31 @@ paths:
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationInventoryAdjustmentRequest'
       responses:
         '200':
           description: Medication inventory adjusted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/medications/{id}/mark_as_ordered:
     patch:
       operationId: markMedicationAsOrdered
@@ -526,9 +678,27 @@ paths:
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationOrderDetailsRequest'
       responses:
         '200':
           description: Reorder status updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/medications/{id}/mark_as_received:
     patch:
       operationId: markMedicationAsReceived
@@ -542,6 +712,18 @@ paths:
       responses:
         '200':
           description: Reorder status updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/dosage_options:
     get:
       operationId: listDosageOptions
@@ -1984,6 +2166,15 @@ components:
     Date:
       type: string
       format: date
+    DecimalValue:
+      oneOf:
+        - type: number
+        - type: string
+          pattern: '^-?[0-9]+(?:\.[0-9]+)?$'
+    NullableDecimalValue:
+      oneOf:
+        - $ref: '#/components/schemas/DecimalValue'
+        - type: 'null'
     PaginationMeta:
       type: object
       additionalProperties: false
@@ -3268,6 +3459,313 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/Me'
+    Location:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - name
+        - description
+        - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        name:
+          type: string
+          minLength: 1
+        description:
+          type:
+            - string
+            - 'null'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+    LocationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Location'
+    LocationCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Location'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    Medication:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - name
+        - display_name
+        - category
+        - description
+        - dose_amount
+        - dose_unit
+        - current_supply
+        - reorder_threshold
+        - reorder_status
+        - location_id
+        - location_portable_id
+        - updated_at
+        - low_stock
+        - out_of_stock
+        - days_until_low_stock
+        - days_until_out_of_stock
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        name:
+          type: string
+          minLength: 1
+        display_name:
+          type: string
+          minLength: 1
+        category:
+          type:
+            - string
+            - 'null'
+        description:
+          type:
+            - string
+            - 'null'
+        dose_amount:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        dose_unit:
+          type:
+            - string
+            - 'null'
+        current_supply:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        reorder_threshold:
+          $ref: '#/components/schemas/DecimalValue'
+        reorder_status:
+          type:
+            - string
+            - 'null'
+          enum:
+            - ordered
+            - received
+            - null
+        location_id:
+          $ref: '#/components/schemas/NumericId'
+        location_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        low_stock:
+          type: boolean
+        out_of_stock:
+          type: boolean
+        days_until_low_stock:
+          type:
+            - integer
+            - 'null'
+        days_until_out_of_stock:
+          type:
+            - integer
+            - 'null'
+    MedicationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Medication'
+    MedicationCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Medication'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    MedicationCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - medication
+      properties:
+        medication:
+          $ref: '#/components/schemas/MedicationCreateAttributes'
+    MedicationUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - medication
+      properties:
+        medication:
+          $ref: '#/components/schemas/MedicationUpdateAttributes'
+    MedicationCreateAttributes:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - reorder_threshold
+        - location_id
+      properties:
+        name:
+          type: string
+          minLength: 1
+        friendly_name:
+          type: string
+        barcode:
+          type: string
+          pattern: '^[0-9]{13,14}$'
+        dmd_code:
+          type: string
+        dmd_system:
+          type: string
+        dmd_concept_class:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        dose_amount:
+          $ref: '#/components/schemas/DecimalValue'
+        dose_unit:
+          type: string
+          enum:
+            - tablet
+            - capsule
+            - gummy
+            - mg
+            - ml
+            - g
+            - mcg
+            - IU
+            - spray
+            - drop
+            - sachet
+            - pad
+        current_supply:
+          $ref: '#/components/schemas/DecimalValue'
+        reorder_threshold:
+          $ref: '#/components/schemas/DecimalValue'
+        warnings:
+          type: string
+        location_id:
+          $ref: '#/components/schemas/NumericId'
+        default_schedule_type:
+          type: string
+          enum:
+            - daily
+            - multiple_daily
+            - weekly
+            - specific_dates
+            - prn
+            - tapering
+            - every_other_day
+    MedicationUpdateAttributes:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+        friendly_name:
+          type: string
+        barcode:
+          type: string
+          pattern: '^[0-9]{13,14}$'
+        dmd_code:
+          type: string
+        dmd_system:
+          type: string
+        dmd_concept_class:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        dose_amount:
+          $ref: '#/components/schemas/DecimalValue'
+        dose_unit:
+          type: string
+          enum:
+            - tablet
+            - capsule
+            - gummy
+            - mg
+            - ml
+            - g
+            - mcg
+            - IU
+            - spray
+            - drop
+            - sachet
+            - pad
+        current_supply:
+          $ref: '#/components/schemas/DecimalValue'
+        reorder_threshold:
+          $ref: '#/components/schemas/DecimalValue'
+        warnings:
+          type: string
+        location_id:
+          $ref: '#/components/schemas/NumericId'
+        default_schedule_type:
+          type: string
+          enum:
+            - daily
+            - multiple_daily
+            - weekly
+            - specific_dates
+            - prn
+            - tapering
+            - every_other_day
+    MedicationInventoryAdjustmentRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - adjustment
+      properties:
+        adjustment:
+          type: object
+          additionalProperties: false
+          required:
+            - new_quantity
+          properties:
+            new_quantity:
+              $ref: '#/components/schemas/DecimalValue'
+            reason:
+              type: string
+    MedicationOrderDetailsRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        order_details:
+          type: object
+          additionalProperties: false
+          properties:
+            supplier:
+              type: string
+            quantity:
+              $ref: '#/components/schemas/DecimalValue'
+            expected_arrival_on:
+              $ref: '#/components/schemas/Date'
     Person:
       type: object
       additionalProperties: false
