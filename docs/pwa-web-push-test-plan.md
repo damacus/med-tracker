@@ -1,4 +1,7 @@
-# PWA Web Push Test Plan
+# Validate PWA web push
+
+Use this procedure to check Web Push on a private test deployment. Do not use
+real medication or person data.
 
 ## Browsers
 
@@ -9,14 +12,15 @@
 
 ## Setup
 
-1. Sign in to a test household with at least one active person, one active schedule, and one stocked medication with a reorder threshold.
+1. Sign in to a test household that has an active person and schedule. The
+   household also needs a stocked medication with a reorder threshold.
 2. Open profile notification settings.
 3. Confirm the browser reports push support, then enable notifications.
 4. Send a test notification and confirm the notification opens or focuses Med Tracker.
 5. Disable notifications for the browser and confirm the current browser subscription is removed.
 6. Re-enable notifications before continuing.
 
-## Dose-Due Reminder
+## Dose-due reminder
 
 1. Set a schedule time a few minutes in the future.
 2. Confirm dose-due notifications are enabled.
@@ -24,7 +28,7 @@
 4. Confirm one notification appears.
 5. Record the dose before a later schedule time and confirm the later dose-due notification is suppressed.
 
-## Missed-Dose Reminder
+## Missed-dose reminder
 
 1. Confirm missed-dose notifications are enabled.
 2. Set a schedule time a few minutes in the future.
@@ -33,7 +37,7 @@
 5. Confirm repeating the job for the same scheduled occurrence does not send another notification.
 6. Record a take inside the expected window for a new scheduled occurrence and confirm no missed-dose notification is sent.
 
-## Low-Stock Reminder
+## Low-stock reminder
 
 1. Confirm low-stock notifications are enabled.
 2. Set medication stock just above the reorder threshold.
@@ -42,7 +46,7 @@
 5. Confirm repeating the job for the same stock event does not send another notification.
 6. Restock the medication above the threshold, cross the threshold again, and confirm a new notification can be sent.
 
-## Privacy And Preference Checks
+## Privacy and preference checks
 
 1. Confirm visible notification text does not include person name, medication name, or dose details for missed-dose and low-stock notifications.
 2. Disable missed-dose notifications and confirm overdue doses do not send push notifications.
