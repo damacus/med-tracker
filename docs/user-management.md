@@ -1,61 +1,80 @@
-# Managing Your Family
+# Manage People and Household Access
 
-In MedTracker, we differentiate between the **person taking the medicine**
-and the **person recording the dose**. This guide will help you understand
-how to set up your family correctly.
+MedTracker keeps health records separate from sign-in access. A person can
+have a medication record without having an account.
 
----
+## People and accounts
 
-## 👨‍👩‍👧‍👦 Who is who?
+A **person** is someone whose health and medication are tracked. Their profile
+contains their date of birth, medication plans, dose history, and health
+events.
 
-### 1. The Person
-A **Person** is someone whose health is being tracked. They have a profile
-with their medicines, history, and special needs.
+An **account** lets someone sign in. An account joins a household through a
+household membership. It can also be linked to a person when the account holder
+manages their own medication.
 
-### 2. The User
-A **User** is someone who can log in to the app to record a dose, add a
-medicine, or manage others.
+A child or dependent adult usually has a person profile without a separate
+sign-in.
 
-👉 **Note:** Not every Person needs to be a User. For example, a young child
-(a "Person") might not have their own login (a "User").
+## Person types
 
----
+Choose the type that describes the person's support needs:
 
-## 🏥 Types of People
-We use these categories to help the app understand how much help someone needs:
+- **Adult:** an adult who can manage their own medication.
+- **Minor:** a child who needs a parent or carer's support.
+- **Dependent adult:** an adult who needs someone else to manage their
+  medication.
 
-- **Adult:** A self-managing adult who can look after their own medicines.
-- **Minor:** A child who needs a parent or carer's help.
-- **Dependent Adult:** An adult who requires a carer to manage their medications safely.
+Minors and dependent adults cannot be marked as having capacity to manage
+their own medication. Assign at least one parent or carer before saving a
+person who does not have capacity.
 
----
+## Household roles
 
-## 🤝 Carers & Support
-A **Carer** is anyone who helps another person manage their medicine.
-This can be a family member, a parent, or even a professional nurse.
+Each signed-in account has one household role:
 
-- **Family Support:** You can have multiple carers for one person (e.g., both
-  parents looking after a child).
-- **Multiple Dependents:** A single carer can look after many people (e.g., a
-  daughter looking after both of her parents).
+- **Owner:** controls the household and its memberships. A household must
+  always have an active owner.
+- **Administrator:** manages household records and members but cannot promote
+  someone to owner.
+- **Member:** receives access only to the people covered by their active
+  grants.
 
----
+Platform administrators can manage every household. This is separate from a
+household role.
 
-## 🛡️ Roles and Permissions
-To keep things safe, different people have different "roles" in the app:
+## Access to a person's records
 
-- **Administrator:** Can manage everyone, add users, and change settings.
-- **Carer / Parent:** Can record doses and see the history for their family.
-- **Doctor / Nurse:** Can add prescriptions and clinical notes.
+Owners and household administrators manage access for members. A grant applies
+to one person and has one of these levels:
 
----
+- **View:** read the person's records.
+- **Record:** view records and record medication or health events.
+- **Manage:** change the person's medication plans and other records.
 
-## 📝 How to add a family member
-1.  **Go to the Dashboard:** Click on "Add Person".
-2.  **Fill in the details:** Name, age, and any special needs.
-3.  **Assign a Carer:** If they need help, choose who will be their carer.
-4.  **Save:** Their profile is now ready to use!
+A grant can represent self-management or a relationship with a parent, family
+member, carer, or professional. It can expire or be revoked. Access to one
+person does not give access to everyone in the household.
 
-## What's next?
-- [**Add their first medicine**](families/adding-first-medicine.md)
-- [**Record their first dose**](families/taking-first-dose.md)
+## Add a person
+
+1. Open **People** and select **New Person**.
+2. Enter the person's name and date of birth.
+3. Choose the person type.
+4. Confirm whether the person has capacity to manage their own medication.
+5. Assign a parent or carer when the person needs support.
+6. Select **Create Person**.
+
+## Invite someone to the household
+
+A household owner or administrator can invite an account and choose its
+household role. Give members access only to the people they support and select
+the lowest access level they need.
+
+Review access when a care relationship changes. Revoke an old grant instead of
+sharing an account or leaving broad access in place.
+
+## Continue setup
+
+- [Add their first medication](families/adding-first-medicine.md)
+- [Record their first dose](families/taking-first-dose.md)
