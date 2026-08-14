@@ -43,6 +43,7 @@
 
 # Ignore mkdocs build output
 /site/
+/.vale/styles/
 __pycache__/
 *.sqlite3
 db/*.sqlite3-*
