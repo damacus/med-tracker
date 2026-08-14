@@ -8,13 +8,13 @@ preserving attributable history inside a household authorization boundary.
 
 ## Architecture
 
-- Backend: Ruby on Rails
-- Frontend: Hotwire (Turbo and Stimulus) with Phlex components
-- Authentication: Rodauth accounts with password, generic OIDC, passkeys, and
-  household-bound API credentials
-- Authorization: household memberships plus person-scoped access grants
-- Database: PostgreSQL in development, test, and production
-- Audit trail: PaperTrail change history plus security and compliance evidence
+- The backend uses Ruby on Rails.
+- The frontend uses Hotwire (Turbo and Stimulus) with Phlex components.
+- Authentication uses Rodauth accounts with password, generic OIDC, passkeys,
+  and household-bound API credentials.
+- Authorisation uses household memberships plus person-scoped access grants.
+- PostgreSQL stores development, test, and production data.
+- PaperTrail change history supports security and compliance evidence.
 
 MedTracker is a modular monolith. Domain logic is enforced on the server. UI
 forms and pages render server-sent HTML and use Turbo Streams for updates.
@@ -103,7 +103,7 @@ coordinates relationship-owned access. Deactivating an account-backed self
 relationship leaves its standalone grant active. Accountless delegation,
 including self delegation, has no access records, so revocation only deactivates
 the description. Person-scoped authority comes from active grants; medication
-and inventory policies additionally recognize household `owner` and
+and inventory policies also recognise household `owner` and
 `administrator` governance and the narrow creator-owned, unlinked medication
 exception.
 

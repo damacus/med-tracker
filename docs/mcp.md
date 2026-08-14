@@ -213,9 +213,9 @@ curl -sS "$MEDTRACKER_URL/mcp" \
   --data '{"jsonrpc":"2.0","id":5,"method":"prompts/list","params":{}}' | jq
 ```
 
-In an MCP client, ask for bounded, review-oriented work, for example:
+In an MCP client, ask for bounded, review-oriented work such as:
 
-- "Use MedTracker to summarize today's medication schedule."
+- "Use MedTracker to list today's medication schedule."
 - "Use MedTracker to list low-stock or out-of-stock medicines."
 - "Use the `medtracker_household_review` prompt to prepare a caregiver review."
 
@@ -228,7 +228,7 @@ In an MCP client, ask for bounded, review-oriented work, for example:
 | `JSON-RPC body must be a single request object` | Send one JSON-RPC request object per HTTP request. Batch arrays are rejected. |
 | The client cannot see tools | Check `/api/v1/capabilities`, then list tools with the direct `curl` command to separate client configuration problems from server problems. |
 | The client still sends an old or empty token | Restart the client after changing environment variables. For VS Code, update the stored input value or reset the MCP server. |
-| A token worked before but now fails | The token may have been revoked, the account may be locked, or the household membership may no longer be active. Create a new API app token from the profile page after resolving the account state. |
+| A token worked before but now fails | Check whether the token was revoked or the account was locked. Also check that the household membership remains active. Create a new API app token from the profile page after resolving the account state. |
 
 ## Security boundary
 
