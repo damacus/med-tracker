@@ -5,7 +5,6 @@
 ```fish
 git clone https://github.com/damacus/med-tracker.git
 cd med-tracker
-bin/setup-claude   # installs task, gems, npm packages, Python deps, Playwright
 npm install -g portless
 portless trust
 task dev:portless  # start the dev stack at https://med-tracker.localhost
@@ -14,10 +13,9 @@ task dev:seed      # seed the database
 
 Open <https://med-tracker.localhost>.
 
-> **Note**: `bin/setup-claude` handles several environment quirks (Bundler/CGI
-> proxy issue, offline Playwright browsers, blocked `task` installer). If you
-> are setting up in a restricted network or CI environment, run this script
-> rather than installing dependencies manually.
+Install Docker, Task, Node.js, npm, and Git before running these commands. The
+[technical quick start](docs/quick-start.md) explains the local stack and its
+destructive reset command.
 
 ## Development workflow
 
@@ -37,11 +35,11 @@ task docs:serve              # serve docs locally
 ### Testing
 
 - Framework: **RSpec** (`spec/**/*_spec.rb`)
-- System/integration tests: **Capybara** (`spec/features/`, `spec/system/`)
-- Test data: **Rails fixtures** in `spec/fixtures/` and **FactoryBot** in `spec/factories/`
+- Browser tests use **Capybara and Playwright** (`spec/features/`, `spec/system/`)
+- Test data uses **Rails fixtures** in `spec/fixtures/` and **FactoryBot** in `spec/factories/`
 - External HTTP: **VCR** cassettes in `spec/vcr_cassettes/`
 - Test through public APIs only (controller actions, public model methods)
-- Tests document expected business behaviour, not implementation details
+- Tests document expected business behaviour rather than code details
 
 ### Code style
 
@@ -50,7 +48,7 @@ RuboCop enforces the standard configuration (`.rubocop.yml`). Key rules:
 - Guard clauses instead of nested `if/else`
 - Small, single-responsibility methods
 - No nested blocks deeper than 2 levels
-- No inline comments — write self-documenting code with descriptive names
+- Do not change comments unless the task requires it
 - Prefer `Enumerable` methods over imperative loops
 
 #### Naming
@@ -65,12 +63,12 @@ RuboCop enforces the standard configuration (`.rubocop.yml`). Key rules:
 
 ### Architecture
 
-- Domain logic lives on the server; the front end renders server-sent HTML via
+- Domain logic lives on the server. The front end renders server-sent HTML via
   **Hotwire** (Turbo + Stimulus)
-- Views are **Phlex** components under `app/components/` — not ERB
+- Views are **Phlex** components under `app/components/` rather than ERB
 - Complex business logic that doesn't belong in a model or controller goes in a
   **service object** (PORO) under `app/services/`
-- Authorization is handled by **Pundit** — check/update policies when touching
+- Authorization is handled by **Pundit**. Check policies when changing
   access control
 
 ### Commit messages
@@ -86,7 +84,7 @@ test: add coverage for medication take model
 chore: bump Ruby to 4.0.6
 ```
 
-- Each commit is a complete, logical unit of work — tests green before merge
+- Each commit is a complete, logical unit of work with green checks before merge
 - Avoid "initial commit" or "wip" messages
 
 ## Stack reference
