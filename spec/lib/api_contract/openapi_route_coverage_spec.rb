@@ -149,7 +149,9 @@ module OpenapiStructure
   AUDIENCE_TAGS = ['Public', 'Account', 'Household', 'Household administration'].freeze
   ALLOWED_FREE_FORM_PATHS = [
     '#/components/schemas/SecurityAuditEvent/properties/metadata',
-    '#/components/schemas/SyncBatchOperation/properties/attributes'
+    '#/components/schemas/SyncBatchOperation/properties/attributes',
+    '#/components/schemas/SyncChange/properties/metadata',
+    '#/components/schemas/SyncTombstone/properties/metadata'
   ].freeze
   LOCATOR_PATHS = %w[
     /households/{household_id}/locations/{id}
@@ -187,13 +189,9 @@ module OpenapiStructure
     YAML.safe_load(Rails.root.join('docs/api/openapi.v1.yaml').read)
   end
 
-  def source
-    Rails.root.join('docs/api/openapi.v1.yaml').read
-  end
+  def source = Rails.root.join('docs/api/openapi.v1.yaml').read
 
-  def paths
-    document.fetch('paths')
-  end
+  def paths = document.fetch('paths')
 
   def operations
     paths.flat_map do |path, path_item|
@@ -1277,6 +1275,43 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(described_class.schema_errors('HealthEventCollectionResponse', response.parsed_body)).to be_empty
+    end
+
+    it 'types sync changes and batch mutations' do
+      changes = described_class.operation('/households/{household_id}/sync/changes', 'get')
+      batch = described_class.operation('/households/{household_id}/sync/batches', 'post')
+
+      expect(auth_response_schema(changes, '200')).to eq('#/components/schemas/SyncChangesResponse')
+      expect(auth_request_schema(batch)).to eq('#/components/schemas/SyncBatchRequest')
+      expect(auth_response_schema(batch, '201')).to eq('#/components/schemas/SyncBatchResponse')
+      expect(batch.fetch('responses').keys).to include('201', '400', '401', '403', '404', '409', '422', '428', '429')
+    end
+
+    it 'matches the Rails sync change feed' do
+      login_data = api_login(users(:admin))
+      household_id = login_data.dig('household', 'id')
+      headers = api_auth_headers(login_data.fetch('access_token'))
+
+      get api_v1_household_sync_changes_path(household_id),
+          params: { cursor: 1.minute.from_now.iso8601 }, headers:, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('SyncChangesResponse', response.parsed_body)).to be_empty
+    end
+
+    it 'accepts medication take creation in a sync batch' do
+      request = {
+        batch: {
+          operations: [
+            {
+              action: 'create', resource_type: 'medication_take',
+              attributes: { client_uuid: SecureRandom.uuid, source_type: 'schedule', source_id: SecureRandom.uuid }
+            }
+          ]
+        }
+      }
+
+      expect(described_class.schema_errors('SyncBatchRequest', request)).to be_empty
     end
 
     it 'references typed representative person request and response schemas' do
