@@ -7,6 +7,9 @@ container image.
 Optional service integrations have their own setup guides. This page covers the
 application origin, database, registration policy, and process sizing.
 
+Notification provider settings are documented in
+[Notification delivery configuration](notification-delivery.md).
+
 ## Required settings
 
 | Variable | Purpose |

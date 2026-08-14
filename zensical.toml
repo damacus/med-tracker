@@ -27,6 +27,7 @@ nav = [
     { "Audit Trail" = "audit-trail.md" },
     { "Proposed record lifecycle" = "operations/record-lifecycle.md" },
     { "Production environment" = "operations/production-environment.md" },
+    { "Notification delivery" = "operations/notification-delivery.md" },
     { "Application observability" = "operations/application-observability.md" }
   ] },
   { "🩺 For Clinicians" = [
