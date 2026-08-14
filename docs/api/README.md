@@ -2,11 +2,14 @@
 
 The OpenAPI v1 contract is defined in [openapi.v1.yaml](openapi.v1.yaml).
 
+The [portable data format](portable-data.md) defines record fields used by
+mobile snapshots, sync, export, and import.
+
 ## Canonical addressing
 
 The document's first server URL is `/api/v1`. Path keys are relative to that
-server and must begin with `/` without repeating `/api/v1`. For example, the
-`/households/{household_id}/people` path key resolves to
+server and must begin with `/` without repeating `/api/v1`. The
+`/households/{household_id}/people` path resolves to
 `/api/v1/households/{household_id}/people`.
 
 ## Operation IDs
