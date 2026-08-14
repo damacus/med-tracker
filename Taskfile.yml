@@ -279,7 +279,7 @@ tasks:
         vars:
           ENVIRONMENT: test
           SERVICE: tools-test
-          COMMAND: 'bundle exec rubocop --force-exclusion {{ if eq .autocorrect "true" }}-A{{ end }}'
+          COMMAND: 'bin/rubocop --force-exclusion {{ if eq .autocorrect "true" }}-A{{ end }}'
 
   brakeman:
     desc: Run Brakeman security scanner
