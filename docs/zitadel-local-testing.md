@@ -2,7 +2,7 @@
 
 This guide connects the local MedTracker development stack to a Zitadel
 instance. The Zitadel issuer must be reachable from both your browser and the
-MedTracker container; a hosted HTTPS issuer is the simplest setup.
+MedTracker container. A hosted HTTPS issuer is the simplest setup.
 
 ## Prerequisites
 
@@ -49,7 +49,7 @@ not grant MedTracker household roles or person-level access.
 
 To synchronise a professional title:
 
-1. Create a Zitadel project role named `doctor` or `nurse`.
+1. Create a Zitadel project role called `doctor` or `nurse`.
 2. Assign it to the user.
 3. Enable **Assert Roles on Authentication** for the application.
 4. Sign in again to refresh the claim.
