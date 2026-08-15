@@ -63,12 +63,16 @@ RSpec.describe CiEfficiencyConfiguration do
     expect(gate.to_json).to include("contains(needs.*.result, 'cancelled')")
   end
 
-  it 'uses the supported Intel macOS runner with a release timeout' do
+  it 'builds only the latest Apple Silicon macOS release with a timeout' do
     release_job = workflow('client-tools-release.yml').fetch('jobs').fetch('build')
+    release_matrix = release_job.dig('strategy', 'matrix', 'include')
 
     expect(release_job.fetch('timeout-minutes')).to eq(20)
-    expect(release_job.dig('strategy', 'matrix', 'include')).to include(
-      hash_including('artifact' => 'medtracker-client-tools-macos-x86_64', 'runner' => 'macos-15-intel')
+    expect(release_matrix).to include(
+      hash_including('artifact' => 'medtracker-client-tools-macos-aarch64', 'runner' => 'macos-latest')
+    )
+    expect(release_matrix).not_to include(
+      hash_including('artifact' => 'medtracker-client-tools-macos-x86_64')
     )
   end
 

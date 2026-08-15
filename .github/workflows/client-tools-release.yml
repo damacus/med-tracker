@@ -27,10 +27,8 @@ jobs:
         include:
           - artifact: medtracker-client-tools-linux-x86_64
             runner: ubuntu-latest
-          - artifact: medtracker-client-tools-macos-x86_64
-            runner: macos-15-intel
           - artifact: medtracker-client-tools-macos-aarch64
-            runner: macos-14
+            runner: macos-latest
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout code
