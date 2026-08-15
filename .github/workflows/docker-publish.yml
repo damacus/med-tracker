@@ -3,7 +3,23 @@ name: build-and-push-container
 on:
   push:
     branches: [main]
-    tags: ["v*"]
+    paths:
+      - app/**
+      - bin/**
+      - config/**
+      - db/**
+      - lib/**
+      - public/**
+      - data/medication_reviews/**
+      - scripts/verify_otlp_trace_resources.rb
+      - Gemfile
+      - Gemfile.lock
+      - package.json
+      - package-lock.json
+      - Dockerfile
+      - config.ru
+      - Rakefile
+      - .github/workflows/docker-publish.yml
   workflow_dispatch:
     inputs:
       tag_name:
@@ -21,6 +37,10 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+
+concurrency:
+  group: container-${{ inputs.tag_name || github.ref }}
+  cancel-in-progress: ${{ inputs.tag_name == '' && github.ref == 'refs/heads/main' }}
 
 jobs:
   build-and-push:

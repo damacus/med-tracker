@@ -20,6 +20,7 @@ permissions:
 jobs:
   build:
     name: Build ${{ matrix.artifact }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -27,7 +28,7 @@ jobs:
           - artifact: medtracker-client-tools-linux-x86_64
             runner: ubuntu-latest
           - artifact: medtracker-client-tools-macos-x86_64
-            runner: macos-13
+            runner: macos-15-intel
           - artifact: medtracker-client-tools-macos-aarch64
             runner: macos-14
     runs-on: ${{ matrix.runner }}
