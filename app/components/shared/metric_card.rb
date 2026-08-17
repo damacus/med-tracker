@@ -47,7 +47,7 @@ module Components
           m3_card_content(class: "#{content_padding_class} #{content_height_class} flex flex-col z-10") do
             div(class: "flex items-center justify-between gap-1 sm:gap-2 #{header_margin_class} min-w-0") do
               p(
-                class: 'truncate text-[11px] font-black uppercase tracking-normal ' \
+                class: "#{title_text_class} text-[11px] font-black uppercase tracking-normal " \
                        "#{title_class} text-on-surface-variant"
               ) do
                 title
@@ -61,7 +61,7 @@ module Components
             end
             div(class: value_wrapper_class) do
               span(
-                class: "#{value_size_class} font-black tracking-tight #{value_color_class}",
+                class: "#{value_size_class} #{value_text_class} font-black tracking-tight #{value_color_class}",
                 data: value_data_attr
               ) do
                 value.to_s
@@ -83,6 +83,10 @@ module Components
         layout == :compact
       end
 
+      def dashboard_summary?
+        layout == :dashboard_summary
+      end
+
       def wrapper_height_class
         compact? ? '' : 'h-full'
       end
@@ -96,6 +100,8 @@ module Components
       end
 
       def value_wrapper_class
+        return 'mt-auto flex min-w-0 flex-col items-start gap-1' if dashboard_summary?
+
         compact? ? 'flex flex-col items-start gap-1' : 'mt-auto flex flex-col items-start gap-2'
       end
 
@@ -104,21 +110,35 @@ module Components
       end
 
       def min_height_class
+        return 'min-h-[6rem] sm:min-h-[7rem]' if dashboard_summary?
+
         compact? ? 'min-h-[7rem]' : 'min-h-[9.5rem] sm:min-h-[10rem]'
       end
 
       def hover_class
-        return '' if compact?
+        return '' if compact? || dashboard_summary?
 
         'transition-all duration-300 md:hover:scale-[1.02] md:hover:shadow-elevation-2'
       end
 
       def content_padding_class
+        return 'p-3 sm:p-4' if dashboard_summary?
+
         compact? ? 'p-4' : 'p-3 sm:p-6'
       end
 
       def header_margin_class
+        return 'mb-2 sm:mb-3' if dashboard_summary?
+
         compact? ? 'mb-3' : 'mb-2'
+      end
+
+      def title_text_class
+        dashboard_summary? ? 'whitespace-normal break-words leading-tight' : 'truncate'
+      end
+
+      def value_text_class
+        dashboard_summary? ? 'whitespace-normal break-words' : ''
       end
 
       def title_class
@@ -126,14 +146,18 @@ module Components
       end
 
       def icon_padding_class
+        return 'p-1 sm:p-1.5' if dashboard_summary?
+
         compact? ? 'p-1.5' : 'p-1.5 sm:p-2.5'
       end
 
       def icon_size
-        compact? ? 14 : 20
+        compact? || dashboard_summary? ? 14 : 20
       end
 
       def value_size_class
+        return 'text-lg leading-tight sm:text-2xl' if dashboard_summary?
+
         compact? ? 'text-2xl' : 'text-3xl sm:text-4xl'
       end
 

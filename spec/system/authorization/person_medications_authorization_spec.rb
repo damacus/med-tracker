@@ -114,7 +114,9 @@ RSpec.describe 'Person Medications Authorization' do
     it 'allows carers to take medication for assigned patients', :js do
       login_as(carer)
       visit dashboard_path
-      click_on assigned_patient.name
+      selector = find('[data-testid="dashboard-person-selector"]')
+      selector.find('summary').click
+      selector.find("[role='radio'][aria-label='#{assigned_patient.name}']").click
 
       as_needed_card_for(person_medication).find('summary').click
       find("[data-testid='take-dose-personmedication_#{person_medication.id}']").click

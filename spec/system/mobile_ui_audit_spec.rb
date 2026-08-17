@@ -110,11 +110,10 @@ RSpec.describe 'Mobile UI audit' do
 
       visit dashboard_path
       assert_accessibility_contract
-      if width == 1280
-        assert_visible_navigation(dashboard_path(dashboard_person_id: assigned_person.id))
-      else
-        expect(page).to have_css('[data-testid="dashboard-person-mobile-current"]')
-      end
+      selector = find('[data-testid="dashboard-person-selector"]')
+      selector.find('summary').click
+      expect(selector).to have_css("[role='radio'][data-value='#{assigned_person.id}']")
+      expect(selector).to have_no_css("[role='radio'][data-value='#{unrelated_person.id}']")
       assert_no_visible_navigation(dashboard_path(dashboard_person_id: unrelated_person.id))
       assert_no_visible_navigation('/admin')
 
