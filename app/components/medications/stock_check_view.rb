@@ -408,7 +408,7 @@ module Components
             variant: :outlined,
             size: :sm,
             class: 'size-10 p-0 text-on-surface-variant',
-            "aria-label": t('medications.stock_check.remove_from_batch', medication: medication.display_name),
+            'aria-label': t('medications.stock_check.remove_from_batch', medication: medication.display_name),
             data: {
               action: 'stock-check#removeFromBatch',
               stock_check_id_param: medication.id
