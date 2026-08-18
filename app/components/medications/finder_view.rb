@@ -106,7 +106,7 @@ module Components
                 placeholder: t('medications.finder.placeholder'),
                 autocomplete: 'off',
                 data: { medication_search_target: 'input' },
-                class: 'block w-full pl-4 pr-4 py-6 border border-border rounded-[1.5rem] text-sm leading-5 bg-card shadow-[0_10px_40px_rgba(0,0,0,0.03)] focus:shadow-[0_10px_40px_rgba(0,0,0,0.06)] focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary sm:pl-6 sm:text-base transition-all placeholder:text-on-surface-variant'
+                class: 'block w-full pl-4 pr-4 py-6 border border-border rounded-[1.5rem] text-sm leading-5 bg-card shadow-[0_10px_40px_rgba(0,0,0,0.03)] focus:shadow-[0_10px_40px_rgba(0,0,0,0.06)] focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary sm:pl-8 sm:text-base transition-all placeholder:text-on-surface-variant'
               )
             end
             m3_button(
