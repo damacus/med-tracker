@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.21](https://github.com/damacus/med-tracker/compare/v0.5.20...v0.5.21) (2026-08-18)
+
+
+### Bug Fixes
+
+* **dashboard:** unify responsive family selector ([#1947](https://github.com/damacus/med-tracker/issues/1947)) ([5a6936b](https://github.com/damacus/med-tracker/commit/5a6936b25f625d1413c2c39580d7fa981d22910d))
+* **security:** prevent DOM-based XSS in controllers ([#1942](https://github.com/damacus/med-tracker/issues/1942)) ([9d0678e](https://github.com/damacus/med-tracker/commit/9d0678e92aaea5ffc5962dd4f2f08c79c3e8025a))
+* **turbo:** remove stale update templates ([#1931](https://github.com/damacus/med-tracker/issues/1931)) ([3c4af36](https://github.com/damacus/med-tracker/commit/3c4af3672b6a443db22ba38fd1c6d47527afe846))
+
 ## [0.5.20](https://github.com/damacus/med-tracker/compare/v0.5.19...v0.5.20) (2026-08-13)
 
 
