@@ -9,14 +9,21 @@ import io.medtracker.client.apis.SynchronizationApi
 import io.medtracker.client.infrastructure.Serializer
 import io.medtracker.client.models.ApiError
 import io.medtracker.client.models.AuthLoginRequest
+import io.medtracker.client.models.DosageOptionCreateAttributes
+import io.medtracker.client.models.DosageOptionUpdateAttributes
 import io.medtracker.client.models.ErrorEnvelope
 import io.medtracker.client.models.Medication
 import io.medtracker.client.models.MedicationCreateAttributes
 import io.medtracker.client.models.MedicationCreateRequest
 import io.medtracker.client.models.MedicationLookupResult
+import io.medtracker.client.models.MedicationOrderDetailsRequestOrderDetails
 import io.medtracker.client.models.MedicationTake
+import io.medtracker.client.models.MedicationUpdateAttributes
 import io.medtracker.client.models.PortableImportConflictField
 import io.medtracker.client.models.PersonMedicationAttributes
+import io.medtracker.client.models.PersonMedicationCreateRequestPersonMedication
+import io.medtracker.client.models.ScheduleAttributes
+import io.medtracker.client.models.ScheduleCreateRequestSchedule
 import io.medtracker.client.models.SyncBatchOperation
 import io.medtracker.client.models.SyncBatchRequest
 import io.medtracker.client.models.SyncBatchRequestBatch
@@ -37,6 +44,25 @@ class NativeApiClientContractTest : ShouldSpec() {
             propertyType(MedicationTake::class, "clientUuid").isMarkedNullable shouldBe true
             propertyType(MedicationTake::class, "takenAt").classifier shouldBe OffsetDateTime::class
             propertyType(MedicationTake::class, "takenAt").isMarkedNullable shouldBe true
+        }
+
+        should("model clearable request decimals as nullable strings") {
+            listOf(
+                MedicationCreateAttributes::class to listOf("doseAmount", "currentSupply"),
+                MedicationUpdateAttributes::class to listOf("doseAmount", "currentSupply", "reorderThreshold"),
+                MedicationOrderDetailsRequestOrderDetails::class to listOf("quantity"),
+                DosageOptionCreateAttributes::class to listOf("currentSupply", "reorderThreshold"),
+                DosageOptionUpdateAttributes::class to listOf("currentSupply", "reorderThreshold"),
+                ScheduleCreateRequestSchedule::class to listOf("minHoursBetweenDoses"),
+                ScheduleAttributes::class to listOf("minHoursBetweenDoses"),
+                PersonMedicationCreateRequestPersonMedication::class to listOf("minHoursBetweenDoses"),
+                PersonMedicationAttributes::class to listOf("minHoursBetweenDoses")
+            ).forEach { (model, propertyNames) ->
+                propertyNames.forEach { propertyName ->
+                    propertyType(model, propertyName).classifier shouldBe String::class
+                    propertyType(model, propertyName).isMarkedNullable shouldBe true
+                }
+            }
         }
 
         should("not generate nullable wrapper model classes") {
