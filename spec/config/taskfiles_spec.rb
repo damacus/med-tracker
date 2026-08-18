@@ -65,7 +65,12 @@ RSpec.describe 'Taskfiles' do
       'api-clients:verify-generated' => ['./client-tools/openapi-generator/generate.fish verify'],
       'api-clients:kotlin' => ['./client-tools/openapi-generator/generate-kotlin.fish'],
       'api-clients:swift' => ['./client-tools/openapi-generator/generate-swift.fish'],
-      'api-clients:verify' => ['api-clients:verify-generated']
+      'api-clients:verify' => [
+        './client-tools/openapi-generator/test-checksum.fish',
+        './client-tools/openapi-generator/test-cleanup.fish',
+        'api-clients:verify-generated',
+        './client-tools/openapi-generator/generate.fish determinism'
+      ]
     )
   end
 
@@ -85,10 +90,18 @@ RSpec.describe 'Taskfiles' do
   it 'keeps native API generator entry points executable' do
     expect(
       [
+        Rails.root.join('client-tools/openapi-generator/test-checksum.fish'),
+        Rails.root.join('client-tools/openapi-generator/test-cleanup.fish'),
         Rails.root.join('client-tools/openapi-generator/generate-swift.fish'),
         Rails.root.join('client-tools/openapi-generator/generate-kotlin.fish')
       ]
     ).to all(be_executable)
+  end
+
+  it 'covers checksum portability and failure cleanup paths' do
+    expect(checksum_script).to include('sha256sum', 'shasum', '^[0-9a-f]{64}$')
+    expect(cleanup_test_script).to include('OPENAPI_GENERATOR_TEST_TEMP', 'Expected generator failure')
+    expect(checksum_test_script).to include('non-canonical digest', 'missing checksum tool')
   end
 
   it 'serializes Docker Compose runs within each worktree environment' do
@@ -301,13 +314,27 @@ RSpec.describe 'Taskfiles' do
     Rails.root.join('client-tools/openapi-generator/generate-kotlin.fish').read
   end
 
+  def checksum_script
+    Rails.root.join('client-tools/openapi-generator/checksum.fish').read
+  end
+
+  def cleanup_test_script
+    Rails.root.join('client-tools/openapi-generator/test-cleanup.fish').read
+  end
+
+  def checksum_test_script
+    Rails.root.join('client-tools/openapi-generator/test-checksum.fish').read
+  end
+
   def api_client_task_commands
     {
       'api-clients:generate' => root_taskfile.dig('tasks', 'api-clients:generate', 'cmds'),
       'api-clients:verify-generated' => root_taskfile.dig('tasks', 'api-clients:verify-generated', 'cmds'),
       'api-clients:kotlin' => root_taskfile.dig('tasks', 'api-clients:kotlin', 'cmds'),
       'api-clients:swift' => root_taskfile.dig('tasks', 'api-clients:swift', 'cmds'),
-      'api-clients:verify' => [root_taskfile.dig('tasks', 'api-clients:verify', 'cmds', 0, 'task')]
+      'api-clients:verify' => root_taskfile.dig('tasks', 'api-clients:verify', 'cmds').map do |command|
+        command.is_a?(Hash) ? command.fetch('task') : command
+      end
     }
   end
 

@@ -75,7 +75,10 @@ tasks:
   api-clients:verify:
     desc: Verify generated API clients are current
     cmds:
+      - ./client-tools/openapi-generator/test-checksum.fish
+      - ./client-tools/openapi-generator/test-cleanup.fish
       - task: api-clients:verify-generated
+      - ./client-tools/openapi-generator/generate.fish determinism
 
   test:
     desc: Run tests in Docker (optionally specify TEST_FILE=path/to/spec)
