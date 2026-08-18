@@ -105,6 +105,57 @@ final class NativeAPIClientContractTests: XCTestCase {
         XCTAssertNil(omittedCurrentSupply)
     }
 
+    func testClearableRequestDecimalsRemainOptionalStrings() {
+        let medicationCreate = MedicationCreateAttributes(
+            name: "Example medicine",
+            reorderThreshold: "2.50",
+            locationId: 3
+        )
+        assertNilString(medicationCreate, \.doseAmount)
+        assertNilString(medicationCreate, \.currentSupply)
+
+        let medicationUpdate = MedicationUpdateAttributes()
+        assertNilString(medicationUpdate, \.doseAmount)
+        assertNilString(medicationUpdate, \.currentSupply)
+        assertNilString(medicationUpdate, \.reorderThreshold)
+
+        assertNilString(MedicationOrderDetailsRequestOrderDetails(), \.quantity)
+
+        let dosageOptionCreate = DosageOptionCreateAttributes(
+            medicationId: "123",
+            amount: "0.50",
+            unit: "tablet",
+            frequency: "daily",
+            defaultMaxDailyDoses: 1,
+            defaultMinHoursBetweenDoses: "24",
+            defaultDoseCycle: .daily
+        )
+        assertNilString(dosageOptionCreate, \.currentSupply)
+        assertNilString(dosageOptionCreate, \.reorderThreshold)
+
+        let dosageOptionUpdate = DosageOptionUpdateAttributes()
+        assertNilString(dosageOptionUpdate, \.currentSupply)
+        assertNilString(dosageOptionUpdate, \.reorderThreshold)
+
+        let scheduleCreate = ScheduleCreateRequestSchedule(
+            personId: "123",
+            medicationId: "456",
+            doseAmount: "0.50",
+            doseUnit: "tablet",
+            startDate: Date(timeIntervalSince1970: 1_767_323_045),
+            endDate: Date(timeIntervalSince1970: 1_769_915_445)
+        )
+        assertNilString(scheduleCreate, \.minHoursBetweenDoses)
+        assertNilString(ScheduleAttributes(), \.minHoursBetweenDoses)
+
+        let personMedicationCreate = PersonMedicationCreateRequestPersonMedication(
+            personId: "123",
+            medicationId: "456"
+        )
+        assertNilString(personMedicationCreate, \.minHoursBetweenDoses)
+        assertNilString(PersonMedicationAttributes(), \.minHoursBetweenDoses)
+    }
+
     func testPopulatedExplicitNullAndOmittedValuesDecode() throws {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
@@ -320,5 +371,14 @@ final class NativeAPIClientContractTests: XCTestCase {
 
         XCTAssertFalse(source.contains("public struct Nullable"))
         XCTAssertFalse(source.contains("public enum Nullable"))
+    }
+
+    private func assertNilString<Model>(
+        _ model: Model,
+        _ keyPath: KeyPath<Model, String?>,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertNil(model[keyPath: keyPath], file: file, line: line)
     }
 }
