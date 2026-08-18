@@ -179,6 +179,7 @@ module OpenapiClientCompatibility
   def keyword_errors(value, path)
     errors = %w[const oneOf anyOf].filter_map { |keyword| "#{path}/#{keyword}" if value.key?(keyword) }
     errors << "#{path}/type" if value['type'].is_a?(Array)
+    errors << "#{path}/$ref" if value.key?('$ref') && value.keys.any? { |key| key != '$ref' }
     errors + primitive_all_of_errors(value['allOf'], "#{path}/allOf")
   end
 
@@ -343,23 +344,22 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
     property_schema.fetch('properties').fetch(nested_property)
   end
 
-  def marked_property_paths(schema_name, schema)
+  def marked_property_paths(schema_name, schema, path = schema_name)
     return [] unless schema.is_a?(Hash)
 
-    schema.fetch('properties', {}).filter_map do |property_name, property|
-      next unless property.is_a?(Hash) && property['x-client-clearable-null']
-
-      "#{schema_name}.#{property_name}"
+    paths = Array(schema['x-client-clearable-null-fields']).map do |property_name|
+      "#{path}.#{property_name}"
     end
+    nested_paths = schema.fetch('properties', {}).flat_map do |property_name, property|
+      next [] unless property.is_a?(Hash) && property['type'] == 'object'
+
+      marked_property_paths(schema_name, property, "#{path}.#{property_name}")
+    end
+    paths + nested_paths
   end
 
   def clearable_marker_paths(schemas)
-    paths = schemas.flat_map { |schema_name, schema| marked_property_paths(schema_name, schema) }
-    nested_quantity = schemas.fetch('MedicationOrderDetailsRequest').dig(
-      'properties', 'order_details', 'properties', 'quantity', 'x-client-clearable-null'
-    )
-    paths << 'MedicationOrderDetailsRequest.order_details.quantity' if nested_quantity
-    paths
+    schemas.flat_map { |schema_name, schema| marked_property_paths(schema_name, schema) }
   end
 
   it 'documents every mounted API v1 route' do
@@ -503,11 +503,12 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
 
       expected_clearable_marker_fields.each do |schema_name, property_names|
         property_schema = clearable_marker_schema(schemas, schema_name)
+        expect(property_schema.fetch('x-client-clearable-null-fields')).to match_array(property_names)
+
         property_names.each do |property_name|
           property = property_schema.fetch('properties').fetch(property_name)
           expect(property).to include(
-            '$ref' => '#/components/schemas/NullableDecimalValue',
-            'x-client-clearable-null' => true
+            '$ref' => '#/components/schemas/NullableDecimalValue'
           )
         end
       end
@@ -531,6 +532,17 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
     it 'uses OpenAPI 3.0.3 client-compatible schema composition' do
       expect(described_class.document.fetch('openapi')).to eq('3.0.3')
       expect(described_class.client_schema_keyword_errors).to be_empty
+    end
+
+    it 'rejects OpenAPI 3 reference objects with siblings' do
+      malformed_reference = {
+        '$ref' => '#/components/schemas/NullableDecimalValue',
+        'x-client-clearable-null-fields' => ['value']
+      }
+
+      expect(described_class.client_schema_keyword_errors(malformed_reference, '#/Malformed')).to include(
+        '#/Malformed/$ref'
+      )
     end
 
     it 'rejects anonymous enums whose property names collide with client language keywords' do

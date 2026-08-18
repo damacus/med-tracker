@@ -32,6 +32,17 @@ import java.util.UUID
 import kotlin.reflect.KClass
 import kotlin.reflect.full.memberProperties
 
+private fun assertClearableDecimalEncoding(
+    wireName: String,
+    omitted: String,
+    populated: String,
+    explicitNull: String
+) {
+    omitted.contains("\"$wireName\"") shouldBe false
+    populated shouldBe """{"$wireName":"10.00"}"""
+    explicitNull shouldBe """{"$wireName":null}"""
+}
+
 class NativeApiClientContractTest : ShouldSpec() {
     init {
         should("expose fixed JSON value types as native Kotlin types") {
@@ -132,20 +143,67 @@ class NativeApiClientContractTest : ShouldSpec() {
         }
 
         should("encode clearable request decimals as omitted, null, or strings") {
-            val adapter = Serializer.moshi.adapter(MedicationUpdateAttributes::class.java)
+            val medicationAdapter = Serializer.moshi.adapter(MedicationUpdateAttributes::class.java)
+            assertClearableDecimalEncoding(
+                wireName = "dose_amount",
+                omitted = medicationAdapter.toJson(MedicationUpdateAttributes()),
+                populated = medicationAdapter.toJson(MedicationUpdateAttributes(doseAmount = "10.00")),
+                explicitNull = medicationAdapter.toJson(MedicationUpdateAttributes().clearDoseAmount())
+            )
+            assertClearableDecimalEncoding(
+                wireName = "current_supply",
+                omitted = medicationAdapter.toJson(MedicationUpdateAttributes()),
+                populated = medicationAdapter.toJson(MedicationUpdateAttributes(currentSupply = "10.00")),
+                explicitNull = medicationAdapter.toJson(MedicationUpdateAttributes().clearCurrentSupply())
+            )
 
-            adapter.toJson(MedicationUpdateAttributes()).contains("current_supply") shouldBe false
-            adapter.toJson(MedicationUpdateAttributes(currentSupply = "10.00")) shouldBe
-                """{"current_supply":"10.00"}"""
-            adapter.toJson(MedicationUpdateAttributes().clearCurrentSupply()) shouldBe
-                """{"current_supply":null}"""
+            val orderDetailsAdapter = Serializer.moshi.adapter(MedicationOrderDetailsRequestOrderDetails::class.java)
+            assertClearableDecimalEncoding(
+                wireName = "quantity",
+                omitted = orderDetailsAdapter.toJson(MedicationOrderDetailsRequestOrderDetails()),
+                populated = orderDetailsAdapter.toJson(
+                    MedicationOrderDetailsRequestOrderDetails(quantity = "10.00")
+                ),
+                explicitNull = orderDetailsAdapter.toJson(
+                    MedicationOrderDetailsRequestOrderDetails().clearQuantity()
+                )
+            )
 
-            MedicationUpdateAttributes().clearDoseAmount()
-            MedicationOrderDetailsRequestOrderDetails().clearQuantity()
-            DosageOptionUpdateAttributes().clearCurrentSupply()
-            DosageOptionUpdateAttributes().clearReorderThreshold()
-            ScheduleAttributes().clearMinHoursBetweenDoses()
-            PersonMedicationAttributes().clearMinHoursBetweenDoses()
+            val dosageOptionAdapter = Serializer.moshi.adapter(DosageOptionUpdateAttributes::class.java)
+            assertClearableDecimalEncoding(
+                wireName = "current_supply",
+                omitted = dosageOptionAdapter.toJson(DosageOptionUpdateAttributes()),
+                populated = dosageOptionAdapter.toJson(DosageOptionUpdateAttributes(currentSupply = "10.00")),
+                explicitNull = dosageOptionAdapter.toJson(DosageOptionUpdateAttributes().clearCurrentSupply())
+            )
+            assertClearableDecimalEncoding(
+                wireName = "reorder_threshold",
+                omitted = dosageOptionAdapter.toJson(DosageOptionUpdateAttributes()),
+                populated = dosageOptionAdapter.toJson(DosageOptionUpdateAttributes(reorderThreshold = "10.00")),
+                explicitNull = dosageOptionAdapter.toJson(
+                    DosageOptionUpdateAttributes().clearReorderThreshold()
+                )
+            )
+
+            val scheduleAdapter = Serializer.moshi.adapter(ScheduleAttributes::class.java)
+            assertClearableDecimalEncoding(
+                wireName = "min_hours_between_doses",
+                omitted = scheduleAdapter.toJson(ScheduleAttributes()),
+                populated = scheduleAdapter.toJson(ScheduleAttributes(minHoursBetweenDoses = "10.00")),
+                explicitNull = scheduleAdapter.toJson(ScheduleAttributes().clearMinHoursBetweenDoses())
+            )
+
+            val personMedicationAdapter = Serializer.moshi.adapter(PersonMedicationAttributes::class.java)
+            assertClearableDecimalEncoding(
+                wireName = "min_hours_between_doses",
+                omitted = personMedicationAdapter.toJson(PersonMedicationAttributes()),
+                populated = personMedicationAdapter.toJson(
+                    PersonMedicationAttributes(minHoursBetweenDoses = "10.00")
+                ),
+                explicitNull = personMedicationAdapter.toJson(
+                    PersonMedicationAttributes().clearMinHoursBetweenDoses()
+                )
+            )
         }
 
         should("decode medication lookup package quantities as nullable strings") {

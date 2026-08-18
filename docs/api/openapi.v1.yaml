@@ -4302,6 +4302,9 @@ components:
       type: object
       additionalProperties: false
       minProperties: 1
+      x-client-clearable-null-fields:
+        - dose_amount
+        - current_supply
       properties:
         name:
           type: string
@@ -4323,7 +4326,6 @@ components:
           type: string
         dose_amount:
           $ref: '#/components/schemas/NullableDecimalValue'
-          x-client-clearable-null: true
         dose_unit:
           type: string
           enum:
@@ -4341,7 +4343,6 @@ components:
             - pad
         current_supply:
           $ref: '#/components/schemas/NullableDecimalValue'
-          x-client-clearable-null: true
         reorder_threshold:
           $ref: '#/components/schemas/DecimalValue'
         warnings:
@@ -4381,12 +4382,13 @@ components:
         order_details:
           type: object
           additionalProperties: false
+          x-client-clearable-null-fields:
+            - quantity
           properties:
             supplier:
               type: string
             quantity:
               $ref: '#/components/schemas/NullableDecimalValue'
-              x-client-clearable-null: true
             expected_arrival_on:
               $ref: '#/components/schemas/Date'
     DosageOption:
@@ -4534,6 +4536,9 @@ components:
       type: object
       additionalProperties: false
       minProperties: 1
+      x-client-clearable-null-fields:
+        - current_supply
+        - reorder_threshold
       properties:
         amount:
           $ref: '#/components/schemas/DecimalValue'
@@ -4562,10 +4567,8 @@ components:
             - monthly
         current_supply:
           $ref: '#/components/schemas/NullableDecimalValue'
-          x-client-clearable-null: true
         reorder_threshold:
           $ref: '#/components/schemas/NullableDecimalValue'
-          x-client-clearable-null: true
     HealthEvent:
       type: object
       additionalProperties: false
@@ -4890,6 +4893,8 @@ components:
       type: object
       additionalProperties: false
       minProperties: 1
+      x-client-clearable-null-fields:
+        - min_hours_between_doses
       properties:
         person_id:
           $ref: '#/components/schemas/ResourceIdentifier'
@@ -4915,7 +4920,6 @@ components:
           minimum: 1
         min_hours_between_doses:
           $ref: '#/components/schemas/NullableDecimalValue'
-          x-client-clearable-null: true
         dose_cycle:
           type: string
           enum:
@@ -5132,6 +5136,8 @@ components:
       type: object
       additionalProperties: false
       minProperties: 1
+      x-client-clearable-null-fields:
+        - min_hours_between_doses
       properties:
         person_id:
           $ref: '#/components/schemas/ResourceIdentifier'
@@ -5156,7 +5162,6 @@ components:
           minimum: 1
         min_hours_between_doses:
           $ref: '#/components/schemas/NullableDecimalValue'
-          x-client-clearable-null: true
         dose_cycle:
           type: string
           enum:

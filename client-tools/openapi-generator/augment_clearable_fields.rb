@@ -18,17 +18,26 @@ def camel_case(value)
   first + rest.map(&:capitalize).join
 end
 
+def clearable_fields(schema, model_name)
+  clearable_fields = schema.fetch('x-client-clearable-null-fields', [])
+  return clearable_fields if clearable_fields.is_a?(Array) && clearable_fields.all?(String)
+
+  raise "Invalid clearable field marker on #{model_name}"
+end
+
 def marked_properties(schema, model_name, results)
   properties = schema.fetch('properties', {})
-  properties.each do |property_name, property|
-    next unless property.is_a?(Hash)
+  clearable_fields(schema, model_name).each do |property_name|
+    property = properties[property_name]
+    raise "Missing clearable property #{model_name}.#{property_name}" unless property.is_a?(Hash)
 
-    if property['x-client-clearable-null'] == true
-      results << { model_name:, wire_name: property_name, property_name: camel_case(property_name) }
-    end
+    results << { model_name:, wire_name: property_name, property_name: camel_case(property_name) }
+  end
 
-    next unless property['type'] == 'object'
-
+  nested_objects = properties.filter do |_property_name, property|
+    property.is_a?(Hash) && property['type'] == 'object'
+  end
+  nested_objects.each do |property_name, property|
     marked_properties(property, "#{model_name}#{pascal_case(property_name)}", results)
   end
 end
