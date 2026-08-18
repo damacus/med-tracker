@@ -50,6 +50,32 @@ RSpec.describe 'Profile Editing' do
     end
   end
 
+  describe 'time zone preference', :js do
+    it 'keeps a stored non-default time zone when saved without a change' do
+      stored_time_zone = 'Europe/London'
+      account.update!(preferences: account.preferences.merge('time_zone' => stored_time_zone))
+      account.reload
+
+      visit profile_path
+
+      expect(page).to have_text(stored_time_zone)
+      expect(page).to have_select('Time Zone', selected: stored_time_zone)
+
+      click_button 'Save time zone'
+
+      expect(account.reload.time_zone).to eq(stored_time_zone)
+    end
+
+    it 'saves a deliberately selected time zone' do
+      visit profile_path
+
+      select 'Pacific Time (US & Canada)', from: 'Time Zone'
+      click_button 'Save time zone'
+
+      expect(account.reload.time_zone).to eq('Pacific Time (US & Canada)')
+    end
+  end
+
   describe 'closing account', :js do
     it 'shows confirmation dialog when clicking close account' do
       expect(page).to have_css('[data-ruby-ui--alert-dialog-target="content"]', visible: :hidden, wait: 5)
