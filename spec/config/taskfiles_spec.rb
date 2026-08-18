@@ -66,6 +66,7 @@ RSpec.describe 'Taskfiles' do
       'api-clients:kotlin' => ['./client-tools/openapi-generator/generate-kotlin.fish'],
       'api-clients:swift' => ['./client-tools/openapi-generator/generate-swift.fish'],
       'api-clients:verify' => [
+        './client-tools/openapi-generator/test-docker-user.fish',
         './client-tools/openapi-generator/test-checksum.fish',
         './client-tools/openapi-generator/test-cleanup.fish',
         'api-clients:verify-generated',
@@ -90,6 +91,7 @@ RSpec.describe 'Taskfiles' do
   it 'keeps native API generator entry points executable' do
     expect(
       [
+        Rails.root.join('client-tools/openapi-generator/test-docker-user.fish'),
         Rails.root.join('client-tools/openapi-generator/test-checksum.fish'),
         Rails.root.join('client-tools/openapi-generator/test-cleanup.fish'),
         Rails.root.join('client-tools/openapi-generator/generate-swift.fish'),
@@ -102,6 +104,24 @@ RSpec.describe 'Taskfiles' do
     expect(checksum_script).to include('sha256sum', 'shasum', '^[0-9a-f]{64}$')
     expect(cleanup_test_script).to include('OPENAPI_GENERATOR_TEST_TEMP', 'Expected generator failure')
     expect(checksum_test_script).to include('non-canonical digest', 'missing checksum tool')
+  end
+
+  it 'runs generator containers as the invoking host user' do
+    expect(docker_runtime_script).to include(
+      'set -l host_uid (id -u)',
+      'set -l host_gid (id -g)',
+      "string match -rq '^[0-9]+$'",
+      'docker run --user "$host_uid:$host_gid" $argv'
+    )
+    expect(swift_generator_script).to include('openapi_generator_docker_run --rm')
+    expect(kotlin_generator_script).to include('openapi_generator_docker_run --rm')
+    expect(docker_user_test_script).to include(
+      '--entrypoint sh',
+      'container_uid', 'container_gid',
+      "stat -c '%u:%g'",
+      'Generated file is not writable by the invoking user.',
+      'Generated file could not be removed by the invoking user.'
+    )
   end
 
   it 'serializes Docker Compose runs within each worktree environment' do
@@ -318,12 +338,20 @@ RSpec.describe 'Taskfiles' do
     Rails.root.join('client-tools/openapi-generator/checksum.fish').read
   end
 
+  def docker_runtime_script
+    Rails.root.join('client-tools/openapi-generator/docker-runtime.fish').read
+  end
+
   def cleanup_test_script
     Rails.root.join('client-tools/openapi-generator/test-cleanup.fish').read
   end
 
   def checksum_test_script
     Rails.root.join('client-tools/openapi-generator/test-checksum.fish').read
+  end
+
+  def docker_user_test_script
+    Rails.root.join('client-tools/openapi-generator/test-docker-user.fish').read
   end
 
   def api_client_task_commands
