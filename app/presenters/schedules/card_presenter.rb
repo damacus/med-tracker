@@ -17,7 +17,7 @@ module Schedules
     private
 
     def dose_text
-      "#{schedule.dose_amount.to_i}#{schedule.dose_unit}"
+      DoseAmount.new(schedule.dose_amount, schedule.dose_unit).to_s
     end
 
     def own_dose?

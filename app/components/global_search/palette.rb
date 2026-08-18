@@ -75,7 +75,7 @@ module Components
 
       def render_status
         div(
-          class: 'px-4 py-2 text-xs font-bold uppercase tracking-widest text-on-surface-variant',
+          class: 'sr-only',
           aria: { live: 'polite' },
           data: { global_search_target: 'status' }
         )

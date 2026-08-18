@@ -15,6 +15,14 @@ RSpec.describe Components::GlobalSearch::Palette, type: :component do
     expect(close_button.at_css('svg[aria-hidden="true"]')).to be_present
   end
 
+  it 'uses the existing status target as a visually hidden polite live region' do
+    rendered = render_inline(described_class.new)
+    status = rendered.at_css('[data-global-search-target="status"]')
+
+    expect(status['aria-live']).to eq('polite')
+    expect(status['class'].split).to include('sr-only')
+  end
+
   it 'uses the preloaded household without queries or Current mutation' do
     account = accounts(:admin)
     household = households(:fixture_household)

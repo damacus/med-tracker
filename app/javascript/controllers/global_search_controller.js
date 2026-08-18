@@ -146,11 +146,11 @@ export default class extends Controller {
 
     if (results.length === 0) {
       this.resultsTarget.innerHTML = `
-        <div class="px-3 py-8 text-center text-sm text-on-surface-variant" role="status" aria-live="polite">
+        <div class="px-3 py-8 text-center text-sm text-on-surface-variant" aria-hidden="true">
           ${this.escapeHtml(this.t("no_results"))}
         </div>
       `
-      this.setStatus("")
+      this.setStatus(this.t("no_results"))
       return
     }
 
