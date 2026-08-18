@@ -65,6 +65,7 @@ RSpec.describe 'Profile Editing' do
 
       click_button 'Save time zone'
 
+      expect(page).to have_text(I18n.t('profiles.updated'))
       expect(account.reload.time_zone).to eq(stored_time_zone)
     end
 
@@ -74,6 +75,7 @@ RSpec.describe 'Profile Editing' do
       select 'Pacific Time (US & Canada)', from: 'Time Zone'
       click_button 'Save time zone'
 
+      expect(page).to have_text(I18n.t('profiles.updated'))
       expect(account.reload.time_zone).to eq('Pacific Time (US & Canada)')
     end
   end
