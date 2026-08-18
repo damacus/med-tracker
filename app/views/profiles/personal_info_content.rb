@@ -76,7 +76,7 @@ module Views
 
       def time_zone_options
         ([account.preferred_time_zone] + Account::TIME_ZONE_NAMES).select do |time_zone|
-          Account::TIME_ZONE_VALUES.include?(time_zone)
+          Account.valid_time_zone?(time_zone)
         end.uniq
       end
 
