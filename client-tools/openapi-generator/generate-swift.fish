@@ -75,7 +75,7 @@ if test "$argv[1]" = verify
         echo "Missing generated Swift output: $output" >&2
         exit 1
     end
-    diff -ruN --exclude OPENAPI_SHA256 "$output" "$temporary_root/output"
+    diff -ruN --exclude OPENAPI_SHA256 --exclude .build --exclude build --exclude .swiftpm "$output" "$temporary_root/output"
     if test $status -ne 0
         exit 1
     end

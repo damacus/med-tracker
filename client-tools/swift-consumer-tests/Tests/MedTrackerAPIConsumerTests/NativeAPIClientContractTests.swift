@@ -1,0 +1,265 @@
+import Foundation
+import XCTest
+@testable import MedTrackerAPI
+
+final class NativeAPIClientContractTests: XCTestCase {
+    func testFixedJSONValueTypesUseNativeSwiftTypes() throws {
+        let medication = MedicationCreateAttributes(
+            name: "Example medicine",
+            reorderThreshold: "2.50",
+            locationId: 3,
+            doseAmount: "0.50",
+            currentSupply: "10.00"
+        )
+
+        XCTAssertEqual(medication.reorderThreshold, "2.50")
+        XCTAssertEqual(medication.doseAmount, "0.50")
+        XCTAssertEqual(medication.currentSupply, "10.00")
+
+        let identifiers = PersonMedicationAttributes(personId: "123", medicationId: "456")
+        XCTAssertEqual(identifiers.personId, "123")
+        XCTAssertEqual(identifiers.medicationId, "456")
+
+        let take = MedicationTake(
+            id: 1,
+            portableId: UUID(uuidString: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")!,
+            clientUuid: UUID(uuidString: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
+            scheduleId: nil,
+            schedulePortableId: nil,
+            personMedicationId: nil,
+            personMedicationPortableId: nil,
+            takenFromMedicationId: nil,
+            takenFromMedicationPortableId: nil,
+            takenFromLocationId: nil,
+            takenFromLocationPortableId: nil,
+            doseAmount: nil,
+            doseUnit: nil,
+            takenAt: Date(timeIntervalSince1970: 1_767_323_045),
+            updatedAt: Date(timeIntervalSince1970: 1_767_323_045),
+            personId: nil,
+            personPortableId: nil,
+            medicationId: nil,
+            medicationPortableId: nil
+        )
+
+        XCTAssertNotNil(take.clientUuid)
+        XCTAssertNotNil(take.takenAt)
+    }
+
+    func testPopulatedExplicitNullAndOmittedValuesDecode() throws {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let populated = try decoder.decode(
+            MedicationTake.self,
+            from: Data(
+                """
+                {
+                  "id": 1,
+                  "portable_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                  "client_uuid": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                  "taken_at": "2026-01-02T03:04:05Z",
+                  "updated_at": "2026-01-02T03:04:05Z"
+                }
+                """.utf8
+            )
+        )
+        XCTAssertEqual(populated.clientUuid?.uuidString.lowercased(), "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+        XCTAssertEqual(populated.takenAt, Date(timeIntervalSince1970: 1_767_323_045))
+
+        let explicitNull = try decoder.decode(
+            MedicationTake.self,
+            from: Data(
+                """
+                {
+                  "id": 1,
+                  "portable_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                  "client_uuid": null,
+                  "taken_at": null,
+                  "updated_at": "2026-01-02T03:04:05Z"
+                }
+                """.utf8
+            )
+        )
+        XCTAssertNil(explicitNull.clientUuid)
+        XCTAssertNil(explicitNull.takenAt)
+
+        let omitted = try decoder.decode(
+            MedicationTake.self,
+            from: Data(
+                """
+                {
+                  "id": 1,
+                  "portable_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                  "updated_at": "2026-01-02T03:04:05Z"
+                }
+                """.utf8
+            )
+        )
+        XCTAssertNil(omitted.clientUuid)
+        XCTAssertNil(omitted.takenAt)
+    }
+
+    func testMedicationLookupUsesOneResponseModelAndStringQuantities() throws {
+        let decoder = JSONDecoder()
+
+        let response = try decoder.decode(
+            MedicationLookupResponse.self,
+            from: Data(
+                """
+                {
+                  "results": [],
+                  "permissions": {"can_create": true, "can_update": false}
+                }
+                """.utf8
+            )
+        )
+        XCTAssertTrue(response.results.isEmpty)
+        XCTAssertTrue(response.permissions.canCreate)
+        XCTAssertFalse(response.permissions.canUpdate)
+
+        let result = try decoder.decode(
+            MedicationLookupResult.self,
+            from: Data(
+                """
+                {
+                  "display": "Aspirin 300mg tablets",
+                  "package_quantity": "1.5",
+                  "related_medications": [],
+                  "review_prompts": [],
+                  "review_prompt_filter": {"hidden_count": 0}
+                }
+                """.utf8
+            )
+        )
+        XCTAssertEqual(result.packageQuantity, "1.5")
+
+        let nullResult = try decoder.decode(
+            MedicationLookupResult.self,
+            from: Data(
+                """
+                {
+                  "display": "Aspirin 300mg tablets",
+                  "package_quantity": null,
+                  "related_medications": [],
+                  "review_prompts": [],
+                  "review_prompt_filter": {"hidden_count": 0}
+                }
+                """.utf8
+            )
+        )
+        XCTAssertNil(nullResult.packageQuantity)
+    }
+
+    func testPortableImportConflictFieldHasStableWireValues() throws {
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+
+        XCTAssertEqual(String(data: try encoder.encode(PortableImportConflictField.field_name), encoding: .utf8), "\"name\"")
+        XCTAssertEqual(String(data: try encoder.encode(PortableImportConflictField.email), encoding: .utf8), "\"email\"")
+        XCTAssertEqual(try decoder.decode(PortableImportConflictField.self, from: Data("\"name\"".utf8)), .field_name)
+        XCTAssertEqual(try decoder.decode(PortableImportConflictField.self, from: Data("\"email\"".utf8)), .email)
+    }
+
+    func testRepresentativeAuthenticatedAndErrorOperationsCompile() throws {
+        let login = AuthenticationAPI.createLoginSessionWithRequestBuilder(
+            authLoginRequest: AuthLoginRequest(email: "person@example.test", password: "password")
+        )
+        XCTAssertFalse(login.requiresAuthentication)
+        XCTAssertEqual(login.method, "POST")
+        XCTAssertTrue(login.URLString.hasSuffix("/auth/login"))
+
+        let medication = MedicationCreateRequest(
+            medication: MedicationCreateAttributes(
+                name: "Example medicine",
+                reorderThreshold: "2.50",
+                locationId: 3,
+                doseAmount: "0.50"
+            )
+        )
+        let medicationRequest = MedicationsAPI.createMedicationWithRequestBuilder(
+            householdId: 7,
+            medicationCreateRequest: medication
+        )
+        XCTAssertTrue(medicationRequest.requiresAuthentication)
+        XCTAssertEqual(
+            MedicationsAPI.getMedicationWithRequestBuilder(householdId: 7, id: "123").URLString,
+            "/api/v1/households/7/medications/123"
+        )
+
+        let sync = SyncBatchRequest(
+            batch: SyncBatchRequestBatch(
+                operations: [
+                    SyncBatchOperation(action: .create, resourceType: .medication, id: "123"),
+                ]
+            )
+        )
+        let syncRequest = SynchronizationAPI.createSyncBatchWithRequestBuilder(householdId: 7, syncBatchRequest: sync)
+        XCTAssertTrue(syncRequest.requiresAuthentication)
+        XCTAssertTrue(
+            SynchronizationAPI.getSyncChangesWithRequestBuilder(
+                householdId: 7,
+                cursor: Date(timeIntervalSince1970: 1_767_323_045)
+            ).requiresAuthentication
+        )
+
+        let exportRequest = PortabilityAPI.getDataExportWithRequestBuilder(
+            householdId: 7,
+            mode: .healthDataJson,
+            xMedTrackerPortablePassphrase: nil
+        )
+        XCTAssertTrue(exportRequest.requiresAuthentication)
+
+        let error = try JSONDecoder().decode(
+            ErrorEnvelope.self,
+            from: Data(
+                """
+                {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "The request is invalid.",
+                    "request_id": "request-123",
+                    "errors": {"dose_amount": ["must be a string"]}
+                  }
+                }
+                """.utf8
+            )
+        )
+        XCTAssertEqual(error.error, ApiError(
+            code: "validation_error",
+            message: "The request is invalid.",
+            requestId: "request-123",
+            errors: ["dose_amount": ["must be a string"]]
+        ))
+    }
+
+    func testGeneratedSourceHasNoKnownSwiftFailureShapes() throws {
+        let sourceRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("generated/swift/Sources/MedTrackerAPI")
+        let enumerator = FileManager.default.enumerator(
+            at: sourceRoot,
+            includingPropertiesForKeys: [.isRegularFileKey]
+        )
+        var swiftSources: [String] = []
+        while let file = enumerator?.nextObject() as? URL {
+            guard file.pathExtension == "swift" else { continue }
+            swiftSources.append(try String(contentsOf: file, encoding: .utf8))
+        }
+
+        XCTAssertFalse(swiftSources.isEmpty)
+        let source = swiftSources.joined(separator: "\n")
+        XCTAssertNil(source.range(of: #"enum\s+\w+\s*:\s*Bool"#, options: .regularExpression))
+        XCTAssertNil(source.range(of: #"enum\s+\w+\s*:\s*[^\n]*RawRepresentable.*Bool"#, options: .regularExpression))
+        XCTAssertNil(source.range(of: #"https:\\\/\\/"#))
+        XCTAssertNil(source.range(of: #"https:\/\/"#))
+        XCTAssertNil(source.range(of: "ModelError"))
+        XCTAssertTrue(source.contains("ApiError"))
+
+        XCTAssertFalse(source.contains("public struct Nullable"))
+        XCTAssertFalse(source.contains("public enum Nullable"))
+    }
+}

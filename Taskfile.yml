@@ -77,6 +77,11 @@ tasks:
     cmds:
       - ./client-tools/openapi-generator/generate-swift.fish
 
+  api-clients:swift:test:
+    desc: Compile and test the generated Swift API client with consumer checks
+    cmds:
+      - swift test --package-path client-tools/swift-consumer-tests
+
   api-clients:verify:
     desc: Verify generated API clients are current
     cmds:
