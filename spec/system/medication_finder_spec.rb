@@ -67,6 +67,7 @@ RSpec.describe 'MedicationFinder' do
       .to eq(I18n.t('medications.finder.placeholder'))
 
     page.current_window.resize_to(1400, 1000)
+    visit medication_finder_path
     desktop_geometry = page.evaluate_script(<<~JS)
       (() => {
         const inputElement = document.querySelector('#medication-search-input');
