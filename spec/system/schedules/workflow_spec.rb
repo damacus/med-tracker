@@ -103,6 +103,23 @@ RSpec.describe 'Schedules workflow' do
     end
   end
 
+  it 'keeps dose option wording consistent after changing medication', :js do
+    create(
+      :dosage,
+      medication: medications(:paracetamol),
+      amount: 0.5,
+      unit: 'tablet',
+      description: 'Half tablet dose'
+    )
+    open_edit_form
+
+    find('[data-testid="medication-trigger"]').click
+    find('[role="option"]', text: 'Paracetamol', wait: 10).click
+    find('[data-testid="dosage-trigger"]').click
+
+    expect(page).to have_css('[role="option"]', text: '0.5 tablets - Half tablet dose')
+  end
+
   it 'dismisses only the delete confirmation before closing its actions menu with Escape', :js do
     page.current_window.resize_to(390, 844)
     visit person_path(person)

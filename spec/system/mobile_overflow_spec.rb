@@ -55,14 +55,16 @@ RSpec.describe 'Mobile overflow handling' do
 
   it 'wraps long audit event names inside the mobile card header', :js do
     long_event = 'auth_token/native_device_token/credential_rotation_completed'
-    create_household_audit_version(users(:admin), event: long_event)
+    version = create_household_audit_version(users(:admin), event: long_event)
     page.current_window.resize_to(390, 844)
 
     visit admin_audit_logs_path
 
     geometry = page.evaluate_script(<<~JS)
       (() => {
-        const card = document.querySelector('[data-testid="admin-audit-logs-mobile-list"] [data-version-id]');
+        const card = document.querySelector(
+          '[data-testid="admin-audit-logs-mobile-list"] [data-version-id="#{version.id}"]'
+        );
         const badge = Array.from(card.querySelectorAll('span')).find((element) =>
           element.textContent.includes('Credential Rotation Completed')
         );

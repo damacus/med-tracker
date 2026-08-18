@@ -55,5 +55,9 @@ RSpec.describe MedicationDosage do
     it 'derives a selection key from the dose content' do
       expect(dosage.selection_key).to eq('500|mg')
     end
+
+    it 'includes the public dose label in its option payload' do
+      expect(dosage.to_option_payload).to include(dose_display: '500 mg')
+    end
   end
 end
