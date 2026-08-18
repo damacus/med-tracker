@@ -3,16 +3,17 @@
 module Components
   module Layouts
     class Flash < Components::Base
-      def initialize(notice: nil, alert: nil, warning: nil)
+      def initialize(notice: nil, alert: nil, warning: nil, fixed: !DemoMode.enabled?)
         @notice = notice
         @alert = alert
         @warning = warning
+        @fixed = fixed
         super()
       end
 
       def view_template
-        div(class: 'fixed inset-x-0 top-20 z-[60] pointer-events-none md:top-4') do
-          div(class: 'container mx-auto px-4') do
+        div(class: container_class) do
+          div(class: content_class) do
             render_notice if @notice
             render_warning if @warning
             render_alert if @alert
@@ -21,6 +22,16 @@ module Components
       end
 
       private
+
+      def container_class
+        return 'fixed inset-x-0 top-20 z-[60] pointer-events-none md:top-4' if @fixed
+
+        'relative z-40 px-4 md:ml-64'
+      end
+
+      def content_class
+        @fixed ? 'container mx-auto px-4' : 'space-y-4'
+      end
 
       def render_notice
         div(data: { controller: 'flash', flash_dismiss_after_value: 3000 }, class: 'pointer-events-auto') do
