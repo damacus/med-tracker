@@ -17,7 +17,10 @@ RSpec.describe 'Dashboard', :browser do
       expect(page).to have_text("Today's Schedule")
       expect(page).to have_text('Ibuprofen')
       expect(page).to have_text('Jane Doe')
-      expect(page).to have_text('Child Patient')
+      selector = find('[data-testid="dashboard-person-selector"]')
+      selector.find('summary').click
+      expect(selector).to have_css('[role="radio"][aria-label="Child Patient"]')
+      selector.find('summary').click
 
       button = first('[data-testid^="take-dose-"]')
 

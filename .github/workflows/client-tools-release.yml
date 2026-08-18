@@ -20,16 +20,15 @@ permissions:
 jobs:
   build:
     name: Build ${{ matrix.artifact }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         include:
           - artifact: medtracker-client-tools-linux-x86_64
             runner: ubuntu-latest
-          - artifact: medtracker-client-tools-macos-x86_64
-            runner: macos-13
           - artifact: medtracker-client-tools-macos-aarch64
-            runner: macos-14
+            runner: macos-latest
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout code

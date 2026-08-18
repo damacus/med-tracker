@@ -6,8 +6,75 @@ name: CI
   push:
     branches: [main]
 
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  changes:
+    runs-on: [ubuntu-latest]
+    name: Classify Changes
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+      rust: ${{ steps.filter.outputs.rust }}
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed paths
+        id: filter
+        uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad
+        with:
+          filters: |
+            app:
+              - 'app/**'
+              - 'bin/**'
+              - 'config/**'
+              - 'db/**'
+              - 'lib/**'
+              - 'public/**'
+              - 'spec/**'
+              - 'data/medication_reviews/**'
+              - 'scripts/**'
+              - 'Gemfile'
+              - 'Gemfile.lock'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'Dockerfile'
+              - 'compose.yaml'
+              - 'config.ru'
+              - 'Rakefile'
+              - '.rspec'
+              - '.ruby-version'
+              - '.simplecov'
+              - 'Taskfile.yml'
+              - 'Taskfiles/**'
+              - '.github/workflows/**'
+            rust:
+              - 'client-tools/**'
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/client-tools-release.yml'
+            docs:
+              - '**/*.md'
+              - '.vale.ini'
+              - 'zensical.toml'
+              - 'requirements.txt'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - 'Taskfile.yml'
+              - 'Taskfiles/docs.yml'
+              - '.github/workflows/docs.yml'
+
   scan_ruby:
+    needs: changes
+    if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: [ubuntu-latest]
     name: Ruby Security Scan
     steps:
@@ -23,6 +90,8 @@ jobs:
         run: bin/brakeman --no-pager
 
   scan_js:
+    needs: changes
+    if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: [ubuntu-latest]
     name: JavaScript Security Scan
     steps:
@@ -38,6 +107,8 @@ jobs:
         run: bin/importmap audit
 
   lint:
+    needs: changes
+    if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: [ubuntu-latest]
     name: Code Style Check
     steps:
@@ -53,6 +124,8 @@ jobs:
         run: bin/rubocop -f github
 
   client_tools:
+    needs: changes
+    if: ${{ needs.changes.outputs.rust == 'true' }}
     runs-on: [ubuntu-latest]
     name: Rust Client Tools
     steps:
@@ -82,7 +155,35 @@ jobs:
       - name: Test workspace
         run: cargo test --manifest-path client-tools/Cargo.toml --workspace
 
+  docs_check:
+    needs: changes
+    if: ${{ needs.changes.outputs.docs == 'true' }}
+    runs-on: [ubuntu-latest]
+    name: Documentation Check
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+          cache: "pip"
+
+      - name: Install documentation dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build documentation
+        run: zensical build --clean
+
+      - name: Check changed lines
+        run: git diff --check ${{ github.event.pull_request.base.sha || github.event.before }}...HEAD
+
   test_non_system:
+    needs: changes
+    if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: [ubuntu-latest]
     name: RSpec Tests (Models, Policies, Controllers, Components)
     timeout-minutes: 20
@@ -137,6 +238,8 @@ jobs:
           if-no-files-found: ignore
 
   test_system:
+    needs: changes
+    if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: [ubuntu-latest]
     name: RSpec System Tests (Playwright) - Shard ${{ matrix.shard }}/2
     timeout-minutes: 20
@@ -234,6 +337,8 @@ jobs:
           retention-days: 7
 
   production_image_medication_search:
+    needs: changes
+    if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: [ubuntu-latest]
     name: Production Image Medication Search
     timeout-minutes: 25
@@ -255,6 +360,8 @@ jobs:
         run: task prod:medication-search-smoke
 
   mutation:
+    needs: changes
+    if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: [ubuntu-latest]
     name: Mutation Testing (advisory, changed subjects)
     timeout-minutes: 20
@@ -303,7 +410,8 @@ jobs:
   lighthouse:
     runs-on: [ubuntu-latest]
     name: Lighthouse Mobile Audit
-    needs: [test_non_system]
+    needs: [changes, test_non_system]
+    if: ${{ needs.changes.outputs.app == 'true' }}
     timeout-minutes: 15
 
     services:
@@ -402,3 +510,27 @@ jobs:
             tmp/lighthouse-server.log
           if-no-files-found: ignore
           retention-days: 30
+
+  ci_success:
+    if: ${{ always() }}
+    needs:
+      - changes
+      - scan_ruby
+      - scan_js
+      - lint
+      - client_tools
+      - docs_check
+      - test_non_system
+      - test_system
+      - production_image_medication_search
+      - mutation
+      - lighthouse
+    runs-on: [ubuntu-latest]
+    name: CI Success
+    steps:
+      - name: Fail when a required job failed
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: /bin/false
+
+      - name: Confirm required jobs passed or were skipped
+        run: echo "Required CI jobs passed or were skipped."

@@ -1926,6 +1926,7 @@ cy:
       label: Person y dangosfwrdd
       all_family: Y Teulu Cyfan
       all_family_initials: TC
+      change_person: Newid person
       more_people: Mwy o bobl
     as_needed:
       title: Yn ôl yr angen

@@ -68,91 +68,69 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
   end
 
   describe 'person selector' do
-    it 'renders above the dashboard stats section with individual people and all family' do
+    it 'renders one expandable person selector above the dashboard metrics' do
       presenter = parent_dashboard_presenter
 
       rendered = render_inline(described_class.new(presenter: presenter))
       selector = rendered.at_css('[data-testid="dashboard-person-selector"]')
-      overflow = rendered.at_css('[data-testid="dashboard-person-overflow"]')
+      disclosure = selector.at_css('details[data-testid="dashboard-person-selector-disclosure"]')
+      summary = disclosure.at_css('summary[data-testid="dashboard-person-selector-summary"]')
 
       expect(selector).to be_present
-      expect(selector.text).to include('Parent Person')
-      expect(overflow.text).to include('All Family')
+      expect(disclosure).to be_present
+      expect(summary.text).to include('Parent Person', 'Change person')
       expect(rendered.to_html.index('dashboard-person-selector')).to be < rendered.to_html.index('Next Due')
     end
 
-    it 'marks the selected person with aria-current and initials fallback' do
-      presenter = parent_dashboard_presenter
-
-      rendered = render_inline(described_class.new(presenter: presenter))
-      selected = rendered.at_css('[data-testid="dashboard-person-option"][aria-current="true"]')
-
-      expect(selected.text).to include('Parent Person')
-      expect(selected.text).to include('PP')
-      expect(selected.at_css('[data-testid="person-avatar"]')).to be_present
-    end
-
-    it 'renders selected person options with the shared M3 link contract' do
-      presenter = parent_dashboard_presenter
-
-      rendered = render_inline(described_class.new(presenter: presenter))
-      selected = rendered.at_css('[data-testid="dashboard-person-option"][aria-current="true"]')
-      selected_classes = selected['class'].split
-
-      expect(selected_classes).to include('state-layer', 'rounded-xl')
-      expect(selected_classes).to include_person_pill_size_class
-    end
-
-    it 'wraps selector controls instead of requiring horizontal scrolling' do
+    it 'submits the selected person through a single-choice Toggle Group' do
       presenter = parent_dashboard_presenter
 
       rendered = render_inline(described_class.new(presenter: presenter))
       selector = rendered.at_css('[data-testid="dashboard-person-selector"]')
+      form = selector.at_css('form[method="get"]')
+      group = selector.at_css('[role="radiogroup"]')
+      selected = group.at_css('[role="radio"][aria-checked="true"]')
+      input = group.at_css('input[name="dashboard_person_id"]')
 
-      expect(selector['class']).not_to include('overflow-x-auto')
-      expect(selector['class']).to include('max-w-full')
+      expect(form['action']).to end_with('/dashboard')
+      expect(form['data-controller']).to include('filter-form')
+      expect(group['data-action']).to include('click->filter-form#submit')
+      expect(selected.text).to include('Parent Person')
+      expect(input['value']).to eq(people(:parent_person).id.to_s)
     end
 
-    it 'renders the first five people as pills and puts remaining options in a dropdown' do
-      presenter = dashboard_presenter(admin_user, people_scope: Person.all)
+    it 'names the person Toggle Group for assistive technology' do
+      rendered = render_inline(described_class.new(presenter: parent_dashboard_presenter))
 
-      rendered = render_inline(described_class.new(presenter: presenter))
-      direct_options = rendered.css('[data-testid="dashboard-person-option"]')
-      overflow = rendered.at_css('[data-testid="dashboard-person-overflow"]')
-
-      expect(direct_options.count).to eq(5)
-      expect(overflow).to be_present
-      expect(overflow['data-controller']).to include('ruby-ui--dropdown-menu')
-      expect(overflow.at_css('select')).not_to be_present
-      expect(overflow.text).to include('All Family')
+      expect(rendered.at_css('[role="radiogroup"]')['aria-label']).to eq('Dashboard person')
     end
 
-    it 'renders overflow selector triggers with the shared M3 button contract' do
-      presenter = dashboard_presenter(admin_user, people_scope: Person.all)
+    it 'provides direct person links when JavaScript is unavailable' do
+      presenter = parent_dashboard_presenter
 
       rendered = render_inline(described_class.new(presenter: presenter))
-      overflow = rendered.at_css('[data-testid="dashboard-person-overflow"]')
+      fallback = rendered.at_css('[data-testid="dashboard-person-selector"] noscript')
+      links = fallback.css('a')
+      dashboard_path = rendered.at_css('[data-testid="dashboard-person-selector"] form')['action']
 
-      expect(overflow.at_css('button')['class'].split).to include('state-layer', 'rounded-xl')
-    end
-
-    it 'renders only the current selection plus a dropdown for other people on mobile' do
-      presenter = dashboard_presenter(admin_user, people_scope: Person.all)
-
-      rendered = render_inline(described_class.new(presenter: presenter))
-      current = rendered.at_css('[data-testid="dashboard-person-mobile-current"]')
-      overflow = rendered.at_css('[data-testid="dashboard-person-mobile-overflow"]')
-      selected_label = presenter.dashboard_person_options.find { |option| option.fetch(:selected) }.fetch(:label)
-      other_labels = presenter.dashboard_person_options.reject { |option| option.fetch(:selected) }.map do |option|
-        option.fetch(:label)
+      expect(links.count).to eq(presenter.dashboard_person_options.count)
+      presenter.dashboard_person_options.each do |option|
+        expected_path = "#{dashboard_path}?dashboard_person_id=#{option.fetch(:id)}"
+        expect(fallback.at_css("a[href='#{expected_path}']").text).to include(option.fetch(:label))
       end
+    end
 
-      expect(current.text).to include(selected_label)
-      expect(overflow['data-controller']).to include('ruby-ui--dropdown-menu')
-      expect(overflow.at_css('select')).not_to be_present
-      other_labels.each do |label|
-        expect(overflow.text).to include(label)
-      end
+    it 'renders every authorised person and all family in a responsive option grid' do
+      presenter = dashboard_presenter(admin_user, people_scope: Person.all)
+
+      rendered = render_inline(described_class.new(presenter: presenter))
+      group = rendered.at_css('[role="radiogroup"]')
+      options = group.css('[role="radio"]')
+      labels = presenter.dashboard_person_options.map { |option| option.fetch(:label) }
+
+      expect(options.pluck('aria-label')).to include(*labels)
+      expect(options.count).to eq(labels.count)
+      expect(group['class'].split).to include('grid-cols-1', 'sm:grid-cols-2', 'lg:grid-cols-4', 'w-full')
     end
   end
 
@@ -410,14 +388,12 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
   end
 
   describe 'dashboard density' do
-    it 'renders top metric cards with the compact layout' do
+    it 'renders three equal dashboard summary columns at every viewport' do
       rendered = render_inline(dashboard_view)
-      html = rendered.to_html
+      metrics = rendered.at_css('[data-testid="dashboard-metrics"]')
 
-      expect(html.scan('min-h-[7rem]').size).to eq(3)
-      expect(html).to include('sm:grid-cols-3')
-      expect(html).to include('min-h-[7rem]')
-      expect(html).not_to include('min-h-[9.5rem]')
+      expect(metrics['class'].split).to include('grid-cols-3', 'auto-rows-fr')
+      expect(metrics.to_html.scan('min-h-[6rem]').size).to eq(3)
     end
   end
 

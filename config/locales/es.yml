@@ -1871,6 +1871,7 @@ es:
       label: Persona del panel
       all_family: Toda la Familia
       all_family_initials: TF
+      change_person: Cambiar de persona
       more_people: Más personas
     as_needed:
       title: Tomar según sea necesario

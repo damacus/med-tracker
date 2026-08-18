@@ -2173,6 +2173,7 @@ pt:
       label: Pessoa do painel
       all_family: Toda a Família
       all_family_initials: TF
+      change_person: Alterar pessoa
       more_people: Mais pessoas
     as_needed:
       title: Tomar conforme necessário
