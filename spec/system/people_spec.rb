@@ -18,7 +18,10 @@ RSpec.describe 'People' do
       visit people_path
 
       within '[data-testid="people-list"]' do
-        expect(page).to have_text('People')
+        expect(page).to have_css('header.flex.flex-col.md\\:flex-row')
+        expect(page).to have_css('header h1.font-bold', text: 'People')
+        expect(page).to have_text('Manage People')
+        expect(page).to have_css('header a.w-full.md\\:w-auto', text: 'New Person')
 
         # Check that people are displayed
         people(:john).tap do |person|

@@ -185,7 +185,7 @@ module Components
               m3_card(class: 'rounded-[2rem] border border-outline-variant/40 bg-card p-5 shadow-elevation-1',
                       data: { version_id: version.id }) do
                 div(class: 'space-y-4') do
-                  div(class: 'flex items-start justify-between gap-3') do
+                  div(class: 'grid grid-cols-2 items-start gap-3') do
                     div(class: 'min-w-0') do
                       m3_text(size: '2', weight: 'muted',
                               class: 'uppercase tracking-widest font-bold') do
@@ -285,7 +285,10 @@ module Components
                           'bg-surface-container text-foreground'
                         end
 
-          span(class: "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium #{badge_class}") do
+          span(
+            class: 'inline-flex min-w-0 max-w-full items-center justify-self-end whitespace-normal break-words ' \
+                   "rounded-full px-2.5 py-0.5 text-right text-xs font-medium leading-tight #{badge_class}"
+          ) do
             event.titleize
           end
         end

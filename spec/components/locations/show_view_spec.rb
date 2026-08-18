@@ -21,6 +21,15 @@ RSpec.describe Components::Locations::ShowView, type: :component do
     expect(supply_badge['class']).to include('shrink-0')
   end
 
+  it 'uses the public dose format in medication cards' do
+    medication.update!(dose_amount: 1.0, dose_unit: 'tablet')
+
+    rendered = render_location
+
+    expect(rendered.text).to include('1 tablet')
+    expect(rendered.text).not_to include('1.0 tablet')
+  end
+
   it 'renders location members with the shared person avatar' do
     person = create(:person, name: 'Location Member')
     create(:location_membership, location: location, person: person)

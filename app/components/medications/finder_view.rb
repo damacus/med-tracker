@@ -94,27 +94,28 @@ module Components
           data: { action: 'submit->medication-search#search', medication_search_target: 'form' },
           class: 'mb-12'
         ) do
-          div(class: 'relative group') do
-            div(class: 'absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-on-surface-variant group-focus-within:text-primary transition-colors') do
-              render Icons::Search.new(size: 22)
+          div(class: 'flex flex-col gap-3 sm:flex-row sm:items-stretch') do
+            div(class: 'relative group min-w-0 flex-1') do
+              div(class: 'absolute inset-y-0 left-0 hidden pl-1 items-center pointer-events-none text-on-surface-variant group-focus-within:text-primary transition-colors sm:flex') do
+                render Icons::Search.new(size: 16)
+              end
+              input(
+                type: 'text',
+                id: 'medication-search-input',
+                name: 'q',
+                placeholder: t('medications.finder.placeholder'),
+                autocomplete: 'off',
+                data: { medication_search_target: 'input' },
+                class: 'block w-full pl-4 pr-4 py-6 border border-border rounded-[1.5rem] text-sm leading-5 bg-card shadow-[0_10px_40px_rgba(0,0,0,0.03)] focus:shadow-[0_10px_40px_rgba(0,0,0,0.06)] focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary sm:pl-6 sm:text-base transition-all placeholder:text-on-surface-variant'
+              )
             end
-            input(
-              type: 'text',
-              id: 'medication-search-input',
-              name: 'q',
-              placeholder: t('medications.finder.placeholder'),
-              autocomplete: 'off',
-              data: { medication_search_target: 'input' },
-              class: 'block w-full pl-14 pr-32 py-6 border border-border rounded-[1.5rem] leading-5 bg-card shadow-[0_10px_40px_rgba(0,0,0,0.03)] focus:shadow-[0_10px_40px_rgba(0,0,0,0.06)] focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary sm:text-base transition-all placeholder:text-on-surface-variant'
-            )
-            div(class: 'absolute inset-y-2 right-2 flex items-center') do
-              m3_button(
-                type: :submit,
-                variant: :filled,
-                class: 'h-full rounded-shape-xl px-8 font-bold text-sm shadow-lg shadow-primary/20',
-                data: { medication_search_target: 'submitButton' }
-              ) { t('medications.finder.search_button') }
-            end
+            m3_button(
+              type: :submit,
+              variant: :filled,
+              class: 'min-h-[56px] w-full shrink-0 rounded-shape-xl px-8 font-bold text-sm shadow-lg ' \
+                     'shadow-primary/20 sm:w-auto',
+              data: { medication_search_target: 'submitButton' }
+            ) { t('medications.finder.search_button') }
           end
           render_filters
         end

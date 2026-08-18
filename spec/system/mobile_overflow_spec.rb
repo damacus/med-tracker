@@ -53,6 +53,37 @@ RSpec.describe 'Mobile overflow handling' do
     end
   end
 
+  it 'wraps long audit event names inside the mobile card header', :js do
+    long_event = 'auth_token/native_device_token/credential_rotation_completed'
+    create_household_audit_version(users(:admin), event: long_event)
+    page.current_window.resize_to(390, 844)
+
+    visit admin_audit_logs_path
+
+    geometry = page.evaluate_script(<<~JS)
+      (() => {
+        const card = document.querySelector('[data-testid="admin-audit-logs-mobile-list"] [data-version-id]');
+        const badge = Array.from(card.querySelectorAll('span')).find((element) =>
+          element.textContent.includes('Credential Rotation Completed')
+        );
+        const cardRect = card.getBoundingClientRect();
+        const badgeRect = badge.getBoundingClientRect();
+        return {
+          cardLeft: cardRect.left,
+          cardRight: cardRect.right,
+          cardMidpoint: cardRect.left + (cardRect.width / 2),
+          badgeLeft: badgeRect.left,
+          badgeRight: badgeRect.right,
+          overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
+        };
+      })()
+    JS
+
+    expect(geometry.fetch('overflow')).to be <= 1
+    expect(geometry.fetch('badgeLeft')).to be >= geometry.fetch('cardMidpoint')
+    expect(geometry.fetch('badgeRight')).to be <= geometry.fetch('cardRight')
+  end
+
   it 'keeps desktop tables visible on dense table pages', :js do
     page.current_window.resize_to(1024, 900)
 
@@ -126,13 +157,13 @@ RSpec.describe 'Mobile overflow handling' do
     JS
   end
 
-  def create_household_audit_version(admin)
+  def create_household_audit_version(admin, event: 'update')
     PaperTrail::Version.create!(
       household_id: browser_household.id,
       actor_membership_id: browser_membership&.id,
       item_type: 'User',
       item_id: admin.id,
-      event: 'update',
+      event: event,
       whodunnit: admin.id.to_s,
       created_at: Time.current
     )

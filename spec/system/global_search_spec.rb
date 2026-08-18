@@ -96,6 +96,19 @@ RSpec.describe 'Global search command palette', :browser do
 
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
     expect(page.evaluate_script('window.__searchFetches')).to be_empty
+    expect(page).to have_no_css('#global_search_results', text: 'No results')
+    expect(find('[data-global-search-target="status"]', visible: :all).text).to be_empty
+  end
+
+  scenario 'shows one empty state after a completed search' do
+    visit root_path
+    find('button[aria-label="Open global search"]').click
+
+    fill_in 'Search MedTracker', with: 'definitely-not-a-medtracker-record'
+
+    expect(page).to have_css('#global_search_results > div', text: 'No results', exact_text: true)
+    expect(find('[data-global-search-target="status"]', visible: :all).text).to be_empty
+    expect(page.all('#global_search_results > div', text: 'No results', exact_text: true).size).to eq(1)
   end
 
   def global_search_geometry

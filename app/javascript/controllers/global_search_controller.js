@@ -43,8 +43,7 @@ export default class extends Controller {
     this.updateTriggerState(true)
 
     this.inputTarget.value = ""
-    this.resultsTarget.innerHTML = ""
-    this.renderResults([])
+    this.clearResults()
     this.animatePanelOpen()
     requestAnimationFrame(() => this.inputTarget.focus({ preventScroll: true }))
   }
@@ -69,7 +68,14 @@ export default class extends Controller {
   search() {
     clearTimeout(this.searchTimer)
     this.searchTimer = setTimeout(() => {
-      this.fetchResults(this.inputTarget.value.trim())
+      const query = this.inputTarget.value.trim()
+      if (query === "") {
+        this.abortCurrentSearch()
+        this.clearResults()
+        return
+      }
+
+      this.fetchResults(query)
     }, 150)
   }
 
@@ -128,11 +134,11 @@ export default class extends Controller {
   showLoading() {
     this.activeIndex = -1
     this.resultsTarget.innerHTML = `
-      <div class="px-3 py-8 text-center text-sm text-on-surface-variant">
+      <div class="px-3 py-8 text-center text-sm text-on-surface-variant" role="status" aria-live="polite">
         ${this.escapeHtml(this.t("loading"))}
       </div>
     `
-    this.setStatus(this.t("loading"))
+    this.setStatus("")
   }
 
   renderResults(results) {
@@ -140,17 +146,23 @@ export default class extends Controller {
 
     if (results.length === 0) {
       this.resultsTarget.innerHTML = `
-        <div class="px-3 py-8 text-center text-sm text-on-surface-variant">
+        <div class="px-3 py-8 text-center text-sm text-on-surface-variant" role="status" aria-live="polite">
           ${this.escapeHtml(this.t("no_results"))}
         </div>
       `
-      this.setStatus(this.t("no_results"))
+      this.setStatus("")
       return
     }
 
     this.resultsTarget.innerHTML = this.groupedResultsHtml(results)
     this.animateResultRows()
     this.setStatus(this.resultCountText(results.length))
+  }
+
+  clearResults() {
+    this.activeIndex = -1
+    this.resultsTarget.innerHTML = ""
+    this.setStatus("")
   }
 
   groupedResultsHtml(results) {
