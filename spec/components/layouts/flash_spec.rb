@@ -12,6 +12,20 @@ RSpec.describe Components::Layouts::Flash, type: :component do
     expect(rendered.to_html).to include('z-[60]')
   end
 
+  it 'offsets the fixed flash below the demo notice' do
+    original_value = ENV.fetch('DEMO_MODE', nil)
+    ENV['DEMO_MODE'] = 'true'
+
+    rendered = render_inline(described_class.new(notice: 'Saved'))
+
+    expect(rendered.to_html).to include('fixed')
+    expect(rendered.to_html).to include('top-48')
+    expect(rendered.to_html).to include('md:ml-64')
+    expect(rendered.to_html).to include('md:top-28')
+  ensure
+    original_value.nil? ? ENV.delete('DEMO_MODE') : ENV['DEMO_MODE'] = original_value
+  end
+
   describe 'notice flash' do
     it 'renders the notice message directly without redundant title' do
       rendered = render_inline(described_class.new(notice: 'Medication added successfully'))

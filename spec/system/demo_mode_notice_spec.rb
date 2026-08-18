@@ -15,16 +15,32 @@ RSpec.describe 'Demo mode notice', :browser do
         );
         const demoRect = demo.getBoundingClientRect();
         const reminderRect = reminder.getBoundingClientRect();
-        const overlap = demoRect.top < reminderRect.bottom && reminderRect.top < demoRect.bottom;
+        const overlap = demoRect.left < reminderRect.right && reminderRect.left < demoRect.right &&
+          demoRect.top < reminderRect.bottom && reminderRect.top < demoRect.bottom;
         const visible = [demoRect, reminderRect].every((rect) =>
           rect.top >= 0 && rect.left >= 0 && rect.right <= window.innerWidth && rect.bottom <= window.innerHeight
         );
-        const unobscured = [demo, reminder].every((element) => {
+        const content = [demo.querySelector('#demo-environment-title'), reminder];
+        const unobscured = content.every((element) => {
           const rect = element.getBoundingClientRect();
           return element.contains(document.elementFromPoint(rect.left + (rect.width / 2), rect.top + (rect.height / 2)));
         });
 
         return { overlap, visible: visible && unobscured };
+      })()
+    JS
+  end
+
+  let(:profile_flash_viewport_script) do
+    <<~JS
+      (() => {
+        const flash = document.querySelector('#flash > div');
+        const rect = flash.getBoundingClientRect();
+
+        return {
+          fixed: getComputedStyle(flash).position === 'fixed',
+          visible: rect.top >= 0 && rect.left >= 0 && rect.right <= window.innerWidth && rect.bottom <= window.innerHeight
+        };
       })()
     JS
   end
@@ -77,7 +93,29 @@ RSpec.describe 'Demo mode notice', :browser do
     end
   end
 
+  it 'keeps Turbo profile feedback fixed in view after a scrolled mobile update' do
+    ENV['DEMO_MODE'] = 'true'
+    user = users(:damacus)
+    login_as(user)
+    page.current_window.resize_to(390, 844)
+    visit profile_path
+
+    time_zone = find_by_id('account_time_zone')
+    page.execute_script('arguments[0].scrollIntoView({ block: "center" })', time_zone)
+    expect(page.evaluate_script('window.scrollY')).to be_positive
+
+    select 'Pacific Time (US & Canada)', from: 'Time Zone'
+    click_button 'Save time zone'
+
+    expect(page).to have_text('Profile updated successfully')
+    expect(profile_flash_viewport_geometry).to include('fixed' => true, 'visible' => true)
+  end
+
   def profile_notice_geometry
     page.evaluate_script(profile_notice_geometry_script)
+  end
+
+  def profile_flash_viewport_geometry
+    page.evaluate_script(profile_flash_viewport_script)
   end
 end

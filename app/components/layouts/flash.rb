@@ -3,11 +3,10 @@
 module Components
   module Layouts
     class Flash < Components::Base
-      def initialize(notice: nil, alert: nil, warning: nil, fixed: !DemoMode.enabled?)
+      def initialize(notice: nil, alert: nil, warning: nil)
         @notice = notice
         @alert = alert
         @warning = warning
-        @fixed = fixed
         super()
       end
 
@@ -24,13 +23,13 @@ module Components
       private
 
       def container_class
-        return 'fixed inset-x-0 top-20 z-[60] pointer-events-none md:top-4' if @fixed
+        return 'fixed inset-x-0 top-20 z-[60] pointer-events-none md:top-4' unless DemoMode.enabled?
 
-        'relative z-40 px-4 md:ml-64'
+        'fixed inset-x-0 top-48 z-[60] pointer-events-none md:ml-64 md:top-28'
       end
 
       def content_class
-        @fixed ? 'container mx-auto px-4' : 'space-y-4'
+        'container mx-auto px-4'
       end
 
       def render_notice
