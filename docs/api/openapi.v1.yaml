@@ -3386,9 +3386,11 @@ components:
           items:
             $ref: '#/components/schemas/MedicationLookupResult'
         error:
-          type: string
-          enum:
-            - Medication search is temporarily unavailable.
+          $ref: '#/components/schemas/MedicationLookupUnavailableError'
+    MedicationLookupUnavailableError:
+      type: string
+      enum:
+        - Medication search is temporarily unavailable.
     MedicationLookupPermissions:
       type: object
       additionalProperties: false

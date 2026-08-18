@@ -60,29 +60,35 @@ RSpec.describe 'Taskfiles' do
   end
 
   it 'defines deterministic native API client generation tasks' do
-    expect(root_taskfile.dig('tasks', 'api-clients:generate', 'cmds'))
-      .to eq(['./client-tools/openapi-generator/generate.fish'])
-    expect(root_taskfile.dig('tasks', 'api-clients:verify-generated', 'cmds'))
-      .to eq(['./client-tools/openapi-generator/generate.fish verify'])
-    expect(root_taskfile.dig('tasks', 'api-clients:kotlin', 'cmds'))
-      .to eq(['./client-tools/openapi-generator/generate-kotlin.fish'])
-    expect(root_taskfile.dig('tasks', 'api-clients:swift', 'cmds'))
-      .to eq(['./client-tools/openapi-generator/generate-swift.fish'])
-    expect(root_taskfile.dig('tasks', 'api-clients:verify', 'cmds', 0, 'task'))
-      .to eq('api-clients:verify-generated')
+    expect(api_client_task_commands).to eq(
+      'api-clients:generate' => ['./client-tools/openapi-generator/generate.fish'],
+      'api-clients:verify-generated' => ['./client-tools/openapi-generator/generate.fish verify'],
+      'api-clients:kotlin' => ['./client-tools/openapi-generator/generate-kotlin.fish'],
+      'api-clients:swift' => ['./client-tools/openapi-generator/generate-swift.fish'],
+      'api-clients:verify' => ['api-clients:verify-generated']
+    )
+  end
 
+  it 'pins the native API generator image and language generators' do
     expect(swift_generator_script).to include(
-      'openapitools/openapi-generator-cli:v7.20.0@sha256:fa4add01856e44becf70674164df354d61bd37ba0f444d27be949801e013921b',
+      generator_image,
       '-g swift6',
       'OPENAPI_SHA256'
     )
     expect(kotlin_generator_script).to include(
-      'openapitools/openapi-generator-cli:v7.20.0@sha256:fa4add01856e44becf70674164df354d61bd37ba0f444d27be949801e013921b',
+      generator_image,
       '-g kotlin',
       'OPENAPI_SHA256'
     )
-    expect(Rails.root.join('client-tools/openapi-generator/generate-swift.fish')).to be_executable
-    expect(Rails.root.join('client-tools/openapi-generator/generate-kotlin.fish')).to be_executable
+  end
+
+  it 'keeps native API generator entry points executable' do
+    expect(
+      [
+        Rails.root.join('client-tools/openapi-generator/generate-swift.fish'),
+        Rails.root.join('client-tools/openapi-generator/generate-kotlin.fish')
+      ]
+    ).to all(be_executable)
   end
 
   it 'serializes Docker Compose runs within each worktree environment' do
@@ -293,6 +299,21 @@ RSpec.describe 'Taskfiles' do
 
   def kotlin_generator_script
     Rails.root.join('client-tools/openapi-generator/generate-kotlin.fish').read
+  end
+
+  def api_client_task_commands
+    {
+      'api-clients:generate' => root_taskfile.dig('tasks', 'api-clients:generate', 'cmds'),
+      'api-clients:verify-generated' => root_taskfile.dig('tasks', 'api-clients:verify-generated', 'cmds'),
+      'api-clients:kotlin' => root_taskfile.dig('tasks', 'api-clients:kotlin', 'cmds'),
+      'api-clients:swift' => root_taskfile.dig('tasks', 'api-clients:swift', 'cmds'),
+      'api-clients:verify' => [root_taskfile.dig('tasks', 'api-clients:verify', 'cmds', 0, 'task')]
+    }
+  end
+
+  def generator_image
+    'openapitools/openapi-generator-cli:v7.20.0@sha256:' \
+      'fa4add01856e44becf70674164df354d61bd37ba0f444d27be949801e013921b'
   end
 
   def dashboard_profile_script

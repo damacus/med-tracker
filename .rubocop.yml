@@ -13,6 +13,7 @@ AllCops:
     - "config/**/*"
     - "script/**/*"
     - "scripts/**/*"
+    - "client-tools/generated/**/*"
     - "bin/{rails,rake}"
     - !ruby/regexp /old_and_unused\.rb$/
   <% `git status --ignored --porcelain`.lines.grep(/^!! /).each do |path| %>

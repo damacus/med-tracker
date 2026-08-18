@@ -10,4 +10,6 @@ hideGenerationTimestamp: true
 enumUnknownDefaultCase: true
 modelNameMappings:
   Error: ApiError
+reservedWordsMappings:
+  Error: ApiError
 sortModelPropertiesByRequiredFlag: true

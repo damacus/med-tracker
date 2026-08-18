@@ -1008,6 +1008,12 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(unavailable_results).to include('type' => 'array', 'maxItems' => 0, 'items' => expected_items)
     end
 
+    it 'uses a reusable error enum for unavailable medication lookup responses' do
+      expect(described_class.schema('MedicationLookupUnavailableResponse').dig('properties', 'error', '$ref')).to eq(
+        '#/components/schemas/MedicationLookupUnavailableError'
+      )
+    end
+
     it 'matches empty and successful medication lookup Rails responses' do
       household_id, headers = manager_api_context
 

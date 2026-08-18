@@ -7,4 +7,6 @@ enumUnknownDefaultCase: true
 validatable: false
 modelNameMappings:
   Error: ApiError
+reservedWordsMappings:
+  Error: ApiError
 sortModelPropertiesByRequiredFlag: true
