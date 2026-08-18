@@ -26,8 +26,8 @@ jobs:
       - name: Install Fish
         run: sudo apt-get update && sudo apt-get install --yes fish
 
-      - name: Verify generated output and determinism
-        run: task api-clients:verify
+      - name: Verify generated output and drift
+        run: task api-clients:verify-generated
 
   api_client_kotlin:
     name: Compile and test Kotlin API client
