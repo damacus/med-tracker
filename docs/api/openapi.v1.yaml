@@ -4264,7 +4264,7 @@ components:
         description:
           type: string
         dose_amount:
-          $ref: '#/components/schemas/DecimalValue'
+          $ref: '#/components/schemas/NullableDecimalValue'
         dose_unit:
           type: string
           enum:
@@ -4281,7 +4281,7 @@ components:
             - sachet
             - pad
         current_supply:
-          $ref: '#/components/schemas/DecimalValue'
+          $ref: '#/components/schemas/NullableDecimalValue'
         reorder_threshold:
           $ref: '#/components/schemas/DecimalValue'
         warnings:
@@ -4322,7 +4322,7 @@ components:
         description:
           type: string
         dose_amount:
-          $ref: '#/components/schemas/DecimalValue'
+          $ref: '#/components/schemas/NullableDecimalValue'
         dose_unit:
           type: string
           enum:
@@ -4339,7 +4339,7 @@ components:
             - sachet
             - pad
         current_supply:
-          $ref: '#/components/schemas/DecimalValue'
+          $ref: '#/components/schemas/NullableDecimalValue'
         reorder_threshold:
           $ref: '#/components/schemas/DecimalValue'
         warnings:
@@ -4383,7 +4383,7 @@ components:
             supplier:
               type: string
             quantity:
-              $ref: '#/components/schemas/DecimalValue'
+              $ref: '#/components/schemas/NullableDecimalValue'
             expected_arrival_on:
               $ref: '#/components/schemas/Date'
     DosageOption:
@@ -4524,9 +4524,9 @@ components:
             - weekly
             - monthly
         current_supply:
-          $ref: '#/components/schemas/DecimalValue'
+          $ref: '#/components/schemas/NullableDecimalValue'
         reorder_threshold:
-          $ref: '#/components/schemas/DecimalValue'
+          $ref: '#/components/schemas/NullableDecimalValue'
     DosageOptionUpdateAttributes:
       type: object
       additionalProperties: false
@@ -4558,9 +4558,9 @@ components:
             - weekly
             - monthly
         current_supply:
-          $ref: '#/components/schemas/DecimalValue'
+          $ref: '#/components/schemas/NullableDecimalValue'
         reorder_threshold:
-          $ref: '#/components/schemas/DecimalValue'
+          $ref: '#/components/schemas/NullableDecimalValue'
     HealthEvent:
       type: object
       additionalProperties: false
@@ -4909,7 +4909,7 @@ components:
           type: integer
           minimum: 1
         min_hours_between_doses:
-          $ref: '#/components/schemas/DecimalValue'
+          $ref: '#/components/schemas/NullableDecimalValue'
         dose_cycle:
           type: string
           enum:
@@ -5107,7 +5107,7 @@ components:
               type: integer
               minimum: 1
             min_hours_between_doses:
-              $ref: '#/components/schemas/DecimalValue'
+              $ref: '#/components/schemas/NullableDecimalValue'
             dose_cycle:
               type: string
               enum:
@@ -5149,7 +5149,7 @@ components:
           type: integer
           minimum: 1
         min_hours_between_doses:
-          $ref: '#/components/schemas/DecimalValue'
+          $ref: '#/components/schemas/NullableDecimalValue'
         dose_cycle:
           type: string
           enum:

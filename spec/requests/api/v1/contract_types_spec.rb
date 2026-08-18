@@ -30,6 +30,25 @@ RSpec.describe 'API v1 JSON value types' do
     )
   end
 
+  it 'allows explicit null for a clearable decimal value' do
+    medication = Medication.create!(
+      household: locations(:home).household,
+      location: locations(:home),
+      name: "Clearable inventory #{SecureRandom.hex(4)}",
+      current_supply: 10,
+      reorder_threshold: 1
+    )
+
+    patch api_v1_household_medication_path(household_id, medication.portable_id),
+          params: { medication: { current_supply: nil } },
+          headers: headers,
+          as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.dig('data', 'current_supply')).to be_nil
+    expect(medication.reload.current_supply).to be_nil
+  end
+
   it 'rejects numeric JSON resource identifiers with the validation envelope' do
     post api_v1_household_schedules_path(household_id),
          params: {

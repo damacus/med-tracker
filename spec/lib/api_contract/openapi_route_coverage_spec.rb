@@ -352,6 +352,51 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       }
     end
 
+    let(:clearable_decimal_requests) do
+      {
+        'MedicationCreateRequest' => {
+          medication: {
+            name: 'Contract medicine', location_id: 1, reorder_threshold: '5',
+            dose_amount: nil, current_supply: nil
+          }
+        },
+        'MedicationUpdateRequest' => { medication: { dose_amount: nil, current_supply: nil } },
+        'MedicationOrderDetailsRequest' => { order_details: { quantity: nil } },
+        'DosageOptionCreateRequest' => {
+          dosage_option: {
+            medication_id: '1', amount: '500', unit: 'mg', frequency: 'Twice daily',
+            default_max_daily_doses: 2, default_min_hours_between_doses: '6', default_dose_cycle: 'daily',
+            current_supply: nil, reorder_threshold: nil
+          }
+        },
+        'DosageOptionUpdateRequest' => { dosage_option: { current_supply: nil, reorder_threshold: nil } },
+        'ScheduleCreateRequest' => {
+          schedule: {
+            person_id: '1', medication_id: '1', dose_amount: '5', dose_unit: 'ml',
+            start_date: Date.current.iso8601, end_date: 1.month.from_now.to_date.iso8601,
+            min_hours_between_doses: nil
+          }
+        },
+        'ScheduleUpdateRequest' => { schedule: { min_hours_between_doses: nil } },
+        'PersonMedicationCreateRequest' => {
+          person_medication: { person_id: '1', medication_id: '1', min_hours_between_doses: nil }
+        },
+        'PersonMedicationUpdateRequest' => { person_medication: { min_hours_between_doses: nil } }
+      }
+    end
+
+    let(:numeric_clearable_decimal_requests) do
+      [
+        ['MedicationUpdateRequest', { medication: { dose_amount: 5 } }],
+        ['MedicationUpdateRequest', { medication: { current_supply: 10 } }],
+        ['MedicationOrderDetailsRequest', { order_details: { quantity: 12 } }],
+        ['DosageOptionUpdateRequest', { dosage_option: { current_supply: 20 } }],
+        ['DosageOptionUpdateRequest', { dosage_option: { reorder_threshold: 5 } }],
+        ['ScheduleUpdateRequest', { schedule: { min_hours_between_doses: 4 } }],
+        ['PersonMedicationUpdateRequest', { person_medication: { min_hours_between_doses: 6 } }]
+      ]
+    end
+
     it 'uses the canonical API v1 server address' do
       expect(described_class.document.fetch('servers').first.fetch('url')).to eq('/api/v1')
     end
@@ -1245,6 +1290,22 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
         '/medication/household_id'
       )
       expect(described_class.schema_errors('MedicationInventoryAdjustmentRequest', adjustment)).to be_empty
+    end
+
+    it 'accepts explicit null only for clearable decimal request fields' do
+      aggregate_failures do
+        clearable_decimal_requests.each do |schema, payload|
+          expect(described_class.schema_errors(schema, payload)).to be_empty, schema
+        end
+      end
+    end
+
+    it 'rejects numeric JSON for clearable decimal request fields' do
+      aggregate_failures do
+        numeric_clearable_decimal_requests.each do |schema, payload|
+          expect(described_class.schema_errors(schema, payload)).not_to be_empty, schema
+        end
+      end
     end
 
     it 'matches Rails location and medication collections' do
