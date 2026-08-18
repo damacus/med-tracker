@@ -107,8 +107,24 @@ RSpec.describe 'Global search command palette', :browser do
     fill_in 'Search MedTracker', with: 'definitely-not-a-medtracker-record'
 
     expect(page).to have_css('#global_search_results > div', text: 'No results', exact_text: true)
-    expect(find('[data-global-search-target="status"]', visible: :all).text).to be_empty
-    expect(page.all('#global_search_results > div', text: 'No results', exact_text: true).size).to eq(1)
+    status = find('[data-global-search-target="status"]', visible: :all)
+    expect(status.text(:all)).to eq('No results')
+    expect(status['aria-live']).to eq('polite')
+    expect(status['class']).to include('sr-only')
+    status_geometry = page.evaluate_script(<<~JS)
+      (() => {
+        const status = document.querySelector('[data-global-search-target="status"]');
+        const rect = status.getBoundingClientRect();
+        return { width: rect.width, height: rect.height, overflow: getComputedStyle(status).overflow };
+      })()
+    JS
+    expect(status_geometry.fetch('width')).to be <= 1
+    expect(status_geometry.fetch('height')).to be <= 1
+    expect(status_geometry.fetch('overflow')).to eq('hidden')
+    visible_empty_states = page.all(
+      '#global_search_results > div', text: 'No results', exact_text: true, visible: :visible
+    )
+    expect(visible_empty_states.size).to eq(1)
   end
 
   def global_search_geometry

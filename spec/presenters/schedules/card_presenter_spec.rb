@@ -16,31 +16,31 @@ RSpec.describe Schedules::CardPresenter do
 
   describe '#dose_description' do
     it 'combines dose text and frequency with a bullet separator' do
-      expect(presenter.dose_description).to eq('500mg • Twice daily')
+      expect(presenter.dose_description).to eq('500 mg • Twice daily')
     end
 
-    it 'truncates fractional dose amounts to integer' do
-      allow(schedule).to receive(:dose_amount).and_return(250.7)
-      expect(presenter.dose_description).to eq('250mg • Twice daily')
+    it 'preserves fractional tablet doses' do
+      allow(schedule).to receive_messages(dose_amount: 0.5, dose_unit: 'tablet')
+
+      expect(presenter.dose_description).to eq('0.5 tablets • Twice daily')
     end
 
-    it 'works for non-mg units' do
+    it 'keeps one tablet singular' do
+      allow(schedule).to receive_messages(dose_amount: 1.0, dose_unit: 'tablet', frequency: 'Once daily')
+
+      expect(presenter.dose_description).to eq('1 tablet • Once daily')
+    end
+
+    it 'formats other measurement units' do
       allow(schedule).to receive_messages(dose_amount: 5, dose_unit: 'ml', frequency: 'Once daily')
 
-      expect(presenter.dose_description).to eq('5ml • Once daily')
-    end
-  end
-
-  describe '#dose_description (dose_text detail)' do
-    it 'uses to_i so a float dose like 2.9 shows as 2 (truncates, not rounds)' do
-      allow(schedule).to receive(:dose_amount).and_return(2.9)
-      # to_i truncates toward zero — 2.9.to_i == 2
-      expect(presenter.dose_description).to start_with('2mg')
+      expect(presenter.dose_description).to eq('5 ml • Once daily')
     end
 
     it 'handles zero dose amount' do
       allow(schedule).to receive(:dose_amount).and_return(0)
-      expect(presenter.dose_description).to start_with('0mg')
+
+      expect(presenter.dose_description).to eq('0 mg • Twice daily')
     end
   end
 

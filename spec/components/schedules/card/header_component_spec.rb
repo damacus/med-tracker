@@ -22,7 +22,7 @@ RSpec.describe Components::Schedules::Card::HeaderComponent, type: :component do
     rendered = render_inline(described_class.new(schedule: schedule, presenter: presenter))
 
     expect(rendered.text).to include('Ibuprofen')
-    expect(rendered.text).to include('400mg • Twice daily')
+    expect(rendered.text).to include('400 mg • Twice daily')
     expect(rendered.text).not_to include('Ready Now')
   end
 
