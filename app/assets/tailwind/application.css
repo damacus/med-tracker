@@ -6,6 +6,12 @@
   width: calc(100vw - 2rem);
 }
 
+@media (min-width: 640px) {
+  .medication-finder-search-input {
+    padding-left: 32px;
+  }
+}
+
 .supply-progress {
   appearance: none;
   block-size: 100%;
