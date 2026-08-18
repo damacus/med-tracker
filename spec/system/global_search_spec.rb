@@ -98,6 +98,27 @@ RSpec.describe 'Global search command palette', :browser do
     expect(page.evaluate_script('window.__searchFetches')).to be_empty
   end
 
+  scenario 'escapes quoted paths in search results' do
+    visit root_path
+    expect(page).to have_css('body[data-global-search-connected="true"]', visible: :all)
+    find('button[aria-label="Open global search"]').click
+
+    page.execute_script(<<~JS)
+      (() => {
+        const controller = window.Stimulus.getControllerForElementAndIdentifier(document.body, 'global-search')
+        controller.resultsTarget.innerHTML = controller.resultHtml({
+          path: '/people" onfocus="window.xss = true',
+          type: 'people',
+          title: 'Quoted path',
+          subtitle: ''
+        }, 0)
+      })()
+    JS
+
+    expect(page).to have_link('Quoted path')
+    expect(page).to have_no_css('#global_search_results a[onfocus]')
+  end
+
   def global_search_geometry
     page.evaluate_script(<<~JS)
       (() => {

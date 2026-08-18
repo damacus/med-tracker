@@ -326,7 +326,7 @@ export default class extends Controller {
       return `
         <div class="mt-4 flex justify-end">
           <a
-            href="${this.hrefAttribute(actionUrl)}"
+            href="${this.escapeHtml(this.hrefAttribute(actionUrl))}"
             class="inline-flex items-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-on-primary shadow-sm transition-all hover:shadow-md"
             data-testid="add-medication-link"
           >${this.escapeHtml(this.t("addMedication"))}</a>
@@ -384,7 +384,7 @@ export default class extends Controller {
             <p class="text-sm text-on-surface-variant">${this.escapeHtml(this.restockConfirmationText(result, medication, quantity))}</p>
             ${this.currentSupplyText(medication)}
           </div>
-          <form action="${this.hrefAttribute(medication.refill_path)}" method="post" class="mt-6 space-y-4" data-turbo="false">
+          <form action="${this.escapeHtml(this.hrefAttribute(medication.refill_path))}" method="post" class="mt-6 space-y-4" data-turbo="false">
             <input type="hidden" name="authenticity_token" value="${this.escapeHtml(this.csrfToken)}">
             <input type="hidden" name="_method" value="patch">
             <input type="hidden" name="refill[restock_date]" value="${this.escapeHtml(this.today)}">
@@ -495,7 +495,7 @@ export default class extends Controller {
 
     return `
       <a
-        href="${this.hrefAttribute(url)}"
+        href="${this.escapeHtml(this.hrefAttribute(url))}"
         target="_blank"
         rel="noopener noreferrer"
         class="mt-2 inline-flex text-xs font-medium text-primary underline-offset-2 hover:underline"
@@ -510,7 +510,7 @@ export default class extends Controller {
 
     return `
       <a
-        href="${this.hrefAttribute(url)}"
+        href="${this.escapeHtml(this.hrefAttribute(url))}"
         target="_blank"
         rel="noopener noreferrer"
         class="ml-3 mt-2 inline-flex text-xs font-medium text-primary underline-offset-2 hover:underline"
