@@ -1,0 +1,76 @@
+---
+name: API Clients
+
+"on":
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  api_client_generation:
+    name: Generate and verify API clients
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Set up Task
+        uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
+
+      - name: Install Fish
+        run: sudo apt-get update && sudo apt-get install --yes fish
+
+      - name: Verify generated output and determinism
+        run: task api-clients:verify
+
+  api_client_kotlin:
+    name: Compile and test Kotlin API client
+    needs: api_client_generation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Task
+        uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
+
+      - name: Compile generated Kotlin package
+        working-directory: client-tools/generated/kotlin
+        run: ./gradlew --no-daemon check assemble
+
+      - name: Run Kotlin consumer tests
+        run: task api-clients:kotlin:test
+
+  api_client_swift:
+    name: Compile and test Swift API client
+    needs: api_client_generation
+    runs-on: macos-15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@7ca6abe6b3b0e8b5421b88be48feee39cbf52c6a
+        with:
+          swift-version: "6.3.3"
+
+      - name: Compile generated Swift package
+        run: swift build --package-path client-tools/generated/swift
+
+      - name: Run Swift consumer tests
+        run: swift test --package-path client-tools/swift-consumer-tests

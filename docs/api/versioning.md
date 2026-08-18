@@ -64,7 +64,11 @@ Generated files must record the OpenAPI revision used to create them. Regenerate
 
 Keep handwritten code at the product boundary. Authentication storage, retries, command wording, user prompts, and domain workflows remain maintained client code. Generated code owns only HTTP transport types and operation bindings.
 
-The current Rust tools predate a checked-in generator. Until generated bindings replace their handwritten transport types, the OpenAPI contract and compatibility gate remain authoritative. New client surfaces must not add another handwritten copy of request or response schemas.
+The Rust tools predate the checked-in Swift and Kotlin generators and retain
+their handwritten transport types. The OpenAPI contract and compatibility gate
+remain authoritative for every client. New client surfaces must use the
+generated bindings where they apply and must not add another handwritten copy
+of request or response schemas.
 
 ## Runtime capability checks
 
