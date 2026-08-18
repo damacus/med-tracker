@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.5.22](https://github.com/damacus/med-tracker/compare/v0.5.21...v0.5.22) (2026-08-18)
+
+
+### Bug Fixes
+
+* **finder:** compile desktop icon clearance ([7595794](https://github.com/damacus/med-tracker/commit/7595794d06b2ef1b8d669195844ee2d210bd4661))
+* **finder:** keep search text clear of icon ([d974c71](https://github.com/damacus/med-tracker/commit/d974c71a40b6203df81e5c70c839f1e24f76a23f))
+* **finder:** use stable icon clearance ([4f7c743](https://github.com/damacus/med-tracker/commit/4f7c7435a6e6d3574e9d6f08e6302a049827b39f))
+* **profile:** accept usable time zone aliases ([6dd7776](https://github.com/damacus/med-tracker/commit/6dd77769197860e47566ae667769a0ca2efa9c6d))
+* **profile:** keep demo flash visible ([113f029](https://github.com/damacus/med-tracker/commit/113f029af351c57bb7609ce336af9dd2ad3c9626))
+* **profile:** make notices dismissible ([0342139](https://github.com/damacus/med-tracker/commit/0342139a0bdd0385174ddb93dd5e4c65ceed0fd6))
+* **profile:** preserve stored time zone ([6034077](https://github.com/damacus/med-tracker/commit/6034077644e6680fe50f6480f6de24ca17bc5328))
+* **profile:** stack demo and two-factor notices ([5e91133](https://github.com/damacus/med-tracker/commit/5e9113385cc3c60af09434a2f768d726c9d4560a))
+* **ui:** align destructive confirmations ([f3f7aa6](https://github.com/damacus/med-tracker/commit/f3f7aa6df816a68d92505d23e432ce514a4f8a75))
+* **ui:** complete dose and search polish ([fe4a35b](https://github.com/damacus/med-tracker/commit/fe4a35baf55b473548d9b7190f4898bc60b1a3dd))
+* **ui:** keep polished states consistent ([f7646d7](https://github.com/damacus/med-tracker/commit/f7646d7fe062fade503e17d44d7c919fbe3a04fc))
+* **ui:** polish inconsistent application surfaces ([bdd9faf](https://github.com/damacus/med-tracker/commit/bdd9faf5acad970301d3c758c578d779741fe374))
+* **ui:** preserve dialog action widths ([39119fe](https://github.com/damacus/med-tracker/commit/39119fe674e11e986c3e484a75d8cae3670ef8e4))
+* **ui:** restore mobile create actions ([da21268](https://github.com/damacus/med-tracker/commit/da21268e53a8268e2b83fe97d132ca6bd975e0e0))
+
 ## [0.5.21](https://github.com/damacus/med-tracker/compare/v0.5.20...v0.5.21) (2026-08-18)
 
 
