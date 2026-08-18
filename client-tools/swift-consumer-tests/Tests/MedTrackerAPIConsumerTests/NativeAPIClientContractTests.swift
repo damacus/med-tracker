@@ -46,6 +46,65 @@ final class NativeAPIClientContractTests: XCTestCase {
         XCTAssertNotNil(take.takenAt)
     }
 
+    func testNullableDecimalStringsDecodeAsOptionalStrings() throws {
+        let decoder = JSONDecoder()
+
+        let populated = try decoder.decode(
+            MedicationCreateAttributes.self,
+            from: Data(
+                """
+                {
+                  "name": "Example medicine",
+                  "reorder_threshold": "2.50",
+                  "location_id": 3,
+                  "dose_amount": "0.50",
+                  "current_supply": "10.00"
+                }
+                """.utf8
+            )
+        )
+        let populatedDoseAmount: String? = populated.doseAmount
+        let populatedCurrentSupply: String? = populated.currentSupply
+        XCTAssertEqual(populatedDoseAmount, "0.50")
+        XCTAssertEqual(populatedCurrentSupply, "10.00")
+
+        let explicitNull = try decoder.decode(
+            MedicationCreateAttributes.self,
+            from: Data(
+                """
+                {
+                  "name": "Example medicine",
+                  "reorder_threshold": "2.50",
+                  "location_id": 3,
+                  "dose_amount": null,
+                  "current_supply": null
+                }
+                """.utf8
+            )
+        )
+        let explicitNullDoseAmount: String? = explicitNull.doseAmount
+        let explicitNullCurrentSupply: String? = explicitNull.currentSupply
+        XCTAssertNil(explicitNullDoseAmount)
+        XCTAssertNil(explicitNullCurrentSupply)
+
+        let omitted = try decoder.decode(
+            MedicationCreateAttributes.self,
+            from: Data(
+                """
+                {
+                  "name": "Example medicine",
+                  "reorder_threshold": "2.50",
+                  "location_id": 3
+                }
+                """.utf8
+            )
+        )
+        let omittedDoseAmount: String? = omitted.doseAmount
+        let omittedCurrentSupply: String? = omitted.currentSupply
+        XCTAssertNil(omittedDoseAmount)
+        XCTAssertNil(omittedCurrentSupply)
+    }
+
     func testPopulatedExplicitNullAndOmittedValuesDecode() throws {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
