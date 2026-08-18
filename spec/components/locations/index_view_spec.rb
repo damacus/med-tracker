@@ -20,6 +20,12 @@ RSpec.describe Components::Locations::IndexView, type: :component do
     expect(action_classes.flatten).not_to include('h-10')
   end
 
+  it 'renders the add location action for managers' do
+    rendered = render_locations_index
+
+    expect(rendered.at_css("a[href='#{view_context.new_location_path}']")).to be_present
+  end
+
   it 'hides icons inside labelled location action controls', :aggregate_failures do
     rendered = render_locations_index
 
