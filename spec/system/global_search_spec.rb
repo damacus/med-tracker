@@ -100,20 +100,29 @@ RSpec.describe 'Global search command palette', :browser do
 
   scenario 'escapes quoted paths in search results' do
     visit root_path
+    page.execute_script(<<~JS)
+      window.__originalFetch = window.fetch;
+      window.fetch = async function(input, init) {
+        const url = typeof input === "string" ? input : input.url;
+        if (url.includes("/search.json")) {
+          return {
+            json: async () => ({
+              results: [{
+                path: '/people" onfocus="window.xss = true',
+                type: 'people',
+                title: 'Quoted path',
+                subtitle: ''
+              }]
+            })
+          };
+        }
+        return window.__originalFetch.call(window, input, init);
+      };
+    JS
+
     expect(page).to have_css('body[data-global-search-connected="true"]', visible: :all)
     find('button[aria-label="Open global search"]').click
-
-    page.execute_script(<<~JS)
-      (() => {
-        const controller = window.Stimulus.getControllerForElementAndIdentifier(document.body, 'global-search')
-        controller.resultsTarget.innerHTML = controller.resultHtml({
-          path: '/people" onfocus="window.xss = true',
-          type: 'people',
-          title: 'Quoted path',
-          subtitle: ''
-        }, 0)
-      })()
-    JS
+    fill_in 'Search MedTracker', with: 'quoted'
 
     expect(page).to have_link('Quoted path')
     expect(page).to have_no_css('#global_search_results a[onfocus]')
