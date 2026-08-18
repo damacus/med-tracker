@@ -4,8 +4,6 @@ module Components
   module Dashboard
     # Dashboard index view component that renders the main dashboard page
     class IndexView < Components::Base
-      DIRECT_PERSON_OPTION_LIMIT = 5
-
       attr_reader :presenter
 
       def initialize(presenter:)
@@ -89,180 +87,140 @@ module Components
           class: 'max-w-full mb-6',
           data: { testid: 'dashboard-person-selector' }
         ) do
-          div(class: 'max-w-full rounded-2xl bg-surface-container-low p-1') do
-            div(class: 'flex min-w-0 items-center gap-2 sm:hidden') do
-              render_mobile_person_selector_current
-              render_mobile_person_selector_overflow
-            end
-            div(class: 'hidden max-w-full flex-wrap items-center gap-2 sm:flex') do
-              direct_person_options.each do |option|
-                render_person_selector_option(option)
-              end
-              render_person_selector_overflow
+          form(action: dashboard_path, method: :get, data: { controller: 'filter-form' }) do
+            details(
+              class: 'group max-w-full overflow-hidden rounded-2xl border border-outline-variant/40 ' \
+                     'bg-surface-container-low shadow-elevation-1',
+              data: { testid: 'dashboard-person-selector-disclosure' }
+            ) do
+              render_person_selector_summary
+              render_person_selector_options
             end
           end
         end
       end
 
-      def render_person_selector_option(option)
-        selected = option.fetch(:selected)
-        link_class = if selected
-                       'bg-primary text-on-primary shadow-elevation-1'
-                     else
-                       'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
-                     end
+      def render_person_selector_summary
+        option = selected_person_selector_option || dashboard_person_options.first
 
-        m3_link(
-          href: dashboard_path(dashboard_person_id: option.fetch(:id)),
-          variant: selected ? :filled : :text,
-          size: :md,
-          class: "min-h-12 gap-2 rounded-xl px-3 py-2 text-sm font-bold #{link_class}",
-          aria: selected ? { current: 'true' } : {},
+        summary(
+          class: 'flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 ' \
+                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' \
+                 '[&::-webkit-details-marker]:hidden',
+          data: { testid: 'dashboard-person-selector-summary' }
+        ) do
+          div(class: 'flex min-w-0 items-center gap-3') do
+            render_person_selector_avatar(option)
+            span(class: 'truncate text-sm font-bold text-on-surface') { option.fetch(:label) }
+          end
+          div(class: 'flex shrink-0 items-center gap-2 text-xs font-bold text-on-surface-variant sm:text-sm') do
+            span { t('dashboard.person_selector.change_person') }
+            render Icons::ChevronsUpDown.new(
+              size: 16,
+              class: 'shrink-0 opacity-70 transition-transform group-open:rotate-180'
+            )
+          end
+        end
+      end
+
+      def render_person_selector_options
+        div(class: 'border-t border-outline-variant/40 p-3 sm:p-4') do
+          render RubyUI::ToggleGroup.new(
+            type: :single,
+            name: 'dashboard_person_id',
+            value: selected_person_selector_option&.fetch(:id),
+            variant: :outline,
+            size: :lg,
+            class: 'grid w-full grid-cols-1 gap-2 rounded-none sm:grid-cols-2 lg:grid-cols-4',
+            aria: { label: t('dashboard.person_selector.label') },
+            data: {
+              action: 'click->filter-form#submit',
+              testid: 'dashboard-person-options'
+            }
+          ) do |group|
+            dashboard_person_options.each do |option|
+              render_person_selector_toggle(group, option)
+            end
+          end
+          render_person_selector_fallback
+        end
+      end
+
+      def render_person_selector_fallback
+        noscript do
+          div(class: 'mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4') do
+            dashboard_person_options.each do |option|
+              m3_link(
+                href: dashboard_path(dashboard_person_id: option.fetch(:id)),
+                variant: option.fetch(:selected) ? :filled : :outlined,
+                size: :md,
+                class: 'min-h-12 w-full justify-start rounded-xl px-3 py-2 text-sm font-bold'
+              ) { option.fetch(:label) }
+            end
+          end
+        end
+      end
+
+      def render_person_selector_toggle(group, option)
+        group.toggle_group_item(
+          value: option.fetch(:id),
+          class: 'group min-h-12 w-full justify-start gap-3 rounded-xl border border-outline-variant ' \
+                 'bg-surface-container px-3 py-2 text-on-surface hover:bg-surface-container-high ' \
+                 'data-[state=on]:border-primary data-[state=on]:bg-primary-container ' \
+                 'data-[state=on]:text-on-primary-container',
+          aria: { label: option.fetch(:label) },
           data: { testid: 'dashboard-person-option' }
         ) do
           render_person_selector_avatar(option)
-          span(class: 'whitespace-nowrap') { option.fetch(:label) }
+          span(class: 'min-w-0 flex-1 truncate text-left text-sm font-bold') { option.fetch(:label) }
+          render Icons::Check.new(size: 18, class: 'ml-auto hidden shrink-0 group-data-[state=on]:block')
         end
       end
 
       def render_person_selector_avatar(option)
         person = option.fetch(:person)
-        return render Components::Shared::PersonAvatar.new(person: person, size: :sm) if person
+        if person
+          return render Components::Shared::PersonAvatar.new(
+            person: person,
+            size: :sm,
+            aria: { hidden: 'true', label: nil }
+          )
+        end
 
         span(
           class: 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-shape-full ' \
                  'bg-secondary-container text-xs font-black text-on-secondary-container',
           data: { testid: 'person-avatar' },
-          aria: { label: option.fetch(:label) }
+          aria: { hidden: 'true' }
         ) { option.fetch(:initials) }
-      end
-
-      def render_mobile_person_selector_current
-        option = selected_person_selector_option || direct_person_options.first
-        return unless option
-
-        div(
-          class: 'inline-flex min-h-12 min-w-0 flex-1 items-center gap-2 rounded-xl bg-primary px-3 py-2 ' \
-                 'text-sm font-bold text-on-primary shadow-elevation-1',
-          aria: { current: 'true' },
-          data: { testid: 'dashboard-person-mobile-current' }
-        ) do
-          render_person_selector_avatar(option)
-          span(class: 'truncate') { option.fetch(:label) }
-        end
-      end
-
-      def render_mobile_person_selector_overflow
-        return if mobile_overflow_selector_options.empty?
-
-        render_person_selector_dropdown(
-          options: mobile_overflow_selector_options,
-          testid: 'dashboard-person-mobile-overflow',
-          trigger_class: 'w-36 shrink-0',
-          content_class: 'w-64'
-        )
-      end
-
-      def render_person_selector_overflow
-        return if overflow_selector_options.empty?
-
-        render_person_selector_dropdown(
-          options: overflow_selector_options,
-          testid: 'dashboard-person-overflow',
-          trigger_class: 'min-w-44',
-          content_class: 'w-56'
-        )
-      end
-
-      def render_person_selector_dropdown(options:, testid:, trigger_class:, content_class:)
-        render RubyUI::DropdownMenu.new(
-          class: trigger_class,
-          data: { testid: testid }
-        ) do
-          render RubyUI::DropdownMenuTrigger.new(class: 'w-full') do
-            m3_button(
-              type: 'button',
-              variant: :outlined,
-              size: :md,
-              class: 'min-h-12 w-full justify-between gap-2 rounded-xl border-outline-variant ' \
-                     'bg-surface-container-low px-3 py-2 text-sm font-bold text-on-surface-variant ' \
-                     'shadow-sm hover:bg-surface-container-high',
-              aria: { label: t('dashboard.person_selector.more_people') }
-            ) do
-              span(class: 'truncate') { overflow_selector_label }
-              render Icons::ChevronsUpDown.new(size: 16, class: 'shrink-0 opacity-70')
-            end
-          end
-          render RubyUI::DropdownMenuContent.new(class: content_class) do
-            options.each do |option|
-              render RubyUI::DropdownMenuItem.new(
-                href: dashboard_path(dashboard_person_id: option.fetch(:id)),
-                class: overflow_selector_item_class(option),
-                aria: option.fetch(:selected) ? { current: 'true' } : {}
-              ) do
-                option.fetch(:label)
-              end
-            end
-          end
-        end
       end
 
       def selected_person_selector_option
         dashboard_person_options.find { |option| option.fetch(:selected) }
       end
 
-      def direct_person_options
-        person_selector_options.first(DIRECT_PERSON_OPTION_LIMIT)
-      end
-
-      def overflow_selector_options
-        person_selector_options.drop(DIRECT_PERSON_OPTION_LIMIT) + all_family_options
-      end
-
-      def mobile_overflow_selector_options
-        dashboard_person_options.reject { |option| option.fetch(:selected) }
-      end
-
-      def overflow_selector_label
-        selected_option = overflow_selector_options.find { |option| option.fetch(:selected) }
-        return selected_option.fetch(:label) if selected_option
-
-        t('dashboard.person_selector.more_people')
-      end
-
-      def overflow_selector_item_class(option)
-        return 'bg-primary text-on-primary hover:bg-primary hover:text-on-primary' if option.fetch(:selected)
-
-        nil
-      end
-
-      def person_selector_options
-        dashboard_person_options.reject { |option| option.fetch(:all_family) }
-      end
-
-      def all_family_options
-        dashboard_person_options.select { |option| option.fetch(:all_family) }
-      end
-
       def render_stats_section
-        div(class: 'grid grid-cols-1 sm:grid-cols-3 auto-rows-fr gap-3 mb-8') do
+        div(
+          class: 'mb-8 grid grid-cols-3 auto-rows-fr gap-2 sm:gap-3',
+          data: { testid: 'dashboard-metrics' }
+        ) do
           render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.next_due'),
             value: next_due_value,
             icon_type: 'clock',
-            layout: :compact
+            layout: :dashboard_summary
           )
           render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.due_now'),
             value: due_now_count,
             icon_type: 'active_schedules',
-            layout: :compact
+            layout: :dashboard_summary
           )
           render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.tasks_left'),
             value: tasks_left_count,
             icon_type: 'check',
-            layout: :compact
+            layout: :dashboard_summary
           )
         end
       end

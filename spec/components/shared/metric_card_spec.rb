@@ -82,6 +82,30 @@ RSpec.describe Components::Shared::MetricCard, type: :component do
     expect(card[:class]).not_to include('h-full')
   end
 
+  it 'renders the dashboard summary layout with responsive density and wrapping' do
+    rendered = render_inline(
+      described_class.new(title: 'Next Due', value: 'None today', icon_type: 'clock', layout: :dashboard_summary)
+    )
+    html = rendered.to_html
+
+    expect(html).to include('min-h-[6rem]', 'p-3', 'sm:p-4')
+    expect(html).to include('text-lg', 'sm:text-2xl')
+    expect(html).to include('whitespace-normal', 'break-words')
+    expect(rendered.css('.h-full')).to be_present
+  end
+
+  it 'centres dashboard summary labels and values' do
+    rendered = render_inline(
+      described_class.new(title: 'Next Due', value: 'None today', icon_type: 'clock', layout: :dashboard_summary)
+    )
+    title = rendered.at_css('p')
+    value = rendered.css('span').find { |node| node.text == 'None today' }
+
+    expect(title['class']).to include('text-center')
+    expect(title.parent['class']).to include('justify-center')
+    expect(value.parent['class']).to include('items-center', 'text-center')
+  end
+
   it 'renders the active schedules icon path' do
     rendered = render_inline(
       described_class.new(title: 'Active Schedules', value: 10, icon_type: 'active_schedules')
