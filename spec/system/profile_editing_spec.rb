@@ -52,7 +52,7 @@ RSpec.describe 'Profile Editing' do
 
   describe 'time zone preference', :js do
     it 'keeps a stored non-default time zone when saved without a change' do
-      stored_time_zone = 'Europe/London'
+      stored_time_zone = 'Europe/Belfast'
       account.preferences = account.preferences.merge('time_zone' => stored_time_zone)
       account.save!(validate: false)
       account.reload

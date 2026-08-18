@@ -34,6 +34,14 @@ RSpec.describe Account do
       expect(account.errors[:time_zone]).to be_empty
     end
 
+    it 'allows valid time zone aliases outside the Rails names' do
+      account = described_class.new(email: 'time-zone@example.test', status: :verified, time_zone: 'Europe/Belfast')
+
+      account.validate
+
+      expect(account.errors[:time_zone]).to be_empty
+    end
+
     it 'rejects unknown time zones' do
       account = described_class.new(email: 'time-zone@example.test', status: :verified, time_zone: 'Atlantis/Nowhere')
 

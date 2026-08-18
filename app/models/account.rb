@@ -10,8 +10,6 @@ class Account < ApplicationRecord
   MEDICATION_LAUNCHER_VARIANTS = %w[current context_aware].freeze
 
   TIME_ZONE_NAMES = ActiveSupport::TimeZone.all.map(&:name).freeze
-  TIME_ZONE_IDENTIFIERS = ActiveSupport::TimeZone.all.map { |time_zone| time_zone.tzinfo.name }.freeze
-  TIME_ZONE_VALUES = (TIME_ZONE_NAMES + TIME_ZONE_IDENTIFIERS).freeze
 
   store_accessor :preferences, :wizard_variant, :dashboard_variant, :medication_launcher_variant, :gravatar_enabled,
                  :time_zone
@@ -33,7 +31,11 @@ class Account < ApplicationRecord
   has_one :platform_admin, dependent: :destroy
 
   validates :email, presence: true, uniqueness: true
-  validates :time_zone, inclusion: { in: TIME_ZONE_VALUES }, allow_blank: true
+  validate :time_zone_must_be_valid
+
+  def self.valid_time_zone?(value)
+    value.blank? || ActiveSupport::TimeZone[value].present?
+  end
 
   def first_active_household_membership
     household_memberships.active.joins(:household).merge(Household.operational).includes(:household).order(:id).first
@@ -72,5 +74,11 @@ class Account < ApplicationRecord
 
   def preferred_time_zone
     time_zone.presence || Rails.application.config.time_zone
+  end
+
+  private
+
+  def time_zone_must_be_valid
+    errors.add(:time_zone, :inclusion) unless self.class.valid_time_zone?(time_zone)
   end
 end
