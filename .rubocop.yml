@@ -95,6 +95,10 @@ RSpec/DescribeClass:
 Style/Documentation:
   Enabled: false
 
+Style/FrozenStringLiteralComment:
+  Exclude:
+    - "client-tools/openapi-generator/augment_clearable_fields.rb"
+
 # Allow long lines in certain contexts
 Layout/LineLength:
   Max: 120

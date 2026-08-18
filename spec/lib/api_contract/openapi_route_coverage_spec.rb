@@ -335,6 +335,33 @@ end
 RSpec.describe OpenapiRouteCoverage, type: :request do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :carer_relationships
 
+  def clearable_marker_schema(schemas, schema_name)
+    schema, nested_property = schema_name.split('.', 2)
+    property_schema = schemas.fetch(schema)
+    return property_schema unless nested_property
+
+    property_schema.fetch('properties').fetch(nested_property)
+  end
+
+  def marked_property_paths(schema_name, schema)
+    return [] unless schema.is_a?(Hash)
+
+    schema.fetch('properties', {}).filter_map do |property_name, property|
+      next unless property.is_a?(Hash) && property['x-client-clearable-null']
+
+      "#{schema_name}.#{property_name}"
+    end
+  end
+
+  def clearable_marker_paths(schemas)
+    paths = schemas.flat_map { |schema_name, schema| marked_property_paths(schema_name, schema) }
+    nested_quantity = schemas.fetch('MedicationOrderDetailsRequest').dig(
+      'properties', 'order_details', 'properties', 'quantity', 'x-client-clearable-null'
+    )
+    paths << 'MedicationOrderDetailsRequest.order_details.quantity' if nested_quantity
+    paths
+  end
+
   it 'documents every mounted API v1 route' do
     described_class.api_route_operations.each do |path, verb|
       expect(described_class.mounted_paths).to include(path)
@@ -397,6 +424,22 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       ]
     end
 
+    let(:expected_clearable_marker_fields) do
+      {
+        'MedicationUpdateAttributes' => %w[dose_amount current_supply],
+        'MedicationOrderDetailsRequest.order_details' => %w[quantity],
+        'DosageOptionUpdateAttributes' => %w[current_supply reorder_threshold],
+        'ScheduleAttributes' => %w[min_hours_between_doses],
+        'PersonMedicationAttributes' => %w[min_hours_between_doses]
+      }
+    end
+
+    let(:expected_clearable_marker_paths) do
+      expected_clearable_marker_fields.flat_map do |schema_name, property_names|
+        property_names.map { |property_name| "#{schema_name}.#{property_name}" }
+      end
+    end
+
     it 'uses the canonical API v1 server address' do
       expect(described_class.document.fetch('servers').first.fetch('url')).to eq('/api/v1')
     end
@@ -453,6 +496,27 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
 
       expect(schemas.fetch('DecimalValue')).to include('type' => 'string', 'pattern' => kind_of(String))
       expect(schemas.fetch('NullableDecimalValue')).to include('type' => 'string', 'nullable' => true)
+    end
+
+    it 'marks only audited clearable request decimals for generated presence support' do
+      schemas = described_class.components.fetch('schemas')
+
+      expected_clearable_marker_fields.each do |schema_name, property_names|
+        property_schema = clearable_marker_schema(schemas, schema_name)
+        property_names.each do |property_name|
+          property = property_schema.fetch('properties').fetch(property_name)
+          expect(property).to include(
+            '$ref' => '#/components/schemas/NullableDecimalValue',
+            'x-client-clearable-null' => true
+          )
+        end
+      end
+    end
+
+    it 'does not mark other fields for generated presence support' do
+      schemas = described_class.components.fetch('schemas')
+
+      expect(clearable_marker_paths(schemas)).to match_array(expected_clearable_marker_paths)
     end
 
     it 'defines timestamps and pagination' do

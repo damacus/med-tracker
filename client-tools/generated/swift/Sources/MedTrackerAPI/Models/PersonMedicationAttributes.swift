@@ -31,6 +31,8 @@ public struct PersonMedicationAttributes: Sendable, Codable, Hashable {
     public var minHoursBetweenDoses: String?
     public var doseCycle: DoseCycle?
 
+    private var _explicitlyNullFields: Set<String> = []
+
     public init(personId: String? = nil, medicationId: String? = nil, sourceDosageOptionId: String? = nil, doseAmount: String? = nil, doseUnit: String? = nil, administrationKind: AdministrationKind? = nil, notes: String? = nil, maxDailyDoses: Int? = nil, minHoursBetweenDoses: String? = nil, doseCycle: DoseCycle? = nil) {
         self.personId = personId
         self.medicationId = medicationId
@@ -42,6 +44,11 @@ public struct PersonMedicationAttributes: Sendable, Codable, Hashable {
         self.maxDailyDoses = maxDailyDoses
         self.minHoursBetweenDoses = minHoursBetweenDoses
         self.doseCycle = doseCycle
+    }
+
+    public mutating func clearMinHoursBetweenDoses() {
+        minHoursBetweenDoses = nil
+        _explicitlyNullFields.insert("min_hours_between_doses")
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -69,7 +76,11 @@ public struct PersonMedicationAttributes: Sendable, Codable, Hashable {
         try container.encodeIfPresent(administrationKind, forKey: .administrationKind)
         try container.encodeIfPresent(notes, forKey: .notes)
         try container.encodeIfPresent(maxDailyDoses, forKey: .maxDailyDoses)
-        try container.encodeIfPresent(minHoursBetweenDoses, forKey: .minHoursBetweenDoses)
+        if _explicitlyNullFields.contains("min_hours_between_doses"), minHoursBetweenDoses == nil {
+            try container.encodeNil(forKey: .minHoursBetweenDoses)
+        } else {
+            try container.encodeIfPresent(minHoursBetweenDoses, forKey: .minHoursBetweenDoses)
+        }
         try container.encodeIfPresent(doseCycle, forKey: .doseCycle)
     }
 }

@@ -15,6 +15,8 @@
 
 package io.medtracker.client.models
 
+import io.medtracker.client.infrastructure.ExplicitNullFieldsSupport
+
 import io.medtracker.client.models.ScheduleConfig
 
 import com.squareup.moshi.Json
@@ -82,9 +84,14 @@ data class ScheduleAttributes (
     val scheduleType: ScheduleAttributes.ScheduleType? = null,
 
     @Json(name = "schedule_config")
-    val scheduleConfig: ScheduleConfig? = null
+    val scheduleConfig: ScheduleConfig? = null,
 
-) {
+    @Transient
+    override val explicitlyNullFields: Set<String> = emptySet()
+
+) : ExplicitNullFieldsSupport {
+    fun clearMinHoursBetweenDoses(): ScheduleAttributes =
+        copy(minHoursBetweenDoses = null, explicitlyNullFields = explicitlyNullFields + "min_hours_between_doses")
 
     /**
      * 

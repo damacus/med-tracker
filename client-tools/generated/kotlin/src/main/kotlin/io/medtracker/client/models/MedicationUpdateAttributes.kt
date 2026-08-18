@@ -15,6 +15,8 @@
 
 package io.medtracker.client.models
 
+import io.medtracker.client.infrastructure.ExplicitNullFieldsSupport
+
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -85,9 +87,17 @@ data class MedicationUpdateAttributes (
     val locationId: kotlin.Int? = null,
 
     @Json(name = "default_schedule_type")
-    val defaultScheduleType: MedicationUpdateAttributes.DefaultScheduleType? = null
+    val defaultScheduleType: MedicationUpdateAttributes.DefaultScheduleType? = null,
 
-) {
+    @Transient
+    override val explicitlyNullFields: Set<String> = emptySet()
+
+) : ExplicitNullFieldsSupport {
+    fun clearDoseAmount(): MedicationUpdateAttributes =
+        copy(doseAmount = null, explicitlyNullFields = explicitlyNullFields + "dose_amount")
+
+    fun clearCurrentSupply(): MedicationUpdateAttributes =
+        copy(currentSupply = null, explicitlyNullFields = explicitlyNullFields + "current_supply")
 
     /**
      * 

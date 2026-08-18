@@ -131,6 +131,23 @@ class NativeApiClientContractTest : ShouldSpec() {
             omitted.doseAmount shouldBe null
         }
 
+        should("encode clearable request decimals as omitted, null, or strings") {
+            val adapter = Serializer.moshi.adapter(MedicationUpdateAttributes::class.java)
+
+            adapter.toJson(MedicationUpdateAttributes()).contains("current_supply") shouldBe false
+            adapter.toJson(MedicationUpdateAttributes(currentSupply = "10.00")) shouldBe
+                """{"current_supply":"10.00"}"""
+            adapter.toJson(MedicationUpdateAttributes().clearCurrentSupply()) shouldBe
+                """{"current_supply":null}"""
+
+            MedicationUpdateAttributes().clearDoseAmount()
+            MedicationOrderDetailsRequestOrderDetails().clearQuantity()
+            DosageOptionUpdateAttributes().clearCurrentSupply()
+            DosageOptionUpdateAttributes().clearReorderThreshold()
+            ScheduleAttributes().clearMinHoursBetweenDoses()
+            PersonMedicationAttributes().clearMinHoursBetweenDoses()
+        }
+
         should("decode medication lookup package quantities as nullable strings") {
             val adapter = Serializer.moshi.adapter(MedicationLookupResult::class.java)
 

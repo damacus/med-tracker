@@ -50,6 +50,8 @@ public struct MedicationUpdateAttributes: Sendable, Codable, Hashable {
     public var locationId: Int?
     public var defaultScheduleType: DefaultScheduleType?
 
+    private var _explicitlyNullFields: Set<String> = []
+
     public init(name: String? = nil, friendlyName: String? = nil, barcode: String? = nil, dmdCode: String? = nil, dmdSystem: String? = nil, dmdConceptClass: String? = nil, category: String? = nil, description: String? = nil, doseAmount: String? = nil, doseUnit: DoseUnit? = nil, currentSupply: String? = nil, reorderThreshold: String? = nil, warnings: String? = nil, locationId: Int? = nil, defaultScheduleType: DefaultScheduleType? = nil) {
         self.name = name
         self.friendlyName = friendlyName
@@ -66,6 +68,16 @@ public struct MedicationUpdateAttributes: Sendable, Codable, Hashable {
         self.warnings = warnings
         self.locationId = locationId
         self.defaultScheduleType = defaultScheduleType
+    }
+
+    public mutating func clearDoseAmount() {
+        doseAmount = nil
+        _explicitlyNullFields.insert("dose_amount")
+    }
+
+    public mutating func clearCurrentSupply() {
+        currentSupply = nil
+        _explicitlyNullFields.insert("current_supply")
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -98,9 +110,17 @@ public struct MedicationUpdateAttributes: Sendable, Codable, Hashable {
         try container.encodeIfPresent(dmdConceptClass, forKey: .dmdConceptClass)
         try container.encodeIfPresent(category, forKey: .category)
         try container.encodeIfPresent(description, forKey: .description)
-        try container.encodeIfPresent(doseAmount, forKey: .doseAmount)
+        if _explicitlyNullFields.contains("dose_amount"), doseAmount == nil {
+            try container.encodeNil(forKey: .doseAmount)
+        } else {
+            try container.encodeIfPresent(doseAmount, forKey: .doseAmount)
+        }
         try container.encodeIfPresent(doseUnit, forKey: .doseUnit)
-        try container.encodeIfPresent(currentSupply, forKey: .currentSupply)
+        if _explicitlyNullFields.contains("current_supply"), currentSupply == nil {
+            try container.encodeNil(forKey: .currentSupply)
+        } else {
+            try container.encodeIfPresent(currentSupply, forKey: .currentSupply)
+        }
         try container.encodeIfPresent(reorderThreshold, forKey: .reorderThreshold)
         try container.encodeIfPresent(warnings, forKey: .warnings)
         try container.encodeIfPresent(locationId, forKey: .locationId)

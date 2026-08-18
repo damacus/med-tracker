@@ -27,6 +27,8 @@ public struct DosageOptionUpdateAttributes: Sendable, Codable, Hashable {
     public var currentSupply: String?
     public var reorderThreshold: String?
 
+    private var _explicitlyNullFields: Set<String> = []
+
     public init(amount: String? = nil, unit: String? = nil, frequency: String? = nil, description: String? = nil, defaultForAdults: Bool? = nil, defaultForChildren: Bool? = nil, defaultMaxDailyDoses: Int? = nil, defaultMinHoursBetweenDoses: String? = nil, defaultDoseCycle: DefaultDoseCycle? = nil, currentSupply: String? = nil, reorderThreshold: String? = nil) {
         self.amount = amount
         self.unit = unit
@@ -39,6 +41,16 @@ public struct DosageOptionUpdateAttributes: Sendable, Codable, Hashable {
         self.defaultDoseCycle = defaultDoseCycle
         self.currentSupply = currentSupply
         self.reorderThreshold = reorderThreshold
+    }
+
+    public mutating func clearCurrentSupply() {
+        currentSupply = nil
+        _explicitlyNullFields.insert("current_supply")
+    }
+
+    public mutating func clearReorderThreshold() {
+        reorderThreshold = nil
+        _explicitlyNullFields.insert("reorder_threshold")
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -68,8 +80,16 @@ public struct DosageOptionUpdateAttributes: Sendable, Codable, Hashable {
         try container.encodeIfPresent(defaultMaxDailyDoses, forKey: .defaultMaxDailyDoses)
         try container.encodeIfPresent(defaultMinHoursBetweenDoses, forKey: .defaultMinHoursBetweenDoses)
         try container.encodeIfPresent(defaultDoseCycle, forKey: .defaultDoseCycle)
-        try container.encodeIfPresent(currentSupply, forKey: .currentSupply)
-        try container.encodeIfPresent(reorderThreshold, forKey: .reorderThreshold)
+        if _explicitlyNullFields.contains("current_supply"), currentSupply == nil {
+            try container.encodeNil(forKey: .currentSupply)
+        } else {
+            try container.encodeIfPresent(currentSupply, forKey: .currentSupply)
+        }
+        if _explicitlyNullFields.contains("reorder_threshold"), reorderThreshold == nil {
+            try container.encodeNil(forKey: .reorderThreshold)
+        } else {
+            try container.encodeIfPresent(reorderThreshold, forKey: .reorderThreshold)
+        }
     }
 }
 

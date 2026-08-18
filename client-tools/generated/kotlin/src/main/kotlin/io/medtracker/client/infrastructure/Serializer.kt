@@ -13,6 +13,7 @@ object Serializer {
         .add(UUIDAdapter())
         .add(ByteArrayAdapter())
         .add(URIAdapter())
+        .add(ExplicitNullFieldsAdapterFactory())
         .add(KotlinJsonAdapterFactory())
         .add(BigDecimalAdapter())
         .add(BigIntegerAdapter())

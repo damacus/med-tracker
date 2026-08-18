@@ -15,6 +15,8 @@
 
 package io.medtracker.client.models
 
+import io.medtracker.client.infrastructure.ExplicitNullFieldsSupport
+
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -65,9 +67,14 @@ data class PersonMedicationAttributes (
     val minHoursBetweenDoses: kotlin.String? = null,
 
     @Json(name = "dose_cycle")
-    val doseCycle: PersonMedicationAttributes.DoseCycle? = null
+    val doseCycle: PersonMedicationAttributes.DoseCycle? = null,
 
-) {
+    @Transient
+    override val explicitlyNullFields: Set<String> = emptySet()
+
+) : ExplicitNullFieldsSupport {
+    fun clearMinHoursBetweenDoses(): PersonMedicationAttributes =
+        copy(minHoursBetweenDoses = null, explicitlyNullFields = explicitlyNullFields + "min_hours_between_doses")
 
     /**
      * 

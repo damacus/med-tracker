@@ -40,6 +40,8 @@ public struct ScheduleAttributes: Sendable, Codable, Hashable {
     public var scheduleType: ScheduleType?
     public var scheduleConfig: ScheduleConfig?
 
+    private var _explicitlyNullFields: Set<String> = []
+
     public init(personId: String? = nil, medicationId: String? = nil, sourceDosageOptionId: String? = nil, doseAmount: String? = nil, doseUnit: String? = nil, frequency: String? = nil, startDate: Date? = nil, endDate: Date? = nil, notes: String? = nil, maxDailyDoses: Int? = nil, minHoursBetweenDoses: String? = nil, doseCycle: DoseCycle? = nil, scheduleType: ScheduleType? = nil, scheduleConfig: ScheduleConfig? = nil) {
         self.personId = personId
         self.medicationId = medicationId
@@ -55,6 +57,11 @@ public struct ScheduleAttributes: Sendable, Codable, Hashable {
         self.doseCycle = doseCycle
         self.scheduleType = scheduleType
         self.scheduleConfig = scheduleConfig
+    }
+
+    public mutating func clearMinHoursBetweenDoses() {
+        minHoursBetweenDoses = nil
+        _explicitlyNullFields.insert("min_hours_between_doses")
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -88,7 +95,11 @@ public struct ScheduleAttributes: Sendable, Codable, Hashable {
         try container.encodeIfPresent(endDate, forKey: .endDate)
         try container.encodeIfPresent(notes, forKey: .notes)
         try container.encodeIfPresent(maxDailyDoses, forKey: .maxDailyDoses)
-        try container.encodeIfPresent(minHoursBetweenDoses, forKey: .minHoursBetweenDoses)
+        if _explicitlyNullFields.contains("min_hours_between_doses"), minHoursBetweenDoses == nil {
+            try container.encodeNil(forKey: .minHoursBetweenDoses)
+        } else {
+            try container.encodeIfPresent(minHoursBetweenDoses, forKey: .minHoursBetweenDoses)
+        }
         try container.encodeIfPresent(doseCycle, forKey: .doseCycle)
         try container.encodeIfPresent(scheduleType, forKey: .scheduleType)
         try container.encodeIfPresent(scheduleConfig, forKey: .scheduleConfig)

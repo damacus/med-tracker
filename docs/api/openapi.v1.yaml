@@ -4323,6 +4323,7 @@ components:
           type: string
         dose_amount:
           $ref: '#/components/schemas/NullableDecimalValue'
+          x-client-clearable-null: true
         dose_unit:
           type: string
           enum:
@@ -4340,6 +4341,7 @@ components:
             - pad
         current_supply:
           $ref: '#/components/schemas/NullableDecimalValue'
+          x-client-clearable-null: true
         reorder_threshold:
           $ref: '#/components/schemas/DecimalValue'
         warnings:
@@ -4384,6 +4386,7 @@ components:
               type: string
             quantity:
               $ref: '#/components/schemas/NullableDecimalValue'
+              x-client-clearable-null: true
             expected_arrival_on:
               $ref: '#/components/schemas/Date'
     DosageOption:
@@ -4559,8 +4562,10 @@ components:
             - monthly
         current_supply:
           $ref: '#/components/schemas/NullableDecimalValue'
+          x-client-clearable-null: true
         reorder_threshold:
           $ref: '#/components/schemas/NullableDecimalValue'
+          x-client-clearable-null: true
     HealthEvent:
       type: object
       additionalProperties: false
@@ -4910,6 +4915,7 @@ components:
           minimum: 1
         min_hours_between_doses:
           $ref: '#/components/schemas/NullableDecimalValue'
+          x-client-clearable-null: true
         dose_cycle:
           type: string
           enum:
@@ -5150,6 +5156,7 @@ components:
           minimum: 1
         min_hours_between_doses:
           $ref: '#/components/schemas/NullableDecimalValue'
+          x-client-clearable-null: true
         dose_cycle:
           type: string
           enum:

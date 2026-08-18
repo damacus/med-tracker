@@ -13,10 +13,17 @@ public struct MedicationOrderDetailsRequestOrderDetails: Sendable, Codable, Hash
     public var quantity: String?
     public var expectedArrivalOn: Date?
 
+    private var _explicitlyNullFields: Set<String> = []
+
     public init(supplier: String? = nil, quantity: String? = nil, expectedArrivalOn: Date? = nil) {
         self.supplier = supplier
         self.quantity = quantity
         self.expectedArrivalOn = expectedArrivalOn
+    }
+
+    public mutating func clearQuantity() {
+        quantity = nil
+        _explicitlyNullFields.insert("quantity")
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -30,7 +37,11 @@ public struct MedicationOrderDetailsRequestOrderDetails: Sendable, Codable, Hash
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encodeIfPresent(supplier, forKey: .supplier)
-        try container.encodeIfPresent(quantity, forKey: .quantity)
+        if _explicitlyNullFields.contains("quantity"), quantity == nil {
+            try container.encodeNil(forKey: .quantity)
+        } else {
+            try container.encodeIfPresent(quantity, forKey: .quantity)
+        }
         try container.encodeIfPresent(expectedArrivalOn, forKey: .expectedArrivalOn)
     }
 }

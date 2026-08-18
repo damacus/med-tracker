@@ -156,6 +156,47 @@ final class NativeAPIClientContractTests: XCTestCase {
         assertNilString(PersonMedicationAttributes(), \.minHoursBetweenDoses)
     }
 
+    func testClearableRequestDecimalsEncodeOmissionExplicitNullAndValues() throws {
+        let encoder = JSONEncoder()
+
+        let omitted = try jsonObject(MedicationUpdateAttributes(), encoder: encoder)
+        XCTAssertNil(omitted["current_supply"])
+
+        let populated = try jsonObject(
+            MedicationUpdateAttributes(currentSupply: "10.00"),
+            encoder: encoder
+        )
+        XCTAssertEqual(populated["current_supply"] as? String, "10.00")
+
+        var explicitNullModel = MedicationUpdateAttributes()
+        explicitNullModel.clearCurrentSupply()
+        let explicitNull = try jsonObject(explicitNullModel, encoder: encoder)
+        XCTAssertTrue(explicitNull["current_supply"] is NSNull)
+
+        var medicationUpdate = MedicationUpdateAttributes()
+        medicationUpdate.clearDoseAmount()
+        var orderDetails = MedicationOrderDetailsRequestOrderDetails()
+        orderDetails.clearQuantity()
+        var dosageOptionUpdate = DosageOptionUpdateAttributes()
+        dosageOptionUpdate.clearCurrentSupply()
+        dosageOptionUpdate.clearReorderThreshold()
+        var scheduleUpdate = ScheduleAttributes()
+        scheduleUpdate.clearMinHoursBetweenDoses()
+        var personMedicationUpdate = PersonMedicationAttributes()
+        personMedicationUpdate.clearMinHoursBetweenDoses()
+
+        XCTAssertTrue(try jsonObject(medicationUpdate, encoder: encoder)["dose_amount"] is NSNull)
+        XCTAssertTrue(try jsonObject(orderDetails, encoder: encoder)["quantity"] is NSNull)
+        XCTAssertTrue(try jsonObject(dosageOptionUpdate, encoder: encoder)["current_supply"] is NSNull)
+        XCTAssertTrue(try jsonObject(dosageOptionUpdate, encoder: encoder)["reorder_threshold"] is NSNull)
+        XCTAssertTrue(
+            try jsonObject(scheduleUpdate, encoder: encoder)["min_hours_between_doses"] is NSNull
+        )
+        XCTAssertTrue(
+            try jsonObject(personMedicationUpdate, encoder: encoder)["min_hours_between_doses"] is NSNull
+        )
+    }
+
     func testPopulatedExplicitNullAndOmittedValuesDecode() throws {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
@@ -380,5 +421,13 @@ final class NativeAPIClientContractTests: XCTestCase {
         line: UInt = #line
     ) {
         XCTAssertNil(model[keyPath: keyPath], file: file, line: line)
+    }
+
+    private func jsonObject<Value: Encodable>(
+        _ value: Value,
+        encoder: JSONEncoder
+    ) throws -> [String: Any] {
+        let data = try encoder.encode(value)
+        return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
     }
 }

@@ -37,7 +37,10 @@ function generate_kotlin_package --no-scope-shadowing
         -g kotlin \
         -c /local/client-tools/openapi-generator/kotlin-config.yaml \
         -o "/tmp/openapi/$output_name"
-    return $status
+    if test $status -ne 0
+        return 1
+    end
+    ruby "$script_dir/augment_clearable_fields.rb" "$contract" "$temporary_output" kotlin
 end
 
 function add_contract_checksum --no-scope-shadowing
