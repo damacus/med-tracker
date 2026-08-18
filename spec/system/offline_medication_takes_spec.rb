@@ -46,18 +46,15 @@ RSpec.describe 'Offline medication takes', :js do
     expect(MedicationTake.where(schedule: schedule).where.not(client_uuid: nil).exists?).to be(true)
   end
 
-  it 'preserves zero values when escaping offline content', :browser do
+  it 'shows zero stock in cached offline inventory', :browser do
+    medication.update!(current_supply: 0)
+
     login_as(user)
     visit offline_path
-    expect(page).to have_text('Gabapentin')
 
-    escaped_value = page.evaluate_script(<<~JS)
-      (() => {
-        const element = document.querySelector('[data-controller~="offline-shell"]')
-        return window.Stimulus.getControllerForElementAndIdentifier(element, 'offline-shell').escape(0)
-      })()
-    JS
-
-    expect(escaped_value).to eq('0')
+    within('[data-offline-shell-target="people"]') do
+      expect(page).to have_text('Gabapentin')
+      expect(page).to have_text('0')
+    end
   end
 end
