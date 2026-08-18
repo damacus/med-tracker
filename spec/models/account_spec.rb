@@ -26,6 +26,14 @@ RSpec.describe Account do
       expect(account.errors[:time_zone]).to be_empty
     end
 
+    it 'allows IANA time zone identifiers' do
+      account = described_class.new(email: 'time-zone@example.test', status: :verified, time_zone: 'Europe/London')
+
+      account.validate
+
+      expect(account.errors[:time_zone]).to be_empty
+    end
+
     it 'rejects unknown time zones' do
       account = described_class.new(email: 'time-zone@example.test', status: :verified, time_zone: 'Atlantis/Nowhere')
 
