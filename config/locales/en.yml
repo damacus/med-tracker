@@ -2135,6 +2135,7 @@ en:
       label: Dashboard person
       all_family: All Family
       all_family_initials: AF
+      change_person: Change person
       more_people: More people
     as_needed:
       title: As needed

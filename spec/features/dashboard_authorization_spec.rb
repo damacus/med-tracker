@@ -68,8 +68,7 @@ RSpec.describe 'Dashboard Authorization', type: :system do
       it 'sees only schedules for assigned patients' do
         sign_in(carer)
 
-        visit dashboard_path
-        click_link 'Child Patient'
+        visit dashboard_path(dashboard_person_id: people(:child_patient).id)
 
         # Should see schedules for assigned patients
         # child_patient has ibuprofen schedule
@@ -103,8 +102,7 @@ RSpec.describe 'Dashboard Authorization', type: :system do
       it 'sees only schedules for their children' do
         sign_in(parent)
 
-        visit dashboard_path
-        click_link 'Child User'
+        visit dashboard_path(dashboard_person_id: people(:child_user_person).id)
         open_as_needed_disclosures
 
         # Should see child's schedule

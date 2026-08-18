@@ -2064,6 +2064,7 @@ ga:
       label: Duine an dashboard
       all_family: An Teaghlach Uile
       all_family_initials: TU
+      change_person: Athraigh duine
       more_people: Tuilleadh daoine
     as_needed:
       title: Glac de réir mar is gá

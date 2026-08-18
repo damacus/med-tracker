@@ -6,6 +6,8 @@
 
   const visible = (element) => {
     if (!element) return false;
+    const closedDisclosure = element.closest('details:not([open])');
+    if (closedDisclosure && !element.closest('summary')) return false;
     const styles = window.getComputedStyle(element);
     const bounds = element.getBoundingClientRect();
 
@@ -28,6 +30,7 @@
     if (element.getAttribute('role')) return element.getAttribute('role');
     if (element.tagName === 'A') return 'link';
     if (element.tagName === 'BUTTON') return 'button';
+    if (element.tagName === 'SUMMARY') return 'button';
     if (element.tagName === 'INPUT') return element.type === 'checkbox' ? 'checkbox' : 'textbox';
     if (element.tagName === 'SELECT') return 'combobox';
     if (element.tagName === 'TEXTAREA') return 'textbox';
@@ -59,7 +62,7 @@
   };
 
   const actionable = Array.from(document.querySelectorAll(
-    'a[href], button, input, select, textarea, [role="button"], [role="link"], [tabindex]'
+    'a[href], button, input, select, summary, textarea, [role="button"], [role="link"], [tabindex]'
   )).filter((element) => visible(element) &&
     !element.classList.contains('sr-only') &&
     !element.disabled &&
