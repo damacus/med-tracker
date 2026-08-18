@@ -3489,8 +3489,7 @@ components:
           type: string
           nullable: true
         package_quantity:
-          type: number
-          nullable: true
+          $ref: '#/components/schemas/NullableDecimalValue'
         package_unit:
           type: string
           nullable: true

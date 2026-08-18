@@ -1008,6 +1008,12 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(unavailable_results).to include('type' => 'array', 'maxItems' => 0, 'items' => expected_items)
     end
 
+    it 'types medication lookup package quantities as nullable decimal strings' do
+      expect(described_class.schema('MedicationLookupResult').dig('properties', 'package_quantity')).to eq(
+        '$ref' => '#/components/schemas/NullableDecimalValue'
+      )
+    end
+
     it 'uses a reusable error enum for unavailable medication lookup responses' do
       expect(described_class.schema('MedicationLookupUnavailableResponse').dig('properties', 'error', '$ref')).to eq(
         '#/components/schemas/MedicationLookupUnavailableError'
@@ -1026,6 +1032,17 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(described_class.schema_errors('MedicationLookupResponse', response.parsed_body)).to be_empty
+      expect(response.parsed_body.dig('results', 0, 'package_quantity')).to eq('1.5')
+    end
+
+    it 'keeps an absent medication lookup package quantity explicitly null' do
+      household_id, headers = manager_api_context
+      allow(NhsDmd::Search).to receive(:new).and_return(contract_medication_search(package_quantity: nil))
+
+      get api_v1_household_medication_lookup_path(household_id), params: { q: 'aspirin' }, headers:, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.dig('results', 0, 'package_quantity')).to be_nil
     end
 
     it 'matches the medication lookup Rails unavailable response' do
@@ -1606,13 +1623,13 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       }
     end
 
-    def contract_medication_search
+    def contract_medication_search(package_quantity: 1.5)
       search_result = NhsDmd::SearchResult.new(
         code: '39720311000001101',
         display: 'Aspirin 300mg tablets',
         system: 'https://dmd.nhs.uk',
         concept_class: 'VMP',
-        package_quantity: 28,
+        package_quantity: package_quantity,
         package_unit: 'tablet',
         directions: 'Take with water',
         warnings: 'Follow the medicine label.'
