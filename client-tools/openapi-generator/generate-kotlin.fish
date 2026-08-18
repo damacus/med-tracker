@@ -75,7 +75,7 @@ if test "$argv[1]" = verify
         echo "Missing generated Kotlin output: $output" >&2
         exit 1
     end
-    diff -ruN --exclude OPENAPI_SHA256 "$output" "$temporary_root/output"
+    diff -ruN --exclude OPENAPI_SHA256 --exclude build --exclude .gradle --exclude .kotlin "$output" "$temporary_root/output"
     if test $status -ne 0
         exit 1
     end
@@ -85,6 +85,7 @@ end
 
 set -l staged_output "$temporary_root/staged"
 mv "$temporary_root/output" "$staged_output"
+chmod +x "$staged_output/gradlew"
 rm -rf "$output"
 mkdir -p (dirname "$output")
 mv "$staged_output" "$output"

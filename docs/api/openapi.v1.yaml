@@ -6317,6 +6317,9 @@ components:
       enum:
         - name
         - email
+      x-enum-varnames:
+        - field_name
+        - email
     SyncChangesResponse:
       type: object
       additionalProperties: false

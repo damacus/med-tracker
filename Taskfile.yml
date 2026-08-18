@@ -67,6 +67,11 @@ tasks:
     cmds:
       - ./client-tools/openapi-generator/generate-kotlin.fish
 
+  api-clients:kotlin:test:
+    desc: Compile and test the generated Kotlin API client with consumer checks
+    cmds:
+      - ./client-tools/generated/kotlin/gradlew --no-daemon -p client-tools/kotlin-consumer-tests check assemble
+
   api-clients:swift:
     desc: Generate the Swift API client from the V1 contract
     cmds:
