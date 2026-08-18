@@ -99,6 +99,27 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(input['value']).to eq(people(:parent_person).id.to_s)
     end
 
+    it 'names the person Toggle Group for assistive technology' do
+      rendered = render_inline(described_class.new(presenter: parent_dashboard_presenter))
+
+      expect(rendered.at_css('[role="radiogroup"]')['aria-label']).to eq('Dashboard person')
+    end
+
+    it 'provides direct person links when JavaScript is unavailable' do
+      presenter = parent_dashboard_presenter
+
+      rendered = render_inline(described_class.new(presenter: presenter))
+      fallback = rendered.at_css('[data-testid="dashboard-person-selector"] noscript')
+      links = fallback.css('a')
+      dashboard_path = rendered.at_css('[data-testid="dashboard-person-selector"] form')['action']
+
+      expect(links.count).to eq(presenter.dashboard_person_options.count)
+      presenter.dashboard_person_options.each do |option|
+        expected_path = "#{dashboard_path}?dashboard_person_id=#{option.fetch(:id)}"
+        expect(fallback.at_css("a[href='#{expected_path}']").text).to include(option.fetch(:label))
+      end
+    end
+
     it 'renders every authorised person and all family in a responsive option grid' do
       presenter = dashboard_presenter(admin_user, people_scope: Person.all)
 

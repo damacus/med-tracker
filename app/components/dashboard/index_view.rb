@@ -132,6 +132,7 @@ module Components
             variant: :outline,
             size: :lg,
             class: 'grid w-full grid-cols-1 gap-2 rounded-none sm:grid-cols-2 lg:grid-cols-4',
+            aria: { label: t('dashboard.person_selector.label') },
             data: {
               action: 'click->filter-form#submit',
               testid: 'dashboard-person-options'
@@ -139,6 +140,22 @@ module Components
           ) do |group|
             dashboard_person_options.each do |option|
               render_person_selector_toggle(group, option)
+            end
+          end
+          render_person_selector_fallback
+        end
+      end
+
+      def render_person_selector_fallback
+        noscript do
+          div(class: 'mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4') do
+            dashboard_person_options.each do |option|
+              m3_link(
+                href: dashboard_path(dashboard_person_id: option.fetch(:id)),
+                variant: option.fetch(:selected) ? :filled : :outlined,
+                size: :md,
+                class: 'min-h-12 w-full justify-start rounded-xl px-3 py-2 text-sm font-bold'
+              ) { option.fetch(:label) }
             end
           end
         end
