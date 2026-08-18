@@ -45,7 +45,7 @@ module Components
           data: testid.present? && !as_link ? { testid: testid } : nil
         ) do
           m3_card_content(class: "#{content_padding_class} #{content_height_class} flex flex-col z-10") do
-            div(class: "flex items-center justify-between gap-1 sm:gap-2 #{header_margin_class} min-w-0") do
+            div(class: "flex items-center #{header_justify_class} gap-1 sm:gap-2 #{header_margin_class} min-w-0") do
               p(
                 class: "#{title_text_class} text-[11px] font-black uppercase tracking-normal " \
                        "#{title_class} text-on-surface-variant"
@@ -100,9 +100,13 @@ module Components
       end
 
       def value_wrapper_class
-        return 'mt-auto flex min-w-0 flex-col items-start gap-1' if dashboard_summary?
+        return 'mt-auto flex min-w-0 flex-col items-center gap-1 text-center' if dashboard_summary?
 
         compact? ? 'flex flex-col items-start gap-1' : 'mt-auto flex flex-col items-start gap-2'
+      end
+
+      def header_justify_class
+        dashboard_summary? ? 'justify-center text-center' : 'justify-between'
       end
 
       def cursor_class
@@ -134,7 +138,7 @@ module Components
       end
 
       def title_text_class
-        dashboard_summary? ? 'whitespace-normal break-words leading-tight' : 'truncate'
+        dashboard_summary? ? 'whitespace-normal break-words text-center leading-tight' : 'truncate'
       end
 
       def value_text_class
