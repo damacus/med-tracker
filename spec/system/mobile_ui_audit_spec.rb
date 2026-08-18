@@ -100,6 +100,16 @@ RSpec.describe 'Mobile UI audit' do
     end
   end
 
+  it 'shows allowed create actions on mobile', :browser do
+    visit people_path
+
+    expect(page).to have_link('New Person', href: new_person_path)
+
+    visit locations_path
+
+    expect(page).to have_link('Add Location', href: new_location_path)
+  end
+
   it 'audits the carer journey without unrelated data or mutation controls', :js do
     login_as(users(:carer))
     assigned_person = people(:child_patient)
