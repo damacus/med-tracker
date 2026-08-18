@@ -156,7 +156,7 @@ export default class extends Controller {
       if (defaultDosage && dosageInput && !dosageInput.value) {
         dosageInput.value = String(defaultDosage.option_value || defaultDosage.selection_key)
         if (this.hasDosageValueTarget) {
-          this.dosageValueTarget.textContent = `${defaultDosage.amount} ${defaultDosage.unit} - ${defaultDosage.description}`
+          this.dosageValueTarget.textContent = `${defaultDosage.dose_display} - ${defaultDosage.description}`
         }
         this.#fillDoseSnapshot(defaultDosage)
         this.#fillSchedulingDefaults(defaultDosage)
@@ -164,7 +164,7 @@ export default class extends Controller {
 
       // Build RubyUI SelectItem markup
       const items = dosages.map((dosage) => {
-        const text = this.escapeHtml(`${dosage.amount} ${dosage.unit} - ${dosage.description}`)
+        const text = this.escapeHtml(`${dosage.dose_display} - ${dosage.description}`)
         const rawOptionValue = String(dosage.option_value || dosage.selection_key)
         const optionValue = this.escapeHtml(rawOptionValue)
         const isSelected = dosageInput && dosageInput.value === rawOptionValue

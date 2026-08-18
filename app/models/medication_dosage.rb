@@ -30,6 +30,7 @@ MedicationDosage = Data.define(
   def to_option_payload
     {
       selection_key: selection_key,
+      dose_display: dose_display,
       amount: normalized_amount,
       unit: unit,
       frequency: frequency,

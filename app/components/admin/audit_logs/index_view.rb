@@ -193,7 +193,7 @@ module Components
                       end
                       m3_text(class: 'mt-1 break-words font-bold text-foreground') { version.item_type.titleize }
                     end
-                    render_event_badge(version.event)
+                    render_event_badge(version.event, mobile: true)
                   end
 
                   dl(class: 'grid grid-cols-2 gap-3 border-t border-outline-variant/30 pt-4 text-sm') do
@@ -273,7 +273,7 @@ module Components
           end
         end
 
-        def render_event_badge(event)
+        def render_event_badge(event, mobile: false)
           badge_class = case event
                         when 'create'
                           'bg-success-light text-success-text'
@@ -285,10 +285,13 @@ module Components
                           'bg-surface-container text-foreground'
                         end
 
-          span(
-            class: 'inline-flex min-w-0 max-w-full items-center justify-self-end whitespace-normal break-words ' \
-                   "rounded-full px-2.5 py-0.5 text-right text-xs font-medium leading-tight #{badge_class}"
-          ) do
+          responsive_class = if mobile
+                               'min-w-0 max-w-full justify-self-end whitespace-normal ' \
+                                 'break-words text-right leading-tight'
+                             end
+
+          span(class: 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ' \
+                      "#{responsive_class} #{badge_class}") do
             event.titleize
           end
         end

@@ -69,6 +69,21 @@ RSpec.describe Components::Admin::AuditLogs::IndexView, type: :component do
       expect(rendered.css('[data-testid="admin-audit-logs-desktop-table"] table')).to be_present
       expect(rendered.css('[data-testid="admin-audit-logs-mobile-list"]').text).to include('Person')
     end
+
+    it 'limits long event wrapping to mobile cards' do
+      version = PaperTrail::Version.create!(
+        item_type: 'User',
+        item_id: admin.id,
+        event: 'auth_token/native_device_token/credential_rotation_completed',
+        created_at: Time.current
+      )
+      rendered = render_inline(described_class.new(versions: [version]))
+      mobile_badge = rendered.at_css('[data-testid="admin-audit-logs-mobile-list"] span')
+      desktop_badge = rendered.at_css('[data-testid="admin-audit-logs-desktop-table"] td span')
+
+      expect(mobile_badge['class']).to include('break-words', 'text-right')
+      expect(desktop_badge['class']).not_to include('break-words', 'text-right')
+    end
   end
 
   describe 'filter controls' do
