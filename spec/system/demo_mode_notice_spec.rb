@@ -13,6 +13,9 @@ RSpec.describe 'Demo mode notice', :browser do
         const reminder = Array.from(document.querySelectorAll('[role="alert"]')).find((element) =>
           element.textContent.includes('For enhanced security, please set up two-factor authentication')
         );
+        if (!demo || !reminder) {
+          return { missing: [!demo && 'demo', !reminder && 'reminder'].filter(Boolean) };
+        }
         const demoRect = demo.getBoundingClientRect();
         const reminderRect = reminder.getBoundingClientRect();
         const overlap = demoRect.left < reminderRect.right && reminderRect.left < demoRect.right &&
@@ -26,7 +29,7 @@ RSpec.describe 'Demo mode notice', :browser do
           return element.contains(document.elementFromPoint(rect.left + (rect.width / 2), rect.top + (rect.height / 2)));
         });
 
-        return { overlap, visible: visible && unobscured };
+        return { missing: [], overlap, visible: visible && unobscured };
       })()
     JS
   end
@@ -34,11 +37,13 @@ RSpec.describe 'Demo mode notice', :browser do
   let(:profile_flash_viewport_script) do
     <<~JS
       (() => {
-        const flash = document.querySelector('#flash > div');
-        const rect = flash.getBoundingClientRect();
+        const stack = document.querySelector('[data-testid="notice-stack"]');
+        if (!stack) return { missing: true };
+        const rect = stack.getBoundingClientRect();
 
         return {
-          fixed: getComputedStyle(flash).position === 'fixed',
+          missing: false,
+          fixed: getComputedStyle(stack).position === 'fixed',
           visible: rect.top >= 0 && rect.left >= 0 && rect.right <= window.innerWidth && rect.bottom <= window.innerHeight
         };
       })()
@@ -89,8 +94,47 @@ RSpec.describe 'Demo mode notice', :browser do
       expect(page).to have_css('[role="status"][aria-labelledby="demo-environment-title"]', text: 'Demo environment')
       expect(page).to have_css('[role="alert"]', text: 'For enhanced security, please set up two-factor authentication')
 
-      expect(profile_notice_geometry).to include('overlap' => false, 'visible' => true)
+      expect(profile_notice_geometry).to include('missing' => [], 'overlap' => false, 'visible' => true)
     end
+  end
+
+  it 'lets the user dismiss both persistent notices' do
+    ENV['DEMO_MODE'] = 'true'
+    user = users(:damacus)
+    clear_2fa_for_account(user.person.account)
+    login_as(user)
+    visit profile_path
+
+    demo_notice = find('[role="status"][aria-labelledby="demo-environment-title"]')
+    reminder = find('[role="alert"]', text: 'For enhanced security, please set up two-factor authentication')
+
+    [demo_notice, reminder].each do |notice|
+      geometry = notice.evaluate_script(<<~JS)
+        (() => {
+          const button = this.querySelector('button[aria-label="Close"]');
+          const icon = button?.querySelector('svg');
+          const noticeRect = this.getBoundingClientRect();
+          const buttonRect = button?.getBoundingClientRect();
+          const iconRect = icon?.getBoundingClientRect();
+
+          return {
+            button_inside: buttonRect && buttonRect.top >= noticeRect.top && buttonRect.bottom <= noticeRect.bottom,
+            icon_visible: iconRect && iconRect.width >= 16 && iconRect.height >= 16
+          };
+        })()
+      JS
+
+      expect(geometry).to include('button_inside' => true, 'icon_visible' => true)
+    end
+
+    demo_notice.find('button[aria-label="Close"]').click
+    expect(page).to have_no_css('[role="status"][aria-labelledby="demo-environment-title"]')
+
+    reminder.find('button[aria-label="Close"]').click
+    expect(page).to have_no_css(
+      '[role="alert"]',
+      text: 'For enhanced security, please set up two-factor authentication'
+    )
   end
 
   it 'keeps Turbo profile feedback fixed in view after a scrolled mobile update' do
@@ -108,7 +152,7 @@ RSpec.describe 'Demo mode notice', :browser do
     click_button 'Save time zone'
 
     expect(page).to have_text('Profile updated successfully')
-    expect(profile_flash_viewport_geometry).to include('fixed' => true, 'visible' => true)
+    expect(profile_flash_viewport_geometry).to include('missing' => false, 'fixed' => true, 'visible' => true)
   end
 
   def profile_notice_geometry

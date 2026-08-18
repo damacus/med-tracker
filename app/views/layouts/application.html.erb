@@ -58,15 +58,18 @@
       membership: navigation_membership,
       household: navigation_household
     ) if app_shell %>
-    <%= render Components::Layouts::DemoNotice.new if app_shell && DemoMode.enabled? %>
-
-    <% if content_for?(:flash) %>
-      <%= yield :flash %>
-    <% else %>
-      <div id="flash">
-        <%= render Components::Layouts::Flash.new(notice: notice, alert: alert, warning: flash[:warning]) %>
-      </div>
-    <% end %>
+    <% notice_stack_classes = ["fixed inset-x-0 top-20 z-[60] space-y-2 pointer-events-none md:top-4"] %>
+    <% notice_stack_classes << "md:ml-64" if app_shell %>
+    <div class="<%= notice_stack_classes.join(" ") %>" data-testid="notice-stack">
+      <%= render Components::Layouts::DemoNotice.new if app_shell && DemoMode.enabled? %>
+      <% if content_for?(:flash) %>
+        <%= yield :flash %>
+      <% else %>
+        <div id="flash">
+          <%= render Components::Layouts::Flash.new(notice: notice, alert: alert, warning: flash[:warning]) %>
+        </div>
+      <% end %>
+    </div>
 
     <main class="<%= main_classes.join(" ") %>">
       <div id="main-content">

@@ -16,13 +16,15 @@
   </head>
 
   <body class="bg-background">
-    <% if content_for?(:flash) %>
-      <%= yield :flash %>
-    <% else %>
-      <div id="flash">
-        <%= render Components::Layouts::Flash.new(notice: notice, alert: alert, warning: flash[:warning]) %>
-      </div>
-    <% end %>
+    <div class="fixed inset-x-0 top-20 z-[60] pointer-events-none md:top-4" data-testid="notice-stack">
+      <% if content_for?(:flash) %>
+        <%= yield :flash %>
+      <% else %>
+        <div id="flash">
+          <%= render Components::Layouts::Flash.new(notice: notice, alert: alert, warning: flash[:warning]) %>
+        </div>
+      <% end %>
+    </div>
 
     <main>
       <div id="main-content">

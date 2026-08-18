@@ -3,27 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe Components::Layouts::Flash, type: :component do
-  it 'renders flash container above navigation' do
+  it 'renders messages for the layout notification region' do
     rendered = render_inline(described_class.new(notice: 'Saved'))
 
-    expect(rendered.to_html).to include('fixed')
-    expect(rendered.to_html).to include('top-20')
-    expect(rendered.to_html).to include('md:top-4')
-    expect(rendered.to_html).to include('z-[60]')
-  end
-
-  it 'offsets the fixed flash below the demo notice' do
-    original_value = ENV.fetch('DEMO_MODE', nil)
-    ENV['DEMO_MODE'] = 'true'
-
-    rendered = render_inline(described_class.new(notice: 'Saved'))
-
-    expect(rendered.to_html).to include('fixed')
-    expect(rendered.to_html).to include('top-48')
-    expect(rendered.to_html).to include('md:ml-64')
-    expect(rendered.to_html).to include('md:top-28')
-  ensure
-    original_value.nil? ? ENV.delete('DEMO_MODE') : ENV['DEMO_MODE'] = original_value
+    expect(rendered.css('.container').text).to include('Saved')
   end
 
   describe 'notice flash' do
@@ -55,6 +38,13 @@ RSpec.describe Components::Layouts::Flash, type: :component do
       rendered = render_inline(described_class.new(warning: 'Set up 2FA'))
 
       expect(rendered.css('svg').any?).to be true
+    end
+
+    it 'lets the user dismiss the warning' do
+      rendered = render_inline(described_class.new(warning: 'Set up 2FA'))
+
+      button = rendered.at_css('button[aria-label="Close"]')
+      expect(button['data-action']).to eq('click->flash#dismiss')
     end
   end
 
