@@ -59,6 +59,32 @@ RSpec.describe 'Taskfiles' do
     expect(command).to start_with('bin/rubocop --force-exclusion')
   end
 
+  it 'defines deterministic native API client generation tasks' do
+    expect(root_taskfile.dig('tasks', 'api-clients:generate', 'cmds'))
+      .to eq(['./client-tools/openapi-generator/generate.fish'])
+    expect(root_taskfile.dig('tasks', 'api-clients:verify-generated', 'cmds'))
+      .to eq(['./client-tools/openapi-generator/generate.fish verify'])
+    expect(root_taskfile.dig('tasks', 'api-clients:kotlin', 'cmds'))
+      .to eq(['./client-tools/openapi-generator/generate-kotlin.fish'])
+    expect(root_taskfile.dig('tasks', 'api-clients:swift', 'cmds'))
+      .to eq(['./client-tools/openapi-generator/generate-swift.fish'])
+    expect(root_taskfile.dig('tasks', 'api-clients:verify', 'cmds', 0, 'task'))
+      .to eq('api-clients:verify-generated')
+
+    expect(swift_generator_script).to include(
+      'openapitools/openapi-generator-cli:v7.20.0@sha256:fa4add01856e44becf70674164df354d61bd37ba0f444d27be949801e013921b',
+      '-g swift6',
+      'OPENAPI_SHA256'
+    )
+    expect(kotlin_generator_script).to include(
+      'openapitools/openapi-generator-cli:v7.20.0@sha256:fa4add01856e44becf70674164df354d61bd37ba0f444d27be949801e013921b',
+      '-g kotlin',
+      'OPENAPI_SHA256'
+    )
+    expect(Rails.root.join('client-tools/openapi-generator/generate-swift.fish')).to be_executable
+    expect(Rails.root.join('client-tools/openapi-generator/generate-kotlin.fish')).to be_executable
+  end
+
   it 'serializes Docker Compose runs within each worktree environment' do
     command = internal_taskfile.dig('tasks', 'run', 'cmds', 0)
 
@@ -259,6 +285,14 @@ RSpec.describe 'Taskfiles' do
 
   def portless_script
     Rails.root.join('scripts/portless_oidc.fish').read
+  end
+
+  def swift_generator_script
+    Rails.root.join('client-tools/openapi-generator/generate-swift.fish').read
+  end
+
+  def kotlin_generator_script
+    Rails.root.join('client-tools/openapi-generator/generate-kotlin.fish').read
   end
 
   def dashboard_profile_script

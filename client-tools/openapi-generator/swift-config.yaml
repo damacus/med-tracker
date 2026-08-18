@@ -1,0 +1,10 @@
+generatorName: swift6
+library: urlsession
+projectName: MedTrackerAPI
+useSPMFileStructure: true
+hideGenerationTimestamp: true
+enumUnknownDefaultCase: true
+validatable: false
+modelNameMappings:
+  Error: ApiError
+sortModelPropertiesByRequiredFlag: true

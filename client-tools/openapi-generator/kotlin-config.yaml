@@ -1,0 +1,13 @@
+generatorName: kotlin
+library: jvm-okhttp4
+packageName: io.medtracker.client
+groupId: io.medtracker
+artifactId: medtracker-api-client
+artifactVersion: 0.1.0
+serializationLibrary: moshi
+dateLibrary: java8
+hideGenerationTimestamp: true
+enumUnknownDefaultCase: true
+modelNameMappings:
+  Error: ApiError
+sortModelPropertiesByRequiredFlag: true
