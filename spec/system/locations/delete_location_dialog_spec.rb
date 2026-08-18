@@ -11,6 +11,7 @@ RSpec.describe 'Delete location confirmation', :browser do
   before do
     driven_by(:playwright)
     sign_in(admin)
+    page.current_window.resize_to(390, 844)
     visit locations_path
   end
 
@@ -20,6 +21,7 @@ RSpec.describe 'Delete location confirmation', :browser do
 
     dialog = find('dialog[open][role="alertdialog"]', text: 'Delete Location')
     expect(page.evaluate_script('arguments[0].matches(":modal")', dialog)).to be(true)
+    expect_dialog_actions_to_fill_footer(dialog)
     click_button I18n.t('locations.index.delete_dialog.cancel')
 
     expect(page).to have_no_css('dialog[open][role="alertdialog"]')
@@ -35,5 +37,20 @@ RSpec.describe 'Delete location confirmation', :browser do
 
     trigger.click
     expect(page).to have_css('dialog[open][role="alertdialog"]')
+  end
+
+  def expect_dialog_actions_to_fill_footer(dialog)
+    widths = dialog.evaluate_script(<<~JS)
+      (() => {
+        const footer = this.querySelector('.flex.flex-col-reverse');
+        const footerWidth = footer.getBoundingClientRect().width;
+        return {
+          footer: footerWidth,
+          buttons: Array.from(footer.querySelectorAll('button')).map((button) => button.getBoundingClientRect().width)
+        };
+      })()
+    JS
+
+    expect(widths.fetch('buttons')).to all(be_within(1).of(widths.fetch('footer')))
   end
 end
