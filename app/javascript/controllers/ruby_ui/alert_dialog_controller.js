@@ -14,6 +14,7 @@ export default class extends Controller {
 
   connect() {
     this.sourceFrame = this.element.closest("turbo-frame")
+    this.parentDropdownContent = this.element.closest("[data-ruby-ui--dropdown-menu-target='content']")
 
     if (this.openValue) {
       this.open()
@@ -21,6 +22,8 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this.restoreParentDropdown()
+
     if (this.contentTarget.open) {
       this.contentTarget.close()
     }
@@ -36,11 +39,13 @@ export default class extends Controller {
     this.connectNaming()
     this.contentTarget.hidden = false
     this.contentTarget.showModal()
+    this.hideParentDropdown()
     this.updateBodyScrollLock()
   }
 
   dismiss(e) {
     e?.preventDefault()
+    this.restoreParentDropdown()
 
     if (this.contentTarget.open) {
       this.contentTarget.close()
@@ -95,6 +100,18 @@ export default class extends Controller {
 
   updateBodyScrollLock() {
     document.body.classList.toggle("overflow-hidden", Boolean(document.querySelector("dialog:modal")))
+  }
+
+  hideParentDropdown() {
+    if (!this.parentDropdownContent) return
+
+    this.parentDropdownContent.style.visibility = "hidden"
+    this.contentTarget.style.visibility = "visible"
+  }
+
+  restoreParentDropdown() {
+    this.parentDropdownContent?.style.removeProperty("visibility")
+    this.contentTarget.style.removeProperty("visibility")
   }
 
   usableTabbable(element) {

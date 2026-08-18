@@ -104,6 +104,7 @@ RSpec.describe 'Schedules workflow' do
   end
 
   it 'dismisses only the delete confirmation before closing its actions menu with Escape', :js do
+    page.current_window.resize_to(390, 844)
     visit person_path(person)
 
     within("##{tenant_dom_id(schedule)}") do
@@ -111,7 +112,11 @@ RSpec.describe 'Schedules workflow' do
       find("[data-testid='delete-schedule-#{schedule.id}']").click
     end
 
-    expect(page).to have_css('[role="alertdialog"]')
+    dialog = find('[role="alertdialog"]')
+    expect(page).to have_no_css(
+      "[data-testid='schedule-actions-menu-#{schedule.id}']", visible: :visible
+    )
+    expect_dialog_actions_to_fill_footer(dialog)
 
     find('body').send_keys(:escape)
 
@@ -156,5 +161,20 @@ RSpec.describe 'Schedules workflow' do
 
   def edit_schedule
     find("[data-testid='edit-schedule-#{schedule.id}']").click
+  end
+
+  def expect_dialog_actions_to_fill_footer(dialog)
+    widths = dialog.evaluate_script(<<~JS)
+      (() => {
+        const footer = this.querySelector('.flex.flex-col-reverse');
+        const footerWidth = footer.getBoundingClientRect().width;
+        return {
+          footer: footerWidth,
+          buttons: Array.from(footer.querySelectorAll('button')).map((button) => button.getBoundingClientRect().width)
+        };
+      })()
+    JS
+
+    expect(widths.fetch('buttons')).to all(be_within(1).of(widths.fetch('footer')))
   end
 end

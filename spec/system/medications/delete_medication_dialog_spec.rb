@@ -11,6 +11,7 @@ RSpec.describe 'Delete medication confirmation', :browser do
   before do
     driven_by(:playwright)
     sign_in(admin)
+    page.current_window.resize_to(390, 844)
     visit medications_path
   end
 
@@ -21,6 +22,7 @@ RSpec.describe 'Delete medication confirmation', :browser do
     dialog = find('dialog[role="alertdialog"]')
     expect(page.evaluate_script('arguments[0].matches(":modal")', dialog)).to be(true)
     expect(page).to have_css('body.overflow-hidden')
+    expect_dialog_actions_to_fill_footer(dialog)
     click_button I18n.t('medications.index.delete_dialog.cancel')
 
     expect(page).to have_no_css('[role="alertdialog"]')
@@ -39,5 +41,20 @@ RSpec.describe 'Delete medication confirmation', :browser do
 
     trigger.click
     expect(page).to have_css('[role="alertdialog"]')
+  end
+
+  def expect_dialog_actions_to_fill_footer(dialog)
+    widths = dialog.evaluate_script(<<~JS)
+      (() => {
+        const footer = this.querySelector('.flex.flex-col-reverse');
+        const footerWidth = footer.getBoundingClientRect().width;
+        return {
+          footer: footerWidth,
+          buttons: Array.from(footer.querySelectorAll('button')).map((button) => button.getBoundingClientRect().width)
+        };
+      })()
+    JS
+
+    expect(widths.fetch('buttons')).to all(be_within(1).of(widths.fetch('footer')))
   end
 end

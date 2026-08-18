@@ -11,6 +11,7 @@ RSpec.describe 'Person medication actions delete confirmation', :browser do
   before do
     driven_by(:playwright)
     sign_in(admin)
+    page.current_window.resize_to(390, 844)
     visit person_path(person_medication.person)
   end
 
@@ -22,6 +23,9 @@ RSpec.describe 'Person medication actions delete confirmation', :browser do
 
     dialog = find('dialog[open][role="alertdialog"]', text: 'Remove Medication')
     expect(page.evaluate_script('arguments[0].matches(":modal")', dialog)).to be(true)
+    expect(page).to have_no_css(
+      "[data-testid='person-medication-actions-menu-#{person_medication.id}']", visible: :visible
+    )
 
     find('body').send_keys(:escape)
 
