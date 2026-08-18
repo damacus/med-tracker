@@ -15,7 +15,7 @@
 | **tradeFamily** | [**MedicationLookupTradeFamily**](MedicationLookupTradeFamily.md) |  |  |
 | **tradeFamilyGroup** | [**MedicationLookupTradeFamily**](MedicationLookupTradeFamily.md) |  |  |
 | **packageSize** | **kotlin.String** |  |  |
-| **packageQuantity** | [**java.math.BigDecimal**](java.math.BigDecimal.md) |  |  |
+| **packageQuantity** | **kotlin.String** |  |  |
 | **packageUnit** | **kotlin.String** |  |  |
 | **directions** | **kotlin.String** |  |  |
 | **warnings** | **kotlin.String** |  |  |

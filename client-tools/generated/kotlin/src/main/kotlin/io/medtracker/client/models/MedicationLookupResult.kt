@@ -91,7 +91,7 @@ data class MedicationLookupResult (
     val packageSize: kotlin.String?,
 
     @Json(name = "package_quantity")
-    val packageQuantity: java.math.BigDecimal?,
+    val packageQuantity: kotlin.String?,
 
     @Json(name = "package_unit")
     val packageUnit: kotlin.String?,

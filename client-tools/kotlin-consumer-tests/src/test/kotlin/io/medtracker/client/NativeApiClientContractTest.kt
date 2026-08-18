@@ -13,6 +13,7 @@ import io.medtracker.client.models.ErrorEnvelope
 import io.medtracker.client.models.Medication
 import io.medtracker.client.models.MedicationCreateAttributes
 import io.medtracker.client.models.MedicationCreateRequest
+import io.medtracker.client.models.MedicationLookupResult
 import io.medtracker.client.models.MedicationTake
 import io.medtracker.client.models.PortableImportConflictField
 import io.medtracker.client.models.PersonMedicationAttributes
@@ -102,6 +103,48 @@ class NativeApiClientContractTest : ShouldSpec() {
                 """.trimIndent()
             )!!
             omitted.doseAmount shouldBe null
+        }
+
+        should("decode medication lookup package quantities as nullable strings") {
+            val adapter = Serializer.moshi.adapter(MedicationLookupResult::class.java)
+
+            val populated = adapter.fromJson(
+                """
+                {
+                  "display": "Aspirin 300mg tablets",
+                  "package_quantity": "1.5",
+                  "related_medications": [],
+                  "review_prompts": [],
+                  "review_prompt_filter": {"hidden_count": 0}
+                }
+                """.trimIndent()
+            )!!
+            populated.packageQuantity shouldBe "1.5"
+
+            val explicitNull = adapter.fromJson(
+                """
+                {
+                  "display": "Aspirin 300mg tablets",
+                  "package_quantity": null,
+                  "related_medications": [],
+                  "review_prompts": [],
+                  "review_prompt_filter": {"hidden_count": 0}
+                }
+                """.trimIndent()
+            )!!
+            explicitNull.packageQuantity shouldBe null
+
+            val omitted = adapter.fromJson(
+                """
+                {
+                  "display": "Aspirin 300mg tablets",
+                  "related_medications": [],
+                  "review_prompts": [],
+                  "review_prompt_filter": {"hidden_count": 0}
+                }
+                """.trimIndent()
+            )!!
+            omitted.packageQuantity shouldBe null
         }
 
         should("compile representative authenticated and error operations") {
