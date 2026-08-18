@@ -64,7 +64,7 @@ RSpec.describe 'API v1 write resources' do
       medication_take: {
         client_uuid: client_uuid,
         source_type: 'schedule',
-        source_id: schedule.id,
+        source_id: schedule.id.to_s,
         taken_at: '2026-02-25T08:30:00Z'
       }
     }
@@ -99,7 +99,7 @@ RSpec.describe 'API v1 write resources' do
            params: {
              medication_take: {
                source_type: 'person_medication',
-               source_id: person_medication.id,
+               source_id: person_medication.id.to_s,
                taken_at: '2026-02-25T08:30:00Z'
              }
            },
@@ -116,7 +116,7 @@ RSpec.describe 'API v1 write resources' do
          params: {
            medication_take: {
              source_type: 'schedule',
-             source_id: schedules(:john_paracetamol).id,
+             source_id: schedules(:john_paracetamol).id.to_s,
              taken_at: 'not-a-time'
            }
          },
@@ -129,7 +129,7 @@ RSpec.describe 'API v1 write resources' do
 
   it 'returns not found for unknown medication take source types' do
     post api_v1_household_medication_takes_path(household_id),
-         params: { medication_take: { source_type: 'unknown', source_id: schedules(:john_paracetamol).id } },
+         params: { medication_take: { source_type: 'unknown', source_id: schedules(:john_paracetamol).id.to_s } },
          headers: headers,
          as: :json
 
@@ -148,7 +148,7 @@ RSpec.describe 'API v1 write resources' do
          params: {
            medication_take: {
              source_type: 'schedule',
-             source_id: schedule.id,
+             source_id: schedule.id.to_s,
              taken_at: '2026-02-25T08:30:00Z'
            }
          },
@@ -167,7 +167,7 @@ RSpec.describe 'API v1 write resources' do
          params: {
            medication_take: {
              source_type: 'schedule',
-             source_id: schedule.id,
+             source_id: schedule.id.to_s,
              taken_at: '2026-02-25T08:30:00Z'
            }
          },
@@ -181,7 +181,7 @@ RSpec.describe 'API v1 write resources' do
          params: {
            medication_take: {
              source_type: 'schedule',
-             source_id: schedule.id,
+             source_id: schedule.id.to_s,
              taken_at: '2026-02-25T08:30:00Z',
              taken_from_medication_id: medications(:aspirin).id
            }
@@ -240,10 +240,10 @@ RSpec.describe 'API v1 write resources' do
            medication: {
              name: 'API Saline',
              location_id: locations(:home).id,
-             dose_amount: 5,
+             dose_amount: '5',
              dose_unit: 'ml',
-             current_supply: 100,
-             reorder_threshold: 10
+             current_supply: '100',
+             reorder_threshold: '10'
            }
          },
          headers: headers,
@@ -253,7 +253,7 @@ RSpec.describe 'API v1 write resources' do
     medication_id = response.parsed_body.dig('data', 'id')
 
     patch api_v1_household_medication_path(household_id, medication_id),
-          params: { medication: { current_supply: 90 } },
+          params: { medication: { current_supply: '90' } },
           headers: headers,
           as: :json
 
@@ -278,9 +278,9 @@ RSpec.describe 'API v1 write resources' do
     post api_v1_household_schedules_path(household_id),
          params: {
            schedule: {
-             person_id: person.id,
-             medication_id: medication.id,
-             dose_amount: 500,
+             person_id: person.portable_id,
+             medication_id: medication.portable_id,
+             dose_amount: '500',
              dose_unit: 'mg',
              frequency: 'Daily',
              start_date: '2026-02-25',
@@ -304,7 +304,7 @@ RSpec.describe 'API v1 write resources' do
     expect(response.parsed_body.dig('data', 'frequency')).to eq('Every morning')
 
     patch api_v1_household_schedule_path(household_id, schedule_id),
-          params: { schedule: { medication_id: medications(:ibuprofen).id } },
+          params: { schedule: { medication_id: medications(:ibuprofen).portable_id } },
           headers: headers,
           as: :json
 
@@ -319,9 +319,9 @@ RSpec.describe 'API v1 write resources' do
     post api_v1_household_schedules_path(household_id),
          params: {
            schedule: {
-             person_id: people(:john).id,
-             medication_id: other_medication.id,
-             dose_amount: 500,
+             person_id: people(:john).portable_id,
+             medication_id: other_medication.portable_id,
+             dose_amount: '500',
              dose_unit: 'mg',
              frequency: 'Daily',
              start_date: '2026-02-25',
@@ -341,9 +341,9 @@ RSpec.describe 'API v1 write resources' do
     post api_v1_household_person_medications_path(household_id),
          params: {
            person_medication: {
-             person_id: person.id,
-             medication_id: medication.id,
-             dose_amount: 200,
+             person_id: person.portable_id,
+             medication_id: medication.portable_id,
+             dose_amount: '200',
              dose_unit: 'mg',
              administration_kind: 'as_needed'
            }
@@ -363,7 +363,7 @@ RSpec.describe 'API v1 write resources' do
     expect(response.parsed_body.dig('data', 'notes')).to eq('Use with food')
 
     patch api_v1_household_person_medication_path(household_id, person_medication_id),
-          params: { person_medication: { medication_id: medications(:paracetamol).id } },
+          params: { person_medication: { medication_id: medications(:paracetamol).portable_id } },
           headers: headers,
           as: :json
 
@@ -378,9 +378,9 @@ RSpec.describe 'API v1 write resources' do
     post api_v1_household_person_medications_path(household_id),
          params: {
            person_medication: {
-             person_id: people(:john).id,
-             medication_id: other_medication.id,
-             dose_amount: 200,
+             person_id: people(:john).portable_id,
+             medication_id: other_medication.portable_id,
+             dose_amount: '200',
              dose_unit: 'mg',
              administration_kind: 'as_needed'
            }

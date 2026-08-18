@@ -11,7 +11,8 @@ RSpec.describe Api::V1::ScheduleSerializer do
       person_portable_id: schedule.person.portable_id, medication_id: schedule.medication_id,
       medication_portable_id: schedule.medication.portable_id,
       frequency: schedule.frequency, dose_cycle: schedule.dose_cycle, active: schedule.active?, paused: false,
-      max_daily_doses: schedule.max_daily_doses, min_hours_between_doses: schedule.min_hours_between_doses
+      max_daily_doses: schedule.max_daily_doses,
+      min_hours_between_doses: BigDecimal(schedule.min_hours_between_doses.to_s).to_s('F')
     )
     expect(json[:start_date]).to eq(schedule.start_date&.iso8601)
     expect(json[:end_date]).to eq(schedule.end_date&.iso8601)
@@ -22,7 +23,7 @@ RSpec.describe Api::V1::ScheduleSerializer do
     schedule = create(:schedule, notes: 'Take with food')
     json = described_class.new(schedule).as_json
     expect(json).to include(
-      dose_amount: schedule.dose_amount,
+      dose_amount: BigDecimal(schedule.dose_amount.to_s).to_s('F'),
       dose_unit: schedule.dose_unit,
       notes: 'Take with food'
     )

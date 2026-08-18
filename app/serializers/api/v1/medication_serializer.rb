@@ -3,6 +3,8 @@
 module Api
   module V1
     class MedicationSerializer
+      include DecimalSerialization
+
       def initialize(medication)
         @medication = medication
       end
@@ -27,15 +29,15 @@ module Api
           display_name: medication.display_name,
           category: medication.category,
           description: medication.description,
-          dose_amount: medication.dose_amount,
+          dose_amount: decimal_as_json(medication.dose_amount),
           dose_unit: medication.dose_unit
         }
       end
 
       def inventory_data
         {
-          current_supply: medication.current_supply,
-          reorder_threshold: medication.reorder_threshold,
+          current_supply: decimal_as_json(medication.current_supply),
+          reorder_threshold: decimal_as_json(medication.reorder_threshold),
           reorder_status: medication.reorder_status,
           location_id: medication.location_id,
           location_portable_id: medication.location&.portable_id,

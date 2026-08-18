@@ -42,6 +42,7 @@ module Api
       private
 
       def medication_take_params
+        reject_numeric_contract_values!(%w[source_id dose_amount])
         params.expect(
           medication_take: %i[
             client_uuid

@@ -11,7 +11,7 @@ RSpec.describe Api::V1::MedicationTakeSerializer do
       person_medication_id: take.person_medication_id, person_medication_portable_id: nil,
       taken_from_medication_id: take.taken_from_medication_id,
       taken_from_location_id: take.taken_from_location_id,
-      dose_amount: take.dose_amount&.to_f, dose_unit: take.dose_unit,
+      dose_amount: take.dose_amount.to_s('F'), dose_unit: take.dose_unit,
       taken_at: take.taken_at&.iso8601, updated_at: take.updated_at.iso8601,
       person_id: take.person&.id, person_portable_id: take.person.portable_id,
       medication_id: take.medication&.id, medication_portable_id: take.medication.portable_id
@@ -36,10 +36,10 @@ RSpec.describe Api::V1::MedicationTakeSerializer do
     expect(json[:medication_id]).to eq(take.schedule.medication_id)
   end
 
-  it 'serialises dose_amount as a Float' do
+  it 'serialises dose_amount as a decimal string' do
     take = create(:medication_take, :for_schedule)
     json = described_class.new(take).as_json
-    expect(json[:dose_amount]).to be_a(Float)
+    expect(json[:dose_amount]).to be_a(String)
   end
 
   it 'includes person_medication_id from person_medication source' do

@@ -73,6 +73,7 @@ module Api
       end
 
       def person_medication_params
+        reject_numeric_contract_values!(%w[person_id medication_id source_dosage_option_id dose_amount min_hours_between_doses])
         attributes = params.expect(
           person_medication: %i[
             person_id

@@ -57,9 +57,9 @@ RSpec.describe 'API v1 schedules' do
       post api_v1_household_schedules_path(household_id),
            params: {
              schedule: {
-               person_id: person.id,
-               medication_id: medication.id,
-               dose_amount: 500,
+               person_id: person.portable_id,
+               medication_id: medication.portable_id,
+               dose_amount: '500',
                dose_unit: 'mg',
                frequency: 'Daily',
                start_date: '2026-02-25',
@@ -86,7 +86,7 @@ RSpec.describe 'API v1 schedules' do
                person_id: person.portable_id,
                medication_id: medication.portable_id,
                source_dosage_option_id: dosage_option.portable_id,
-               dose_amount: 500,
+               dose_amount: '500',
                dose_unit: 'mg',
                frequency: 'Daily',
                start_date: '2026-02-25',
@@ -109,8 +109,8 @@ RSpec.describe 'API v1 schedules' do
       post api_v1_household_schedules_path(household_id),
            params: {
              schedule: {
-               person_id: person.id,
-               medication_id: medication.id,
+               person_id: person.portable_id,
+               medication_id: medication.portable_id,
                start_date: '2026-02-25'
              }
            },

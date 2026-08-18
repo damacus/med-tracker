@@ -3,6 +3,8 @@
 module Api
   module V1
     class MedicationTakeSerializer
+      include DecimalSerialization
+
       def initialize(medication_take)
         @medication_take = medication_take
       end
@@ -51,7 +53,7 @@ module Api
 
       def event_data
         {
-          dose_amount: medication_take.dose_amount&.to_f,
+          dose_amount: decimal_as_json(medication_take.dose_amount),
           dose_unit: medication_take.dose_unit,
           taken_at: medication_take.taken_at&.iso8601,
           updated_at: medication_take.updated_at.iso8601

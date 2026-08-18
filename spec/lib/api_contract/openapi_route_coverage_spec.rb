@@ -127,9 +127,7 @@ module OpenapiReferenceValidation
   def dereference(value, root: document)
     case value
     when Hash
-      return dereference(resolve_local_reference(value.fetch('$ref'), root:), root:) if value.key?('$ref')
-
-      value.transform_values { |child| dereference(child, root:) }
+      dereference_hash(value, root:)
     when Array
       value.map { |child| dereference(child, root:) }
     else
@@ -137,9 +135,69 @@ module OpenapiReferenceValidation
     end
   end
 
+  def dereference_hash(value, root:)
+    return dereference(resolve_local_reference(value.fetch('$ref'), root:), root:) if value.key?('$ref')
+
+    dereferenced = value.transform_values { |child| dereference(child, root:) }
+    return dereferenced unless dereferenced.delete('nullable')
+
+    type = dereferenced['type']
+    dereferenced['type'] = [type, 'null'] if type.is_a?(String)
+    dereferenced['enum'] = [*dereferenced['enum'], nil] if dereferenced['enum'].is_a?(Array)
+    dereferenced
+  end
+
   def schema_errors(name, payload)
     JSONSchemer.schema(dereferenced_schema(name)).validate(payload.deep_stringify_keys).map do |error|
       error.fetch('data_pointer')
+    end
+  end
+end
+
+module OpenapiClientCompatibility
+  def client_schema_keyword_errors(value = document, path = '#')
+    return hash_keyword_errors(value, path) if value.is_a?(Hash)
+    return array_keyword_errors(value, path) if value.is_a?(Array)
+
+    []
+  end
+
+  def hash_keyword_errors(value, path)
+    keyword_errors(value, path) +
+      inline_field_enum_errors(value, path) +
+      value.flat_map { |key, child| client_schema_keyword_errors(child, "#{path}/#{key}") }
+  end
+
+  def keyword_errors(value, path)
+    errors = %w[const oneOf anyOf].filter_map { |keyword| "#{path}/#{keyword}" if value.key?(keyword) }
+    errors << "#{path}/type" if value['type'].is_a?(Array)
+    errors + primitive_all_of_errors(value['allOf'], "#{path}/allOf")
+  end
+
+  def inline_field_enum_errors(value, path)
+    properties = value['properties']
+    return [] unless properties.is_a?(Hash)
+
+    properties.filter_map do |property, property_schema|
+      next unless property == 'field' && property_schema.is_a?(Hash) && property_schema.key?('enum')
+
+      "#{path}/properties/#{property}/enum"
+    end
+  end
+
+  def array_keyword_errors(value, path)
+    value.each_with_index.flat_map do |child, index|
+      client_schema_keyword_errors(child, "#{path}/#{index}")
+    end
+  end
+
+  def primitive_all_of_errors(value, path)
+    return [] unless value.is_a?(Array)
+
+    value.each_with_index.filter_map do |item, index|
+      next unless item.is_a?(Hash) && item['type'].is_a?(String) && item['type'] != 'object'
+
+      "#{path}/#{index}"
     end
   end
 end
@@ -178,11 +236,12 @@ module OpenapiStructure
     /households/{household_id}/person_medications/{id}
   ].freeze
   OPENAPI_SCHEMA_PATH = Rails.root.join(
-    'spec/fixtures/files/openapi-3.1-schema-2022-10-07.json'
+    'spec/fixtures/files/openapi-3.0-schema-2021-09-28.json'
   )
 
   extend OpenapiYamlValidation
   extend OpenapiReferenceValidation
+  extend OpenapiClientCompatibility
 
   module_function
 
@@ -326,18 +385,42 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(defined_tag_names).to match_array(used_tag_names)
     end
 
-    it 'defines distinct identifiers, timestamps, and pagination' do
+    it 'defines distinct identifiers' do
       schemas = described_class.components.fetch('schemas')
 
       expect(schemas.fetch('NumericId')).to include('type' => 'integer', 'minimum' => 1)
       expect(schemas.fetch('PortableId')).to include('type' => 'string', 'format' => 'uuid')
-      expect(schemas.fetch('ResourceIdentifier').fetch('oneOf')).to contain_exactly(
-        { '$ref' => '#/components/schemas/NumericId' },
-        { '$ref' => '#/components/schemas/PortableId' }
-      )
+      expect(schemas.fetch('ResourceIdentifier')).to include('type' => 'string')
+      expect(schemas.fetch('ResourceIdentifier')).to include('pattern' => kind_of(String))
+    end
+
+    it 'defines decimal values as strings' do
+      schemas = described_class.components.fetch('schemas')
+
+      expect(schemas.fetch('DecimalValue')).to include('type' => 'string', 'pattern' => kind_of(String))
+      expect(schemas.fetch('NullableDecimalValue')).to include('type' => 'string', 'nullable' => true)
+    end
+
+    it 'defines timestamps and pagination' do
+      schemas = described_class.components.fetch('schemas')
+
       expect(schemas.fetch('Timestamp')).to include('type' => 'string', 'format' => 'date-time')
       expect(schemas.fetch('PaginationMeta').fetch('required')).to contain_exactly(
         'page', 'per_page', 'total_count'
+      )
+    end
+
+    it 'uses OpenAPI 3.0.3 client-compatible schema composition' do
+      expect(described_class.document.fetch('openapi')).to eq('3.0.3')
+      expect(described_class.client_schema_keyword_errors).to be_empty
+    end
+
+    it 'uses a reusable import conflict field enum' do
+      expect(described_class.schema('PortableImportConflictField')).to include(
+        'type' => 'string', 'enum' => %w[name email]
+      )
+      expect(described_class.schema('PortableImportConflict').dig('properties', 'field', '$ref')).to eq(
+        '#/components/schemas/PortableImportConflictField'
       )
     end
 
@@ -435,8 +518,8 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       )
     end
 
-    it 'declares an OpenAPI 3.1 document with required sections' do
-      expect(described_class.document).to include('openapi' => '3.1.0')
+    it 'declares an OpenAPI 3.0.3 document with required sections' do
+      expect(described_class.document).to include('openapi' => '3.0.3')
       expect(described_class.document).to include('info', 'servers', 'paths', 'components')
     end
 
@@ -522,7 +605,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
         '#/components/schemas/CapabilitiesResponse'
       )
       expect(operation.dig('responses', '200', 'headers', 'Cache-Control', 'schema')).to include(
-        'type' => 'string', 'const' => 'no-store'
+        'type' => 'string', 'enum' => ['no-store']
       )
     end
 
@@ -1096,10 +1179,10 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
 
     it 'accepts only supported medication write fields' do
       valid_create = {
-        medication: { name: 'Contract medicine', location_id: 1, current_supply: 20, reorder_threshold: 5 }
+        medication: { name: 'Contract medicine', location_id: 1, current_supply: '20', reorder_threshold: '5' }
       }
       invalid_create = valid_create.deep_merge(medication: { household_id: 99 })
-      adjustment = { adjustment: { new_quantity: 10, reason: 'Stock count' } }
+      adjustment = { adjustment: { new_quantity: '10', reason: 'Stock count' } }
 
       expect(described_class.schema_errors('MedicationCreateRequest', valid_create)).to be_empty
       expect(described_class.schema_errors('MedicationCreateRequest', invalid_create)).to include(
@@ -1140,8 +1223,8 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
     it 'accepts only supported dosage option write fields' do
       valid_create = {
         dosage_option: {
-          medication_id: SecureRandom.uuid, amount: 500, unit: 'mg', frequency: 'Twice daily',
-          default_max_daily_doses: 2, default_min_hours_between_doses: 6, default_dose_cycle: 'daily'
+          medication_id: SecureRandom.uuid, amount: '500', unit: 'mg', frequency: 'Twice daily',
+          default_max_daily_doses: 2, default_min_hours_between_doses: '6', default_dose_cycle: 'daily'
         }
       }
       invalid_create = valid_create.deep_merge(dosage_option: { household_id: 99 })
@@ -1195,7 +1278,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
     it 'rejects unsupported schedule fields' do
       schedule = {
         schedule: {
-          person_id: SecureRandom.uuid, medication_id: 1, dose_amount: 5, dose_unit: 'ml',
+          person_id: SecureRandom.uuid, medication_id: '1', dose_amount: '5', dose_unit: 'ml',
           start_date: Date.current.iso8601, end_date: 1.month.from_now.to_date.iso8601
         }
       }
@@ -1208,7 +1291,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
 
     it 'rejects unsupported person medication fields' do
       person_medication = {
-        person_medication: { person_id: 1, medication_id: SecureRandom.uuid, administration_kind: 'routine' }
+        person_medication: { person_id: '1', medication_id: SecureRandom.uuid, administration_kind: 'routine' }
       }
 
       expect(described_class.schema_errors('PersonMedicationCreateRequest', person_medication)).to be_empty
@@ -1256,7 +1339,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       valid_request = {
         health_event: {
           person_id: SecureRandom.uuid, event_kind: 'illness', severity: 'moderate',
-          title: 'Seasonal cold', started_on: Date.current.iso8601, medication_ids: [1]
+          title: 'Seasonal cold', started_on: Date.current.iso8601, medication_ids: ['1']
         }
       }
       invalid_request = valid_request.deep_merge(health_event: { household_id: 9 })
@@ -1360,13 +1443,9 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(mode_schema.fetch('enum')).to contain_exactly(
         'encrypted_migration_bundle', 'backup_zip', 'health_data_json'
       )
-      expect(response_schema.fetch('oneOf').pluck('$ref')).to contain_exactly(
-        '#/components/schemas/PortableEnvelopeResponse',
-        '#/components/schemas/BackupZipResponse',
-        '#/components/schemas/HealthDataExportResponse'
-      )
+      expect(response_schema.fetch('$ref')).to eq('#/components/schemas/DataExportResponse')
       expect(export.dig('responses', '200', 'headers', 'Cache-Control', 'schema')).to include(
-        'type' => 'string', 'const' => 'no-store'
+        'type' => 'string', 'enum' => ['no-store']
       )
     end
 
@@ -1502,11 +1581,11 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
 
     def contract_ai_dose
       {
-        amount: 5,
+        amount: '5',
         unit: 'ml',
         description: 'Children 6-8 years',
         default_max_daily_doses: 4,
-        default_min_hours_between_doses: 4,
+        default_min_hours_between_doses: '4',
         default_dose_cycle: 'daily',
         evidence: {
           url: contract_ai_source_url,

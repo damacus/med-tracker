@@ -17,11 +17,11 @@ RSpec.describe 'API v1 domain parity' do
          params: {
            dosage_option: {
              medication_id: medication.portable_id,
-             amount: 250,
+             amount: '250',
              unit: 'mg',
              frequency: 'Twice daily',
              default_max_daily_doses: 2,
-             default_min_hours_between_doses: 8,
+             default_min_hours_between_doses: '8',
              default_dose_cycle: 'daily'
            }
          },
@@ -42,7 +42,7 @@ RSpec.describe 'API v1 domain parity' do
     dosage_option = dosages(:paracetamol_adult)
 
     patch api_v1_household_dosage_option_path(household_id, dosage_option.portable_id),
-          params: { dosage_option: { amount: 375, frequency: 'Every 8 hours' } },
+          params: { dosage_option: { amount: '375', frequency: 'Every 8 hours' } },
           headers: headers,
           as: :json
 
@@ -56,7 +56,7 @@ RSpec.describe 'API v1 domain parity' do
     dosage_option = dosages(:paracetamol_adult)
 
     patch api_v1_household_dosage_option_path(household_id, dosage_option.portable_id),
-          params: { dosage_option: { amount: 375 } },
+          params: { dosage_option: { amount: '375' } },
           headers: headers.merge('If-Match' => '"stale-etag"'),
           as: :json
 
@@ -257,7 +257,7 @@ RSpec.describe 'API v1 domain parity' do
     medication = medications(:paracetamol)
 
     patch adjust_inventory_api_v1_household_medication_path(household_id, medication.portable_id),
-          params: { adjustment: { new_quantity: 42, reason: 'Cycle count' } },
+          params: { adjustment: { new_quantity: '42', reason: 'Cycle count' } },
           headers: headers,
           as: :json
 
@@ -269,7 +269,7 @@ RSpec.describe 'API v1 domain parity' do
     medication = medications(:paracetamol)
 
     patch adjust_inventory_api_v1_household_medication_path(household_id, medication.portable_id),
-          params: { adjustment: { new_quantity: -1, reason: 'Invalid cycle count' } },
+          params: { adjustment: { new_quantity: '-1', reason: 'Invalid cycle count' } },
           headers: headers,
           as: :json
 

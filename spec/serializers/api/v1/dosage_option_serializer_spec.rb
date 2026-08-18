@@ -21,6 +21,15 @@ RSpec.describe Api::V1::DosageOptionSerializer do
     expect(json[:updated_at]).to eq(updated_at.iso8601)
   end
 
+  it 'serialises decimal values as strings' do
+    dosage_option = create(:dosage, amount: 5, default_min_hours_between_doses: 8,
+                                    current_supply: 10, reorder_threshold: 2)
+
+    expect(described_class.new(dosage_option).as_json).to include(
+      amount: '5.0', default_min_hours_between_doses: '8.0', current_supply: '10.0', reorder_threshold: '2.0'
+    )
+  end
+
   def missing_medication_dosage(updated_at)
     instance_double(
       MedicationDosageOption,

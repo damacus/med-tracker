@@ -24,7 +24,7 @@ module AiMedication
     end
 
     def valid_doses(doses)
-      doses.select { |dose| valid_dose?(dose) }
+      doses.filter_map { |dose| normalized_dose(dose) }
     end
 
     def valid_sources(sources)
@@ -43,6 +43,15 @@ module AiMedication
         positive_integer?(dose['default_max_daily_doses']) &&
         non_negative_number?(dose['default_min_hours_between_doses']) &&
         MedicationDosageOption.default_dose_cycles.key?(dose['default_dose_cycle'].to_s)
+    end
+
+    def normalized_dose(dose)
+      return unless valid_dose?(dose)
+
+      dose.merge(
+        'amount' => decimal_string(dose['amount']),
+        'default_min_hours_between_doses' => decimal_string(dose['default_min_hours_between_doses'])
+      )
     end
 
     def dose_evidence_valid?(evidence)
@@ -69,6 +78,10 @@ module AiMedication
 
     def positive_integer?(value)
       value.to_s.match?(/\A\d+\z/) && value.to_i.positive?
+    end
+
+    def decimal_string(value)
+      BigDecimal(value.to_s).to_s('F')
     end
   end
 end

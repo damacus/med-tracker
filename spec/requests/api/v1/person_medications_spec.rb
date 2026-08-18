@@ -45,9 +45,9 @@ RSpec.describe 'API v1 person medications' do
       post api_v1_household_person_medications_path(household_id),
            params: {
              person_medication: {
-               person_id: person.id,
-               medication_id: medication.id,
-               dose_amount: 200,
+               person_id: person.portable_id,
+               medication_id: medication.portable_id,
+               dose_amount: '200',
                dose_unit: 'mg',
                administration_kind: 'as_needed'
              }
@@ -73,7 +73,7 @@ RSpec.describe 'API v1 person medications' do
                person_id: person.portable_id,
                medication_id: medication.portable_id,
                source_dosage_option_id: dosage_option.portable_id,
-               dose_amount: 200,
+               dose_amount: '200',
                dose_unit: 'mg',
                administration_kind: 'as_needed'
              }
@@ -93,9 +93,9 @@ RSpec.describe 'API v1 person medications' do
       post api_v1_household_person_medications_path(household_id),
            params: {
              person_medication: {
-               person_id: person.id,
-               medication_id: medication.id,
-               dose_amount: 200,
+               person_id: person.portable_id,
+               medication_id: medication.portable_id,
+               dose_amount: '200',
                dose_unit: 'mg',
                administration_kind: 'as_needed'
              }
@@ -108,9 +108,9 @@ RSpec.describe 'API v1 person medications' do
       post api_v1_household_person_medications_path(household_id),
            params: {
              person_medication: {
-               person_id: person.id,
-               medication_id: medication.id,
-               dose_amount: 400,
+               person_id: person.portable_id,
+               medication_id: medication.portable_id,
+               dose_amount: '400',
                dose_unit: 'mg',
                administration_kind: 'routine'
              }

@@ -1,4 +1,4 @@
-openapi: 3.1.0
+openapi: 3.0.3
 info:
   title: MedTracker API
   version: v1
@@ -78,7 +78,8 @@ paths:
               required: true
               schema:
                 type: string
-                const: no-store
+                enum:
+                  - no-store
           content:
             application/json:
               schema:
@@ -2043,9 +2044,7 @@ paths:
           content:
             application/json:
               schema:
-                oneOf:
-                  - $ref: '#/components/schemas/PortableImportResultResponse'
-                  - $ref: '#/components/schemas/ErrorEnvelope'
+                $ref: '#/components/schemas/PortableImportResultResponse'
         '429':
           $ref: '#/components/responses/RateLimited'
   /households/{household_id}/data_exports/{mode}:
@@ -2075,14 +2074,12 @@ paths:
               required: true
               schema:
                 type: string
-                const: no-store
+                enum:
+                  - no-store
           content:
             application/json:
               schema:
-                oneOf:
-                  - $ref: '#/components/schemas/PortableEnvelopeResponse'
-                  - $ref: '#/components/schemas/BackupZipResponse'
-                  - $ref: '#/components/schemas/HealthDataExportResponse'
+                $ref: '#/components/schemas/DataExportResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2836,39 +2833,37 @@ components:
       type: string
       format: uuid
     ResourceIdentifier:
-      oneOf:
-        - $ref: '#/components/schemas/NumericId'
-        - $ref: '#/components/schemas/PortableId'
+      type: string
+      minLength: 1
+      pattern: '^(?:[1-9][0-9]*|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$'
     DeviceTokenIdentifier:
       type: string
       minLength: 1
     NullableNumericId:
-      oneOf:
-        - $ref: '#/components/schemas/NumericId'
-        - type: 'null'
+      type: integer
+      minimum: 1
+      nullable: true
     NullablePortableId:
-      oneOf:
-        - $ref: '#/components/schemas/PortableId'
-        - type: 'null'
+      type: string
+      format: uuid
+      nullable: true
     Timestamp:
       type: string
       format: date-time
     NullableTimestamp:
-      oneOf:
-        - $ref: '#/components/schemas/Timestamp'
-        - type: 'null'
+      type: string
+      format: date-time
+      nullable: true
     Date:
       type: string
       format: date
     DecimalValue:
-      oneOf:
-        - type: number
-        - type: string
-          pattern: '^-?[0-9]+(?:\.[0-9]+)?$'
+      type: string
+      pattern: '^-?[0-9]+(?:\.[0-9]+)?$'
     NullableDecimalValue:
-      oneOf:
-        - $ref: '#/components/schemas/DecimalValue'
-        - type: 'null'
+      type: string
+      pattern: '^-?[0-9]+(?:\.[0-9]+)?$'
+      nullable: true
     PaginationMeta:
       type: object
       additionalProperties: false
@@ -2895,10 +2890,9 @@ components:
           type: string
           minLength: 1
         email:
-          type:
-            - string
-            - 'null'
+          type: string
           format: email
+          nullable: true
         date_of_birth:
           $ref: '#/components/schemas/Date'
         person_type:
@@ -2994,10 +2988,9 @@ components:
         person_id:
           $ref: '#/components/schemas/NullableNumericId'
         person_name:
-          type:
-            - string
-            - 'null'
+          type: string
           minLength: 1
+          nullable: true
         role:
           type: string
           enum:
@@ -3332,10 +3325,9 @@ components:
         actor_membership_id:
           $ref: '#/components/schemas/NullableNumericId'
         request_id:
-          type:
-            - string
-            - 'null'
+          type: string
           minLength: 1
+          nullable: true
         metadata:
           type: object
           additionalProperties: true
@@ -3353,61 +3345,34 @@ components:
           items:
             $ref: '#/components/schemas/SecurityAuditEvent'
     MedicationLookupResponse:
-      oneOf:
-        - $ref: '#/components/schemas/MedicationLookupEmptyResponse'
-        - $ref: '#/components/schemas/MedicationLookupSearchResponse'
-    MedicationLookupEmptyResponse:
       type: object
       additionalProperties: false
       required:
         - results
-        - permissions
-      properties:
-        results:
-          type: array
-          maxItems: 0
-        permissions:
-          $ref: '#/components/schemas/MedicationLookupPermissions'
-    MedicationLookupSearchResponse:
-      type: object
-      additionalProperties: false
-      required:
-        - results
-        - review_guidance
-        - query
-        - barcode
-        - barcode_resolution
-        - form
-        - strength
         - permissions
       properties:
         results:
           type: array
           items:
             $ref: '#/components/schemas/MedicationLookupResult'
+        permissions:
+          $ref: '#/components/schemas/MedicationLookupPermissions'
         review_guidance:
           $ref: '#/components/schemas/MedicationLookupReviewGuidance'
         query:
           type: string
           minLength: 1
         barcode:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         barcode_resolution:
-          oneOf:
-            - $ref: '#/components/schemas/MedicationLookupBarcodeResolution'
-            - type: 'null'
+          $ref: '#/components/schemas/MedicationLookupBarcodeResolution'
         form:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         strength:
-          type:
-            - string
-            - 'null'
-        permissions:
-          $ref: '#/components/schemas/MedicationLookupPermissions'
+          type: string
+          nullable: true
     MedicationLookupUnavailableResponse:
       type: object
       additionalProperties: false
@@ -3420,7 +3385,8 @@ components:
           maxItems: 0
         error:
           type: string
-          const: Medication search is temporarily unavailable.
+          enum:
+            - Medication search is temporarily unavailable.
     MedicationLookupPermissions:
       type: object
       additionalProperties: false
@@ -3434,6 +3400,7 @@ components:
           type: boolean
     MedicationLookupBarcodeResolution:
       type: object
+      nullable: true
       additionalProperties: false
       required:
         - status
@@ -3441,11 +3408,11 @@ components:
       properties:
         status:
           type: string
-          const: resolved
+          enum:
+            - resolved
         source:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
     MedicationLookupReviewGuidance:
       type: object
       additionalProperties: false
@@ -3487,91 +3454,68 @@ components:
         - review_prompt_filter
       properties:
         barcode:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         code:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         name:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         description:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         display:
           type: string
           minLength: 1
         system:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         concept_class:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         category:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         trade_family:
-          oneOf:
-            - $ref: '#/components/schemas/MedicationLookupTradeFamily'
-            - type: 'null'
+          $ref: '#/components/schemas/MedicationLookupTradeFamily'
         trade_family_group:
-          oneOf:
-            - $ref: '#/components/schemas/MedicationLookupTradeFamily'
-            - type: 'null'
+          $ref: '#/components/schemas/MedicationLookupTradeFamily'
         package_size:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         package_quantity:
-          type:
-            - number
-            - string
-            - 'null'
+          type: number
+          nullable: true
         package_unit:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         directions:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         warnings:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         pil_url:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
           format: uri
         spc_url:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
           format: uri
         concept_class_label:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         source_label:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         match_reason:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         match_reason_label:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         existing_medication:
           $ref: '#/components/schemas/MedicationLookupExistingMedication'
         related_medications:
@@ -3586,6 +3530,7 @@ components:
           $ref: '#/components/schemas/MedicationLookupReviewPromptFilter'
     MedicationLookupTradeFamily:
       type: object
+      nullable: true
       additionalProperties: false
       required:
         - code
@@ -3712,13 +3657,12 @@ components:
         source_checked_on:
           $ref: '#/components/schemas/Date'
         source_version:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         source_effective_on:
-          oneOf:
-            - $ref: '#/components/schemas/Date'
-            - type: 'null'
+          type: string
+          format: date
+          nullable: true
         source_url:
           type: string
           format: uri
@@ -3814,9 +3758,8 @@ components:
         - evidence
       properties:
         amount:
-          type:
-            - number
-            - string
+          type: string
+          pattern: '^-?[0-9]+(?:\.[0-9]+)?$'
         unit:
           type: string
           enum:
@@ -3835,15 +3778,11 @@ components:
         description:
           type: string
         default_max_daily_doses:
-          oneOf:
-            - type: integer
-              minimum: 1
-            - type: string
-              pattern: '^[1-9][0-9]*$'
+          type: integer
+          minimum: 1
         default_min_hours_between_doses:
-          type:
-            - number
-            - string
+          type: string
+          pattern: '^-?[0-9]+(?:\.[0-9]+)?$'
         default_dose_cycle:
           type: string
           enum:
@@ -3898,9 +3837,8 @@ components:
           type: string
           minLength: 1
         device_name:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         household_id:
           $ref: '#/components/schemas/NumericId'
     AuthRefreshRequest:
@@ -3930,9 +3868,8 @@ components:
           type: string
           minLength: 1
         device_name:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         household_id:
           $ref: '#/components/schemas/NumericId'
         provider:
@@ -3940,6 +3877,7 @@ components:
           minLength: 1
     AuthHousehold:
       type: object
+      nullable: true
       additionalProperties: false
       required:
         - id
@@ -4005,9 +3943,8 @@ components:
         id:
           $ref: '#/components/schemas/NumericId'
         device_name:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         household_id:
           $ref: '#/components/schemas/NullableNumericId'
         last_used_at:
@@ -4049,9 +3986,7 @@ components:
         refresh_token_expires_at:
           $ref: '#/components/schemas/Timestamp'
         household:
-          oneOf:
-            - $ref: '#/components/schemas/AuthHousehold'
-            - type: 'null'
+          $ref: '#/components/schemas/AuthHousehold'
     AuthRefreshResponse:
       type: object
       additionalProperties: false
@@ -4082,9 +4017,7 @@ components:
         refresh_token_expires_at:
           $ref: '#/components/schemas/Timestamp'
         household:
-          oneOf:
-            - $ref: '#/components/schemas/AuthHousehold'
-            - type: 'null'
+          $ref: '#/components/schemas/AuthHousehold'
         me:
           $ref: '#/components/schemas/Me'
     AuthLoginResponse:
@@ -4131,14 +4064,12 @@ components:
           type: string
           format: email
         membership_role:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
           enum:
             - owner
             - administrator
             - member
-            - null
         active:
           type: boolean
         person:
@@ -4171,9 +4102,8 @@ components:
           type: string
           minLength: 1
         description:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         updated_at:
           $ref: '#/components/schemas/Timestamp'
     LocationResponse:
@@ -4231,31 +4161,26 @@ components:
           type: string
           minLength: 1
         category:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         description:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         dose_amount:
           $ref: '#/components/schemas/NullableDecimalValue'
         dose_unit:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         current_supply:
           $ref: '#/components/schemas/NullableDecimalValue'
         reorder_threshold:
           $ref: '#/components/schemas/DecimalValue'
         reorder_status:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
           enum:
             - ordered
             - received
-            - null
         location_id:
           $ref: '#/components/schemas/NumericId'
         location_portable_id:
@@ -4267,13 +4192,11 @@ components:
         out_of_stock:
           type: boolean
         days_until_low_stock:
-          type:
-            - integer
-            - 'null'
+          type: integer
+          nullable: true
         days_until_out_of_stock:
-          type:
-            - integer
-            - 'null'
+          type: integer
+          nullable: true
     MedicationResponse:
       type: object
       additionalProperties: false
@@ -4498,9 +4421,8 @@ components:
           type: string
           minLength: 1
         description:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         default_for_adults:
           type: boolean
         default_for_children:
@@ -4668,27 +4590,24 @@ components:
             - illness
             - suspected_side_effect
         severity:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
           enum:
             - mild
             - moderate
             - severe
-            - null
         title:
           type: string
           minLength: 1
         notes:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         started_on:
           $ref: '#/components/schemas/Date'
         ended_on:
-          oneOf:
-            - $ref: '#/components/schemas/Date'
-            - type: 'null'
+          type: string
+          format: date
+          nullable: true
         updated_at:
           $ref: '#/components/schemas/Timestamp'
         medication_ids:
@@ -4727,13 +4646,41 @@ components:
         - health_event
       properties:
         health_event:
-          allOf:
-            - $ref: '#/components/schemas/HealthEventAttributes'
-            - required:
-                - person_id
-                - event_kind
-                - title
-                - started_on
+          type: object
+          additionalProperties: false
+          required:
+            - person_id
+            - event_kind
+            - title
+            - started_on
+          properties:
+            person_id:
+              $ref: '#/components/schemas/ResourceIdentifier'
+            event_kind:
+              type: string
+              enum:
+                - illness
+                - suspected_side_effect
+            severity:
+              type: string
+              enum:
+                - mild
+                - moderate
+                - severe
+            title:
+              type: string
+              minLength: 1
+            notes:
+              type: string
+            started_on:
+              $ref: '#/components/schemas/Date'
+            ended_on:
+              $ref: '#/components/schemas/Date'
+            medication_ids:
+              type: array
+              uniqueItems: true
+              items:
+                $ref: '#/components/schemas/ResourceIdentifier'
     HealthEventUpdateRequest:
       type: object
       additionalProperties: false
@@ -4741,11 +4688,7 @@ components:
         - health_event
       properties:
         health_event:
-          allOf:
-            - $ref: '#/components/schemas/HealthEventAttributes'
-            - not:
-                required:
-                  - person_id
+          $ref: '#/components/schemas/HealthEventAttributes'
     HealthEventAttributes:
       type: object
       additionalProperties: false
@@ -4819,13 +4762,11 @@ components:
           type: string
           minLength: 1
         frequency:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         dose_cycle:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
           enum:
             - daily
             - weekly
@@ -4840,15 +4781,13 @@ components:
         paused:
           type: boolean
         notes:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         updated_at:
           $ref: '#/components/schemas/Timestamp'
         max_daily_doses:
-          type:
-            - integer
-            - 'null'
+          type: integer
+          nullable: true
           minimum: 1
         min_hours_between_doses:
           $ref: '#/components/schemas/NullableDecimalValue'
@@ -4880,15 +4819,58 @@ components:
         - schedule
       properties:
         schedule:
-          allOf:
-            - $ref: '#/components/schemas/ScheduleAttributes'
-            - required:
-                - person_id
-                - medication_id
-                - dose_amount
-                - dose_unit
-                - start_date
-                - end_date
+          type: object
+          additionalProperties: false
+          required:
+            - person_id
+            - medication_id
+            - dose_amount
+            - dose_unit
+            - start_date
+            - end_date
+          properties:
+            person_id:
+              $ref: '#/components/schemas/ResourceIdentifier'
+            medication_id:
+              $ref: '#/components/schemas/ResourceIdentifier'
+            source_dosage_option_id:
+              $ref: '#/components/schemas/ResourceIdentifier'
+            dose_amount:
+              $ref: '#/components/schemas/DecimalValue'
+            dose_unit:
+              type: string
+              minLength: 1
+            frequency:
+              type: string
+            start_date:
+              $ref: '#/components/schemas/Date'
+            end_date:
+              $ref: '#/components/schemas/Date'
+            notes:
+              type: string
+            max_daily_doses:
+              type: integer
+              minimum: 1
+            min_hours_between_doses:
+              $ref: '#/components/schemas/NullableDecimalValue'
+            dose_cycle:
+              type: string
+              enum:
+                - daily
+                - weekly
+                - monthly
+            schedule_type:
+              type: string
+              enum:
+                - daily
+                - multiple_daily
+                - weekly
+                - specific_dates
+                - prn
+                - tapering
+                - every_other_day
+            schedule_config:
+              $ref: '#/components/schemas/ScheduleConfig'
     ScheduleUpdateRequest:
       type: object
       additionalProperties: false
@@ -4896,11 +4878,7 @@ components:
         - schedule
       properties:
         schedule:
-          allOf:
-            - $ref: '#/components/schemas/ScheduleAttributes'
-            - not:
-                required:
-                  - person_id
+          $ref: '#/components/schemas/ScheduleAttributes'
     ScheduleAttributes:
       type: object
       additionalProperties: false
@@ -4960,12 +4938,8 @@ components:
         weekdays:
           type: array
           items:
-            oneOf:
-              - type: integer
-                minimum: 0
-                maximum: 7
-              - type: string
-                minLength: 1
+            type: string
+            minLength: 1
         dates:
           type: array
           items:
@@ -5042,42 +5016,36 @@ components:
         dose_amount:
           $ref: '#/components/schemas/NullableDecimalValue'
         dose_unit:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         active:
           type: boolean
         paused:
           type: boolean
         dose_cycle:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
           enum:
             - daily
             - weekly
             - monthly
-            - null
         administration_kind:
           type: string
           enum:
             - routine
             - as_needed
         notes:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         position:
-          type:
-            - integer
-            - 'null'
+          type: integer
+          nullable: true
           minimum: 0
         updated_at:
           $ref: '#/components/schemas/Timestamp'
         max_daily_doses:
-          type:
-            - integer
-            - 'null'
+          type: integer
+          nullable: true
           minimum: 1
         min_hours_between_doses:
           $ref: '#/components/schemas/NullableDecimalValue'
@@ -5109,11 +5077,41 @@ components:
         - person_medication
       properties:
         person_medication:
-          allOf:
-            - $ref: '#/components/schemas/PersonMedicationAttributes'
-            - required:
-                - person_id
-                - medication_id
+          type: object
+          additionalProperties: false
+          required:
+            - person_id
+            - medication_id
+          properties:
+            person_id:
+              $ref: '#/components/schemas/ResourceIdentifier'
+            medication_id:
+              $ref: '#/components/schemas/ResourceIdentifier'
+            source_dosage_option_id:
+              $ref: '#/components/schemas/ResourceIdentifier'
+            dose_amount:
+              $ref: '#/components/schemas/DecimalValue'
+            dose_unit:
+              type: string
+              minLength: 1
+            administration_kind:
+              type: string
+              enum:
+                - routine
+                - as_needed
+            notes:
+              type: string
+            max_daily_doses:
+              type: integer
+              minimum: 1
+            min_hours_between_doses:
+              $ref: '#/components/schemas/DecimalValue'
+            dose_cycle:
+              type: string
+              enum:
+                - daily
+                - weekly
+                - monthly
     PersonMedicationUpdateRequest:
       type: object
       additionalProperties: false
@@ -5121,11 +5119,7 @@ components:
         - person_medication
       properties:
         person_medication:
-          allOf:
-            - $ref: '#/components/schemas/PersonMedicationAttributes'
-            - not:
-                required:
-                  - person_id
+          $ref: '#/components/schemas/PersonMedicationAttributes'
     PersonMedicationAttributes:
       type: object
       additionalProperties: false
@@ -5220,13 +5214,12 @@ components:
         dose_amount:
           $ref: '#/components/schemas/NullableDecimalValue'
         dose_unit:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
         taken_at:
-          oneOf:
-            - $ref: '#/components/schemas/Timestamp'
-            - type: 'null'
+          type: string
+          format: date-time
+          nullable: true
         updated_at:
           $ref: '#/components/schemas/Timestamp'
         person_id:
@@ -5318,14 +5311,13 @@ components:
           type: string
           minLength: 1
         email:
-          type:
-            - string
-            - 'null'
+          type: string
+          nullable: true
           format: email
         date_of_birth:
-          oneOf:
-            - $ref: '#/components/schemas/Date'
-            - type: 'null'
+          type: string
+          format: date
+          nullable: true
         person_type:
           type: string
           enum:
@@ -5335,9 +5327,8 @@ components:
         has_capacity:
           type: boolean
         age:
-          type:
-            - integer
-            - 'null'
+          type: integer
+          nullable: true
         location_ids:
           type: array
           items:
@@ -5357,11 +5348,29 @@ components:
         - person
       properties:
         person:
-          allOf:
-            - $ref: '#/components/schemas/PersonAttributes'
-            - required:
-                - name
-                - date_of_birth
+          type: object
+          additionalProperties: false
+          required:
+            - name
+            - date_of_birth
+          properties:
+            name:
+              type: string
+              minLength: 1
+            email:
+              type: string
+              format: email
+              nullable: true
+            date_of_birth:
+              $ref: '#/components/schemas/Date'
+            person_type:
+              type: string
+              enum:
+                - adult
+                - minor
+                - dependent_adult
+            has_capacity:
+              type: boolean
     PersonUpdateRequest:
       type: object
       additionalProperties: false
@@ -5415,10 +5424,12 @@ components:
       properties:
         format:
           type: string
-          const: medtracker.api.capabilities.v1
+          enum:
+            - medtracker.api.capabilities.v1
         api_version:
           type: string
-          const: v1
+          enum:
+            - v1
         authentication:
           $ref: '#/components/schemas/CapabilityAuthentication'
         administration:
@@ -5459,10 +5470,12 @@ components:
               - api_app_token
         hosted_mobile:
           type: string
-          const: oidc_authorization_code_pkce
+          enum:
+            - oidc_authorization_code_pkce
         password_login:
           type: string
-          const: development_or_migration
+          enum:
+            - development_or_migration
         oidc_exchange:
           $ref: '#/components/schemas/CapabilityOidcExchange'
     CapabilityOidcExchange:
@@ -5476,16 +5489,16 @@ components:
       properties:
         supported:
           type: boolean
-          const: true
+          description: Whether OIDC exchange is supported.
         pkce_required:
           type: boolean
-          const: true
+          description: Whether PKCE is required.
         session_listing:
           type: boolean
-          const: true
+          description: Whether clients may list sessions.
         session_revocation:
           type: boolean
-          const: true
+          description: Whether clients may revoke sessions.
     CapabilityAdministration:
       type: object
       additionalProperties: false
@@ -5499,22 +5512,22 @@ components:
       properties:
         household:
           type: boolean
-          const: true
+          description: Whether household administration is supported.
         fresh_mfa_required:
           type: boolean
-          const: true
+          description: Whether fresh MFA is required for writes.
         app_tokens:
           type: boolean
-          const: true
+          description: Whether API app tokens are supported.
         audit_logs:
           type: boolean
-          const: true
+          description: Whether audit logs are supported.
         invitations:
           type: boolean
-          const: true
+          description: Whether invitations are supported.
         person_access_grants:
           type: boolean
-          const: true
+          description: Whether person access grants are supported.
     CapabilityBackups:
       type: object
       additionalProperties: false
@@ -5525,13 +5538,13 @@ components:
       properties:
         encrypted_migration_bundle:
           type: boolean
-          const: true
+          description: Whether encrypted migration bundles are supported.
         unencrypted_zip:
           type: boolean
-          const: true
+          description: Whether unencrypted ZIP backups are supported.
         health_data_json:
           type: boolean
-          const: true
+          description: Whether health data JSON exports are supported.
     CapabilityFhir:
       type: object
       additionalProperties: false
@@ -5541,7 +5554,8 @@ components:
       properties:
         version:
           type: string
-          const: R4
+          enum:
+            - R4
         resources:
           type: array
           uniqueItems: true
@@ -5569,31 +5583,32 @@ components:
       properties:
         portable_ids:
           type: boolean
-          const: true
+          description: Whether portable identifiers are supported.
         numeric_ids:
           type: string
-          const: backward_compatible
+          enum:
+            - backward_compatible
         mobile_snapshot:
           type: boolean
-          const: true
+          description: Whether mobile snapshots are supported.
         dry_run_import:
           type: boolean
-          const: true
+          description: Whether dry-run imports are supported.
         idempotency_keys:
           type: boolean
-          const: true
+          description: Whether idempotency keys are supported.
         etag_conflicts:
           type: boolean
-          const: true
+          description: Whether ETag conflicts are supported.
         change_feed:
           type: boolean
-          const: true
+          description: Whether the change feed is supported.
         batch_mutations:
           type: boolean
-          const: true
+          description: Whether batch mutations are supported.
         tombstones:
           type: boolean
-          const: true
+          description: Whether tombstones are supported.
     CapabilityClientTools:
       type: object
       additionalProperties: false
@@ -5626,19 +5641,23 @@ components:
       properties:
         supported:
           type: boolean
-          const: true
+          description: Whether the CLI is supported.
         status:
           type: string
-          const: available
+          enum:
+            - available
         binary:
           type: string
-          const: medtracker
+          enum:
+            - medtracker
         api_boundary:
           type: string
-          const: /api/v1
+          enum:
+            - /api/v1
         distribution:
           type: string
-          const: github_release
+          enum:
+            - github_release
     CapabilityMcpServer:
       type: object
       additionalProperties: false
@@ -5652,16 +5671,19 @@ components:
       properties:
         supported:
           type: boolean
-          const: true
+          description: Whether the MCP server is supported.
         transport:
           type: string
-          const: streamable_http
+          enum:
+            - streamable_http
         endpoint:
           type: string
-          const: /mcp
+          enum:
+            - /mcp
         stdio_binary:
           type: string
-          const: medtracker-mcp
+          enum:
+            - medtracker-mcp
         tools:
           type: array
           items:
@@ -5673,15 +5695,13 @@ components:
             type: string
             minLength: 1
     NotificationPreferenceTime:
-      oneOf:
-        - type: string
-          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$'
-        - type: 'null'
+      type: string
+      pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$'
+      nullable: true
     NotificationPreferenceTimeInput:
-      oneOf:
-        - type: string
-          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$'
-        - type: 'null'
+      type: string
+      pattern: '^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$'
+      nullable: true
     NotificationPreference:
       type: object
       additionalProperties: false
@@ -5835,10 +5855,12 @@ components:
       properties:
         code:
           type: string
-          const: push_test_failed
+          enum:
+            - push_test_failed
         message:
           type: string
-          const: Unable to send test notification.
+          enum:
+            - Unable to send test notification.
         request_id:
           type: string
           minLength: 1
@@ -5919,7 +5941,8 @@ components:
       properties:
         code:
           type: string
-          const: rate_limited
+          enum:
+            - rate_limited
         message:
           type: string
           minLength: 1
@@ -5994,7 +6017,8 @@ components:
       properties:
         format:
           type: string
-          const: medtracker.portable.v1
+          enum:
+            - medtracker.portable.v1
         scope:
           type: string
           enum:
@@ -6028,7 +6052,8 @@ components:
       properties:
         format:
           type: string
-          const: medtracker.portable.v2
+          enum:
+            - medtracker.portable.v2
         scope:
           type: string
           enum:
@@ -6070,7 +6095,8 @@ components:
               pattern: '^medtracker-backup-[0-9]{14}\\.zip$'
             content_type:
               type: string
-              const: application/zip
+              enum:
+                - application/zip
             base64:
               type: string
               format: byte
@@ -6092,7 +6118,8 @@ components:
           properties:
             format:
               type: string
-              const: medtracker.health_data.v1
+              enum:
+                - medtracker.health_data.v1
             scope:
               type: string
               enum:
@@ -6105,6 +6132,66 @@ components:
               minLength: 1
             records:
               $ref: '#/components/schemas/PortableRecords'
+    DataExportResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          properties:
+            format:
+              type: string
+              enum:
+                - medtracker.portable.v1
+                - medtracker.portable.v2
+                - medtracker.health_data.v1
+                - medtracker.portable.encrypted.v1
+            scope:
+              type: string
+              enum:
+                - single_person
+                - household
+            exported_at:
+              $ref: '#/components/schemas/Timestamp'
+            encrypted_at:
+              $ref: '#/components/schemas/Timestamp'
+            source_instance_id:
+              type: string
+              minLength: 1
+            records:
+              $ref: '#/components/schemas/PortableRecords'
+            cursor:
+              $ref: '#/components/schemas/Timestamp'
+            cipher:
+              type: string
+              enum:
+                - aes-256-gcm
+            kdf:
+              type: string
+              enum:
+                - pbkdf2_sha256
+            salt:
+              type: string
+              minLength: 1
+            checksum:
+              type: string
+              pattern: '^[a-f0-9]{64}$'
+            ciphertext:
+              type: string
+              minLength: 1
+            filename:
+              type: string
+              pattern: '^medtracker-backup-[0-9]{14}\\.zip$'
+            content_type:
+              type: string
+              enum:
+                - application/zip
+            base64:
+              type: string
+              format: byte
     PortableEnvelope:
       type: object
       additionalProperties: false
@@ -6119,15 +6206,18 @@ components:
       properties:
         format:
           type: string
-          const: medtracker.portable.encrypted.v1
+          enum:
+            - medtracker.portable.encrypted.v1
         encrypted_at:
           $ref: '#/components/schemas/Timestamp'
         cipher:
           type: string
-          const: aes-256-gcm
+          enum:
+            - aes-256-gcm
         kdf:
           type: string
-          const: pbkdf2_sha256
+          enum:
+            - pbkdf2_sha256
         salt:
           type: string
           minLength: 1
@@ -6203,12 +6293,14 @@ components:
         portable_id:
           $ref: '#/components/schemas/PortableId'
         field:
-          type: string
-          enum:
-            - name
-            - email
+          $ref: '#/components/schemas/PortableImportConflictField'
         existing_portable_id:
           $ref: '#/components/schemas/PortableId'
+    PortableImportConflictField:
+      type: string
+      enum:
+        - name
+        - email
     SyncChangesResponse:
       type: object
       additionalProperties: false
@@ -6285,7 +6377,8 @@ components:
           $ref: '#/components/schemas/PortableId'
         action:
           type: string
-          const: delete
+          enum:
+            - delete
         deleted_at:
           $ref: '#/components/schemas/Timestamp'
         metadata:
@@ -6351,7 +6444,7 @@ components:
           properties:
             applied:
               type: boolean
-              const: true
+              description: Whether every operation in the batch was applied.
             results:
               type: array
               items:

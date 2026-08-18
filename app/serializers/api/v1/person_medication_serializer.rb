@@ -3,6 +3,8 @@
 module Api
   module V1
     class PersonMedicationSerializer
+      include DecimalSerialization
+
       def initialize(person_medication)
         @person_medication = person_medication
       end
@@ -41,7 +43,7 @@ module Api
 
       def dose_data
         {
-          dose_amount: person_medication.dose_amount&.to_f,
+          dose_amount: decimal_as_json(person_medication.dose_amount),
           dose_unit: person_medication.dose_unit
         }
       end
@@ -61,7 +63,7 @@ module Api
       def dosing_limits
         {
           max_daily_doses: person_medication.max_daily_doses,
-          min_hours_between_doses: person_medication.min_hours_between_doses
+          min_hours_between_doses: decimal_as_json(person_medication.min_hours_between_doses)
         }
       end
     end

@@ -16,10 +16,10 @@ RSpec.describe 'API v1 sync safety primitives' do
       medication: {
         name: 'API Idempotent Saline',
         location_id: locations(:home).id,
-        dose_amount: 5,
+        dose_amount: '5',
         dose_unit: 'ml',
-        current_supply: 100,
-        reorder_threshold: 10
+        current_supply: '100',
+        reorder_threshold: '10'
       }
     }
 
@@ -47,7 +47,7 @@ RSpec.describe 'API v1 sync safety primitives' do
       medication: {
         name: 'API Idempotent Original',
         location_id: locations(:home).id,
-        dose_amount: 5,
+        dose_amount: '5',
         dose_unit: 'ml'
       }
     }
@@ -69,7 +69,7 @@ RSpec.describe 'API v1 sync safety primitives' do
       medication: {
         name: 'API Account Scoped Result',
         location_id: locations(:home).id,
-        dose_amount: 5,
+        dose_amount: '5',
         dose_unit: 'ml'
       }
     }
@@ -165,7 +165,7 @@ RSpec.describe 'API v1 sync safety primitives' do
     current_etag = response.headers.fetch('ETag')
 
     patch api_v1_household_medication_path(household_id, medication.id),
-          params: { medication: { current_supply: 42 } },
+          params: { medication: { current_supply: '42' } },
           headers: headers.merge('If-Match' => '"stale-etag"'),
           as: :json
 
@@ -173,7 +173,7 @@ RSpec.describe 'API v1 sync safety primitives' do
     expect(response.parsed_body.dig('error', 'code')).to eq('conflict')
 
     patch api_v1_household_medication_path(household_id, medication.id),
-          params: { medication: { current_supply: 42 } },
+          params: { medication: { current_supply: '42' } },
           headers: headers.merge('If-Match' => current_etag),
           as: :json
 
@@ -186,7 +186,7 @@ RSpec.describe 'API v1 sync safety primitives' do
 
     expect do
       patch api_v1_household_medication_path(household_id, medication.id),
-            params: { medication: { name: 'Sensitive API Medicine', current_supply: 88 } },
+            params: { medication: { name: 'Sensitive API Medicine', current_supply: '88' } },
             headers: headers,
             as: :json
     end.to change(ApiChangeEvent, :count).by(1)
