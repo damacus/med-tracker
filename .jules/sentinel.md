@@ -27,3 +27,9 @@
 **Vulnerability:** DOM-based Stored XSS in `app/javascript/controllers/schedule_form_controller.js`. User-controlled dosage properties were interpolated directly into a string mapped to an HTML payload which was then directly assigned to `element.innerHTML`, executing malicious inputs.
 **Learning:** Raw Javascript template literals injected into `.innerHTML` are dangerous. Even if the expected value is alphanumeric (like unit amounts), it must be treated as untrusted and safely escaped. When writing custom escape methods, ensure quotes (`"` and `'`) are covered so attribute injection attacks are also prevented.
 **Prevention:** Use a robust `escapeHtml` function that replaces `&, <, >, ", '` with their entity equivalents. Apply escaping strictly to the output context (HTML strings) while using raw values for logical internal state comparisons to avoid breaking app functionality.
+
+## 2026-10-10 - Fix DOM-based Stored XSS
+
+**Vulnerability:** DOM-based Stored XSS in `app/javascript/controllers/offline_shell_controller.js`, `app/javascript/controllers/medication_search_controller.js`, and `app/javascript/controllers/global_search_controller.js`. User-controlled properties were escaped using `document.createTextNode` combined with `.innerHTML`, which fails to escape quotes (`"` and `'`), leading to potential attribute injection attacks.
+**Learning:** `document.createTextNode` escapes `<`, `>`, and `&`, but not quotes (`"` or `'`). If an attribute value contains a quote (e.g. `data-source-type="${this.escape(sourceType)}"`), an attacker can inject malicious attributes like `onmouseover="alert(1)"`.
+**Prevention:** Use a robust `escape` or `escapeHtml` function that replaces `&, <, >, ", '` with their entity equivalents using regex `.replace()` instead of relying on `document.createTextNode` and `.innerHTML` to perform the escaping.
