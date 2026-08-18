@@ -116,7 +116,7 @@ module Components
                 end
                 if medication.dose_amount.present? && medication.dose_unit.present?
                   m3_text(size: '1', class: 'text-on-surface-variant') do
-                    "#{medication.dose_amount} #{medication.dose_unit}"
+                    DoseAmount.new(medication.dose_amount, medication.dose_unit).to_s
                   end
                 end
               end

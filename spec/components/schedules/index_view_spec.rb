@@ -23,4 +23,14 @@ RSpec.describe Components::Schedules::IndexView, type: :component do
     expect(desktop_table.at_css('thead')['class']).to include('[&_tr]:border-b')
     expect(desktop_table.at_css('tbody')['class']).to include('[&_tr:last-child]:border-0')
   end
+
+  it 'uses the public dose format in mobile cards and the desktop table' do
+    schedule = schedules(:john_movicol)
+    schedule.assign_attributes(dose_amount: 1.0, dose_unit: 'tablet')
+    rendered = render_inline(described_class.new(schedules: [schedule]))
+
+    expect(rendered.at_css('[data-testid="schedules-mobile-list"]').text).to include('1 tablet')
+    expect(rendered.at_css('[data-testid="schedules-desktop-table"]').text).to include('1 tablet')
+    expect(rendered.text).not_to include('1.0 tablet')
+  end
 end

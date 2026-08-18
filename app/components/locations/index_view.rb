@@ -24,19 +24,19 @@ module Components
       private
 
       def render_header
-        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12') do
+        header(class: 'mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between') do
           div do
             m3_text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
               t('locations.index.manage_locations')
             end
-            m3_heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') { t('locations.index.title') }
+            m3_heading(level: 1, size: '7', class: 'font-bold tracking-tight') { t('locations.index.title') }
           end
           if view_context.policy(Location).create?
             m3_link(
               href: new_location_path,
               variant: :filled,
               size: :lg,
-              class: 'font-bold text-sm shadow-elevation-2'
+              class: 'w-full justify-center font-bold text-sm shadow-elevation-2 md:w-auto'
             ) do
               span { t('locations.index.add_location') }
             end

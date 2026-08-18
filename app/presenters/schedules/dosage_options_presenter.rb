@@ -9,7 +9,7 @@ module Schedules
     end
 
     def format_dosage_option(dosage)
-      "#{dosage.amount.to_f} #{dosage.unit} - #{dosage.description}"
+      "#{DoseAmount.new(dosage.amount, dosage.unit)} - #{dosage.description}"
     end
 
     def selected_dosage_option

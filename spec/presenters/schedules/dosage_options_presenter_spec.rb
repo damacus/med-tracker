@@ -46,6 +46,15 @@ RSpec.describe Schedules::DosageOptionsPresenter do
     end
   end
 
+  describe '#format_dosage_option' do
+    it 'uses the public dose format without trailing decimal zeros' do
+      dosage = double(amount: 1.0, unit: 'tablet', description: 'Once daily')
+      presenter = described_class.new(schedule: schedule)
+
+      expect(presenter.format_dosage_option(dosage)).to eq('1 tablet - Once daily')
+    end
+  end
+
   describe '#duplicate_dose_selection_keys' do
     it 'memoizes duplicate selection key calculation' do
       presenter = described_class.new(schedule: schedule)

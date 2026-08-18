@@ -26,6 +26,16 @@ RSpec.describe Components::Locations::IndexView, type: :component do
     expect(rendered.at_css("a[href='#{view_context.new_location_path}']")).to be_present
   end
 
+  it 'uses the shared responsive page header' do
+    rendered = render_locations_index
+    header = rendered.at_css('header')
+    action = header.at_css("a[href='#{view_context.new_location_path}']")
+
+    expect(header['class']).to include('flex-col', 'md:flex-row', 'md:items-end')
+    expect(header.at_css('h1')['class']).to include('font-bold')
+    expect(action['class']).to include('w-full', 'md:w-auto')
+  end
+
   it 'hides icons inside labelled location action controls', :aggregate_failures do
     rendered = render_locations_index
 

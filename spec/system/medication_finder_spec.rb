@@ -29,6 +29,58 @@ RSpec.describe 'MedicationFinder' do
     end
   end
 
+  it 'keeps the search field and action readable across viewport sizes', :browser do
+    driven_by(:playwright)
+    page.current_window.resize_to(390, 844)
+    login_as(user)
+
+    visit medication_finder_path
+
+    geometry = page.evaluate_script(<<~JS)
+      (() => {
+        const inputElement = document.querySelector('#medication-search-input');
+        const input = inputElement.getBoundingClientRect();
+        const button = document.querySelector('[data-medication-search-target="submitButton"]').getBoundingClientRect();
+        const styles = getComputedStyle(inputElement);
+        const context = document.createElement('canvas').getContext('2d');
+        context.font = styles.font;
+        return {
+          inputRight: input.right,
+          inputBottom: input.bottom,
+          buttonLeft: button.left,
+          buttonRight: button.right,
+          buttonTop: button.top,
+          placeholderWidth: context.measureText(inputElement.placeholder).width,
+          usableInputWidth: inputElement.clientWidth - parseFloat(styles.paddingLeft) - parseFloat(styles.paddingRight),
+          viewportWidth: window.innerWidth,
+          overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
+        };
+      })()
+    JS
+
+    expect(geometry.fetch('overflow')).to be <= 1
+    expect(geometry.fetch('inputRight')).to be <= geometry.fetch('viewportWidth')
+    expect(geometry.fetch('buttonRight')).to be <= geometry.fetch('viewportWidth')
+    expect(geometry.fetch('buttonTop')).to be >= geometry.fetch('inputBottom')
+    expect(geometry.fetch('placeholderWidth')).to be <= geometry.fetch('usableInputWidth')
+    expect(find_field('medication-search-input')[:placeholder])
+      .to eq(I18n.t('medications.finder.placeholder'))
+
+    page.current_window.resize_to(1400, 1000)
+    desktop_geometry = page.evaluate_script(<<~JS)
+      (() => {
+        const inputElement = document.querySelector('#medication-search-input');
+        const icon = inputElement.previousElementSibling.getBoundingClientRect();
+        return {
+          iconWidth: icon.width,
+          inputPaddingLeft: parseFloat(getComputedStyle(inputElement).paddingLeft)
+        };
+      })()
+    JS
+
+    expect(desktop_geometry.fetch('inputPaddingLeft')).to be >= desktop_geometry.fetch('iconWidth')
+  end
+
   it 'opens a restock confirmation modal for an existing medication result', :browser do
     driven_by(:playwright)
     login_as(user)
