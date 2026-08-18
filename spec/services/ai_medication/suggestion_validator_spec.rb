@@ -36,7 +36,7 @@ RSpec.describe AiMedication::SuggestionValidator do
       )
     )
 
-    expect(suggestion.doses).to contain_exactly(include('amount' => 5, 'unit' => 'ml'))
+    expect(suggestion.doses).to contain_exactly(include('amount' => '5.0', 'unit' => 'ml'))
   end
 
   def valid_dose
