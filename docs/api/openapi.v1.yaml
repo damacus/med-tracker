@@ -2044,7 +2044,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PortableImportResultResponse'
+                $ref: '#/components/schemas/PortableImportUnprocessableResponse'
         '429':
           $ref: '#/components/responses/RateLimited'
   /households/{household_id}/data_exports/{mode}:
@@ -4771,7 +4771,6 @@ components:
             - daily
             - weekly
             - monthly
-            - null
         start_date:
           $ref: '#/components/schemas/Date'
         end_date:
@@ -6251,6 +6250,19 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/PortableImportResult'
+    PortableImportUnprocessableResponse:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        data:
+          $ref: '#/components/schemas/PortableImportResult'
+        error:
+          $ref: '#/components/schemas/Error'
+      not:
+        required:
+          - data
+          - error
     PortableImportResult:
       type: object
       additionalProperties: false

@@ -155,6 +155,14 @@ module OpenapiReferenceValidation
 end
 
 module OpenapiClientCompatibility
+  CLIENT_LANGUAGE_KEYWORDS = %w[
+    associatedtype as async await break borrow case catch class consuming continue deinit delegate do dynamic else enum
+    expect extension external false field fileprivate finally for func fun get guard if import in infix init inout
+    interface internal is let nil noinline not null object operator out override package param private protocol public
+    reified repeat return self Self set static struct super suspend switch throw true try typealias typeof val var
+    vararg where while
+  ].freeze
+
   def client_schema_keyword_errors(value = document, path = '#')
     return hash_keyword_errors(value, path) if value.is_a?(Hash)
     return array_keyword_errors(value, path) if value.is_a?(Array)
@@ -164,7 +172,7 @@ module OpenapiClientCompatibility
 
   def hash_keyword_errors(value, path)
     keyword_errors(value, path) +
-      inline_field_enum_errors(value, path) +
+      inline_enum_keyword_errors(value, path) +
       value.flat_map { |key, child| client_schema_keyword_errors(child, "#{path}/#{key}") }
   end
 
@@ -174,12 +182,13 @@ module OpenapiClientCompatibility
     errors + primitive_all_of_errors(value['allOf'], "#{path}/allOf")
   end
 
-  def inline_field_enum_errors(value, path)
+  def inline_enum_keyword_errors(value, path)
     properties = value['properties']
     return [] unless properties.is_a?(Hash)
 
     properties.filter_map do |property, property_schema|
-      next unless property == 'field' && property_schema.is_a?(Hash) && property_schema.key?('enum')
+      next unless CLIENT_LANGUAGE_KEYWORDS.include?(property)
+      next unless property_schema.is_a?(Hash) && property_schema.key?('enum')
 
       "#{path}/properties/#{property}/enum"
     end
@@ -413,6 +422,26 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
     it 'uses OpenAPI 3.0.3 client-compatible schema composition' do
       expect(described_class.document.fetch('openapi')).to eq('3.0.3')
       expect(described_class.client_schema_keyword_errors).to be_empty
+    end
+
+    it 'rejects anonymous enums whose property names collide with client language keywords' do
+      malformed_schema = {
+        'type' => 'object',
+        'properties' => {
+          'class' => { 'type' => 'string', 'enum' => ['example'] }
+        }
+      }
+
+      expect(described_class.client_schema_keyword_errors(malformed_schema, '#/Malformed')).to include(
+        '#/Malformed/properties/class/enum'
+      )
+    end
+
+    it 'keeps nullable enum values out of the enum declaration' do
+      dose_cycle = described_class.schema('Schedule').dig('properties', 'dose_cycle')
+
+      expect(dose_cycle).to include('type' => 'string', 'nullable' => true)
+      expect(dose_cycle.fetch('enum')).to contain_exactly('daily', 'weekly', 'monthly')
     end
 
     it 'uses a reusable import conflict field enum' do
@@ -1408,6 +1437,30 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(auth_response_schema(dry_run, '200')).to eq('#/components/schemas/PortableImportResultResponse')
       expect(auth_request_schema(import)).to eq('#/components/schemas/PortableImportRequest')
       expect(auth_response_schema(import, '201')).to eq('#/components/schemas/PortableImportResultResponse')
+    end
+
+    it 'models the portable import 422 response' do
+      import = described_class.operation('/households/{household_id}/portable_imports', 'post')
+
+      expect(auth_response_schema(import, '422')).to eq('#/components/schemas/PortableImportUnprocessableResponse')
+    end
+
+    it 'models both portable import 422 envelope shapes without a union' do
+      result_envelope = {
+        data: { applied: false, counts: {}, conflicts: [], errors: ['Import was not applied'] }
+      }
+      error_envelope = {
+        error: { code: 'validation_failed', message: 'Validation failed', request_id: SecureRandom.uuid }
+      }
+
+      expect(described_class.schema_errors('PortableImportUnprocessableResponse', result_envelope)).to be_empty
+      expect(described_class.schema_errors('PortableImportUnprocessableResponse', error_envelope)).to be_empty
+      expect(
+        described_class.schema_errors(
+          'PortableImportUnprocessableResponse',
+          result_envelope.merge(error_envelope)
+        )
+      ).not_to be_empty
     end
 
     it 'accepts only the encrypted portable envelope fields' do

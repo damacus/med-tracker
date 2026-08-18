@@ -66,4 +66,34 @@ RSpec.describe 'API v1 JSON value types' do
     expect(response).to have_http_status(:unprocessable_content)
     expect(response.parsed_body.dig('error', 'errors')).to include('medication_ids' => ['must be a string'])
   end
+
+  it 'rejects numeric JSON decimals in nested taper steps with the validation envelope' do
+    post api_v1_household_schedules_path(household_id),
+         params: {
+           schedule: {
+             person_id: people(:john).portable_id,
+             medication_id: medications(:paracetamol).portable_id,
+             dose_amount: '500',
+             dose_unit: 'mg',
+             start_date: '2026-02-25',
+             end_date: '2026-12-31',
+             schedule_type: 'tapering',
+             schedule_config: {
+               taper_steps: [
+                 { start_date: '2026-02-25', end_date: '2026-03-03', amount: 250, unit: 'mg' }
+               ]
+             }
+           }
+         },
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body).to include(
+      'error' => include(
+        'code' => 'validation_failed',
+        'errors' => include('amount' => ['must be a string'])
+      )
+    )
+  end
 end
