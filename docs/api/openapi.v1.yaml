@@ -3383,6 +3383,8 @@ components:
         results:
           type: array
           maxItems: 0
+          items:
+            $ref: '#/components/schemas/MedicationLookupResult'
         error:
           type: string
           enum:

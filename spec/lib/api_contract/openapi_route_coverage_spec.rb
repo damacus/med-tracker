@@ -1002,6 +1002,10 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(operation.dig('responses', '503', 'content', 'application/json', 'schema', '$ref')).to eq(
         '#/components/schemas/MedicationLookupUnavailableResponse'
       )
+
+      unavailable_results = described_class.schema('MedicationLookupUnavailableResponse').dig('properties', 'results')
+      expected_items = described_class.schema('MedicationLookupResponse').dig('properties', 'results', 'items')
+      expect(unavailable_results).to include('type' => 'array', 'maxItems' => 0, 'items' => expected_items)
     end
 
     it 'matches empty and successful medication lookup Rails responses' do
