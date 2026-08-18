@@ -32,15 +32,13 @@ module Components
             m3_heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') { t('locations.index.title') }
           end
           if view_context.policy(Location).create?
-            div(class: 'hidden md:block') do
-              m3_link(
-                href: new_location_path,
-                variant: :filled,
-                size: :lg,
-                class: 'font-bold text-sm shadow-elevation-2'
-              ) do
-                span { t('locations.index.add_location') }
-              end
+            m3_link(
+              href: new_location_path,
+              variant: :filled,
+              size: :lg,
+              class: 'font-bold text-sm shadow-elevation-2'
+            ) do
+              span { t('locations.index.add_location') }
             end
           end
         end
