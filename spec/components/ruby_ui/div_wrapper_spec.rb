@@ -5,8 +5,7 @@ require 'rails_helper'
 RSpec.describe RubyUI::DivWrapper, type: :component do
   wrappers = {
     RubyUI::AlertDialogFooter => 'flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-2 ' \
-                                 '[&>button]:w-full [&>form]:w-full [&>form>button]:w-full ' \
-                                 'sm:[&>button]:w-auto sm:[&>form]:w-auto sm:[&>form>button]:w-auto',
+                                 '*:w-full sm:*:w-auto [&_form_button]:w-full',
     RubyUI::AlertDialogHeader => 'flex flex-col gap-2 text-center sm:text-left rtl:sm:text-right',
     RubyUI::CardContent => 'p-6 pt-0',
     RubyUI::CardFooter => 'items-center p-6 pt-0',

@@ -93,6 +93,22 @@ RSpec.describe 'Profile Editing' do
       expect(page).to have_text('Yes, delete my account')
     end
 
+    it 'keeps the close-account confirmation full width on desktop' do
+      page.current_window.resize_to(1400, 1000)
+      click_on 'Close Account'
+
+      dialog = find('dialog[open][role="alertdialog"]')
+      widths = dialog.evaluate_script(<<~JS)
+        ({
+          password: this.querySelector('#close-account-password').getBoundingClientRect().width,
+          confirm: Array.from(this.querySelectorAll('button')).find((button) =>
+            button.textContent.includes('Yes, delete my account')
+          ).getBoundingClientRect().width
+        })
+      JS
+      expect(widths.fetch('confirm')).to be_within(1).of(widths.fetch('password'))
+    end
+
     it 'can cancel account closure' do
       expect(page).to have_css('[data-ruby-ui--alert-dialog-target="content"]', visible: :hidden, wait: 5)
 
