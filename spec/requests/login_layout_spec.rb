@@ -38,6 +38,19 @@ RSpec.describe 'Login layout' do
     expect(response.body).not_to include('nav__brand-link')
   end
 
+  it 'keeps anonymous feedback at the standard viewport position in demo mode' do
+    original_value = ENV.fetch('DEMO_MODE', nil)
+    ENV['DEMO_MODE'] = 'true'
+
+    get login_path
+
+    notice_stack = response.parsed_body.at_css('[data-testid="notice-stack"]')
+    expect(notice_stack['class']).to include('top-20')
+    expect(notice_stack['class']).not_to include('md:ml-64')
+  ensure
+    original_value.nil? ? ENV.delete('DEMO_MODE') : ENV['DEMO_MODE'] = original_value
+  end
+
   it 'keeps an authenticated owner in the household shell while setting up MFA' do
     user = users(:admin)
     household = ensure_api_household_for(user)

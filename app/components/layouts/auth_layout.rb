@@ -39,7 +39,10 @@ module Components
           end
 
           body(class: 'bg-background text-foreground') do
-            div(id: 'flash')
+            div(
+              id: 'flash',
+              class: 'fixed inset-x-0 top-20 z-[60] pointer-events-none md:top-4'
+            )
 
             main do
               render @component if @component

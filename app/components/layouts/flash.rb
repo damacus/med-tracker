@@ -11,25 +11,17 @@ module Components
       end
 
       def view_template
-        div(class: container_class) do
-          div(class: content_class) do
-            render_notice if @notice
-            render_warning if @warning
-            render_alert if @alert
-          end
+        div(class: content_class) do
+          render_notice if @notice
+          render_warning if @warning
+          render_alert if @alert
         end
       end
 
       private
 
-      def container_class
-        return 'fixed inset-x-0 top-20 z-[60] pointer-events-none md:top-4' unless DemoMode.enabled?
-
-        'fixed inset-x-0 top-48 z-[60] pointer-events-none md:ml-64 md:top-28'
-      end
-
       def content_class
-        'container mx-auto px-4'
+        'container mx-auto space-y-2 px-4'
       end
 
       def render_notice
@@ -43,9 +35,10 @@ module Components
 
       def render_warning
         div(data: { controller: 'flash', flash_dismiss_after_value: 8000 }, class: 'pointer-events-auto') do
-          Alert(variant: :warning) do
+          Alert(variant: :warning, class: 'relative pr-12') do
             alert_circle_icon
             AlertDescription { @warning }
+            dismiss_button
           end
         end
       end
@@ -65,6 +58,23 @@ module Components
 
       def alert_circle_icon
         render Icons::AlertCircle.new(size: 16)
+      end
+
+      def dismiss_button
+        button(
+          type: 'button',
+          class: 'absolute right-2 top-4 flex h-9 w-9 items-center justify-center rounded-full p-0 ' \
+                 'text-current opacity-70 hover:bg-black/5 hover:opacity-100 focus-visible:outline-none ' \
+                 'focus-visible:ring-2 focus-visible:ring-current',
+          aria: { label: I18n.t('ruby_ui.common.close') },
+          data: { action: 'click->flash#dismiss' }
+        ) do
+          render Icons::X.new(
+            size: 16,
+            class: 'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
+            aria_hidden: 'true'
+          )
+        end
       end
     end
   end
