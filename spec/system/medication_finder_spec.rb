@@ -103,6 +103,40 @@ RSpec.describe 'MedicationFinder' do
     expect(medication.reload.current_supply).to eq(40)
   end
 
+  it 'escapes quoted refill paths in the restock form', :browser do
+    driven_by(:playwright)
+    login_as(user)
+    medication = medications(:vitamin_c)
+    payload = medication_finder_payload(medication)
+    payload[:results].first[:existing_medication][:refill_path] =
+      "#{refill_medication_path(medication)}\" onfocus=\"window.xss = true"
+    stub_medication_finder_payload(payload)
+
+    visit medication_finder_path
+    fill_in 'medication-search-input', with: 'wellman'
+    click_on 'Search'
+    click_on 'Update stock'
+
+    expect(page).to have_css('[data-testid="finder-restock-modal"] form')
+    expect(page).to have_no_css('[data-testid="finder-restock-modal"] form[onfocus]')
+  end
+
+  it 'rejects non-http refill paths in the restock form', :browser do
+    driven_by(:playwright)
+    login_as(user)
+    medication = medications(:vitamin_c)
+    payload = medication_finder_payload(medication)
+    payload[:results].first[:existing_medication][:refill_path] = 'javascript:window.xss = true'
+    stub_medication_finder_payload(payload)
+
+    visit medication_finder_path
+    fill_in 'medication-search-input', with: 'wellman'
+    click_on 'Search'
+    click_on 'Update stock'
+
+    expect(page).to have_css('[data-testid="finder-restock-modal"] form[action="#"]')
+  end
+
   it 'expands structured details for an external medicine result', :browser do
     driven_by(:playwright)
     login_as(user)

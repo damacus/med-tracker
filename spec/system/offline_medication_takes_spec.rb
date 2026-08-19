@@ -45,4 +45,16 @@ RSpec.describe 'Offline medication takes', :js do
     expect(page).to have_css('[data-offline-shell-target="pendingCount"]', text: '0')
     expect(MedicationTake.where(schedule: schedule).where.not(client_uuid: nil).exists?).to be(true)
   end
+
+  it 'shows zero stock in cached offline inventory', :browser do
+    medication.update!(current_supply: 0)
+
+    login_as(user)
+    visit offline_path
+
+    within('[data-offline-shell-target="people"]') do
+      expect(page).to have_text('Gabapentin')
+      expect(page).to have_text('0')
+    end
+  end
 end
