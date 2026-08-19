@@ -31,9 +31,6 @@
 /public/assets
 /coverage
 /client-tools/target/
-/client-tools/kotlin-consumer-tests/.gradle/
-/client-tools/kotlin-consumer-tests/.kotlin/
-/client-tools/kotlin-consumer-tests/build/
 
 # Ignore master key for decrypting credentials and more.
 /config/master.key

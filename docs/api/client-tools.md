@@ -13,86 +13,36 @@ the migration from handwritten transport types to generated bindings.
 
 ## Native API client generation
 
-OpenAPI Generator creates disposable Swift and Kotlin clients from
-`docs/api/openapi.v1.yaml`. CI compiles and tests those clients to prove that
-the `/api/v1` contract works for native consumers. Generated source is not
-committed and does not add Rails runtime dependencies or autoloaded constants.
+OpenAPI Generator turns `docs/api/openapi.v1.yaml` into temporary Swift and
+Kotlin packages. The packages are build inputs, not maintained SDK source. CI
+generates them under `tmp/api-clients/` and compiles every generated file.
+Generated reference documentation is disabled.
 
-Local generation writes ignored output to these directories:
-
-- `tmp/api-clients/swift` — Swift Package Manager package named
-  `MedTrackerAPI`.
-- `tmp/api-clients/kotlin` — JVM package
-  `io.medtracker.client` with artefact coordinates
-  `io.medtracker:medtracker-api-client`.
-
-The handwritten consumer tests are kept outside generated output:
-
-- `client-tools/swift-consumer-tests`
-- `client-tools/kotlin-consumer-tests`
-
-### Prerequisites
-
-Install these tools before generating or testing native clients:
-
-- Docker Engine/Desktop 24.0 or newer, to run OpenAPI Generator `v7.20.0`
-  from the pinned image.
-- Fish, to run the repository generation scripts.
-- Task `3.52.0` or newer, to run the repository commands.
-- Java 17, to compile and test the Kotlin package with its committed Gradle
-  wrapper.
-- Swift 6.3.3 and Swift Package Manager, to compile and test the Swift package.
-
-### Local commands
-
-Run these commands from the repository root:
+Generation uses the pinned OpenAPI Generator `v7.20.0` Docker image. Local
+commands require Docker, Fish, and Task. Kotlin compilation requires Java 17.
+Swift compilation requires Swift 6.3.3.
 
 ```text
 task api-clients:generate
 task api-clients:verify-generated
-task api-clients:verify
-task api-clients:kotlin
 task api-clients:kotlin:test
-task api-clients:swift
 task api-clients:swift:test
 ```
 
-`api-clients:generate` replaces both ignored temporary packages after
-successful generation. `api-clients:verify-generated` generates each client
-twice and compares the complete outputs. `api-clients:verify` also checks
-checksum metadata, cleanup on generator failure, and container file ownership.
-
-### Contract rules for native clients
+`api-clients:verify-generated` generates each package twice and compares the
+results. Do not edit files under `tmp/api-clients/`; change the OpenAPI contract
+or generator configuration instead.
 
 Every non-null JSON value has one fixed type in `/api/v1`:
 
-- Decimal values are JSON strings. Send values such as `"2.5"`, not the JSON
-  number `2.5`. Nullable decimals use the same string type and may be `null`.
-- Flexible resource identifiers are JSON strings. Numeric identifiers use
-  digit strings such as `"42"`; UUID identifiers use UUID strings. Do not send
-  JSON numbers for these fields.
-- A JSON number in a decimal or flexible-identifier request field returns the
-  standard validation-error envelope.
-- Absence and clearing remain represented by `null` where the contract marks a
-  field nullable. Optional fields may also be omitted when the contract allows
-  omission.
+- Decimal values are strings, such as `"2.5"`. Nullable decimals can be `null`.
+- Flexible resource identifiers are strings. Numeric identifiers use digit
+  strings such as `"42"`; UUID identifiers use UUID strings.
+- Numeric JSON values for these fields return the standard validation error.
 
-### Regeneration and review
-
-Never edit files below `tmp/api-clients/` by hand. They are disposable and
-ignored by Git. Change the OpenAPI document, generator configuration, or
-augmentation script, then run `task api-clients:generate`. Review the source
-changes and consumer tests. Run `task api-clients:verify-generated`, both
-native test commands, and the repository quality gates before committing.
-
-To upgrade OpenAPI Generator, update the version and immutable digest in both
-`client-tools/openapi-generator/generate-swift.fish` and
-`client-tools/openapi-generator/generate-kotlin.fish`. Review any generator
-configuration changes against the Swift 6 and Kotlin documentation. Require
-two byte-for-byte identical generations, compile both packages, and run the
-consumer tests. Record the new generator version and digest in the pull
-request. Do not upgrade one language generator without regenerating and
-checking the other.
+To upgrade OpenAPI Generator, update the version and digest in both generation
+scripts. Review both configuration files, verify deterministic output, and
+compile both complete packages before merging.
 
 ## Install
 

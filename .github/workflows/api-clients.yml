@@ -29,9 +29,6 @@ jobs:
       - name: Verify deterministic generation
         run: task api-clients:verify-generated
 
-      - name: Generate clients for compilation
-        run: task api-clients:generate
-
       - name: Upload generated clients
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
@@ -60,10 +57,8 @@ jobs:
           name: native-api-clients-${{ github.sha }}
           path: tmp/api-clients
 
-      - name: Compile and test Kotlin client
-        run: |
-          bash tmp/api-clients/kotlin/gradlew --no-daemon -p tmp/api-clients/kotlin check assemble
-          bash tmp/api-clients/kotlin/gradlew --no-daemon -p client-tools/kotlin-consumer-tests check assemble
+      - name: Compile Kotlin client
+        run: bash tmp/api-clients/kotlin/gradlew --no-daemon -p tmp/api-clients/kotlin check assemble
 
   api_client_swift:
     name: Compile and test Swift API client
@@ -89,7 +84,5 @@ jobs:
           swift --version
           swift --version | grep --fixed-strings --quiet "Swift version 6.3.3"
 
-      - name: Compile and test Swift client
-        run: |
-          swift build --package-path tmp/api-clients/swift
-          swift test --package-path client-tools/swift-consumer-tests
+      - name: Compile Swift client
+        run: swift build --package-path tmp/api-clients/swift

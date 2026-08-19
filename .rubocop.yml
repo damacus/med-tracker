@@ -13,7 +13,6 @@ AllCops:
     - "config/**/*"
     - "script/**/*"
     - "scripts/**/*"
-    - "client-tools/generated/**/*"
     - "bin/{rails,rake}"
     - !ruby/regexp /old_and_unused\.rb$/
   <% `git status --ignored --porcelain`.lines.grep(/^!! /).each do |path| %>
@@ -94,10 +93,6 @@ RSpec/DescribeClass:
 # Disable documentation requirement - not always necessary for Rails apps
 Style/Documentation:
   Enabled: false
-
-Style/FrozenStringLiteralComment:
-  Exclude:
-    - "client-tools/openapi-generator/augment_clearable_fields.rb"
 
 # Allow long lines in certain contexts
 Layout/LineLength:

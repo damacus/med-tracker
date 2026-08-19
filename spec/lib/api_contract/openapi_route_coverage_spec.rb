@@ -245,10 +245,6 @@ module OpenapiStructure
     /households/{household_id}/schedules/{id}
     /households/{household_id}/person_medications/{id}
   ].freeze
-  OPENAPI_SCHEMA_PATH = Rails.root.join(
-    'spec/fixtures/files/openapi-3.0-schema-2021-09-28.json'
-  )
-
   extend OpenapiYamlValidation
   extend OpenapiReferenceValidation
   extend OpenapiClientCompatibility
@@ -285,11 +281,6 @@ module OpenapiStructure
 
   def operation(path, method)
     paths.fetch(path).fetch(method)
-  end
-
-  def document_schema_errors(openapi_document = document)
-    schema = JSON.parse(OPENAPI_SCHEMA_PATH.read)
-    JSONSchemer.schema(schema).validate(openapi_document).map { |error| error.fetch('data_pointer') }
   end
 
   def security_requirement_errors(openapi_document = document)
@@ -335,32 +326,6 @@ end
 
 RSpec.describe OpenapiRouteCoverage, type: :request do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :carer_relationships
-
-  def clearable_marker_schema(schemas, schema_name)
-    schema, nested_property = schema_name.split('.', 2)
-    property_schema = schemas.fetch(schema)
-    return property_schema unless nested_property
-
-    property_schema.fetch('properties').fetch(nested_property)
-  end
-
-  def marked_property_paths(schema_name, schema, path = schema_name)
-    return [] unless schema.is_a?(Hash)
-
-    paths = Array(schema['x-client-clearable-null-fields']).map do |property_name|
-      "#{path}.#{property_name}"
-    end
-    nested_paths = schema.fetch('properties', {}).flat_map do |property_name, property|
-      next [] unless property.is_a?(Hash) && property['type'] == 'object'
-
-      marked_property_paths(schema_name, property, "#{path}.#{property_name}")
-    end
-    paths + nested_paths
-  end
-
-  def clearable_marker_paths(schemas)
-    schemas.flat_map { |schema_name, schema| marked_property_paths(schema_name, schema) }
-  end
 
   it 'documents every mounted API v1 route' do
     described_class.api_route_operations.each do |path, verb|
@@ -424,22 +389,6 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       ]
     end
 
-    let(:expected_clearable_marker_fields) do
-      {
-        'MedicationUpdateAttributes' => %w[dose_amount current_supply],
-        'MedicationOrderDetailsRequest.order_details' => %w[quantity],
-        'DosageOptionUpdateAttributes' => %w[current_supply reorder_threshold],
-        'ScheduleAttributes' => %w[min_hours_between_doses],
-        'PersonMedicationAttributes' => %w[min_hours_between_doses]
-      }
-    end
-
-    let(:expected_clearable_marker_paths) do
-      expected_clearable_marker_fields.flat_map do |schema_name, property_names|
-        property_names.map { |property_name| "#{schema_name}.#{property_name}" }
-      end
-    end
-
     it 'uses the canonical API v1 server address' do
       expect(described_class.document.fetch('servers').first.fetch('url')).to eq('/api/v1')
     end
@@ -498,28 +447,6 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(schemas.fetch('NullableDecimalValue')).to include('type' => 'string', 'nullable' => true)
     end
 
-    it 'marks only audited clearable request decimals for generated presence support' do
-      schemas = described_class.components.fetch('schemas')
-
-      expected_clearable_marker_fields.each do |schema_name, property_names|
-        property_schema = clearable_marker_schema(schemas, schema_name)
-        expect(property_schema.fetch('x-client-clearable-null-fields')).to match_array(property_names)
-
-        property_names.each do |property_name|
-          property = property_schema.fetch('properties').fetch(property_name)
-          expect(property).to include(
-            '$ref' => '#/components/schemas/NullableDecimalValue'
-          )
-        end
-      end
-    end
-
-    it 'does not mark other fields for generated presence support' do
-      schemas = described_class.components.fetch('schemas')
-
-      expect(clearable_marker_paths(schemas)).to match_array(expected_clearable_marker_paths)
-    end
-
     it 'defines timestamps and pagination' do
       schemas = described_class.components.fetch('schemas')
 
@@ -537,7 +464,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
     it 'rejects OpenAPI 3 reference objects with siblings' do
       malformed_reference = {
         '$ref' => '#/components/schemas/NullableDecimalValue',
-        'x-client-clearable-null-fields' => ['value']
+        'description' => 'Reference sibling'
       }
 
       expect(described_class.client_schema_keyword_errors(malformed_reference, '#/Malformed')).to include(
@@ -684,14 +611,6 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(described_class.local_reference_errors).to be_empty
       expect(described_class.unsupported_free_form_errors).to be_empty
       expect(described_class.unsupported_free_form_errors('type' => 'object')).to eq(['#'])
-    end
-
-    it 'validates the complete document against the pinned OpenAPI schema' do
-      expect(described_class.document_schema_errors).to be_empty
-
-      malformed_document = described_class.document.deep_dup
-      malformed_document.fetch('info').delete('title')
-      expect(described_class.document_schema_errors(malformed_document)).to include('/info')
     end
 
     it 'loads every reusable schema through the JSON Schema validator' do

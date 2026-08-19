@@ -2,81 +2,42 @@
 
 set -l script_dir (dirname (status filename))
 set -l repo_root (realpath "$script_dir/../..")
-set -l contract "$repo_root/docs/api/openapi.v1.yaml"
 set -l output "$repo_root/tmp/api-clients/swift"
 set -l image 'openapitools/openapi-generator-cli:v7.20.0@sha256:fa4add01856e44becf70674164df354d61bd37ba0f444d27be949801e013921b'
-source "$script_dir/checksum.fish"
-source "$script_dir/docker-runtime.fish"
-
-function cleanup --on-event fish_exit
-    if set -q med_tracker_openapi_temporary_root
-        set -l root "$med_tracker_openapi_temporary_root"
-        set -e med_tracker_openapi_temporary_root
-        if test -d "$root"
-            rm -rf "$root"
-        end
-    end
-end
-
+set -l host_uid (id -u)
+set -l host_gid (id -g)
 set -l temporary_root (mktemp -d)
-if test $status -ne 0
-    exit 1
+or exit 1
+
+function cleanup --no-scope-shadowing --on-event fish_exit
+    rm -rf "$temporary_root"
 end
-set -g med_tracker_openapi_temporary_root "$temporary_root"
 
 function generate_swift_package --no-scope-shadowing
-    set -l output_name $argv[1]
-    set -l temporary_output "$temporary_root/$output_name"
+    set -l destination $argv[1]
 
-    mkdir -p "$temporary_output"
-    openapi_generator_docker_run --rm \
-        -v "$repo_root:/local" \
-        -v "$temporary_root:/tmp/openapi" \
+    mkdir -p "$destination"
+    docker run --rm --user "$host_uid:$host_gid" \
+        -v "$repo_root:/local:ro" \
+        -v "$temporary_root:/output" \
         $image generate \
         -i /local/docs/api/openapi.v1.yaml \
         -g swift6 \
         -c /local/client-tools/openapi-generator/swift-config.yaml \
         --global-property apiDocs=false,modelDocs=false \
-        -o "/tmp/openapi/$output_name"
-    if test $status -ne 0
-        return 1
-    end
-    ruby "$script_dir/augment_clearable_fields.rb" "$contract" "$temporary_output" swift
+        -o "/output/"(basename "$destination")
 end
 
-function add_contract_checksum --no-scope-shadowing
-    set -l package_root $argv[1]
-    set -l contract_sha256 (openapi_contract_checksum "$contract")
-    if test $status -ne 0
-        return 1
-    end
-    if test (count $contract_sha256) -ne 1
-        echo 'Expected one contract checksum.' >&2
-        return 1
-    end
-    printf '%s\n' "$contract_sha256" > "$package_root/OPENAPI_SHA256"
-end
-
-if not generate_swift_package output
-    exit 1
-end
-if not add_contract_checksum "$temporary_root/output"
-    exit 1
-end
+generate_swift_package "$temporary_root/generated"
+or exit 1
 
 if test "$argv[1]" = determinism
-    if not generate_swift_package repeat
-        exit 1
-    end
-    if not add_contract_checksum "$temporary_root/repeat"
-        exit 1
-    end
-    diff -ruN "$temporary_root/output" "$temporary_root/repeat"
-    exit $status
+    generate_swift_package "$temporary_root/repeated"
+    or exit 1
+    diff -ruN "$temporary_root/generated" "$temporary_root/repeated"
+    or exit 1
 end
 
-set -l staged_output "$temporary_root/staged"
-mv "$temporary_root/output" "$staged_output"
 rm -rf "$output"
 mkdir -p (dirname "$output")
-mv "$staged_output" "$output"
+mv "$temporary_root/generated" "$output"

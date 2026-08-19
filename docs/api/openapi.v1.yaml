@@ -4302,9 +4302,6 @@ components:
       type: object
       additionalProperties: false
       minProperties: 1
-      x-client-clearable-null-fields:
-        - dose_amount
-        - current_supply
       properties:
         name:
           type: string
@@ -4382,8 +4379,6 @@ components:
         order_details:
           type: object
           additionalProperties: false
-          x-client-clearable-null-fields:
-            - quantity
           properties:
             supplier:
               type: string
@@ -4536,9 +4531,6 @@ components:
       type: object
       additionalProperties: false
       minProperties: 1
-      x-client-clearable-null-fields:
-        - current_supply
-        - reorder_threshold
       properties:
         amount:
           $ref: '#/components/schemas/DecimalValue'
@@ -4893,8 +4885,6 @@ components:
       type: object
       additionalProperties: false
       minProperties: 1
-      x-client-clearable-null-fields:
-        - min_hours_between_doses
       properties:
         person_id:
           $ref: '#/components/schemas/ResourceIdentifier'
@@ -5136,8 +5126,6 @@ components:
       type: object
       additionalProperties: false
       minProperties: 1
-      x-client-clearable-null-fields:
-        - min_hours_between_doses
       properties:
         person_id:
           $ref: '#/components/schemas/ResourceIdentifier'
