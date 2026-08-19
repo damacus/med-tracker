@@ -24,7 +24,7 @@ jobs:
           repo-token: ${{ github.token }}
 
       - name: Install Fish
-        run: sudo apt-get update && sudo apt-get install --yes fish
+        run: sudo apt-get install --yes fish
 
       - name: Verify deterministic generation
         run: task api-clients:verify-generated
@@ -50,7 +50,7 @@ jobs:
           repo-token: ${{ github.token }}
 
       - name: Install Fish
-        run: sudo apt-get update && sudo apt-get install --yes fish
+        run: sudo apt-get install --yes fish
 
       - name: Generate, compile, and test Kotlin client
         run: task api-clients:kotlin:test

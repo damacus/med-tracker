@@ -107,6 +107,7 @@ RSpec.describe 'Taskfiles' do
     jobs.each_value do |job|
       expect(job_step_names(job)).to include('Set up Task', 'Install Fish')
     end
+    expect(api_client_workflow_source).not_to include('apt-get update')
   end
 
   it 'pins the native API generator image and language generators' do
@@ -353,7 +354,11 @@ RSpec.describe 'Taskfiles' do
   end
 
   def api_client_workflow
-    YAML.safe_load(Rails.root.join('.github/workflows/api-clients.yml').read, aliases: true)
+    YAML.safe_load(api_client_workflow_source, aliases: true)
+  end
+
+  def api_client_workflow_source
+    Rails.root.join('.github/workflows/api-clients.yml').read
   end
 
   def job_step_names(job)
