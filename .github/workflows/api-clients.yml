@@ -63,7 +63,7 @@ jobs:
   api_client_swift:
     name: Compile and test Swift API client
     needs: api_client_generation
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
