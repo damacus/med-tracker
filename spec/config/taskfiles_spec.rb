@@ -101,13 +101,18 @@ RSpec.describe 'Taskfiles' do
     expect(Rails.root.join('client-tools/generated')).not_to exist
   end
 
-  it 'installs task and Fish in every CI job that generates a native client' do
+  it 'generates native clients once and passes ephemeral output to compile jobs' do
     jobs = api_client_workflow.fetch('jobs')
+    generation_steps = job_step_names(jobs.fetch('api_client_generation'))
 
-    jobs.each_value do |job|
-      expect(job_step_names(job)).to include('Set up Task', 'Install Fish')
-    end
+    expect(generation_steps).to include('Set up Task', 'Install Fish', 'Upload generated clients')
+    expect(job_step_names(jobs.fetch('api_client_kotlin'))).to include('Download generated clients')
+    expect(job_step_names(jobs.fetch('api_client_swift'))).to include('Download generated clients')
     expect(api_client_workflow_source).not_to include('apt-get update')
+    expect(api_client_workflow_source).to include(
+      'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a',
+      'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'
+    )
   end
 
   it 'pins the native API generator image and language generators' do
