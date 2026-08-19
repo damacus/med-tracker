@@ -19,10 +19,6 @@ module Views
 
       def view_template(&)
         section(
-          id: panel_id,
-          role: 'region',
-          aria: { labelledby: tab_id },
-          data: { testid: 'profile-section-panel' },
           class: 'overflow-hidden rounded-shape-xl border border-outline-variant/70 bg-card shadow-elevation-2'
         ) do
           render_header
@@ -57,14 +53,6 @@ module Views
             ) { item }
           end
         end
-      end
-
-      def panel_id
-        "profile-#{@key}-panel"
-      end
-
-      def tab_id
-        "profile-tab-#{@key}"
       end
 
       def appearance_summary_data(index)

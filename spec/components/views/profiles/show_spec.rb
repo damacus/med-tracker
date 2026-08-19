@@ -53,18 +53,19 @@ RSpec.describe Views::Profiles::Show, type: :component do
     tabs = rendered.css('[data-testid="profile-section-tab"]')
 
     expect(tabs.map { |tab| tab.text.squish }).to eq(%w[Profile Security Notifications Advanced])
-    expect(tabs.find { |tab| tab.text.include?('Profile') }['aria-current']).to eq('page')
-    expect(tabs.drop(1).pluck('aria-current')).to all(be_nil)
-    expect(rendered.css('[data-testid="profile-section-panel"]').size).to eq(1)
-    expect(rendered.at_css('[data-testid="profile-section-panel"]')['aria-labelledby']).to eq('profile-tab-profile')
+    expect(tabs.find { |tab| tab.text.include?('Profile') }['aria-selected']).to eq('true')
+    expect(tabs.drop(1).pluck('aria-selected')).to all(eq('false'))
+    expect(rendered.css('[data-testid="profile-section-panel"]').size).to eq(4)
+    expect(rendered.at_css('#profile-profile-panel')['aria-labelledby']).to eq('profile-tab-profile')
   end
 
-  it 'links every profile tab to its selected section' do
+  it 'connects every same-page tab to its panel' do
     rendered = render_inline(described_class.new(presenter:))
     tabs = rendered.css('[data-testid="profile-section-tab"]')
 
-    expect(tabs.map { |tab| tab['href'].split('?').last }).to eq(
-      %w[section=profile section=security section=notifications section=advanced]
+    expect(tabs.map(&:name)).to all(eq('button'))
+    expect(tabs.pluck('aria-controls')).to eq(
+      %w[profile-profile-panel profile-security-panel profile-notifications-panel profile-advanced-panel]
     )
   end
 

@@ -203,7 +203,7 @@ RSpec.describe 'Profile Editing' do
       expect(page.evaluate_script('document.activeElement === arguments[0]', trigger)).to be(true)
     end
 
-    it 'switches one full-width profile tab at a time without browser errors', :aggregate_failures do
+    it 'switches same-page profile tabs without navigating or browser errors', :aggregate_failures do
       browser_errors = []
       page.driver.with_playwright_page do |playwright_page|
         playwright_page.on('console', ->(message) { browser_errors << message.text if message.type == 'error' })
@@ -214,15 +214,18 @@ RSpec.describe 'Profile Editing' do
         tab.evaluate_script('this.getBoundingClientRect().top')
       end
       expect(tab_tops.uniq.size).to eq(1)
+      initial_path = page.current_url
       open_profile_section('security')
 
-      expect(page).to have_current_path(profile_path(section: 'security'))
-      expect(page).to have_css('[data-profile-section="security"][aria-current="page"]')
+      expect(page.current_url).to eq(initial_path)
+      expect(page).to have_css('[data-profile-section="security"][aria-selected="true"]')
+      expect(page).to have_css('[data-profile-section="profile"][aria-selected="false"]')
       expect(page).to have_css(
-        '[data-testid="profile-section-panel"][aria-labelledby="profile-tab-security"]', count: 1
+        '[data-testid="profile-section-panel"][aria-labelledby="profile-tab-security"]:not(.hidden)', count: 1
       )
-      expect(find('[data-testid="profile-section-panel"]').evaluate_script('this.getBoundingClientRect().width'))
-        .to be > 700
+      expect(page).to have_css('[data-testid="profile-section-panel"]', count: 4, visible: :all)
+      visible_panel = find('[data-testid="profile-section-panel"]:not(.hidden)')
+      expect(visible_panel.evaluate_script('this.getBoundingClientRect().width')).to be > 700
       expect(browser_errors).to be_empty
     end
 

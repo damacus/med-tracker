@@ -32,20 +32,20 @@ RSpec.describe 'Profiles' do
         .to eq(%w[Profile Security Notifications Advanced])
     end
 
-    it 'selects a requested profile tab and falls back for invalid values' do
+    it 'renders same-page tabs with a requested initial tab and an invalid-value fallback' do
       get profile_path(section: 'security')
 
       security_tab = response.parsed_body.at_css('[data-profile-section="security"]')
-      expect(security_tab['aria-current']).to eq('page')
-      expect(response.parsed_body.at_css('[data-testid="profile-section-panel"]')['aria-labelledby'])
-        .to eq('profile-tab-security')
+      expect(security_tab.name).to eq('button')
+      expect(security_tab['aria-selected']).to eq('true')
+      expect(security_tab['aria-controls']).to eq('profile-security-panel')
+      expect(response.parsed_body.css('[role="tabpanel"][data-testid="profile-section-panel"]').size).to eq(4)
 
       get profile_path(section: 'unknown')
 
       profile_tab = response.parsed_body.at_css('[data-profile-section="profile"]')
-      expect(profile_tab['aria-current']).to eq('page')
-      expect(response.parsed_body.at_css('[data-testid="profile-section-panel"]')['aria-labelledby'])
-        .to eq('profile-tab-profile')
+      expect(profile_tab['aria-selected']).to eq('true')
+      expect(response.parsed_body.at_css('#profile-profile-panel')['aria-labelledby']).to eq('profile-tab-profile')
     end
 
     it 'renders only same-origin JavaScript imports' do

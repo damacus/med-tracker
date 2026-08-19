@@ -47,13 +47,14 @@ module Views
       def render_sections
         render RubyUI::Tabs.new(default: presenter.active_section, class: 'space-y-4') do
           render_section_tabs
-          render_active_section
+          render_section_panels
         end
       end
 
       def render_section_tabs
         nav(aria: { label: t('profiles.show.title') }) do
           render RubyUI::TabsList.new(
+            role: 'tablist',
             class: 'flex h-auto w-full rounded-shape-lg border border-outline-variant/70 ' \
                    'bg-surface-container p-1 shadow-elevation-1'
           ) do
@@ -66,10 +67,12 @@ module Views
         active = presenter.active_section == key.to_s
         render RubyUI::TabsTrigger.new(
           value: key.to_s,
-          as: :a,
           id: "profile-tab-#{key}",
-          href: profile_path(section: key),
-          aria: { current: active ? 'page' : nil },
+          role: 'tab',
+          aria: {
+            controls: "profile-#{key}-panel",
+            selected: active.to_s
+          },
           data: {
             state: active ? 'active' : 'inactive',
             testid: 'profile-section-tab',
@@ -81,11 +84,26 @@ module Views
         ) { t("profiles.sections.#{key}.title") }
       end
 
-      def render_active_section
-        case presenter.active_section
-        when 'security' then render_security_section
-        when 'notifications' then render_notifications_section
-        when 'advanced' then render_advanced_section
+      def render_section_panels
+        SECTION_KEYS.each do |key|
+          render RubyUI::TabsContent.new(
+            value: key.to_s,
+            id: "profile-#{key}-panel",
+            role: 'tabpanel',
+            aria: { labelledby: "profile-tab-#{key}" },
+            hidden: presenter.active_section != key.to_s,
+            tabindex: 0,
+            data: { testid: 'profile-section-panel' },
+            class: 'mt-0'
+          ) { render_section(key) }
+        end
+      end
+
+      def render_section(key)
+        case key
+        when :security then render_security_section
+        when :notifications then render_notifications_section
+        when :advanced then render_advanced_section
         else render_profile_section
         end
       end
