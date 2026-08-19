@@ -192,7 +192,7 @@ export default class extends Controller {
   resultHtml(result, index) {
     return `
       <a
-        href="${this.hrefAttribute(result.path)}"
+        href="${this.escapeHtml(this.hrefAttribute(result.path))}"
         class="block rounded-md border border-transparent px-3 py-3 no-underline outline-none transition-colors
                hover:border-primary hover:bg-surface-container-low
                focus-visible:border-primary focus-visible:bg-surface-container-low focus-visible:ring-2 focus-visible:ring-primary
