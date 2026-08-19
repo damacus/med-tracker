@@ -13,10 +13,10 @@ RSpec.describe 'Profiles' do
   end
 
   describe 'GET /profile' do
-    it 'does not load notification preferences or API tokens while rendering the view' do
+    it 'does not query profile data while rendering Phlex components' do
       rendered_queries = capture_profile_render_queries { get profile_path }
 
-      expect(rendered_queries.grep(/notification_preferences|api_app_tokens/)).to be_empty
+      expect(rendered_queries).to be_empty
     end
 
     it 'renders the profile page shell and key sections' do
@@ -33,6 +33,18 @@ RSpec.describe 'Profiles' do
       expect(response.body.scan('data-turbo-frame="modal"').size).to be >= 2
     end
 
+    it 'opens a requested profile section and falls back for invalid values' do
+      get profile_path(section: 'security')
+
+      security_trigger = response.parsed_body.at_css('[data-profile-section="security"]')
+      expect(security_trigger['aria-expanded']).to eq('true')
+
+      get profile_path(section: 'unknown')
+
+      profile_trigger = response.parsed_body.at_css('[data-profile-section="profile"]')
+      expect(profile_trigger['aria-expanded']).to eq('true')
+    end
+
     it 'uses the account time zone around the request' do
       account.update!(time_zone: 'Pacific Time (US & Canada)')
       allow(Time).to receive(:use_zone).and_call_original
@@ -42,21 +54,15 @@ RSpec.describe 'Profiles' do
       expect(Time).to have_received(:use_zone).with('Pacific Time (US & Canada)')
     end
 
-    it 'renders readable stacked identity details in the profile hero', :aggregate_failures do
+    it 'renders a compact identity hero without duplicated identity cards', :aggregate_failures do
       get profile_path
 
       hero = response.parsed_body.at_css('[data-testid="profile-hero"]')
-      identity = hero.at_css('[data-testid="profile-identity-details"]')
-      labels = identity.css('p').map { |node| node.text.squish }
-      values = identity.css('[data-testid^="profile-identity-value"]').map { |node| node.text.squish }
 
-      expect(labels).to include('Name', 'Email')
-      expect(labels).not_to include('Profile name')
-      expect(labels).not_to include('Sign-in email')
-      expect(values).to include(user.name, account.email)
-      expect(identity['class']).to include('space-y-3')
-      expect(identity['class']).not_to include('grid')
-      expect(identity.to_html).not_to include('truncate')
+      expect(hero.text.squish).to include('My Profile', account.email)
+      expect(hero.at_css('[data-testid="person-avatar"]')).to be_present
+      expect(hero.at_css('[data-testid="profile-identity-details"]')).to be_nil
+      expect(hero.css('[data-testid^="profile-identity-value"]')).to be_empty
     end
 
     it 'renders the two-factor card and empty-state setup actions' do
@@ -207,6 +213,20 @@ RSpec.describe 'Profiles' do
       expect(response).to redirect_to(profile_path)
       expect(flash[:alert]).to include('Time zone')
       expect(account.reload.time_zone).not_to eq('Atlantis/Nowhere')
+    end
+
+    it 'renders Turbo validation errors inside the relevant profile sheet' do
+      patch profile_path,
+            params: {
+              section: 'profile',
+              profile_setting: 'time_zone',
+              account: { time_zone: 'Atlantis/Nowhere' }
+            },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('target="profile-time-zone-errors"')
+      expect(response.body).to include('Time zone')
     end
 
     it 'rejects direct profile email changes without mutating the account email' do

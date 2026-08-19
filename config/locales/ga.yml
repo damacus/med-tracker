@@ -1466,6 +1466,30 @@ ga:
     paused: 'Ní féidir an leigheas a thógáil: ar sos'
     overlapping_prescription_restriction: 'Ní féidir an leigheas a thógáil: leagann oideas gníomhach eile don leigheas seo teorainn ama níos déine síos.'
   profiles:
+    common:
+      "on": Ar siúl
+      "off": As
+    sections:
+      profile:
+        title: Próifíl
+      security:
+        title: Slándáil
+        password_updated: Pasfhocal nuashonraithe
+        two_factor_on: "2FA: Ar siúl"
+        two_factor_off: "2FA: Gan chumasú"
+        passkeys: "%{count} eochair rochtana"
+      notifications:
+        title: Fógraí
+        reminders: "Meabhrúcháin: %{state}"
+        categories: "%{count} catagóir cumasaithe"
+      advanced:
+        title: Casta
+        tokens: "%{count} comhartha API gníomhach"
+        exports: Easpórtáil sonraí ar fáil
+        data_backup: Cúltaca sonraí
+        data_backup_description: Íoslódáil cóip de do thaifid chógais agus sláinte.
+        experiments: Turgnaimh
+        experiments_description: Bain triail as roghanna comhéadain nua sula scaoiltear iad.
     updated: Nuashonraíodh an phróifíl go rathúil.
     email_change_requires_verification: Úsáid an sreabhadh fíoraithe athraithe ríomhphoist
       chun do ríomhphost sínithe isteach a nuashonrú.
@@ -1545,6 +1569,10 @@ ga:
       gravatar_label: Úsáid Gravatar
       gravatar_description: Taispeáin do Gravatar nuair nach bhfuil avatar saincheaptha uaslódáilte.
       save_gravatar: Sábháil rogha Gravatar
+    time_zone:
+      title: Crios Ama
+      description: Roghnaigh an crios ama do mheabhrúcháin agus dáileoga taifeadta.
+      save: Sábháil an crios ama
     account_security:
       title: Slándáil Chuntais
       description: Bainistigh do dhintiúir logála isteach agus do shocruithe slándála

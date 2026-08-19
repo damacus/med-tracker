@@ -1638,6 +1638,30 @@ pt:
         metric_label: Rever
         metric_value: Horário
   profiles:
+    common:
+      "on": Ligado
+      "off": Desligado
+    sections:
+      profile:
+        title: Perfil
+      security:
+        title: Segurança
+        password_updated: Palavra-passe atualizada
+        two_factor_on: "2FA: Ligado"
+        two_factor_off: "2FA: Não ativado"
+        passkeys: "%{count} chaves de acesso"
+      notifications:
+        title: Notificações
+        reminders: "Lembretes: %{state}"
+        categories: "%{count} categorias ativadas"
+      advanced:
+        title: Avançado
+        tokens: "%{count} tokens de API ativos"
+        exports: Exportação de dados disponível
+        data_backup: Cópia de segurança de dados
+        data_backup_description: Transfira uma cópia dos seus registos de medicação e saúde.
+        experiments: Experiências
+        experiments_description: Experimente novas opções da interface antes do lançamento.
     updated: Perfil atualizado com sucesso.
     email_change_requires_verification: Use o fluxo verificado de alteração de email
       para atualizar o email de início de sessão.
@@ -1716,6 +1740,10 @@ pt:
       gravatar_label: Usar Gravatar
       gravatar_description: Mostrar o seu Gravatar quando não existir um avatar personalizado carregado.
       save_gravatar: Guardar escolha de Gravatar
+    time_zone:
+      title: Fuso horário
+      description: Escolha o fuso horário usado nos lembretes e nas doses registadas.
+      save: Guardar fuso horário
     account_security:
       title: Segurança da Conta
       description: Gira as suas credenciais de início de sessão e definições de segurança

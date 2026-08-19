@@ -6,10 +6,6 @@ RSpec.describe 'Appearance mode', :browser do
   fixtures :accounts, :people, :users
 
   let(:user) { users(:damacus) }
-  let(:page_background_script) do
-    'getComputedStyle(document.body).backgroundColor'
-  end
-
   let(:root_primary_script) do
     'getComputedStyle(document.documentElement).getPropertyValue("--primary").trim().toLowerCase()'
   end
@@ -17,17 +13,18 @@ RSpec.describe 'Appearance mode', :browser do
   it 'lets signed-in users switch appearance modes without losing their palette' do
     sign_in(user)
     visit profile_path
+    open_appearance_sheet
 
     click_button 'Dark'
 
-    default_dark_background = page.evaluate_script(page_background_script)
+    default_dark_primary = page.evaluate_script(root_primary_script)
 
     expect(page.evaluate_script('localStorage.getItem("med-tracker-appearance")')).to eq('dark')
     expect(page.evaluate_script('document.documentElement.classList.contains("dark")')).to be(true)
 
     click_button 'Warm Earth'
 
-    expect(page.evaluate_script(page_background_script)).not_to eq(default_dark_background)
+    expect(page.evaluate_script(root_primary_script)).not_to eq(default_dark_primary)
     expect(page.evaluate_script('localStorage.getItem("med-tracker-theme")')).to eq('warm-earth')
     expect(page.evaluate_script('document.documentElement.classList.contains("dark")')).to be(true)
     expect(page.evaluate_script('document.documentElement.classList.contains("theme-warm-earth")')).to be(true)
@@ -48,6 +45,7 @@ RSpec.describe 'Appearance mode', :browser do
     JS
 
     visit profile_path
+    open_appearance_sheet
 
     default_profile_card_background = page.evaluate_script(<<~JS)
       (() => {
@@ -129,5 +127,10 @@ RSpec.describe 'Appearance mode', :browser do
 
     expect(page.evaluate_script('localStorage.getItem("med-tracker-theme")')).to eq('warm-earth')
     expect(page.evaluate_script('document.documentElement.classList.contains("theme-warm-earth")')).to be(false)
+  end
+
+  def open_appearance_sheet
+    find('[data-testid="profile-appearance-sheet"] button', text: 'Appearance').click
+    expect(page).to have_css('[role="dialog"]', text: 'Appearance')
   end
 end

@@ -8,8 +8,9 @@ module Views
       include Phlex::Rails::Helpers::L
       include Phlex::Rails::Helpers::Routes
 
-      def initialize(account:, api_app_tokens:, new_api_app_token:)
+      def initialize(account:, membership:, api_app_tokens:, new_api_app_token:)
         @account = account
+        @membership = membership
         @api_app_tokens = api_app_tokens
         @new_api_app_token = new_api_app_token
         super()
@@ -31,7 +32,7 @@ module Views
 
       private
 
-      attr_reader :account, :api_app_tokens, :new_api_app_token
+      attr_reader :account, :membership, :api_app_tokens, :new_api_app_token
 
       def render_new_token
         return if new_api_app_token.blank?
@@ -45,10 +46,10 @@ module Views
       end
 
       def render_create_form
-        membership = account.first_active_household_membership
         return if membership.blank?
 
         form_with(url: profile_api_tokens_path, method: :post, class: 'space-y-3') do
+          input(type: 'hidden', name: 'section', value: 'advanced')
           input(type: 'hidden', name: 'api_app_token[household_membership_id]', value: membership.id)
           label(class: 'block text-sm font-bold text-foreground', for: 'api_app_token_name') do
             t('profiles.api_tokens.name_label')
@@ -88,7 +89,8 @@ module Views
               t('profiles.api_tokens.revoke'),
               profile_api_token_path(app_token),
               method: :delete,
-              class: 'inline-flex min-h-11 items-center justify-center rounded-shape-full border border-outline px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-tertiary-container hover:text-on-tertiary-container'
+              class: 'inline-flex min-h-11 items-center justify-center rounded-shape-full border border-outline px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-tertiary-container hover:text-on-tertiary-container',
+              params: { section: 'advanced' }
             )
           end
         end

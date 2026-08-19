@@ -19,7 +19,6 @@ module Views
           render_basic_info_rows
           render_age_row if person.age
           render_capacity_info_rows
-          render_time_zone_form
         end
       end
 
@@ -52,37 +51,6 @@ module Views
         return 'Not set' unless person.date_of_birth
 
         person.date_of_birth.strftime('%B %d, %Y')
-      end
-
-      def render_time_zone_form
-        div(class: 'rounded-shape-xl border border-outline-variant/70 bg-surface-container p-4') do
-          form_with(url: profile_path, method: :patch, class: 'flex flex-col gap-4 sm:flex-row sm:items-end') do
-            div(class: 'flex-1 space-y-2') do
-              label(class: 'block text-sm font-bold text-foreground', for: 'account_time_zone') { 'Time Zone' }
-              select(
-                id: 'account_time_zone',
-                name: 'account[time_zone]',
-                class: time_zone_select_classes
-              ) do
-                time_zone_options.each do |zone_name|
-                  option(value: zone_name, selected: zone_name == account.preferred_time_zone) { zone_name }
-                end
-              end
-            end
-            m3_button(type: :submit, variant: :tonal, size: :sm) { 'Save time zone' }
-          end
-        end
-      end
-
-      def time_zone_options
-        ([account.preferred_time_zone] + Account::TIME_ZONE_NAMES).select do |time_zone|
-          Account.valid_time_zone?(time_zone)
-        end.uniq
-      end
-
-      def time_zone_select_classes
-        'block w-full rounded-shape-sm border border-border bg-card px-3 py-2 text-sm text-foreground ' \
-          'focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/5'
       end
     end
   end

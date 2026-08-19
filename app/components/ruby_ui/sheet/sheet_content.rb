@@ -33,7 +33,7 @@ module RubyUI
         aria_modal: 'true',
         tabindex: '-1',
         class: [
-          'fixed z-50 flex h-full w-[calc(100vw-2rem)] flex-col overflow-y-auto border-border/70 bg-popover p-6 ' \
+          'fixed z-[70] flex h-full w-[calc(100vw-2rem)] flex-col overflow-y-auto border-border/70 bg-popover p-6 ' \
           'shadow-elevation-4 transition-transform duration-300 ease-in-out pointer-events-auto',
           size_class,
           'data-[state=open]:translate-x-0',
@@ -57,7 +57,7 @@ module RubyUI
       div(
         data_testid: 'drawer-backdrop',
         data_action: 'click->ruby-ui--sheet-content#close',
-        class: 'fixed inset-0 z-50 bg-foreground/10 backdrop-blur-[1.5px] transition-opacity duration-300 pointer-events-auto ' \
+        class: 'fixed inset-0 z-[70] bg-foreground/10 backdrop-blur-[1.5px] transition-opacity duration-300 pointer-events-auto ' \
                'data-[state=open]:opacity-100 data-[state=closed]:opacity-0 data-[state=closed]:pointer-events-none',
         aria_hidden: 'true',
         data_state: 'closed'

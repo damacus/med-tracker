@@ -171,11 +171,19 @@ export default class extends Controller {
 
   showButton(which) {
     if (this.hasSubscribeButtonTarget) {
-      this.subscribeButtonTarget.hidden = which !== "subscribe"
+      this.setToggleState(this.subscribeButtonTarget, which !== "unsubscribe")
+      this.subscribeButtonTarget.disabled = which === "none"
     }
     if (this.hasUnsubscribeButtonTarget) {
-      this.unsubscribeButtonTarget.hidden = which !== "unsubscribe"
+      this.setToggleState(this.unsubscribeButtonTarget, which === "unsubscribe")
+      this.unsubscribeButtonTarget.disabled = which === "none"
     }
+  }
+
+  setToggleState(button, selected) {
+    button.dataset.state = selected ? "on" : "off"
+    button.setAttribute("aria-checked", selected ? "true" : "false")
+    button.setAttribute("tabindex", selected ? "0" : "-1")
   }
 
   showTestButton(visible) {
