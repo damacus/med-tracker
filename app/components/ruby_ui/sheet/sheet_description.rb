@@ -10,6 +10,7 @@ module RubyUI
 
     def default_attrs
       {
+        data: { ruby_ui_sheet_description: true },
         class: 'text-sm text-on-surface-variant'
       }
     end

@@ -1,15 +1,30 @@
 import { Controller } from "@hotwired/stimulus"
 
+let sheetId = 0
+
 export default class extends Controller {
   static targets = ["content"]
 
-  open() {
+  disconnect() {
+    this.wrapper?.remove()
+    document.body.classList.toggle(
+      "overflow-hidden",
+      Boolean(document.querySelector('[data-controller="ruby-ui--sheet-content"]'))
+    )
+  }
+
+  open(event) {
     if (this.wrapper && this.wrapper.isConnected) return
 
-    const trigger = this.element.querySelector('.hamburger')
-    if (trigger) {
-      trigger.classList.add('is-active')
-      trigger.setAttribute('aria-expanded', 'true')
+    this.trigger = event?.currentTarget?.querySelector("button, a, [tabindex]") || event?.currentTarget
+    if (!this.element.id) {
+      sheetId += 1
+      this.element.id = `ruby-ui-sheet-${sheetId}`
+    }
+
+    if (this.trigger) {
+      this.trigger.classList.toggle('is-active', this.trigger.classList.contains('hamburger'))
+      this.trigger.setAttribute('aria-expanded', 'true')
     }
 
     const wrapper = document.createElement("div")
@@ -19,6 +34,7 @@ export default class extends Controller {
     wrapper.innerHTML = this.contentTarget.innerHTML
     document.body.appendChild(wrapper)
     this.wrapper = wrapper
+    document.body.classList.add("overflow-hidden")
 
     const backdrop = wrapper.querySelector('[data-testid="drawer-backdrop"]')
     const panel = wrapper.querySelector('[role="dialog"]')
@@ -45,10 +61,10 @@ export default class extends Controller {
   close() {
     this.wrapper = null
 
-    const trigger = this.element.querySelector('.hamburger')
-    if (trigger) {
-      trigger.classList.remove('is-active')
-      trigger.setAttribute('aria-expanded', 'false')
+    if (this.trigger) {
+      this.trigger.classList.remove('is-active')
+      this.trigger.setAttribute('aria-expanded', 'false')
+      this.trigger.focus({ preventScroll: true })
     }
   }
 }

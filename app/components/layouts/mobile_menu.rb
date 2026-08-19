@@ -28,6 +28,8 @@ module Components
 
             render RubyUI::SheetContent.new(
               side: :left,
+              show_close: false,
+              aria_label: t('ruby_ui.common.navigation_menu'),
               class: 'bg-surface-container-high border-outline-variant/30 w-[85vw] max-w-[320px]'
             ) do
               render RubyUI::SheetHeader.new(class: 'flex flex-row items-center justify-between px-2') do

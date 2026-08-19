@@ -87,6 +87,12 @@ RSpec.describe Components::Layouts::MobileMenu, type: :component do
       expect(close_button.css('.sr-only')).to be_empty
     end
 
+    it 'names the navigation sheet at the caller boundary' do
+      rendered = render_inline(described_class.new)
+
+      expect(rendered.at_css('[role="dialog"]')['aria-label']).to eq(I18n.t('ruby_ui.common.navigation_menu'))
+    end
+
     it 'renders close button with 44px minimum touch target' do
       rendered = render_inline(described_class.new)
 
