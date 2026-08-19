@@ -88,9 +88,10 @@ RSpec.describe Components::Shared::MetricCard, type: :component do
     )
     html = rendered.to_html
 
-    expect(html).to include('min-h-[6rem]', 'p-3', 'sm:p-4')
-    expect(html).to include('text-lg', 'sm:text-2xl')
-    expect(html).to include('whitespace-normal', 'break-words')
+    expect(html).to include('min-h-[6rem]', 'sm:min-h-[5rem]')
+    expect(html).to include('p-3', 'sm:px-4', 'sm:py-2.5')
+    expect(html).to include('mb-2', 'sm:mb-1')
+    expect(html).to include('text-lg', 'sm:text-xl', 'whitespace-normal', 'break-words')
     expect(rendered.css('.h-full')).to be_present
   end
 

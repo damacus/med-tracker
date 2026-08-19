@@ -394,6 +394,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
 
       expect(metrics['class'].split).to include('grid-cols-3', 'auto-rows-fr')
       expect(metrics.to_html.scan('min-h-[6rem]').size).to eq(3)
+      expect(metrics.to_html.scan('sm:min-h-[5rem]').size).to eq(3)
     end
   end
 

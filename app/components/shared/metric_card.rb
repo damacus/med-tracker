@@ -114,7 +114,7 @@ module Components
       end
 
       def min_height_class
-        return 'min-h-[6rem] sm:min-h-[7rem]' if dashboard_summary?
+        return 'min-h-[6rem] sm:min-h-[5rem]' if dashboard_summary?
 
         compact? ? 'min-h-[7rem]' : 'min-h-[9.5rem] sm:min-h-[10rem]'
       end
@@ -126,13 +126,13 @@ module Components
       end
 
       def content_padding_class
-        return 'p-3 sm:p-4' if dashboard_summary?
+        return 'p-3 sm:px-4 sm:py-2.5' if dashboard_summary?
 
         compact? ? 'p-4' : 'p-3 sm:p-6'
       end
 
       def header_margin_class
-        return 'mb-2 sm:mb-3' if dashboard_summary?
+        return 'mb-2 sm:mb-1' if dashboard_summary?
 
         compact? ? 'mb-3' : 'mb-2'
       end
@@ -160,7 +160,7 @@ module Components
       end
 
       def value_size_class
-        return 'text-lg leading-tight sm:text-2xl' if dashboard_summary?
+        return 'text-lg leading-tight sm:text-xl' if dashboard_summary?
 
         compact? ? 'text-2xl' : 'text-3xl sm:text-4xl'
       end
