@@ -101,6 +101,14 @@ RSpec.describe 'Taskfiles' do
     expect(Rails.root.join('client-tools/generated')).not_to exist
   end
 
+  it 'installs task and Fish in every CI job that generates a native client' do
+    jobs = api_client_workflow.fetch('jobs')
+
+    jobs.each_value do |job|
+      expect(job_step_names(job)).to include('Set up Task', 'Install Fish')
+    end
+  end
+
   it 'pins the native API generator image and language generators' do
     expect(swift_generator_script).to include(
       generator_image,
@@ -342,6 +350,14 @@ RSpec.describe 'Taskfiles' do
 
   def root_taskfile
     YAML.safe_load(Rails.root.join('Taskfile.yml').read, aliases: true, permitted_classes: [Symbol])
+  end
+
+  def api_client_workflow
+    YAML.safe_load(Rails.root.join('.github/workflows/api-clients.yml').read, aliases: true)
+  end
+
+  def job_step_names(job)
+    job.fetch('steps').filter_map { |step| step['name'] }
   end
 
   def gemfile
