@@ -2,16 +2,18 @@
 
 module RubyUI
   class SheetContent < Base
-    SIDE_CLASS = {
-      top: 'inset-x-0 top-0 border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top',
-      right: 'inset-y-0 right-0 h-full border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
-      bottom: 'inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
-      left: 'inset-y-0 left-0 h-full border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left'
+    SIZES = {
+      sm: 'max-w-sm',
+      md: 'max-w-md',
+      lg: 'max-w-lg',
+      xl: 'max-w-xl',
+      full: 'max-w-none'
     }.freeze
 
-    def initialize(side: :right, **attrs)
+    def initialize(side: :right, size: :md, show_close: true, **attrs)
       @side = side
-      @side_classes = SIDE_CLASS[side]
+      @size = size
+      @show_close = show_close
       super(**attrs)
     end
 
@@ -27,9 +29,15 @@ module RubyUI
     def default_attrs
       {
         data_state: 'open', # For animate in
+        role: 'dialog',
+        aria_modal: 'true',
+        tabindex: '-1',
         class: [
-          'fixed pointer-events-auto z-50 gap-4 border-border/70 bg-popover p-6 shadow-elevation-4 transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500',
-          @side_classes
+          'fixed z-50 flex h-full w-[calc(100vw-2rem)] flex-col overflow-y-auto border-border/70 bg-popover p-6 ' \
+          'shadow-elevation-4 transition-transform duration-300 ease-in-out pointer-events-auto',
+          size_class,
+          'data-[state=open]:translate-x-0',
+          side_transform_class
         ]
       }
     end
@@ -56,19 +64,11 @@ module RubyUI
       )
     end
 
-    def container(&)
-      div(
-        role: 'dialog',
-        aria_modal: 'true',
-        aria_label: I18n.t('ruby_ui.common.navigation_menu'),
-        tabindex: '-1',
-        class: [
-          'fixed z-50 flex h-full w-[80vw] max-w-[300px] flex-col overflow-y-auto border-border/70 bg-popover p-6 shadow-elevation-4 transition-transform duration-300 ease-in-out pointer-events-auto',
-          'data-[state=open]:translate-x-0',
-          side_transform_class
-        ],
-        &
-      )
+    def container(&block)
+      div(**attrs) do
+        block&.call
+        close_button if @show_close
+      end
     end
 
     def side_transform_class
@@ -82,6 +82,12 @@ module RubyUI
       when :bottom
         'bottom-0 left-0 w-full h-auto border-t data-[state=closed]:translate-y-full'
       end
+    end
+
+    def size_class
+      return 'max-w-none' if %i[top bottom].include?(@side)
+
+      SIZES.fetch(@size)
     end
   end
 end
