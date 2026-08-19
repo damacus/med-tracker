@@ -8,7 +8,7 @@ RSpec.describe 'Profile data exports' do
   before { sign_in(users(:admin)) }
 
   it 'shows the self-service data backup entry point and warning' do
-    get profile_path
+    get profile_path(section: 'advanced')
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include('Data backup')

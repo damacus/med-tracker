@@ -48,45 +48,59 @@ RSpec.describe Views::Profiles::Show, type: :component do
     expect(rendered.text).to include('Use Gravatar')
   end
 
-  it 'organises settings into four accessible profile sections' do
+  it 'organises settings into four accessible profile tabs' do
     rendered = render_inline(described_class.new(presenter:))
-    triggers = rendered.css('[data-testid="profile-section-trigger"]')
+    tabs = rendered.css('[data-testid="profile-section-tab"]')
 
-    expect(triggers.map { |trigger| trigger.text.squish }).to include(
-      a_string_including('Profile'),
-      a_string_including('Security'),
-      a_string_including('Notifications'),
-      a_string_including('Advanced')
+    expect(tabs.map { |tab| tab.text.squish }).to eq(%w[Profile Security Notifications Advanced])
+    expect(tabs.find { |tab| tab.text.include?('Profile') }['aria-current']).to eq('page')
+    expect(tabs.drop(1).pluck('aria-current')).to all(be_nil)
+    expect(rendered.css('[data-testid="profile-section-panel"]').size).to eq(1)
+    expect(rendered.at_css('[data-testid="profile-section-panel"]')['aria-labelledby']).to eq('profile-tab-profile')
+  end
+
+  it 'links every profile tab to its selected section' do
+    rendered = render_inline(described_class.new(presenter:))
+    tabs = rendered.css('[data-testid="profile-section-tab"]')
+
+    expect(tabs.map { |tab| tab['href'].split('?').last }).to eq(
+      %w[section=profile section=security section=notifications section=advanced]
     )
-    expect(triggers.find { |trigger| trigger.text.include?('Profile') }['aria-expanded']).to eq('true')
-    expect(triggers.drop(1).pluck('aria-expanded')).to all(eq('false'))
+  end
+
+  it 'renders the selected profile summary' do
+    rendered = render_inline(described_class.new(presenter:))
+
     expect(rendered.at_css('[data-appearance-summary]').text).to eq('System')
-    expect(triggers).to all(satisfy do |trigger|
-      trigger['data-action'].include?('ruby-ui--accordion#toggle') &&
-        trigger['data-ruby-ui--accordion-target'] == 'trigger'
-    end)
   end
 
   it 'summarises password, two-factor and passkey state in Security' do
+    allow(presenter).to receive(:active_section).and_return('security')
     rendered = render_inline(described_class.new(presenter:))
-    security = rendered.css('[data-testid="profile-section-trigger"]').find do |trigger|
-      trigger.text.include?('Security')
-    end
+    security = rendered.at_css('[data-profile-section-summary="security"]')
 
     expect(security.text).to include('Password updated', '2FA: Not enabled', '0 passkeys')
   end
 
-  it 'renders focused profile settings in named right-side sheets' do
+  it 'uses sheets for rich editors and a dialog for the time zone' do
     rendered = render_inline(described_class.new(presenter:))
     sheets = rendered.css('[data-controller="ruby-ui--sheet"]')
 
     expect(sheets.map(&:text).map(&:squish)).to include(
       a_string_including('Profile photo'),
-      a_string_including('Time Zone'),
       a_string_including('Appearance')
     )
     expect(sheets.all? { |sheet| sheet.at_css('[data-ruby-ui-sheet-title]').present? }).to be(true)
     expect(sheets.all? { |sheet| sheet.at_css('template [role="dialog"]').present? }).to be(true)
+  end
+
+  it 'uses a dialog rather than a sheet for the time zone' do
+    rendered = render_inline(described_class.new(presenter:))
+
+    time_zone = rendered.at_css('[data-testid="profile-time-zone-dialog"]')
+    expect(time_zone.at_css('[data-controller="ruby-ui--dialog"]')).to be_present
+    expect(time_zone.at_css('dialog[role="dialog"]')).to be_present
+    expect(time_zone.at_css('[data-controller="ruby-ui--sheet"]')).to be_nil
   end
 
   it 'uses compact on and off toggle groups for binary profile settings' do
@@ -99,6 +113,7 @@ RSpec.describe Views::Profiles::Show, type: :component do
   end
 
   it 'keeps uncommon advanced tasks in nested expandable rows' do
+    allow(presenter).to receive(:active_section).and_return('advanced')
     rendered = render_inline(described_class.new(presenter:))
     nested = rendered.css('[data-testid="profile-nested-setting"]')
 
@@ -109,5 +124,13 @@ RSpec.describe Views::Profiles::Show, type: :component do
       a_string_including('Experiments'),
       a_string_including('System Information')
     )
+  end
+
+  it 'uses safe two-factor defaults when optional records cannot be read' do
+    allow(AccountOtpKey).to receive(:exists?).and_raise(ActiveRecord::StatementInvalid, 'unavailable')
+    allow(AccountRecoveryCode).to receive(:where).and_raise(ActiveRecord::StatementInvalid, 'unavailable')
+
+    expect(Profiles::Presenter.otp_enabled?(account)).to be(false)
+    expect(Profiles::Presenter.recovery_codes_count(account)).to be_zero
   end
 end

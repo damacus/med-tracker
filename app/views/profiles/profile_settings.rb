@@ -15,7 +15,7 @@ module Views
       def view_template
         div(class: 'space-y-3') do
           render_avatar_sheet
-          render_time_zone_sheet
+          render_time_zone_dialog
           render_appearance_sheet
         end
       end
@@ -35,14 +35,25 @@ module Views
         end
       end
 
-      def render_time_zone_sheet
-        render_setting_sheet(
-          title: t('profiles.time_zone.title'),
-          description: t('profiles.time_zone.description'),
-          testid: 'profile-time-zone-sheet'
-        ) do
-          render_sheet_error('profile-time-zone-errors')
-          render TimeZoneForm.new(account: @account)
+      def render_time_zone_dialog
+        title = t('profiles.time_zone.title')
+        description = t('profiles.time_zone.description')
+        div(data: { testid: 'profile-time-zone-dialog' }) do
+          render Dialog.new do
+            render DialogTrigger.new(class: 'block w-full') do
+              render_setting_button(title:, description:)
+            end
+            render DialogContent.new(
+              size: :sm,
+              class: 'max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] rounded-shape-xl p-0'
+            ) do
+              render_dialog_header(title:, description:)
+              render DialogMiddle.new(class: 'px-5 pb-5 pt-4 sm:px-6 sm:pb-6') do
+                render_sheet_error('profile-time-zone-errors')
+                render TimeZoneForm.new(account: @account)
+              end
+            end
+          end
         end
       end
 
@@ -69,13 +80,17 @@ module Views
 
       def render_setting_trigger(title:, description:)
         render SheetTrigger.new do
-          button(type: 'button', class: setting_trigger_classes, aria: { expanded: 'false' }) do
-            div(class: 'min-w-0 text-left') do
-              p(class: 'font-semibold text-foreground') { title }
-              p(class: 'mt-1 text-sm leading-5 text-on-surface-variant') { description }
-            end
-            render Components::Icons::ChevronRight.new(size: 20, aria_hidden: 'true')
+          render_setting_button(title:, description:, expanded: false)
+        end
+      end
+
+      def render_setting_button(title:, description:, expanded: nil)
+        button(type: 'button', class: setting_trigger_classes, aria: { expanded: }) do
+          div(class: 'min-w-0 text-left') do
+            p(class: 'font-semibold text-foreground') { title }
+            p(class: 'mt-1 text-sm leading-5 text-on-surface-variant') { description }
           end
+          render Components::Icons::ChevronRight.new(size: 20, aria_hidden: 'true')
         end
       end
 
@@ -83,6 +98,13 @@ module Views
         render SheetHeader.new do
           render(SheetTitle.new { title })
           render(SheetDescription.new { description })
+        end
+      end
+
+      def render_dialog_header(title:, description:)
+        render DialogHeader.new(class: 'px-5 pb-4 pt-6 text-left sm:px-6') do
+          render(DialogTitle.new(class: 'text-xl') { title })
+          render(DialogDescription.new(class: 'text-sm leading-6') { description })
         end
       end
 

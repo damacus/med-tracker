@@ -3,6 +3,8 @@
 module Views
   module Profiles
     class Show < Views::Base
+      SECTION_KEYS = %i[profile security notifications advanced].freeze
+
       attr_reader :presenter
 
       def initialize(presenter:)
@@ -43,11 +45,48 @@ module Views
       end
 
       def render_sections
-        render RubyUI::Accordion.new(class: 'grid grid-cols-1 items-start gap-4 lg:grid-cols-2') do
-          render_profile_section
-          render_security_section
-          render_notifications_section
-          render_advanced_section
+        render RubyUI::Tabs.new(default: presenter.active_section, class: 'space-y-4') do
+          render_section_tabs
+          render_active_section
+        end
+      end
+
+      def render_section_tabs
+        nav(aria: { label: t('profiles.show.title') }) do
+          render RubyUI::TabsList.new(
+            class: 'flex h-auto w-full rounded-shape-lg border border-outline-variant/70 ' \
+                   'bg-surface-container p-1 shadow-elevation-1'
+          ) do
+            SECTION_KEYS.each { |key| render_section_tab(key) }
+          end
+        end
+      end
+
+      def render_section_tab(key)
+        active = presenter.active_section == key.to_s
+        render RubyUI::TabsTrigger.new(
+          value: key.to_s,
+          as: :a,
+          id: "profile-tab-#{key}",
+          href: profile_path(section: key),
+          aria: { current: active ? 'page' : nil },
+          data: {
+            state: active ? 'active' : 'inactive',
+            testid: 'profile-section-tab',
+            profile_section: key
+          },
+          class: 'min-h-12 min-w-0 flex-1 rounded-shape-md px-1 text-xs font-semibold sm:px-3 sm:text-sm ' \
+                 'data-[state=active]:bg-surface data-[state=active]:text-primary ' \
+                 'data-[state=active]:shadow-elevation-1'
+        ) { t("profiles.sections.#{key}.title") }
+      end
+
+      def render_active_section
+        case presenter.active_section
+        when 'security' then render_security_section
+        when 'notifications' then render_notifications_section
+        when 'advanced' then render_advanced_section
+        else render_profile_section
         end
       end
 
@@ -55,11 +94,12 @@ module Views
         render Section.new(
           key: :profile,
           title: t('profiles.sections.profile.title'),
-          summary: presenter.profile_summary,
-          open: section_open?(:profile)
+          summary: presenter.profile_summary
         ) do
-          render_personal_info_card
-          render ProfileSettings.new(person: presenter.person, account: presenter.account)
+          div(class: 'grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)] lg:items-start') do
+            render_personal_info_card
+            render ProfileSettings.new(person: presenter.person, account: presenter.account)
+          end
         end
       end
 
@@ -67,8 +107,7 @@ module Views
         render Section.new(
           key: :security,
           title: t('profiles.sections.security.title'),
-          summary: presenter.security_summary,
-          open: section_open?(:security)
+          summary: presenter.security_summary
         ) do
           render SecuritySectionContent.new(presenter:)
         end
@@ -78,8 +117,7 @@ module Views
         render Section.new(
           key: :notifications,
           title: t('profiles.sections.notifications.title'),
-          summary: presenter.notifications_summary,
-          open: section_open?(:notifications)
+          summary: presenter.notifications_summary
         ) do
           render NotificationsCard.new(
             person: presenter.person,
@@ -93,8 +131,7 @@ module Views
         render Section.new(
           key: :advanced,
           title: t('profiles.sections.advanced.title'),
-          summary: presenter.advanced_summary,
-          open: section_open?(:advanced)
+          summary: presenter.advanced_summary
         ) do
           render AdvancedSectionContent.new(presenter:)
         end
@@ -111,10 +148,6 @@ module Views
           end
           render PersonalInfoContent.new(person: presenter.person, account: presenter.account)
         end
-      end
-
-      def section_open?(section)
-        presenter.active_section == section.to_s
       end
     end
   end

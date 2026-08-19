@@ -34,8 +34,8 @@ module Views
       end
 
       def render_actions
-        render SheetFooter.new(class: 'mt-6 flex flex-row justify-end gap-3') do
-          m3_button(type: 'button', variant: :outlined, data: { action: 'click->ruby-ui--sheet-content#close' }) do
+        render DialogFooter.new(class: 'mt-6 flex flex-row justify-end gap-3') do
+          m3_button(type: 'button', variant: :outlined, data: { action: 'click->ruby-ui--dialog#dismiss' }) do
             t('ruby_ui.common.close')
           end
           m3_button(type: :submit, variant: :filled) { t('profiles.time_zone.save') }

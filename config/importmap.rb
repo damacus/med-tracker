@@ -13,7 +13,6 @@ pin '@hotwired/stimulus-loading', to: 'stimulus-loading.js', preload: false
 pin_all_from 'app/javascript/controllers', under: 'controllers', preload: false
 pin 'controllers', to: 'controllers/index.js'
 pin 'controllers/application', to: 'controllers/application.js'
-pin 'motion', to: 'https://cdn.jsdelivr.net/npm/motion@11.11.17/+esm'
 pin '@floating-ui/dom', to: '@floating-ui--dom.js' # @1.7.5
 pin '@floating-ui/core', to: '@floating-ui--core.js' # @1.7.4
 pin '@floating-ui/utils', to: '@floating-ui--utils.js' # @0.2.10

@@ -63,7 +63,7 @@ RSpec.describe 'Profile Editing' do
 
       time_zone_row = find('dt', text: 'Time Zone').find(:xpath, 'following-sibling::dd')
       expect(time_zone_row).to have_text(stored_time_zone)
-      find('[data-testid="profile-time-zone-sheet"] button', text: 'Time Zone').click
+      find('[data-testid="profile-time-zone-dialog"] button', text: 'Time Zone').click
       expect(page).to have_select('Time Zone', selected: stored_time_zone)
 
       click_button 'Save time zone'
@@ -75,7 +75,7 @@ RSpec.describe 'Profile Editing' do
     it 'saves a deliberately selected time zone' do
       visit profile_path
 
-      find('[data-testid="profile-time-zone-sheet"] button', text: 'Time Zone').click
+      find('[data-testid="profile-time-zone-dialog"] button', text: 'Time Zone').click
       select 'Pacific Time (US & Canada)', from: 'Time Zone'
       click_button 'Save time zone'
 
@@ -182,14 +182,14 @@ RSpec.describe 'Profile Editing' do
     end
   end
 
-  describe 'profile sections and sheets', :js do
-    it 'opens and closes a mobile sheet without overflow and restores focus' do
+  describe 'profile tabs and focused editors', :js do
+    it 'opens and closes a mobile time-zone dialog without overflow and restores focus' do
       page.current_window.resize_to(390, 844)
-      trigger = find('[data-testid="profile-time-zone-sheet"] button', text: 'Time Zone')
+      trigger = find('[data-testid="profile-time-zone-dialog"] button', text: 'Time Zone')
       trigger.click
 
-      sheet = find('[role="dialog"]', text: 'Time Zone')
-      dimensions = sheet.evaluate_script(<<~JS)
+      dialog = find('dialog[open][role="dialog"]', text: 'Time Zone')
+      dimensions = dialog.evaluate_script(<<~JS)
         ({ left: this.getBoundingClientRect().left, right: this.getBoundingClientRect().right,
            viewport: window.innerWidth, pageWidth: document.documentElement.scrollWidth })
       JS
@@ -197,26 +197,58 @@ RSpec.describe 'Profile Editing' do
       expect(dimensions.fetch('right')).to be <= dimensions.fetch('viewport')
       expect(dimensions.fetch('pageWidth')).to eq(dimensions.fetch('viewport'))
 
-      within(sheet) { click_button I18n.t('ruby_ui.common.close'), match: :first }
+      within(dialog) { click_button I18n.t('ruby_ui.common.close'), match: :first }
 
       expect(page).to have_no_css('[role="dialog"]', text: 'Time Zone')
       expect(page.evaluate_script('document.activeElement === arguments[0]', trigger)).to be(true)
     end
 
-    it 'allows independent sections to remain open', :aggregate_failures do
+    it 'switches one full-width profile tab at a time without browser errors', :aggregate_failures do
       browser_errors = []
       page.driver.with_playwright_page do |playwright_page|
         playwright_page.on('console', ->(message) { browser_errors << message.text if message.type == 'error' })
         playwright_page.on('pageerror', ->(error) { browser_errors << error.message })
       end
       expect(find('[data-appearance-summary]').text).to eq('System')
+      tab_tops = all('[data-testid="profile-section-tab"]').map do |tab|
+        tab.evaluate_script('this.getBoundingClientRect().top')
+      end
+      expect(tab_tops.uniq.size).to eq(1)
       open_profile_section('security')
-      open_profile_section('notifications')
 
-      expect(page).to have_css('[data-profile-section="profile"][aria-expanded="true"]')
-      expect(page).to have_css('[data-profile-section="security"][aria-expanded="true"]')
-      expect(page).to have_css('[data-profile-section="notifications"][aria-expanded="true"]')
+      expect(page).to have_current_path(profile_path(section: 'security'))
+      expect(page).to have_css('[data-profile-section="security"][aria-current="page"]')
+      expect(page).to have_css(
+        '[data-testid="profile-section-panel"][aria-labelledby="profile-tab-security"]', count: 1
+      )
+      expect(find('[data-testid="profile-section-panel"]').evaluate_script('this.getBoundingClientRect().width'))
+        .to be > 700
       expect(browser_errors).to be_empty
+    end
+
+    it 'shows browser notifications as on when a subscription exists' do
+      page.driver.with_playwright_page do |playwright_page|
+        playwright_page.add_init_script(script: <<~JS)
+          Object.defineProperty(window, "PushManager", { configurable: true, value: function PushManager() {} })
+          Object.defineProperty(window, "Notification", {
+            configurable: true,
+            value: { permission: "granted", requestPermission: async () => "granted" }
+          })
+          Object.defineProperty(navigator, "serviceWorker", {
+            configurable: true,
+            value: {
+              ready: Promise.resolve({
+                pushManager: { getSubscription: async () => ({ endpoint: "https://push.example/subscription" }) }
+              })
+            }
+          })
+        JS
+      end
+      visit profile_path(section: 'notifications')
+
+      group = find('[role="radiogroup"][aria-label="Browser Notifications"]')
+      expect(group.find('[role="radio"]', text: 'On')['aria-checked']).to eq('true')
+      expect(group.find('[role="radio"]', text: 'Off')['aria-checked']).to eq('false')
     end
   end
 

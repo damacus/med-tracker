@@ -23,7 +23,6 @@ module RubyUI
           state: @open ? 'open' : 'closed'
         },
         class: 'overflow-y-hidden',
-        style: @open ? 'height: auto;' : 'height: 0px;',
         hidden: @open ? nil : true
       }
     end

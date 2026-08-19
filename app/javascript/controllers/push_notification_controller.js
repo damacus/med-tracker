@@ -171,11 +171,11 @@ export default class extends Controller {
 
   showButton(which) {
     if (this.hasSubscribeButtonTarget) {
-      this.setToggleState(this.subscribeButtonTarget, which !== "unsubscribe")
+      this.setToggleState(this.subscribeButtonTarget, which === "unsubscribe")
       this.subscribeButtonTarget.disabled = which === "none"
     }
     if (this.hasUnsubscribeButtonTarget) {
-      this.setToggleState(this.unsubscribeButtonTarget, which === "unsubscribe")
+      this.setToggleState(this.unsubscribeButtonTarget, which !== "unsubscribe")
       this.unsubscribeButtonTarget.disabled = which === "none"
     }
   }

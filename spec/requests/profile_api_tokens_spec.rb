@@ -36,7 +36,7 @@ RSpec.describe 'Profile API tokens' do
     expect(app_token.token_digest).to eq(ApiAppToken.digest(raw_token))
     expect(response.body).to include('CI deploy')
 
-    get profile_path
+    get profile_path(section: 'advanced')
 
     expect(response.body).to include('CI deploy')
     expect(response.body).not_to include(raw_token)

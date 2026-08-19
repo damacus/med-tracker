@@ -20,6 +20,9 @@ RSpec.describe 'CSP Compliance', type: :unit do
       sheet_html = RubyUI::SheetContent.new.call
       expect(sheet_html).not_to include('style=')
       expect(sheet_html).to include('pointer-events-auto')
+
+      accordion_html = RubyUI::AccordionContent.new.call
+      expect(accordion_html).not_to include('style=')
     end
   end
 end

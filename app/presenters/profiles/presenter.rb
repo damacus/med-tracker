@@ -15,12 +15,16 @@ module Profiles
       return false unless ActiveRecord::Base.connection.table_exists?('account_otp_keys')
 
       AccountOtpKey.exists?(id: account.id)
+    rescue StandardError
+      false
     end
 
     def self.recovery_codes_count(account)
       return 0 unless ActiveRecord::Base.connection.table_exists?('account_recovery_codes')
 
       AccountRecoveryCode.where(id: account.id).count
+    rescue StandardError
+      0
     end
 
     def initialize(person:, account:, active_section: nil, **data)

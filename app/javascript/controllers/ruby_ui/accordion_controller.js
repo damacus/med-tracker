@@ -1,5 +1,4 @@
 import { Controller } from "@hotwired/stimulus"
-import { animate } from "motion"
 
 export default class extends Controller {
   static targets = ["icon", "content", "trigger"]
@@ -38,9 +37,14 @@ export default class extends Controller {
     this.setExpanded(true)
     this.rotateIcon(true)
     const height = this.contentTarget.scrollHeight
-    animate(this.contentTarget, { height: `${height}px` }, this.animationOptions())
+    const animation = this.contentTarget.animate(
+      [{ height: "0px" }, { height: `${height}px` }],
+      this.animationOptions()
+    )
+    animation.finished
       .then(() => {
         if (this.contentTarget.dataset.state === "open") this.contentTarget.style.height = "auto"
+        animation.cancel()
       })
       .catch(() => {})
     this.openValue = true
@@ -54,9 +58,17 @@ export default class extends Controller {
     this.setExpanded(false)
     this.rotateIcon(false)
     const height = content.getBoundingClientRect().height
-    animate(content, { height: [`${height}px`, "0px"] }, this.animationOptions())
+    const animation = content.animate(
+      [{ height: `${height}px` }, { height: "0px" }],
+      this.animationOptions()
+    )
+    animation.finished
       .then(() => {
-        if (content.dataset.state === "closed") content.setAttribute("hidden", "")
+        if (content.dataset.state === "closed") {
+          content.style.height = "0px"
+          content.setAttribute("hidden", "")
+        }
+        animation.cancel()
       })
       .catch(() => {})
     this.openValue = false
@@ -69,10 +81,14 @@ export default class extends Controller {
   rotateIcon(open) {
     if (!this.hasIconTarget) return
 
-    animate(this.iconTarget, { rotate: `${open ? this.rotateIconValue : 0}deg` })
+    this.iconTarget.animate(
+      [{ rotate: open ? "0deg" : `${this.rotateIconValue}deg` },
+       { rotate: open ? `${this.rotateIconValue}deg` : "0deg" }],
+      { ...this.animationOptions(), fill: "forwards" }
+    )
   }
 
   animationOptions() {
-    return { duration: this.animationDurationValue, easing: this.animationEasingValue }
+    return { duration: this.animationDurationValue * 1000, easing: this.animationEasingValue }
   }
 }

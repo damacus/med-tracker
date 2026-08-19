@@ -27,22 +27,42 @@ RSpec.describe 'Profiles' do
       expect(response.body).to include('My Profile')
       expect(response.body).to include(user.name)
       expect(response.body).to include(account.email)
-      expect(response.body).to include('Account Security')
       expect(response.body).to include('Time Zone')
-      expect(response.body).to include('System Information')
-      expect(response.body.scan('data-turbo-frame="modal"').size).to be >= 2
+      expect(response.parsed_body.css('[data-testid="profile-section-tab"]').map { |tab| tab.text.squish })
+        .to eq(%w[Profile Security Notifications Advanced])
     end
 
-    it 'opens a requested profile section and falls back for invalid values' do
+    it 'selects a requested profile tab and falls back for invalid values' do
       get profile_path(section: 'security')
 
-      security_trigger = response.parsed_body.at_css('[data-profile-section="security"]')
-      expect(security_trigger['aria-expanded']).to eq('true')
+      security_tab = response.parsed_body.at_css('[data-profile-section="security"]')
+      expect(security_tab['aria-current']).to eq('page')
+      expect(response.parsed_body.at_css('[data-testid="profile-section-panel"]')['aria-labelledby'])
+        .to eq('profile-tab-security')
 
       get profile_path(section: 'unknown')
 
-      profile_trigger = response.parsed_body.at_css('[data-profile-section="profile"]')
-      expect(profile_trigger['aria-expanded']).to eq('true')
+      profile_tab = response.parsed_body.at_css('[data-profile-section="profile"]')
+      expect(profile_tab['aria-current']).to eq('page')
+      expect(response.parsed_body.at_css('[data-testid="profile-section-panel"]')['aria-labelledby'])
+        .to eq('profile-tab-profile')
+    end
+
+    it 'renders only same-origin JavaScript imports' do
+      get profile_path
+
+      import_map = JSON.parse(response.parsed_body.at_css('script[type="importmap"]').text)
+
+      expect(import_map.fetch('imports').values.grep(%r{\Ahttps?://})).to be_empty
+    end
+
+    it 'degrades safely when optional recovery codes cannot be read' do
+      allow(AccountRecoveryCode).to receive(:where).and_raise(ActiveRecord::StatementInvalid, 'unavailable')
+
+      get profile_path(section: 'security')
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('2FA: Not enabled', 'Not generated')
     end
 
     it 'uses the account time zone around the request' do
@@ -70,7 +90,7 @@ RSpec.describe 'Profiles' do
       AccountRecoveryCode.where(id: account.id).delete_all
       account.account_webauthn_keys.destroy_all
 
-      get profile_path
+      get profile_path(section: 'security')
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('Two-Factor Authentication')
@@ -106,7 +126,7 @@ RSpec.describe 'Profiles' do
       session[:authenticated_by] = %w[password totp]
       session['authenticated_by'] = %w[password totp]
 
-      get profile_path
+      get profile_path(section: 'security')
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body.at_css('svg.material-symbol-passkey')).to be_present
