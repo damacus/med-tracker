@@ -56,7 +56,7 @@ module Views
           render RubyUI::TabsList.new(
             role: 'tablist',
             class: 'flex h-auto w-full rounded-shape-lg border border-outline-variant/70 ' \
-                   'bg-surface-container p-1 shadow-elevation-1'
+                   'bg-surface-container-highest p-1.5 shadow-elevation-1'
           ) do
             SECTION_KEYS.each { |key| render_section_tab(key) }
           end
@@ -78,9 +78,11 @@ module Views
             testid: 'profile-section-tab',
             profile_section: key
           },
-          class: 'min-h-12 min-w-0 flex-1 rounded-shape-md px-1 text-xs font-semibold sm:px-3 sm:text-sm ' \
-                 'data-[state=active]:bg-surface data-[state=active]:text-primary ' \
-                 'data-[state=active]:shadow-elevation-1'
+          class: 'min-h-12 min-w-0 flex-1 rounded-shape-md px-1 text-xs font-semibold ' \
+                 'text-on-surface-variant hover:bg-surface-container-high hover:text-foreground sm:px-3 sm:text-sm ' \
+                 'data-[state=active]:bg-background data-[state=active]:text-primary ' \
+                 'data-[state=active]:shadow-elevation-2 data-[state=active]:ring-1 ' \
+                 'data-[state=active]:ring-outline-variant/70'
         ) { t("profiles.sections.#{key}.title") }
       end
 

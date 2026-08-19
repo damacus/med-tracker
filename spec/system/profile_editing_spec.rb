@@ -226,6 +226,9 @@ RSpec.describe 'Profile Editing' do
       expect(page).to have_css('[data-testid="profile-section-panel"]', count: 4, visible: :all)
       visible_panel = find('[data-testid="profile-section-panel"]:not(.hidden)')
       expect(visible_panel.evaluate_script('this.getBoundingClientRect().width')).to be > 700
+      active_tab_background = find('[role="tab"][aria-selected="true"]')
+                              .evaluate_script('getComputedStyle(this).backgroundColor')
+      expect(active_tab_background).not_to eq('rgba(0, 0, 0, 0)')
       expect(browser_errors).to be_empty
     end
 
