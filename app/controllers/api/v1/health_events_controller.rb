@@ -38,6 +38,7 @@ module Api
       private
 
       def health_event_params
+        reject_numeric_contract_values!(%w[person_id medication_ids])
         attributes = params.expect(
           health_event: [
             :person_id,

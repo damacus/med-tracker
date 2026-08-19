@@ -40,6 +40,7 @@ module Api
       end
 
       def adjust_inventory
+        reject_numeric_contract_values!(%w[new_quantity])
         medication = find_api_record(policy_scope(Medication).includes(:location), params.expect(:id))
         authorize medication, :update?
         result = AdjustMedicationInventoryService.new.call(
@@ -74,6 +75,7 @@ module Api
       end
 
       def medication_params
+        reject_numeric_contract_values!(%w[dose_amount current_supply reorder_threshold])
         params.expect(
           medication: %i[
             name
@@ -103,6 +105,7 @@ module Api
       end
 
       def order_details_params
+        reject_numeric_contract_values!(%w[quantity])
         params.fetch(:order_details, ActionController::Parameters.new)
               .permit(:supplier, :quantity, :expected_arrival_on)
               .to_h

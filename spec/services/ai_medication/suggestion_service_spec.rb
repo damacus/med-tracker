@@ -8,7 +8,7 @@ RSpec.describe AiMedication::SuggestionService do
   it 'keeps valid source-linked dose suggestions' do
     suggestion = call_service(valid_suggestion)
 
-    expect(suggestion.doses.first).to include('amount' => 5, 'unit' => 'ml')
+    expect(suggestion.doses.first).to include('amount' => '5.0', 'unit' => 'ml')
     expect(suggestion.doses.first.dig('evidence', 'url')).to eq(calpol_sixplus_url)
   end
 
@@ -61,7 +61,7 @@ RSpec.describe AiMedication::SuggestionService do
       user: users(:admin)
     )
 
-    expect(suggestion.doses.first).to include('amount' => 5, 'unit' => 'ml')
+    expect(suggestion.doses.first).to include('amount' => '5.0', 'unit' => 'ml')
   end
 
   it 'returns the fallback suggestion when error audit logging fails' do

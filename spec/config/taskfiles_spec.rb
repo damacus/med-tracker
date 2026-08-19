@@ -59,6 +59,81 @@ RSpec.describe 'Taskfiles' do
     expect(command).to start_with('bin/rubocop --force-exclusion')
   end
 
+  it 'defines deterministic native API client generation tasks' do
+    expect(api_client_generation_task_commands).to eq(
+      'api-clients:generate' => ['./client-tools/openapi-generator/generate.fish'],
+      'api-clients:verify-generated' => ['./client-tools/openapi-generator/generate.fish determinism'],
+      'api-clients:kotlin' => ['./client-tools/openapi-generator/generate-kotlin.fish'],
+      'api-clients:swift' => ['./client-tools/openapi-generator/generate-swift.fish'],
+      'api-clients:verify' => ['api-clients:verify-generated']
+    )
+  end
+
+  it 'generates native clients before compiling and testing them' do
+    expect(api_client_test_task_commands).to eq(
+      'api-clients:kotlin:test' => [
+        'api-clients:kotlin',
+        './tmp/api-clients/kotlin/gradlew --no-daemon -p tmp/api-clients/kotlin check assemble'
+      ],
+      'api-clients:swift:test' => [
+        'api-clients:swift',
+        'swift build --package-path tmp/api-clients/swift'
+      ]
+    )
+  end
+
+  it 'keeps generated native clients disposable and omits generated reference docs' do
+    expect(swift_generator_script).to include(
+      'set -l output "$repo_root/tmp/api-clients/swift"',
+      '--global-property apiDocs=false,modelDocs=false'
+    )
+    expect(kotlin_generator_script).to include(
+      'set -l output "$repo_root/tmp/api-clients/kotlin"',
+      '--global-property apiDocs=false,modelDocs=false'
+    )
+    expect(Rails.root.join('client-tools/generated')).not_to exist
+  end
+
+  it 'generates native clients once and passes ephemeral output to compile jobs' do
+    jobs = api_client_workflow.fetch('jobs')
+    generation_steps = job_step_names(jobs.fetch('api_client_generation'))
+
+    expect(generation_steps).to include('Set up Task', 'Install Fish', 'Upload generated clients')
+    expect(job_step_names(jobs.fetch('api_client_kotlin'))).to include('Download generated clients')
+    expect(job_step_names(jobs.fetch('api_client_swift'))).to include('Download generated clients')
+    expect(api_client_workflow_source).not_to include('apt-get update')
+    expect(api_client_workflow_source).to include(
+      'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a',
+      'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'
+    )
+  end
+
+  it 'pins the native API generator image and language generators' do
+    expect(swift_generator_script).to include(
+      generator_image,
+      '-g swift6'
+    )
+    expect(kotlin_generator_script).to include(
+      generator_image,
+      '-g kotlin'
+    )
+  end
+
+  it 'keeps native API generator entry points executable' do
+    expect(
+      [
+        Rails.root.join('client-tools/openapi-generator/generate.fish'),
+        Rails.root.join('client-tools/openapi-generator/generate-swift.fish'),
+        Rails.root.join('client-tools/openapi-generator/generate-kotlin.fish')
+      ]
+    ).to all(be_executable)
+  end
+
+  it 'runs generator containers as the invoking host user' do
+    expect(swift_generator_script).to include('docker run --rm --user "$host_uid:$host_gid"')
+    expect(kotlin_generator_script).to include('docker run --rm --user "$host_uid:$host_gid"')
+  end
+
   it 'serializes Docker Compose runs within each worktree environment' do
     command = internal_taskfile.dig('tasks', 'run', 'cmds', 0)
 
@@ -253,12 +328,62 @@ RSpec.describe 'Taskfiles' do
     YAML.safe_load(Rails.root.join('Taskfile.yml').read, aliases: true, permitted_classes: [Symbol])
   end
 
+  def api_client_workflow
+    YAML.safe_load(api_client_workflow_source, aliases: true)
+  end
+
+  def api_client_workflow_source
+    Rails.root.join('.github/workflows/api-clients.yml').read
+  end
+
+  def job_step_names(job)
+    job.fetch('steps').filter_map { |step| step['name'] }
+  end
+
   def gemfile
     Rails.root.join('Gemfile').read
   end
 
   def portless_script
     Rails.root.join('scripts/portless_oidc.fish').read
+  end
+
+  def swift_generator_script
+    Rails.root.join('client-tools/openapi-generator/generate-swift.fish').read
+  end
+
+  def kotlin_generator_script
+    Rails.root.join('client-tools/openapi-generator/generate-kotlin.fish').read
+  end
+
+  def api_client_generation_task_commands
+    {
+      'api-clients:generate' => root_taskfile.dig('tasks', 'api-clients:generate', 'cmds'),
+      'api-clients:verify-generated' => root_taskfile.dig('tasks', 'api-clients:verify-generated', 'cmds'),
+      'api-clients:kotlin' => root_taskfile.dig('tasks', 'api-clients:kotlin', 'cmds'),
+      'api-clients:swift' => root_taskfile.dig('tasks', 'api-clients:swift', 'cmds'),
+      'api-clients:verify' => root_taskfile.dig('tasks', 'api-clients:verify', 'cmds').map do |command|
+        command.is_a?(Hash) ? command.fetch('task') : command
+      end
+    }
+  end
+
+  def api_client_test_task_commands
+    {
+      'api-clients:kotlin:test' => task_commands('api-clients:kotlin:test'),
+      'api-clients:swift:test' => task_commands('api-clients:swift:test')
+    }
+  end
+
+  def task_commands(name)
+    root_taskfile.dig('tasks', name, 'cmds').map do |command|
+      command.is_a?(Hash) ? command.fetch('task') : command
+    end
+  end
+
+  def generator_image
+    'openapitools/openapi-generator-cli:v7.20.0@sha256:' \
+      'fa4add01856e44becf70674164df354d61bd37ba0f444d27be949801e013921b'
   end
 
   def dashboard_profile_script

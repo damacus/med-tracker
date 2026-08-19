@@ -38,6 +38,7 @@ module Api
       private
 
       def dosage_option_params
+        reject_numeric_contract_values!(%w[medication_id amount default_min_hours_between_doses current_supply reorder_threshold])
         params.expect(
           dosage_option: %i[
             medication_id

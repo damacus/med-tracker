@@ -16,13 +16,13 @@ RSpec.describe Api::V1::PersonMedicationSerializer do
       max_daily_doses: pm.max_daily_doses, min_hours_between_doses: pm.min_hours_between_doses,
       updated_at: pm.updated_at.iso8601
     )
-    expect(json[:dose_amount]).to eq(pm.dose_amount.to_f)
+    expect(json[:dose_amount]).to eq(pm.dose_amount.to_s('F'))
   end
 
-  it 'serialises dose_amount as a Float (calls to_f on the stored decimal)' do
+  it 'serialises dose_amount as a decimal string' do
     pm = create(:person_medication, dose_cycle: :weekly)
     json = described_class.new(pm).as_json
-    expect(json[:dose_amount]).to be_a(Float)
+    expect(json[:dose_amount]).to be_a(String)
     expect(json[:dose_cycle]).to eq('weekly')
   end
 
@@ -35,7 +35,7 @@ RSpec.describe Api::V1::PersonMedicationSerializer do
     pm = create(:person_medication, :with_both_restrictions)
     json = described_class.new(pm).as_json
     expect(json[:max_daily_doses]).to eq(2)
-    expect(json[:min_hours_between_doses]).to eq(12)
+    expect(json[:min_hours_between_doses]).to eq('12.0')
   end
 
   it 'serialises paused assignments with paused true and active false' do

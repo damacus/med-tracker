@@ -124,7 +124,7 @@ RSpec.describe 'API v1 medications' do
            params: {
              medication: {
                name: 'New API Medication', location_id: locations(:home).id,
-               dose_amount: 5, dose_unit: 'ml', current_supply: 100, reorder_threshold: 10
+               dose_amount: '5', dose_unit: 'ml', current_supply: '100', reorder_threshold: '10'
              }
            },
            headers: api_auth_headers(login_data.fetch('access_token')), as: :json
@@ -158,7 +158,7 @@ RSpec.describe 'API v1 medications' do
            params: {
              medication: {
                name: 'Delegated API Medication', location_id: location.id,
-               dose_amount: 5, dose_unit: 'ml', current_supply: 100, reorder_threshold: 10
+               dose_amount: '5', dose_unit: 'ml', current_supply: '100', reorder_threshold: '10'
              }
            },
            headers: api_auth_headers(login_data.fetch('access_token')), as: :json
@@ -202,7 +202,7 @@ RSpec.describe 'API v1 medications' do
       medication = medications(:paracetamol)
 
       patch api_v1_household_medication_path(household_id, medication.id),
-            params: { medication: { current_supply: 91 } },
+            params: { medication: { current_supply: '91' } },
             headers: api_auth_headers(access_token),
             as: :json
 
@@ -223,7 +223,7 @@ RSpec.describe 'API v1 medications' do
       household_id = login_data.dig('household', 'id')
 
       patch api_v1_household_medication_path(household_id, medications(:paracetamol).id),
-            params: { medication: { current_supply: 90 } },
+            params: { medication: { current_supply: '90' } },
             headers: api_auth_headers(login_data.fetch('access_token')), as: :json
 
       expect(response).to have_http_status(:ok)

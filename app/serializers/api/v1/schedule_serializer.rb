@@ -3,6 +3,8 @@
 module Api
   module V1
     class ScheduleSerializer
+      include DecimalSerialization
+
       def initialize(schedule)
         @schedule = schedule
       end
@@ -41,7 +43,7 @@ module Api
 
       def dose_data
         {
-          dose_amount: schedule.dose_amount,
+          dose_amount: decimal_as_json(schedule.dose_amount),
           dose_unit: schedule.dose_unit,
           frequency: schedule.frequency,
           dose_cycle: schedule.dose_cycle
@@ -62,7 +64,7 @@ module Api
       def dosing_data
         {
           max_daily_doses: schedule.max_daily_doses,
-          min_hours_between_doses: schedule.min_hours_between_doses
+          min_hours_between_doses: decimal_as_json(schedule.min_hours_between_doses)
         }
       end
     end

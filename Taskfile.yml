@@ -52,6 +52,43 @@ tasks:
     cmds:
       - cargo test --manifest-path client-tools/Cargo.toml --workspace
 
+  api-clients:generate:
+    desc: Generate the Swift and Kotlin API clients from the V1 contract
+    cmds:
+      - ./client-tools/openapi-generator/generate.fish
+
+  api-clients:verify-generated:
+    desc: Verify generated API clients are deterministic
+    cmds:
+      - ./client-tools/openapi-generator/generate.fish determinism
+
+  api-clients:kotlin:
+    desc: Generate the Kotlin API client from the V1 contract
+    cmds:
+      - ./client-tools/openapi-generator/generate-kotlin.fish
+
+  api-clients:kotlin:test:
+    desc: Generate and compile the Kotlin API client
+    cmds:
+      - task: api-clients:kotlin
+      - ./tmp/api-clients/kotlin/gradlew --no-daemon -p tmp/api-clients/kotlin check assemble
+
+  api-clients:swift:
+    desc: Generate the Swift API client from the V1 contract
+    cmds:
+      - ./client-tools/openapi-generator/generate-swift.fish
+
+  api-clients:swift:test:
+    desc: Generate and compile the Swift API client
+    cmds:
+      - task: api-clients:swift
+      - swift build --package-path tmp/api-clients/swift
+
+  api-clients:verify:
+    desc: Verify generated API clients are deterministic
+    cmds:
+      - task: api-clients:verify-generated
+
   test:
     desc: Run tests in Docker (optionally specify TEST_FILE=path/to/spec)
     summary: |

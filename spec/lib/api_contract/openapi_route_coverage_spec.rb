@@ -127,9 +127,7 @@ module OpenapiReferenceValidation
   def dereference(value, root: document)
     case value
     when Hash
-      return dereference(resolve_local_reference(value.fetch('$ref'), root:), root:) if value.key?('$ref')
-
-      value.transform_values { |child| dereference(child, root:) }
+      dereference_hash(value, root:)
     when Array
       value.map { |child| dereference(child, root:) }
     else
@@ -137,9 +135,79 @@ module OpenapiReferenceValidation
     end
   end
 
+  def dereference_hash(value, root:)
+    return dereference(resolve_local_reference(value.fetch('$ref'), root:), root:) if value.key?('$ref')
+
+    dereferenced = value.transform_values { |child| dereference(child, root:) }
+    return dereferenced unless dereferenced.delete('nullable')
+
+    type = dereferenced['type']
+    dereferenced['type'] = [type, 'null'] if type.is_a?(String)
+    dereferenced['enum'] = [*dereferenced['enum'], nil] if dereferenced['enum'].is_a?(Array)
+    dereferenced
+  end
+
   def schema_errors(name, payload)
     JSONSchemer.schema(dereferenced_schema(name)).validate(payload.deep_stringify_keys).map do |error|
       error.fetch('data_pointer')
+    end
+  end
+end
+
+module OpenapiClientCompatibility
+  CLIENT_LANGUAGE_KEYWORDS = %w[
+    associatedtype as async await break borrow case catch class consuming continue deinit delegate do dynamic else enum
+    expect extension external false field fileprivate finally for func fun get guard if import in infix init inout
+    interface internal is let nil noinline not null object operator out override package param private protocol public
+    reified repeat return self Self set static struct super suspend switch throw true try typealias typeof val var
+    vararg where while
+  ].freeze
+
+  def client_schema_keyword_errors(value = document, path = '#')
+    return hash_keyword_errors(value, path) if value.is_a?(Hash)
+    return array_keyword_errors(value, path) if value.is_a?(Array)
+
+    []
+  end
+
+  def hash_keyword_errors(value, path)
+    keyword_errors(value, path) +
+      inline_enum_keyword_errors(value, path) +
+      value.flat_map { |key, child| client_schema_keyword_errors(child, "#{path}/#{key}") }
+  end
+
+  def keyword_errors(value, path)
+    errors = %w[const oneOf anyOf].filter_map { |keyword| "#{path}/#{keyword}" if value.key?(keyword) }
+    errors << "#{path}/type" if value['type'].is_a?(Array)
+    errors << "#{path}/$ref" if value.key?('$ref') && value.keys.any? { |key| key != '$ref' }
+    errors + primitive_all_of_errors(value['allOf'], "#{path}/allOf")
+  end
+
+  def inline_enum_keyword_errors(value, path)
+    properties = value['properties']
+    return [] unless properties.is_a?(Hash)
+
+    properties.filter_map do |property, property_schema|
+      next unless CLIENT_LANGUAGE_KEYWORDS.include?(property)
+      next unless property_schema.is_a?(Hash) && property_schema.key?('enum')
+
+      "#{path}/properties/#{property}/enum"
+    end
+  end
+
+  def array_keyword_errors(value, path)
+    value.each_with_index.flat_map do |child, index|
+      client_schema_keyword_errors(child, "#{path}/#{index}")
+    end
+  end
+
+  def primitive_all_of_errors(value, path)
+    return [] unless value.is_a?(Array)
+
+    value.each_with_index.filter_map do |item, index|
+      next unless item.is_a?(Hash) && item['type'].is_a?(String) && item['type'] != 'object'
+
+      "#{path}/#{index}"
     end
   end
 end
@@ -177,12 +245,9 @@ module OpenapiStructure
     /households/{household_id}/schedules/{id}
     /households/{household_id}/person_medications/{id}
   ].freeze
-  OPENAPI_SCHEMA_PATH = Rails.root.join(
-    'spec/fixtures/files/openapi-3.1-schema-2022-10-07.json'
-  )
-
   extend OpenapiYamlValidation
   extend OpenapiReferenceValidation
+  extend OpenapiClientCompatibility
 
   module_function
 
@@ -216,11 +281,6 @@ module OpenapiStructure
 
   def operation(path, method)
     paths.fetch(path).fetch(method)
-  end
-
-  def document_schema_errors(openapi_document = document)
-    schema = JSON.parse(OPENAPI_SCHEMA_PATH.read)
-    JSONSchemer.schema(schema).validate(openapi_document).map { |error| error.fetch('data_pointer') }
   end
 
   def security_requirement_errors(openapi_document = document)
@@ -284,6 +344,51 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       }
     end
 
+    let(:clearable_decimal_requests) do
+      {
+        'MedicationCreateRequest' => {
+          medication: {
+            name: 'Contract medicine', location_id: 1, reorder_threshold: '5',
+            dose_amount: nil, current_supply: nil
+          }
+        },
+        'MedicationUpdateRequest' => { medication: { dose_amount: nil, current_supply: nil } },
+        'MedicationOrderDetailsRequest' => { order_details: { quantity: nil } },
+        'DosageOptionCreateRequest' => {
+          dosage_option: {
+            medication_id: '1', amount: '500', unit: 'mg', frequency: 'Twice daily',
+            default_max_daily_doses: 2, default_min_hours_between_doses: '6', default_dose_cycle: 'daily',
+            current_supply: nil, reorder_threshold: nil
+          }
+        },
+        'DosageOptionUpdateRequest' => { dosage_option: { current_supply: nil, reorder_threshold: nil } },
+        'ScheduleCreateRequest' => {
+          schedule: {
+            person_id: '1', medication_id: '1', dose_amount: '5', dose_unit: 'ml',
+            start_date: Date.current.iso8601, end_date: 1.month.from_now.to_date.iso8601,
+            min_hours_between_doses: nil
+          }
+        },
+        'ScheduleUpdateRequest' => { schedule: { min_hours_between_doses: nil } },
+        'PersonMedicationCreateRequest' => {
+          person_medication: { person_id: '1', medication_id: '1', min_hours_between_doses: nil }
+        },
+        'PersonMedicationUpdateRequest' => { person_medication: { min_hours_between_doses: nil } }
+      }
+    end
+
+    let(:numeric_clearable_decimal_requests) do
+      [
+        ['MedicationUpdateRequest', { medication: { dose_amount: 5 } }],
+        ['MedicationUpdateRequest', { medication: { current_supply: 10 } }],
+        ['MedicationOrderDetailsRequest', { order_details: { quantity: 12 } }],
+        ['DosageOptionUpdateRequest', { dosage_option: { current_supply: 20 } }],
+        ['DosageOptionUpdateRequest', { dosage_option: { reorder_threshold: 5 } }],
+        ['ScheduleUpdateRequest', { schedule: { min_hours_between_doses: 4 } }],
+        ['PersonMedicationUpdateRequest', { person_medication: { min_hours_between_doses: 6 } }]
+      ]
+    end
+
     it 'uses the canonical API v1 server address' do
       expect(described_class.document.fetch('servers').first.fetch('url')).to eq('/api/v1')
     end
@@ -326,18 +431,73 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(defined_tag_names).to match_array(used_tag_names)
     end
 
-    it 'defines distinct identifiers, timestamps, and pagination' do
+    it 'defines distinct identifiers' do
       schemas = described_class.components.fetch('schemas')
 
       expect(schemas.fetch('NumericId')).to include('type' => 'integer', 'minimum' => 1)
       expect(schemas.fetch('PortableId')).to include('type' => 'string', 'format' => 'uuid')
-      expect(schemas.fetch('ResourceIdentifier').fetch('oneOf')).to contain_exactly(
-        { '$ref' => '#/components/schemas/NumericId' },
-        { '$ref' => '#/components/schemas/PortableId' }
-      )
+      expect(schemas.fetch('ResourceIdentifier')).to include('type' => 'string')
+      expect(schemas.fetch('ResourceIdentifier')).to include('pattern' => kind_of(String))
+    end
+
+    it 'defines decimal values as strings' do
+      schemas = described_class.components.fetch('schemas')
+
+      expect(schemas.fetch('DecimalValue')).to include('type' => 'string', 'pattern' => kind_of(String))
+      expect(schemas.fetch('NullableDecimalValue')).to include('type' => 'string', 'nullable' => true)
+    end
+
+    it 'defines timestamps and pagination' do
+      schemas = described_class.components.fetch('schemas')
+
       expect(schemas.fetch('Timestamp')).to include('type' => 'string', 'format' => 'date-time')
       expect(schemas.fetch('PaginationMeta').fetch('required')).to contain_exactly(
         'page', 'per_page', 'total_count'
+      )
+    end
+
+    it 'uses OpenAPI 3.0.3 client-compatible schema composition' do
+      expect(described_class.document.fetch('openapi')).to eq('3.0.3')
+      expect(described_class.client_schema_keyword_errors).to be_empty
+    end
+
+    it 'rejects OpenAPI 3 reference objects with siblings' do
+      malformed_reference = {
+        '$ref' => '#/components/schemas/NullableDecimalValue',
+        'description' => 'Reference sibling'
+      }
+
+      expect(described_class.client_schema_keyword_errors(malformed_reference, '#/Malformed')).to include(
+        '#/Malformed/$ref'
+      )
+    end
+
+    it 'rejects anonymous enums whose property names collide with client language keywords' do
+      malformed_schema = {
+        'type' => 'object',
+        'properties' => {
+          'class' => { 'type' => 'string', 'enum' => ['example'] }
+        }
+      }
+
+      expect(described_class.client_schema_keyword_errors(malformed_schema, '#/Malformed')).to include(
+        '#/Malformed/properties/class/enum'
+      )
+    end
+
+    it 'keeps nullable enum values out of the enum declaration' do
+      dose_cycle = described_class.schema('Schedule').dig('properties', 'dose_cycle')
+
+      expect(dose_cycle).to include('type' => 'string', 'nullable' => true)
+      expect(dose_cycle.fetch('enum')).to contain_exactly('daily', 'weekly', 'monthly')
+    end
+
+    it 'uses a reusable import conflict field enum' do
+      expect(described_class.schema('PortableImportConflictField')).to include(
+        'type' => 'string', 'enum' => %w[name email]
+      )
+      expect(described_class.schema('PortableImportConflict').dig('properties', 'field', '$ref')).to eq(
+        '#/components/schemas/PortableImportConflictField'
       )
     end
 
@@ -435,8 +595,8 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       )
     end
 
-    it 'declares an OpenAPI 3.1 document with required sections' do
-      expect(described_class.document).to include('openapi' => '3.1.0')
+    it 'declares an OpenAPI 3.0.3 document with required sections' do
+      expect(described_class.document).to include('openapi' => '3.0.3')
       expect(described_class.document).to include('info', 'servers', 'paths', 'components')
     end
 
@@ -451,14 +611,6 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(described_class.local_reference_errors).to be_empty
       expect(described_class.unsupported_free_form_errors).to be_empty
       expect(described_class.unsupported_free_form_errors('type' => 'object')).to eq(['#'])
-    end
-
-    it 'validates the complete document against the pinned OpenAPI schema' do
-      expect(described_class.document_schema_errors).to be_empty
-
-      malformed_document = described_class.document.deep_dup
-      malformed_document.fetch('info').delete('title')
-      expect(described_class.document_schema_errors(malformed_document)).to include('/info')
     end
 
     it 'loads every reusable schema through the JSON Schema validator' do
@@ -522,7 +674,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
         '#/components/schemas/CapabilitiesResponse'
       )
       expect(operation.dig('responses', '200', 'headers', 'Cache-Control', 'schema')).to include(
-        'type' => 'string', 'const' => 'no-store'
+        'type' => 'string', 'enum' => ['no-store']
       )
     end
 
@@ -890,6 +1042,22 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(operation.dig('responses', '503', 'content', 'application/json', 'schema', '$ref')).to eq(
         '#/components/schemas/MedicationLookupUnavailableResponse'
       )
+
+      unavailable_results = described_class.schema('MedicationLookupUnavailableResponse').dig('properties', 'results')
+      expected_items = described_class.schema('MedicationLookupResponse').dig('properties', 'results', 'items')
+      expect(unavailable_results).to include('type' => 'array', 'maxItems' => 0, 'items' => expected_items)
+    end
+
+    it 'types medication lookup package quantities as nullable decimal strings' do
+      expect(described_class.schema('MedicationLookupResult').dig('properties', 'package_quantity')).to eq(
+        '$ref' => '#/components/schemas/NullableDecimalValue'
+      )
+    end
+
+    it 'uses a reusable error enum for unavailable medication lookup responses' do
+      expect(described_class.schema('MedicationLookupUnavailableResponse').dig('properties', 'error', '$ref')).to eq(
+        '#/components/schemas/MedicationLookupUnavailableError'
+      )
     end
 
     it 'matches empty and successful medication lookup Rails responses' do
@@ -904,6 +1072,17 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(described_class.schema_errors('MedicationLookupResponse', response.parsed_body)).to be_empty
+      expect(response.parsed_body.dig('results', 0, 'package_quantity')).to eq('1.5')
+    end
+
+    it 'keeps an absent medication lookup package quantity explicitly null' do
+      household_id, headers = manager_api_context
+      allow(NhsDmd::Search).to receive(:new).and_return(contract_medication_search(package_quantity: nil))
+
+      get api_v1_household_medication_lookup_path(household_id), params: { q: 'aspirin' }, headers:, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.dig('results', 0, 'package_quantity')).to be_nil
     end
 
     it 'matches the medication lookup Rails unavailable response' do
@@ -1096,16 +1275,32 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
 
     it 'accepts only supported medication write fields' do
       valid_create = {
-        medication: { name: 'Contract medicine', location_id: 1, current_supply: 20, reorder_threshold: 5 }
+        medication: { name: 'Contract medicine', location_id: 1, current_supply: '20', reorder_threshold: '5' }
       }
       invalid_create = valid_create.deep_merge(medication: { household_id: 99 })
-      adjustment = { adjustment: { new_quantity: 10, reason: 'Stock count' } }
+      adjustment = { adjustment: { new_quantity: '10', reason: 'Stock count' } }
 
       expect(described_class.schema_errors('MedicationCreateRequest', valid_create)).to be_empty
       expect(described_class.schema_errors('MedicationCreateRequest', invalid_create)).to include(
         '/medication/household_id'
       )
       expect(described_class.schema_errors('MedicationInventoryAdjustmentRequest', adjustment)).to be_empty
+    end
+
+    it 'accepts explicit null only for clearable decimal request fields' do
+      aggregate_failures do
+        clearable_decimal_requests.each do |schema, payload|
+          expect(described_class.schema_errors(schema, payload)).to be_empty, schema
+        end
+      end
+    end
+
+    it 'rejects numeric JSON for clearable decimal request fields' do
+      aggregate_failures do
+        numeric_clearable_decimal_requests.each do |schema, payload|
+          expect(described_class.schema_errors(schema, payload)).not_to be_empty, schema
+        end
+      end
     end
 
     it 'matches Rails location and medication collections' do
@@ -1140,8 +1335,8 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
     it 'accepts only supported dosage option write fields' do
       valid_create = {
         dosage_option: {
-          medication_id: SecureRandom.uuid, amount: 500, unit: 'mg', frequency: 'Twice daily',
-          default_max_daily_doses: 2, default_min_hours_between_doses: 6, default_dose_cycle: 'daily'
+          medication_id: SecureRandom.uuid, amount: '500', unit: 'mg', frequency: 'Twice daily',
+          default_max_daily_doses: 2, default_min_hours_between_doses: '6', default_dose_cycle: 'daily'
         }
       }
       invalid_create = valid_create.deep_merge(dosage_option: { household_id: 99 })
@@ -1195,7 +1390,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
     it 'rejects unsupported schedule fields' do
       schedule = {
         schedule: {
-          person_id: SecureRandom.uuid, medication_id: 1, dose_amount: 5, dose_unit: 'ml',
+          person_id: SecureRandom.uuid, medication_id: '1', dose_amount: '5', dose_unit: 'ml',
           start_date: Date.current.iso8601, end_date: 1.month.from_now.to_date.iso8601
         }
       }
@@ -1208,7 +1403,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
 
     it 'rejects unsupported person medication fields' do
       person_medication = {
-        person_medication: { person_id: 1, medication_id: SecureRandom.uuid, administration_kind: 'routine' }
+        person_medication: { person_id: '1', medication_id: SecureRandom.uuid, administration_kind: 'routine' }
       }
 
       expect(described_class.schema_errors('PersonMedicationCreateRequest', person_medication)).to be_empty
@@ -1256,7 +1451,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       valid_request = {
         health_event: {
           person_id: SecureRandom.uuid, event_kind: 'illness', severity: 'moderate',
-          title: 'Seasonal cold', started_on: Date.current.iso8601, medication_ids: [1]
+          title: 'Seasonal cold', started_on: Date.current.iso8601, medication_ids: ['1']
         }
       }
       invalid_request = valid_request.deep_merge(health_event: { household_id: 9 })
@@ -1327,6 +1522,30 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(auth_response_schema(import, '201')).to eq('#/components/schemas/PortableImportResultResponse')
     end
 
+    it 'models the portable import 422 response' do
+      import = described_class.operation('/households/{household_id}/portable_imports', 'post')
+
+      expect(auth_response_schema(import, '422')).to eq('#/components/schemas/PortableImportUnprocessableResponse')
+    end
+
+    it 'models both portable import 422 envelope shapes without a union' do
+      result_envelope = {
+        data: { applied: false, counts: {}, conflicts: [], errors: ['Import was not applied'] }
+      }
+      error_envelope = {
+        error: { code: 'validation_failed', message: 'Validation failed', request_id: SecureRandom.uuid }
+      }
+
+      expect(described_class.schema_errors('PortableImportUnprocessableResponse', result_envelope)).to be_empty
+      expect(described_class.schema_errors('PortableImportUnprocessableResponse', error_envelope)).to be_empty
+      expect(
+        described_class.schema_errors(
+          'PortableImportUnprocessableResponse',
+          result_envelope.merge(error_envelope)
+        )
+      ).not_to be_empty
+    end
+
     it 'accepts only the encrypted portable envelope fields' do
       envelope = {
         bundle: {
@@ -1360,13 +1579,9 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(mode_schema.fetch('enum')).to contain_exactly(
         'encrypted_migration_bundle', 'backup_zip', 'health_data_json'
       )
-      expect(response_schema.fetch('oneOf').pluck('$ref')).to contain_exactly(
-        '#/components/schemas/PortableEnvelopeResponse',
-        '#/components/schemas/BackupZipResponse',
-        '#/components/schemas/HealthDataExportResponse'
-      )
+      expect(response_schema.fetch('$ref')).to eq('#/components/schemas/DataExportResponse')
       expect(export.dig('responses', '200', 'headers', 'Cache-Control', 'schema')).to include(
-        'type' => 'string', 'const' => 'no-store'
+        'type' => 'string', 'enum' => ['no-store']
       )
     end
 
@@ -1464,13 +1679,13 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       }
     end
 
-    def contract_medication_search
+    def contract_medication_search(package_quantity: 1.5)
       search_result = NhsDmd::SearchResult.new(
         code: '39720311000001101',
         display: 'Aspirin 300mg tablets',
         system: 'https://dmd.nhs.uk',
         concept_class: 'VMP',
-        package_quantity: 28,
+        package_quantity: package_quantity,
         package_unit: 'tablet',
         directions: 'Take with water',
         warnings: 'Follow the medicine label.'
@@ -1502,11 +1717,11 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
 
     def contract_ai_dose
       {
-        amount: 5,
+        amount: '5',
         unit: 'ml',
         description: 'Children 6-8 years',
         default_max_daily_doses: 4,
-        default_min_hours_between_doses: 4,
+        default_min_hours_between_doses: '4',
         default_dose_cycle: 'daily',
         evidence: {
           url: contract_ai_source_url,

@@ -11,6 +11,39 @@ database and internal code, with no Rails shell or constant dependency.
 The [API versioning policy](versioning.md) defines contract compatibility and
 the migration from handwritten transport types to generated bindings.
 
+## Native API client generation
+
+OpenAPI Generator turns `docs/api/openapi.v1.yaml` into temporary Swift and
+Kotlin packages. The packages are build inputs, not maintained SDK source. CI
+generates them under `tmp/api-clients/` and compiles every generated file.
+Generated reference documentation is disabled.
+
+Generation uses the pinned OpenAPI Generator `v7.20.0` Docker image. Local
+commands require Docker, Fish, and Task. Kotlin compilation requires Java 17.
+Swift compilation requires Swift 6.3.3.
+
+```text
+task api-clients:generate
+task api-clients:verify-generated
+task api-clients:kotlin:test
+task api-clients:swift:test
+```
+
+`api-clients:verify-generated` generates each package twice and compares the
+results. Do not edit files under `tmp/api-clients/`; change the OpenAPI contract
+or generator configuration instead.
+
+Every non-null JSON value has one fixed type in `/api/v1`:
+
+- Decimal values are strings, such as `"2.5"`. Nullable decimals can be `null`.
+- Flexible resource identifiers are strings. Numeric identifiers use digit
+  strings such as `"42"`; UUID identifiers use UUID strings.
+- Numeric JSON values for these fields return the standard validation error.
+
+To upgrade OpenAPI Generator, update the version and digest in both generation
+scripts. Review both configuration files, verify deterministic output, and
+compile both complete packages before merging.
+
 ## Install
 
 Release artifacts are built for Linux x86_64, macOS x86_64, and macOS aarch64.

@@ -67,6 +67,7 @@ module Api
         end
 
         def operations
+          reject_numeric_contract_values!(%w[id source_id dose_amount current_supply reorder_threshold])
           params.expect(batch: [{ operations: [[:action, :resource_type, :id, :if_match, { attributes: {} }]] }])
                 .fetch(:operations)
         end

@@ -12,9 +12,19 @@ module Api
 
       class InvalidFilterValue < StandardError; end
 
+      class InvalidContractValue < StandardError
+        attr_reader :field
+
+        def initialize(field)
+          @field = field
+          super("#{field} must be a string")
+        end
+      end
+
       rescue_from ActiveRecord::RecordNotFound, with: :render_not_found
       rescue_from ActionController::ParameterMissing, with: :render_bad_request
       rescue_from InvalidFilterValue, with: :render_invalid_filter
+      rescue_from InvalidContractValue, with: :render_invalid_contract_value
       rescue_from Pundit::NotAuthorizedError, with: :render_forbidden
 
       attr_reader :current_api_session, :current_household, :current_membership
@@ -238,6 +248,40 @@ module Api
 
       def render_invalid_filter(exception)
         render_unprocessable(exception.message)
+      end
+
+      def render_invalid_contract_value(exception)
+        render_api_error(
+          code: 'validation_failed',
+          message: 'Validation failed',
+          status: :unprocessable_content,
+          errors: { exception.field => ['must be a string'] }
+        )
+      end
+
+      def reject_numeric_contract_values!(fields)
+        reject_numeric_contract_values_in(request.request_parameters, fields)
+      end
+
+      def reject_numeric_contract_values_in(value, fields)
+        case value
+        when ActionController::Parameters, Hash
+          value.each do |key, child|
+            field = key.to_s
+            raise InvalidContractValue, field if fields.include?(field) && numeric_value?(child)
+
+            reject_numeric_contract_values_in(child, fields)
+          end
+        when Array
+          value.each { |child| reject_numeric_contract_values_in(child, fields) }
+        end
+      end
+
+      def numeric_value?(value)
+        return true if value.is_a?(Numeric)
+        return value.any? { |child| numeric_value?(child) } if value.is_a?(Array)
+
+        false
       end
 
       def render_conflict(message, code: 'conflict')

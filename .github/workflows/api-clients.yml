@@ -1,0 +1,88 @@
+---
+name: API Clients
+
+"on":
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  api_client_generation:
+    name: Generate and verify API clients
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Set up Task
+        uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
+
+      - name: Install Fish
+        run: sudo apt-get install --yes fish
+
+      - name: Verify deterministic generation
+        run: task api-clients:verify-generated
+
+      - name: Upload generated clients
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: native-api-clients-${{ github.sha }}
+          path: tmp/api-clients
+          if-no-files-found: error
+          retention-days: 1
+
+  api_client_kotlin:
+    name: Compile and test Kotlin API client
+    needs: api_client_generation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Download generated clients
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: native-api-clients-${{ github.sha }}
+          path: tmp/api-clients
+
+      - name: Compile Kotlin client
+        run: bash tmp/api-clients/kotlin/gradlew --no-daemon -p tmp/api-clients/kotlin check assemble
+
+  api_client_swift:
+    name: Compile and test Swift API client
+    needs: api_client_generation
+    runs-on: macos-15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Download generated clients
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: native-api-clients-${{ github.sha }}
+          path: tmp/api-clients
+
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@364295d9c23900ce04d4e5cc708387921b4e50f9
+        with:
+          swift-version: "6.3.3"
+
+      - name: Verify Swift version
+        run: |
+          swift --version
+          swift --version | grep --fixed-strings --quiet "Swift version 6.3.3"
+
+      - name: Compile Swift client
+        run: swift build --package-path tmp/api-clients/swift

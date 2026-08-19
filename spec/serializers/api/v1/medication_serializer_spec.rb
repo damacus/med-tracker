@@ -35,6 +35,14 @@ RSpec.describe Api::V1::MedicationSerializer do
     expect(json[:location_portable_id]).to be_nil
   end
 
+  it 'serialises decimal values as strings' do
+    medication = create(:medication, dose_amount: 5, current_supply: 10, reorder_threshold: 2)
+
+    expect(described_class.new(medication).as_json).to include(
+      dose_amount: '5.0', current_supply: '10.0', reorder_threshold: '2.0'
+    )
+  end
+
   def medication_without_location
     instance_double(
       Medication,
