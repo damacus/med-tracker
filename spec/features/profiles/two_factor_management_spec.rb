@@ -62,10 +62,25 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
     end
 
     it 'allows setting up and disabling TOTP', :browser do
+      page.current_window.resize_to(390, 844)
       visit '/otp-setup'
 
       expect(page).to have_css('[data-controller="ruby-ui--input-otp"]')
       expect(page).to have_css('[data-ruby-ui--input-otp-target="slot"]', count: 6)
+
+      button_geometry = page.evaluate_script(<<~JS)
+        (() => {
+          const button = Array.from(document.querySelectorAll('button'))
+            .find((element) => element.textContent.trim() === 'Enable Two-Factor Authentication')
+          const styles = getComputedStyle(button)
+
+          return {
+            radius: parseFloat(styles.borderTopLeftRadius),
+            textFits: button.scrollWidth <= button.clientWidth && button.scrollHeight <= button.clientHeight
+          }
+        })()
+      JS
+      expect(button_geometry).to include('radius' => 8, 'textFits' => true)
 
       secret = find("input[name='otp_secret']", visible: false).value
       totp = ROTP::TOTP.new(secret, issuer: 'MedTracker')
