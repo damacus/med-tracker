@@ -78,6 +78,13 @@ RSpec.describe 'Taskfiles' do
     expect(migration_task.to_json).not_to include('WEB_SERVICE')
   end
 
+  it 'opens the application root after starting an environment' do
+    command = internal_taskfile.dig('tasks', 'open-ui', 'cmds', 0)
+
+    expect(command).to include('open -a "Google Chrome" "http://localhost:$PORT"')
+    expect(command).not_to include('/admin/users')
+  end
+
   it 'defines a Vernier dashboard profiling task' do
     task = root_taskfile.dig('tasks', 'profile:dashboard')
     commands = task.fetch('cmds')

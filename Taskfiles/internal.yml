@@ -182,6 +182,6 @@ tasks:
     cmds:
       - |
         PORT=$(task internal:port ENVIRONMENT={{ .ENVIRONMENT }})
-        echo "Opening http://localhost:$PORT/admin/users in Google Chrome..."
+        echo "Opening http://localhost:$PORT in Google Chrome..."
         sleep 2
-        open -a "Google Chrome" "http://localhost:$PORT/admin/users"
+        open -a "Google Chrome" "http://localhost:$PORT"
