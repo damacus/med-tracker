@@ -88,9 +88,13 @@ module Views
       end
 
       def render_m3_submit_button(label)
-        m3_button(type: :submit, variant: :filled, size: :lg, class: 'w-full py-6 font-bold shadow-lg shadow-primary/20') do
-          label
-        end
+        m3_button(
+          type: :submit,
+          variant: :filled,
+          size: :lg,
+          class: 'w-full min-w-0 whitespace-normal rounded-shape-sm px-4 py-3 text-center font-bold leading-snug ' \
+                 'shadow-lg shadow-primary/20 sm:whitespace-nowrap sm:rounded-shape-full'
+        ) { label }
       end
 
       def render_otp_field(label:, name:, id:, error: nil)
