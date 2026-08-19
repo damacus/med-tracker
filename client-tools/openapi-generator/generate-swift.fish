@@ -3,7 +3,7 @@
 set -l script_dir (dirname (status filename))
 set -l repo_root (realpath "$script_dir/../..")
 set -l contract "$repo_root/docs/api/openapi.v1.yaml"
-set -l output "$repo_root/client-tools/generated/swift"
+set -l output "$repo_root/tmp/api-clients/swift"
 set -l image 'openapitools/openapi-generator-cli:v7.20.0@sha256:fa4add01856e44becf70674164df354d61bd37ba0f444d27be949801e013921b'
 source "$script_dir/checksum.fish"
 source "$script_dir/docker-runtime.fish"
@@ -36,6 +36,7 @@ function generate_swift_package --no-scope-shadowing
         -i /local/docs/api/openapi.v1.yaml \
         -g swift6 \
         -c /local/client-tools/openapi-generator/swift-config.yaml \
+        --global-property apiDocs=false,modelDocs=false \
         -o "/tmp/openapi/$output_name"
     if test $status -ne 0
         return 1
@@ -71,19 +72,6 @@ if test "$argv[1]" = determinism
         exit 1
     end
     diff -ruN "$temporary_root/output" "$temporary_root/repeat"
-    exit $status
-end
-
-if test "$argv[1]" = verify
-    if not test -d "$output"
-        echo "Missing generated Swift output: $output" >&2
-        exit 1
-    end
-    diff -ruN --exclude OPENAPI_SHA256 --exclude .build --exclude build --exclude .swiftpm "$output" "$temporary_root/output"
-    if test $status -ne 0
-        exit 1
-    end
-    diff -u "$output/OPENAPI_SHA256" "$temporary_root/output/OPENAPI_SHA256"
     exit $status
 end
 

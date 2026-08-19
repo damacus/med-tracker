@@ -26,7 +26,7 @@ jobs:
       - name: Install Fish
         run: sudo apt-get update && sudo apt-get install --yes fish
 
-      - name: Verify generated output and drift
+      - name: Verify deterministic generation
         run: task api-clients:verify-generated
 
   api_client_kotlin:
@@ -49,11 +49,7 @@ jobs:
           version: 3.52.0
           repo-token: ${{ github.token }}
 
-      - name: Compile generated Kotlin package
-        working-directory: client-tools/generated/kotlin
-        run: ./gradlew --no-daemon check assemble
-
-      - name: Run Kotlin consumer tests
+      - name: Generate, compile, and test Kotlin client
         run: task api-clients:kotlin:test
 
   api_client_swift:
@@ -74,8 +70,5 @@ jobs:
           swift --version
           swift --version | grep --fixed-strings --quiet "Swift version 6.3.3"
 
-      - name: Compile generated Swift package
-        run: swift build --package-path client-tools/generated/swift
-
-      - name: Run Swift consumer tests
-        run: swift test --package-path client-tools/swift-consumer-tests
+      - name: Generate, compile, and test Swift client
+        run: task api-clients:swift:test

@@ -20,7 +20,7 @@ repositories {
 }
 
 sourceSets {
-    main.kotlin.srcDirs = ['../generated/kotlin/src/main/kotlin']
+    main.kotlin.srcDirs = ['../../tmp/api-clients/kotlin/src/main/kotlin']
     test.kotlin.srcDirs = ['src/test/kotlin']
 }
 

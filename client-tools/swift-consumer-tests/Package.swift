@@ -8,7 +8,7 @@ let package = Package(
         .macOS(.v14),
     ],
     dependencies: [
-        .package(path: "../generated/swift"),
+        .package(path: "../../tmp/api-clients/swift"),
     ],
     targets: [
         .testTarget(

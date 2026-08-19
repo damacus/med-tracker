@@ -11,18 +11,20 @@ database and internal code, with no Rails shell or constant dependency.
 The [API versioning policy](versioning.md) defines contract compatibility and
 the migration from handwritten transport types to generated bindings.
 
-## Generated native API clients
+## Native API client generation
 
-The checked-in Swift and Kotlin clients are generated from
-`docs/api/openapi.v1.yaml`. They expose the `/api/v1` contract without adding
-Rails runtime dependencies or Rails autoloaded constants.
+OpenAPI Generator creates disposable Swift and Kotlin clients from
+`docs/api/openapi.v1.yaml`. CI compiles and tests those clients to prove that
+the `/api/v1` contract works for native consumers. Generated source is not
+committed and does not add Rails runtime dependencies or autoloaded constants.
 
-The generated packages are kept in these directories:
+Local generation writes ignored output to these directories:
 
-- `client-tools/generated/swift` — Swift Package Manager package named
+- `tmp/api-clients/swift` — Swift Package Manager package named
   `MedTrackerAPI`.
-- `client-tools/generated/kotlin` — JVM package
-  `io.medtracker.client`, published as `io.medtracker:medtracker-api-client`.
+- `tmp/api-clients/kotlin` — JVM package
+  `io.medtracker.client` with artefact coordinates
+  `io.medtracker:medtracker-api-client`.
 
 The handwritten consumer tests are kept outside generated output:
 
@@ -55,10 +57,10 @@ task api-clients:swift
 task api-clients:swift:test
 ```
 
-`api-clients:generate` replaces both committed packages after successful
-temporary generation. `api-clients:verify-generated` performs a read-only
-comparison. `api-clients:verify` also checks checksum metadata, cleanup on
-generator failure, and two-generation determinism.
+`api-clients:generate` replaces both ignored temporary packages after
+successful generation. `api-clients:verify-generated` generates each client
+twice and compares the complete outputs. `api-clients:verify` also checks
+checksum metadata, cleanup on generator failure, and container file ownership.
 
 ### Contract rules for native clients
 
@@ -77,20 +79,20 @@ Every non-null JSON value has one fixed type in `/api/v1`:
 
 ### Regeneration and review
 
-Never edit files below `client-tools/generated/` by hand. Change the OpenAPI
-document or generator configuration, then run `task api-clients:generate`.
-Review the generated diff, the `OPENAPI_SHA256` files, and the consumer tests.
-Run `task api-clients:verify-generated`, both native test commands, and the
-repository quality gates before committing.
+Never edit files below `tmp/api-clients/` by hand. They are disposable and
+ignored by Git. Change the OpenAPI document, generator configuration, or
+augmentation script, then run `task api-clients:generate`. Review the source
+changes and consumer tests. Run `task api-clients:verify-generated`, both
+native test commands, and the repository quality gates before committing.
 
 To upgrade OpenAPI Generator, update the version and immutable digest in both
 `client-tools/openapi-generator/generate-swift.fish` and
 `client-tools/openapi-generator/generate-kotlin.fish`. Review any generator
-configuration changes against the Swift 6 and Kotlin documentation, regenerate
-both packages, and require two byte-for-byte identical generations. Compile
-both packages and run the consumer tests before accepting the generated diff.
-Record the new generator version and digest in the pull request. Do not
-upgrade one language generator without regenerating and checking the other.
+configuration changes against the Swift 6 and Kotlin documentation. Require
+two byte-for-byte identical generations, compile both packages, and run the
+consumer tests. Record the new generator version and digest in the pull
+request. Do not upgrade one language generator without regenerating and
+checking the other.
 
 ## Install
 

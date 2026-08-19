@@ -60,19 +60,45 @@ RSpec.describe 'Taskfiles' do
   end
 
   it 'defines deterministic native API client generation tasks' do
-    expect(api_client_task_commands).to eq(
+    expect(api_client_generation_task_commands).to eq(
       'api-clients:generate' => ['./client-tools/openapi-generator/generate.fish'],
-      'api-clients:verify-generated' => ['./client-tools/openapi-generator/generate.fish verify'],
+      'api-clients:verify-generated' => ['./client-tools/openapi-generator/generate.fish determinism'],
       'api-clients:kotlin' => ['./client-tools/openapi-generator/generate-kotlin.fish'],
       'api-clients:swift' => ['./client-tools/openapi-generator/generate-swift.fish'],
       'api-clients:verify' => [
         './client-tools/openapi-generator/test-docker-user.fish',
         './client-tools/openapi-generator/test-checksum.fish',
         './client-tools/openapi-generator/test-cleanup.fish',
-        'api-clients:verify-generated',
-        './client-tools/openapi-generator/generate.fish determinism'
+        'api-clients:verify-generated'
       ]
     )
+  end
+
+  it 'generates native clients before compiling and testing them' do
+    expect(api_client_test_task_commands).to eq(
+      'api-clients:kotlin:test' => [
+        'api-clients:kotlin',
+        './tmp/api-clients/kotlin/gradlew --no-daemon -p tmp/api-clients/kotlin check assemble',
+        './tmp/api-clients/kotlin/gradlew --no-daemon -p client-tools/kotlin-consumer-tests check assemble'
+      ],
+      'api-clients:swift:test' => [
+        'api-clients:swift',
+        'swift build --package-path tmp/api-clients/swift',
+        'swift test --package-path client-tools/swift-consumer-tests'
+      ]
+    )
+  end
+
+  it 'keeps generated native clients disposable and omits generated reference docs' do
+    expect(swift_generator_script).to include(
+      'set -l output "$repo_root/tmp/api-clients/swift"',
+      '--global-property apiDocs=false,modelDocs=false'
+    )
+    expect(kotlin_generator_script).to include(
+      'set -l output "$repo_root/tmp/api-clients/kotlin"',
+      '--global-property apiDocs=false,modelDocs=false'
+    )
+    expect(Rails.root.join('client-tools/generated')).not_to exist
   end
 
   it 'pins the native API generator image and language generators' do
@@ -354,7 +380,7 @@ RSpec.describe 'Taskfiles' do
     Rails.root.join('client-tools/openapi-generator/test-docker-user.fish').read
   end
 
-  def api_client_task_commands
+  def api_client_generation_task_commands
     {
       'api-clients:generate' => root_taskfile.dig('tasks', 'api-clients:generate', 'cmds'),
       'api-clients:verify-generated' => root_taskfile.dig('tasks', 'api-clients:verify-generated', 'cmds'),
@@ -364,6 +390,19 @@ RSpec.describe 'Taskfiles' do
         command.is_a?(Hash) ? command.fetch('task') : command
       end
     }
+  end
+
+  def api_client_test_task_commands
+    {
+      'api-clients:kotlin:test' => task_commands('api-clients:kotlin:test'),
+      'api-clients:swift:test' => task_commands('api-clients:swift:test')
+    }
+  end
+
+  def task_commands(name)
+    root_taskfile.dig('tasks', name, 'cmds').map do |command|
+      command.is_a?(Hash) ? command.fetch('task') : command
+    end
   end
 
   def generator_image

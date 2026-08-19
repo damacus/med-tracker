@@ -31,9 +31,6 @@
 /public/assets
 /coverage
 /client-tools/target/
-/client-tools/generated/kotlin/.gradle/
-/client-tools/generated/kotlin/.kotlin/
-/client-tools/generated/kotlin/build/
 /client-tools/kotlin-consumer-tests/.gradle/
 /client-tools/kotlin-consumer-tests/.kotlin/
 /client-tools/kotlin-consumer-tests/build/

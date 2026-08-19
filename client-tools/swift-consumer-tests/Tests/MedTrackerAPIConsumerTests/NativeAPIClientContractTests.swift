@@ -390,7 +390,8 @@ final class NativeAPIClientContractTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("generated/swift/Sources/MedTrackerAPI")
+            .deletingLastPathComponent()
+            .appendingPathComponent("tmp/api-clients/swift/Sources/MedTrackerAPI")
         let enumerator = FileManager.default.enumerator(
             at: sourceRoot,
             includingPropertiesForKeys: [.isRegularFileKey]

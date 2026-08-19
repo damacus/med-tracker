@@ -58,9 +58,9 @@ tasks:
       - ./client-tools/openapi-generator/generate.fish
 
   api-clients:verify-generated:
-    desc: Verify generated API clients are current and deterministic
+    desc: Verify generated API clients are deterministic
     cmds:
-      - ./client-tools/openapi-generator/generate.fish verify
+      - ./client-tools/openapi-generator/generate.fish determinism
 
   api-clients:kotlin:
     desc: Generate the Kotlin API client from the V1 contract
@@ -68,9 +68,11 @@ tasks:
       - ./client-tools/openapi-generator/generate-kotlin.fish
 
   api-clients:kotlin:test:
-    desc: Compile and test the generated Kotlin API client with consumer checks
+    desc: Generate, compile, and test the Kotlin API client with consumer checks
     cmds:
-      - ./client-tools/generated/kotlin/gradlew --no-daemon -p client-tools/kotlin-consumer-tests check assemble
+      - task: api-clients:kotlin
+      - ./tmp/api-clients/kotlin/gradlew --no-daemon -p tmp/api-clients/kotlin check assemble
+      - ./tmp/api-clients/kotlin/gradlew --no-daemon -p client-tools/kotlin-consumer-tests check assemble
 
   api-clients:swift:
     desc: Generate the Swift API client from the V1 contract
@@ -78,8 +80,10 @@ tasks:
       - ./client-tools/openapi-generator/generate-swift.fish
 
   api-clients:swift:test:
-    desc: Compile and test the generated Swift API client with consumer checks
+    desc: Generate, compile, and test the Swift API client with consumer checks
     cmds:
+      - task: api-clients:swift
+      - swift build --package-path tmp/api-clients/swift
       - swift test --package-path client-tools/swift-consumer-tests
 
   api-clients:verify:
@@ -89,7 +93,6 @@ tasks:
       - ./client-tools/openapi-generator/test-checksum.fish
       - ./client-tools/openapi-generator/test-cleanup.fish
       - task: api-clients:verify-generated
-      - ./client-tools/openapi-generator/generate.fish determinism
 
   test:
     desc: Run tests in Docker (optionally specify TEST_FILE=path/to/spec)
