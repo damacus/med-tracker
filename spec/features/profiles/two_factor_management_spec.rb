@@ -61,14 +61,24 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
       end
     end
 
-    it 'allows setting up and disabling TOTP' do
+    it 'allows setting up and disabling TOTP', :browser do
       visit '/otp-setup'
+
+      expect(page).to have_css('[data-controller="ruby-ui--input-otp"]')
+      expect(page).to have_css('[data-ruby-ui--input-otp-target="slot"]', count: 6)
 
       secret = find("input[name='otp_secret']", visible: false).value
       totp = ROTP::TOTP.new(secret, issuer: 'MedTracker')
 
       fill_in 'Current Password', with: 'password'
-      fill_in 'Authentication Code', with: totp.at(Time.current)
+      authentication_code = totp.at(Time.current)
+      fill_in 'Authentication Code', with: authentication_code
+      visible_code = page.evaluate_script(<<~JS)
+        Array.from(document.querySelectorAll('[data-ruby-ui--input-otp-target="slot"]'))
+          .map((slot) => slot.textContent)
+          .join('')
+      JS
+      expect(visible_code).to eq(authentication_code)
       expect do
         click_button 'Enable Two-Factor Authentication'
       end.to change {

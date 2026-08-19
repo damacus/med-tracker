@@ -93,6 +93,36 @@ module Views
         end
       end
 
+      def render_otp_field(label:, name:, id:, error: nil)
+        div(class: 'space-y-2') do
+          render RubyUI::FormFieldLabel.new(
+            for: id,
+            class: 'px-1 text-[10px] font-black uppercase tracking-widest text-on-surface-variant'
+          ) { label }
+          render_otp_input(label:, name:, id:, error:)
+          if error.present?
+            p(id: "#{id}-error", class: 'mt-1 px-1 text-sm font-medium text-error', role: 'alert') { error }
+          end
+        end
+      end
+
+      def render_otp_input(label:, name:, id:, error:)
+        render RubyUI::InputOtp.new(
+          length: 6,
+          id:,
+          name:,
+          required: true,
+          aria_label: label,
+          aria_invalid: error.present? ? 'true' : nil,
+          aria_describedby: error.present? ? "#{id}-error" : nil,
+          class: 'rounded-xl'
+        ) do
+          render RubyUI::InputOtpGroup.new(class: 'mx-auto') do
+            6.times { |index| render RubyUI::InputOtpSlot.new(index:) }
+          end
+        end
+      end
+
       def render_m3_alert(message, variant: :destructive)
         render RubyUI::Alert.new(variant: variant, class: 'rounded-2xl border-none shadow-sm') do
           div(class: 'flex items-center gap-2') do
