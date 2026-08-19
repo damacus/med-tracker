@@ -8,9 +8,9 @@ module Profiles
     def create
       authorize current_user.person, :update?
       if ApiAuthState.locked_out?(current_account)
-        return redirect_to(profile_path, alert: t('profiles.api_tokens.locked'))
+        return redirect_to(profile_redirect_path, alert: t('profiles.api_tokens.locked'))
       end
-      return redirect_to(profile_path, alert: t('profiles.api_tokens.mfa_required')) unless mfa_satisfied?
+      return redirect_to(profile_redirect_path, alert: t('profiles.api_tokens.mfa_required')) unless mfa_satisfied?
 
       membership = token_household_membership
       _app_token, raw_token = ApiAppToken.issue_for(
@@ -21,13 +21,16 @@ module Profiles
       )
 
       render Views::Profiles::Show.new(
-        person: current_user.person,
-        account: current_account,
-        new_api_app_token: raw_token,
-        api_app_tokens: current_account.api_app_tokens.active.order(created_at: :desc).to_a
+        presenter: Profiles::Presenter.build(
+          person: current_user.person,
+          account: current_account,
+          household: current_household,
+          active_section: 'advanced',
+          new_api_app_token: raw_token
+        )
       ), status: :created
     rescue ActiveRecord::RecordInvalid => e
-      redirect_to profile_path, alert: e.record.errors.full_messages.to_sentence
+      redirect_to profile_redirect_path, alert: e.record.errors.full_messages.to_sentence
     end
 
     def destroy
@@ -35,7 +38,7 @@ module Profiles
       app_token = current_account.api_app_tokens.find(params.expect(:id))
       app_token.revoke!(audit_context: audit_context(app_token.household_membership))
 
-      redirect_to profile_path, notice: t('profiles.api_tokens.revoked')
+      redirect_to profile_redirect_path, notice: t('profiles.api_tokens.revoked')
     end
 
     private
@@ -60,6 +63,10 @@ module Profiles
         household_id: membership.household_id,
         actor_membership_id: membership.id
       }
+    end
+
+    def profile_redirect_path
+      params[:section] == 'advanced' ? profile_path(section: 'advanced') : profile_path
     end
   end
 end

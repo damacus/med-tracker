@@ -28,12 +28,14 @@ RSpec.describe Views::Profiles::NotificationsCard, type: :component do
     expect(status['aria-atomic']).to eq('true')
   end
 
-  it 'renders notification category controls in the profile form' do
+  it 'renders notification category controls as compact on and off toggle groups' do
     rendered = render_inline(described_class.new(person: person))
 
     %w[dose_due_enabled missed_dose_enabled low_stock_enabled private_text_enabled].each do |category|
-      expect(rendered.at_css("input[name='notification_preference[#{category}]'][type='checkbox']"))
-        .to be_present
+      input = rendered.at_css("input[name='notification_preference[#{category}]'][type='hidden']")
+      group = input.ancestors('[role="radiogroup"]').first
+
+      expect(group.css('[role="radio"]').map { |radio| radio.text.squish }).to eq(%w[On Off])
     end
   end
 
@@ -49,16 +51,18 @@ RSpec.describe Views::Profiles::NotificationsCard, type: :component do
     expect(rendered.at_css("input[name='notification_preference[managed_person_ids][]'][value='#{child.id}']"))
       .not_to be_present
 
-    adult_checkbox = rendered.at_css(
-      "input[name='notification_preference[managed_person_ids][]'][value='#{adult.id}'][type='checkbox']"
+    adult_toggle = rendered.at_css(
+      "input[name='notification_preference[managed_person_ids][]'][value='#{adult.id}'][type='hidden']"
     )
-    expect(adult_checkbox).to be_present
-    expect(adult_checkbox['checked']).to be_present
+    expect(adult_toggle).to be_present
+    expect(adult_toggle.ancestors('[role="radiogroup"]').first.at_css('[aria-checked="true"]').text).to eq('On')
   end
 
   it 'uses shared action styles for notification buttons' do
     rendered = render_inline(described_class.new(person: person))
-    action_classes = rendered.css('button').map { |button| button[:class].to_s.split }
+    action_classes = rendered.css('button:not([role="radio"]):not([aria-controls])').map do |button|
+      button[:class].to_s.split
+    end
 
     expect(action_classes).to all(include_touch_target_class)
     expect(action_classes).to all(include('rounded-shape-full'))

@@ -30,7 +30,7 @@ export default class extends Controller {
     const wrapper = document.createElement("div")
     wrapper.setAttribute("data-controller", "ruby-ui--sheet-content")
     wrapper.setAttribute("data-ruby-ui--sheet-content-sheet-id", this.element.id || "")
-    wrapper.style.cssText = "position:fixed;inset:0;z-index:50;pointer-events:none;"
+    wrapper.style.cssText = "position:fixed;inset:0;z-index:70;pointer-events:none;"
     wrapper.innerHTML = this.contentTarget.innerHTML
     document.body.appendChild(wrapper)
     this.wrapper = wrapper

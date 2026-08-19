@@ -16,7 +16,9 @@ class NotificationPreferencesController < ApplicationController
 
     if updater.call
       respond_to do |format|
-        format.html { redirect_to profile_path, notice: t('notification_preferences.updated') }
+        format.html do
+          redirect_to profile_redirect_path, notice: t('notification_preferences.updated')
+        end
         format.turbo_stream do
           flash.now[:notice] = t('notification_preferences.updated')
           render turbo_stream: notification_preference_streams
@@ -24,7 +26,9 @@ class NotificationPreferencesController < ApplicationController
       end
     else
       respond_to do |format|
-        format.html { redirect_to profile_path, alert: t('notification_preferences.update_failed') }
+        format.html do
+          redirect_to profile_redirect_path, alert: t('notification_preferences.update_failed')
+        end
         format.turbo_stream do
           flash.now[:alert] = t('notification_preferences.update_failed')
           render turbo_stream: notification_preference_streams, status: :unprocessable_content
@@ -62,5 +66,9 @@ class NotificationPreferencesController < ApplicationController
 
   def managed_notification_grants
     ManagedNotificationGrantsQuery.new(membership: current_membership).call
+  end
+
+  def profile_redirect_path
+    params[:section] == 'notifications' ? profile_path(section: 'notifications') : profile_path
   end
 end

@@ -98,6 +98,7 @@ module Views
             method: :patch,
             data: { controller: 'auto-submit' }
           ) do
+            input(type: 'hidden', name: 'section', value: 'advanced')
             div(class: 'grid gap-3') do
               WIZARD_OPTIONS.each do |option|
                 render_option(option)
@@ -117,6 +118,7 @@ module Views
             method: :patch,
             data: { controller: 'auto-submit' }
           ) do
+            input(type: 'hidden', name: 'section', value: 'advanced')
             div(class: 'grid gap-3 sm:grid-cols-2') do
               DASHBOARD_OPTIONS.each do |option|
                 render_option(option, field: :dashboard_variant)
@@ -136,6 +138,7 @@ module Views
             method: :patch,
             data: { controller: 'auto-submit' }
           ) do
+            input(type: 'hidden', name: 'section', value: 'advanced')
             div(class: 'grid gap-3 sm:grid-cols-2') do
               MEDICATION_LAUNCHER_OPTIONS.each do |option|
                 render_option(option, field: :medication_launcher_variant)

@@ -1640,6 +1640,30 @@ en:
         metric_value: Schedule
   profiles:
     updated: Profile updated successfully.
+    common:
+      "on": "On"
+      "off": "Off"
+    sections:
+      profile:
+        title: Profile
+      security:
+        title: Security
+        password_updated: Password updated
+        two_factor_on: "2FA: On"
+        two_factor_off: "2FA: Not enabled"
+        passkeys: "%{count} passkeys"
+      notifications:
+        title: Notifications
+        reminders: "Reminders: %{state}"
+        categories: "%{count} categories enabled"
+      advanced:
+        title: Advanced
+        tokens: "%{count} active API tokens"
+        exports: Data export available
+        data_backup: Data backup
+        data_backup_description: Download a copy of your medication and health records.
+        experiments: Experiments
+        experiments_description: Try new interface options before they ship.
     email_change_requires_verification: Use the verified email change flow to update
       your sign-in email.
     no_changes: No changes to save.
@@ -1705,6 +1729,10 @@ en:
       gravatar_label: Use Gravatar
       gravatar_description: Show your Gravatar when no custom avatar is uploaded.
       save_gravatar: Save Gravatar choice
+    time_zone:
+      title: Time Zone
+      description: Choose the time zone used for reminders and recorded doses.
+      save: Save time zone
     account_security:
       title: Account Security
       description: Manage your login credentials and security settings

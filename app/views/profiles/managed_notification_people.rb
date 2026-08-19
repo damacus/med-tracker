@@ -9,13 +9,7 @@ module Views
       end
 
       def view_template
-        div(class: 'space-y-3 border-t border-border pt-2', data: { testid: 'managed-notification-people' }) do
-          div(class: 'space-y-0.5') do
-            h3(class: 'text-sm font-semibold text-foreground') { t('profiles.notifications.managed_people.title') }
-            p(class: 'text-xs text-on-surface-variant') do
-              t('profiles.notifications.managed_people.description')
-            end
-          end
+        div(class: 'space-y-3', data: { testid: 'managed-notification-people' }) do
           input(type: 'hidden', name: 'notification_preference[managed_person_ids][]', value: '')
           div(class: 'space-y-2') do
             grants.each { |grant| render_managed_person(grant) }
@@ -41,18 +35,16 @@ module Views
 
       def render_managed_adult_toggle(grant)
         managed_person = grant.person
-        input_id = "notification_preference_managed_person_#{managed_person.id}"
-        label(for: input_id, class: 'flex min-h-11 cursor-pointer items-center gap-3 text-xs font-medium text-foreground') do
-          span { t('profiles.notifications.managed_people.notify_me') }
-          input(
-            type: 'checkbox',
-            name: 'notification_preference[managed_person_ids][]',
-            id: input_id,
-            value: managed_person.id,
-            checked: grant.missed_dose_notifications_enabled?,
-            aria_label: t('profiles.notifications.managed_people.toggle_label', name: managed_person.name),
-            class: 'h-5 w-5 rounded border-border bg-background text-primary focus:ring-primary'
-          )
+        render ToggleGroup.new(
+          type: :single,
+          name: 'notification_preference[managed_person_ids][]',
+          value: grant.missed_dose_notifications_enabled? ? managed_person.id.to_s : '',
+          variant: :outline,
+          size: :sm,
+          aria: { label: t('profiles.notifications.managed_people.toggle_label', name: managed_person.name) }
+        ) do |group|
+          group.toggle_group_item(value: managed_person.id.to_s, class: 'min-h-11') { t('profiles.common.on') }
+          group.toggle_group_item(value: '', class: 'min-h-11') { t('profiles.common.off') }
         end
       end
     end

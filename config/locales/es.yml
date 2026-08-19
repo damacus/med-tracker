@@ -1464,6 +1464,30 @@ es:
     paused: 'No se puede tomar el medicamento: está en pausa'
     overlapping_prescription_restriction: 'No se puede tomar el medicamento: otra receta activa para este medicamento establece un límite de tiempo más estricto.'
   profiles:
+    common:
+      "on": Activado
+      "off": Desactivado
+    sections:
+      profile:
+        title: Perfil
+      security:
+        title: Seguridad
+        password_updated: Contraseña actualizada
+        two_factor_on: "2FA: Activado"
+        two_factor_off: "2FA: No activado"
+        passkeys: "%{count} claves de acceso"
+      notifications:
+        title: Notificaciones
+        reminders: "Recordatorios: %{state}"
+        categories: "%{count} categorías activadas"
+      advanced:
+        title: Avanzado
+        tokens: "%{count} tokens API activos"
+        exports: Exportación de datos disponible
+        data_backup: Copia de seguridad de datos
+        data_backup_description: Descarga una copia de tus registros de medicación y salud.
+        experiments: Experimentos
+        experiments_description: Prueba nuevas opciones de interfaz antes de su lanzamiento.
     updated: Perfil actualizado correctamente.
     email_change_requires_verification: Usa el flujo verificado de cambio de correo
       para actualizar tu correo de inicio de sesión.
@@ -1563,6 +1587,10 @@ es:
       gravatar_label: Usar Gravatar
       gravatar_description: Muestra tu Gravatar cuando no haya un avatar personalizado subido.
       save_gravatar: Guardar elección de Gravatar
+    time_zone:
+      title: Zona horaria
+      description: Elige la zona horaria de los recordatorios y las dosis registradas.
+      save: Guardar zona horaria
     account_security:
       title: Seguridad de la cuenta
       description: Gestiona tus credenciales de acceso y ajustes de seguridad

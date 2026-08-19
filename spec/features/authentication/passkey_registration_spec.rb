@@ -13,7 +13,7 @@ RSpec.describe 'PASSKEY-002: Passkey registration', type: :system do
     end
 
     scenario 'User with no passkeys sees empty state' do
-      visit profile_path
+      visit profile_path(section: 'security')
 
       expect(page).to have_text('Passkeys')
       expect(page).to have_text('No passkeys registered')
@@ -27,13 +27,13 @@ RSpec.describe 'PASSKEY-002: Passkey registration', type: :system do
         nickname: 'My MacBook'
       )
 
-      visit profile_path
+      visit profile_path(section: 'security')
 
       expect(page).to have_text('My MacBook')
     end
 
     scenario 'User can navigate to add passkey page' do
-      visit profile_path
+      visit profile_path(section: 'security')
 
       expect(page).to have_link('Add a passkey', href: '/webauthn-setup')
     end
@@ -46,7 +46,7 @@ RSpec.describe 'PASSKEY-002: Passkey registration', type: :system do
         nickname: 'My MacBook'
       )
 
-      visit profile_path
+      visit profile_path(section: 'security')
 
       expect(page).to have_link('Remove')
     end
