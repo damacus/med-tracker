@@ -9,6 +9,7 @@ RSpec.describe YAML do
   let(:init_roles_sql) { Rails.root.join('compose/init-roles.sql').read }
   let(:dockerfile) { Rails.root.join('Dockerfile').read }
   let(:deploy_config) { Rails.root.join('config/deploy.yml').read }
+  let(:gitguardian_config) { described_class.safe_load(Rails.root.join('.gitguardian.yaml').read) }
 
   it 'isolates public assets in development web container' do
     expect(compose_config.dig('services', 'web-dev', 'tmpfs')).to include('/app/public/assets:uid=1000,gid=1000')
@@ -162,5 +163,12 @@ RSpec.describe YAML do
   it 'keeps development and test web host ports Docker-assigned for parallel worktrees' do
     expect(compose_config.dig('services', 'web-dev', 'ports')).to be_nil
     expect(compose_config.dig('services', 'web-test', 'ports')).to be_nil
+  end
+
+  it 'excludes locale files from GitGuardian secret scans' do
+    expect(gitguardian_config).to include(
+      'version' => 2,
+      'secret' => { 'ignored_paths' => ['/config/locales/**'] }
+    )
   end
 end
