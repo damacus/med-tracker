@@ -139,7 +139,7 @@ RSpec.describe 'Mobile Navigation', :browser do
     expect(ratio).to be_between(0.70, 0.85)
 
     expect(drawer[:'aria-modal']).to eq('true')
-    expect(drawer[:'aria-label']).to be_present
+    expect(drawer[:'aria-label']).to eq(I18n.t('ruby_ui.common.navigation_menu'))
 
     within('[role="dialog"]') do
       all('a, button').each do |target|
@@ -157,8 +157,12 @@ RSpec.describe 'Mobile Navigation', :browser do
 
     open_mobile_menu
 
+    expect(find('body')[:class]).to include('overflow-hidden')
+
     page.execute_script("document.querySelector('[data-testid=\"drawer-backdrop\"]').click()")
     expect(page).to have_no_css('[role="dialog"]')
+    expect(find('body')[:class]).not_to include('overflow-hidden')
+    expect(page.evaluate_script('document.activeElement.getAttribute("aria-label")')).to eq('Open menu')
 
     open_mobile_menu
 
@@ -166,6 +170,30 @@ RSpec.describe 'Mobile Navigation', :browser do
     expect(page).to have_no_css('[role="dialog"]')
 
     open_mobile_menu
+  end
+
+  scenario 'keeps keyboard focus inside the navigation sheet' do
+    page.current_window.resize_to(375, 667)
+    visit root_path
+
+    open_mobile_menu
+    drawer = find('[role="dialog"]')
+    tabbable_count = drawer.all(
+      'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), ' \
+      'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    ).count
+
+    expect(tabbable_count).to be_positive
+
+    (tabbable_count + 1).times do
+      page.active_element.send_keys(:tab)
+      expect(page.evaluate_script("document.activeElement.closest('[role=dialog]') !== null")).to be(true)
+    end
+
+    (tabbable_count + 1).times do
+      page.active_element.send_keys(%i[shift tab])
+      expect(page.evaluate_script("document.activeElement.closest('[role=dialog]') !== null")).to be(true)
+    end
   end
 
   scenario 'does not render the floating action menu on mobile' do

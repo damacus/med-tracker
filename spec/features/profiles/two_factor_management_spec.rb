@@ -11,7 +11,7 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
 
   before do
     login_as(user)
-    visit profile_path
+    visit profile_path(section: 'security')
   end
 
   describe 'MFA setup flows' do
@@ -32,28 +32,28 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
       end
 
       it 'requires passkey authentication when starting TOTP setup' do
-        visit profile_path
+        visit profile_path(section: 'security')
         click_link 'Set up authenticator app'
 
         expect(page).to have_current_path('/webauthn-auth')
       end
 
       it 'requires passkey authentication when viewing recovery codes' do
-        visit profile_path
+        visit profile_path(section: 'security')
         click_link 'Generate recovery codes'
 
         expect(page).to have_current_path('/webauthn-auth')
       end
 
       it 'requires passkey authentication when adding another passkey' do
-        visit profile_path
+        visit profile_path(section: 'security')
         click_link 'Add a passkey'
 
         expect(page).to have_current_path('/webauthn-auth')
       end
 
       it 'requires passkey authentication when removing a passkey' do
-        visit profile_path
+        visit profile_path(section: 'security')
         click_link 'Remove'
 
         expect(page).to have_current_path('/webauthn-auth')
@@ -61,14 +61,39 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
       end
     end
 
-    it 'allows setting up and disabling TOTP' do
+    it 'allows setting up and disabling TOTP', :browser do
+      page.current_window.resize_to(390, 844)
       visit '/otp-setup'
+
+      expect(page).to have_css('[data-controller="ruby-ui--input-otp"]')
+      expect(page).to have_css('[data-ruby-ui--input-otp-target="slot"]', count: 6)
+
+      button_geometry = page.evaluate_script(<<~JS)
+        (() => {
+          const button = Array.from(document.querySelectorAll('button'))
+            .find((element) => element.textContent.trim() === 'Enable Two-Factor Authentication')
+          const styles = getComputedStyle(button)
+
+          return {
+            radius: parseFloat(styles.borderTopLeftRadius),
+            textFits: button.scrollWidth <= button.clientWidth && button.scrollHeight <= button.clientHeight
+          }
+        })()
+      JS
+      expect(button_geometry).to include('radius' => 8, 'textFits' => true)
 
       secret = find("input[name='otp_secret']", visible: false).value
       totp = ROTP::TOTP.new(secret, issuer: 'MedTracker')
 
       fill_in 'Current Password', with: 'password'
-      fill_in 'Authentication Code', with: totp.at(Time.current)
+      authentication_code = totp.at(Time.current)
+      fill_in 'Authentication Code', with: authentication_code
+      visible_code = page.evaluate_script(<<~JS)
+        Array.from(document.querySelectorAll('[data-ruby-ui--input-otp-target="slot"]'))
+          .map((slot) => slot.textContent)
+          .join('')
+      JS
+      expect(visible_code).to eq(authentication_code)
       expect do
         click_button 'Enable Two-Factor Authentication'
       end.to change {
@@ -78,9 +103,9 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
 
       expect(AccountOtpKey.exists?(id: account.id)).to be true
 
-      visit profile_path
+      visit profile_path(section: 'security')
       click_link 'Disable'
-      expect(page).to have_current_path('/otp-disable')
+      expect(page).to have_css('[role="dialog"]', text: 'Disable TOTP Authentication')
       fill_in 'password', with: 'password'
       expect do
         click_button 'Disable TOTP Authentication'
@@ -121,7 +146,7 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
 
       expect(AccountRecoveryCode.where(id: account.id).count).to be_positive
 
-      visit profile_path
+      visit profile_path(section: 'security')
       click_link 'Disable'
       fill_in 'password', with: 'password'
       click_button 'Disable TOTP Authentication'
@@ -153,7 +178,7 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
       AccountOtpKey.find_or_create_by!(id: account.id) do |key|
         key.key = 'test_otp_key_secret'
       end
-      visit profile_path
+      visit profile_path(section: 'security')
     end
 
     it 'routes to the Rodauth OTP disable endpoint' do

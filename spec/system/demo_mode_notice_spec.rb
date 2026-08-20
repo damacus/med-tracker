@@ -144,6 +144,7 @@ RSpec.describe 'Demo mode notice', :browser do
     page.current_window.resize_to(390, 844)
     visit profile_path
 
+    find('[data-testid="profile-time-zone-dialog"] button', text: 'Time Zone').click
     time_zone = find_by_id('account_time_zone')
     page.execute_script('arguments[0].scrollIntoView({ block: "center" })', time_zone)
     expect(page.evaluate_script('window.scrollY')).to be_positive

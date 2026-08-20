@@ -13,10 +13,10 @@ RSpec.describe 'Profiles' do
   end
 
   describe 'GET /profile' do
-    it 'does not load notification preferences or API tokens while rendering the view' do
+    it 'does not query profile data while rendering Phlex components' do
       rendered_queries = capture_profile_render_queries { get profile_path }
 
-      expect(rendered_queries.grep(/notification_preferences|api_app_tokens/)).to be_empty
+      expect(rendered_queries).to be_empty
     end
 
     it 'renders the profile page shell and key sections' do
@@ -27,10 +27,42 @@ RSpec.describe 'Profiles' do
       expect(response.body).to include('My Profile')
       expect(response.body).to include(user.name)
       expect(response.body).to include(account.email)
-      expect(response.body).to include('Account Security')
       expect(response.body).to include('Time Zone')
-      expect(response.body).to include('System Information')
-      expect(response.body.scan('data-turbo-frame="modal"').size).to be >= 2
+      expect(response.parsed_body.css('[data-testid="profile-section-tab"]').map { |tab| tab.text.squish })
+        .to eq(%w[Profile Security Notifications Advanced])
+    end
+
+    it 'renders same-page tabs with a requested initial tab and an invalid-value fallback' do
+      get profile_path(section: 'security')
+
+      security_tab = response.parsed_body.at_css('[data-profile-section="security"]')
+      expect(security_tab.name).to eq('button')
+      expect(security_tab['aria-selected']).to eq('true')
+      expect(security_tab['aria-controls']).to eq('profile-security-panel')
+      expect(response.parsed_body.css('[role="tabpanel"][data-testid="profile-section-panel"]').size).to eq(4)
+
+      get profile_path(section: 'unknown')
+
+      profile_tab = response.parsed_body.at_css('[data-profile-section="profile"]')
+      expect(profile_tab['aria-selected']).to eq('true')
+      expect(response.parsed_body.at_css('#profile-profile-panel')['aria-labelledby']).to eq('profile-tab-profile')
+    end
+
+    it 'renders only same-origin JavaScript imports' do
+      get profile_path
+
+      import_map = JSON.parse(response.parsed_body.at_css('script[type="importmap"]').text)
+
+      expect(import_map.fetch('imports').values.grep(%r{\Ahttps?://})).to be_empty
+    end
+
+    it 'degrades safely when optional recovery codes cannot be read' do
+      allow(AccountRecoveryCode).to receive(:where).and_raise(ActiveRecord::StatementInvalid, 'unavailable')
+
+      get profile_path(section: 'security')
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('2FA: Not enabled', 'Not generated')
     end
 
     it 'uses the account time zone around the request' do
@@ -42,21 +74,15 @@ RSpec.describe 'Profiles' do
       expect(Time).to have_received(:use_zone).with('Pacific Time (US & Canada)')
     end
 
-    it 'renders readable stacked identity details in the profile hero', :aggregate_failures do
+    it 'renders a compact identity hero without duplicated identity cards', :aggregate_failures do
       get profile_path
 
       hero = response.parsed_body.at_css('[data-testid="profile-hero"]')
-      identity = hero.at_css('[data-testid="profile-identity-details"]')
-      labels = identity.css('p').map { |node| node.text.squish }
-      values = identity.css('[data-testid^="profile-identity-value"]').map { |node| node.text.squish }
 
-      expect(labels).to include('Name', 'Email')
-      expect(labels).not_to include('Profile name')
-      expect(labels).not_to include('Sign-in email')
-      expect(values).to include(user.name, account.email)
-      expect(identity['class']).to include('space-y-3')
-      expect(identity['class']).not_to include('grid')
-      expect(identity.to_html).not_to include('truncate')
+      expect(hero.text.squish).to include('My Profile', account.email)
+      expect(hero.at_css('[data-testid="person-avatar"]')).to be_present
+      expect(hero.at_css('[data-testid="profile-identity-details"]')).to be_nil
+      expect(hero.css('[data-testid^="profile-identity-value"]')).to be_empty
     end
 
     it 'renders the two-factor card and empty-state setup actions' do
@@ -64,7 +90,7 @@ RSpec.describe 'Profiles' do
       AccountRecoveryCode.where(id: account.id).delete_all
       account.account_webauthn_keys.destroy_all
 
-      get profile_path
+      get profile_path(section: 'security')
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('Two-Factor Authentication')
@@ -100,7 +126,7 @@ RSpec.describe 'Profiles' do
       session[:authenticated_by] = %w[password totp]
       session['authenticated_by'] = %w[password totp]
 
-      get profile_path
+      get profile_path(section: 'security')
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body.at_css('svg.material-symbol-passkey')).to be_present
@@ -207,6 +233,20 @@ RSpec.describe 'Profiles' do
       expect(response).to redirect_to(profile_path)
       expect(flash[:alert]).to include('Time zone')
       expect(account.reload.time_zone).not_to eq('Atlantis/Nowhere')
+    end
+
+    it 'renders Turbo validation errors inside the relevant profile sheet' do
+      patch profile_path,
+            params: {
+              section: 'profile',
+              profile_setting: 'time_zone',
+              account: { time_zone: 'Atlantis/Nowhere' }
+            },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('target="profile-time-zone-errors"')
+      expect(response.body).to include('Time zone')
     end
 
     it 'rejects direct profile email changes without mutating the account email' do

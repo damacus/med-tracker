@@ -10,6 +10,7 @@ module RubyUI
 
     def default_attrs
       {
+        data: { ruby_ui_sheet_title: true },
         class: 'text-lg font-semibold leading-none tracking-tight'
       }
     end

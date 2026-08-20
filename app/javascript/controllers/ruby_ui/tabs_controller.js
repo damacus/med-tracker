@@ -20,15 +20,26 @@ export default class extends Controller {
 
     this.contentTargets.forEach((el) => {
       el.classList.add("hidden");
+      el.hidden = true;
     });
 
     this.triggerTargets.forEach((el) => {
       el.dataset.state = "inactive";
+      el.setAttribute("aria-selected", "false");
     });
 
-    this.activeContentTarget() &&
-      this.activeContentTarget().classList.remove("hidden");
-    this.activeTriggerTarget().dataset.state = "active";
+    const activeContent = this.activeContentTarget();
+    const activeTrigger = this.activeTriggerTarget();
+
+    if (activeContent) {
+      activeContent.classList.remove("hidden");
+      activeContent.hidden = false;
+    }
+
+    if (activeTrigger) {
+      activeTrigger.dataset.state = "active";
+      activeTrigger.setAttribute("aria-selected", "true");
+    }
   }
 
   activeTriggerTarget() {

@@ -6,16 +6,12 @@ module Views
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::Routes
 
-      PERIOD_LABELS = {
-        morning: 'profiles.notifications.periods.morning', afternoon: 'profiles.notifications.periods.afternoon',
-        evening: 'profiles.notifications.periods.evening', night: 'profiles.notifications.periods.night'
-      }.freeze
-
       attr_reader :person, :managed_grants
 
-      def initialize(person:, managed_grants: nil)
+      def initialize(person:, preference: nil, managed_grants: nil)
         super()
         @person = person
+        @preference = preference
         @managed_grants = managed_grants || []
       end
 
@@ -78,27 +74,29 @@ module Views
       end
 
       def render_push_action_buttons
-        div(class: 'flex gap-2 flex-shrink-0') do
-          m3_button(
-            type: 'button',
-            variant: :filled,
-            size: :sm,
+        render ToggleGroup.new(
+          type: :single,
+          value: '0',
+          variant: :outline,
+          size: :sm,
+          aria: { label: t('profiles.notifications.browser_title') }
+        ) do |group|
+          group.toggle_group_item(
+            value: '1',
+            class: 'min-h-11',
             data: {
               push_notification_target: 'subscribeButton',
               action: 'push-notification#subscribe'
-            },
-            hidden: true
-          ) { t('profiles.notifications.enable') }
-          m3_button(
-            type: 'button',
-            variant: :outlined,
-            size: :sm,
+            }
+          ) { t('profiles.common.on') }
+          group.toggle_group_item(
+            value: '0',
+            class: 'min-h-11',
             data: {
               push_notification_target: 'unsubscribeButton',
               action: 'push-notification#unsubscribe'
-            },
-            hidden: true
-          ) { t('profiles.notifications.disable') }
+            }
+          ) { t('profiles.common.off') }
         end
       end
 
@@ -126,10 +124,10 @@ module Views
           method: :patch,
           class: 'space-y-4'
         ) do |_f|
+          input(type: 'hidden', name: 'section', value: 'notifications')
           render_enabled_toggle
           render_category_toggles
-          render ManagedNotificationPeople.new(grants: managed_grants) if managed_grants.any?
-          render_time_slots
+          render NotificationDeliverySettings.new(preference:, managed_grants:)
           div(class: 'flex justify-end pt-2') do
             m3_button(
               type: 'submit',
@@ -147,17 +145,11 @@ module Views
             p(class: 'text-sm font-medium text-foreground') { t('profiles.notifications.enable_reminders') }
             p(class: 'mt-0.5 text-xs text-on-surface-variant') { t('profiles.notifications.enable_reminders_description') }
           end
-          div(class: 'flex items-center gap-2') do
-            input(type: 'hidden', name: 'notification_preference[enabled]', value: '0')
-            input(
-              type: 'checkbox',
-              name: 'notification_preference[enabled]',
-              id: 'notification_preference_enabled',
-              value: '1',
-              checked: preference.enabled,
-              class: 'h-4 w-4 rounded border-border bg-background text-primary focus:ring-primary'
-            )
-          end
+          render_binary_toggle(
+            name: 'notification_preference[enabled]',
+            enabled: preference.enabled,
+            label: t('profiles.notifications.enable_reminders')
+          )
         end
       end
 
@@ -178,40 +170,10 @@ module Views
             label(class: 'text-sm font-medium text-foreground', for: "notification_preference_#{category}") { t("notification_settings.categories.#{category}.title") }
             p(class: 'mt-0.5 text-xs text-on-surface-variant') { t("notification_settings.categories.#{category}.description") }
           end
-          input(type: 'hidden', name: "notification_preference[#{category}]", value: '0')
-          input(
-            type: 'checkbox',
+          render_binary_toggle(
             name: "notification_preference[#{category}]",
-            id: "notification_preference_#{category}",
-            value: '1',
-            checked: preference.public_send(category),
-            class: 'h-4 w-4 rounded border-border bg-background text-primary focus:ring-primary'
-          )
-        end
-      end
-
-      def render_time_slots
-        div(class: 'space-y-2 border-t border-border pt-2') do
-          render_section_header(t('profiles.notifications.reminder_times_title'), t('profiles.notifications.reminder_times_description'))
-          div(class: 'grid grid-cols-2 gap-3 mt-2') do
-            NotificationPreference::PERIODS.each { |period| render_time_slot(period) }
-          end
-        end
-      end
-
-      def render_time_slot(period)
-        div do
-          label(
-            class: 'mb-1 block text-xs font-medium text-on-surface-variant',
-            for: "notification_preference_#{period}_time"
-          ) { t(PERIOD_LABELS[period]) }
-          input(
-            type: 'time',
-            name: "notification_preference[#{period}_time]",
-            id: "notification_preference_#{period}_time",
-            value: preference.time_for_period(period)&.strftime('%H:%M'),
-            class: 'w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground ' \
-                   'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary'
+            enabled: preference.public_send(category),
+            label: t("notification_settings.categories.#{category}.title")
           )
         end
       end
@@ -220,6 +182,20 @@ module Views
         div(class: 'space-y-0.5') do
           h3(class: 'text-sm font-semibold text-foreground') { title }
           p(class: 'text-xs text-on-surface-variant') { description }
+        end
+      end
+
+      def render_binary_toggle(name:, enabled:, label:)
+        render ToggleGroup.new(
+          type: :single,
+          name:,
+          value: enabled ? '1' : '0',
+          variant: :outline,
+          size: :sm,
+          aria: { label: }
+        ) do |group|
+          group.toggle_group_item(value: '1', class: 'min-h-11') { t('profiles.common.on') }
+          group.toggle_group_item(value: '0', class: 'min-h-11') { t('profiles.common.off') }
         end
       end
     end

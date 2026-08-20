@@ -65,6 +65,11 @@ export default class extends Controller {
       button.dataset.active = isActive ? "true" : "false"
     })
 
+    document.querySelectorAll("[data-appearance-summary]").forEach((summary) => {
+      const label = summary.dataset[`${appearance}Label`]
+      if (label) summary.textContent = label
+    })
+
     const metaThemeColor = document.querySelector('meta[name="theme-color"]')
     if (metaThemeColor) {
       metaThemeColor.setAttribute("content", isDark ? DARK_THEME_COLOR : LIGHT_THEME_COLOR)

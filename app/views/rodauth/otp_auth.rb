@@ -49,19 +49,10 @@ module Views
       end
 
       def otp_code_field
-        render_m3_form_field(
+        render_otp_field(
           label: rodauth.otp_auth_label,
-          input_attrs: {
-            type: :text,
-            name: rodauth.otp_auth_param,
-            id: 'otp-auth-code',
-            required: true,
-            autocomplete: 'one-time-code',
-            inputmode: 'numeric',
-            pattern: '[0-9]*',
-            maxlength: 6,
-            placeholder: t('rodauth.views.otp_auth.code_placeholder')
-          },
+          name: rodauth.otp_auth_param,
+          id: 'otp-auth-code',
           error: view_context.rodauth.field_error(rodauth.otp_auth_param)
         )
       end

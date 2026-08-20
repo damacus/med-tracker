@@ -2,6 +2,11 @@
 
 # Controller for user profile management
 class ProfilesController < ApplicationController
+  PROFILE_SETTING_TARGETS = {
+    'avatar' => 'profile-avatar-errors',
+    'time_zone' => 'profile-time-zone-errors'
+  }.freeze
+
   before_action :require_authentication
   before_action :check_two_factor_setup
 
@@ -12,7 +17,7 @@ class ProfilesController < ApplicationController
 
     respond_to do |format|
       format.html do
-        render profile_view(person: @person, account: @account)
+        render profile_view(person: @person, account: @account, active_section: params[:section])
       end
     end
   end
@@ -39,12 +44,15 @@ class ProfilesController < ApplicationController
     @account = current_account
 
     respond_to do |format|
-      format.html { redirect_to profile_path, notice: t('.removed') }
+      format.html { redirect_to profile_redirect_path, notice: t('.removed') }
       format.turbo_stream do
         flash.now[:notice] = t('.removed')
         render turbo_stream: [
           turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice])),
-          turbo_stream.replace('main-content', profile_view(person: @person, account: @account))
+          turbo_stream.replace(
+            'main-content',
+            profile_view(person: @person, account: @account, active_section: profile_section)
+          )
         ]
       end
     end
@@ -63,28 +71,30 @@ class ProfilesController < ApplicationController
             )
           ]
         end
-        format.html { redirect_to profile_path }
+        format.html { redirect_to profile_redirect_path }
       end
     else
       respond_to do |format|
         format.turbo_stream { head :unprocessable_content }
-        format.html { redirect_to profile_path, alert: 'Could not save preference.' } # rubocop:disable Rails/I18nLocaleTexts
+        format.html do
+          redirect_to profile_redirect_path,
+                      alert: 'Could not save preference.' # rubocop:disable Rails/I18nLocaleTexts
+        end
       end
     end
   end
 
   private
 
-  def profile_view(person:, account:)
-    person.association(:notification_preference).load_target
-    api_app_tokens = account.api_app_tokens.active.order(created_at: :desc).to_a
-    membership = account.active_household_membership_for(person.household)
-    managed_grants = ManagedNotificationGrantsQuery.new(membership: membership).call
+  def profile_view(person:, account:, active_section: nil, new_api_app_token: nil)
     Views::Profiles::Show.new(
-      person: person,
-      account: account,
-      api_app_tokens: api_app_tokens,
-      managed_notification_grants: managed_grants
+      presenter: Profiles::Presenter.build(
+        person:,
+        account:,
+        household: person.household,
+        active_section:,
+        new_api_app_token:
+      )
     )
   end
 
@@ -143,12 +153,15 @@ class ProfilesController < ApplicationController
 
   def respond_profile_updated(person:, account:, close_modal: false)
     respond_to do |format|
-      format.html { redirect_to profile_path, notice: t('profiles.updated') }
+      format.html { redirect_to profile_redirect_path, notice: t('profiles.updated') }
       format.turbo_stream do
         flash.now[:notice] = t('profiles.updated')
         streams = [turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))]
         streams.unshift(turbo_stream.update('modal', '')) if close_modal
-        streams << turbo_stream.replace('main-content', profile_view(person: person, account: account))
+        streams << turbo_stream.replace(
+          'main-content',
+          profile_view(person:, account:, active_section: profile_section)
+        )
         render turbo_stream: streams
       end
     end
@@ -157,17 +170,19 @@ class ProfilesController < ApplicationController
   def respond_profile_failed(record)
     message = t('profiles.profile_update_failed', errors: record.errors.full_messages.join(', '))
     respond_to do |format|
-      format.html { redirect_to profile_path, alert: message }
+      format.html { redirect_to profile_redirect_path, alert: message }
       format.turbo_stream do
         flash.now[:alert] = message
-        render turbo_stream: turbo_stream.update('flash', Components::Layouts::Flash.new(alert: flash[:alert]))
+        options = { turbo_stream: profile_error_stream(message) }
+        options[:status] = :unprocessable_content if profile_error_target
+        render(**options)
       end
     end
   end
 
   def respond_no_changes
     respond_to do |format|
-      format.html { redirect_to profile_path, alert: t('profiles.no_changes') }
+      format.html { redirect_to profile_redirect_path, alert: t('profiles.no_changes') }
       format.turbo_stream do
         flash.now[:alert] = t('profiles.no_changes')
         render turbo_stream: turbo_stream.update('flash', Components::Layouts::Flash.new(alert: flash[:alert]))
@@ -198,5 +213,28 @@ class ProfilesController < ApplicationController
   def direct_email_change_requested?
     account_attributes = params[:account]
     account_attributes.respond_to?(:key?) && (account_attributes.key?(:email) || account_attributes.key?('email'))
+  end
+
+  def profile_section
+    requested = params[:section].to_s
+    Profiles::Presenter::SECTIONS.include?(requested) ? requested : 'profile'
+  end
+
+  def profile_redirect_path
+    requested = params[:section].to_s
+    return profile_path unless Profiles::Presenter::SECTIONS.include?(requested)
+
+    profile_path(section: requested)
+  end
+
+  def profile_error_stream(message)
+    target = profile_error_target
+    return turbo_stream.update('flash', Components::Layouts::Flash.new(alert: message)) unless target
+
+    turbo_stream.update(target, RubyUI::Alert.new(variant: :destructive) { message })
+  end
+
+  def profile_error_target
+    PROFILE_SETTING_TARGETS[params[:profile_setting].to_s]
   end
 end

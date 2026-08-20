@@ -7,11 +7,14 @@ module Views
       include Phlex::Rails::Helpers::ButtonTo
       include Phlex::Rails::Helpers::Routes
 
-      attr_reader :account
+      attr_reader :account, :passkeys, :recovery_codes_count
 
-      def initialize(account:)
+      def initialize(account:, passkeys:, totp_enabled:, recovery_codes_count:)
         super()
         @account = account
+        @passkeys = passkeys
+        @totp_enabled = totp_enabled
+        @recovery_codes_count = recovery_codes_count
       end
 
       def otp_disable_path
@@ -90,21 +93,23 @@ module Views
             render Components::Icons::CheckCircle.new(size: 20, class: 'text-green-600')
             div do
               p(class: 'text-sm font-medium text-foreground') { 'Recovery codes generated' }
-              p(class: 'text-xs text-on-surface-variant') { "#{recovery_codes_count} codes available" }
+              p(class: 'text-xs text-on-surface-variant') { recovery_codes_status }
             end
           end
           div(class: 'flex gap-2') do
             render RubyUI::Link.new(
               variant: :outlined,
               size: :sm,
-              href: '/recovery-codes'
+              href: '/recovery-codes',
+              data: modal_link_data
             ) { 'View codes' }
             button_to(
               'Regenerate',
               '/recovery-codes',
               method: :post,
               class: 'inline-flex min-h-11 items-center justify-center rounded-shape-full border border-outline px-3 py-2 text-sm font-medium ring-offset-background transition-colors hover:bg-tertiary-container hover:text-on-tertiary-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
-              data: { turbo_confirm: 'This will invalidate your existing recovery codes. Continue?' }
+              data: { turbo_confirm: 'This will invalidate your existing recovery codes. Continue?' },
+              form: modal_form_data
             )
           end
         end
@@ -121,8 +126,6 @@ module Views
       end
 
       def render_passkeys_list
-        passkeys = account.account_webauthn_keys.order(created_at: :desc)
-
         if passkeys.empty?
           render_empty_passkeys_state
         else
@@ -150,14 +153,15 @@ module Views
             div do
               p(class: 'text-sm font-medium text-foreground') { passkey.nickname }
               p(class: 'text-xs text-on-surface-variant') do
-                "Added #{passkey.created_at.strftime('%B %d, %Y')}"
+                passkey_added_on(passkey)
               end
             end
           end
           render RubyUI::Link.new(
-            href: "/webauthn-remove?#{URI.encode_www_form(view_context.rodauth.webauthn_remove_param => passkey.webauthn_id)}",
+            href: passkey_remove_path(passkey),
             variant: :link,
-            class: 'text-sm text-destructive hover:text-destructive/80 font-medium p-0 h-auto'
+            class: 'text-sm text-destructive hover:text-destructive/80 font-medium p-0 h-auto',
+            data: modal_link_data
           ) { 'Remove' }
         end
       end
@@ -167,7 +171,8 @@ module Views
           render RubyUI::Link.new(
             variant: :outlined,
             size: :sm,
-            href: '/webauthn-setup'
+            href: '/webauthn-setup',
+            data: modal_link_data
           ) { 'Add a passkey' }
         end
       end
@@ -188,7 +193,8 @@ module Views
           render RubyUI::Link.new(
             variant: :outlined,
             size: :sm,
-            href: disable_path
+            href: disable_path,
+            data: modal_link_data
           ) { disable_text }
         end
       end
@@ -202,37 +208,39 @@ module Views
           render RubyUI::Link.new(
             variant: :outlined,
             size: :sm,
-            href: setup_path
+            href: setup_path,
+            data: modal_link_data
           ) { setup_text }
         end
       end
 
       def totp_enabled?
-        return false unless ActiveRecord::Base.connection.table_exists?('account_otp_keys')
-
-        AccountOtpKey.exists?(id: account.id)
-      rescue StandardError
-        false
+        @totp_enabled
       end
 
       def recovery_codes_exist?
-        return false unless ActiveRecord::Base.connection.table_exists?('account_recovery_codes')
-
         recovery_codes_count.positive?
-      rescue StandardError
-        false
       end
 
-      def recovery_codes_count
-        return @recovery_codes_count if defined?(@recovery_codes_count)
+      def recovery_codes_status
+        "#{recovery_codes_count} codes available"
+      end
 
-        @recovery_codes_count = if ActiveRecord::Base.connection.table_exists?('account_recovery_codes')
-                                  AccountRecoveryCode.where(id: account.id).count
-                                else
-                                  0
-                                end
-      rescue StandardError
-        @recovery_codes_count = 0
+      def passkey_added_on(passkey)
+        "Added #{passkey.created_at.strftime('%B %d, %Y')}"
+      end
+
+      def passkey_remove_path(passkey)
+        query = URI.encode_www_form(view_context.rodauth.webauthn_remove_param => passkey.webauthn_id)
+        "/webauthn-remove?#{query}"
+      end
+
+      def modal_link_data
+        { turbo_frame: 'modal' }
+      end
+
+      def modal_form_data
+        { data: modal_link_data }
       end
     end
     # rubocop:enable Metrics/ClassLength

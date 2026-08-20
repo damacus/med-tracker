@@ -30,4 +30,14 @@ RSpec.describe Views::Rodauth::OtpSetup, type: :component do
     expect(copy_button).to be_present
     expect(copy_button.at_css('svg[aria-hidden="true"]')).to be_present
   end
+
+  it 'renders the authentication code as a six-slot OTP input' do
+    rendered = render_inline(described_class.new)
+    input = rendered.at_css('input#otp[name="otp"]')
+
+    expect(input).to be_present
+    expect(input['aria-label']).to eq('Authentication Code')
+    expect(input['autocomplete']).to eq('one-time-code')
+    expect(rendered.css('[data-ruby-ui--input-otp-target="slot"]').count).to eq(6)
+  end
 end

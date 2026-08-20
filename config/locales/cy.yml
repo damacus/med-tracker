@@ -1486,6 +1486,30 @@ cy:
     paused: 'Methu cymryd meddyginiaeth: wedi''i hoedi'
     overlapping_prescription_restriction: 'Methu cymryd meddyginiaeth: mae presgripsiwn gweithredol arall ar gyfer y feddyginiaeth hon yn gosod terfyn amser llymach.'
   profiles:
+    common:
+      "on": Ymlaen
+      "off": I ffwrdd
+    sections:
+      profile:
+        title: Proffil
+      security:
+        title: Diogelwch
+        password_updated: Cyfrinair wedi'i ddiweddaru
+        two_factor_on: "2FA: Ymlaen"
+        two_factor_off: "2FA: Heb ei alluogi"
+        passkeys: "%{count} allweddi mynediad"
+      notifications:
+        title: Hysbysiadau
+        reminders: "Nodiadau atgoffa: %{state}"
+        categories: "%{count} categori wedi'u galluogi"
+      advanced:
+        title: Uwch
+        tokens: "%{count} tocyn API gweithredol"
+        exports: Allforio data ar gael
+        data_backup: Copi wrth gefn o ddata
+        data_backup_description: Lawrlwythwch gopi o'ch cofnodion meddyginiaeth ac iechyd.
+        experiments: Arbrofion
+        experiments_description: Rhowch gynnig ar opsiynau rhyngwyneb newydd cyn iddynt gael eu rhyddhau.
     updated: Diweddarwyd y proffil yn llwyddiannus.
     email_change_requires_verification: Defnyddiwch y llif newid e-bost wedi'i ddilysu
       i ddiweddaru eich e-bost mewngofnodi.
@@ -1565,6 +1589,10 @@ cy:
       gravatar_label: Defnyddio Gravatar
       gravatar_description: Dangos eich Gravatar pan nad oes avatar personol wedi'i uwchlwytho.
       save_gravatar: Cadw dewis Gravatar
+    time_zone:
+      title: Parth Amser
+      description: Dewiswch y parth amser ar gyfer nodiadau atgoffa a dosau wedi'u cofnodi.
+      save: Cadw'r parth amser
     account_security:
       title: Diogelwch Cyfrif
       description: Rheoli eich manylion mewngofnodi a'ch gosodiadau diogelwch
