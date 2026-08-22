@@ -63,6 +63,7 @@ Rails.application.configure do
   # Replace the default in-process and non-durable queuing backend for Active Job.
   config.active_job.queue_adapter = :solid_queue
   config.solid_queue.connects_to = { database: { writing: :queue } }
+  config.solid_queue.supervisor_pidfile = '/tmp/solid-queue-supervisor.pid'
 
   # Raise delivery errors in production so failures surface in logs/APM
   config.action_mailer.raise_delivery_errors = true

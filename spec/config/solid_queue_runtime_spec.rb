@@ -30,6 +30,10 @@ RSpec.describe SolidQueueRuntime do
     expect(deploy_config.dig('env', 'clear', 'SOLID_QUEUE_SUPERVISOR_MODE')).to eq('async')
   end
 
+  it 'configures the supervisor PID file for production monitoring' do
+    expect(production_config).to include("config.solid_queue.supervisor_pidfile = '/tmp/solid-queue-supervisor.pid'")
+  end
+
   it 'includes the Async runtime dependency' do
     expect(gemfile).to include("gem 'async', '>= 2.24'")
   end
@@ -65,6 +69,10 @@ RSpec.describe SolidQueueRuntime do
 
   def puma_config
     Rails.root.join('config/puma.rb').read
+  end
+
+  def production_config
+    Rails.root.join('config/environments/production.rb').read
   end
 
   def deploy_config
