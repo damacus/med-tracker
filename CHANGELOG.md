@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.23](https://github.com/damacus/med-tracker/compare/v0.5.22...v0.5.23) (2026-08-22)
+
+
+### Features
+
+* **api:** generate native API clients ([#1965](https://github.com/damacus/med-tracker/issues/1965)) ([a359034](https://github.com/damacus/med-tracker/commit/a359034d50bb3ca91b939af361a7066fddf4e402))
+
+
+### Bug Fixes
+
+* **security:** harden controller-generated URLs and attributes ([#1948](https://github.com/damacus/med-tracker/issues/1948)) ([059c190](https://github.com/damacus/med-tracker/commit/059c190f53e00cd8e5f2337c61ce2d2481b3b255))
+
 ## [0.5.22](https://github.com/damacus/med-tracker/compare/v0.5.21...v0.5.22) (2026-08-18)
 
 
