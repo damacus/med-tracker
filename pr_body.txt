@@ -1,0 +1,4 @@
+💡 What: Stripped the `:includes` statement from the relation before performing count aggregation in `MedicationReviewPromptsController#review_counts` and `render_index`.
+🎯 Why: Because the `scope` had preloaded associations via `.includes`, calling `.count` triggered Rails to build unnecessary `LEFT OUTER JOIN`s. Stripping it makes it perform a simple integer count query.
+📊 Impact: Faster query times and less DB load for medication reviews since `SELECT COUNT(*)` requires significantly less memory and processing on the database compared to aggregated distinct joins.
+🔬 Measurement: Verify by reviewing SQL logs during local development of `/medication_review_prompts` or by benchmarking page load metrics.
