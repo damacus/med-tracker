@@ -35,7 +35,7 @@ class MedicationReviewPromptsController < ApplicationController
     render Components::MedicationReviews::IndexView.new(
       prompts: prompts,
       filters: {
-        hidden_count: scope.hidden_low_signal.count,
+        hidden_count: scope.except(:includes).hidden_low_signal.count,
         show_hidden: show_hidden?,
         review_status: review_status_filter,
         priority: priority_filter,
