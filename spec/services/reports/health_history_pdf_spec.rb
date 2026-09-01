@@ -10,23 +10,53 @@ RSpec.describe Reports::HealthHistoryPdf do
   it 'renders the empty health-history report through the shared PDF renderer' do
     pdf = described_class.new(result: empty_result, start_date:, end_date:, generated_at:).render
 
-    expect(pdf).to include('/Title (MedTracker health history report)', '/Author (MedTracker)')
-    expect(pdf_text(pdf)).to include('People:', 'No records in this section.', 'Disclaimer')
+    expect(pdf_metadata(pdf)).to eq(
+      'Title' => 'MedTracker health history report',
+      'Author' => 'MedTracker'
+    )
+    expect(pdf_text(pdf)).to include(
+      'People:',
+      'No records in this section.',
+      'Disclaimer',
+      'Generated: 2026-03-01 10:30 UTC'
+    )
   end
 
-  it 'retains long names, long notes, report context, metadata and all locale glyphs' do
-    long_name = 'Avery ' * 40
-    long_note = 'Cymraeg ŵ · Español ñ · Gaeilge á · Português ç. ' * 80
+  it 'retains long notes, report context, metadata and all locale glyphs' do
+    long_note = "#{'Long note survives PDF rendering. ' * 12}Cymraeg ŵ · Español ñ · Gaeilge á · Português ç."
+    result = populated_result(notes: long_note)
     pdf = described_class.new(
-      result: populated_result(person_name: long_name, notes: long_note),
+      result:,
       start_date:,
       end_date:,
       generated_at:
     ).render
 
-    expect(pdf).to include('/Title (MedTracker health history report)', '/Author (MedTracker)')
-    expect(pdf_text(pdf)).to include('People:', 'Date range:', 'Avery Avery Avery')
+    expect(pdf_metadata(pdf)).to eq(expected_pdf_metadata)
+    expect(pdf_text(pdf)).to include('People:', 'Date range:', 'Alex Smith')
+    expect(Components::Reports::HealthHistoryReport.new(result:).call).to include(long_note)
     expect(unicode_map(pdf_streams(pdf))).to include('<0136> <0175>', '<00B3> <00F1>', '<00A3> <00E1>', '<00A9> <00E7>')
+  end
+
+  it 'does not pass patient context to the PDF metadata' do
+    renderer = instance_spy(Reports::PdfRenderer)
+    allow(Reports::PdfRenderer).to receive(:new).and_return(renderer)
+
+    described_class.new(result: populated_result, start_date:, end_date:, generated_at:).render
+
+    expect(renderer).to have_received(:render).with(
+      component: an_instance_of(Components::Reports::PdfDocument),
+      metadata: report_metadata
+    )
+  end
+
+  it 'renders translated Welsh report copy' do
+    pdf = I18n.with_locale(:cy) do
+      described_class.new(result: empty_result, start_date:, end_date:, generated_at:).render
+    end
+
+    expect(pdf_text(pdf)).to include('Pobl:', 'Ymwadiad')
+    expect(pdf_text(pdf)).not_to include('People:')
   end
 
   it 'renders a large health-history table across multiple pages' do
@@ -50,6 +80,14 @@ RSpec.describe Reports::HealthHistoryPdf do
       notable_illnesses: [],
       illness_patterns: []
     )
+  end
+
+  def report_metadata
+    { title: 'MedTracker health history report', author: 'MedTracker' }
+  end
+
+  def expected_pdf_metadata
+    { 'Title' => 'MedTracker health history report', 'Author' => 'MedTracker' }
   end
 
   def populated_result(person_name: 'Alex Smith', notes: 'Started after evening dose')

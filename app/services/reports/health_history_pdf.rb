@@ -30,7 +30,7 @@ module Reports
     end
 
     def metadata
-      { title: t('title'), author: 'MedTracker', subject: header_context }
+      { title: t('title'), author: 'MedTracker' }
     end
 
     def header_context
