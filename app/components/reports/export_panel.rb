@@ -1,11 +1,11 @@
 module Components
   module Reports
     class ExportPanel < Components::Base
-      def initialize(href:, title:, description:, scope:, label:, preparing_label:)
+      def initialize(href:, label:, preparing_label:, **content)
         @href = href
-        @title = title
-        @description = description
-        @scope = scope
+        @title = content.fetch(:title)
+        @description = content.fetch(:description)
+        @scope = content.fetch(:scope)
         @label = label
         @preparing_label = preparing_label
         super()
@@ -13,7 +13,10 @@ module Components
 
       def view_template
         section(
-          class: 'flex flex-col gap-4 rounded-[1.5rem] border border-border/70 bg-surface-container-low p-5 sm:flex-row sm:items-center sm:justify-between',
+          class: [
+            'flex flex-col gap-4 rounded-[1.5rem] border border-border/70 bg-surface-container-low p-5',
+            'sm:flex-row sm:items-center sm:justify-between'
+          ].join(' '),
           data: { testid: 'pdf-export-panel' }
         ) do
           div(class: 'min-w-0 space-y-1') do

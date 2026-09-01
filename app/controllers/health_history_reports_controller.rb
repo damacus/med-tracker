@@ -16,8 +16,13 @@ class HealthHistoryReportsController < ApplicationController
     redirect_to reports_path(start_date: params[:start_date], end_date: params[:end_date], person_id: params[:person_id])
   rescue ArgumentError
     redirect_to reports_path, alert: t('reports.invalid_date')
-  rescue Reports::PdfRenderer::Error => error
-    Rails.logger.error("PDF rendering failed report_type=health_history exception_class=#{error.class.name}")
+  rescue Reports::PdfRenderer::Error => e
+    Observability::DiagnosticEvent.emit(
+      component: :health_history_pdf_export,
+      reason: :operation_failed,
+      severity: :error,
+      error: e
+    )
     redirect_to reports_path(start_date: params[:start_date], end_date: params[:end_date], person_id: params[:person_id]),
                 alert: t('reports.export.pdf_unavailable')
   end

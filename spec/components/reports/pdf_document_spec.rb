@@ -42,6 +42,11 @@ RSpec.describe Components::Reports::PdfDocument, type: :component do
   end
 
   def expect_print_stylesheet(stylesheet)
+    expect_page_and_pagination_rules(stylesheet)
+    expect_report_layout_rules(stylesheet)
+  end
+
+  def expect_page_and_pagination_rules(stylesheet)
     expect(stylesheet).to include(
       '@page',
       'size: A4',
@@ -53,7 +58,12 @@ RSpec.describe Components::Reports::PdfDocument, type: :component do
       'break-inside: avoid',
       'widows: 3',
       'orphans: 3',
-      'break-after: avoid',
+      'break-after: avoid'
+    )
+  end
+
+  def expect_report_layout_rules(stylesheet)
+    expect(stylesheet).to include(
       'table-layout: fixed',
       'overflow-wrap: anywhere',
       'margin: 0 -16mm 10mm',
@@ -61,7 +71,8 @@ RSpec.describe Components::Reports::PdfDocument, type: :component do
       '.person-review-first-prompt { break-inside: avoid; page-break-inside: avoid; }',
       '.health-history-side-effects-table th:nth-child(1)',
       'width: 12%',
-      '.health-history-side-effects-table th:nth-child(4), .health-history-side-effects-table td:nth-child(4) { width: 15%; }'
+      '.health-history-side-effects-table th:nth-child(4), ' \
+      '.health-history-side-effects-table td:nth-child(4) { width: 15%; }'
     )
   end
 end

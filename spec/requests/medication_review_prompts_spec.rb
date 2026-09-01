@@ -209,7 +209,7 @@ RSpec.describe 'Medication review prompts' do
     renderer = instance_double(Reports::MedicationReviewPdf)
     allow(Reports::MedicationReviewPdf).to receive(:new).and_return(renderer)
     allow(renderer).to receive(:render).and_raise(Reports::PdfRenderer::Error, 'rendering failed')
-    allow(Rails.logger).to receive(:error)
+    allow(Observability::DiagnosticEvent).to receive(:emit)
 
     get medication_review_report_path, params: { person_id: person.id }
 
@@ -217,8 +217,11 @@ RSpec.describe 'Medication review prompts' do
     expect(response.media_type).not_to eq('application/pdf')
     expect(response.body).not_to start_with('%PDF')
     expect(flash[:alert]).to eq(I18n.t('reports.export.pdf_unavailable'))
-    expect(Rails.logger).to have_received(:error).with(
-      include('report_type=medication_review', 'exception_class=Reports::PdfRenderer::Error')
+    expect(Observability::DiagnosticEvent).to have_received(:emit).with(
+      component: :medication_review_pdf_export,
+      reason: :operation_failed,
+      severity: :error,
+      error: an_instance_of(Reports::PdfRenderer::Error)
     )
   end
 

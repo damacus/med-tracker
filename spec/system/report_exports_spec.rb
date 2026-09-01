@@ -18,7 +18,8 @@ RSpec.describe 'Report exports', :browser do
     expect(export['aria-busy']).to eq('true')
     expect(export['aria-disabled']).to eq('true')
     expect(export).to have_text('Preparing PDF...')
-    sleep 1.1
+    page.execute_script("window.setTimeout(() => { document.body.dataset.pdfExportDelayElapsed = 'true' }, 1100)")
+    expect(page).to have_css('body[data-pdf-export-delay-elapsed="true"]')
     expect(export['aria-busy']).to eq('true')
     duplicate_prevented = page.evaluate_script(<<~JS, export)
       (() => {
@@ -87,14 +88,8 @@ RSpec.describe 'Report exports', :browser do
   end
 
   def defer_pdf_request(export)
+    track_pdf_downloads
     page.execute_script(<<~JS, export)
-      window.pdfExportAborted = false;
-      window.pdfExportDownloads = 0;
-      window.pdfExportCreateObjectUrl = URL.createObjectURL;
-      URL.createObjectURL = (blob) => {
-        window.pdfExportDownloads += 1;
-        return window.pdfExportCreateObjectUrl(blob);
-      };
       window.fetch = (_url, options) => new Promise((resolve) => {
         options?.signal?.addEventListener('abort', () => {
           window.pdfExportAborted = true;
@@ -102,6 +97,18 @@ RSpec.describe 'Report exports', :browser do
         window.resolvePdfExport = resolve;
       });
       arguments[0].focus();
+    JS
+  end
+
+  def track_pdf_downloads
+    page.execute_script(<<~JS)
+      window.pdfExportAborted = false;
+      window.pdfExportDownloads = 0;
+      window.pdfExportCreateObjectUrl = URL.createObjectURL;
+      URL.createObjectURL = (blob) => {
+        window.pdfExportDownloads += 1;
+        return window.pdfExportCreateObjectUrl(blob);
+      };
     JS
   end
 

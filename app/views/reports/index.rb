@@ -4,7 +4,52 @@ module Views
   module Reports
     InsightCard = Data.define(:title, :value, :description, :icon_class, :text_color, :icon_background_class)
 
+    module ExportControls
+      private
+
+      def render_health_history_export_panel
+        render Components::Reports::ExportPanel.new(
+          href: health_history_export_path,
+          title: t('reports.index.export.health_history_title'),
+          description: t('reports.index.export.health_history_description'),
+          scope: health_history_export_scope,
+          label: t('reports.index.download_pdf'),
+          preparing_label: t('reports.export.preparing_pdf')
+        )
+      end
+
+      def health_history_export_path
+        view_context.health_history_report_path(
+          start_date: @start_date,
+          end_date: @end_date,
+          person_id: @selected_person_id.presence
+        )
+      end
+
+      def health_history_export_scope
+        t(
+          'reports.index.export.health_history_scope',
+          people: health_history_export_people,
+          start_date: I18n.l(@start_date),
+          end_date: I18n.l(@end_date)
+        )
+      end
+
+      def health_history_export_people
+        selected_people = if @selected_person_id.present?
+                            @people.select { |person| person.id.to_s == @selected_person_id }
+                          else
+                            @people
+                          end
+        return t('reports.health_history.no_people') if selected_people.empty?
+
+        selected_people.map(&:name).to_sentence
+      end
+    end
+
     class Index < Views::Base
+      include ExportControls
+
       def initialize(daily_data:, smart_insights:, start_date:, end_date:, **options)
         @daily_data = daily_data
         @smart_insights = smart_insights
@@ -96,16 +141,7 @@ module Views
             m3_heading(level: 2, size: '5', class: 'font-bold') { t('reports.index.timeline_title') }
           end
 
-          render Components::Reports::ExportPanel.new(
-            href: view_context.health_history_report_path(start_date: @start_date, end_date: @end_date,
-                                                          person_id: @selected_person_id.presence),
-            title: t('reports.index.export.health_history_title'),
-            description: t('reports.index.export.health_history_description'),
-            scope: t('reports.index.export.health_history_scope', people: export_people,
-                                                               start_date: I18n.l(@start_date), end_date: I18n.l(@end_date)),
-            label: t('reports.index.download_pdf'),
-            preparing_label: t('reports.export.preparing_pdf')
-          )
+          render_health_history_export_panel
 
           m3_card(class: 'border border-border/70 bg-card p-8 shadow-elevation-2 sm:p-10') do
             div(class: 'flex items-end justify-between h-64 gap-4 px-2') do
@@ -140,13 +176,6 @@ module Views
       end
 
       def bar_height_class(percentage) = "report-compliance-bar-height-#{percentage.to_i.round(-1).clamp(0, 100)}"
-
-      def export_people
-        selected_people = @selected_person_id.present? ? @people.select { |person| person.id.to_s == @selected_person_id } : @people
-        return t('reports.health_history.no_people') if selected_people.empty?
-
-        selected_people.map(&:name).to_sentence
-      end
 
       def render_insights_grid
         section(id: 'insights', class: 'space-y-6 scroll-mt-24') do

@@ -128,7 +128,7 @@ RSpec.describe 'Reports' do
       renderer = instance_double(Reports::HealthHistoryPdf)
       allow(Reports::HealthHistoryPdf).to receive(:new).and_return(renderer)
       allow(renderer).to receive(:render).and_raise(Reports::PdfRenderer::Error, 'rendering failed')
-      allow(Rails.logger).to receive(:error)
+      allow(Observability::DiagnosticEvent).to receive(:emit)
 
       get health_history_report_path,
           params: { start_date: '2026-02-01', end_date: '2026-02-28', person_id: people(:john).id }
@@ -139,8 +139,11 @@ RSpec.describe 'Reports' do
       expect(response.media_type).not_to eq('application/pdf')
       expect(response.body).not_to start_with('%PDF')
       expect(flash[:alert]).to eq(I18n.t('reports.export.pdf_unavailable'))
-      expect(Rails.logger).to have_received(:error).with(
-        include('report_type=health_history', 'exception_class=Reports::PdfRenderer::Error')
+      expect(Observability::DiagnosticEvent).to have_received(:emit).with(
+        component: :health_history_pdf_export,
+        reason: :operation_failed,
+        severity: :error,
+        error: an_instance_of(Reports::PdfRenderer::Error)
       )
     end
 

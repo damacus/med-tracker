@@ -15,21 +15,24 @@ AllCops:
     - "scripts/**/*"
     - "bin/{rails,rake}"
     - !ruby/regexp /old_and_unused\.rb$/
-  <% `git status --ignored --porcelain`.lines.grep(/^!! /).each do |path| %>
+  <% `git -c safe.directory=/app status --ignored --porcelain`.lines.grep(/^!! /).each do |path| %>
     - <%= path.sub(/^!! /, '').sub(/\/$/, '/**/*') %>
   <% end %>
 
 Style/FrozenStringLiteralComment:
   Exclude:
     - "app/components/reports/pdf_document.rb"
+    - "app/components/reports/export_panel.rb"
     - "app/components/reports/pdf_stylesheet.rb"
     - "app/components/reports/medication_review_report.rb"
     - "app/services/reports/pdf_renderer.rb"
     - "spec/components/reports/pdf_document_spec.rb"
+    - "spec/components/reports/export_panel_spec.rb"
     - "spec/components/reports/medication_review_report_spec.rb"
     - "spec/services/reports/pdf_renderer_spec.rb"
     - "spec/services/reports/medication_review_pdf_spec.rb"
     - "spec/services/reports/sghtmltopdf_contract_spec.rb"
+    - "spec/system/report_exports_spec.rb"
 
 Rails/OutputSafety:
   Exclude:

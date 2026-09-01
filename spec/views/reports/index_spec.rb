@@ -186,27 +186,38 @@ RSpec.describe Views::Reports::Index do
 
   it 'uses the active locale for the PDF export label and preparation state' do
     %i[en cy es ga pt].each do |locale|
-      rendered = Nokogiri::HTML5(
-        Components::Reports::ExportPanel.new(
-          href: '/reports/health-history',
-          title: I18n.t('reports.index.export.health_history_title', locale:),
-          description: I18n.t('reports.index.export.health_history_description', locale:),
-          scope: I18n.t(
-            'reports.index.export.health_history_scope',
-            locale:,
-            people: 'Person',
-            start_date: '2026-01-01',
-            end_date: '2026-01-31'
-          ),
-          label: I18n.t('reports.index.download_pdf', locale:),
-          preparing_label: I18n.t('reports.export.preparing_pdf', locale:)
-        ).call
-      )
-      link = rendered.at_css('[data-testid="pdf-export-panel"] a')
+      link = localized_export_link(locale)
 
       expect(link.text).to include(I18n.t('reports.index.download_pdf', locale:))
       expect(link['data-pdf-export-preparing-label-value']).to eq(I18n.t('reports.export.preparing_pdf', locale:))
     end
+  end
+
+  def localized_export_link(locale)
+    Nokogiri::HTML5(
+      Components::Reports::ExportPanel.new(**localized_export_attributes(locale)).call
+    ).at_css('[data-testid="pdf-export-panel"] a')
+  end
+
+  def localized_export_attributes(locale)
+    {
+      href: '/reports/health-history',
+      title: I18n.t('reports.index.export.health_history_title', locale:),
+      description: I18n.t('reports.index.export.health_history_description', locale:),
+      scope: localized_export_scope(locale),
+      label: I18n.t('reports.index.download_pdf', locale:),
+      preparing_label: I18n.t('reports.export.preparing_pdf', locale:)
+    }
+  end
+
+  def localized_export_scope(locale)
+    I18n.t(
+      'reports.index.export.health_history_scope',
+      locale:,
+      people: 'Person',
+      start_date: '2026-01-01',
+      end_date: '2026-01-31'
+    )
   end
 
   it 'uses token-driven report surfaces instead of bespoke analytics gradients and tinted cards' do
