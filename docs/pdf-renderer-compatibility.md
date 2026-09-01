@@ -13,27 +13,29 @@ Prawn until their later migration tasks.
 The rebuilt test image loads both renderers: `prawn=2.5.0` and
 `sghtmltopdf=0.1.1`.
 
-The ARM64 application image was built natively on 1 September 2026 with:
+The ARM64 final image was built natively on 1 September 2026 with:
 
 ```text
-docker buildx build --platform linux/arm64 --target app \
-  --build-arg APP_IMAGE_REF=med-tracker:local-production-build \
-  --tag med-tracker:issue-1997-arm64 --load .
+docker buildx build --platform linux/arm64 --load --build-arg APP_IMAGE_REF=med-tracker:1997-pr1-arm64 -t med-tracker:1997-pr1-arm64 .
 ```
 
-It completed successfully, selected `sghtmltopdf 0.1.1 (aarch64-linux)`, and
-produced an image of 295,072,076 bytes (281.4 MiB). The runtime image has no
-`rustc` or `clang`; the native gem removes the need for Rust or libclang while
-resolving MedTracker's dependencies.
+It selected `sghtmltopdf 0.1.1 (aarch64-linux)`. Image inspection reported
+architecture `arm64` and size 294,950,845 bytes. The MedTracker renderer smoke
+inside the image returned `aarch64-linux 13266 %PDF-1.7`. The observed local
+build wall time was about 51 seconds; it is representative, not a benchmark.
 
-The same `linux/amd64` build was attempted through Docker Desktop emulation on
-this ARM64 host. It reached the production dependency-install stage but could
-not complete before the local command runner's execution boundary terminated
-the emulated build. The earlier disposable Ruby 4.0.6 proof loaded the
-published `sghtmltopdf-0.1.1-x86_64-linux` gem and rendered with a TTF, but it
-is not a substitute for a completed MedTracker application-image check. Run
-the command above with `--platform linux/amd64` in CI or an AMD64-capable
-builder before the lower PR is accepted.
+The AMD64 final image was built through Docker Desktop emulation on this ARM64
+host with:
+
+```text
+docker buildx build --platform linux/amd64 --load --build-arg APP_IMAGE_REF=med-tracker:1997-pr1-amd64 -t med-tracker:1997-pr1-amd64 .
+```
+
+It selected `sghtmltopdf 0.1.1 (x86_64-linux)`. Image inspection reported
+architecture `amd64` and size 298,603,185 bytes. The MedTracker renderer smoke
+inside the image returned `x86_64-linux 13266 %PDF-1.7`. The observed local
+emulated build wall time was about 165 seconds; it is representative, not a
+benchmark.
 
 No clean pre-change application image was available in this worktree, so an
 overall image-size delta was not measured. The committed font and licence add
