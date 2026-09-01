@@ -56,7 +56,12 @@ RSpec.describe Components::Reports::PdfDocument, type: :component do
       'break-after: avoid',
       'table-layout: fixed',
       'overflow-wrap: anywhere',
-      'margin: 0 -16mm 10mm'
+      'margin: 0 -16mm 10mm',
+      '.report-header h1 { margin: 3mm 0 2mm; font-size: 18pt; line-height: 1.15; }',
+      '.person-review-first-prompt { break-inside: avoid; page-break-inside: avoid; }',
+      '.health-history-side-effects-table th:nth-child(1)',
+      'width: 12%',
+      '.health-history-side-effects-table th:nth-child(4), .health-history-side-effects-table td:nth-child(4) { width: 15%; }'
     )
   end
 end

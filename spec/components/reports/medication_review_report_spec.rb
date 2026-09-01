@@ -55,6 +55,11 @@ RSpec.describe Components::Reports::MedicationReviewReport, type: :component do
     expect(rendered.text).to include(*content)
     expect(rendered.at_css('a')['href']).to eq('https://example.test/evidence')
     expect(rendered.at_css('.risk-high')).to be_present
+    first_prompt = rendered.at_css('.person-review-first-prompt')
+
+    expect(first_prompt.at_css('h2').text).to eq('Alex Smith')
+    expect(first_prompt.at_css('.person-review-count')).to be_present
+    expect(first_prompt.at_css('.review-prompt')).to be_present
   end
 
   it 'renders the translated empty state and boundary for every supported locale' do

@@ -57,9 +57,13 @@ module Components
       def people
         prompts.group_by(&:person).each do |person, person_prompts|
           section(class: 'report-section person-review') do
-            h2 { person.name }
-            p(class: 'person-review-count') { t('person_items', count: person_prompts.size) }
-            person_prompts.each { |prompt| prompt_section(prompt) }
+            first_prompt, *remaining_prompts = person_prompts
+            section(class: 'person-review-first-prompt') do
+              h2 { person.name }
+              p(class: 'person-review-count') { t('person_items', count: person_prompts.size) }
+              prompt_section(first_prompt)
+            end
+            remaining_prompts.each { |prompt| prompt_section(prompt) }
           end
         end
       end

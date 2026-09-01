@@ -53,7 +53,7 @@ The application test image passed this contract:
 
 ```text
 task test TEST_FILE=spec/services/reports/sghtmltopdf_contract_spec.rb
-1 example, 0 failures
+2 examples, 0 failures
 ```
 
 It configured the bundled TTF, returned `%PDF-1.7`, embedded the Noto Sans

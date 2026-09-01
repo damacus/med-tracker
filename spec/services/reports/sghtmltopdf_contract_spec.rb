@@ -24,9 +24,12 @@ RSpec.describe Sghtmltopdf do
 
   it 'keeps report PDF rendering free of Prawn dependencies' do
     dependencies = Bundler.load.dependencies.map(&:name)
+    resolved_specs = Bundler.load.specs.map(&:name)
 
     expect(dependencies).to include('sghtmltopdf')
     expect(dependencies).not_to include('prawn', 'prawn-table')
+    expect(resolved_specs).to include('sghtmltopdf')
+    expect(resolved_specs).not_to include('prawn', 'prawn-table', 'pdf-core', 'ttfunk')
   end
 
   def decompressed_streams(pdf)
