@@ -16,6 +16,24 @@ RSpec.describe Components::Reports::PdfDocument, type: :component do
     expect_print_stylesheet(rendered.at_css('style').text)
   end
 
+  it 'uses a localized page label while retaining the shared default' do
+    expect(page_stylesheet('Página <page> de <total>'))
+      .to include('content: "Página " counter(page) " de " counter(pages);')
+    expect(page_stylesheet).to include('content: "Page " counter(page) " of " counter(pages);')
+  end
+
+  def page_stylesheet(page_number = nil)
+    options = {
+      title: 'Report',
+      context: 'Alex Smith',
+      generated_at: Time.utc(2026, 9, 1, 10, 30),
+      content: report_content
+    }
+    options[:page_number] = page_number if page_number
+
+    Nokogiri::HTML5(described_class.new(**options).call).at_css('style').text
+  end
+
   def report_content
     Class.new(Phlex::HTML) do
       def view_template

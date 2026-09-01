@@ -7,6 +7,7 @@ module Components
         @generated_at = generated_at
         @content = content
         @locale = options.fetch(:locale, 'en')
+        @page_number = options.fetch(:page_number, nil)
         @generated_at_text = options.fetch(:generated_at_text, nil)
         @context_lines = options.fetch(:context_lines, nil)
         super()
@@ -18,7 +19,7 @@ module Components
           head do
             meta(charset: 'utf-8')
             title { @title }
-            render PdfStylesheet.new
+            render PdfStylesheet.new(page_number: @page_number)
           end
           body do
             header(class: 'report-header') do

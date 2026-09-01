@@ -5,6 +5,8 @@ module Views
     InsightCard = Data.define(:title, :value, :description, :icon_class, :text_color, :icon_background_class)
 
     module ExportControls
+      attr_reader :include_medication_takes
+
       private
 
       def render_health_history_export_panel
@@ -16,6 +18,14 @@ module Views
           scope: health_history_export_scope,
           label: t('reports.index.download_pdf'),
           preparing_label: t('reports.export.preparing_pdf')
+        )
+      end
+
+      def render_gp_health_history_form
+        render Components::Reports::GpHealthHistoryForm.new(
+          report: self,
+          people: @manageable_people,
+          selected_person_id: @selected_person_id
         )
       end
 
@@ -68,6 +78,7 @@ module Views
         @people = options.fetch(:people)
         @manageable_people = options.fetch(:manageable_people)
         @selected_person_id = options.fetch(:selected_person_id)
+        @include_medication_takes = options.fetch(:include_medication_takes, false)
         super()
       end
 
@@ -77,6 +88,7 @@ module Views
           render_today_section if @daily_data
           render_summary_card if @daily_data
           render_compliance_section if @daily_data
+          render_gp_health_history_form unless @daily_data
           render_insights_grid if @daily_data
         end
       end
@@ -104,7 +116,6 @@ module Views
       end
 
       def render_today_section = render Components::Reports::TodaySection.new(today_taken_medications: @today_taken_medications)
-
       def formatted_date_range = "#{@start_date.strftime('%B %d')} — #{@end_date.strftime('%B %d, %Y')}"
 
       # rubocop:disable Metrics/AbcSize
@@ -149,9 +160,7 @@ module Views
         div(class: 'space-y-8') do
           div(class: 'flex items-center justify-between px-2') do
             m3_heading(level: 2, size: '5', class: 'font-bold') { t('reports.index.timeline_title') }
-            render Components::Reports::GpHealthHistoryForm.new(
-              report: self, people: @manageable_people, selected_person_id: @selected_person_id
-            )
+            render_gp_health_history_form
           end
 
           m3_card(class: 'border border-border/70 bg-card p-8 shadow-elevation-2 sm:p-10') do

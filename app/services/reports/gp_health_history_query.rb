@@ -14,10 +14,11 @@ module Reports
     )
     HealthEventEntry = HealthHistoryQuery::HealthEventEntry
 
-    def initialize(person:, start_date:, end_date:)
+    def initialize(person:, start_date:, end_date:, include_medication_takes: false)
       @person = person
       @start_date = start_date
       @end_date = end_date
+      @include_medication_takes = include_medication_takes
     end
 
     def call
@@ -37,7 +38,7 @@ module Reports
         current_medicines:,
         chronology: most_recent_first(chronology),
         people: [person],
-        medication_takes: [],
+        medication_takes: medication_take_entries,
         suspected_side_effects: entries_for(chronology, :suspected_side_effect?),
         notable_illnesses: entries_for(chronology, :illness?),
         illness_patterns: HealthEvents::PatternSummary.new(events: events.select(&:illness?)).call
@@ -71,6 +72,58 @@ module Reports
           medication_names: event.health_event_medications.map(&:medication_name)
         )
       end
+    end
+
+    def medication_take_entries
+      return [] unless @include_medication_takes
+
+      medication_takes.map do |take|
+        source = take.source
+        HealthHistoryQuery::MedicationTakeEntry.new(
+          person:,
+          taken_at: take.taken_at,
+          medication_name: medication_display_name(source&.medication || take.taken_from_medication),
+          dose_amount: take.dose_amount,
+          dose_unit: take.dose_unit,
+          source_type: source_type(source),
+          location_name: take.inventory_location&.name
+        )
+      end
+    end
+
+    def medication_takes
+      @medication_takes ||= medication_take_scope
+                            .where(schedule_id: schedule_ids)
+                            .or(medication_take_scope.where(person_medication_id: person_medication_ids))
+                            .order(:taken_at, :id)
+    end
+
+    def medication_take_scope
+      MedicationTake.includes(
+        :taken_from_medication,
+        :taken_from_location,
+        schedule: %i[person medication],
+        person_medication: %i[person medication]
+      ).where(taken_at: medication_take_range)
+    end
+
+    def medication_take_range
+      start_date.in_time_zone.beginning_of_day..end_date.in_time_zone.end_of_day
+    end
+
+    def schedule_ids = Schedule.where(person:).select(:id)
+
+    def person_medication_ids = PersonMedication.where(person:).select(:id)
+
+    def medication_display_name(medication)
+      medication&.friendly_name.presence || medication&.name
+    end
+
+    def source_type(source)
+      return :as_needed if source.is_a?(PersonMedication)
+      return :as_needed if source.respond_to?(:schedule_type_prn?) && source.schedule_type_prn?
+
+      :scheduled
     end
 
     def health_events

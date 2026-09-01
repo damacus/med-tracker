@@ -71,7 +71,10 @@ RSpec.describe Views::Reports::Index do
       "/reports/health-history?#{params.to_query}"
     end
     allow(gp_form_view_context).to receive(:health_history_report_path).with({}).and_return('/reports/health-history')
-    allow(gp_form_report).to receive(:view_context).and_return(gp_form_view_context)
+    allow(gp_form_report).to receive_messages(
+      view_context: gp_form_view_context,
+      include_medication_takes: false
+    )
     allow(gp_form_report).to receive(:t) { |key| I18n.t(key) }
     # rubocop:enable RSpec/SubjectStub
   end
@@ -119,6 +122,9 @@ RSpec.describe Views::Reports::Index do
 
     expect(form.at_css('button').text).to include('Download PDF')
     expect(person_select.css('option').pluck('value')).to contain_exactly('', '1', '2')
+    medication_takes_checkbox = form.at_css('#include_medication_takes')
+    expect(medication_takes_checkbox['type']).to eq('checkbox')
+    expect(medication_takes_checkbox['value']).to eq('1')
   end
 
   it 'defaults the GP form to its person prompt' do

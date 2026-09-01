@@ -7,6 +7,7 @@ class ReportsController < ApplicationController
     @people = policy_scope(Person).order(:name, :id)
     @manageable_people = manageable_people
     @selected_person_id = params[:person_id].presence
+    @include_medication_takes = params[:include_medication_takes] == '1'
 
     # Resolve date range
     @date_range = Reports::DateRange.parse(start_date: params[:start_date], end_date: params[:end_date])
@@ -30,7 +31,8 @@ class ReportsController < ApplicationController
       today_taken_medications: today_taken_medications,
       people: @people,
       manageable_people: @manageable_people,
-      selected_person_id: @selected_person_id
+      selected_person_id: @selected_person_id,
+      include_medication_takes: @include_medication_takes
     )
   rescue Reports::DateRange::EndBeforeStart
     render_invalid_date_range
@@ -55,7 +57,8 @@ class ReportsController < ApplicationController
       today_taken_medications: nil,
       people: @people,
       manageable_people: @manageable_people,
-      selected_person_id: @selected_person_id
+      selected_person_id: @selected_person_id,
+      include_medication_takes: @include_medication_takes
     ), status: :unprocessable_content
   end
 
