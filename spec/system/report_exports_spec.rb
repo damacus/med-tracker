@@ -23,6 +23,20 @@ RSpec.describe 'Report exports', :browser do
     expect(page_horizontal_overflow).to be <= 1
   end
 
+  it 'shows renderer feedback after a GP selector submission fails' do
+    visit reports_path
+
+    renderer = instance_double(Reports::HealthHistoryPdf)
+    allow(Reports::HealthHistoryPdf).to receive(:new).and_return(renderer)
+    allow(renderer).to receive(:render).and_raise(Reports::PdfRenderer::Error, 'renderer failed')
+
+    select people(:john).name, from: 'Person for GP report'
+    click_button 'Download PDF'
+
+    expect(page).to have_text(I18n.t('reports.export.pdf_unavailable'))
+    expect(page).to have_current_path(reports_path(person_id: people(:john).id))
+  end
+
   def page_horizontal_overflow
     page.evaluate_script(<<~JS)
       (() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - document.documentElement.clientWidth)()
