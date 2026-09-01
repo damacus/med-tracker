@@ -2075,10 +2075,12 @@ cy:
     invalid_date: Darparwyd fformat dyddiad annilys.
     end_before_start: Rhaid i'r dyddiad gorffen fod ar neu ar ôl y dyddiad dechrau.
     date_range_too_large: Ni chaiff ystod dyddiadau'r adroddiad fod yn fwy na 180 diwrnod.
+    gp_date_range_too_large: Ni chaiff ystod dyddiadau hanes iechyd y meddyg teulu fod yn fwy na 366 diwrnod.
     export:
       pdf_unavailable: Ni ellid paratoi'r PDF. Rhowch gynnig arall arni.
       preparing_pdf: Wrthi'n paratoi PDF...
     health_history:
+      person_required: Dewiswch un person i lawrlwytho hanes iechyd ar gyfer meddyg teulu.
       title: Adroddiad hanes iechyd MedTracker
       people: "Pobl: %{people}"
       no_people: Dim pobl awdurdodedig
@@ -2109,6 +2111,26 @@ cy:
         medications: Meddyginiaethau a amheuir
         notes: Nodiadau
         action: Camau a gymerwyd
+      gp:
+        identity:
+          title: Manylion y person
+          date_of_birth: "Dyddiad geni: %{date}"
+        current_medicines:
+          title: Meddyginiaethau presennol
+        chronology:
+          title: Cronoleg
+          duration: "Hyd: %{duration}"
+          ongoing: Parhaus
+          days: "%{count} diwrnod"
+          severity: "Difrifoldeb: %{severity}"
+          notes: "Nodiadau: %{notes}"
+          action: "Camau a gymerwyd: %{action}"
+          medical_help: "Ceisiwyd cymorth meddygol: %{medical_help}"
+          medications: "Meddyginiaethau cysylltiedig: %{medications}"
+        not_recorded: Heb ei gofnodi
+        none: Dim
+        'yes': 'Ie'
+        'no': 'Na'
       illness_patterns:
         title: Patrymau salwch a gofnodwyd
         summary: Cofnodwyd %{count} achos o "%{title}" rhwng %{first} a %{last}. Yr egwyl gyfartalog rhwng dechrau achosion oedd %{interval} diwrnod.
@@ -2217,6 +2239,8 @@ cy:
         based_on_logs: Yn seiliedig ar ddosau wedi'u cofnodi
       timeline_title: Llinell Amser Cydymffurfiaeth
       download_pdf: Lawrlwytho PDF
+      gp_person_label: Person ar gyfer adroddiad meddyg teulu
+      gp_person_prompt: Dewiswch berson
       export:
         health_history_title: Allforio hanes iechyd
         health_history_description: Lawrlwythwch PDF o'r bobl a'r dyddiadau a ddangosir ar hyn o bryd.

@@ -5,6 +5,7 @@ class ReportsController < ApplicationController
     authorize :report, :index?
 
     @people = policy_scope(Person).order(:name, :id)
+    @manageable_people = manageable_people
     @selected_person_id = params[:person_id].presence
 
     # Resolve date range
@@ -28,6 +29,7 @@ class ReportsController < ApplicationController
       end_date: @end_date,
       today_taken_medications: today_taken_medications,
       people: @people,
+      manageable_people: @manageable_people,
       selected_person_id: @selected_person_id
     )
   rescue Reports::DateRange::EndBeforeStart
@@ -40,6 +42,10 @@ class ReportsController < ApplicationController
 
   private
 
+  def manageable_people
+    PersonPolicy::Scope.new(pundit_user, Person).resolve_for(:manage).order(:name, :id)
+  end
+
   def render_invalid_date_range
     render Views::Reports::Index.new(
       daily_data: nil,
@@ -48,6 +54,7 @@ class ReportsController < ApplicationController
       end_date: params[:end_date],
       today_taken_medications: nil,
       people: @people,
+      manageable_people: @manageable_people,
       selected_person_id: @selected_person_id
     ), status: :unprocessable_content
   end

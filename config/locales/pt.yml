@@ -1486,10 +1486,12 @@ pt:
     invalid_date: Foi fornecido um formato de data inválido.
     end_before_start: A data de fim deve ser igual ou posterior à data de início.
     date_range_too_large: O intervalo de datas do relatorio nao pode exceder 180 dias.
+    gp_date_range_too_large: O intervalo do historial de saúde para o médico de família não pode exceder 366 dias.
     export:
       pdf_unavailable: Não foi possível preparar o PDF. Tente novamente.
       preparing_pdf: A preparar PDF...
     health_history:
+      person_required: Selecione uma pessoa para transferir um historial de saúde para o médico de família.
       title: Relatório do historial de saúde do MedTracker
       people: "Pessoas: %{people}"
       no_people: Não existem pessoas autorizadas
@@ -1520,6 +1522,26 @@ pt:
         medications: Medicamentos suspeitos
         notes: Notas
         action: Medida tomada
+      gp:
+        identity:
+          title: Dados da pessoa
+          date_of_birth: "Data de nascimento: %{date}"
+        current_medicines:
+          title: Medicamentos atuais
+        chronology:
+          title: Cronologia
+          duration: "Duração: %{duration}"
+          ongoing: Em curso
+          days: "%{count} dias"
+          severity: "Gravidade: %{severity}"
+          notes: "Notas: %{notes}"
+          action: "Ação tomada: %{action}"
+          medical_help: "Foi procurada ajuda médica: %{medical_help}"
+          medications: "Medicamentos associados: %{medications}"
+        not_recorded: Não registado
+        none: Nenhum
+        'yes': 'Sim'
+        'no': 'Não'
       illness_patterns:
         title: Padrões de doença registados
         summary: Foram registados %{count} episódios de "%{title}" entre %{first} e %{last}. O intervalo médio entre o início dos episódios foi de %{interval} dias.
@@ -1628,6 +1650,8 @@ pt:
         based_on_logs: Com base nas doses registadas
       timeline_title: Linha temporal de adesão
       download_pdf: Descarregar PDF
+      gp_person_label: Pessoa para o relatório do médico de família
+      gp_person_prompt: Selecione uma pessoa
       export:
         health_history_title: Exportar historial de saúde
         health_history_description: Descarregue um PDF das pessoas e datas atualmente apresentadas.

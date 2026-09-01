@@ -124,61 +124,84 @@ RSpec.describe 'Reports' do
   describe 'GET /reports/health-history' do
     before { sign_in(user) }
 
-    it 'redirects safely when PDF rendering fails' do
-      renderer = instance_double(Reports::HealthHistoryPdf)
-      allow(Reports::HealthHistoryPdf).to receive(:new).and_return(renderer)
-      allow(renderer).to receive(:render).and_raise(Reports::PdfRenderer::Error, 'rendering failed')
-      allow(Observability::DiagnosticEvent).to receive(:emit)
+    it 'uses the twelve-month GP range when the visible control submits only a person' do
+      travel_to Time.zone.local(2026, 7, 9, 12) do
+        get health_history_report_path, params: { person_id: people(:john).id }
 
-      get health_history_report_path,
-          params: { start_date: '2026-02-01', end_date: '2026-02-28', person_id: people(:john).id }
-
-      expect(response).to redirect_to(
-        reports_path(start_date: '2026-02-01', end_date: '2026-02-28', person_id: people(:john).id)
-      )
-      expect(response.media_type).not_to eq('application/pdf')
-      expect(response.body).not_to start_with('%PDF')
-      expect(flash[:alert]).to eq(I18n.t('reports.export.pdf_unavailable'))
-      expect(Observability::DiagnosticEvent).to have_received(:emit).with(
-        component: :health_history_pdf_export,
-        reason: :operation_failed,
-        severity: :error,
-        error: an_instance_of(Reports::PdfRenderer::Error)
-      )
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['Content-Disposition'])
+          .to include('medtracker-health-history-2025-07-09-to-2026-07-09.pdf')
+        audit_event = successful_download_audits.order(:created_at).last
+        expect(audit_event.metadata).to include('start_date' => '2025-07-09', 'end_date' => '2026-07-09')
+      end
     end
 
-    it 'downloads a no-store PDF with the active filters' do
+    it 'downloads a no-store PDF for one manageable person with the GP date range' do
       get health_history_report_path,
-          params: { start_date: '2026-02-01', end_date: '2026-02-28', person_id: people(:john).id }
+          params: { start_date: '2025-02-01', end_date: '2026-02-01', person_id: people(:john).id }
 
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('application/pdf')
       expect(response.headers['Cache-Control']).to include('no-store')
       expect(response.headers['Content-Disposition'])
-        .to include('medtracker-health-history-2026-02-01-to-2026-02-28.pdf')
+        .to include('medtracker-health-history-2025-02-01-to-2026-02-01.pdf')
       expect(response.body).to start_with('%PDF')
-      expect(pdf_text(response.body)).to include('People:', 'Date range:', 'Medication administrations')
+      audit_event = successful_download_audits.order(:created_at).last
+      expect(audit_event.metadata).to eq(
+        'person_id' => people(:john).id,
+        'start_date' => '2025-02-01',
+        'end_date' => '2026-02-01',
+        'include_medication_takes' => false,
+        'outcome' => 'success'
+      )
     end
 
-    it 'does not export an inaccessible person filter' do
-      post '/logout'
-      sign_in(users(:parent))
+    it 'redirects with translated feedback when no person is selected' do
+      get health_history_report_path
 
-      get health_history_report_path, params: { person_id: people(:john).id }
-
-      expect(response).to have_http_status(:ok)
-      expect(response.body).to start_with('%PDF')
+      expect(response).to redirect_to(reports_path)
+      expect(flash[:alert]).to eq('Select one person to download a GP health history.')
     end
 
-    it 'exports an empty PDF for nonnumeric person filters' do
+    it 'redirects with translated feedback for malformed people' do
       get health_history_report_path, params: { person_id: 'not-a-person' }
 
-      expect(response).to have_http_status(:ok)
-      expect(response.body).to start_with('%PDF')
+      expect(response).to redirect_to(reports_path)
+      expect(flash[:alert]).to eq('Select one person to download a GP health history.')
+    end
+
+    it 'returns not found for inaccessible numeric people without auditing' do
+      expect do
+        get health_history_report_path, params: { person_id: 999_999 }
+      end.not_to change(successful_download_audits, :count)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'returns not found without auditing an existing person with view-only access' do
+      downgrade_person_access(people(:john), :view)
+
+      expect do
+        get health_history_report_path, params: { person_id: people(:john).id }
+      end.not_to change(successful_download_audits, :count)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'does not audit a successful download when PDF rendering raises' do
+      renderer = instance_double(Reports::HealthHistoryPdf)
+      allow(Reports::HealthHistoryPdf).to receive(:new).and_return(renderer)
+      allow(renderer).to receive(:render).and_raise(Reports::PdfRenderer::Error, 'rendering failed')
+
+      expect do
+        expect do
+          get health_history_report_path, params: { person_id: people(:john).id }
+        end.to raise_error(Reports::PdfRenderer::Error, 'rendering failed')
+      end.not_to change(successful_download_audits, :count)
     end
 
     it 'redirects with alert when export dates are invalid' do
-      get health_history_report_path, params: { start_date: 'invalid-date' }
+      get health_history_report_path, params: { person_id: people(:john).id, start_date: 'invalid-date' }
 
       expect(response).to redirect_to(reports_path)
       expect(flash[:alert]).to eq('Invalid date format provided.')
@@ -203,11 +226,23 @@ RSpec.describe 'Reports' do
       expect(alerts.first.text).to include('End date must be on or after start date.')
     end
 
-    it 'redirects with alert when the PDF date range exceeds 180 days' do
-      get health_history_report_path, params: { start_date: '2026-01-01', end_date: '2026-07-01' }
+    it 'redirects with alert when the GP date range exceeds 366 days' do
+      get health_history_report_path,
+          params: { person_id: people(:john).id, start_date: '2025-01-01', end_date: '2026-01-03' }
 
       expect(response).to redirect_to(reports_path)
-      expect(flash[:alert]).to eq('Report date range cannot exceed 180 days.')
+      expect(flash[:alert]).to eq('GP health history date range cannot exceed 366 days.')
     end
+  end
+
+  def downgrade_person_access(person, access_level)
+    membership = user.person.account.first_active_household_membership
+    PersonAccessGrant.find_by!(household_membership: membership, person:).update!(access_level:)
+  end
+
+  def successful_download_audits
+    SecurityAuditEvent
+      .where(event_type: 'health_history_report.downloaded')
+      .where('metadata @> ?', { outcome: 'success' }.to_json)
   end
 end

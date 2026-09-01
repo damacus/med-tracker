@@ -1491,6 +1491,7 @@ en:
     invalid_date: Invalid date format provided.
     end_before_start: End date must be on or after start date.
     date_range_too_large: Report date range cannot exceed 180 days.
+    gp_date_range_too_large: GP health history date range cannot exceed 366 days.
     export:
       pdf_unavailable: We could not prepare the PDF. Please try again.
       preparing_pdf: Preparing PDF...
@@ -1517,6 +1518,8 @@ en:
         based_on_logs: Based on logged doses
       timeline_title: Adherence Timeline
       download_pdf: Download PDF
+      gp_person_label: Person for GP report
+      gp_person_prompt: Select a person
       export:
         health_history_title: Export health history
         health_history_description: Download a PDF of the people and dates currently shown.
@@ -1535,6 +1538,7 @@ en:
             We recommend ordering a refill this afternoon.
       actionable_insight: Actionable insight
     health_history:
+      person_required: Select one person to download a GP health history.
       title: MedTracker health history report
       people: "People: %{people}"
       no_people: No authorised people
@@ -1565,6 +1569,26 @@ en:
         medications: Suspected medications
         notes: Notes
         action: Action taken
+      gp:
+        identity:
+          title: Person details
+          date_of_birth: "Date of birth: %{date}"
+        current_medicines:
+          title: Current medicines
+        chronology:
+          title: Chronology
+          duration: "Duration: %{duration}"
+          ongoing: Ongoing
+          days: "%{count} days"
+          severity: "Severity: %{severity}"
+          notes: "Notes: %{notes}"
+          action: "Action taken: %{action}"
+          medical_help: "Medical help sought: %{medical_help}"
+          medications: "Linked medicines: %{medications}"
+        not_recorded: Not recorded
+        none: None
+        'yes': 'Yes'
+        'no': 'No'
       illness_patterns:
         title: Recorded illness patterns
         summary: "%{count} \"%{title}\" episodes were recorded between %{first} and %{last}. The average interval between episode starts was %{interval} days."

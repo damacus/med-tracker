@@ -33,6 +33,10 @@ class PersonPolicy < ApplicationPolicy
     person_grant_allows?(record, :manage)
   end
 
+  def download_health_history?
+    person_grant_allows?(record, :manage)
+  end
+
   private
 
   def new_record_belongs_to_current_household?
@@ -45,19 +49,15 @@ class PersonPolicy < ApplicationPolicy
 
   class Scope < ApplicationPolicy::Scope
     def resolve
-      household_person_grant_scope
+      resolve_for(:view)
     end
 
-    private
-
-    def household_person_grant_scope
+    def resolve_for(access_level)
       return scope.none unless active_membership?
 
       scope.where(
         household: household,
-        id: PersonAccessGrant.active
-                             .where(household: household, household_membership: membership)
-                             .select(:person_id)
+        id: granted_person_ids_for(access_level)
       )
     end
   end
