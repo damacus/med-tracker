@@ -354,10 +354,6 @@ GEM
       racc (~> 1.4)
     nokogiri (1.19.4-aarch64-linux-musl)
       racc (~> 1.4)
-    nokogiri (1.19.4-arm-linux-gnu)
-      racc (~> 1.4)
-    nokogiri (1.19.4-arm-linux-musl)
-      racc (~> 1.4)
     nokogiri (1.19.4-arm64-darwin)
       racc (~> 1.4)
     nokogiri (1.19.4-x86_64-darwin)
@@ -756,7 +752,7 @@ GEM
       thor (>= 1.3.1)
     sorbet (0.6.13459)
       sorbet-static (= 0.6.13459)
-    sorbet-runtime (0.6.13437)
+    sorbet-runtime (0.6.13459)
     sorbet-static (0.6.13459-aarch64-linux)
     sorbet-static (0.6.13459-universal-darwin)
     sorbet-static (0.6.13459-x86_64-linux)
@@ -853,8 +849,6 @@ PLATFORMS
   aarch64-linux
   aarch64-linux-gnu
   aarch64-linux-musl
-  arm-linux-gnu
-  arm-linux-musl
   arm64-darwin
   x86_64-darwin
   x86_64-linux
