@@ -41,6 +41,7 @@ RSpec.describe 'Report exports', :browser do
 
     export = find('[data-testid="pdf-export-panel"] a')
     defer_pdf_request(export)
+    defer_export_controller_lookup
     start_export(export)
 
     expect(export['aria-busy']).to eq('true')
@@ -126,8 +127,27 @@ RSpec.describe 'Report exports', :browser do
     JS
   end
 
+  def defer_export_controller_lookup
+    page.execute_script(<<~JS)
+      const stimulus = window.Stimulus;
+      const lookup = stimulus.getControllerForElementAndIdentifier.bind(stimulus);
+
+      stimulus.getControllerForElementAndIdentifier = () => {
+        stimulus.getControllerForElementAndIdentifier = lookup;
+        return null;
+      };
+    JS
+  end
+
   def start_export(export)
-    page.execute_script(<<~JS, export)
+    connected_export = find('[data-testid="pdf-export-panel"] a') do |candidate|
+      page.evaluate_script(<<~JS, candidate, export)
+        arguments[0] === arguments[1] &&
+          Boolean(window.Stimulus.getControllerForElementAndIdentifier(arguments[0], 'pdf-export'));
+      JS
+    end
+
+    page.execute_script(<<~JS, connected_export)
       window.Stimulus.getControllerForElementAndIdentifier(arguments[0], 'pdf-export').prepare(
         new Event('click', { cancelable: true })
       );
