@@ -2158,6 +2158,11 @@ cy:
         low: Risg ffynhonnell isel
         unknown: Risg ffynhonnell anhysbys
       confidence: Hyder cyfateb %{value}
+      confidence_levels:
+        high: Uchel
+        moderate: Cymedrol
+        low: Isel
+        unknown: Anhysbys
       statuses:
         needs_review: Angen adolygiad
         reviewed_with_practitioner: Wedi'i adolygu gydag ymarferydd

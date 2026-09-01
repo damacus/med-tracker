@@ -3,6 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = ["label"]
   static values = {
+    fallbackLocation: String,
     readyLabel: String,
     preparingLabel: String
   }
@@ -41,6 +42,11 @@ export default class extends Controller {
         signal: request.signal
       })
       if (!this.activeRequest(request)) return
+
+      if (response.redirected) {
+        this.followFallbackPath()
+        return
+      }
 
       if (!this.pdfResponse(response)) {
         this.followExportPath()
@@ -123,5 +129,9 @@ export default class extends Controller {
 
   followExportPath() {
     window.location.assign(this.element.href)
+  }
+
+  followFallbackPath() {
+    window.location.assign(this.fallbackLocationValue)
   }
 }

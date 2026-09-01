@@ -1614,6 +1614,11 @@ en:
         low: Low source risk
         unknown: Unknown source risk
       confidence: "%{value} match confidence"
+      confidence_levels:
+        high: High
+        moderate: Moderate
+        low: Low
+        unknown: Unknown
       statuses:
         needs_review: Needs review
         reviewed_with_practitioner: Reviewed with practitioner

@@ -1871,6 +1871,11 @@ ga:
         low: Riosca íseal foinse
         unknown: Riosca anaithnid foinse
       confidence: Muinín mheaitseála %{value}
+      confidence_levels:
+        high: Ard
+        moderate: Measartha
+        low: Íseal
+        unknown: Anaithnid
       statuses:
         needs_review: Athbhreithniú de dhíth
         reviewed_with_practitioner: Athbhreithnithe le cleachtóir

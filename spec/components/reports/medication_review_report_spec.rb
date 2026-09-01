@@ -8,6 +8,7 @@ RSpec.describe Components::Reports::MedicationReviewReport, type: :component do
       'Alex Smith',
       'Warfarin + Ibuprofen',
       'High source risk',
+      'High match confidence',
       'Public label evidence',
       'Why MedTracker included this',
       'Matched term: ibuprofen',
@@ -59,11 +60,11 @@ RSpec.describe Components::Reports::MedicationReviewReport, type: :component do
 
   it 'renders the person heading and practitioner outcome' do
     rendered = Nokogiri::HTML5(described_class.new(prompts: [reviewed_prompt]).call)
-    first_prompt = rendered.at_css('.person-review-first-prompt')
+    person_review = rendered.at_css('.person-review')
 
-    expect(first_prompt.at_css('h2').text).to eq('Alex Smith')
-    expect(first_prompt.at_css('.person-review-count')).to be_present
-    expect(first_prompt.at_css('.review-prompt')).to be_present
+    expect(person_review.at_css('thead h2').text).to eq('Alex Smith')
+    expect(person_review.at_css('thead .person-review-count')).to be_present
+    expect(person_review.at_css('tbody .review-prompt')).to be_present
   end
 
   it 'renders the translated empty state and boundary for every supported locale' do
@@ -79,6 +80,38 @@ RSpec.describe Components::Reports::MedicationReviewReport, type: :component do
     end
   end
 
+  it 'renders translated confidence values for populated reports in every supported locale' do
+    %i[en cy es ga pt].each do |locale|
+      rendered = I18n.with_locale(locale) do
+        Nokogiri::HTML5(described_class.new(prompts: [reviewed_prompt]).call)
+      end
+      confidence = I18n.t('reports.medication_review.confidence_levels.high', locale:)
+
+      expect(rendered.text).to include(
+        I18n.t('reports.medication_review.confidence', locale:, value: confidence)
+      )
+    end
+  end
+
+  it 'keeps report locale keys, value types and interpolations in sync' do
+    reference_contract = locale_contract(:en)
+
+    %i[en cy es ga pt].each do |locale|
+      expect(locale_contract(locale)).to eq(reference_contract), "locale contract drift for #{locale}"
+    end
+  end
+
+  it 'renders person identity as a repeatable header for multi-page prompt rows' do
+    rendered = Nokogiri::HTML5(described_class.new(prompts: Array.new(8, reviewed_prompt)).call)
+    person_review = rendered.at_css('table.person-review')
+
+    expect(person_review.at_css('thead h2').text).to eq('Alex Smith')
+    expect(person_review.css('tbody tr').size).to eq(8)
+    expect(person_review.css('tbody tr')).to all(
+      satisfy { |row| row.text.include?('Warfarin + Ibuprofen') }
+    )
+  end
+
   it 'uses the report locale date format for practitioner outcomes' do
     rendered = I18n.with_locale(:es) do
       Nokogiri::HTML5(described_class.new(prompts: [reviewed_prompt]).call)
@@ -90,5 +123,23 @@ RSpec.describe Components::Reports::MedicationReviewReport, type: :component do
   def reviewed_prompt
     attributes = prompt_attributes.merge(person_id: prompt_attributes[:person].id)
     Data.define(*attributes.keys).new(**attributes)
+  end
+
+  def locale_contract(locale)
+    translations = YAML.safe_load_file(Rails.root.join("config/locales/#{locale}.yml"), aliases: true)
+    translation_contract(translations.dig(locale.to_s, 'reports', 'medication_review'))
+  end
+
+  def translation_contract(value)
+    case value
+    when Hash
+      value.transform_values { |child| translation_contract(child) }
+    when Array
+      value.map { |child| translation_contract(child) }
+    when String
+      [:scalar, value.scan(/%\{([^}]+)\}/).flatten.sort]
+    else
+      value.class.name
+    end
   end
 end

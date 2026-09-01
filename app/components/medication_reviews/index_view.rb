@@ -34,6 +34,7 @@ module Components
           end
           render Components::Reports::ExportPanel.new(
             href: medication_review_report_path,
+            fallback_href: medication_review_prompts_path,
             title: t('medication_reviews.export_title'),
             description: t('medication_reviews.export_description'),
             scope: t('medication_reviews.export_scope'),

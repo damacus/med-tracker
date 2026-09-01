@@ -4,6 +4,7 @@ RSpec.describe Components::Reports::ExportPanel, type: :component do
   subject(:panel) do
     described_class.new(
       href: '/reports/health-history?person_id=1',
+      fallback_href: '/reports?person_id=1',
       title: 'Export health history',
       description: 'Download a PDF of the people and dates currently shown.',
       scope: 'People: John Doe. Date range: 1 January 2026 to 31 January 2026.',
@@ -27,6 +28,7 @@ RSpec.describe Components::Reports::ExportPanel, type: :component do
     expect(link['data-action']).to include('click->pdf-export#prepare')
     expect(link['aria-busy']).to eq('false')
     expect(link['aria-disabled']).to eq('false')
+    expect(link['data-pdf-export-fallback-location-value']).to eq('/reports?person_id=1')
   end
 
   it 'announces PDF preparation through the accessible label' do

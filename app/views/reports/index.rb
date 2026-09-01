@@ -10,6 +10,7 @@ module Views
       def render_health_history_export_panel
         render Components::Reports::ExportPanel.new(
           href: health_history_export_path,
+          fallback_href: health_history_fallback_path,
           title: t('reports.index.export.health_history_title'),
           description: t('reports.index.export.health_history_description'),
           scope: health_history_export_scope,
@@ -19,11 +20,19 @@ module Views
       end
 
       def health_history_export_path
-        view_context.health_history_report_path(
+        view_context.health_history_report_path(**health_history_report_params)
+      end
+
+      def health_history_fallback_path
+        view_context.reports_path(**health_history_report_params)
+      end
+
+      def health_history_report_params
+        {
           start_date: @start_date,
           end_date: @end_date,
           person_id: @selected_person_id.presence
-        )
+        }
       end
 
       def health_history_export_scope

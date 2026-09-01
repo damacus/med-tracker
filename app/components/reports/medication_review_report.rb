@@ -56,14 +56,20 @@ module Components
 
       def people
         prompts.group_by(&:person).each do |person, person_prompts|
-          section(class: 'report-section person-review') do
-            first_prompt, *remaining_prompts = person_prompts
-            section(class: 'person-review-first-prompt') do
-              h2 { person.name }
-              p(class: 'person-review-count') { t('person_items', count: person_prompts.size) }
-              prompt_section(first_prompt)
+          table(class: 'report-section person-review') do
+            thead do
+              tr do
+                th(scope: 'col') do
+                  h2 { person.name }
+                  p(class: 'person-review-count') { t('person_items', count: person_prompts.size) }
+                end
+              end
             end
-            remaining_prompts.each { |prompt| prompt_section(prompt) }
+            tbody do
+              person_prompts.each do |prompt|
+                tr { td { prompt_section(prompt) } }
+              end
+            end
           end
         end
       end
@@ -82,7 +88,7 @@ module Components
         header(class: 'review-prompt-heading') do
           h3 { "#{prompt.primary_medication_name} + #{prompt.interacting_medication_name}" }
           p(class: "risk-#{prompt.risk_level}") { t("risk_levels.#{prompt.risk_level}") }
-          p { t('confidence', value: prompt.match_confidence.capitalize) }
+          p { t('confidence', value: t("confidence_levels.#{prompt.match_confidence}")) }
           p(class: 'review-status') { t("statuses.#{prompt.status}") }
         end
       end

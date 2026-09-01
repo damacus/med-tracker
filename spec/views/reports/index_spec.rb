@@ -202,6 +202,7 @@ RSpec.describe Views::Reports::Index do
   def localized_export_attributes(locale)
     {
       href: '/reports/health-history',
+      fallback_href: '/reports',
       title: I18n.t('reports.index.export.health_history_title', locale:),
       description: I18n.t('reports.index.export.health_history_description', locale:),
       scope: localized_export_scope(locale),

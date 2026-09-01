@@ -68,6 +68,20 @@ RSpec.describe 'Report exports', :browser do
     expect(export['aria-busy']).to eq('false')
   end
 
+  it 'follows the HTML fallback without retrying a redirected PDF export' do
+    visit reports_path
+
+    export = find('[data-testid="pdf-export-panel"] a')
+    fallback_location = export['data-pdf-export-fallback-location-value']
+    export_location = export[:href]
+    stub_redirected_pdf_response(export_location)
+    start_export(export)
+
+    expect(page).to have_current_path(fallback_location)
+    expect(page.evaluate_script("window.sessionStorage.getItem('pdfExportFetchCount')")).to eq('1')
+    expect(page).to have_no_current_path(export_location)
+  end
+
   it 'keeps export panels within the mobile viewport and explains the review scope' do
     page.current_window.resize_to(390, 844)
     visit reports_path
@@ -135,6 +149,31 @@ RSpec.describe 'Report exports', :browser do
       stimulus.getControllerForElementAndIdentifier = () => {
         stimulus.getControllerForElementAndIdentifier = lookup;
         return null;
+      };
+    JS
+  end
+
+  def stub_redirected_pdf_response(export_location)
+    page.execute_script(redirected_response_script, export_location)
+  end
+
+  def redirected_response_script
+    <<~JS
+      window.sessionStorage.setItem('pdfExportFetchCount', '0');
+      const exportLocation = new URL(arguments[0], window.location.href);
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = (url, options) => {
+        const requestLocation = new URL(url, window.location.href);
+        if (requestLocation.href !== exportLocation.href) return originalFetch(url, options);
+
+        const count = Number(window.sessionStorage.getItem('pdfExportFetchCount')) + 1;
+        window.sessionStorage.setItem('pdfExportFetchCount', String(count));
+        const response = new Response('<html></html>', {
+          status: 200,
+          headers: { 'Content-Type': 'text/html' }
+        });
+        Object.defineProperty(response, 'redirected', { value: true });
+        return Promise.resolve(response);
       };
     JS
   end

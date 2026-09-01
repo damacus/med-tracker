@@ -1,8 +1,9 @@
 module Components
   module Reports
     class ExportPanel < Components::Base
-      def initialize(href:, label:, preparing_label:, **content)
+      def initialize(href:, fallback_href:, label:, preparing_label:, **content)
         @href = href
+        @fallback_href = fallback_href
         @title = content.fetch(:title)
         @description = content.fetch(:description)
         @scope = content.fetch(:scope)
@@ -33,6 +34,7 @@ module Components
             data: {
               controller: 'pdf-export',
               action: 'click->pdf-export#prepare',
+              pdf_export_fallback_location_value: @fallback_href,
               pdf_export_ready_label_value: @label,
               pdf_export_preparing_label_value: @preparing_label
             }
