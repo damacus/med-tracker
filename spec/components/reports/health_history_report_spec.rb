@@ -57,6 +57,13 @@ RSpec.describe Components::Reports::HealthHistoryReport, type: :component do
 
     expect(headings).to eq(%w[Time Person Medication Dose Source Location])
     expect(rendered.css('table').first.css('tbody tr').size).to eq(240)
+    populated = Nokogiri::HTML5(described_class.new(result: populated_result).call)
+
+    expect(populated.css('table').map { |table| table['class'] }).to include(
+      'health-history-medication-table',
+      'health-history-side-effects-table',
+      'health-history-illnesses-table'
+    )
   end
 
   def empty_result

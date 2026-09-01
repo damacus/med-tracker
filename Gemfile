@@ -35,8 +35,6 @@ gem 'pundit'
 gem 'paper_trail'
 # Pagination [https://github.com/ddnexus/pagy]
 gem 'pagy'
-gem 'prawn'
-gem 'prawn-table'
 gem 'premailer-rails'
 gem 'sghtmltopdf', '0.1.1'
 # Rate limiting and throttling [https://github.com/rack/rack-attack]

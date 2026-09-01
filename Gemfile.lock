@@ -480,7 +480,6 @@ GEM
       ast (~> 2.4.1)
       racc
     path_expander (2.0.1)
-    pdf-core (0.10.0)
     pg (1.6.3)
     pg (1.6.3-aarch64-linux)
     pg (1.6.3-aarch64-linux-musl)
@@ -501,12 +500,6 @@ GEM
       mime-types (>= 3.0)
     pp (0.6.4)
       prettyprint
-    prawn (2.5.0)
-      matrix (~> 0.4)
-      pdf-core (~> 0.10.0)
-      ttfunk (~> 1.8)
-    prawn-table (0.2.2)
-      prawn (>= 1.3.0, < 3.0.0)
     premailer (1.30.0)
       addressable
       css_parser (>= 1.19.0)
@@ -801,8 +794,6 @@ GEM
       openssl (> 2.0)
       openssl-signature_algorithm (~> 1.0)
     tsort (0.2.0)
-    ttfunk (1.8.0)
-      bigdecimal (~> 3.1)
     tty-which (0.5.0)
     turbo-rails (2.0.23)
       actionpack (>= 7.1.0)
@@ -903,8 +894,6 @@ DEPENDENCIES
   paper_trail
   pg (>= 1.1)
   phlex-rails
-  prawn
-  prawn-table
   premailer-rails
   propshaft
   puma (>= 5.0)
