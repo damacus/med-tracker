@@ -3,6 +3,10 @@
 require 'zlib'
 
 module PdfTextExtractor
+  def pdf_metadata(pdf)
+    pdf.scan(%r{/(Title|Author|Subject|Keywords) \((.*?)\)}).to_h
+  end
+
   def pdf_text(pdf)
     streams = pdf_streams(pdf)
     pdf_character_maps(streams).product(pdf_text_streams(streams)).flat_map do |character_map, stream|

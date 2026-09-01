@@ -133,6 +133,7 @@ RSpec.describe 'Reports' do
       expect(response.headers['Cache-Control']).to include('no-store')
       expect(response.headers['Content-Disposition'])
         .to include('medtracker-health-history-2026-02-01-to-2026-02-28.pdf')
+      expect(response.body).to start_with('%PDF')
       expect(pdf_text(response.body)).to include('People:', 'Date range:', 'Medication administrations')
     end
 
