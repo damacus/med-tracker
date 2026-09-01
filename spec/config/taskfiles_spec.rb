@@ -59,6 +59,18 @@ RSpec.describe 'Taskfiles' do
     expect(command).to start_with('bin/rubocop --force-exclusion')
   end
 
+  it 'defines an advisory DoseConstraints typecheck task' do
+    task = root_taskfile.dig('tasks', 'typecheck')
+
+    expect(task.dig('cmds', 0, 'task')).to eq('internal:run')
+    expect(task.dig('cmds', 0, 'vars', 'ENVIRONMENT')).to eq('test')
+    expect(task.dig('cmds', 0, 'vars', 'SERVICE')).to eq('tools-test')
+    expect(task.dig('cmds', 0, 'vars', 'COMMAND')).to eq(
+      'bundle exec srb tc --ignore /usr/local/bundle/gems/prism app/models/dose_constraints.rb ' \
+      'app/domain/dose_cycle.rb sorbet/rbi/dose_constraints.rbi'
+    )
+  end
+
   it 'defines deterministic native API client generation tasks' do
     expect(api_client_generation_task_commands).to eq(
       'api-clients:generate' => ['./client-tools/openapi-generator/generate.fish'],
