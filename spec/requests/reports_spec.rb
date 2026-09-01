@@ -188,16 +188,26 @@ RSpec.describe 'Reports' do
       expect(response).to have_http_status(:not_found)
     end
 
-    it 'does not audit a successful download when PDF rendering raises' do
+    it 'redirects safely and does not audit when PDF rendering fails' do
       renderer = instance_double(Reports::HealthHistoryPdf)
       allow(Reports::HealthHistoryPdf).to receive(:new).and_return(renderer)
       allow(renderer).to receive(:render).and_raise(Reports::PdfRenderer::Error, 'rendering failed')
+      allow(Observability::DiagnosticEvent).to receive(:emit)
 
       expect do
-        expect do
-          get health_history_report_path, params: { person_id: people(:john).id }
-        end.to raise_error(Reports::PdfRenderer::Error, 'rendering failed')
+        get health_history_report_path, params: { person_id: people(:john).id }
       end.not_to change(successful_download_audits, :count)
+
+      expect(response).to redirect_to(reports_path(person_id: people(:john).id))
+      expect(response.media_type).not_to eq('application/pdf')
+      expect(response.body).not_to start_with('%PDF')
+      expect(flash[:alert]).to eq(I18n.t('reports.export.pdf_unavailable'))
+      expect(Observability::DiagnosticEvent).to have_received(:emit).with(
+        component: :health_history_pdf_export,
+        reason: :operation_failed,
+        severity: :error,
+        error: an_instance_of(Reports::PdfRenderer::Error)
+      )
     end
 
     it 'redirects with alert when export dates are invalid' do
