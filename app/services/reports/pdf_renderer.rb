@@ -8,6 +8,8 @@ module Reports
     end
 
     FONT_DIRECTORY = Rails.root.join('vendor/fonts').freeze
+    CSS_URL_PATTERN = /url\(\s*(?:(['"])(.*?)\1|([^)'"\s]+))\s*\)/i.freeze
+    CSS_IMPORT_PATTERN = /@import\s+(?:url\(\s*)?(?:(['"])(.*?)\1|([^)'"\s;]+))/i.freeze
 
     def render(component:, metadata:)
       configure_renderer
@@ -44,22 +46,45 @@ module Reports
 
     def asset_references(html)
       document = Nokogiri::HTML5.fragment(html)
-      html_assets = document.css(
-        'img[src], source[src], video[src], audio[src], embed[src], iframe[src], object[data]'
-      )
-      stylesheet_links = document.css('link[rel~="stylesheet"][href], link[rel~="icon"][href]')
+      resource_attribute_references(document) + css_asset_references(document)
+    end
 
-      html_assets.filter_map { |element| element['src'] || element['data'] } +
-        stylesheet_links.filter_map { |element| element['href'] } +
-        css_asset_references(document)
+    def resource_attribute_references(document)
+      references = []
+
+      document.traverse do |element|
+        next unless element.element?
+
+        element.attribute_nodes.each do |attribute|
+          references << attribute.value if resource_attribute?(element, attribute)
+        end
+      end
+
+      references
+    end
+
+    def resource_attribute?(element, attribute)
+      return true if %w[src srcset poster background data].include?(attribute.name)
+
+      attribute.name.end_with?('href') && element.name != 'a'
     end
 
     def css_asset_references(document)
-      document.css('style, [style]').flat_map do |element|
-        element.text.scan(/url\(([^)]+)\)/i).flatten.map do |reference|
-          reference.delete_prefix('"').delete_suffix('"').delete_prefix("'").delete_suffix("'")
-        end
-      end
+      stylesheets = document.css('style').map(&:text) + document.css('[style]').filter_map { |element| element['style'] }
+
+      stylesheets.flat_map { |stylesheet| css_references(stylesheet) }
+    end
+
+    def css_references(stylesheet)
+      css_url_references(stylesheet) + css_import_references(stylesheet)
+    end
+
+    def css_url_references(stylesheet)
+      stylesheet.scan(CSS_URL_PATTERN).filter_map { |_quote, quoted, unquoted| quoted || unquoted }
+    end
+
+    def css_import_references(stylesheet)
+      stylesheet.scan(CSS_IMPORT_PATTERN).filter_map { |_quote, quoted, unquoted| quoted || unquoted }
     end
 
     def permitted_local_asset?(reference)
