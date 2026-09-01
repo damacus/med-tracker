@@ -31,18 +31,24 @@ module PdfTextExtractor
   end
 
   def pdf_text_streams(streams)
-    streams.grep(/\) Tj/)
+    streams.grep(/(?:\)|>) Tj/)
   end
 
   def decoded_pdf_text(character_map, stream)
-    stream.scan(/\((?:\\.|[^\\)])*\) Tj/m).filter_map do |operator|
-      string = operator[1...-4]
-      decoded = string.gsub(/\\([0-7]{1,3})/) { Regexp.last_match(1).to_i(8).chr }
-        .gsub(/\\([()\\])/) { Regexp.last_match(1) }
+    stream.scan(/(?:\((?:\\.|[^\\)])*\)|<[0-9A-F]+>) Tj/m).filter_map do |operator|
+      decoded = decoded_pdf_string(operator)
       next unless decoded.bytesize.even?
 
       decoded.unpack('n*').filter_map { |cid| character_map[cid] }.join
     end
+  end
+
+  def decoded_pdf_string(operator)
+    string = operator[1...-4]
+    return [string].pack('H*') if operator.start_with?('<')
+
+    string.gsub(/\\([0-7]{1,3})/) { Regexp.last_match(1).to_i(8).chr }
+      .gsub(/\\([()\\])/) { Regexp.last_match(1) }
   end
 end
 
