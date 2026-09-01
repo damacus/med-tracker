@@ -734,6 +734,12 @@ GEM
       activerecord (>= 5.1)
       sequel (~> 5.38)
     sexp_processor (4.17.5)
+    sghtmltopdf (0.1.1)
+    sghtmltopdf (0.1.1-aarch64-linux)
+    sghtmltopdf (0.1.1-aarch64-linux-musl)
+    sghtmltopdf (0.1.1-arm64-darwin)
+    sghtmltopdf (0.1.1-x86_64-linux)
+    sghtmltopdf (0.1.1-x86_64-linux-musl)
     shoulda-matchers (8.0.1)
       activesupport (>= 7.2)
     simplecov (1.1.1)
@@ -924,6 +930,7 @@ DEPENDENCIES
   rubycritic
   rubyzip (~> 3.4)
   sequel-activerecord_connection
+  sghtmltopdf (= 0.1.1)
   shoulda-matchers
   simplecov
   solid_cable
