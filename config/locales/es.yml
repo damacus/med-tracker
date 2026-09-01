@@ -1700,6 +1700,9 @@ es:
     subtitle: Evidencia pública de etiquetas de medicamentos organizada para su próxima conversación con un profesional.
     boundary: Esta evidencia apoya una conversación con un profesional. No sustituye el juicio clínico ni indica que deba cambiar un medicamento.
     export_pdf: Exportar PDF de revisión
+    export_title: Exportar revisión de medicamentos
+    export_description: Descargue un PDF para llevar a una conversación con un profesional.
+    export_scope: El PDF contiene el alcance visible predeterminado de la revisión de medicamentos.
     hidden_count:
       one: 1 elemento de revisión de menor confianza oculto para reducir el ruido
       other: "%{count} elementos de revisión de menor confianza ocultos para reducir el ruido"
@@ -2147,6 +2150,9 @@ es:
     invalid_date: Se ha proporcionado un formato de fecha no válido.
     end_before_start: La fecha de finalización debe ser igual o posterior a la fecha de inicio.
     date_range_too_large: El intervalo de fechas del informe no puede superar los 180 dias.
+    export:
+      pdf_unavailable: No se ha podido preparar el PDF. Inténtelo de nuevo.
+      preparing_pdf: Preparando PDF...
     health_history:
       title: Informe del historial de salud de MedTracker
       people: "Personas: %{people}"
@@ -2281,6 +2287,10 @@ es:
         based_on_logs: Basado en dosis registradas
       timeline_title: Cronología de adherencia
       download_pdf: Descargar PDF
+      export:
+        health_history_title: Exportar historial de salud
+        health_history_description: Descargue un PDF de las personas y fechas mostradas actualmente.
+        health_history_scope: "Personas: %{people}. Intervalo de fechas: %{start_date} a %{end_date}."
       timeline_compliance: "%{percentage}% de adherencia"
       inventory_alert:
         title: Alerta de inventario

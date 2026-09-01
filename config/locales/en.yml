@@ -1491,6 +1491,9 @@ en:
     invalid_date: Invalid date format provided.
     end_before_start: End date must be on or after start date.
     date_range_too_large: Report date range cannot exceed 180 days.
+    export:
+      pdf_unavailable: We could not prepare the PDF. Please try again.
+      preparing_pdf: Preparing PDF...
     index:
       eyebrow: Wellness Analytics
       title: Health Report
@@ -1514,6 +1517,10 @@ en:
         based_on_logs: Based on logged doses
       timeline_title: Adherence Timeline
       download_pdf: Download PDF
+      export:
+        health_history_title: Export health history
+        health_history_description: Download a PDF of the people and dates currently shown.
+        health_history_scope: "People: %{people}. Date range: %{start_date} to %{end_date}."
       timeline_compliance: "%{percentage}% Compliance"
       inventory_alert:
         title: Inventory Alert
@@ -1941,6 +1948,9 @@ en:
     subtitle: Public medicine-label evidence organised for your next practitioner conversation.
     boundary: This evidence supports a conversation with a practitioner. It does not replace clinical judgement or tell you to change a medicine.
     export_pdf: Export review PDF
+    export_title: Export medicine review
+    export_description: Download a PDF to take to a practitioner conversation.
+    export_scope: The PDF contains the default visible medicine review scope.
     hidden_count:
       one: 1 lower-confidence review item hidden to reduce noise
       other: "%{count} lower-confidence review items hidden to reduce noise"

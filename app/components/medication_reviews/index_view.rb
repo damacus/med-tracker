@@ -32,10 +32,14 @@ module Components
               t('medication_reviews.boundary')
             end
           end
-          m3_link(href: medication_review_report_path, variant: :filled, class: 'gap-2 self-start md:self-auto') do
-            render Icons::FileText.new(size: 18)
-            plain t('medication_reviews.export_pdf')
-          end
+          render Components::Reports::ExportPanel.new(
+            href: medication_review_report_path,
+            title: t('medication_reviews.export_title'),
+            description: t('medication_reviews.export_description'),
+            scope: t('medication_reviews.export_scope'),
+            label: t('medication_reviews.export_pdf'),
+            preparing_label: t('reports.export.preparing_pdf')
+          )
         end
       end
 
