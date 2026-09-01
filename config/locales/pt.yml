@@ -1569,6 +1569,11 @@ pt:
         low: Risco baixo da fonte
         unknown: Risco desconhecido da fonte
       confidence: Confiança de correspondência %{value}
+      confidence_levels:
+        high: Alta
+        moderate: Moderada
+        low: Baixa
+        unknown: Desconhecida
       statuses:
         needs_review: Precisa de revisão
         reviewed_with_practitioner: Revisto com um profissional

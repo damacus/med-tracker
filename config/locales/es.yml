@@ -2233,6 +2233,11 @@ es:
         low: Riesgo bajo de la fuente
         unknown: Riesgo desconocido de la fuente
       confidence: Confianza de coincidencia %{value}
+      confidence_levels:
+        high: Alta
+        moderate: Moderada
+        low: Baja
+        unknown: Desconocida
       statuses:
         needs_review: Pendiente de revisión
         reviewed_with_practitioner: Revisado con un profesional

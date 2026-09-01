@@ -30,7 +30,8 @@ module Components
             .summary-item strong { color: #174A46; font-size: 16pt; }
             .summary-item span, .person-review-count, .review-status { color: #5B6864; font-size: 8pt; text-transform: uppercase; }
             .review-prompt { padding: 4mm; border: 0.3mm solid #D7DEDB; break-inside: avoid; page-break-inside: avoid; }
-            .person-review-first-prompt { break-inside: avoid; page-break-inside: avoid; }
+            .person-review > thead th { padding: 0 0 3mm; border: 0; background: #FFFFFF; letter-spacing: normal; text-transform: none; }
+            .person-review > tbody td { padding: 0; border: 0; }
             .review-prompt-heading { margin-bottom: 3mm; }
             .review-prompt-heading h3 { margin-bottom: 1mm; }
             .risk-legend { margin: 0; padding-left: 5mm; }
