@@ -2111,6 +2111,78 @@ cy:
         entered_information: Mae'r adroddiad hwn yn adlewyrchu gwybodaeth a gofnodwyd yn MedTracker.
         causation: Nid yw cysylltiadau â sgil-effeithiau a amheuir yn profi achosiaeth.
         medical_advice: Nid diagnosis yw'r adroddiad hwn ac nid yw'n disodli cyngor meddygol proffesiynol.
+    medication_review:
+      title: Cofnod adolygiad meddyginiaeth MedTracker
+      context: Cwmpas diofyn adolygiad meddyginiaeth gweladwy
+      generated_at: "Paratowyd %{timestamp}"
+      date_format: "%{day} %{month} %{year}"
+      timestamp_format: "%{date} am %{time} %{zone}"
+      months:
+        - Ionawr
+        - Chwefror
+        - Mawrth
+        - Ebrill
+        - Mai
+        - Mehefin
+        - Gorffennaf
+        - Awst
+        - Medi
+        - Hydref
+        - Tachwedd
+        - Rhagfyr
+      boundary: Mae'r cofnod hwn yn trefnu tystiolaeth gyhoeddus o labeli meddyginiaeth i'w thrafod ag ymarferydd. Nid yw'n disodli barn glinigol nac yn dweud wrth rywun am newid meddyginiaeth.
+      summary:
+        to_discuss: I'w drafod
+        reviewed: Wedi'i adolygu
+        people: Pobl
+      legend:
+        title: Lefelau risg yn y cofnod hwn
+        high: "Uchel: Mae tystiolaeth y ffynhonnell yn disgrifio risg ddifrifol"
+        moderate: "Cymedrol: Mae tystiolaeth y ffynhonnell yn haeddu adolygiad"
+        low: "Isel: Risg ffynhonnell is; wedi'i hidlo yn ddiofyn"
+        unknown: "Anhysbys: Heb ei dosbarthu; nid y risg uchaf"
+      empty_title: Nid oedd unrhyw eitemau adolygu meddyginiaeth yn cyfateb i'r hidlwyr a ddewiswyd.
+      empty_description: Gall hyn olygu nad oes parau tystiolaeth a adolygwyd ar gyfer y meddyginiaethau gweithredol yn y cwmpas.
+      person_items:
+        one: "%{count} eitem adolygu"
+        other: "%{count} eitem adolygu"
+      risk_levels:
+        high: Risg ffynhonnell uchel
+        moderate: Risg ffynhonnell gymedrol
+        low: Risg ffynhonnell isel
+        unknown: Risg ffynhonnell anhysbys
+      confidence: Hyder cyfateb %{value}
+      statuses:
+        needs_review: Angen adolygiad
+        reviewed_with_practitioner: Wedi'i adolygu gydag ymarferydd
+        expected_prescribed_combination: Yn ôl y disgwyl fel y rhagnodwyd
+        not_relevant: Ddim yn berthnasol
+        hidden_low_signal: Eitem llai hyderus wedi'i hidlo
+      evidence_title: Tystiolaeth gyhoeddus y label
+      match_explanation_title: Pam y cynhwysodd MedTracker hyn
+      matched_term_name: "Term cyfatebol: %{term}"
+      matched_term_type: "cyfatebiad %{type}"
+      source_instruction: "Categori cyfarwyddyd y ffynhonnell: %{value}"
+      match_types:
+        ingredient: cynhwysyn
+        class: dosbarth cyhoeddus
+        curated: wedi'i guradu
+        legacy: etifeddol
+      source_instructions:
+        contraindicated: Mae'r label yn dweud ei fod wedi'i wrthgymeradwyo
+        avoid: Mae'r label yn dweud i osgoi
+        monitor_or_adjust: Mae'r label yn dweud i fonitro neu addasu
+        possible_or_caution: Mae'r label yn disgrifio pryder neu rybudd posibl
+        unclassified: Ni neilltuwyd categori cyfarwyddyd
+      source: "Ffynhonnell: %{source}"
+      label_version: "Fersiwn label: %{version} | Yn effeithiol: %{date}"
+      retrieved: "Adalwyd: %{date}"
+      reviewed_with_name: "Adolygwyd gyda %{name}"
+      reviewed_with_detail: "%{role} ar %{date}."
+      outcomes:
+        reviewed_with_practitioner: "Canlyniad wedi'i gofnodi: wedi'i adolygu gydag ymarferydd."
+        expected_prescribed_combination: "Canlyniad wedi'i gofnodi: yn ôl y disgwyl fel y rhagnodwyd."
+      outstanding_outcome: Nid oes adolygiad ymarferydd wedi'i gofnodi eto.
     index:
       eyebrow: Dadansoddeg Lles
       title: Adroddiad Iechyd
