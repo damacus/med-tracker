@@ -7,13 +7,17 @@ export default class extends Controller {
     preparingLabel: String
   }
 
+  initialize() {
+    this.cancel = this.cancel.bind(this)
+  }
+
   connect() {
-    this.reset = this.reset.bind(this)
-    document.addEventListener("turbo:before-cache", this.reset)
+    document.addEventListener("turbo:before-cache", this.cancel)
   }
 
   disconnect() {
-    document.removeEventListener("turbo:before-cache", this.reset)
+    this.cancel()
+    document.removeEventListener("turbo:before-cache", this.cancel)
   }
 
   async prepare(event) {
@@ -27,12 +31,16 @@ export default class extends Controller {
     this.element.setAttribute("aria-busy", "true")
     this.element.setAttribute("aria-disabled", "true")
     this.labelTarget.textContent = this.preparingLabelValue
+    const request = new AbortController()
+    this.request = request
 
     try {
       const response = await fetch(this.element.href, {
         credentials: "same-origin",
-        redirect: "follow"
+        redirect: "follow",
+        signal: request.signal
       })
+      if (!this.activeRequest(request)) return
 
       if (!this.pdfResponse(response)) {
         this.followExportPath()
@@ -40,16 +48,22 @@ export default class extends Controller {
       }
 
       const pdf = await response.blob()
+      if (!this.activeRequest(request)) return
       if (!await this.validPdf(pdf)) {
+        if (!this.activeRequest(request)) return
         this.followExportPath()
         return
       }
 
+      if (!this.activeRequest(request)) return
+
       this.download(pdf, response.headers.get("Content-Disposition"))
     } catch (_) {
+      if (!this.activeRequest(request)) return
+
       this.followExportPath()
     } finally {
-      this.reset()
+      this.complete(request)
     }
   }
 
@@ -58,6 +72,24 @@ export default class extends Controller {
     this.element.setAttribute("aria-busy", "false")
     this.element.setAttribute("aria-disabled", "false")
     this.labelTarget.textContent = this.readyLabelValue
+  }
+
+  cancel() {
+    const request = this.request
+    this.request = undefined
+    request?.abort()
+    this.reset()
+  }
+
+  complete(request) {
+    if (!this.activeRequest(request)) return
+
+    this.request = undefined
+    this.reset()
+  }
+
+  activeRequest(request) {
+    return this.request === request && !request.signal.aborted
   }
 
   pdfResponse(response) {
