@@ -124,6 +124,26 @@ RSpec.describe 'Reports' do
   describe 'GET /reports/health-history' do
     before { sign_in(user) }
 
+    it 'redirects safely when PDF rendering fails' do
+      renderer = instance_double(Reports::HealthHistoryPdf)
+      allow(Reports::HealthHistoryPdf).to receive(:new).and_return(renderer)
+      allow(renderer).to receive(:render).and_raise(Reports::PdfRenderer::Error, 'rendering failed')
+      allow(Rails.logger).to receive(:error)
+
+      get health_history_report_path,
+          params: { start_date: '2026-02-01', end_date: '2026-02-28', person_id: people(:john).id }
+
+      expect(response).to redirect_to(
+        reports_path(start_date: '2026-02-01', end_date: '2026-02-28', person_id: people(:john).id)
+      )
+      expect(response.media_type).not_to eq('application/pdf')
+      expect(response.body).not_to start_with('%PDF')
+      expect(flash[:alert]).to eq(I18n.t('reports.export.pdf_unavailable'))
+      expect(Rails.logger).to have_received(:error).with(
+        include('report_type=health_history', 'exception_class=Reports::PdfRenderer::Error')
+      )
+    end
+
     it 'downloads a no-store PDF with the active filters' do
       get health_history_report_path,
           params: { start_date: '2026-02-01', end_date: '2026-02-28', person_id: people(:john).id }

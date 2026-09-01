@@ -114,6 +114,14 @@ RSpec.describe Views::Reports::Index do
     expect(link['href']).to include('end_date=')
   end
 
+  it 'shows the active people and date scope in the export panel' do
+    rendered = Nokogiri::HTML.fragment(render(report_view))
+    panel = rendered.at_css('[data-testid="pdf-export-panel"]')
+
+    expect(panel.text).to include('People: John Doe and Jane Doe')
+    expect(panel.text).to include('Date range:')
+  end
+
   it 'renders compliance bars without inline styles' do
     rendered = Nokogiri::HTML.fragment(render(report_view))
     bars = rendered.css('[data-testid="report-compliance-bar"]')
@@ -174,6 +182,31 @@ RSpec.describe Views::Reports::Index do
 
     expect(rendered).to include(I18n.t('reports.index.title', locale: :ga))
     expect(rendered).to include(I18n.t('reports.index.timeline_title', locale: :ga))
+  end
+
+  it 'uses the active locale for the PDF export label and preparation state' do
+    %i[en cy es ga pt].each do |locale|
+      rendered = Nokogiri::HTML5(
+        Components::Reports::ExportPanel.new(
+          href: '/reports/health-history',
+          title: I18n.t('reports.index.export.health_history_title', locale:),
+          description: I18n.t('reports.index.export.health_history_description', locale:),
+          scope: I18n.t(
+            'reports.index.export.health_history_scope',
+            locale:,
+            people: 'Person',
+            start_date: '2026-01-01',
+            end_date: '2026-01-31'
+          ),
+          label: I18n.t('reports.index.download_pdf', locale:),
+          preparing_label: I18n.t('reports.export.preparing_pdf', locale:)
+        ).call
+      )
+      link = rendered.at_css('[data-testid="pdf-export-panel"] a')
+
+      expect(link.text).to include(I18n.t('reports.index.download_pdf', locale:))
+      expect(link['data-pdf-export-preparing-label-value']).to eq(I18n.t('reports.export.preparing_pdf', locale:))
+    end
   end
 
   it 'uses token-driven report surfaces instead of bespoke analytics gradients and tinted cards' do

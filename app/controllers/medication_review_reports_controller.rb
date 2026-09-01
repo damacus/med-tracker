@@ -4,12 +4,16 @@ class MedicationReviewReportsController < ApplicationController
   def show
     authorize MedicationReviewPrompt, :index?
     sync_review_prompts
+    rendered_pdf = pdf.render
     response.headers['Cache-Control'] = 'no-store'
 
-    send_data pdf.render,
+    send_data rendered_pdf,
               filename: "medtracker-medication-review-#{Date.current.iso8601}.pdf",
               type: 'application/pdf',
               disposition: 'attachment'
+  rescue Reports::PdfRenderer::Error => error
+    Rails.logger.error("PDF rendering failed report_type=medication_review exception_class=#{error.class.name}")
+    redirect_to medication_review_prompts_path, alert: t('reports.export.pdf_unavailable')
   end
 
   private

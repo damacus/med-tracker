@@ -43,6 +43,7 @@ RSpec.describe 'Medication review prompts' do
     rendered_page = Capybara.string(response.body)
     expect(rendered_page).to have_css('main', count: 1)
     expect(rendered_page).to have_link('Export review PDF', href: medication_review_report_path)
+    expect(rendered_page).to have_text('The PDF contains the default visible medicine review scope.')
     expect(rendered_page).to have_css('[data-review-prompt-id]')
   end
 
@@ -202,6 +203,23 @@ RSpec.describe 'Medication review prompts' do
         'Recorded outcome: expected as prescribed.'
       ].each { |text| expect(pdf_text(response.body)).to include(text), "missing parsed PDF text: #{text}" }
     end
+  end
+
+  it 'redirects safely when PDF rendering fails' do
+    renderer = instance_double(Reports::MedicationReviewPdf)
+    allow(Reports::MedicationReviewPdf).to receive(:new).and_return(renderer)
+    allow(renderer).to receive(:render).and_raise(Reports::PdfRenderer::Error, 'rendering failed')
+    allow(Rails.logger).to receive(:error)
+
+    get medication_review_report_path, params: { person_id: person.id }
+
+    expect(response).to redirect_to(medication_review_prompts_path)
+    expect(response.media_type).not_to eq('application/pdf')
+    expect(response.body).not_to start_with('%PDF')
+    expect(flash[:alert]).to eq(I18n.t('reports.export.pdf_unavailable'))
+    expect(Rails.logger).to have_received(:error).with(
+      include('report_type=medication_review', 'exception_class=Reports::PdfRenderer::Error')
+    )
   end
 
   it 'does not export an inaccessible person filter' do

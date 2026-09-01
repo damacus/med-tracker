@@ -1486,6 +1486,9 @@ pt:
     invalid_date: Foi fornecido um formato de data inválido.
     end_before_start: A data de fim deve ser igual ou posterior à data de início.
     date_range_too_large: O intervalo de datas do relatorio nao pode exceder 180 dias.
+    export:
+      pdf_unavailable: Não foi possível preparar o PDF. Tente novamente.
+      preparing_pdf: A preparar PDF...
     health_history:
       title: Relatório do historial de saúde do MedTracker
       people: "Pessoas: %{people}"
@@ -1620,6 +1623,10 @@ pt:
         based_on_logs: Com base nas doses registadas
       timeline_title: Linha temporal de adesão
       download_pdf: Descarregar PDF
+      export:
+        health_history_title: Exportar historial de saúde
+        health_history_description: Descarregue um PDF das pessoas e datas atualmente apresentadas.
+        health_history_scope: "Pessoas: %{people}. Intervalo de datas: %{start_date} a %{end_date}."
       timeline_compliance: "%{percentage}% de conformidade"
       inventory_alert:
         title: Alerta de inventário
@@ -1943,6 +1950,9 @@ pt:
     subtitle: Evidência pública de rótulos de medicamentos organizada para a próxima conversa com um profissional.
     boundary: Esta evidência apoia uma conversa com um profissional. Não substitui o julgamento clínico nem indica a alteração de um medicamento.
     export_pdf: Exportar PDF da revisão
+    export_title: Exportar revisão de medicamentos
+    export_description: Descarregue um PDF para levar a uma conversa com um profissional.
+    export_scope: O PDF contém o âmbito visível predefinido da revisão de medicamentos.
     hidden_count:
       one: 1 item de revisão de menor confiança ocultado para reduzir o ruído
       other: "%{count} itens de revisão de menor confiança ocultados para reduzir o ruído"

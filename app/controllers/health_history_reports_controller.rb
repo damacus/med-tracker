@@ -4,7 +4,9 @@ class HealthHistoryReportsController < ApplicationController
   def show
     authorize :report, :index?
 
-    send_data pdf_body,
+    rendered_pdf = pdf_body
+    response.headers['Cache-Control'] = 'no-store'
+    send_data rendered_pdf,
               filename: filename,
               type: 'application/pdf',
               disposition: 'attachment'
@@ -14,12 +16,15 @@ class HealthHistoryReportsController < ApplicationController
     redirect_to reports_path(start_date: params[:start_date], end_date: params[:end_date], person_id: params[:person_id])
   rescue ArgumentError
     redirect_to reports_path, alert: t('reports.invalid_date')
+  rescue Reports::PdfRenderer::Error => error
+    Rails.logger.error("PDF rendering failed report_type=health_history exception_class=#{error.class.name}")
+    redirect_to reports_path(start_date: params[:start_date], end_date: params[:end_date], person_id: params[:person_id]),
+                alert: t('reports.export.pdf_unavailable')
   end
 
   private
 
   def pdf_body
-    response.headers['Cache-Control'] = 'no-store'
     Reports::HealthHistoryPdf.new(
       result: report_result,
       start_date: start_date,

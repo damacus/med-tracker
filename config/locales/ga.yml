@@ -1700,6 +1700,9 @@ ga:
     subtitle: Fianaise phoiblí lipéid cógas eagraithe don chéad chomhrá eile le cleachtóir.
     boundary: Tacaíonn an fhianaise seo le comhrá le cleachtóir. Ní ghlacann sí áit breithiúnais chliniciúil agus ní insíonn sí duit cógas a athrú.
     export_pdf: Easpórtáil PDF athbhreithnithe
+    export_title: Easpórtáil athbhreithniú cógas
+    export_description: Íoslódáil PDF le tabhairt chuig comhrá le cleachtóir.
+    export_scope: Tá an gnáthraon athbhreithnithe cógas infheicthe sa PDF.
     hidden_count:
       one: 1 mhír athbhreithnithe ar mhuinín níos ísle i bhfolach chun torann a laghdú
       other: "%{count} mír athbhreithnithe ar mhuinín níos ísle i bhfolach chun torann a laghdú"
@@ -1785,6 +1788,9 @@ ga:
     invalid_date: Soláthraíodh formáid dáta neamhbhailí.
     end_before_start: Caithfidh an dáta deiridh a bheith ar nó tar éis an dáta tosaigh.
     date_range_too_large: Ni feidir le raon datai na tuarascola dul thar 180 la.
+    export:
+      pdf_unavailable: Níorbh fhéidir an PDF a ullmhú. Bain triail eile as.
+      preparing_pdf: Ag ullmhú PDF...
     health_history:
       title: Tuarascáil staire sláinte MedTracker
       people: "Daoine: %{people}"
@@ -1919,6 +1925,10 @@ ga:
         based_on_logs: Bunaithe ar dháileoga logáilte
       timeline_title: Amlíne Cloí
       download_pdf: Íoslódáil PDF
+      export:
+        health_history_title: Easpórtáil stair sláinte
+        health_history_description: Íoslódáil PDF de na daoine agus na dátaí atá ar taispeáint anois.
+        health_history_scope: "Daoine: %{people}. Raon dátaí: %{start_date} go %{end_date}."
       timeline_compliance: "%{percentage}% Cloí"
       inventory_alert:
         title: Foláireamh Stoc

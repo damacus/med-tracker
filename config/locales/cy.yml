@@ -1719,6 +1719,9 @@ cy:
     subtitle: Tystiolaeth gyhoeddus o labeli meddyginiaeth wedi'i threfnu ar gyfer eich sgwrs nesaf ag ymarferydd.
     boundary: Mae'r dystiolaeth hon yn cefnogi sgwrs ag ymarferydd. Nid yw'n disodli barn glinigol nac yn dweud wrthych am newid meddyginiaeth.
     export_pdf: Allforio PDF adolygiad
+    export_title: Allforio adolygiad meddyginiaeth
+    export_description: Lawrlwythwch PDF i fynd â hi i sgwrs ag ymarferydd.
+    export_scope: Mae'r PDF yn cynnwys cwmpas diofyn gweladwy'r adolygiad meddyginiaeth.
     hidden_count:
       one: 1 eitem adolygu llai hyderus wedi'i chuddio i leihau sŵn
       other: "%{count} eitem adolygu llai hyderus wedi'u cuddio i leihau sŵn"
@@ -2072,6 +2075,9 @@ cy:
     invalid_date: Darparwyd fformat dyddiad annilys.
     end_before_start: Rhaid i'r dyddiad gorffen fod ar neu ar ôl y dyddiad dechrau.
     date_range_too_large: Ni chaiff ystod dyddiadau'r adroddiad fod yn fwy na 180 diwrnod.
+    export:
+      pdf_unavailable: Ni ellid paratoi'r PDF. Rhowch gynnig arall arni.
+      preparing_pdf: Wrthi'n paratoi PDF...
     health_history:
       title: Adroddiad hanes iechyd MedTracker
       people: "Pobl: %{people}"
@@ -2206,6 +2212,10 @@ cy:
         based_on_logs: Yn seiliedig ar ddosau wedi'u cofnodi
       timeline_title: Llinell Amser Cydymffurfiaeth
       download_pdf: Lawrlwytho PDF
+      export:
+        health_history_title: Allforio hanes iechyd
+        health_history_description: Lawrlwythwch PDF o'r bobl a'r dyddiadau a ddangosir ar hyn o bryd.
+        health_history_scope: "Pobl: %{people}. Ystod dyddiadau: %{start_date} i %{end_date}."
       timeline_compliance: "%{percentage}% Cydymffurfiaeth"
       inventory_alert:
         title: Rhybudd Rhestr
