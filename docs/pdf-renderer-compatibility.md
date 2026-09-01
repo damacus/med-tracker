@@ -37,15 +37,16 @@ builder before the lower PR is accepted.
 
 No clean pre-change application image was available in this worktree, so an
 overall image-size delta was not measured. The committed font and licence add
-573,509 bytes to the source tree: 569,208 bytes for the TTF and 4,301 bytes for
+573,585 bytes to the source tree: 569,208 bytes for the TTF and 4,377 bytes for
 the licence.
 
 ## Renderer and font evidence
 
 `vendor/fonts/NotoSans-Regular.ttf` is the upstream static Noto Sans TTF.
-`vendor/fonts/OFL-1.1.txt` is the upstream SIL Open Font Licence 1.1. The TTF
-has the Latin glyphs used by English, Welsh, Spanish, Irish and Portuguese;
-the contract renders representative characters from all five locales.
+`vendor/fonts/OFL-1.1.txt` is the matching upstream SIL Open Font Licence 1.1,
+including the Noto Project copyright notice. The TTF has the Latin glyphs used
+by English, Welsh, Spanish, Irish and Portuguese; the contract renders
+representative characters from all five locales.
 
 The application test image passed this contract:
 
@@ -54,10 +55,12 @@ task test TEST_FILE=spec/services/reports/sghtmltopdf_contract_spec.rb
 1 example, 0 failures
 ```
 
-It configured the bundled TTF and returned `%PDF-1.7`. A production ARM64
-container repeated the in-process render after one warm-up. Ten small renders
-averaged 0.69 ms each and the process reported a 24,348 kB `VmHWM`. This is a
-representative renderer-only measurement, not an end-to-end report benchmark.
+It configured the bundled TTF, returned `%PDF-1.7`, embedded the Noto Sans
+subset, and exposed the accented locale glyphs through the PDF ToUnicode map.
+A production ARM64 container repeated the in-process render after one warm-up.
+Ten small renders averaged 0.69 ms each and the process reported a 24,348 kB
+`VmHWM`. This is a representative renderer-only measurement, not an end-to-end
+report benchmark.
 
 WOFF and WOFF2 are not renderer inputs. `sghtmltopdf` supports TTF and OTF;
 the static TTF is therefore deliberately bundled instead of converting or
