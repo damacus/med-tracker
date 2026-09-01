@@ -19,6 +19,20 @@ AllCops:
     - <%= path.sub(/^!! /, '').sub(/\/$/, '/**/*') %>
   <% end %>
 
+Style/FrozenStringLiteralComment:
+  Exclude:
+    - "app/components/reports/pdf_document.rb"
+    - "app/components/reports/pdf_stylesheet.rb"
+    - "app/services/reports/pdf_renderer.rb"
+    - "spec/components/reports/pdf_document_spec.rb"
+    - "spec/services/reports/pdf_renderer_spec.rb"
+    - "spec/services/reports/sghtmltopdf_contract_spec.rb"
+
+Rails/OutputSafety:
+  Exclude:
+    - "app/components/reports/pdf_stylesheet.rb"
+    - "spec/services/reports/pdf_renderer_spec.rb"
+
 RSpec/ExampleLength:
   Max: 15
   Exclude:

@@ -1,6 +1,42 @@
 require 'rails_helper'
 require 'zlib'
 
+class PdfRendererTableContent < Phlex::HTML
+  def initialize(row_count)
+    @row_count = row_count
+    super()
+  end
+
+  def view_template
+    table do
+      render_table_header
+      render_table_body
+    end
+  end
+
+  private
+
+  def render_table_header
+    thead do
+      tr do
+        th { 'Name' }
+        th { 'Detail' }
+      end
+    end
+  end
+
+  def render_table_body
+    tbody do
+      @row_count.times do |index|
+        tr do
+          td { "Item #{index}" }
+          td { 'A detailed report row.' }
+        end
+      end
+    end
+  end
+end
+
 RSpec.describe Reports::PdfRenderer do
   let(:renderer) { described_class.new }
   let(:generated_at) { Time.utc(2026, 9, 1, 10, 30) }
@@ -125,16 +161,7 @@ RSpec.describe Reports::PdfRenderer do
       title: 'Long report',
       context: 'All people',
       generated_at:,
-      content: Class.new(Phlex::HTML) {
-        define_method(:view_template) do
-          table do
-            thead { tr { th { 'Name' }; th { 'Detail' } } }
-            tbody do
-              row_count.times { |index| tr { td { "Item #{index}" }; td { 'A detailed report row.' } } }
-            end
-          end
-        end
-      }.new
+      content: PdfRendererTableContent.new(row_count)
     )
   end
 
@@ -152,9 +179,9 @@ RSpec.describe Reports::PdfRenderer do
   end
 
   def document_with_stylesheet(stylesheet)
-    document_with_content(Class.new(Phlex::HTML) {
+    document_with_content(Class.new(Phlex::HTML) do
       define_method(:view_template) { style { raw safe(stylesheet) } }
-    }.new)
+    end.new)
   end
 
   def document_with_srcset(srcset)
@@ -162,15 +189,15 @@ RSpec.describe Reports::PdfRenderer do
   end
 
   def document_with_svg_href(href)
-    document_with_content(Class.new(Phlex::HTML) {
+    document_with_content(Class.new(Phlex::HTML) do
       define_method(:view_template) { raw safe("<svg><image href=\"#{href}\" /></svg>") }
-    }.new)
+    end.new)
   end
 
   def document_with_svg_xlink_href(href)
-    document_with_content(Class.new(Phlex::HTML) {
+    document_with_content(Class.new(Phlex::HTML) do
       define_method(:view_template) { raw safe("<svg><image xlink:href=\"#{href}\" /></svg>") }
-    }.new)
+    end.new)
   end
 
   def document_with_video_poster(poster)
@@ -218,17 +245,26 @@ RSpec.describe Reports::PdfRenderer do
   end
 
   def extracted_text(streams)
-    character_maps = streams.grep(/beginbfchar/).map { |stream| character_map(stream) }
-    text_streams = streams.grep(/\) Tj/)
-
-    character_maps.product(text_streams).flat_map do |character_map, stream|
-      stream.scan(/\((.*?)\) Tj/m).flatten.filter_map do |string|
-        decoded = string.gsub(/\\([0-7]{3})/) { Regexp.last_match(1).to_i(8).chr }
-        next unless decoded.bytesize.even?
-
-        decoded.unpack('n*').filter_map { |cid| character_map[cid] }.join
-      end
+    pdf_character_maps(streams).product(pdf_text_streams(streams)).flat_map do |character_map, stream|
+      decoded_pdf_text(character_map, stream)
     end.join
+  end
+
+  def pdf_character_maps(streams)
+    streams.grep(/beginbfchar/).map { |stream| character_map(stream) }
+  end
+
+  def pdf_text_streams(streams)
+    streams.grep(/\) Tj/)
+  end
+
+  def decoded_pdf_text(character_map, stream)
+    stream.scan(/\((.*?)\) Tj/m).flatten.filter_map do |string|
+      decoded = string.gsub(/\\([0-7]{3})/) { Regexp.last_match(1).to_i(8).chr }
+      next unless decoded.bytesize.even?
+
+      decoded.unpack('n*').filter_map { |cid| character_map[cid] }.join
+    end
   end
 
   def character_map(stream)

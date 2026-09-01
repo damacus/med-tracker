@@ -8,7 +8,7 @@ module Reports
     end
 
     FONT_DIRECTORY = Rails.root.join('vendor/fonts').freeze
-    CSS_URL_PATTERN = /url\(\s*(?:(['"])(.*?)\1|([^)'"\s]+))\s*\)/i.freeze
+    CSS_URL_PATTERN = /url\(\s*(?:(['"])(.*?)\1|([^)'"\s]+))\s*\)/i
 
     def render(component:, metadata:)
       configure_renderer
@@ -16,8 +16,8 @@ module Reports
       ensure_permitted_assets!(html)
 
       Sghtmltopdf.render(html, page_size: 'A4', **pdf_metadata(metadata))
-    rescue Sghtmltopdf::Error => error
-      raise Error, "PDF rendering failed: #{error.class}"
+    rescue Sghtmltopdf::Error => e
+      raise Error, "PDF rendering failed: #{e.class}"
     end
 
     private
@@ -69,7 +69,7 @@ module Reports
     end
 
     def css_asset_references(document)
-      stylesheets = document.css('style').map(&:text) + document.css('[style]').filter_map { |element| element['style'] }
+      stylesheets = style_blocks(document) + inline_styles(document)
 
       stylesheets.each do |stylesheet|
         raise Error, 'PDF assets must be bundled fonts' if css_import_at_keyword?(stylesheet)
@@ -83,25 +83,51 @@ module Reports
     end
 
     def css_import_at_keyword?(stylesheet)
+      css_tokens(stylesheet).include?(:import)
+    end
+
+    def style_blocks(document)
+      document.css('style').map(&:text)
+    end
+
+    def inline_styles(document)
+      document.css('[style]').filter_map { |element| element['style'] }
+    end
+
+    def css_tokens(stylesheet)
       index = 0
+      tokens = []
 
       while index < stylesheet.length
-        if stylesheet[index, 2] == '/*'
-          closing_comment = stylesheet.index('*/', index + 2)
-          return false unless closing_comment
-
-          index = closing_comment + 2
-        elsif stylesheet[index] == "'" || stylesheet[index] == '"'
-          index = css_string_end(stylesheet, index)
-        elsif stylesheet[index] == '@'
-          identifier, index = css_identifier_at(stylesheet, index + 1)
-          return true if identifier.casecmp?('import')
-        else
-          index += 1
-        end
+        token, index = css_token_at(stylesheet, index)
+        tokens << token if token
       end
 
-      false
+      tokens
+    end
+
+    def css_token_at(stylesheet, index)
+      return css_comment_at(stylesheet, index) if stylesheet[index, 2] == '/*'
+      return [nil, css_string_end(stylesheet, index)] if quote?(stylesheet[index])
+      return css_at_keyword_at(stylesheet, index) if stylesheet[index] == '@'
+
+      [nil, index + 1]
+    end
+
+    def css_comment_at(stylesheet, index)
+      closing_comment = stylesheet.index('*/', index + 2)
+      return [nil, stylesheet.length] unless closing_comment
+
+      [nil, closing_comment + 2]
+    end
+
+    def quote?(character)
+      ["'", '"'].include?(character)
+    end
+
+    def css_at_keyword_at(stylesheet, index)
+      identifier, next_index = css_identifier_at(stylesheet, index + 1)
+      [identifier.casecmp?('import') ? :import : nil, next_index]
     end
 
     def css_string_end(stylesheet, index)
@@ -125,49 +151,67 @@ module Reports
       identifier = String.new
 
       while index < stylesheet.length
-        character = stylesheet[index]
-        if character.match?(/[a-zA-Z0-9_-]/)
-          identifier << character
-          index += 1
-        elsif character == '\\'
-          escaped_character, index = css_escape_at(stylesheet, index)
-          break unless escaped_character
+        character, next_index = css_identifier_character_at(stylesheet, index)
+        break unless character
 
-          identifier << escaped_character
-        else
-          break
-        end
+        identifier << character
+        index = next_index
       end
 
       [identifier, index]
     end
 
-    def css_escape_at(stylesheet, index)
-      index += 1
-      return [nil, index] if index >= stylesheet.length
-      return [nil, index] if stylesheet[index].match?(/[\n\r\f]/)
+    def css_identifier_character_at(stylesheet, index)
+      character = stylesheet[index]
+      return [character, index + 1] if character.match?(/[a-zA-Z0-9_-]/)
+      return css_escape_at(stylesheet, index) if character == '\\'
 
+      [nil, index]
+    end
+
+    def css_escape_at(stylesheet, index)
+      character = stylesheet[index + 1]
+      return [nil, index + 1] unless escaped_character?(character)
+
+      css_escape_character_at(stylesheet, index + 1)
+    end
+
+    def escaped_character?(character)
+      character && !character.match?(/[\n\r\f]/)
+    end
+
+    def css_escape_character_at(stylesheet, index)
       escaped = stylesheet[index, 6][/\A[0-9a-fA-F]{1,6}/]
       return [stylesheet[index], index + 1] unless escaped
 
-      index += escaped.length
-      index += 1 if stylesheet[index]&.match?(/[ \t\n\r\f]/)
+      css_hex_escape_at(stylesheet, index, escaped)
+    end
+
+    def css_hex_escape_at(stylesheet, index, escaped)
+      next_index = index + escaped.length
+      next_index += 1 if stylesheet[next_index]&.match?(/[ \t\n\r\f]/)
 
       codepoint = escaped.to_i(16)
       character = codepoint.zero? || codepoint > 0x10ffff ? "\uFFFD" : codepoint.chr(Encoding::UTF_8)
 
-      [character, index]
+      [character, next_index]
     end
 
     def permitted_local_asset?(reference)
       uri = URI.parse(reference)
-      return false unless uri.scheme.nil? || uri.scheme == 'file'
-      return false if uri.host.present?
+      return false unless local_file_uri?(uri)
 
+      bundled_font_path(uri).to_s.start_with?("#{FONT_DIRECTORY}/")
+    end
+
+    def local_file_uri?(uri)
+      (uri.scheme.nil? || uri.scheme == 'file') && uri.host.blank?
+    end
+
+    def bundled_font_path(uri)
       path = uri.scheme == 'file' ? Pathname.new(uri.path) : FONT_DIRECTORY.join(uri.path)
-      path = Pathname.new(File.expand_path(path.to_s))
 
-      path.to_s.start_with?("#{FONT_DIRECTORY}/")
+      Pathname.new(File.expand_path(path.to_s))
     end
   end
 end

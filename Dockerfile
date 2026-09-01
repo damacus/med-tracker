@@ -131,7 +131,7 @@ COPY --chown=ruby:ruby db/ ./db/
 COPY --chown=ruby:ruby lib/ ./lib/
 COPY --chown=ruby:ruby public/ ./public/
 COPY --chown=ruby:ruby spec/ ./spec/
-COPY --chown=ruby:ruby vendor/ ./vendor/
+COPY --chown=ruby:ruby vendor/fonts/ ./vendor/fonts/
 COPY --chown=ruby:ruby .rspec .simplecov ./
 COPY --chown=ruby:ruby config.ru Rakefile ./
 
@@ -205,7 +205,7 @@ COPY --chown=ruby:ruby --from=assets /app/data/medication_reviews/openfda_labels
 COPY --chown=ruby:ruby --from=assets /app/data/medication_reviews/rxclass_terminology.json /app/data/medication_reviews/rxclass_terminology.json
 COPY --chown=ruby:ruby --from=assets /app/lib /app/lib
 COPY --chown=ruby:ruby --from=assets /app/public /app/public
-COPY --chown=ruby:ruby --from=assets /app/vendor /app/vendor
+COPY --chown=ruby:ruby --from=assets /app/vendor/fonts /app/vendor/fonts
 COPY --chown=ruby:ruby --from=assets /app/scripts/verify_otlp_trace_resources.rb /app/scripts/verify_otlp_trace_resources.rb
 COPY --chown=ruby:ruby --from=assets /app/config.ru /app/Rakefile /app/
 COPY --chown=ruby:ruby --from=assets /app/Gemfile /app/Gemfile.lock /app/
