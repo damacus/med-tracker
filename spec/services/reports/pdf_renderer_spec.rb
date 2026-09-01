@@ -82,6 +82,20 @@ RSpec.describe Reports::PdfRenderer do
     expect(Sghtmltopdf).not_to have_received(:render)
   end
 
+  it 'rejects CSS imports with no whitespace or intervening comments before rendering' do
+    blocked_components = {
+      no_whitespace: document_with_stylesheet('@import"https://example.test/report.css";'),
+      comment_whitespace: document_with_stylesheet('@import/**/"file:///etc/passwd";')
+    }
+    allow(Sghtmltopdf).to receive(:render).and_return('%PDF-1.7')
+
+    blocked_components.each do |name, component|
+      expect { renderer.render(component:, metadata:) }.to raise_error(described_class::Error), name.to_s
+    end
+
+    expect(Sghtmltopdf).not_to have_received(:render)
+  end
+
   it 'normalizes only known renderer errors and preserves their causes' do
     renderer_error = Sghtmltopdf::Error.new('engine failed')
     allow(Sghtmltopdf).to receive(:render).and_raise(renderer_error)
