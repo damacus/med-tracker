@@ -63,6 +63,25 @@ RSpec.describe Reports::PdfRenderer do
     expect(renderer.render(component: bundled_font_component, metadata:)).to eq('%PDF-1.7')
   end
 
+  it 'rejects inline CSS, CSS imports, srcset, SVG and related resource attributes before rendering' do
+    blocked_components = {
+      inline_style: document_with_inline_style('background-image: url(https://example.test/report.png)'),
+      stylesheet_import: document_with_stylesheet('@import "https://example.test/report.css";'),
+      srcset: document_with_srcset('https://example.test/report.png 1x'),
+      svg_href: document_with_svg_href('https://example.test/report.svg'),
+      svg_xlink_href: document_with_svg_xlink_href('https://example.test/report.svg'),
+      video_poster: document_with_video_poster('https://example.test/poster.png'),
+      script_source: document_with_script_source('https://example.test/report.js')
+    }
+    allow(Sghtmltopdf).to receive(:render).and_return('%PDF-1.7')
+
+    blocked_components.each do |name, component|
+      expect { renderer.render(component:, metadata:) }.to raise_error(described_class::Error), name.to_s
+    end
+
+    expect(Sghtmltopdf).not_to have_received(:render)
+  end
+
   it 'normalizes only known renderer errors and preserves their causes' do
     renderer_error = Sghtmltopdf::Error.new('engine failed')
     allow(Sghtmltopdf).to receive(:render).and_raise(renderer_error)
@@ -111,6 +130,49 @@ RSpec.describe Reports::PdfRenderer do
       context: 'All people',
       generated_at:,
       content: Class.new(Phlex::HTML) { define_method(:view_template) { img(src: source) } }.new
+    )
+  end
+
+  def document_with_inline_style(style)
+    document_with_content(Class.new(Phlex::HTML) { define_method(:view_template) { div(style:) } }.new)
+  end
+
+  def document_with_stylesheet(stylesheet)
+    document_with_content(Class.new(Phlex::HTML) {
+      define_method(:view_template) { style { raw safe(stylesheet) } }
+    }.new)
+  end
+
+  def document_with_srcset(srcset)
+    document_with_content(Class.new(Phlex::HTML) { define_method(:view_template) { img(srcset:) } }.new)
+  end
+
+  def document_with_svg_href(href)
+    document_with_content(Class.new(Phlex::HTML) {
+      define_method(:view_template) { raw safe("<svg><image href=\"#{href}\" /></svg>") }
+    }.new)
+  end
+
+  def document_with_svg_xlink_href(href)
+    document_with_content(Class.new(Phlex::HTML) {
+      define_method(:view_template) { raw safe("<svg><image xlink:href=\"#{href}\" /></svg>") }
+    }.new)
+  end
+
+  def document_with_video_poster(poster)
+    document_with_content(Class.new(Phlex::HTML) { define_method(:view_template) { video(poster:) } }.new)
+  end
+
+  def document_with_script_source(source)
+    document_with_content(Class.new(Phlex::HTML) { define_method(:view_template) { script(src: source) } }.new)
+  end
+
+  def document_with_content(content)
+    Components::Reports::PdfDocument.new(
+      title: 'Unsafe report',
+      context: 'All people',
+      generated_at:,
+      content:
     )
   end
 
