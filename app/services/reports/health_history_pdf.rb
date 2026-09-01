@@ -24,7 +24,7 @@ module Reports
         context_lines: header_context_lines,
         generated_at:,
         generated_at_text: t('generated_at', timestamp: generated_timestamp),
-        content: Components::Reports::HealthHistoryReport.new(result:),
+        content: report_component,
         locale: I18n.locale.to_s
       )
     end
@@ -45,7 +45,23 @@ module Reports
     end
 
     def people_label
-      result.people.map(&:name).presence&.to_sentence || t('no_people')
+      report_people.map(&:name).presence&.to_sentence || t('no_people')
+    end
+
+    def report_component
+      return Components::Reports::GpHealthHistoryReport.new(result:) if gp_result?
+
+      Components::Reports::HealthHistoryReport.new(result:)
+    end
+
+    def gp_result?
+      result.respond_to?(:person) && result.respond_to?(:current_medicines) && result.respond_to?(:chronology)
+    end
+
+    def report_people
+      return [result.person] if gp_result?
+
+      result.people
     end
 
     def generated_timestamp

@@ -1788,10 +1788,12 @@ ga:
     invalid_date: Soláthraíodh formáid dáta neamhbhailí.
     end_before_start: Caithfidh an dáta deiridh a bheith ar nó tar éis an dáta tosaigh.
     date_range_too_large: Ni feidir le raon datai na tuarascola dul thar 180 la.
+    gp_date_range_too_large: Ní féidir le raon dátaí stair sláinte an dochtúra teaghlaigh dul thar 366 lá.
     export:
       pdf_unavailable: Níorbh fhéidir an PDF a ullmhú. Bain triail eile as.
       preparing_pdf: Ag ullmhú PDF...
     health_history:
+      person_required: Roghnaigh duine amháin chun stair sláinte don dochtúir teaghlaigh a íoslódáil.
       title: Tuarascáil staire sláinte MedTracker
       people: "Daoine: %{people}"
       no_people: Níl aon daoine údaraithe
@@ -1822,6 +1824,26 @@ ga:
         medications: Cógais amhrasta
         notes: Nótaí
         action: Gníomh a rinneadh
+      gp:
+        identity:
+          title: Sonraí an duine
+          date_of_birth: "Dáta breithe: %{date}"
+        current_medicines:
+          title: Cógais reatha
+        chronology:
+          title: Croineolaíocht
+          duration: "Fad: %{duration}"
+          ongoing: Ar siúl
+          days: "%{count} lá"
+          severity: "Déine: %{severity}"
+          notes: "Nótaí: %{notes}"
+          action: "Gníomh a rinneadh: %{action}"
+          medical_help: "Iarradh cabhair leighis: %{medical_help}"
+          medications: "Cógais nasctha: %{medications}"
+        not_recorded: Gan taifead
+        none: Gan aon cheann
+        'yes': 'Tá'
+        'no': 'Níl'
       illness_patterns:
         title: Patrúin tinnis taifeadta
         summary: Taifeadadh %{count} eachtra de "%{title}" idir %{first} agus %{last}. Ba é %{interval} lá an meán-eatramh idir tús na n-eachtraí.
@@ -1930,6 +1952,8 @@ ga:
         based_on_logs: Bunaithe ar dháileoga logáilte
       timeline_title: Amlíne Cloí
       download_pdf: Íoslódáil PDF
+      gp_person_label: Duine don tuarascáil don dochtúir teaghlaigh
+      gp_person_prompt: Roghnaigh duine
       export:
         health_history_title: Easpórtáil stair sláinte
         health_history_description: Íoslódáil PDF de na daoine agus na dátaí atá ar taispeáint anois.

@@ -11,6 +11,7 @@ RSpec.describe Views::Reports::Index do
       end_date: Time.zone.today,
       today_taken_medications: today_taken_medications,
       people: people,
+      manageable_people: people,
       selected_person_id: selected_person_id
     )
   end
@@ -25,6 +26,9 @@ RSpec.describe Views::Reports::Index do
       )
     ]
   end
+
+  let(:gp_form_report) { instance_double(described_class) }
+  let(:gp_form_view_context) { controller.view_context }
 
   let(:daily_data) do
     [
@@ -66,6 +70,9 @@ RSpec.describe Views::Reports::Index do
     allow(report_view).to receive(:health_history_report_path) do |params|
       "/reports/health-history?#{params.to_query}"
     end
+    allow(gp_form_view_context).to receive(:health_history_report_path).with({}).and_return('/reports/health-history')
+    allow(gp_form_report).to receive(:view_context).and_return(gp_form_view_context)
+    allow(gp_form_report).to receive(:t) { |key| I18n.t(key) }
     # rubocop:enable RSpec/SubjectStub
   end
 
@@ -105,21 +112,20 @@ RSpec.describe Views::Reports::Index do
     expect(rendered).to include('Wed')
   end
 
-  it 'links the PDF download with the active filters' do
+  it 'renders a single-person GP health-history form' do
     rendered = Nokogiri::HTML.fragment(render(report_view))
-    link = rendered.at_css("a[href*='/reports/health-history']")
+    form = rendered.at_css('form[action*="/reports/health-history"]')
+    person_select = form.at_css('select[name="person_id"]')
 
-    expect(link.text).to include('Download PDF')
-    expect(link['href']).to include('start_date=')
-    expect(link['href']).to include('end_date=')
+    expect(form.at_css('button').text).to include('Download PDF')
+    expect(person_select.css('option').pluck('value')).to contain_exactly('', '1', '2')
   end
 
-  it 'shows the active people and date scope in the export panel' do
+  it 'defaults the GP form to its person prompt' do
     rendered = Nokogiri::HTML.fragment(render(report_view))
-    panel = rendered.at_css('[data-testid="pdf-export-panel"]')
+    prompt_option = rendered.at_css('#health_history_person_id option')
 
-    expect(panel.text).to include('People: John Doe and Jane Doe')
-    expect(panel.text).to include('Date range:')
+    expect(prompt_option['value']).to eq('')
   end
 
   it 'renders compliance bars without inline styles' do
@@ -184,41 +190,18 @@ RSpec.describe Views::Reports::Index do
     expect(rendered).to include(I18n.t('reports.index.timeline_title', locale: :ga))
   end
 
-  it 'uses the active locale for the PDF export label and preparation state' do
+  it 'uses the active locale for the GP report form controls' do
     %i[en cy es ga pt].each do |locale|
-      link = localized_export_link(locale)
+      rendered = Nokogiri::HTML.fragment(I18n.with_locale(locale) { render gp_health_history_form })
+      form = rendered.at_css('form[action*="/reports/health-history"]')
 
-      expect(link.text).to include(I18n.t('reports.index.download_pdf', locale:))
-      expect(link['data-pdf-export-preparing-label-value']).to eq(I18n.t('reports.export.preparing_pdf', locale:))
+      expect(form.at_css('button').text).to include(I18n.t('reports.index.download_pdf', locale:))
+      expect(form.at_css('select option').text).to include(I18n.t('reports.index.gp_person_prompt', locale:))
     end
   end
 
-  def localized_export_link(locale)
-    Nokogiri::HTML5(
-      Components::Reports::ExportPanel.new(**localized_export_attributes(locale)).call
-    ).at_css('[data-testid="pdf-export-panel"] a')
-  end
-
-  def localized_export_attributes(locale)
-    {
-      href: '/reports/health-history',
-      fallback_href: '/reports',
-      title: I18n.t('reports.index.export.health_history_title', locale:),
-      description: I18n.t('reports.index.export.health_history_description', locale:),
-      scope: localized_export_scope(locale),
-      label: I18n.t('reports.index.download_pdf', locale:),
-      preparing_label: I18n.t('reports.export.preparing_pdf', locale:)
-    }
-  end
-
-  def localized_export_scope(locale)
-    I18n.t(
-      'reports.index.export.health_history_scope',
-      locale:,
-      people: 'Person',
-      start_date: '2026-01-01',
-      end_date: '2026-01-31'
-    )
+  def gp_health_history_form
+    Components::Reports::GpHealthHistoryForm.new(report: gp_form_report, people:, selected_person_id:)
   end
 
   it 'uses token-driven report surfaces instead of bespoke analytics gradients and tinted cards' do

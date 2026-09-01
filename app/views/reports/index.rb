@@ -66,6 +66,7 @@ module Views
         @end_date = end_date
         @today_taken_medications = options.fetch(:today_taken_medications)
         @people = options.fetch(:people)
+        @manageable_people = options.fetch(:manageable_people)
         @selected_person_id = options.fetch(:selected_person_id)
         super()
       end
@@ -148,9 +149,10 @@ module Views
         div(class: 'space-y-8') do
           div(class: 'flex items-center justify-between px-2') do
             m3_heading(level: 2, size: '5', class: 'font-bold') { t('reports.index.timeline_title') }
+            render Components::Reports::GpHealthHistoryForm.new(
+              report: self, people: @manageable_people, selected_person_id: @selected_person_id
+            )
           end
-
-          render_health_history_export_panel
 
           m3_card(class: 'border border-border/70 bg-card p-8 shadow-elevation-2 sm:p-10') do
             div(class: 'flex items-end justify-between h-64 gap-4 px-2') do

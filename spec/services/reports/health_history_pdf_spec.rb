@@ -71,6 +71,30 @@ RSpec.describe Reports::HealthHistoryPdf do
     expect(pdf_text(pdf)).to include('Paracetamol')
   end
 
+  it 'renders the single-person GP report through the shared PDF renderer' do
+    pdf = described_class.new(result: gp_result, start_date:, end_date:, generated_at:).render
+
+    expect(pdf_metadata(pdf)).to eq(expected_pdf_metadata)
+    expect(pdf_text(pdf)).to include(*gp_pdf_content)
+    expect(Components::Reports::GpHealthHistoryReport.new(result: gp_result).call)
+      .to include('Date of birth: 1990-01-01')
+  end
+
+  def gp_pdf_content
+    [
+      'Person details',
+      'Current medicines',
+      'Paracetamol',
+      'Chronology',
+      'Nausea',
+      'Severity: Moderate',
+      'Started after evening dose',
+      'Action taken: Called pharmacy',
+      'Medical help sought: Yes',
+      'Linked medicines: Paracetamol'
+    ]
+  end
+
   def empty_result
     Reports::HealthHistoryQuery::Result.new(
       people: [],
@@ -100,6 +124,27 @@ RSpec.describe Reports::HealthHistoryPdf do
     )
   end
 
+  def gp_result
+    person = Data.define(:name, :date_of_birth).new('Alex Smith', Date.new(1990, 1, 1))
+    medicine = Data.define(:display_name).new('Paracetamol')
+    Data.define(:person, :current_medicines, :chronology).new(
+      person, [medicine], [health_event_entry(gp_event, ['Paracetamol'])]
+    )
+  end
+
+  def gp_event
+    health_event(
+      title: 'Nausea',
+      started_on: Date.new(2026, 2, 10),
+      ended_on: nil,
+      severity: :moderate,
+      notes: 'Started after evening dose',
+      action_taken: 'Called pharmacy',
+      medical_help_sought: true,
+      ongoing?: true
+    )
+  end
+
   def health_event_entry(event, medication_names)
     Reports::HealthHistoryQuery::HealthEventEntry.new(event, medication_names)
   end
@@ -112,6 +157,7 @@ RSpec.describe Reports::HealthHistoryPdf do
       severity: :moderate,
       notes:,
       action_taken: 'Called pharmacy',
+      medical_help_sought: false,
       ongoing?: true
     )
   end
@@ -124,12 +170,13 @@ RSpec.describe Reports::HealthHistoryPdf do
       severity: :mild,
       notes: '',
       action_taken: '',
+      medical_help_sought: false,
       ongoing?: false
     )
   end
 
   def health_event(**attributes)
-    Data.define(:title, :started_on, :ended_on, :severity, :notes, :action_taken, :ongoing?).new(
+    Data.define(:title, :started_on, :ended_on, :severity, :notes, :action_taken, :medical_help_sought, :ongoing?).new(
       **attributes
     )
   end
