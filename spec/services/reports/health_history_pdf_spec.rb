@@ -75,9 +75,101 @@ RSpec.describe Reports::HealthHistoryPdf do
     pdf = described_class.new(result: gp_result, start_date:, end_date:, generated_at:).render
 
     expect(pdf_metadata(pdf)).to eq(expected_pdf_metadata)
-    expect(pdf_text(pdf)).to include(*gp_pdf_content)
+    expect(pdf_text(pdf)).to include(*gp_pdf_content, 'Alex Smith', 'Reporting period: 2026-02-01 to 2026-02-28',
+                                     'Generated: 2026-03-01 10:30 UTC')
     expect(Components::Reports::GpHealthHistoryReport.new(result: gp_result).call)
       .to include('Date of birth: 1990-01-01')
+  end
+
+  it 'keeps medication administrations out of the GP report unless the appendix is requested' do
+    without_appendix = described_class.new(result: gp_result, start_date:, end_date:, generated_at:).render
+    with_appendix = described_class.new(
+      result: gp_result,
+      start_date:,
+      end_date:,
+      generated_at:,
+      include_medication_takes: true
+    ).render
+
+    expect(pdf_text(without_appendix)).not_to include('Medication administrations appendix', '2026-02-15 08:30')
+    expect(pdf_text(with_appendix)).to include('Medication administrations appendix', '2026-02-15 08:30', 'Paracetamol')
+    expect(Components::Reports::GpHealthHistoryReport.new(result: gp_result, include_medication_takes: true).call)
+      .to include('pdf-appendix', 'health-history-medication-table')
+  end
+
+  it 'puts the medication administration appendix on the page after the main GP report' do
+    pdf = described_class.new(
+      result: gp_result.with(medication_takes: Array.new(90) { |index| medication_take(index:) }),
+      start_date:,
+      end_date:,
+      generated_at:,
+      include_medication_takes: true
+    ).render
+    page_texts = pdf_page_texts(pdf)
+    disclaimer_page = page_texts.index { it.include?('Disclaimer') }
+    appendix_page = page_texts.index { it.include?('Medication administrations appendix') }
+
+    expect(disclaimer_page).to be < appendix_page
+    expect(appendix_page).to eq(disclaimer_page + 1)
+  end
+
+  it 'renders every long chronology sentinel with repeated table headings' do
+    result = gp_result.with(chronology: long_chronology)
+    pdf = described_class.new(result:, start_date:, end_date:, generated_at:).render
+
+    expect(pdf.scan(%r{/Type /Page\b}).size).to be > 1
+    expect(pdf_text(pdf)).to include('Recorded episode 1', 'Long chronology sentinel 50')
+    expect(Components::Reports::GpHealthHistoryReport.new(result:).call)
+      .to include('health-history-chronology-table', '<thead>', 'Dates', 'Type', 'Details')
+
+    chronology_pages = pdf_page_texts(pdf).select { it.include?('Recorded episode') }
+    expect(chronology_pages.drop(1)).to all(include('DATS TP TTL DTALS'))
+  end
+
+  it 'localizes recorded chronology facts and omits optional facts that were not recorded' do
+    pdf = I18n.with_locale(:es) { localized_optional_facts_pdf }
+
+    expect(pdf_text(pdf)).to include(
+      I18n.t('health_events.kinds.suspected_side_effect', locale: :es),
+      I18n.t('health_events.severities.moderate', locale: :es)
+    )
+    expect(pdf_text(pdf)).not_to include(I18n.t('reports.health_history.gp.not_recorded', locale: :es))
+  end
+
+  it 'renders localized GP page numbering and linked-medicine connectors' do
+    pdf = I18n.with_locale(:es) do
+      described_class.new(
+        result: gp_result(medication_names: %w[Paracetamol Ibuprofen]),
+        start_date:,
+        end_date:,
+        generated_at:
+      ).render
+    end
+
+    expect(pdf_text(pdf)).to include(
+      'Medicamentos relacionados: Paracetamol y Ibuprofen',
+      'Pgina de'
+    )
+  end
+
+  it 'renders the complete long medication administration appendix with repeated headings' do
+    result = gp_result.with(medication_takes: Array.new(90) { |index| medication_take(index:) })
+    pdf = described_class.new(
+      result:,
+      start_date:,
+      end_date:,
+      generated_at:,
+      include_medication_takes: true
+    ).render
+
+    expect(pdf.scan(%r{/Type /Page\b}).size).to be > 2
+    expect(pdf_text(pdf)).to include('Medication administrations appendix', '2026-02-01 08:30', '2026-02-28 08:30')
+    expect(Components::Reports::GpHealthHistoryReport.new(result:, include_medication_takes: true).call)
+      .to include('health-history-medication-table', '<thead>', 'Time')
+
+    appendix_start = pdf_page_texts(pdf).index { it.include?('Medication administrations appendix') }
+    appendix_pages = pdf_page_texts(pdf)[appendix_start..]
+    expect(appendix_pages).to all(include('TM PRSON MDCATON DOS SOURC LOCATON'))
   end
 
   def gp_pdf_content
@@ -124,17 +216,18 @@ RSpec.describe Reports::HealthHistoryPdf do
     )
   end
 
-  def gp_result
+  def gp_result(medication_names: ['Paracetamol'])
     person = Data.define(:name, :date_of_birth).new('Alex Smith', Date.new(1990, 1, 1))
     medicine = Data.define(:display_name).new('Paracetamol')
-    Data.define(:person, :current_medicines, :chronology).new(
-      person, [medicine], [health_event_entry(gp_event, ['Paracetamol'])]
+    Data.define(:person, :current_medicines, :chronology, :medication_takes).new(
+      person, [medicine], [health_event_entry(gp_event, medication_names)], [medication_take(index: 14, person:)]
     )
   end
 
   def gp_event
     health_event(
       title: 'Nausea',
+      event_kind: :suspected_side_effect,
       started_on: Date.new(2026, 2, 10),
       ended_on: nil,
       severity: :moderate,
@@ -145,6 +238,33 @@ RSpec.describe Reports::HealthHistoryPdf do
     )
   end
 
+  def long_chronology
+    Array.new(50) do |index|
+      long_chronology_entry(index)
+    end
+  end
+
+  def long_chronology_entry(index)
+    health_event_entry(health_event(
+                         title: "Recorded episode #{index + 1}", event_kind: :illness,
+                         started_on: start_date + (index % 20), ended_on: nil, severity: :moderate,
+                         notes: "Long chronology sentinel #{index + 1}", action_taken: 'Recorded action',
+                         medical_help_sought: false, ongoing?: true
+                       ), [])
+  end
+
+  def localized_optional_facts_pdf
+    result = gp_result.with(chronology: [health_event_entry(gp_event, ['Paracetamol']), optional_facts_entry])
+    described_class.new(result:, start_date:, end_date:, generated_at:).render
+  end
+
+  def optional_facts_entry
+    health_event_entry(health_event(
+                         title: 'Cold', event_kind: :illness, started_on: start_date, ended_on: start_date + 2.days,
+                         severity: nil, notes: nil, action_taken: nil, medical_help_sought: false, ongoing?: false
+                       ), [])
+  end
+
   def health_event_entry(event, medication_names)
     Reports::HealthHistoryQuery::HealthEventEntry.new(event, medication_names)
   end
@@ -152,6 +272,7 @@ RSpec.describe Reports::HealthHistoryPdf do
   def sample_event(notes:)
     health_event(
       title: 'Nausea',
+      event_kind: :suspected_side_effect,
       started_on: Date.new(2026, 2, 10),
       ended_on: nil,
       severity: :moderate,
@@ -165,6 +286,7 @@ RSpec.describe Reports::HealthHistoryPdf do
   def sample_illness
     health_event(
       title: 'Cold',
+      event_kind: :illness,
       started_on: Date.new(2026, 2, 12),
       ended_on: Date.new(2026, 2, 14),
       severity: :mild,
@@ -176,9 +298,10 @@ RSpec.describe Reports::HealthHistoryPdf do
   end
 
   def health_event(**attributes)
-    Data.define(:title, :started_on, :ended_on, :severity, :notes, :action_taken, :medical_help_sought, :ongoing?).new(
-      **attributes
-    )
+    Data.define(:title, :event_kind, :started_on, :ended_on, :severity, :notes,
+                :action_taken, :medical_help_sought, :ongoing?).new(
+                  **attributes
+                )
   end
 
   def sample_pattern

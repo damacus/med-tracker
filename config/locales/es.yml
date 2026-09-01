@@ -2187,6 +2187,13 @@ es:
         notes: Notas
         action: Medida adoptada
       gp:
+        list:
+          words_connector: ", "
+          two_words_connector: " y "
+          last_word_connector: " y "
+        reporting_period: "Periodo del informe: %{start_date} a %{end_date}"
+        medication_takes_appendix: Apéndice de administraciones de medicamentos
+        page_number: Página <page> de <total>
         identity:
           title: Datos de la persona
           date_of_birth: "Fecha de nacimiento: %{date}"
@@ -2194,6 +2201,8 @@ es:
           title: Medicamentos actuales
         chronology:
           title: Cronología
+          kind_heading: Tipo
+          details_heading: Detalles
           duration: "Duración: %{duration}"
           ongoing: En curso
           days: "%{count} días"
@@ -2316,6 +2325,7 @@ es:
       download_pdf: Descargar PDF
       gp_person_label: Persona para el informe del médico de cabecera
       gp_person_prompt: Selecciona una persona
+      include_medication_takes: Incluir registro de administraciones de medicamentos
       export:
         health_history_title: Exportar historial de salud
         health_history_description: Descargue un PDF de las personas y fechas mostradas actualmente.

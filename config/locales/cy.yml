@@ -2112,6 +2112,13 @@ cy:
         notes: Nodiadau
         action: Camau a gymerwyd
       gp:
+        list:
+          words_connector: ", "
+          two_words_connector: " a "
+          last_word_connector: ", a "
+        reporting_period: "Cyfnod adrodd: %{start_date} i %{end_date}"
+        medication_takes_appendix: Atodiad gweinyddu meddyginiaeth
+        page_number: Tudalen <page> o <total>
         identity:
           title: Manylion y person
           date_of_birth: "Dyddiad geni: %{date}"
@@ -2119,6 +2126,8 @@ cy:
           title: Meddyginiaethau presennol
         chronology:
           title: Cronoleg
+          kind_heading: Math
+          details_heading: Manylion
           duration: "Hyd: %{duration}"
           ongoing: Parhaus
           days: "%{count} diwrnod"
@@ -2241,6 +2250,7 @@ cy:
       download_pdf: Lawrlwytho PDF
       gp_person_label: Person ar gyfer adroddiad meddyg teulu
       gp_person_prompt: Dewiswch berson
+      include_medication_takes: Cynnwys cofnod gweinyddu meddyginiaeth
       export:
         health_history_title: Allforio hanes iechyd
         health_history_description: Lawrlwythwch PDF o'r bobl a'r dyddiadau a ddangosir ar hyn o bryd.

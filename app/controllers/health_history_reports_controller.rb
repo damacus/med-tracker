@@ -14,11 +14,16 @@ class HealthHistoryReportsController < ApplicationController
               disposition: 'attachment'
     record_download
   rescue Reports::GpDateRange::RangeTooLarge
-    redirect_to reports_path, alert: t('reports.gp_date_range_too_large')
+    redirect_to reports_path(**medication_takes_redirect_params), alert: t('reports.gp_date_range_too_large')
   rescue Reports::GpDateRange::EndBeforeStart
-    redirect_to reports_path(start_date: params[:start_date], end_date: params[:end_date], person_id: params[:person_id])
+    redirect_to reports_path(
+      start_date: params[:start_date],
+      end_date: params[:end_date],
+      person_id: params[:person_id],
+      **medication_takes_redirect_params
+    )
   rescue ArgumentError
-    redirect_to reports_path, alert: t('reports.invalid_date')
+    redirect_to reports_path(**medication_takes_redirect_params), alert: t('reports.invalid_date')
   rescue Reports::PdfRenderer::Error => e
     Observability::DiagnosticEvent.emit(
       component: :health_history_pdf_export,
@@ -26,7 +31,12 @@ class HealthHistoryReportsController < ApplicationController
       severity: :error,
       error: e
     )
-    redirect_to reports_path(start_date: params[:start_date], end_date: params[:end_date], person_id: params[:person_id]),
+    redirect_to reports_path(
+      start_date: params[:start_date],
+      end_date: params[:end_date],
+      person_id: params[:person_id],
+      **medication_takes_redirect_params
+    ),
                 alert: t('reports.export.pdf_unavailable')
   end
 
@@ -38,12 +48,18 @@ class HealthHistoryReportsController < ApplicationController
       result: report_result,
       start_date: start_date,
       end_date: end_date,
-      generated_at: Time.current
+      generated_at: Time.current,
+      include_medication_takes: include_medication_takes?
     ).render
   end
 
   def report_result
-    Reports::GpHealthHistoryQuery.new(person: selected_person, start_date: start_date, end_date: end_date).call
+    Reports::GpHealthHistoryQuery.new(
+      person: selected_person,
+      start_date: start_date,
+      end_date: end_date,
+      include_medication_takes: include_medication_takes?
+    ).call
   end
 
   def people
@@ -79,8 +95,16 @@ class HealthHistoryReportsController < ApplicationController
     "medtracker-health-history-#{start_date.iso8601}-to-#{end_date.iso8601}.pdf"
   end
 
+  def include_medication_takes? = params[:include_medication_takes] == '1'
+
   def redirect_to_reports_with_person_required
-    redirect_to reports_path, alert: t('reports.health_history.person_required')
+    redirect_to reports_path(**medication_takes_redirect_params), alert: t('reports.health_history.person_required')
+  end
+
+  def medication_takes_redirect_params
+    return {} unless include_medication_takes?
+
+    { include_medication_takes: '1' }
   end
 
   def record_download
@@ -92,7 +116,7 @@ class HealthHistoryReportsController < ApplicationController
         person_id: selected_person.id,
         start_date: start_date.iso8601,
         end_date: end_date.iso8601,
-        include_medication_takes: false,
+        include_medication_takes: include_medication_takes?,
         outcome: 'success'
       }
     )

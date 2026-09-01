@@ -1,13 +1,20 @@
 module Components
   module Reports
     class PdfStylesheet < Phlex::HTML
+      DEFAULT_PAGE_NUMBER = 'Page <page> of <total>'.freeze
+
+      def initialize(page_number: nil)
+        @page_number = page_number || DEFAULT_PAGE_NUMBER
+        super()
+      end
+
       def view_template
         style do
           raw safe(<<~CSS)
             @page {
               size: A4;
               margin: 18mm 16mm 20mm;
-              @bottom-right { content: "Page " counter(page) " of " counter(pages); color: #5B6864; font-size: 8pt; }
+              @bottom-right { content: #{page_number_content}; color: #5B6864; font-size: 8pt; }
             }
 
             * { box-sizing: border-box; }
@@ -24,6 +31,7 @@ module Components
             p, li { widows: 3; orphans: 3; }
             .callout { margin: 4mm 0; padding: 4mm; border: 0.4mm solid #174A46; background: #DDEBE7; break-inside: avoid; page-break-inside: avoid; }
             .empty-state { margin: 12mm 0; padding: 8mm; border: 0.3mm solid #D7DEDB; background: #F7F9F8; color: #5B6864; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+            .pdf-appendix { break-before: page; page-break-before: always; }
             .report-summary { display: table; width: 100%; background: #F7F9F8; }
             .summary-item { display: table-cell; width: 33%; padding: 4mm; text-align: center; }
             .summary-item strong, .summary-item span { display: block; }
@@ -55,12 +63,29 @@ module Components
             .health-history-illnesses-table th:nth-child(4), .health-history-illnesses-table td:nth-child(4) { width: 39%; }
             .health-history-illnesses-table th:nth-child(5), .health-history-illnesses-table td:nth-child(5) { width: 15%; }
             .health-history-illnesses-table th, .health-history-illnesses-table td { padding: 2mm; }
+            .health-history-chronology-table th:nth-child(1), .health-history-chronology-table td:nth-child(1) { width: 18%; }
+            .health-history-chronology-table th:nth-child(2), .health-history-chronology-table td:nth-child(2) { width: 15%; }
+            .health-history-chronology-table th:nth-child(3), .health-history-chronology-table td:nth-child(3) { width: 20%; }
+            .health-history-chronology-table th:nth-child(4), .health-history-chronology-table td:nth-child(4) { width: 47%; }
+            .health-history-chronology-table tr { break-inside: auto; page-break-inside: auto; }
             thead { display: table-header-group; background: #F7F9F8; color: #174A46; }
             tr { break-inside: avoid; page-break-inside: avoid; }
             th, td { padding: 2.5mm; border: 0.3mm solid #D7DEDB; overflow-wrap: anywhere; text-align: left; vertical-align: top; }
             th { font-size: 8pt; letter-spacing: 0.04em; text-transform: uppercase; }
           CSS
         end
+      end
+
+      private
+
+      def page_number_content
+        @page_number.split(/(<page>|<total>)/).filter_map do |fragment|
+          case fragment
+          when '<page>' then 'counter(page)'
+          when '<total>' then 'counter(pages)'
+          else fragment.presence&.inspect
+          end
+        end.join(' ')
       end
     end
   end

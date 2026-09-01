@@ -156,11 +156,39 @@ RSpec.describe 'Reports' do
       )
     end
 
+    it 'records medication administration appendix selection in the download audit metadata' do
+      get health_history_report_path,
+          params: { person_id: people(:john).id, include_medication_takes: '1' }
+
+      audit_event = successful_download_audits.order(:created_at).last
+
+      expect(response).to have_http_status(:ok)
+      expect(audit_event.metadata['include_medication_takes']).to be(true)
+    end
+
     it 'redirects with translated feedback when no person is selected' do
       get health_history_report_path
 
       expect(response).to redirect_to(reports_path)
       expect(flash[:alert]).to eq('Select one person to download a GP health history.')
+    end
+
+    it 'keeps the medication administration appendix selected after every failed export redirect' do
+      requests = [
+        {},
+        { person_id: people(:john).id, start_date: '2025-01-01', end_date: '2026-01-03' },
+        { person_id: people(:john).id, start_date: '2026-02-01', end_date: '2026-01-01' },
+        { person_id: people(:john).id, start_date: 'invalid-date' }
+      ]
+
+      requests.each do |request_params|
+        get health_history_report_path, params: request_params.merge(include_medication_takes: '1')
+        follow_redirect!
+
+        checkbox = response.parsed_body.at_css('#include_medication_takes')
+        expect(checkbox).to be_present, request_params.inspect
+        expect(checkbox['checked']).not_to be_nil
+      end
     end
 
     it 'redirects with translated feedback for malformed people' do
@@ -208,6 +236,18 @@ RSpec.describe 'Reports' do
         severity: :error,
         error: an_instance_of(Reports::PdfRenderer::Error)
       )
+    end
+
+    it 'keeps the medication administration appendix selected after a rendering failure' do
+      renderer = instance_double(Reports::HealthHistoryPdf)
+      allow(Reports::HealthHistoryPdf).to receive(:new).and_return(renderer)
+      allow(renderer).to receive(:render).and_raise(Reports::PdfRenderer::Error, 'rendering failed')
+      allow(Observability::DiagnosticEvent).to receive(:emit)
+
+      get health_history_report_path, params: { person_id: people(:john).id, include_medication_takes: '1' }
+      follow_redirect!
+
+      expect(response.parsed_body.at_css('#include_medication_takes')['checked']).not_to be_nil
     end
 
     it 'redirects with alert when export dates are invalid' do

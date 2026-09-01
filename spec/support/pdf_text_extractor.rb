@@ -111,6 +111,68 @@ module PdfTextExtractor
   end
 end
 
+module PdfPageTextExtractor
+  def pdf_page_texts(pdf)
+    character_maps = pdf_character_maps(pdf_streams(pdf))
+
+    pdf_page_content_streams(pdf).map do |streams|
+      character_maps.product(streams).flat_map do |character_map, stream|
+        decoded_pdf_text(character_map, stream)
+      end.join(' ').unicode_normalize(:nfkd).gsub(/\s+/, ' ').strip
+    end
+  end
+
+  def pdf_page_content_streams(pdf)
+    objects = pdf_objects(pdf)
+
+    pdf_page_references(objects).map do |reference|
+      pdf_page_content_references(objects.fetch(reference)).filter_map do |content_reference|
+        pdf_object_stream(objects.fetch(content_reference))
+      end
+    end
+  end
+
+  def pdf_page_references(objects)
+    catalog = objects.values.find { it.match?(%r{/Type /Catalog\b}) }
+    pages_reference = catalog[%r{/Pages\s+(\d+)\s+\d+\s+R}, 1]
+
+    pdf_page_tree_references(objects, pages_reference)
+  end
+
+  def pdf_page_tree_references(objects, reference)
+    object = objects.fetch(reference)
+    return [reference] if object.match?(%r{/Type /Page\b})
+
+    pdf_page_kid_references(object).flat_map do |kid_reference|
+      pdf_page_tree_references(objects, kid_reference)
+    end
+  end
+
+  def pdf_page_kid_references(page_tree)
+    page_tree[%r{/Kids\s*\[(.*?)\]}m, 1].scan(/(\d+)\s+\d+\s+R/).flatten
+  end
+
+  def pdf_objects(pdf)
+    pdf.scan(/(\d+)\s+\d+\s+obj\s*(.*?)\s*endobj/m).to_h
+  end
+
+  def pdf_page_content_references(page_object)
+    contents = page_object[%r{/Contents\s+(?:\[(.*?)\]|(\d+)\s+\d+\s+R)}m, 1] ||
+               page_object[%r{/Contents\s+(?:\[(.*?)\]|(\d+)\s+\d+\s+R)}m, 2]
+    return [] unless contents
+
+    contents.scan(/(\d+)\s+\d+\s+R/).flatten.presence || [contents]
+  end
+
+  def pdf_object_stream(object)
+    stream = object[/stream\r?\n(.*?)\r?\nendstream/m, 1]
+    Zlib::Inflate.inflate(stream)
+  rescue Zlib::Error, TypeError
+    nil
+  end
+end
+
 RSpec.configure do |config|
   config.include PdfTextExtractor
+  config.include PdfPageTextExtractor
 end

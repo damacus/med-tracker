@@ -1520,6 +1520,7 @@ en:
       download_pdf: Download PDF
       gp_person_label: Person for GP report
       gp_person_prompt: Select a person
+      include_medication_takes: Include medication administration log
       export:
         health_history_title: Export health history
         health_history_description: Download a PDF of the people and dates currently shown.
@@ -1570,6 +1571,13 @@ en:
         notes: Notes
         action: Action taken
       gp:
+        list:
+          words_connector: ", "
+          two_words_connector: " and "
+          last_word_connector: ", and "
+        reporting_period: "Reporting period: %{start_date} to %{end_date}"
+        medication_takes_appendix: Medication administrations appendix
+        page_number: Page <page> of <total>
         identity:
           title: Person details
           date_of_birth: "Date of birth: %{date}"
@@ -1577,6 +1585,8 @@ en:
           title: Current medicines
         chronology:
           title: Chronology
+          kind_heading: Type
+          details_heading: Details
           duration: "Duration: %{duration}"
           ongoing: Ongoing
           days: "%{count} days"

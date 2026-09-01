@@ -32,6 +32,26 @@ RSpec.describe Reports::GpHealthHistoryQuery do
     end).to eq(1)
   end
 
+  it 'returns scheduled and as-needed administrations at both range boundaries only when requested' do
+    schedule = create_schedule
+    direct_medicine = create_direct_medicine
+    range_start = start_date.in_time_zone.beginning_of_day
+    range_end = end_date.in_time_zone.end_of_day.change(usec: 999_999)
+    create(:medication_take, schedule:, taken_at: range_start - 1.second)
+    create(:medication_take, schedule:, taken_at: range_start)
+    create(:medication_take, :for_person_medication, person_medication: direct_medicine, taken_at: range_end)
+    create(:medication_take, :for_person_medication, person_medication: direct_medicine,
+                                                     taken_at: range_end + 1.second)
+
+    excluded = described_class.new(person:, start_date:, end_date:).call
+    included = described_class.new(person:, start_date:, end_date:, include_medication_takes: true).call
+
+    expect(excluded.medication_takes).to be_empty
+    expect(included.medication_takes.map(&:medication_name)).to eq(%w[Paracetamol Ibuprofen])
+    expect(included.medication_takes.map(&:source_type)).to eq(%i[scheduled as_needed])
+    expect(included.medication_takes.map(&:taken_at)).to eq([range_start, range_end])
+  end
+
   def count_health_event_queries(&)
     count = 0
     subscriber = lambda do |_name, _start, _finish, _id, payload|
