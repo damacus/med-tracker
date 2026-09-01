@@ -38,12 +38,12 @@ export default class extends Controller {
     try {
       const response = await fetch(this.element.href, {
         credentials: "same-origin",
-        redirect: "follow",
+        redirect: "manual",
         signal: request.signal
       })
       if (!this.activeRequest(request)) return
 
-      if (response.redirected) {
+      if (response.type === "opaqueredirect") {
         this.followFallbackPath()
         return
       }
