@@ -56,6 +56,9 @@ lighthouse-*
 node_modules
 .worktrees/
 vendor/**/*
+!vendor/fonts/
+!vendor/fonts/NotoSans-Regular.ttf
+!vendor/fonts/OFL-1.1.txt
 
 # Downloaded browser packages
 *.deb
