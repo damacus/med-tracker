@@ -1,0 +1,125 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe Reports::HealthHistoryPdf do
+  let(:start_date) { Date.new(2026, 2, 1) }
+  let(:end_date) { Date.new(2026, 2, 28) }
+  let(:generated_at) { Time.utc(2026, 3, 1, 10, 30) }
+
+  it 'renders the empty health-history report through the shared PDF renderer' do
+    pdf = described_class.new(result: empty_result, start_date:, end_date:, generated_at:).render
+
+    expect(pdf).to include('/Title (MedTracker health history report)', '/Author (MedTracker)')
+    expect(pdf_text(pdf)).to include('People:', 'No records in this section.', 'Disclaimer')
+  end
+
+  it 'retains long names, long notes, report context, metadata and all locale glyphs' do
+    long_name = 'Avery ' * 40
+    long_note = 'Cymraeg ŵ · Español ñ · Gaeilge á · Português ç. ' * 80
+    pdf = described_class.new(
+      result: populated_result(person_name: long_name, notes: long_note),
+      start_date:,
+      end_date:,
+      generated_at:
+    ).render
+
+    expect(pdf).to include('/Title (MedTracker health history report)', '/Author (MedTracker)')
+    expect(pdf_text(pdf)).to include('People:', 'Date range:', 'Avery Avery Avery')
+    expect(unicode_map(pdf_streams(pdf))).to include('<0136> <0175>', '<00B3> <00F1>', '<00A3> <00E1>', '<00A9> <00E7>')
+  end
+
+  it 'renders a large health-history table across multiple pages' do
+    medication_takes = Array.new(240) { |index| medication_take(index:) }
+    pdf = described_class.new(
+      result: empty_result.with(medication_takes:),
+      start_date:,
+      end_date:,
+      generated_at:
+    ).render
+
+    expect(pdf.scan(%r{/Type /Page\b}).size).to be > 1
+    expect(pdf_text(pdf)).to include('Paracetamol')
+  end
+
+  def empty_result
+    Reports::HealthHistoryQuery::Result.new(
+      people: [],
+      medication_takes: [],
+      suspected_side_effects: [],
+      notable_illnesses: [],
+      illness_patterns: []
+    )
+  end
+
+  def populated_result(person_name: 'Alex Smith', notes: 'Started after evening dose')
+    person = Data.define(:name).new(person_name)
+    empty_result.with(
+      people: [person],
+      medication_takes: [medication_take(person:)],
+      suspected_side_effects: [health_event_entry(sample_event(notes:), ['Paracetamol'])],
+      notable_illnesses: [health_event_entry(sample_illness, [])],
+      illness_patterns: [sample_pattern]
+    )
+  end
+
+  def health_event_entry(event, medication_names)
+    Reports::HealthHistoryQuery::HealthEventEntry.new(event, medication_names)
+  end
+
+  def sample_event(notes:)
+    health_event(
+      title: 'Nausea',
+      started_on: Date.new(2026, 2, 10),
+      ended_on: nil,
+      severity: :moderate,
+      notes:,
+      action_taken: 'Called pharmacy',
+      ongoing?: true
+    )
+  end
+
+  def sample_illness
+    health_event(
+      title: 'Cold',
+      started_on: Date.new(2026, 2, 12),
+      ended_on: Date.new(2026, 2, 14),
+      severity: :mild,
+      notes: '',
+      action_taken: '',
+      ongoing?: false
+    )
+  end
+
+  def health_event(**attributes)
+    Data.define(:title, :started_on, :ended_on, :severity, :notes, :action_taken, :ongoing?).new(
+      **attributes
+    )
+  end
+
+  def sample_pattern
+    Data.define(
+      :episode_count,
+      :display_title,
+      :first_started_on,
+      :most_recent_started_on,
+      :average_interval_days
+    ).new(2, 'Cold', Date.new(2026, 2, 1), Date.new(2026, 2, 20), 19)
+  end
+
+  def medication_take(index: 0, person: Data.define(:name).new('Alex Smith'))
+    Reports::HealthHistoryQuery::MedicationTakeEntry.new(
+      person,
+      Time.zone.parse("2026-02-#{format('%02d', (index % 28) + 1)} 08:30"),
+      'Paracetamol',
+      500,
+      'mg',
+      :scheduled,
+      'Kitchen'
+    )
+  end
+
+  def unicode_map(streams)
+    streams.find { it.include?('beginbfchar') }
+  end
+end
