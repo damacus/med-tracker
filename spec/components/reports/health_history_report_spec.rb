@@ -59,7 +59,7 @@ RSpec.describe Components::Reports::HealthHistoryReport, type: :component do
     expect(rendered.css('table').first.css('tbody tr').size).to eq(240)
     populated = Nokogiri::HTML5(described_class.new(result: populated_result).call)
 
-    expect(populated.css('table').map { |table| table['class'] }).to include(
+    expect(populated.css('table').pluck('class')).to include(
       'health-history-medication-table',
       'health-history-side-effects-table',
       'health-history-illnesses-table'

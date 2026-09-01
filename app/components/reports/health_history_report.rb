@@ -22,7 +22,11 @@ module Components
 
       def medication_takes_section
         report_section(t('medication_takes.title')) do
-          table_or_empty(result.medication_takes, medication_take_headings, table_class: 'health-history-medication-table') do |take|
+          table_or_empty(
+            result.medication_takes,
+            medication_take_headings,
+            table_class: 'health-history-medication-table'
+          ) do |take|
             medication_take_row(take)
           end
         end

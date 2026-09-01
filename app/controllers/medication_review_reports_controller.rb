@@ -11,8 +11,13 @@ class MedicationReviewReportsController < ApplicationController
               filename: "medtracker-medication-review-#{Date.current.iso8601}.pdf",
               type: 'application/pdf',
               disposition: 'attachment'
-  rescue Reports::PdfRenderer::Error => error
-    Rails.logger.error("PDF rendering failed report_type=medication_review exception_class=#{error.class.name}")
+  rescue Reports::PdfRenderer::Error => e
+    Observability::DiagnosticEvent.emit(
+      component: :medication_review_pdf_export,
+      reason: :operation_failed,
+      severity: :error,
+      error: e
+    )
     redirect_to medication_review_prompts_path, alert: t('reports.export.pdf_unavailable')
   end
 

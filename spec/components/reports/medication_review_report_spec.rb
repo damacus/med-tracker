@@ -49,12 +49,16 @@ RSpec.describe Components::Reports::MedicationReviewReport, type: :component do
     }
   end
 
-  it 'renders the grouped evidence, risk, source and practitioner outcome without querying records' do
+  it 'renders grouped evidence, risk and source details without querying records' do
     rendered = Nokogiri::HTML5(described_class.new(prompts: [reviewed_prompt]).call)
 
     expect(rendered.text).to include(*content)
     expect(rendered.at_css('a')['href']).to eq('https://example.test/evidence')
     expect(rendered.at_css('.risk-high')).to be_present
+  end
+
+  it 'renders the person heading and practitioner outcome' do
+    rendered = Nokogiri::HTML5(described_class.new(prompts: [reviewed_prompt]).call)
     first_prompt = rendered.at_css('.person-review-first-prompt')
 
     expect(first_prompt.at_css('h2').text).to eq('Alex Smith')
