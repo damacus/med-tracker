@@ -11,7 +11,7 @@ module Components
             }
 
             * { box-sizing: border-box; }
-            body { margin: 0; color: #17211F; background: #FFFFFF; font-family: "Noto Sans", sans-serif; font-size: 10pt; line-height: 1.5; }
+            body { margin: 0; color: #17211F; background: #FFFFFF; font-family: "Noto Sans", sans-serif; font-size: 10pt; line-height: 1.5; font-variant-ligatures: none; }
             .report-header { margin: -18mm -16mm 10mm; padding: 12mm 16mm 10mm; background: #174A46; color: #FFFFFF; }
             .report-brand { font-size: 8pt; font-weight: 700; letter-spacing: 0.14em; }
             .report-header h1 { margin: 3mm 0 2mm; font-size: 22pt; line-height: 1.15; }
@@ -24,6 +24,21 @@ module Components
             p, li { widows: 3; orphans: 3; }
             .callout { margin: 4mm 0; padding: 4mm; border: 0.4mm solid #174A46; background: #DDEBE7; break-inside: avoid; page-break-inside: avoid; }
             .empty-state { margin: 12mm 0; padding: 8mm; border: 0.3mm solid #D7DEDB; background: #F7F9F8; color: #5B6864; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+            .report-summary { display: table; width: 100%; background: #F7F9F8; }
+            .summary-item { display: table-cell; width: 33%; padding: 4mm; text-align: center; }
+            .summary-item strong, .summary-item span { display: block; }
+            .summary-item strong { color: #174A46; font-size: 16pt; }
+            .summary-item span, .person-review-count, .review-status { color: #5B6864; font-size: 8pt; text-transform: uppercase; }
+            .review-prompt { padding: 4mm; border: 0.3mm solid #D7DEDB; break-inside: avoid; page-break-inside: avoid; }
+            .review-prompt-heading { margin-bottom: 3mm; }
+            .review-prompt-heading h3 { margin-bottom: 1mm; }
+            .risk-legend { margin: 0; padding-left: 5mm; }
+            .parenthetical::before { content: "("; }
+            .parenthetical::after { content: ")"; }
+            .risk-high { color: #B94B43; }
+            .risk-moderate { color: #B27718; }
+            .risk-low { color: #4E725A; }
+            .risk-unknown { color: #6B7280; }
             table { width: 100%; border-collapse: collapse; margin: 4mm 0; }
             thead { display: table-header-group; background: #F7F9F8; color: #174A46; }
             tr { break-inside: avoid; page-break-inside: avoid; }

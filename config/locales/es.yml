@@ -2186,6 +2186,78 @@ es:
         entered_information: Este informe refleja la información introducida en MedTracker.
         causation: Los vínculos con posibles efectos secundarios no demuestran causalidad.
         medical_advice: Este informe no es un diagnóstico ni sustituye el asesoramiento médico profesional.
+    medication_review:
+      title: Registro de revisión de medicamentos de MedTracker
+      context: Alcance visible predeterminado de la revisión de medicamentos
+      generated_at: "Preparado %{timestamp}"
+      date_format: "%{day} de %{month} de %{year}"
+      timestamp_format: "%{date} a las %{time} %{zone}"
+      months:
+        - enero
+        - febrero
+        - marzo
+        - abril
+        - mayo
+        - junio
+        - julio
+        - agosto
+        - septiembre
+        - octubre
+        - noviembre
+        - diciembre
+      boundary: Este registro organiza evidencia pública de etiquetas de medicamentos para hablarla con un profesional. No sustituye el juicio clínico ni indica que alguien deba cambiar un medicamento.
+      summary:
+        to_discuss: Para comentar
+        reviewed: Revisado
+        people: Personas
+      legend:
+        title: Niveles de riesgo en este registro
+        high: "Alto: La evidencia de la fuente describe un riesgo grave"
+        moderate: "Moderado: La evidencia de la fuente requiere revisión"
+        low: "Bajo: Riesgo menor de la fuente; filtrado de forma predeterminada"
+        unknown: "Desconocido: Sin clasificar; no es el riesgo más alto"
+      empty_title: Ningún elemento de revisión de medicamentos coincide con los filtros seleccionados.
+      empty_description: Esto puede significar que no hay pares de evidencia revisados para los medicamentos activos incluidos.
+      person_items:
+        one: "%{count} elemento de revisión"
+        other: "%{count} elementos de revisión"
+      risk_levels:
+        high: Riesgo alto de la fuente
+        moderate: Riesgo moderado de la fuente
+        low: Riesgo bajo de la fuente
+        unknown: Riesgo desconocido de la fuente
+      confidence: Confianza de coincidencia %{value}
+      statuses:
+        needs_review: Pendiente de revisión
+        reviewed_with_practitioner: Revisado con un profesional
+        expected_prescribed_combination: Esperado según la prescripción
+        not_relevant: No relevante
+        hidden_low_signal: Elemento filtrado de menor confianza
+      evidence_title: Evidencia pública de la etiqueta
+      match_explanation_title: Por qué MedTracker incluyó esto
+      matched_term_name: "Término coincidente: %{term}"
+      matched_term_type: "coincidencia de %{type}"
+      source_instruction: "Categoría de instrucción de la fuente: %{value}"
+      match_types:
+        ingredient: ingrediente
+        class: clase pública
+        curated: curada
+        legacy: heredada
+      source_instructions:
+        contraindicated: La etiqueta dice contraindicado
+        avoid: La etiqueta dice evitar
+        monitor_or_adjust: La etiqueta dice supervisar o ajustar
+        possible_or_caution: La etiqueta describe una posible preocupación o precaución
+        unclassified: Sin categoría de instrucción asignada
+      source: "Fuente: %{source}"
+      label_version: "Versión de etiqueta: %{version} | Efectiva: %{date}"
+      retrieved: "Consultado: %{date}"
+      reviewed_with_name: "Revisado con %{name}"
+      reviewed_with_detail: "%{role} el %{date}."
+      outcomes:
+        reviewed_with_practitioner: "Resultado registrado: revisado con un profesional."
+        expected_prescribed_combination: "Resultado registrado: esperado según la prescripción."
+      outstanding_outcome: Aún no se ha registrado una revisión profesional.
     index:
       eyebrow: Análisis de bienestar
       title: Informe de salud

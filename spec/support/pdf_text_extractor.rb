@@ -9,9 +9,10 @@ module PdfTextExtractor
 
   def pdf_text(pdf)
     streams = pdf_streams(pdf)
-    pdf_character_maps(streams).product(pdf_text_streams(streams)).flat_map do |character_map, stream|
+    text = pdf_character_maps(streams).product(pdf_text_streams(streams)).flat_map do |character_map, stream|
       decoded_pdf_text(character_map, stream)
-    end.join
+    end.join(' ')
+    "#{text} #{pdf_link_text(pdf)}".unicode_normalize(:nfkd).gsub(/\s+/, ' ').strip
   end
 
   def pdf_streams(pdf)
@@ -23,19 +24,15 @@ module PdfTextExtractor
   end
 
   def pdf_character_maps(streams)
-    streams.grep(/beginbfchar/).map do |stream|
-      stream.scan(/<([0-9A-F]{4})> <([0-9A-F]{4})>/).to_h do |cid, codepoint|
-        [cid.to_i(16), codepoint.to_i(16).chr(Encoding::UTF_8)]
-      end
-    end
+    streams.filter_map { |stream| character_map(stream).presence }
   end
 
   def pdf_text_streams(streams)
-    streams.grep(/(?:\)|>) Tj/)
+    streams.grep(/(?:\)|>)\s*(?:Tj|['"])|\] TJ/)
   end
 
   def decoded_pdf_text(character_map, stream)
-    stream.scan(/(?:\((?:\\.|[^\\)])*\)|<[0-9A-F]+>) Tj/m).filter_map do |operator|
+    pdf_text_operators(stream).filter_map do |operator|
       decoded = decoded_pdf_string(operator)
       next unless decoded.bytesize.even?
 
@@ -44,11 +41,73 @@ module PdfTextExtractor
   end
 
   def decoded_pdf_string(operator)
-    string = operator[1...-4]
+    string = operator[1...-1]
     return [string].pack('H*') if operator.start_with?('<')
 
-    string.gsub(/\\([0-7]{1,3})/) { Regexp.last_match(1).to_i(8).chr }
+    string
+      .gsub(/\\([0-7]{1,3})/) { Regexp.last_match(1).to_i(8).chr }
       .gsub(/\\([()\\])/) { Regexp.last_match(1) }
+  end
+
+  def character_map(stream)
+    bfchar_map(stream).merge(bfrange_map(stream))
+  end
+
+  def bfchar_map(stream)
+    characters = cmap_blocks(stream, 'bfchar').flat_map do |block|
+      block.scan(/<([0-9A-F]{4})>\s+<([0-9A-F]{4})>/i)
+    end
+    characters.to_h do |cid, codepoint|
+      [cid.to_i(16), codepoint.to_i(16).chr(Encoding::UTF_8)]
+    end
+  end
+
+  def bfrange_map(stream)
+    cmap_blocks(stream, 'bfrange').flat_map do |block|
+      direct_bfrange_map(block) + array_bfrange_map(block)
+    end.to_h
+  end
+
+  def direct_bfrange_map(block)
+    block.scan(/<([0-9A-F]{4})>\s+<([0-9A-F]{4})>\s+<([0-9A-F]{4})>/i).flat_map do |first, last, codepoint|
+      (first.to_i(16)..last.to_i(16)).map do |cid|
+        [cid, (codepoint.to_i(16) + cid - first.to_i(16)).chr(Encoding::UTF_8)]
+      end
+    end
+  end
+
+  def array_bfrange_map(block)
+    block.scan(/<([0-9A-F]{4})>\s+<([0-9A-F]{4})>\s+\[(.*?)\]/im).flat_map do |first, _last, codepoints|
+      codepoints.scan(/<([0-9A-F]{4})>/i).flatten.each_with_index.map do |codepoint, index|
+        [first.to_i(16) + index, codepoint.to_i(16).chr(Encoding::UTF_8)]
+      end
+    end
+  end
+
+  def cmap_blocks(stream, name)
+    stream.scan(/begin#{name}(.*?)end#{name}/m).flatten
+  end
+
+  def pdf_text_operators(stream)
+    direct_text_operators(stream) + array_text_operators(stream)
+  end
+
+  def direct_text_operators(stream)
+    stream.scan(/(\((?:\\.|[^\\)])*\)|<[0-9A-F]+>)\s*(?:Tj|['"])/im).flatten
+  end
+
+  def array_text_operators(stream)
+    stream.scan(/\[(.*?)\]\s*TJ/m).flat_map do |(array)|
+      array.scan(/\((?:\\.|[^\\)])*\)|<[0-9A-F]+>/i)
+    end
+  end
+
+  def pdf_link_text(pdf)
+    pdf.scan(%r{/URI\s*\((.*?)\)}m).flatten.map { |uri| unescape_pdf_string(uri) }.join
+  end
+
+  def unescape_pdf_string(string)
+    string.gsub(/\\([()\\])/) { Regexp.last_match(1) }
   end
 end
 

@@ -1824,6 +1824,78 @@ ga:
         entered_information: Léiríonn an tuarascáil seo faisnéis a cuireadh isteach in MedTracker.
         causation: Ní chruthaíonn naisc le fo-iarmhairtí amhrasta cúisíocht.
         medical_advice: Ní diagnóis í an tuarascáil seo agus ní ghlacann sí áit comhairle leighis ghairmiúil.
+    medication_review:
+      title: Taifead athbhreithnithe cógas MedTracker
+      context: Raon feidhme réamhshocraithe infheicthe an athbhreithnithe cógas
+      generated_at: "Ullmhaithe %{timestamp}"
+      date_format: "%{day} %{month} %{year}"
+      timestamp_format: "%{date} ag %{time} %{zone}"
+      months:
+        - Eanáir
+        - Feabhra
+        - Márta
+        - Aibreán
+        - Bealtaine
+        - Meitheamh
+        - Iúil
+        - Lúnasa
+        - Meán Fómhair
+        - Deireadh Fómhair
+        - Samhain
+        - Nollaig
+      boundary: Eagraíonn an taifead seo fianaise phoiblí lipéid cógas le plé le cleachtóir. Ní ghlacann sé áit breithiúnais chliniciúil ná ní insíonn sé do dhuine cógas a athrú.
+      summary:
+        to_discuss: Le plé
+        reviewed: Athbhreithnithe
+        people: Daoine
+      legend:
+        title: Leibhéil riosca sa taifead seo
+        high: "Ard: Déanann fianaise na foinse cur síos ar riosca tromchúiseach"
+        moderate: "Measartha: Teastaíonn athbhreithniú ar fhianaise na foinse"
+        low: "Íseal: Riosca foinse níos ísle; scagtha de réir réamhshocraithe"
+        unknown: "Anaithnid: Neamhaicmithe; ní hé an riosca is airde é"
+      empty_title: Níor mheaitseáil aon mhír athbhreithnithe cógas na scagairí roghnaithe.
+      empty_description: D'fhéadfadh sé seo a chiallaíonn nach bhfuil aon phéire fianaise athbhreithnithe do na cógais ghníomhacha sa raon feidhme.
+      person_items:
+        one: "%{count} mhír athbhreithnithe"
+        other: "%{count} mír athbhreithnithe"
+      risk_levels:
+        high: Riosca ard foinse
+        moderate: Riosca measartha foinse
+        low: Riosca íseal foinse
+        unknown: Riosca anaithnid foinse
+      confidence: Muinín mheaitseála %{value}
+      statuses:
+        needs_review: Athbhreithniú de dhíth
+        reviewed_with_practitioner: Athbhreithnithe le cleachtóir
+        expected_prescribed_combination: Mar a bhíothas ag súil de réir an oidis
+        not_relevant: Neamhábhartha
+        hidden_low_signal: Mír mhuiníne níos ísle scagtha
+      evidence_title: Fianaise phoiblí lipéid
+      match_explanation_title: An fáth ar chuir MedTracker é seo san áireamh
+      matched_term_name: "Téarma comhoiriúnaithe: %{term}"
+      matched_term_type: "comhoiriúnú %{type}"
+      source_instruction: "Catagóir treorach na foinse: %{value}"
+      match_types:
+        ingredient: comhábhar
+        class: aicme phoiblí
+        curated: coimeádta
+        legacy: oidhreachta
+      source_instructions:
+        contraindicated: Deir an lipéad go bhfuil sé fritásctha
+        avoid: Deir an lipéad é a sheachaint
+        monitor_or_adjust: Deir an lipéad monatóireacht nó coigeartú a dhéanamh
+        possible_or_caution: Déanann an lipéad cur síos ar ábhar imní nó rabhadh féideartha
+        unclassified: Níor sannadh catagóir treorach
+      source: "Foinse: %{source}"
+      label_version: "Leagan lipéid: %{version} | Éifeachtach: %{date}"
+      retrieved: "Aisghafa: %{date}"
+      reviewed_with_name: "Athbhreithníodh le %{name}"
+      reviewed_with_detail: "%{role} ar %{date}."
+      outcomes:
+        reviewed_with_practitioner: "Toradh taifeadta: athbhreithnithe le cleachtóir."
+        expected_prescribed_combination: "Toradh taifeadta: mar a bhíothas ag súil de réir an oidis."
+      outstanding_outcome: Níl aon athbhreithniú cleachtóra taifeadta fós.
     index:
       eyebrow: Anailís Folláine
       title: Tuarascáil Sláinte

@@ -1566,6 +1566,78 @@ en:
         entered_information: This report reflects information entered into MedTracker.
         causation: Suspected side-effect links do not establish causation.
         medical_advice: This report is not a diagnosis or a substitute for professional medical advice.
+    medication_review:
+      title: MedTracker medicine review record
+      context: Default visible medicine review scope
+      generated_at: "Prepared %{timestamp}"
+      date_format: "%{day} %{month} %{year}"
+      timestamp_format: "%{date} at %{time} %{zone}"
+      months:
+        - January
+        - February
+        - March
+        - April
+        - May
+        - June
+        - July
+        - August
+        - September
+        - October
+        - November
+        - December
+      boundary: This record organises public medicine-label evidence for discussion with a practitioner. It does not replace clinical judgement or tell someone to change a medicine.
+      summary:
+        to_discuss: To discuss
+        reviewed: Reviewed
+        people: People
+      legend:
+        title: Risk levels in this record
+        high: "High: Source evidence describes a serious risk"
+        moderate: "Moderate: Source evidence warrants review"
+        low: "Low: Lower source risk; filtered by default"
+        unknown: "Unknown: Not classified; not the highest risk"
+      empty_title: No medicine review items matched the selected filters.
+      empty_description: This can mean there are no reviewed evidence pairs for the active medicines in scope.
+      person_items:
+        one: "%{count} review item"
+        other: "%{count} review items"
+      risk_levels:
+        high: High source risk
+        moderate: Moderate source risk
+        low: Low source risk
+        unknown: Unknown source risk
+      confidence: "%{value} match confidence"
+      statuses:
+        needs_review: Needs review
+        reviewed_with_practitioner: Reviewed with practitioner
+        expected_prescribed_combination: Expected as prescribed
+        not_relevant: Not relevant
+        hidden_low_signal: Filtered lower-confidence item
+      evidence_title: Public label evidence
+      match_explanation_title: Why MedTracker included this
+      matched_term_name: "Matched term: %{term}"
+      matched_term_type: "%{type} match"
+      source_instruction: "Source instruction category: %{value}"
+      match_types:
+        ingredient: ingredient
+        class: public class
+        curated: curated
+        legacy: legacy
+      source_instructions:
+        contraindicated: Label says contraindicated
+        avoid: Label says avoid
+        monitor_or_adjust: Label says monitor or adjust
+        possible_or_caution: Label describes a possible concern or caution
+        unclassified: No instruction category assigned
+      source: "Source: %{source}"
+      label_version: "Label version: %{version} | Effective: %{date}"
+      retrieved: "Retrieved: %{date}"
+      reviewed_with_name: "Reviewed with %{name}"
+      reviewed_with_detail: "%{role} on %{date}."
+      outcomes:
+        reviewed_with_practitioner: "Recorded outcome: reviewed with practitioner."
+        expected_prescribed_combination: "Recorded outcome: expected as prescribed."
+      outstanding_outcome: No practitioner review has been recorded yet.
   smart_insights:
     title: Smart Insights
     evidence_summary:

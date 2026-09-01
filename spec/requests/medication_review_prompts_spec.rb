@@ -164,8 +164,16 @@ RSpec.describe 'Medication review prompts' do
 
   it 'downloads an appointment-ready no-store PDF' do
     get medication_review_prompts_path
+    prompt = MedicationReviewPrompt.visible_by_default.sole
+    prompt.update!(
+      status: 'expected_prescribed_combination',
+      practitioner_name: 'Dr Taylor',
+      practitioner_role: 'GP',
+      reviewed_on: Date.new(2026, 7, 9),
+      review_note: 'Confirmed as prescribed.'
+    )
 
-    get medication_review_report_path, params: { person_id: person.id, status: 'needs_review' }
+    get medication_review_report_path, params: { person_id: person.id }
 
     expect(response).to have_http_status(:ok)
     expect(response.media_type).to eq('application/pdf')
@@ -173,9 +181,27 @@ RSpec.describe 'Medication review prompts' do
     expected_filename = "medtracker-medication-review-#{Date.current.iso8601}.pdf"
     expect(response.headers['Content-Disposition']).to include(expected_filename)
     expect(response.body).to start_with('%PDF')
-    text_fragments = response.body.scan(/<([0-9A-Fa-f]+)>/).flatten.map { |hex| [hex].pack('H*') }.join
-    expect(text_fragments).to include('Matched term: ibuprofen (curated match)')
-    expect(text_fragments).to include('Label version: 4')
+    expect(pdf_metadata(response.body)).to include(
+      'Title' => 'MedTracker medicine review record',
+      'Subject' => I18n.t('reports.medication_review.boundary')
+    )
+    aggregate_failures do
+      [
+        'High source risk',
+        'increased bleeding risk when some medicines are used with warfarin and recommends closer monitoring.',
+        'ibuprofen as the interacting medicine.',
+        'Matched term: ibuprofen',
+        'curated match',
+        'Source instruction category: No instruction category assigned',
+        'Label version: 4',
+        '1 July 2026',
+        'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=0cbce382-9c88-4f58-ae0f-532a841e8f95',
+        'This record organises public medicine-label evidence for discussion with a practitioner.',
+        'Reviewed with Dr Taylor',
+        'GP on 9 July 2026.',
+        'Recorded outcome: expected as prescribed.'
+      ].each { |text| expect(pdf_text(response.body)).to include(text), "missing parsed PDF text: #{text}" }
+    end
   end
 
   it 'does not export an inaccessible person filter' do

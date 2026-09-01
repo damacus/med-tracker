@@ -1525,6 +1525,78 @@ pt:
         entered_information: Este relatório reflete informações introduzidas no MedTracker.
         causation: As associações a suspeitas de efeitos secundários não estabelecem causalidade.
         medical_advice: Este relatório não é um diagnóstico nem substitui aconselhamento médico profissional.
+    medication_review:
+      title: Registo de revisão de medicamentos MedTracker
+      context: Âmbito visível predefinido da revisão de medicamentos
+      generated_at: "Preparado %{timestamp}"
+      date_format: "%{day} de %{month} de %{year}"
+      timestamp_format: "%{date} às %{time} %{zone}"
+      months:
+        - janeiro
+        - fevereiro
+        - março
+        - abril
+        - maio
+        - junho
+        - julho
+        - agosto
+        - setembro
+        - outubro
+        - novembro
+        - dezembro
+      boundary: Este registo organiza evidência pública de rótulos de medicamentos para discussão com um profissional. Não substitui o julgamento clínico nem indica que alguém deva alterar um medicamento.
+      summary:
+        to_discuss: A discutir
+        reviewed: Revisto
+        people: Pessoas
+      legend:
+        title: Níveis de risco neste registo
+        high: "Alto: A evidência da fonte descreve um risco grave"
+        moderate: "Moderado: A evidência da fonte requer revisão"
+        low: "Baixo: Risco menor da fonte; filtrado por predefinição"
+        unknown: "Desconhecido: Não classificado; não é o risco mais elevado"
+      empty_title: Nenhum item de revisão de medicamentos corresponde aos filtros selecionados.
+      empty_description: Isto pode significar que não existem pares de evidência revistos para os medicamentos ativos no âmbito.
+      person_items:
+        one: "%{count} item de revisão"
+        other: "%{count} itens de revisão"
+      risk_levels:
+        high: Risco elevado da fonte
+        moderate: Risco moderado da fonte
+        low: Risco baixo da fonte
+        unknown: Risco desconhecido da fonte
+      confidence: Confiança de correspondência %{value}
+      statuses:
+        needs_review: Precisa de revisão
+        reviewed_with_practitioner: Revisto com um profissional
+        expected_prescribed_combination: Esperado conforme prescrito
+        not_relevant: Não relevante
+        hidden_low_signal: Item filtrado de menor confiança
+      evidence_title: Evidência pública do rótulo
+      match_explanation_title: Por que razão o MedTracker incluiu isto
+      matched_term_name: "Termo correspondente: %{term}"
+      matched_term_type: "correspondência de %{type}"
+      source_instruction: "Categoria de instrução da fonte: %{value}"
+      match_types:
+        ingredient: ingrediente
+        class: classe pública
+        curated: curada
+        legacy: legada
+      source_instructions:
+        contraindicated: O rótulo diz contraindicado
+        avoid: O rótulo diz evitar
+        monitor_or_adjust: O rótulo diz monitorizar ou ajustar
+        possible_or_caution: O rótulo descreve uma possível preocupação ou precaução
+        unclassified: Nenhuma categoria de instrução atribuída
+      source: "Origem: %{source}"
+      label_version: "Versão do rótulo: %{version} | Em vigor: %{date}"
+      retrieved: "Obtido: %{date}"
+      reviewed_with_name: "Revisto com %{name}"
+      reviewed_with_detail: "%{role} em %{date}."
+      outcomes:
+        reviewed_with_practitioner: "Resultado registado: revisto com um profissional."
+        expected_prescribed_combination: "Resultado registado: esperado conforme prescrito."
+      outstanding_outcome: Ainda não foi registada uma revisão profissional.
     index:
       eyebrow: Análises de Bem-estar
       title: Relatório de Saúde
