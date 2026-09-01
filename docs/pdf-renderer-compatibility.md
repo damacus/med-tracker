@@ -1,17 +1,16 @@
 # PDF renderer compatibility record
 
-This record covers the foundation for issue #1997. Report endpoints remain on
-Prawn until their later migration tasks.
+This record covers the completed PDF renderer migration for issue #1997. Both
+report endpoints render through the shared in-process renderer.
 
 ## Dependency and architecture evidence
 
-`sghtmltopdf` is locked at `0.1.1`. The lockfile retains `prawn` and
-`prawn-table` and includes the published native gems
+`sghtmltopdf` is locked at `0.1.1`, and the lockfile includes the published native gems
 `sghtmltopdf-0.1.1-aarch64-linux` and
 `sghtmltopdf-0.1.1-x86_64-linux`.
 
-The rebuilt test image loads both renderers: `prawn=2.5.0` and
-`sghtmltopdf=0.1.1`.
+The rebuilt test image loads `sghtmltopdf=0.1.1`; Prawn and Prawn Table are not
+runtime dependencies.
 
 The ARM64 final image was built natively on 1 September 2026 with:
 

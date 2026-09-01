@@ -22,6 +22,13 @@ RSpec.describe Sghtmltopdf do
     )
   end
 
+  it 'keeps report PDF rendering free of Prawn dependencies' do
+    dependencies = Bundler.load.dependencies.map(&:name)
+
+    expect(dependencies).to include('sghtmltopdf')
+    expect(dependencies).not_to include('prawn', 'prawn-table')
+  end
+
   def decompressed_streams(pdf)
     pdf.scan(/stream\r?\n(.*?)\r?\nendstream/m).filter_map do |(stream)|
       Zlib::Inflate.inflate(stream)

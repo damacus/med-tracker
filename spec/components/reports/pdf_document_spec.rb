@@ -53,7 +53,10 @@ RSpec.describe Components::Reports::PdfDocument, type: :component do
       'break-inside: avoid',
       'widows: 3',
       'orphans: 3',
-      'break-after: avoid'
+      'break-after: avoid',
+      'table-layout: fixed',
+      'overflow-wrap: anywhere',
+      'margin: 0 -16mm 10mm'
     )
   end
 end

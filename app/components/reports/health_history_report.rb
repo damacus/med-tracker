@@ -22,7 +22,9 @@ module Components
 
       def medication_takes_section
         report_section(t('medication_takes.title')) do
-          table_or_empty(result.medication_takes, medication_take_headings) { |take| medication_take_row(take) }
+          table_or_empty(result.medication_takes, medication_take_headings, table_class: 'health-history-medication-table') do |take|
+            medication_take_row(take)
+          end
         end
       end
 
@@ -63,10 +65,10 @@ module Components
         end
       end
 
-      def table_or_empty(records, headings)
+      def table_or_empty(records, headings, table_class:)
         return empty_state if records.empty?
 
-        table do
+        table(class: table_class) do
           thead do
             tr { headings.each { |heading| th { heading } } }
           end
@@ -98,7 +100,8 @@ module Components
       end
 
       def event_table(events, include_medications:)
-        table_or_empty(events, event_headings(include_medications)) do |event|
+        table_class = include_medications ? 'health-history-side-effects-table' : 'health-history-illnesses-table'
+        table_or_empty(events, event_headings(include_medications), table_class:) do |event|
           event_row(event, include_medications)
         end
       end

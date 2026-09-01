@@ -35,7 +35,7 @@ RSpec.describe Reports::HealthHistoryPdf do
     ).render
 
     expect(pdf_metadata(pdf)).to eq(expected_pdf_metadata)
-    expect(pdf_text(pdf)).to include('People:', 'Date range:', 'Alex Smith', long_note_prefix, long_note_tail)
+    expect(pdf_text(pdf)).to include('People:', 'Date range:', 'Alex Smith', long_note_prefix, long_note_tail.unicode_normalize(:nfkd))
     expect(Components::Reports::HealthHistoryReport.new(result:).call).to include(long_note)
     expect(unicode_map(pdf_streams(pdf))).to include('<0136> <0175>', '<00B3> <00F1>', '<00A3> <00E1>', '<00A9> <00E7>')
   end
