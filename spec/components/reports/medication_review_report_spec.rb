@@ -101,7 +101,7 @@ RSpec.describe Components::Reports::MedicationReviewReport, type: :component do
     end
   end
 
-  it 'renders person identity as a repeatable header for multi-page prompt rows' do
+  it 'renders person identity as a repeatable header for prompt rows' do
     rendered = Nokogiri::HTML5(described_class.new(prompts: Array.new(8, reviewed_prompt)).call)
     person_review = rendered.at_css('table.person-review')
 

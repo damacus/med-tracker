@@ -68,18 +68,22 @@ RSpec.describe 'Report exports', :browser do
     expect(export['aria-busy']).to eq('false')
   end
 
-  it 'follows the HTML fallback without retrying a redirected PDF export' do
+  it 'shows a redirected renderer failure without repeating the PDF or fallback request' do
     visit reports_path
 
     export = find('[data-testid="pdf-export-panel"] a')
     fallback_location = export['data-pdf-export-fallback-location-value']
-    export_location = export[:href]
-    stub_redirected_pdf_response(export_location)
-    start_export(export)
+    failing_pdf = instance_double(Reports::HealthHistoryPdf)
+    allow(failing_pdf).to receive(:render).and_raise(Reports::PdfRenderer::Error, 'renderer failed')
+    allow(Reports::HealthHistoryPdf).to receive(:new).and_return(failing_pdf)
+    requests = record_controller_requests do
+      start_export(export)
+      expect(page).to have_text(I18n.t('reports.export.pdf_unavailable'))
+    end
 
     expect(page).to have_current_path(fallback_location)
-    expect(page.evaluate_script("window.sessionStorage.getItem('pdfExportFetchCount')")).to eq('1')
-    expect(page).to have_no_current_path(export_location)
+    expect(requests.count('HealthHistoryReportsController#show')).to eq(1)
+    expect(requests.count('ReportsController#index')).to eq(1)
   end
 
   it 'keeps export panels within the mobile viewport and explains the review scope' do
@@ -153,29 +157,15 @@ RSpec.describe 'Report exports', :browser do
     JS
   end
 
-  def stub_redirected_pdf_response(export_location)
-    page.execute_script(redirected_response_script, export_location)
-  end
-
-  def redirected_response_script
-    <<~JS
-      window.sessionStorage.setItem('pdfExportFetchCount', '0');
-      const exportLocation = new URL(arguments[0], window.location.href);
-      const originalFetch = window.fetch.bind(window);
-      window.fetch = (url, options) => {
-        const requestLocation = new URL(url, window.location.href);
-        if (requestLocation.href !== exportLocation.href) return originalFetch(url, options);
-
-        const count = Number(window.sessionStorage.getItem('pdfExportFetchCount')) + 1;
-        window.sessionStorage.setItem('pdfExportFetchCount', String(count));
-        const response = new Response('<html></html>', {
-          status: 200,
-          headers: { 'Content-Type': 'text/html' }
-        });
-        Object.defineProperty(response, 'redirected', { value: true });
-        return Promise.resolve(response);
-      };
-    JS
+  def record_controller_requests
+    requests = []
+    subscriber = ActiveSupport::Notifications.subscribe('process_action.action_controller') do |event|
+      requests << "#{event.payload[:controller]}##{event.payload[:action]}"
+    end
+    yield
+    requests
+  ensure
+    ActiveSupport::Notifications.unsubscribe(subscriber) if subscriber
   end
 
   def start_export(export)
