@@ -40,7 +40,7 @@ RSpec.describe 'Report exports', :browser do
 
     export = find('[data-testid="pdf-export-panel"] a')
     defer_pdf_request(export)
-    export.send_keys(:enter)
+    start_export(export)
 
     expect(export['aria-busy']).to eq('true')
     page.execute_script("document.dispatchEvent(new Event('turbo:before-cache'))")
@@ -48,6 +48,22 @@ RSpec.describe 'Report exports', :browser do
     expect(export['aria-busy']).to eq('false')
     expect(export['aria-disabled']).to eq('false')
     expect(export).to have_text('Download PDF')
+  end
+
+  it 'aborts and ignores a deferred response after Turbo caches the document' do
+    visit reports_path
+
+    export = find('[data-testid="pdf-export-panel"] a')
+    defer_pdf_request(export)
+    start_export(export)
+
+    page.execute_script("document.dispatchEvent(new Event('turbo:before-cache'))")
+
+    expect(page.evaluate_script('window.pdfExportAborted')).to be(true)
+    resolve_pdf_request
+
+    expect(page.evaluate_script('window.pdfExportDownloads')).to eq(0)
+    expect(export['aria-busy']).to eq('false')
   end
 
   it 'keeps export panels within the mobile viewport and explains the review scope' do
@@ -72,7 +88,17 @@ RSpec.describe 'Report exports', :browser do
 
   def defer_pdf_request(export)
     page.execute_script(<<~JS, export)
-      window.fetch = () => new Promise((resolve) => {
+      window.pdfExportAborted = false;
+      window.pdfExportDownloads = 0;
+      window.pdfExportCreateObjectUrl = URL.createObjectURL;
+      URL.createObjectURL = (blob) => {
+        window.pdfExportDownloads += 1;
+        return window.pdfExportCreateObjectUrl(blob);
+      };
+      window.fetch = (_url, options) => new Promise((resolve) => {
+        options?.signal?.addEventListener('abort', () => {
+          window.pdfExportAborted = true;
+        });
         window.resolvePdfExport = resolve;
       });
       arguments[0].focus();
@@ -89,6 +115,14 @@ RSpec.describe 'Report exports', :browser do
             'Content-Disposition': 'attachment; filename="health-history.pdf"'
           }
         })
+      );
+    JS
+  end
+
+  def start_export(export)
+    page.execute_script(<<~JS, export)
+      window.Stimulus.getControllerForElementAndIdentifier(arguments[0], 'pdf-export').prepare(
+        new Event('click', { cancelable: true })
       );
     JS
   end
