@@ -35,8 +35,10 @@ module PdfTextExtractor
   end
 
   def decoded_pdf_text(character_map, stream)
-    stream.scan(/\((.*?)\) Tj/m).flatten.filter_map do |string|
-      decoded = string.gsub(/\\([0-7]{3})/) { Regexp.last_match(1).to_i(8).chr }
+    stream.scan(/\((?:\\.|[^\\)])*\) Tj/m).filter_map do |operator|
+      string = operator[1...-4]
+      decoded = string.gsub(/\\([0-7]{1,3})/) { Regexp.last_match(1).to_i(8).chr }
+        .gsub(/\\([()\\])/) { Regexp.last_match(1) }
       next unless decoded.bytesize.even?
 
       decoded.unpack('n*').filter_map { |cid| character_map[cid] }.join

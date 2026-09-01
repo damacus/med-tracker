@@ -23,7 +23,8 @@ RSpec.describe Reports::HealthHistoryPdf do
   end
 
   it 'retains long notes, report context, metadata and all locale glyphs' do
-    long_note = "#{'Long note survives PDF rendering. ' * 12}Cymraeg ŵ · Español ñ · Gaeilge á · Português ç."
+    long_note_prefix = 'Long note survives PDF rendering.'
+    long_note = "#{"#{long_note_prefix} " * 12}Cymraeg ŵ · Español ñ · Gaeilge á · Português ç."
     result = populated_result(notes: long_note)
     pdf = described_class.new(
       result:,
@@ -33,7 +34,7 @@ RSpec.describe Reports::HealthHistoryPdf do
     ).render
 
     expect(pdf_metadata(pdf)).to eq(expected_pdf_metadata)
-    expect(pdf_text(pdf)).to include('People:', 'Date range:', 'Alex Smith')
+    expect(pdf_text(pdf)).to include('People:', 'Date range:', 'Alex Smith', long_note_prefix)
     expect(Components::Reports::HealthHistoryReport.new(result:).call).to include(long_note)
     expect(unicode_map(pdf_streams(pdf))).to include('<0136> <0175>', '<00B3> <00F1>', '<00A3> <00E1>', '<00A9> <00E7>')
   end
