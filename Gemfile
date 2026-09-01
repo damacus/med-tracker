@@ -69,6 +69,7 @@ gem 'mcp', require: false
 gem 'phlex-rails'
 gem 'ruby_llm', require: false
 gem 'ruby_ui', require: false
+gem 'sorbet-runtime'
 gem 'tailwindcss-rails'
 gem 'tailwind_merge'
 
@@ -95,6 +96,8 @@ group :production do
 end
 
 group :test do
+  gem 'sorbet', require: false
+
   # Clean database between tests
   gem 'database_cleaner-active_record'
   gem 'simplecov', require: false
