@@ -123,7 +123,7 @@ RSpec.describe Reports::HealthHistoryPdf do
       .to include('health-history-chronology-table', '<thead>', 'Dates', 'Type', 'Details')
 
     chronology_pages = pdf_page_texts(pdf).select { it.include?('Recorded episode') }
-    expect(chronology_pages.drop(1)).to all(include('DATS TP TTL DTALS'))
+    expect(chronology_pages.drop(1)).to all(include('DATES TYPE TITLE DETAILS'))
   end
 
   it 'localizes recorded chronology facts and omits optional facts that were not recorded' do
@@ -148,7 +148,7 @@ RSpec.describe Reports::HealthHistoryPdf do
 
     expect(pdf_text(pdf)).to include(
       'Medicamentos relacionados: Paracetamol y Ibuprofen',
-      'Pgina de'
+      'Página'.unicode_normalize(:nfkd)
     )
   end
 
@@ -169,7 +169,7 @@ RSpec.describe Reports::HealthHistoryPdf do
 
     appendix_start = pdf_page_texts(pdf).index { it.include?('Medication administrations appendix') }
     appendix_pages = pdf_page_texts(pdf)[appendix_start..]
-    expect(appendix_pages).to all(include('TM PRSON MDCATON DOS SOURC LOCATON'))
+    expect(appendix_pages).to all(include('TIME PERSON MEDICATION DOSE SOURCE LOCATION'))
   end
 
   def gp_pdf_content
