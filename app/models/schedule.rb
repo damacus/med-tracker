@@ -22,11 +22,11 @@ class Schedule < ApplicationRecord
   belongs_to :person
   belongs_to :medication
   belongs_to :source_dosage_option, class_name: 'MedicationDosageOption', optional: true
+  has_many :medication_pause_periods, dependent: :restrict_with_error, inverse_of: :schedule
 
   enum :dose_cycle, { daily: 0, weekly: 1, monthly: 2 }
   enum :schedule_type, {
-    daily: 0,
-    multiple_daily: 1,
+    daily: 0, multiple_daily: 1,
     weekly: 2,
     specific_dates: 3,
     prn: 4,

@@ -1,7 +1,7 @@
 ## 1. Store Pause Periods
 
-- [ ] 1.1 Red: specify exact-source, tenant, interval, reason, actor, audit, portable-ID, and one-open-period constraints.
-- [ ] 1.2 Green: add dormant storage, row-level tenancy, purge inventory, associations, and focused model specs.
+- [x] 1.1 Red: specify exact-source, tenant, interval, reason, actor, audit, portable-ID, and one-open-period constraints.
+- [x] 1.2 Green: add dormant storage, row-level tenancy, purge inventory, associations, and focused model specs.
 
 ## 1B. Reconcile Legacy Inactive Sources
 

@@ -14,6 +14,7 @@ class PersonMedication < ApplicationRecord
   belongs_to :person
   belongs_to :medication
   belongs_to :source_dosage_option, class_name: 'MedicationDosageOption', optional: true
+  has_many :medication_pause_periods, dependent: :restrict_with_error, inverse_of: :person_medication
   enum :dose_cycle, { daily: 0, weekly: 1, monthly: 2 }, prefix: :dose
   enum :administration_kind, { routine: 0, as_needed: 1 }
 

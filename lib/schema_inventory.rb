@@ -9,6 +9,7 @@ class SchemaInventory
     dosages
     schedules
     person_medications
+    medication_pause_periods
     medication_takes
     notification_preferences
     health_events
