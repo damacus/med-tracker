@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe PersonMedication do
+  fixtures :accounts, :person_medications
+
   describe 'current assignment uniqueness' do
     it 'allows a medication to be assigned again after the previous assignment is retired' do
       retired_assignment = create(:person_medication)
@@ -90,10 +92,17 @@ RSpec.describe PersonMedication do
     end
 
     it 'pauses and resumes an assignment' do
-      person_medication = create(:person_medication)
+      FixtureHouseholdSetup.apply!
+      person_medication = person_medications(:john_vitamin_d)
+      membership = accounts(:admin).household_memberships.find_by!(household: person_medication.household)
+      pause_result = nil
+      resume_result = nil
 
-      expect { person_medication.pause! }.to change { person_medication.reload.active }.from(true).to(false)
-      expect { person_medication.resume! }.to change { person_medication.reload.active }.from(false).to(true)
+      expect { pause_result = person_medication.pause!(membership:) }
+        .to change { person_medication.reload.active }.from(true).to(false)
+      expect { resume_result = person_medication.resume!(membership:) }
+        .to change { person_medication.reload.active }.from(false).to(true)
+      expect([pause_result, resume_result]).to all(be_truthy)
     end
   end
 

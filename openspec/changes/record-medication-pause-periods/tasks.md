@@ -10,8 +10,8 @@
 
 ## 2. Record the Pause Lifecycle
 
-- [ ] 2.1 Red: specify atomic, idempotent, concurrent, and legacy pause and resume transitions.
-- [ ] 2.2 Green: add shared lifecycle services while retaining `active` compatibility.
+- [x] 2.1 Red: specify atomic, idempotent, concurrent, and legacy pause and resume transitions.
+- [x] 2.2 Green: add shared lifecycle services while retaining `active` compatibility.
 
 ## 3. Apply Pause Intervals to the Dashboard
 
