@@ -259,6 +259,31 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       expect(results.pluck(:source)).not_to include(paused_person_medication)
     end
 
+    it 'shows a resumed schedule only at its unpaused later occurrence' do
+      travel_to Time.zone.parse('2026-05-05 18:00:00') do
+        schedule = create_daily_scheduled_medication(times: %w[08:00 20:00])
+        unaffected_schedule = create_daily_scheduled_medication(times: ['19:00'])
+        create_completed_pause(schedule, started_at: time_at(7), ended_at: time_at(12))
+
+        rows = described_class.new([people(:john)]).call
+        resumed_row = rows.find { |row| row[:source] == schedule }
+
+        expect(resumed_row).to include(scheduled_at: time_at(20), daily_dose_limit: 1)
+        expect(rows.pluck(:source)).to include(unaffected_schedule)
+      end
+    end
+
+    it 'excludes all scheduled work covered by a completed full-day pause' do
+      travel_to Time.zone.parse('2026-05-05 23:30:00') do
+        schedule = create_daily_scheduled_medication(times: %w[08:00 20:00])
+        create_completed_pause(schedule, started_at: time_at(0), ended_at: time_at(23))
+
+        rows = described_class.new([people(:john)]).call
+
+        expect(rows.pluck(:source)).not_to include(schedule)
+      end
+    end
+
     context 'when a schedule has no timing restrictions' do
       let!(:schedule) do
         Schedule.create!(
@@ -445,7 +470,7 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
     )
   end
 
-  def create_daily_scheduled_medication
+  def create_daily_scheduled_medication(times: ['08:00'])
     medication = medications(:vitamin_c).tap { |candidate| candidate.update!(current_supply: 30) }
 
     create(
@@ -456,12 +481,28 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       dose_amount: 1,
       dose_unit: 'tablet',
       frequency: 'Once daily',
-      schedule_type: :daily,
-      schedule_config: { 'times' => ['08:00'] },
-      max_daily_doses: 1,
-      min_hours_between_doses: 24,
+      schedule_type: times.one? ? :daily : :multiple_daily,
+      schedule_config: { 'times' => times },
+      max_daily_doses: times.size,
+      min_hours_between_doses: times.one? ? 24 : 4,
       dose_cycle: :daily
     )
+  end
+
+  def create_completed_pause(source, started_at:, ended_at:)
+    FixtureHouseholdSetup.apply!
+    membership = accounts(:admin).household_memberships.find_by!(household: source.household)
+    source.medication_pause_periods.create!(
+      reason: 'clinician_advice',
+      started_at:,
+      ended_at:,
+      recorded_by_membership: membership,
+      resumed_by_membership: membership
+    )
+  end
+
+  def time_at(hour)
+    Time.zone.local(2026, 5, 5, hour)
   end
 
   def medication_source_preloaded?(take)

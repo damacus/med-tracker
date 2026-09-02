@@ -51,7 +51,7 @@ module FamilyDashboard
     def fetch_active_schedules
       schedules_by_person_id = Schedule.active
                                        .where(person_id: @person_ids)
-                                       .includes(:medication)
+                                       .includes(:medication, :medication_pause_periods)
                                        .to_a
                                        .group_by(&:person_id)
 
@@ -61,7 +61,7 @@ module FamilyDashboard
     def fetch_person_medications
       person_medications_by_person_id = PersonMedication.active
                                                         .where(person_id: @person_ids)
-                                                        .includes(:medication)
+                                                        .includes(:medication, :medication_pause_periods)
                                                         .to_a
                                                         .group_by(&:person_id)
 
@@ -138,29 +138,29 @@ module FamilyDashboard
       # 1. Get today's takes from our preloaded association for progress and history
       # This uses the association preloaded in aggregate_family_doses to avoid N+1 queries
       takes = todays_takes(source)
+      expected_doses = expected_routine_doses_for(source)
 
       # 2. Determine if an upcoming dose should be shown
       # We show only the next actionable routine row if it falls within today
-      return [] unless upcoming_routine_row?(source)
+      return [] unless upcoming_routine_row?(source, expected_doses)
 
-      [build_upcoming_row(source, person, takes)]
+      [build_upcoming_row(source, person, takes, expected_doses)]
     end
 
     def todays_takes(source) = source.medication_takes.select { |take| Time.current.all_day.cover?(take.taken_at) }
 
-    def upcoming_routine_row?(source)
-      expected_doses = expected_routine_doses_for(source)
+    def upcoming_routine_row?(source, expected_doses)
       expected_doses.positive? && taken_count_for_cycle(source, Time.current) < expected_doses
     end
 
-    def build_upcoming_row(source, person, takes)
+    def build_upcoming_row(source, person, takes, expected_doses)
       {
         person: person,
         source: source,
         scheduled_at: routine_scheduled_at(source, takes.length),
         taken_at: nil,
         status: MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason || :upcoming
-      }.merge(dose_progress_for(takes, expected_routine_doses_for(source)))
+      }.merge(dose_progress_for(takes, expected_doses))
     end
 
     def generate_as_needed_rows_for(source, person)
@@ -188,11 +188,20 @@ module FamilyDashboard
     def expected_schedule_doses_for(schedule)
       return 0 unless schedule.applies_on?(Date.current)
 
+      configured_doses = configured_schedule_doses_for(schedule)
+      return configured_doses unless configured_doses.nil?
+
       expected = schedule.expected_doses_on(Date.current)
       return expected unless expected == 1 && schedule.effective_max_daily_doses.blank?
       return expected if schedule.effective_min_hours_between_doses.blank?
 
       (24 / schedule.effective_min_hours_between_doses.to_f).ceil
+    end
+
+    def configured_schedule_doses_for(schedule)
+      return if configured_times_for(schedule).blank?
+
+      active_configured_occurrences_for(schedule).size
     end
 
     def taken_count_for_cycle(source, now)
@@ -242,24 +251,18 @@ module FamilyDashboard
     def routine_scheduled_at(source, taken_count)
       return unless source.is_a?(Schedule)
 
-      configured_time_at(source, taken_count)
+      active_configured_occurrences_for(source)[taken_count]
     end
 
-    def configured_time_at(schedule, index)
-      raw_time = Array(schedule.schedule_config.to_h['times']).compact_blank[index]
-      return if raw_time.blank?
-
-      current_day_at(*configured_hour_and_minute(raw_time))
+    def active_configured_occurrences_for(schedule)
+      occurrences = MedicationPausePeriods::IntervalProjection.occurrences_on(
+        date: Date.current, times: configured_times_for(schedule)
+      )
+      MedicationPausePeriods::IntervalProjection.new(periods: schedule.medication_pause_periods)
+                                                .active_occurrences(occurrences)
     end
 
-    def configured_hour_and_minute(raw_time)
-      raw_time.to_s.split(':').map(&:to_i)
-    end
-
-    def current_day_at(hour, minute)
-      date = Date.current
-      Time.zone.local(date.year, date.month, date.day, hour, minute)
-    end
+    def configured_times_for(schedule) = Array(schedule.schedule_config.to_h['times']).compact_blank
 
     def sort_rows(rows)
       rows.sort_by { |row| [row[:scheduled_at] || Time.current.end_of_day, row[:source].id] }

@@ -15,8 +15,8 @@
 
 ## 3. Apply Pause Intervals to the Dashboard
 
-- [ ] 3.1 Red: specify partial-day, full-day, current, and resumed dashboard behaviour.
-- [ ] 3.2 Green: add the shared pause projection and update the standard dashboard query.
+- [x] 3.1 Red: specify partial-day, full-day, current, and resumed dashboard behaviour.
+- [x] 3.2 Green: add the shared pause projection and update the standard dashboard query.
 
 ## 4. Apply Pause Intervals to Reminders
 
