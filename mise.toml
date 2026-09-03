@@ -1,4 +1,4 @@
 [tools]
 "npm:@fission-ai/openspec" = "1.12.0"
-node = "24"
+node = "26"
 ruby = "4.0.6"
