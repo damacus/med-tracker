@@ -188,6 +188,24 @@ RSpec.describe MedicationReminderJob do
     expect(PushNotificationService).not_to have_received(:send_to_account)
   end
 
+  it 'does not send a delayed reminder for an intended occurrence covered by a completed pause' do
+    intended_at = Time.zone.local(2026, 5, 12, 7, 15)
+    schedule = create_vitamin_schedule(
+      time: '07:15', start_date: Date.new(2026, 5, 11), end_date: Date.new(2026, 6, 12)
+    )
+    create_completed_pause(
+      schedule,
+      started_at: Time.zone.local(2026, 5, 12, 7),
+      ended_at: Time.zone.local(2026, 5, 12, 8)
+    )
+
+    travel_to Time.zone.local(2026, 5, 13, 10) do
+      described_class.perform_now(household.id, person.id, :scheduled, '07:15', intended_at)
+    end
+
+    expect(PushNotificationService).not_to have_received(:send_to_account)
+  end
+
   it 'does not send period reminders for schedules without configured times' do
     create(:schedule, person: person, medication: medications(:ibuprofen), dosage: dosages(:ibuprofen_adult),
                       frequency: 'Every 6-8 hours', schedule_type: :daily, schedule_config: {},
@@ -328,6 +346,18 @@ RSpec.describe MedicationReminderJob do
     create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
                       frequency: 'Once daily', schedule_type: :daily,
                       schedule_config: { 'times' => [time] }, start_date:, end_date:)
+  end
+
+  def create_completed_pause(source, started_at:, ended_at:)
+    FixtureHouseholdSetup.apply!
+    membership = accounts(:admin).household_memberships.find_by!(household: source.household)
+    source.medication_pause_periods.create!(
+      reason: 'clinician_advice',
+      started_at:,
+      ended_at:,
+      recorded_by_membership: membership,
+      resumed_by_membership: membership
+    )
   end
 
   def perform_serialized_legacy_jobs(intended_at)
