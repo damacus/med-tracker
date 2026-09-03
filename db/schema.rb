@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_02_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_03_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -201,6 +201,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_02_090000) do
     t.index ["household_id"], name: "index_api_change_events_on_household_id"
     t.index ["household_membership_id"], name: "index_api_change_events_on_household_membership_id"
     t.index ["record_type", "record_id"], name: "index_api_change_events_on_record_type_and_record_id"
+  end
+
+  create_table "api_household_selection_grants", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.string "device_name"
+    t.datetime "expires_at", null: false
+    t.datetime "mfa_verified_at"
+    t.boolean "oidc_mfa_verified", default: false, null: false
+    t.string "token_digest", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "used_at"
+    t.string "user_agent"
+    t.index ["account_id"], name: "index_api_household_selection_grants_on_account_id"
+    t.index ["expires_at"], name: "index_api_household_selection_grants_on_expires_at"
+    t.index ["token_digest"], name: "index_api_household_selection_grants_on_token_digest", unique: true
+    t.index ["used_at"], name: "index_api_household_selection_grants_on_used_at"
   end
 
   create_table "api_idempotency_keys", force: :cascade do |t|
@@ -1234,6 +1251,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_02_090000) do
   add_foreign_key "api_change_events", "accounts"
   add_foreign_key "api_change_events", "household_memberships"
   add_foreign_key "api_change_events", "households"
+  add_foreign_key "api_household_selection_grants", "accounts"
   add_foreign_key "api_idempotency_keys", "accounts"
   add_foreign_key "api_idempotency_keys", "api_app_tokens"
   add_foreign_key "api_idempotency_keys", "api_sessions"

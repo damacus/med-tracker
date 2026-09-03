@@ -197,24 +197,52 @@ RSpec.describe 'API v1 auth sessions' do
       expect(response.parsed_body.dig('error', 'code')).to eq('invalid_credentials')
     end
 
-    it 'rejects login without an explicit household when the account has multiple active memberships' do
-      create_api_household_for(user)
+    it 'returns a one-time selection grant for multiple memberships and exchanges it for a session' do
+      first_household = create_api_household_for(user)
       second_household = create(:household)
-      second_household.household_memberships.create!(
+      second_membership = second_household.household_memberships.create!(
         account: account,
         role: :member,
         status: :active
       )
 
-      post api_v1_auth_login_path,
-           params: {
-             email: user.email_address,
-             password: 'password'
-           },
+      expect do
+        post api_v1_auth_login_path,
+             params: {
+               email: user.email_address,
+               password: 'password',
+               device_name: 'RSpec iPhone'
+             },
+             as: :json
+      end.not_to change(ApiSession, :count)
+
+      expect(response).to have_http_status(:accepted)
+      data = response.parsed_body.fetch('data')
+      expect(data).to include(
+        'status' => 'household_selection_required',
+        'selection_token' => be_present,
+        'selection_expires_at' => be_present,
+        'households' => contain_exactly(
+          include('id' => first_household.id),
+          include('id' => second_household.id)
+        )
+      )
+      grant = ApiHouseholdSelectionGrant.order(:id).last
+      expect(grant.token_digest).to eq(ApiHouseholdSelectionGrant.digest(data.fetch('selection_token')))
+      expect(grant.token_digest).not_to eq(data.fetch('selection_token'))
+
+      post api_v1_auth_select_household_path,
+           params: { selection_token: data.fetch('selection_token'), household_id: second_household.id },
            as: :json
 
-      expect(response).to have_http_status(:unauthorized)
-      expect(response.parsed_body.dig('error', 'code')).to eq('invalid_credentials')
+      expect(response).to have_http_status(:created)
+      expect(response.parsed_body.dig('data', 'household', 'id')).to eq(second_household.id)
+      expect(grant.reload.used_at).to be_present
+      expect(ApiSession.order(:id).last).to have_attributes(
+        account: account,
+        household_membership: second_membership,
+        device_name: 'RSpec iPhone'
+      )
     end
 
     it 'rejects a locked account without creating an API session' do
@@ -330,6 +358,38 @@ RSpec.describe 'API v1 auth sessions' do
       expect(response.parsed_body.dig('data', 'household', 'id')).to eq(household.id)
     end
 
+    it 'returns a one-time selection grant when OIDC authentication finds multiple memberships' do
+      first_household = account.household_memberships.active.first.household
+      second_household = create(:household)
+      second_household.household_memberships.create!(
+        account: account,
+        role: :member,
+        status: :active
+      )
+
+      expect do
+        post api_v1_auth_oidc_exchange_path,
+             params: {
+               id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'multiple-households'),
+               nonce: 'multiple-households',
+               code_verifier: 'pkce-verifier',
+               device_name: 'RSpec Mobile'
+             },
+             as: :json
+      end.not_to change(ApiSession, :count)
+
+      expect(response).to have_http_status(:accepted)
+      expect(response.parsed_body.fetch('data')).to include(
+        'status' => 'household_selection_required',
+        'selection_token' => be_present,
+        'selection_expires_at' => be_present,
+        'households' => contain_exactly(
+          include('id' => first_household.id),
+          include('id' => second_household.id)
+        )
+      )
+    end
+
     it 'records OIDC MFA proof when the identity token includes an MFA authentication method' do
       post api_v1_auth_oidc_exchange_path,
            params: {
@@ -438,6 +498,34 @@ RSpec.describe 'API v1 auth sessions' do
            },
            as: :json
       expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe 'POST /api/v1/auth/select_household' do
+    it 'returns the same generic failure for expired, used, and unauthorized selection grants' do
+      household_id = ensure_api_household_for(user).id
+      expired_grant, expired_token = ApiHouseholdSelectionGrant.issue_for(account: account)
+      expired_grant.update!(expires_at: 1.minute.ago)
+      used_grant, used_token = ApiHouseholdSelectionGrant.issue_for(account: account)
+      used_grant.update!(used_at: Time.current)
+      _, unauthorized_token = ApiHouseholdSelectionGrant.issue_for(account: account)
+      unauthorized_household = create(:household)
+
+      [
+        [expired_token, household_id],
+        [used_token, household_id],
+        [unauthorized_token, unauthorized_household.id]
+      ].each do |selection_token, selected_household_id|
+        post api_v1_auth_select_household_path,
+             params: { selection_token: selection_token, household_id: selected_household_id },
+             as: :json
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(response.parsed_body.fetch('error')).to include(
+          'code' => 'invalid_household_selection',
+          'message' => 'Household selection is invalid or expired'
+        )
+      end
     end
   end
 
