@@ -1,0 +1,43 @@
+---
+version: "3"
+
+tasks:
+  jvm:check:
+    desc: Verify Gradle runs on the pinned JDK 17 daemon
+    cmds:
+      - fish --no-config ./scripts/check-jdk.fish
+
+  test:
+    desc: Run Android phone unit tests
+    cmds:
+      - ./gradlew :phone:testDebugUnitTest --no-daemon
+
+  lint:
+    desc: Run Android phone lint
+    cmds:
+      - ./gradlew :phone:lint --no-daemon
+
+  assemble:
+    desc: Assemble Android phone debug and release APKs
+    cmds:
+      - ./gradlew :phone:assembleDebug :phone:assembleRelease --no-daemon
+
+  api:check:
+    desc: Verify the pinned Android OpenAPI client has no drift
+    cmds:
+      - ./scripts/api-check.fish
+
+  api:update:
+    desc: Update the pinned Android OpenAPI client from the root contract
+    cmds:
+      - ./scripts/api-update.fish
+      - task: api:check
+
+  ci:
+    desc: Run Android phone tests, lint, assemblies, and API drift verification
+    cmds:
+      - task: jvm:check
+      - task: test
+      - task: lint
+      - task: assemble
+      - task: api:check

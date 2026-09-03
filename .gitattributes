@@ -8,3 +8,4 @@ vendor/* linguist-vendored
 config/credentials/*.yml.enc diff=rails_credentials
 config/credentials.yml.enc diff=rails_credentials
 
+mobile/android/phone/src/main/kotlin/io/medtracker/client/** -whitespace
