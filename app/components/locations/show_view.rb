@@ -36,16 +36,24 @@ module Components
       private
 
       def render_notice
-        render RubyUI::Alert.new(variant: :success, class: 'mb-8 rounded-2xl border-none shadow-sm') do
+        render RubyUI::Alert.new(
+          variant: :success,
+          class: 'mb-8 rounded-shape-xl border-outline bg-success-container ' \
+                 'text-on-success-container shadow-elevation-1'
+        ) do
           plain(notice)
         end
       end
 
       def render_header
-        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-border') do
+        div(
+          class: 'flex flex-col justify-between gap-6 border-b border-outline-variant/30 pb-8 ' \
+                 'md:flex-row md:items-end'
+        ) do
           div(class: 'flex items-center gap-6') do
             div(
-              class: 'w-20 h-20 rounded-[2rem] bg-primary/10 flex items-center justify-center text-primary shadow-inner'
+              class: 'flex h-20 w-20 items-center justify-center rounded-shape-xl bg-primary-container ' \
+                     'text-on-primary-container shadow-elevation-1'
             ) do
               render Icons::Home.new(size: 32)
             end
@@ -60,14 +68,21 @@ module Components
 
           div(class: 'flex gap-3') do
             if view_context.policy(location).update?
-              Link(href: edit_location_path(location, return_to: location_path(location)),
-                   variant: :outlined, size: :lg,
-                   class: 'rounded-2xl font-bold text-sm bg-card') do
+              m3_link(
+                href: edit_location_path(location, return_to: location_path(location)),
+                variant: :outlined,
+                size: :lg,
+                class: 'border-outline bg-surface-container-low font-bold text-sm text-on-surface'
+              ) do
                 t('locations.show.edit_location')
               end
             end
-            Link(href: locations_path, variant: :text, size: :lg,
-                 class: 'rounded-2xl font-bold text-sm text-on-surface-variant hover:text-foreground') do
+            m3_link(
+              href: locations_path,
+              variant: :text,
+              size: :lg,
+              class: 'font-bold text-sm text-on-surface-variant hover:text-on-surface'
+            ) do
               t('locations.show.all_locations')
             end
           end
@@ -89,7 +104,7 @@ module Components
               end
             end
           else
-            m3_card(class: 'p-8 text-center') do
+            m3_card(variant: :outlined, class: 'border-dashed border-outline-variant p-8 text-center') do
               m3_text(size: '3', class: 'text-on-surface-variant') { t('locations.show.no_medications') }
             end
           end
@@ -97,20 +112,24 @@ module Components
       end
 
       def render_medication_card(medication)
-        m3_card(class: 'p-6 hover:shadow-md transition-shadow overflow-hidden') do
+        m3_card(
+          variant: :elevated,
+          class: 'overflow-hidden p-6 transition-shadow hover:shadow-elevation-2'
+        ) do
           div(class: 'flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between') do
             div(class: 'flex items-start gap-4 min-w-0 flex-1') do
               div(
-                class: 'w-10 h-10 rounded-xl bg-secondary-container flex items-center ' \
-                       'justify-center text-on-surface-variant flex-shrink-0'
+                class: 'flex h-10 w-10 shrink-0 items-center justify-center rounded-shape-md bg-secondary-container ' \
+                       'text-on-secondary-container'
               ) do
                 render Components::Shared::MedicationIcon.new(medication: medication, size: 20)
               end
               div(class: 'min-w-0 flex-1') do
-                Link(
+                m3_link(
                   href: medication_path(medication),
-                  variant: :link,
-                  class: 'font-semibold text-base no-underline whitespace-normal break-words text-left leading-snug'
+                  variant: :text,
+                  class: 'h-auto p-0 text-left text-base font-semibold leading-snug no-underline whitespace-normal ' \
+                         'break-words text-on-surface hover:text-primary'
                 ) do
                   medication.display_name
                 end
@@ -122,9 +141,9 @@ module Components
               end
             end
             if medication.low_stock?
-              Badge(variant: :destructive, class: 'shrink-0 whitespace-nowrap justify-center') { 'Low Stock' }
+              m3_badge(variant: :destructive, class: 'shrink-0 justify-center whitespace-nowrap') { 'Low Stock' }
             else
-              Badge(variant: :success, class: 'shrink-0 whitespace-nowrap justify-center') do
+              m3_badge(variant: :success, class: 'shrink-0 justify-center whitespace-nowrap') do
                 ::Medications::SupplyStatusPresenter.new(medication: medication).inventory_units_label
               end
             end
@@ -143,7 +162,7 @@ module Components
       end
 
       def render_members_card
-        m3_card(class: 'p-8 space-y-6') do
+        m3_card(variant: :elevated, class: 'space-y-6 p-8') do
           div(class: 'flex items-center justify-between') do
             m3_heading(level: 3, size: '4', class: 'font-bold') { t('locations.show.members') }
             render_add_member_dialog if view_context.policy(location).update?
@@ -188,7 +207,7 @@ module Components
             end
           end
 
-          AlertDialogContent(class: 'rounded-[2rem] border-none shadow-2xl') do
+          AlertDialogContent(class: 'rounded-shape-xl border-outline bg-surface-container-high shadow-elevation-3') do
             AlertDialogHeader do
               AlertDialogTitle { t('locations.show.remove_member.title') }
               AlertDialogDescription do
@@ -210,15 +229,15 @@ module Components
       end
 
       def render_details_card
-        m3_card(class: 'p-8 space-y-4') do
+        m3_card(variant: :filled, class: 'space-y-4 p-8') do
           div(class: 'flex items-center justify-between') do
             m3_heading(level: 3, size: '4', class: 'font-bold') { t('locations.show.details') }
             if view_context.policy(location).update?
-              Link(
+              m3_link(
                 href: edit_location_path(location, return_to: location_path(location)),
                 variant: :text,
                 size: :sm,
-                class: 'text-on-surface-variant hover:text-primary h-8 w-8 p-0 flex items-center justify-center',
+                class: 'flex h-8 w-8 items-center justify-center p-0 text-on-surface-variant hover:text-primary',
                 aria_label: t('locations.show.edit_details', default: 'Edit location details')
               ) do
                 render Icons::Pencil.new(size: 16, aria_hidden: 'true')
@@ -240,15 +259,18 @@ module Components
             m3_button(
               variant: :text,
               size: :sm,
-              class: 'w-8 h-8 p-0 rounded-full bg-secondary-container text-on-surface-variant ' \
-                     'hover:text-primary hover:bg-primary/5',
+              class: 'h-8 w-8 rounded-shape-full bg-secondary-container p-0 text-on-secondary-container ' \
+                     'hover:bg-primary-container hover:text-on-primary-container',
               aria_label: t('locations.show.add_member.aria_label', default: 'Add member')
             ) do
               render Icons::Plus.new(size: 16, aria_hidden: 'true')
             end
           end
 
-          DialogContent(size: :md) do
+          DialogContent(
+            size: :md,
+            class: 'rounded-shape-xl border-outline bg-surface-container-high shadow-elevation-3'
+          ) do
             DialogHeader do
               DialogTitle { t('locations.show.add_member.title') }
               DialogDescription { t('locations.show.add_member.description', name: location.name) }
@@ -281,8 +303,8 @@ module Components
               else
                 div(class: 'py-8 text-center space-y-2') do
                   div(
-                    class: 'w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center ' \
-                           'text-on-surface-variant mx-auto'
+                    class: 'mx-auto flex h-12 w-12 items-center justify-center rounded-shape-full ' \
+                           'bg-secondary-container text-on-secondary-container'
                   ) do
                     render Icons::Users.new(size: 24)
                   end

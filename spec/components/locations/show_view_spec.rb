@@ -19,6 +19,7 @@ RSpec.describe Components::Locations::ShowView, type: :component do
     supply_badge = rendered.css('span').find { |span| span.text.squish == '12 units' }
     expect(supply_badge['class']).to include('whitespace-nowrap')
     expect(supply_badge['class']).to include('shrink-0')
+    expect(rendered.to_html).not_to include('rounded-[2rem]')
   end
 
   it 'uses the public dose format in medication cards' do
@@ -59,6 +60,7 @@ RSpec.describe Components::Locations::ShowView, type: :component do
     expect(rendered.at_css('button[aria-label="Remove member"] svg[aria-hidden="true"]')).to be_present
     expect(rendered.at_css('a[aria-label="Edit location details"] svg[aria-hidden="true"]')).to be_present
     expect(rendered.at_css('button[aria-label="Add member"] svg[aria-hidden="true"]')).to be_present
+    expect(rendered.at_css('a[aria-label="Edit location details"]')['class']).not_to include('bg-card')
   end
 
   it 'hides the header edit link from non-managers' do

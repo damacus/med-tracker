@@ -47,22 +47,22 @@ module Components
           render_errors if location.errors.any?
           input(type: 'hidden', name: 'return_to', value: return_to) if return_to.present?
 
-          m3_card(variant: :elevated, class: 'overflow-hidden border-none shadow-elevation-3 rounded-[2.5rem]') do
-            div(class: 'p-10 space-y-8') do
+          m3_card(variant: :elevated, class: 'overflow-hidden shadow-elevation-3') do
+            div(class: 'space-y-8 p-8 sm:p-10') do
               render_name_field(form)
               render_description_field(form)
             end
 
             div(
-              class: 'px-10 py-6 bg-surface-container-low border-t border-outline-variant/30 ' \
-                     'flex items-center justify-between gap-4 rounded-b-[2.5rem]'
+              class: 'flex items-center justify-between gap-4 border-t border-outline-variant/30 ' \
+                     'bg-surface-container px-8 py-6 sm:px-10'
             ) do
               m3_link(href: return_to.presence || locations_path, variant: :text, size: :lg,
                       class: 'font-bold text-on-surface-variant hover:text-foreground transition-all') do
                 t('people.show.back')
               end
               m3_button(type: :submit, variant: :filled, size: :lg,
-                        class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20 transition-all') do
+                        class: 'px-8 shadow-elevation-2') do
                 t('locations.form.save')
               end
             end
@@ -71,8 +71,10 @@ module Components
       end
 
       def render_errors
-        render RubyUI::Alert.new(variant: :destructive,
-                                 class: 'mb-8 rounded-shape-xl border-none shadow-elevation-1') do
+        render RubyUI::Alert.new(
+          variant: :destructive,
+          class: 'mb-8 rounded-shape-xl border-outline bg-error-container text-on-error-container shadow-elevation-1'
+        ) do
           div(class: 'flex items-start gap-3') do
             render Icons::AlertCircle.new(size: 20)
             div do
@@ -91,9 +93,9 @@ module Components
 
       def render_name_field(_form)
         div(class: 'space-y-2') do
-          render RubyUI::FormFieldLabel.new(
+          label(
             for: 'location_name',
-            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+            class: 'ml-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant'
           ) { t('people.form.name') }
           m3_input(
             type: :text,
@@ -102,9 +104,7 @@ module Components
             value: location.name,
             required: true,
             placeholder: t('forms.locations.name_placeholder'),
-            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest ' \
-                   'py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
-                   'focus:border-primary transition-all ' \
+            class: 'border-outline-variant bg-surface-container-lowest px-4 py-4 ' \
                    "#{field_error_class(location, :name)}",
             **field_error_attributes(location, :name, input_id: 'location_name')
           )
@@ -114,18 +114,18 @@ module Components
 
       def render_description_field(_form)
         div(class: 'space-y-2') do
-          render RubyUI::FormFieldLabel.new(
+          label(
             for: 'location_description',
-            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+            class: 'ml-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant'
           ) { t('locations.form.description_optional') }
-          render RubyUI::Textarea.new(
+          textarea(
             name: 'location[description]',
             id: 'location_description',
             rows: 3,
             placeholder: t('forms.locations.description_placeholder'),
-            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest ' \
-                   'p-4 focus:ring-2 focus:ring-primary/10 ' \
-                   'focus:border-primary transition-all resize-none'
+            class: 'w-full rounded-shape-sm border border-outline-variant bg-surface-container-lowest p-4 ' \
+                   'text-on-surface placeholder:text-on-surface-variant focus-visible:outline-none ' \
+                   'focus-visible:ring-2 focus-visible:ring-primary resize-none'
           ) { location.description }
         end
       end

@@ -18,6 +18,7 @@ RSpec.describe Components::Locations::IndexView, type: :component do
     expect(action_classes.flatten).not_to include('rounded-xl')
     expect(action_classes.flatten).not_to include('w-10')
     expect(action_classes.flatten).not_to include('h-10')
+    expect(rendered.to_html).not_to include('rounded-[2.5rem]')
   end
 
   it 'renders the add location action for managers' do
@@ -44,6 +45,8 @@ RSpec.describe Components::Locations::IndexView, type: :component do
 
     expect(edit_link.at_css('svg[aria-hidden="true"]')).to be_present
     expect(delete_button.at_css('svg[aria-hidden="true"]')).to be_present
+    expect(edit_link['class']).not_to include('bg-card')
+    expect(delete_button['class']).not_to include('bg-card')
   end
 
   it 'renders only the view action for non-managers', :aggregate_failures do

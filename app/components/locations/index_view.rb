@@ -55,48 +55,46 @@ module Components
       def render_location_card(location)
         m3_card(
           id: tenant_dom_id(location),
-          class: 'h-full flex flex-col border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card ' \
-                 'rounded-[2.5rem] transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ' \
-                 'group overflow-hidden'
+          variant: :elevated,
+          class: 'group h-full overflow-hidden bg-surface-container-low transition-all duration-300 ' \
+                 'hover:shadow-elevation-2'
         ) do
-          CardHeader(class: 'pb-4 pt-8 px-8') do
-            div(class: 'flex justify-between items-start mb-4') do
+          m3_card_header(class: 'px-8 pb-4 pt-8') do
+            div(class: 'mb-4 flex items-start justify-between') do
               render_location_icon
-              # Fallback for medication word
-              Badge(variant: :outlined) do
+              m3_badge(variant: :outlined, class: 'border-outline-variant text-on-surface-variant') do
                 pluralize(location.medications.size, t('medications.created').split.first.downcase)
               end
             end
-            m3_heading(level: 2, size: '5', class: 'font-bold tracking-tight') { location.name }
+            m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') { location.name }
           end
 
-          CardContent(class: 'flex-grow space-y-4 px-8 pb-4') do
+          m3_card_content(class: 'flex-grow space-y-4 px-8 pb-4') do
             if location.description.present?
-              m3_text(size: '2', class: 'text-on-surface-variant line-clamp-2 leading-relaxed') { location.description }
+              m3_text(variant: :body_medium, class: 'line-clamp-2 leading-relaxed text-on-surface-variant') do
+                location.description
+              end
             end
 
             if location.members.present?
-              div(class: 'pt-4 border-t border-border') do
-                m3_text(size: '1', weight: 'bold',
-                        class: 'uppercase tracking-widest text-on-surface-variant mb-2 block font-black') do
+              div(class: 'border-t border-outline-variant/30 pt-4') do
+                m3_text(variant: :label_small,
+                        class: 'mb-2 block font-bold uppercase tracking-widest text-on-surface-variant') do
                   t('locations.index.members')
                 end
                 div(class: 'flex flex-wrap gap-1') do
                   location.members.each do |member|
-                    Badge(
+                    m3_badge(
                       variant: :outlined,
-                      class: 'text-[10px] bg-secondary-container ' \
-                             'text-on-surface-variant border-border font-medium'
-                    ) do
-                      member.name
-                    end
+                      class: 'border-outline-variant bg-secondary-container text-on-secondary-container'
+                    ) { member.name }
                   end
                 end
               end
             end
           end
 
-          CardFooter(class: 'px-8 pb-8 pt-2 mt-auto') do
+          m3_card_footer(class: 'mt-auto px-8 pb-8 pt-2') do
             render_location_actions(location)
           end
         end
@@ -104,9 +102,9 @@ module Components
 
       def render_location_icon
         div(
-          class: 'w-12 h-12 rounded-2xl bg-secondary-container flex items-center ' \
-                 'justify-center text-on-surface-variant group-hover:text-primary ' \
-                 'group-hover:bg-primary/5 transition-all'
+          class: 'flex h-12 w-12 items-center justify-center rounded-shape-lg bg-secondary-container ' \
+                 'text-on-secondary-container transition-colors group-hover:bg-primary-container ' \
+                 'group-hover:text-on-primary-container'
         ) do
           render Icons::Home.new(size: 24)
         end
@@ -120,8 +118,8 @@ module Components
             href: location_path(location),
             variant: :outlined,
             size: :sm,
-            class: 'flex-1 border-border bg-card ' \
-                   'hover:bg-tertiary-container text-on-surface-variant'
+            class: 'flex-1 border-outline bg-surface-container-low text-on-surface ' \
+                   'hover:bg-surface-container-high'
           ) do
             t('locations.index.view')
           end
@@ -131,8 +129,8 @@ module Components
               variant: :outlined,
               size: :lg,
               icon: true,
-              class: 'border-border ' \
-                     'bg-card hover:bg-tertiary-container text-on-surface-variant',
+              class: 'border-outline bg-surface-container-low text-on-surface ' \
+                     'hover:bg-surface-container-high',
               aria_label: t('locations.index.edit', default: 'Edit location')
             ) do
               render Icons::Pencil.new(size: 16, aria_hidden: 'true')
@@ -152,7 +150,7 @@ module Components
               render Icons::Trash.new(size: 18, aria_hidden: 'true')
             end
           end
-          AlertDialogContent(class: 'rounded-[2rem] border-none shadow-2xl') do
+          AlertDialogContent(class: 'rounded-shape-xl border-outline bg-surface-container-high shadow-elevation-3') do
             AlertDialogHeader do
               AlertDialogTitle { t('locations.index.delete_dialog.title') }
               AlertDialogDescription do
