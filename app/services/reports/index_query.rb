@@ -37,15 +37,27 @@ module Reports
     end
 
     def schedules
-      @schedules ||= Schedule.where(person_id: person_ids)
-                             .where(active: true)
-                             .where('start_date <= ? AND (end_date IS NULL OR end_date >= ?)', end_date, start_date)
-                             .to_a
+      @schedules ||= begin
+        range_scope = Schedule.current.where(person_id: person_ids)
+                              .where(
+                                'start_date <= ? AND (end_date IS NULL OR end_date >= ?)',
+                                end_date,
+                                start_date
+                              )
+        paused_schedule_ids = MedicationPausePeriod.where.not(schedule_id: nil).select(:schedule_id)
+
+        range_scope.where(active: true)
+                   .or(range_scope.where(id: paused_schedule_ids))
+                   .includes(:medication_pause_periods)
+                   .to_a
+      end
     end
 
     def takes_by_date
       @takes_by_date ||= MedicationTake.where(schedule_id: schedules.map(&:id))
                                        .where(taken_at: start_date.beginning_of_day..end_date.end_of_day)
+                                       .to_a
+                                       .reject { |take| paused_medication_take?(take) }
                                        .group_by { |take| take.taken_at.to_date }
     end
 
@@ -71,7 +83,40 @@ module Reports
     end
 
     def expected_doses_for(date)
-      schedules_for(date).sum { |schedule| schedule.expected_doses_on(date) }
+      schedules_for(date).sum { |schedule| expected_doses_for_schedule(schedule, date) }
+    end
+
+    def expected_doses_for_schedule(schedule, date)
+      expected = schedule.expected_doses_on(date)
+      return expected if expected.zero?
+
+      configured_times = Array(schedule.schedule_config.to_h['times']).compact_blank
+      return expected_without_paused_occurrences(schedule, date, configured_times, expected) if configured_times.any?
+      return 0 if pause_projection_for(schedule).paused_at?(date.in_time_zone.end_of_day)
+
+      expected
+    end
+
+    def expected_without_paused_occurrences(schedule, date, configured_times, expected)
+      paused_count = configured_times.count do |time|
+        occurrence = MedicationPausePeriods::IntervalProjection.occurrences_on(date: date, times: [time]).first
+        occurrence.present? && pause_projection_for(schedule).paused_at?(occurrence)
+      end
+
+      [expected - paused_count, 0].max
+    end
+
+    def paused_medication_take?(take)
+      schedule = schedules_by_id[take.schedule_id]
+      schedule.present? && pause_projection_for(schedule).paused_at?(take.taken_at)
+    end
+
+    def schedules_by_id
+      @schedules_by_id ||= schedules.index_by(&:id)
+    end
+
+    def pause_projection_for(source)
+      MedicationPausePeriods::IntervalProjection.new(periods: source.medication_pause_periods)
     end
 
     def schedules_for(date)

@@ -37,6 +37,35 @@ RSpec.describe Reports::HealthHistoryQuery do
     expect(result.medication_takes.sole.source_type).to eq(:as_needed)
   end
 
+  it 'excludes administrations inside a known pause and keeps history after resume' do
+    schedule = create(:schedule, person: person, medication: medications(:paracetamol),
+                                 dosage: dosages(:paracetamol_adult))
+    create_schedule_take(schedule, '2026-02-10 08:00')
+    create_schedule_take(schedule, '2026-02-10 14:00')
+    create_schedule_take(schedule, '2026-02-10 20:00')
+    create_completed_pause(
+      schedule,
+      started_at: Time.zone.parse('2026-02-10 12:00'),
+      ended_at: Time.zone.parse('2026-02-10 18:00')
+    )
+
+    result = described_class.new(people: [person], start_date: start_date, end_date: end_date).call
+
+    expect(result.medication_takes.map { |take| take.taken_at.hour }).to eq([8, 20])
+  end
+
+  it 'keeps pre-migration history for an unknown legacy pause' do
+    direct = create(:person_medication, person: person, medication: medications(:ibuprofen),
+                                        dosage: dosages(:ibuprofen_light), active: false)
+    create_direct_take(direct, '2026-02-10 08:00')
+    create_direct_take(direct, '2026-02-10 20:00')
+    create_legacy_pause(direct, migration_time: Time.zone.parse('2026-02-10 12:00'))
+
+    result = described_class.new(people: [person], start_date: start_date, end_date: end_date).call
+
+    expect(result.medication_takes.map { |take| take.taken_at.hour }).to eq([8])
+  end
+
   it 'includes suspected side effects, illnesses, linked medication snapshots, and illness patterns' do
     create_suspected_side_effect
     create_illness_episode(Date.new(2026, 2, 1), Date.new(2026, 2, 3), 'Cold')
@@ -99,6 +128,42 @@ RSpec.describe Reports::HealthHistoryQuery do
       medical_help_sought: true
     )
     HealthEventMedication.create!(health_event: side_effect, medication: medications(:paracetamol))
+  end
+
+  def create_schedule_take(schedule, taken_at)
+    create(:medication_take, :for_schedule, schedule: schedule, taken_at: Time.zone.parse(taken_at))
+  end
+
+  def create_direct_take(person_medication, taken_at)
+    create(
+      :medication_take,
+      :for_person_medication,
+      person_medication: person_medication,
+      taken_at: Time.zone.parse(taken_at)
+    )
+  end
+
+  def create_completed_pause(source, started_at:, ended_at:)
+    FixtureHouseholdSetup.apply!
+    membership = accounts(:admin).household_memberships.find_by!(household: source.household)
+    source.medication_pause_periods.create!(
+      reason: 'clinician_advice',
+      started_at: started_at,
+      ended_at: ended_at,
+      recorded_by_membership: membership,
+      resumed_by_membership: membership
+    )
+  end
+
+  def create_legacy_pause(source, migration_time:)
+    source.medication_pause_periods.create!(
+      reason: MedicationPausePeriod::LEGACY_REASON,
+      started_at: nil,
+      ended_at: nil,
+      legacy_context: true,
+      created_at: migration_time,
+      updated_at: migration_time
+    )
   end
 
   def count_health_event_queries(&)

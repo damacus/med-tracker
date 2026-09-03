@@ -72,15 +72,25 @@ module Reports
                             .where(schedule_id: schedule_ids)
                             .or(medication_take_scope.where(person_medication_id: person_medication_ids))
                             .order(:taken_at, :id)
+                            .to_a
+                            .reject { |take| paused_medication_take?(take) }
     end
 
     def medication_take_scope
       MedicationTake.includes(
         :taken_from_medication,
         :taken_from_location,
-        schedule: %i[person medication],
-        person_medication: %i[person medication]
+        schedule: %i[person medication medication_pause_periods],
+        person_medication: %i[person medication medication_pause_periods]
       ).where(taken_at: date_range)
+    end
+
+    def paused_medication_take?(take)
+      source = take.source
+      return false unless source
+
+      MedicationPausePeriods::IntervalProjection.new(periods: source.medication_pause_periods)
+                                                .paused_at?(take.taken_at)
     end
 
     def schedule_ids
