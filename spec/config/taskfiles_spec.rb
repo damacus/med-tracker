@@ -68,7 +68,8 @@ RSpec.describe 'Taskfiles' do
     expect(task.dig('cmds', 0, 'vars', 'COMMAND')).to eq(
       'bundle exec srb tc --ignore /usr/local/bundle/gems/prism app/models/dose_constraints.rb ' \
       'app/domain/dose_cycle.rb app/domain/dose_amount.rb app/domain/schedule_frequency_phrase.rb ' \
-      'sorbet/rbi/dose_constraints.rbi sorbet/rbi/schedule_frequency_phrase.rbi'
+      'app/domain/dose_timing_policy.rb sorbet/rbi/dose_constraints.rbi ' \
+      'sorbet/rbi/schedule_frequency_phrase.rbi'
     )
   end
 

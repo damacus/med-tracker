@@ -24,6 +24,9 @@ module ActiveSupport
 
     sig { params(value: T.any(Numeric, ActiveSupport::Duration)).returns(ActiveSupport::TimeWithZone) }
     def +(value); end
+
+    sig { params(value: T.any(Time, ActiveSupport::TimeWithZone)).returns(Float) }
+    def -(value); end
   end
 end
 

@@ -93,6 +93,12 @@ RSpec.describe DoseTimingPolicy do
       expect(result).to be_within(1.second).of(now.end_of_week + 1.second)
     end
 
+    it 'accepts a Symbol cycle' do
+      take = fake_take(taken_at: now.beginning_of_week + 1.hour)
+      result = policy(max_daily_doses: 1, dose_cycle: :weekly, takes: [take]).next_available_time
+      expect(result).to be_within(1.second).of(now.end_of_week + 1.second)
+    end
+
     it 'returns earliest satisfying time when both restrictions apply' do
       take = fake_take(taken_at: 2.hours.ago)
       result = policy(max_daily_doses: 3, min_hours_between_doses: 4, takes: [take]).next_available_time

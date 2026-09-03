@@ -1,6 +1,19 @@
 # frozen_string_literal: true
 
+# typed: true
+
+require 'sorbet-runtime'
+
 class DoseTimingPolicy
+  extend T::Sig
+
+  sig do
+    params(
+      takes: T::Array[MedicationTake],
+      dose_constraints: DoseConstraints,
+      dose_cycle: DoseCycle::CycleInput
+    ).void.checked(:never)
+  end
   def initialize(takes:, dose_constraints:, dose_cycle: 'daily')
     @takes = takes
     @dose_constraints = dose_constraints
@@ -9,12 +22,14 @@ class DoseTimingPolicy
 
   delegate :restrictions?, to: :@dose_constraints
 
+  sig { params(check_time: Time).returns(T::Boolean).checked(:never) }
   def can_take_at?(check_time = Time.current)
     return true unless restrictions?
 
     @dose_constraints.satisfied_by?(takes: @takes, check_time: check_time, cycle: @cycle)
   end
 
+  sig { returns(T.nilable(DoseCycle::TimeValue)).checked(:never) }
   def next_available_time
     return nil unless restrictions?
     return Time.current if can_take_at?
@@ -22,6 +37,7 @@ class DoseTimingPolicy
     @dose_constraints.next_available_time(takes: @takes, cycle: @cycle, now: Time.current)
   end
 
+  sig { returns(T.nilable(Integer)).checked(:never) }
   def time_until_next_dose
     return nil if can_take_at?
 
@@ -31,6 +47,7 @@ class DoseTimingPolicy
     (next_time - Time.current).to_i
   end
 
+  sig { returns(T.nilable(String)).checked(:never) }
   def countdown_display
     seconds = time_until_next_dose
     return nil unless seconds
