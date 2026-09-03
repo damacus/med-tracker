@@ -20,7 +20,7 @@ tasks:
   phone:test:
     desc: Run phone unit tests
     cmds:
-      - ./gradlew :phone:testDebugUnitTest --no-daemon
+      - ./gradlew :phone:testDebugUnitTest {{.CLI_ARGS}} --no-daemon
 
   integration:canary:
     desc: Run the opt-in live canary integration test

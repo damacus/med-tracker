@@ -2,6 +2,7 @@ package io.damacus.medtracker.auth
 
 import io.damacus.medtracker.data.api.ApiResult
 import io.damacus.medtracker.data.api.HttpLoggingPolicy
+import io.damacus.medtracker.data.api.RequestAuthCallFactory
 import io.damacus.medtracker.data.api.toSessionPayload
 import io.damacus.medtracker.data.model.SessionPayload
 import io.medtracker.client.infrastructure.ClientException
@@ -26,6 +27,8 @@ interface PasswordAuthenticator {
 class GeneratedPasswordAuthenticator(
     private val callFactory: Call.Factory = HttpLoggingPolicy.client()
 ) : PasswordAuthenticator {
+    private val unauthenticatedCalls = RequestAuthCallFactory(callFactory)
+
     override suspend fun authenticate(
         serverUrl: String,
         credentials: PasswordCredentials
@@ -33,7 +36,7 @@ class GeneratedPasswordAuthenticator(
         try {
             val data = AuthenticationApi(
                 "${serverUrl.trimEnd('/')}/api/v1",
-                callFactory
+                unauthenticatedCalls
             ).createLoginSession(
                 AuthLoginRequest(
                     credentials.email,

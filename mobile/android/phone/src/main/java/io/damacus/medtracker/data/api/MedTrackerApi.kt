@@ -15,7 +15,6 @@ import io.medtracker.client.apis.MedicationTakesApi
 import io.medtracker.client.apis.MedicationsApi
 import io.medtracker.client.apis.PeopleApi
 import io.medtracker.client.apis.SchedulesApi
-import io.medtracker.client.infrastructure.ApiClient
 import io.medtracker.client.infrastructure.ClientException
 import io.medtracker.client.infrastructure.ServerException
 import io.medtracker.client.models.AuthLoginData
@@ -28,8 +27,6 @@ import io.medtracker.client.models.MedicationTakeCreateRequestMedicationTake
 import io.medtracker.client.models.Person
 import io.medtracker.client.models.Schedule
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.Call
 import java.io.IOException
@@ -56,41 +53,43 @@ interface MedTrackerApi {
 class GeneratedMedTrackerApi(
     internal val callFactory: Call.Factory = HttpLoggingPolicy.client()
 ) : MedTrackerApi {
+    private val unauthenticatedCalls = RequestAuthCallFactory(callFactory)
+
     override suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest) = generated {
-        AuthenticationApi(apiBaseUrl(baseUrl), callFactory).exchangeOidcSession(
+        AuthenticationApi(apiBaseUrl(baseUrl), unauthenticatedCalls).exchangeOidcSession(
             AuthOidcExchangeRequest(request.idToken, request.nonce, request.codeVerifier, request.deviceName, request.householdId?.toInt())
         ).data.toSessionPayload()
     }
 
     override suspend fun refresh(baseUrl: String, request: RefreshRequest) = generated {
-        AuthenticationApi(apiBaseUrl(baseUrl), callFactory).refreshSession(AuthRefreshRequest(request.refreshToken)).data.toSessionPayload()
+        AuthenticationApi(apiBaseUrl(baseUrl), unauthenticatedCalls).refreshSession(AuthRefreshRequest(request.refreshToken)).data.toSessionPayload()
     }
 
     override suspend fun logout(baseUrl: String, accessToken: String): ApiResult<Unit> =
-        authenticated(accessToken) {
-            AuthenticationApi(apiBaseUrl(baseUrl), callFactory).logoutSession()
+        authenticated(accessToken) { requestCalls ->
+            AuthenticationApi(apiBaseUrl(baseUrl), requestCalls).logoutSession()
         }.let { result ->
             if (result is ApiResult.Error && result.statusCode == 401) ApiResult.Success(Unit) else result
         }
 
-    override suspend fun getPeople(baseUrl: String, accessToken: String, householdId: Long) = authenticated(accessToken) {
-        PeopleApi(apiBaseUrl(baseUrl), callFactory).listPeople(householdId.toInt()).data.map(Person::toDomain)
+    override suspend fun getPeople(baseUrl: String, accessToken: String, householdId: Long) = authenticated(accessToken) { requestCalls ->
+        PeopleApi(apiBaseUrl(baseUrl), requestCalls).listPeople(householdId.toInt()).data.map(Person::toDomain)
     }
 
-    override suspend fun getMedications(baseUrl: String, accessToken: String, householdId: Long) = authenticated(accessToken) {
-        MedicationsApi(apiBaseUrl(baseUrl), callFactory).listMedications(householdId.toInt()).data.map(Medication::toDomain)
+    override suspend fun getMedications(baseUrl: String, accessToken: String, householdId: Long) = authenticated(accessToken) { requestCalls ->
+        MedicationsApi(apiBaseUrl(baseUrl), requestCalls).listMedications(householdId.toInt()).data.map(Medication::toDomain)
     }
 
-    override suspend fun getSchedules(baseUrl: String, accessToken: String, householdId: Long) = authenticated(accessToken) {
-        SchedulesApi(apiBaseUrl(baseUrl), callFactory).listSchedules(householdId.toInt()).data.map(Schedule::toDomain)
+    override suspend fun getSchedules(baseUrl: String, accessToken: String, householdId: Long) = authenticated(accessToken) { requestCalls ->
+        SchedulesApi(apiBaseUrl(baseUrl), requestCalls).listSchedules(householdId.toInt()).data.map(Schedule::toDomain)
     }
 
-    override suspend fun getMedicationTakes(baseUrl: String, accessToken: String, householdId: Long) = authenticated(accessToken) {
-        MedicationTakesApi(apiBaseUrl(baseUrl), callFactory).listMedicationTakes(householdId.toInt()).data.map(MedicationTake::toDomain)
+    override suspend fun getMedicationTakes(baseUrl: String, accessToken: String, householdId: Long) = authenticated(accessToken) { requestCalls ->
+        MedicationTakesApi(apiBaseUrl(baseUrl), requestCalls).listMedicationTakes(householdId.toInt()).data.map(MedicationTake::toDomain)
     }
 
-    override suspend fun recordDose(baseUrl: String, accessToken: String, householdId: Long, request: RecordDosePayload) = authenticated(accessToken) {
-        MedicationTakesApi(apiBaseUrl(baseUrl), callFactory).createMedicationTake(householdId.toInt(), MedicationTakeCreateRequest(
+    override suspend fun recordDose(baseUrl: String, accessToken: String, householdId: Long, request: RecordDosePayload) = authenticated(accessToken) { requestCalls ->
+        MedicationTakesApi(apiBaseUrl(baseUrl), requestCalls).createMedicationTake(householdId.toInt(), MedicationTakeCreateRequest(
             MedicationTakeCreateRequestMedicationTake(
                 when (request.sourceType) {
                     "schedule" -> MedicationTakeCreateRequestMedicationTake.SourceType.schedule
@@ -107,16 +106,14 @@ class GeneratedMedTrackerApi(
         catch (error: ServerException) { error.toResult() } catch (error: IOException) { ApiResult.NetworkError(error) }
     }
 
-    private suspend fun <T> authenticated(accessToken: String, block: () -> T): ApiResult<T> = authMutex.withLock {
-        val previous = ApiClient.accessToken
-        try { ApiClient.accessToken = accessToken; generated(block) } finally { ApiClient.accessToken = previous }
+    private suspend fun <T> authenticated(accessToken: String, block: (Call.Factory) -> T): ApiResult<T> = generated {
+        block(RequestAuthCallFactory(callFactory, accessToken))
     }
 
     private fun ClientException.toResult() = ApiResult.Error("http_$statusCode", message.orEmpty(), statusCode)
     private fun ServerException.toResult() = ApiResult.Error("http_$statusCode", message.orEmpty(), statusCode)
     internal fun apiBaseUrl(baseUrl: String): String = "${baseUrl.trimEnd('/')}/api/v1"
 
-    private companion object { val authMutex = Mutex() }
 }
 
 internal fun AuthLoginData.toSessionPayload() = SessionPayload(accessToken, accessTokenExpiresAt.toString(), refreshToken, refreshTokenExpiresAt.toString(), UserDto(me.id.toLong(), me.emailAddress, me.person.name, me.membershipRole?.value), household?.let { HouseholdDto(it.id.toLong(), it.name) })

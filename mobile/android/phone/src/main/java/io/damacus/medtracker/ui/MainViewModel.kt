@@ -12,6 +12,7 @@ import io.damacus.medtracker.data.api.MedTrackerApi
 import io.damacus.medtracker.BuildConfig
 import io.damacus.medtracker.data.model.OidcExchangeRequest
 import io.damacus.medtracker.data.model.SessionPayload
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -86,16 +87,21 @@ class MainViewModel(
         _uiState.update { it.copy(isLoading = false, errorMessage = message) }
     }
 
-    fun logout() {
+    fun logout(sessionRevision: String = sessionState.value.revision) {
+        val currentSession = sessionState.value
+        if (sessionRevision != currentSession.revision) return
+        sessionManager.clearSession()
+        _uiState.value = MainUiState()
+        val token = currentSession.accessToken
+        if (token.isNullOrBlank()) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoggingOut = true) }
-            val currentSession = sessionState.value
-            val token = currentSession.accessToken
-            if (!token.isNullOrBlank()) {
+            try {
                 apiClient.logout(currentSession.serverUrl, token)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                Unit
             }
-            sessionManager.clearSession()
-            _uiState.update { it.copy(isLoggingOut = false) }
         }
     }
 
