@@ -21,11 +21,13 @@
 
 ## Task 4: Add the Wear OS connectivity foundation
 
-- [ ] 4.1 Add failing protocol tests for `medtracker_phone_companion_v1`, `/medtracker/companion/status`, deterministic versioned payload round-trips, and unsupported versions; implement the small shared `wear-protocol` Kotlin module and verify tests pass.
-- [ ] 4.2 Add failing phone tests for capability advertisement and persistent companion status publication with protocol version, phone app version, session state, and publication time; implement the Data Layer adapter and verify tests pass.
-- [ ] 4.3 Add failing Wear tests for phone-app-missing, disconnected, incompatible, signed-out, ready, and reconnect convergence; implement the Wear application and minimal connectivity UI using capability discovery and persistent data only.
-- [ ] 4.4 Add static checks proving Wear contains no Rails URL, credentials, password flow, generated Rails client, or direct network transport; add a paired phone/watch emulator smoke task and run it where an emulator pair is available.
+- [x] 4.1 Add failing protocol tests for `medtracker_phone_companion_v1`, `/medtracker/companion/status`, deterministic versioned payload round-trips, and unsupported versions; implement the small shared `wear-protocol` Kotlin module and verify tests pass.
+- [x] 4.2 Add failing phone tests for capability advertisement and persistent companion status publication with protocol version, phone app version, session state, and publication time; implement the Data Layer adapter and verify tests pass.
+- [x] 4.3 Add failing Wear tests for phone-app-missing, disconnected, incompatible, signed-out, ready, and reconnect convergence; implement the Wear application and minimal connectivity UI using capability discovery and persistent data only.
+- [x] 4.4 Add static checks proving Wear contains no Rails URL, credentials, password flow, generated Rails client, or direct network transport; add a paired phone/watch emulator smoke task and run it where an emulator pair is available.
 - [ ] 4.5 Run `task android:ci` and verify Android Studio/Gradle discovers `:phone`, `:wear`, and `:wear-protocol`; commit only when generated files remain ignored and the tracked tree is clean.
+
+Task 4 verification note: Android CI and three-module discovery passed. The paired-emulator smoke is runnable but remains unverified because no phone/watch emulator pair was available. Task 4.5 remains open until final repository gates and the controller-owned signed commit complete.
 
 ## Task 5: Import the verified iOS application
 

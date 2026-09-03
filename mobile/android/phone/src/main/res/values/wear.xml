@@ -1,0 +1,5 @@
+<resources>
+    <string-array name="android_wear_capabilities">
+        <item>medtracker_phone_companion_v1</item>
+    </string-array>
+</resources>

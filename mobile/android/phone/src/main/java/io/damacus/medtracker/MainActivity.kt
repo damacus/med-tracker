@@ -18,7 +18,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.damacus.medtracker.data.SessionManager
 import io.damacus.medtracker.ui.MainViewModel
 import io.damacus.medtracker.ui.dashboard.DashboardScreen
 import io.damacus.medtracker.ui.dashboard.DashboardViewModel
@@ -39,7 +38,7 @@ enum class AppDestination {
 class MainActivity : ComponentActivity() {
 
     private lateinit var authorizationService: AuthorizationService
-    private val sessionManager by lazy { SessionManager(applicationContext) }
+    private val sessionManager by lazy { (application as MedTrackerApplication).sessionManager }
     private val mainViewModel by viewModels<MainViewModel> {
         MainViewModel.Factory(sessionManager)
     }

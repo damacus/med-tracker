@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">MedTracker</string>
+    <string name="phone_app_missing">Phone app not found. Open MedTracker on your paired phone.</string>
+    <string name="disconnected">Phone disconnected</string>
+    <string name="waiting_for_status">Waiting for phone status</string>
+    <string name="incompatible">Incompatible phone app. Update MedTracker on both devices.</string>
+    <string name="signed_out">Phone connected. Sign in on your phone.</string>
+    <string name="ready">Phone connected. Ready.</string>
+</resources>
