@@ -1,5 +1,45 @@
 # Changelog
 
+## [0.5.24](https://github.com/damacus/med-tracker/compare/v0.5.23...v0.5.24) (2026-09-03)
+
+
+### Features
+
+* **api:** let users choose a household after signing in ([#2049](https://github.com/damacus/med-tracker/issues/2049)) ([e86ff43](https://github.com/damacus/med-tracker/commit/e86ff4300202d7ec25486ec04ebc8d93ec1099c0))
+* **dashboard:** apply pause intervals ([#2025](https://github.com/damacus/med-tracker/issues/2025)) ([1642407](https://github.com/damacus/med-tracker/commit/1642407ff893c0a739d64cb8743cf82238b07d89))
+* **medications:** reconcile legacy pauses ([#2024](https://github.com/damacus/med-tracker/issues/2024)) ([a4300b1](https://github.com/damacus/med-tracker/commit/a4300b188d6ca07955c2aa4682106c24eaac5833))
+* **medications:** record pause lifecycle ([#2023](https://github.com/damacus/med-tracker/issues/2023)) ([c99c403](https://github.com/damacus/med-tracker/commit/c99c40305cbc0bca121fd9fc8382e387de0a8390))
+* **medications:** store pause periods ([#2021](https://github.com/damacus/med-tracker/issues/2021)) ([19534bf](https://github.com/damacus/med-tracker/commit/19534bf5d3cfdc25c2b9743bf2e7766c1fb8addb))
+* **reminders:** respect medication pauses ([#2036](https://github.com/damacus/med-tracker/issues/2036)) ([1e63106](https://github.com/damacus/med-tracker/commit/1e63106534bf6188d23317419b06427ba40ea236))
+* **reports:** add accessible PDF export controls ([3e42661](https://github.com/damacus/med-tracker/commit/3e42661c1db38ef2d79ebeda14eed6edd70fc11b))
+* **reports:** add html pdf renderer foundation ([b9c972f](https://github.com/damacus/med-tracker/commit/b9c972f7639d3b00439c150b9911bea060f52f0f))
+* **reports:** add shared PDF renderer ([145e43a](https://github.com/damacus/med-tracker/commit/145e43a90c7bf65b686ae9bd0114a493c2e947be))
+* **reports:** establish GP health history contract ([545320c](https://github.com/damacus/med-tracker/commit/545320c4b773beebcc2465dfe8793082ccd28ddb))
+* **reports:** migrate health history PDF ([b320bc9](https://github.com/damacus/med-tracker/commit/b320bc9ed50178cdae447e7fd5e593cae8e6ab89))
+* **reports:** render an appointment-ready health history ([3b085e6](https://github.com/damacus/med-tracker/commit/3b085e685693d1b09c4e6d66c038c38b4acae602))
+* **reports:** render medication review PDFs with Phlex ([a50c703](https://github.com/damacus/med-tracker/commit/a50c703914e8341c6f77f5c8293aff50750a154b))
+* **reports:** respect medication pauses ([#2038](https://github.com/damacus/med-tracker/issues/2038)) ([a1fda94](https://github.com/damacus/med-tracker/commit/a1fda94f782067969ffa1be1c160027ffe23c736))
+* type DoseConstraints with Sorbet ([#2008](https://github.com/damacus/med-tracker/issues/2008)) ([54723ba](https://github.com/damacus/med-tracker/commit/54723ba6a753025442bf4a38ea013831662f3503))
+
+
+### Bug Fixes
+
+* **reports:** address final PDF review findings ([41a5a79](https://github.com/damacus/med-tracker/commit/41a5a79d3c74aa11ea3a050da540324bc4895f73))
+* **reports:** await PDF export completion ([c00fb8b](https://github.com/damacus/med-tracker/commit/c00fb8b5160e498cf58b390a2c3b7248df1238a1))
+* **reports:** cancel stale PDF exports ([ff3be71](https://github.com/damacus/med-tracker/commit/ff3be71227845e3c50f74029e9680f29e610af53))
+* **reports:** clear PDF renderer quality gates ([f37b59b](https://github.com/damacus/med-tracker/commit/f37b59b07781c2b4628cd99d976d3b4d744c179b))
+* **reports:** extract health history PDF notes ([7d7af6c](https://github.com/damacus/med-tracker/commit/7d7af6c16a8b3e78fa6f14ed40bf7f353a19073c))
+* **reports:** follow pdf spec comment policy ([5373946](https://github.com/damacus/med-tracker/commit/5373946f78dee1a6bc13d00b478085a083669d10))
+* **reports:** harden PDF export diagnostics ([5825abf](https://github.com/damacus/med-tracker/commit/5825abf11ffdf3738b4b115f32a51d9b0aa8d226))
+* **reports:** preserve health history PDF metadata ([c83d252](https://github.com/damacus/med-tracker/commit/c83d25254c86dc259d53eab573a6094bc214513c))
+* **reports:** preserve PDF failure feedback ([450b8cb](https://github.com/damacus/med-tracker/commit/450b8cbe4cc8406f39e486103cc2c5c3c4d889f3))
+* **reports:** prevent PDF layout clipping ([9c6233a](https://github.com/damacus/med-tracker/commit/9c6233ae5f1f864a730f0112c1937574dec21ae6))
+* **reports:** recover from GP PDF rendering failures ([b65a415](https://github.com/damacus/med-tracker/commit/b65a41549ad4f5e1f4bda55379a226c69a007ba8))
+* **reports:** reject all PDF asset references ([2771f41](https://github.com/damacus/med-tracker/commit/2771f41be6baf6b3adde62f14173a6bbee97376f))
+* **reports:** reject CSS import variants ([5475b2e](https://github.com/damacus/med-tracker/commit/5475b2eb7462ea9d93ac1bcb4c5af336e3c605e1))
+* **reports:** remove Prawn dependencies ([6a5d9d1](https://github.com/damacus/med-tracker/commit/6a5d9d117bf7c6b923b8f95780990cc20667978d))
+* **reports:** verify pdf font embedding ([d4da435](https://github.com/damacus/med-tracker/commit/d4da43525a402ad5bc88f8032cc24f124c409196))
+
 ## [0.5.23](https://github.com/damacus/med-tracker/compare/v0.5.22...v0.5.23) (2026-08-30)
 
 
