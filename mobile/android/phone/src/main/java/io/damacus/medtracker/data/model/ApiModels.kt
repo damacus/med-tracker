@@ -2,13 +2,6 @@ package io.damacus.medtracker.data.model
 
 import kotlinx.serialization.Serializable
 
-data class LoginRequest(
-    val email: String,
-    val password: String,
-    val deviceName: String? = null,
-    val householdId: Long? = null
-)
-
 data class OidcExchangeRequest(
     val idToken: String,
     val nonce: String,

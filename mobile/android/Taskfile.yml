@@ -12,15 +12,35 @@ tasks:
     cmds:
       - ./gradlew :phone:testDebugUnitTest --no-daemon
 
+  integration:canary:
+    desc: Run the opt-in live canary integration test
+    cmds:
+      - fish --no-config ./scripts/canary-integration.fish
+
   lint:
     desc: Run Android phone lint
     cmds:
       - ./gradlew :phone:lint --no-daemon
 
   assemble:
-    desc: Assemble Android phone debug and release APKs
+    desc: Assemble Android phone debug, staging, and release APKs
     cmds:
-      - ./gradlew :phone:assembleDebug :phone:assembleRelease --no-daemon
+      - ./gradlew :phone:assembleDebug :phone:assembleStaging :phone:assembleRelease --no-daemon
+
+  release:check:
+    desc: Verify the release APK excludes staging authentication UI
+    cmds:
+      - fish --no-config ./scripts/verify-release-security.fish
+
+  release:validate:
+    desc: Validate explicit Android release server and OIDC configuration
+    cmds:
+      - fish --no-config ./scripts/validate-release-config.fish
+
+  package:release:
+    desc: Build a release APK with explicit validated server and OIDC configuration
+    cmds:
+      - fish --no-config ./scripts/package-release.fish
 
   api:check:
     desc: Verify the pinned Android OpenAPI client has no drift
@@ -40,4 +60,5 @@ tasks:
       - task: test
       - task: lint
       - task: assemble
+      - task: release:check
       - task: api:check
