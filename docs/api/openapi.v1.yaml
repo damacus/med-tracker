@@ -105,6 +105,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthLoginResponse'
+        '202':
+          description: Household selection is required before creating an API session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthHouseholdSelectionResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '429':
@@ -151,6 +157,37 @@ paths:
       responses:
         '201':
           description: API session created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthLoginResponse'
+        '202':
+          description: Household selection is required before creating an API session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthHouseholdSelectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/select_household:
+    post:
+      operationId: selectHousehold
+      tags:
+        - Public
+        - Authentication
+      summary: Consume a one-time household-selection grant and create a scoped API session.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthHouseholdSelectionRequest'
+      responses:
+        '201':
+          description: API session created for the selected household.
           content:
             application/json:
               schema:
@@ -3878,6 +3915,18 @@ components:
         provider:
           type: string
           minLength: 1
+    AuthHouseholdSelectionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - selection_token
+        - household_id
+      properties:
+        selection_token:
+          type: string
+          minLength: 1
+        household_id:
+          $ref: '#/components/schemas/NumericId'
     AuthHousehold:
       type: object
       nullable: true
@@ -3931,6 +3980,37 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AuthHouseholdMembership'
+    AuthHouseholdSelectionData:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - selection_token
+        - selection_expires_at
+        - households
+      properties:
+        status:
+          type: string
+          enum:
+            - household_selection_required
+        selection_token:
+          type: string
+          minLength: 1
+        selection_expires_at:
+          $ref: '#/components/schemas/Timestamp'
+        households:
+          type: array
+          minItems: 2
+          items:
+            $ref: '#/components/schemas/AuthHouseholdMembership'
+    AuthHouseholdSelectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/AuthHouseholdSelectionData'
     AuthSession:
       type: object
       additionalProperties: false
@@ -5486,6 +5566,7 @@ components:
       required:
         - supported
         - pkce_required
+        - household_selection
         - session_listing
         - session_revocation
       properties:
@@ -5495,6 +5576,9 @@ components:
         pkce_required:
           type: boolean
           description: Whether PKCE is required.
+        household_selection:
+          type: boolean
+          description: Whether first-time household selection grants are supported.
         session_listing:
           type: boolean
           description: Whether clients may list sessions.

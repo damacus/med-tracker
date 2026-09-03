@@ -33,6 +33,7 @@ module Api
           oidc_exchange: {
             supported: true,
             pkce_required: true,
+            household_selection: true,
             session_listing: true,
             session_revocation: true
           }

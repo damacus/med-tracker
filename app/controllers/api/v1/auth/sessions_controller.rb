@@ -19,10 +19,32 @@ module Api
 
         def create
           account = Account.find_by(email: params.expect(:email).to_s.strip.downcase)
-          household_membership = requested_household_membership(account)
           password = params.expect(:password).to_s
 
-          unless login_permitted?(account, household_membership, password)
+          unless login_permitted?(account, password)
+            render_invalid_credentials
+            return
+          end
+
+          memberships = operational_memberships(account)
+          if household_selection_required?(memberships)
+            selection_grant, selection_token = ApiHouseholdSelectionGrant.issue_for(
+              account: account,
+              device_name: params[:device_name],
+              user_agent: request.user_agent
+            )
+            render json: {
+              data: household_selection_payload(
+                selection_grant: selection_grant,
+                selection_token: selection_token,
+                memberships: memberships
+              )
+            }, status: :accepted
+            return
+          end
+
+          household_membership = selected_membership(memberships)
+          unless household_membership
             render_invalid_credentials
             return
           end
@@ -41,12 +63,37 @@ module Api
 
         def oidc_exchange
           result = Api::OidcSessionExchange.new(params: oidc_exchange_params, request: request).call
+          if result.household_selection_required?
+            render json: {
+              data: household_selection_payload(
+                selection_grant: result.selection_grant,
+                selection_token: result.selection_token,
+                memberships: result.household_memberships
+              )
+            }, status: :accepted
+            return
+          end
+
           render json: {
             data: login_payload(result.api_session, result.access_token, result.refresh_token,
                                 result.household_membership)
           }, status: :created
         rescue Api::OidcSessionExchange::Error
           render_invalid_oidc_exchange
+        end
+
+        def select_household
+          result = ApiHouseholdSelectionGrant.select_household(
+            token: params.expect(:selection_token).to_s,
+            household_id: params.expect(:household_id),
+            audit_context: audit_context(nil)
+          )
+          render json: {
+            data: login_payload(result.api_session, result.access_token, result.refresh_token,
+                                result.household_membership)
+          }, status: :created
+        rescue ApiHouseholdSelectionGrant::InvalidGrant
+          render_invalid_household_selection
         end
 
         def households
@@ -131,12 +178,11 @@ module Api
           )
         end
 
-        def login_permitted?(account, household_membership, password)
+        def login_permitted?(account, password)
           login_account_available?(account) &&
             password_login_permitted?(account, password) &&
             !ApiAuthState.mfa_configured?(account) &&
-            account.person&.user&.active? &&
-            household_membership.present?
+            account.person&.user&.active?
         end
 
         def login_account_available?(account)
@@ -164,28 +210,21 @@ module Api
           params[:household_id].present?
         end
 
-        def requested_household_membership(account)
-          return if account.blank?
-
-          return membership_for_requested_household(account) if household_requested?
-
-          sole_active_membership(account)
+        def household_selection_required?(memberships)
+          !household_requested? && memberships.many?
         end
 
-        def membership_for_requested_household(account)
-          household = Household.operational.find_by(id: params.expect(:household_id))
-          return unless household
+        def selected_membership(memberships)
+          return memberships.first unless household_requested?
 
-          TenantContext.with(account: account, household: household, request_id: request.request_id) do
-            HouseholdMembership.active.find_by(account: account, household: household)
-          end
+          household_id = params.expect(:household_id).to_s
+          memberships.find { |membership| membership.household_id.to_s == household_id }
         end
 
-        def sole_active_membership(account)
+        def operational_memberships(account)
           TenantContext.with(account: account, household: nil, request_id: request.request_id) do
-            memberships = HouseholdMembership.active.joins(:household).merge(Household.operational)
-                                             .where(account: account).limit(2).to_a
-            memberships.first if memberships.one?
+            account.household_memberships.active.joins(:household).merge(Household.operational)
+                   .includes(:household).order(:id).to_a
           end
         end
 
@@ -207,6 +246,20 @@ module Api
               membership_id: membership.id
             )
           end
+        end
+
+        def household_selection_payload(selection_grant:, selection_token:, memberships:)
+          {
+            status: 'household_selection_required',
+            selection_token: selection_token,
+            selection_expires_at: selection_grant.expires_at.iso8601,
+            households: memberships.map do |membership|
+              household_payload(membership.household).merge(
+                role: membership.role,
+                membership_id: membership.id
+              )
+            end
+          }
         end
 
         def session_payload(api_session)
@@ -258,6 +311,14 @@ module Api
           render_api_error(
             code: 'invalid_oidc_exchange',
             message: 'OIDC exchange is invalid',
+            status: :unauthorized
+          )
+        end
+
+        def render_invalid_household_selection
+          render_api_error(
+            code: 'invalid_household_selection',
+            message: 'Household selection is invalid or expired',
             status: :unauthorized
           )
         end
