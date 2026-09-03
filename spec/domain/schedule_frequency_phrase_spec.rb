@@ -21,5 +21,17 @@ RSpec.describe ScheduleFrequencyPhrase do
 
       expect(phrase.to_s).to eq('At least 6 hours between doses')
     end
+
+    it 'describes monthly limits and whole-minute spacing from string inputs' do
+      phrase = described_class.new(max_daily_doses: '2', min_hours_between_doses: '0.5', dose_cycle: 'monthly')
+
+      expect(phrase.to_s).to eq('Up to 2 times per month, with at least 30 minutes between doses')
+    end
+
+    it 'omits blank and invalid values' do
+      phrase = described_class.new(max_daily_doses: '', min_hours_between_doses: 'invalid', dose_cycle: nil)
+
+      expect(phrase.to_s).to eq('')
+    end
   end
 end
