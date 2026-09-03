@@ -8,10 +8,7 @@ module PdfTextExtractor
   end
 
   def pdf_text(pdf)
-    streams = pdf_streams(pdf)
-    text = pdf_character_maps(streams).product(pdf_text_streams(streams)).flat_map do |character_map, stream|
-      decoded_pdf_text(character_map, stream)
-    end.join(' ')
+    text = pdf_page_texts(pdf).join(' ')
     "#{text} #{pdf_link_text(pdf)}".unicode_normalize(:nfkd).gsub(/\s+/, ' ').strip
   end
 
@@ -20,23 +17,6 @@ module PdfTextExtractor
       Zlib::Inflate.inflate(stream)
     rescue Zlib::Error
       nil
-    end
-  end
-
-  def pdf_character_maps(streams)
-    streams.filter_map { |stream| character_map(stream).presence }
-  end
-
-  def pdf_text_streams(streams)
-    streams.grep(/(?:\)|>)\s*(?:Tj|['"])|\] TJ/)
-  end
-
-  def decoded_pdf_text(character_map, stream)
-    pdf_text_operators(stream).filter_map do |operator|
-      decoded = decoded_pdf_string(operator)
-      next unless decoded.bytesize.even?
-
-      decoded.unpack('n*').filter_map { |cid| character_map[cid] }.join
     end
   end
 
@@ -88,20 +68,6 @@ module PdfTextExtractor
     stream.scan(/begin#{name}(.*?)end#{name}/m).flatten
   end
 
-  def pdf_text_operators(stream)
-    direct_text_operators(stream) + array_text_operators(stream)
-  end
-
-  def direct_text_operators(stream)
-    stream.scan(/(\((?:\\.|[^\\)])*\)|<[0-9A-F]+>)\s*(?:Tj|['"])/im).flatten
-  end
-
-  def array_text_operators(stream)
-    stream.scan(/\[(.*?)\]\s*TJ/m).flat_map do |(array)|
-      array.scan(/\((?:\\.|[^\\)])*\)|<[0-9A-F]+>/i)
-    end
-  end
-
   def pdf_link_text(pdf)
     pdf.scan(%r{/URI\s*\((.*?)\)}m).flatten.map { |uri| unescape_pdf_string(uri) }.join
   end
@@ -113,23 +79,70 @@ end
 
 module PdfPageTextExtractor
   def pdf_page_texts(pdf)
-    character_maps = pdf_character_maps(pdf_streams(pdf))
-
-    pdf_page_content_streams(pdf).map do |streams|
-      character_maps.product(streams).flat_map do |character_map, stream|
-        decoded_pdf_text(character_map, stream)
-      end.join(' ').unicode_normalize(:nfkd).gsub(/\s+/, ' ').strip
-    end
-  end
-
-  def pdf_page_content_streams(pdf)
     objects = pdf_objects(pdf)
 
     pdf_page_references(objects).map do |reference|
-      pdf_page_content_references(objects.fetch(reference)).filter_map do |content_reference|
+      page = objects.fetch(reference)
+      font_maps = pdf_page_font_maps(page, objects)
+      streams = pdf_page_content_references(page).filter_map do |content_reference|
         pdf_object_stream(objects.fetch(content_reference))
       end
+
+      streams
+        .filter_map { |stream| decode_page_stream(stream, font_maps) }
+        .join(' ')
+        .unicode_normalize(:nfkd).gsub(/\s+/, ' ').strip
     end
+  end
+
+  def pdf_page_font_maps(page, objects)
+    font_section = pdf_font_section(page, objects)
+
+    font_section.scan(%r{/([A-Za-z0-9]+)\s+(\d+)\s+0\s+R}).each_with_object({}) do |(name, reference), maps|
+      maps[name] = pdf_font_map(objects.fetch(reference), objects)
+    end
+  end
+
+  def pdf_font_section(page, objects)
+    resources_reference = page[%r{/Resources\s+(\d+)\s+0\s+R}, 1]
+    resources = resources_reference ? objects.fetch(resources_reference) : page
+    font_dictionary = resources[%r{/Font\s+(<<.*?>>|\d+\s+0\s+R)}m, 1].to_s
+    reference = font_dictionary[/([0-9]+)\s+0\s+R/, 1]
+    font_dictionary = objects.fetch(reference) if reference && !font_dictionary.start_with?('<<')
+    font_dictionary[/<<(.*?)>>/m, 1].to_s
+  end
+
+  def pdf_font_map(font, objects)
+    unicode_reference = font[%r{/ToUnicode\s+(\d+)\s+0\s+R}, 1]
+    unicode_stream = pdf_object_stream(objects.fetch(unicode_reference)) if unicode_reference
+    character_map(unicode_stream) if unicode_stream
+  end
+
+  def decode_page_stream(stream, font_maps)
+    font_name = nil
+    text = []
+
+    stream.scan(pdf_page_operator_pattern) do |selected_font, direct, _array, array_body|
+      font_name = selected_font if selected_font
+      operators = direct ? [direct] : array_body.to_s.scan(/\((?:\\.|[^\\)])*\)|<[0-9A-F]+>/i)
+      decoded = operators.filter_map { |operator| decode_operator(operator, font_maps[font_name]) }.join
+      text << decoded unless decoded.empty?
+    end
+
+    text.join(' ')
+  end
+
+  def pdf_page_operator_pattern
+    %r{/([A-Za-z0-9]+)\s+[-\d.]+\s+Tf|(\((?:\\.|[^\\)])*\)|<[0-9A-F]+>)\s*Tj|(\[(.*?)\])\s*TJ}im
+  end
+
+  def decode_operator(operator, character_map)
+    return unless character_map
+
+    decoded = decoded_pdf_string(operator)
+    return unless decoded.bytesize.even?
+
+    decoded.unpack('n*').filter_map { |cid| character_map[cid] }.join
   end
 
   def pdf_page_references(objects)
@@ -165,10 +178,16 @@ module PdfPageTextExtractor
   end
 
   def pdf_object_stream(object)
-    stream = object[/stream\r?\n(.*?)\r?\nendstream/m, 1]
+    stream_header = object.match(/stream\r?\n/)
+    return unless stream_header
+
+    length = object[%r{/Length\s+(\d+)}, 1]&.to_i
+    stream = object.byteslice(stream_header.end(0), length) || object.byteslice(stream_header.end(0)..)
+    return unless stream
+
     Zlib::Inflate.inflate(stream)
   rescue Zlib::Error, TypeError
-    nil
+    stream
   end
 end
 

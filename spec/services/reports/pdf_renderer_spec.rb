@@ -51,8 +51,6 @@ RSpec.describe Reports::PdfRenderer do
 
   it 'renders complete report components with PDF metadata and readable text', :aggregate_failures do
     pdf = renderer.render(component: document_with('A prepared report body.'), metadata:)
-    streams = decompressed_streams(pdf)
-
     expect(pdf).to start_with('%PDF-1.7')
     expect(pdf).to include(
       '/Title (MedTracker shared report)',
@@ -60,7 +58,7 @@ RSpec.describe Reports::PdfRenderer do
       '/Subject (A print-safe report)',
       '/Keywords (medication, report)'
     )
-    expect(extracted_text(streams)).to include('Report section')
+    expect(pdf_text(pdf)).to include('Report section')
   end
 
   it 'embeds the explicit bundled font for every supported report locale', :aggregate_failures do
@@ -242,34 +240,5 @@ RSpec.describe Reports::PdfRenderer do
 
   def font_program(streams)
     streams.find { it.start_with?("\x00\x01\x00\x00".b) }
-  end
-
-  def extracted_text(streams)
-    pdf_character_maps(streams).product(pdf_text_streams(streams)).flat_map do |character_map, stream|
-      decoded_pdf_text(character_map, stream)
-    end.join
-  end
-
-  def pdf_character_maps(streams)
-    streams.grep(/beginbfchar/).map { |stream| character_map(stream) }
-  end
-
-  def pdf_text_streams(streams)
-    streams.grep(/\) Tj/)
-  end
-
-  def decoded_pdf_text(character_map, stream)
-    stream.scan(/\((.*?)\) Tj/m).flatten.filter_map do |string|
-      decoded = string.gsub(/\\([0-7]{3})/) { Regexp.last_match(1).to_i(8).chr }
-      next unless decoded.bytesize.even?
-
-      decoded.unpack('n*').filter_map { |cid| character_map[cid] }.join
-    end
-  end
-
-  def character_map(stream)
-    stream.scan(/<([0-9A-F]{4})> <([0-9A-F]{4})>/).to_h do |cid, codepoint|
-      [cid.to_i(16), codepoint.to_i(16).chr(Encoding::UTF_8)]
-    end
   end
 end
