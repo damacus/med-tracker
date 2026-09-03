@@ -64,6 +64,21 @@ Follow Red-Green-Refactor — no production code without a failing test first.
 - Prefer `exists?` over `find_by` when only checking existence.
 - Wrap related writes in `ActiveRecord::Base.transaction` and use bang persistence methods inside transactions.
 
+## Native mobile workspace
+
+- Rails remains at the repository root. `app/`, root Docker configuration, and
+  `docs/api/openapi.v1.yaml` are Rails-owned; do not open the root as an
+  Android Gradle or Xcode project.
+- Route Android work to `mobile/android` and its nested Gradle build after the
+  Android application lands. Add root Android Task commands and CI only with
+  that application.
+- Route iOS work to `mobile/ios` and its nested Xcode build after the verified
+  full-history import lands. Add root iOS Task commands and CI only with that
+  application.
+- The root OpenAPI document is authoritative. Native clients use their own
+  explicit pinned copies and generation checks; ordinary native builds do not
+  generate from live Rails source.
+
 ## Commands
 
 Use `task` for everything. Never run `docker compose`, `bin/dev`, or `bundle exec rspec` directly.
