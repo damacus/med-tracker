@@ -5,8 +5,8 @@
 
 ## 1B. Reconcile Legacy Inactive Sources
 
-- [ ] 1B.1 Red: specify inactive, active, already-reconciled, and idempotent rerun behaviour for both source types.
-- [ ] 1B.2 Green: add bounded reconciliation that creates one unknown-start `reason_not_recorded` period per uncovered inactive source.
+- [x] 1B.1 Red: specify inactive, active, already-reconciled, and idempotent rerun behaviour for both source types.
+- [x] 1B.2 Green: add bounded reconciliation that creates one unknown-start `reason_not_recorded` period per uncovered inactive source.
 
 ## 2. Record the Pause Lifecycle
 
