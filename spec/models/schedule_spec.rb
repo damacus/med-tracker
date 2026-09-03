@@ -109,8 +109,14 @@ RSpec.describe Schedule do
     end
 
     it 'pauses and resumes a schedule' do
-      expect { schedule.pause! }.to change { schedule.reload.active }.from(true).to(false)
-      expect { schedule.resume! }.to change { schedule.reload.active }.from(false).to(true)
+      FixtureHouseholdSetup.apply!
+      membership = accounts(:admin).household_memberships.find_by!(household: schedule.household)
+      pause_result = nil
+      resume_result = nil
+
+      expect { pause_result = schedule.pause!(membership:) }.to change { schedule.reload.active }.from(true).to(false)
+      expect { resume_result = schedule.resume!(membership:) }.to change { schedule.reload.active }.from(false).to(true)
+      expect([pause_result, resume_result]).to all(be_truthy)
     end
   end
 
