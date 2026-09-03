@@ -319,14 +319,14 @@ tasks:
           COMMAND: 'bin/rubocop --force-exclusion {{ if eq .autocorrect "true" }}-A{{ end }}'
 
   typecheck:
-    desc: Run the advisory Sorbet check for DoseConstraints
+    desc: Run the advisory Sorbet check
     silent: true
     cmds:
       - task: internal:run
         vars:
           ENVIRONMENT: test
           SERVICE: tools-test
-          COMMAND: 'bundle exec srb tc --ignore /usr/local/bundle/gems/prism app/models/dose_constraints.rb app/domain/dose_cycle.rb sorbet/rbi/dose_constraints.rbi'
+          COMMAND: 'bundle exec srb tc --ignore /usr/local/bundle/gems/prism app/models/dose_constraints.rb app/domain/dose_cycle.rb app/domain/dose_amount.rb sorbet/rbi/dose_constraints.rbi'
 
   brakeman:
     desc: Run Brakeman security scanner

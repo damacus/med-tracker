@@ -16,6 +16,10 @@ RSpec.describe DoseAmount do
       expect(described_class.new(2.5, 'ml').to_s).to eq('2.5 ml')
     end
 
+    it 'formats persisted decimal amounts' do
+      expect(described_class.new(BigDecimal('1.50'), 'tablet').to_s).to eq('1.5 tablets')
+    end
+
     it 'returns empty string when amount is blank' do
       expect(described_class.new(nil, 'mg').to_s).to eq('')
     end
@@ -26,6 +30,14 @@ RSpec.describe DoseAmount do
 
     it 'returns empty string when both are blank' do
       expect(described_class.new(nil, nil).to_s).to eq('')
+    end
+
+    it 'returns empty string for blank strings' do
+      expect(described_class.new(' ', '').to_s).to eq('')
+    end
+
+    it 'returns empty string for unusual blank values' do
+      expect(described_class.new(false, []).to_s).to eq('')
     end
 
     it 'formats string amounts by coercing to float' do
@@ -42,6 +54,16 @@ RSpec.describe DoseAmount do
 
     it 'does not pluralize measurement abbreviations' do
       expect(described_class.new(2, 'mg').to_s).to eq('2 mg')
+    end
+
+    it 'formats a Symbol unit' do
+      expect(described_class.new(2, :mg).to_s).to eq('2 mg')
+    end
+  end
+
+  describe '.pluralize_unit' do
+    it 'returns an unusual uncountable unit without coercing the amount' do
+      expect(described_class.pluralize_unit(false, :dose)).to eq(:dose)
     end
   end
 end
