@@ -24,6 +24,9 @@ includes:
     taskfile: Taskfiles/audit.yml
   openspec:
     taskfile: Taskfiles/openspec.yml
+  android:
+    taskfile: mobile/android/Taskfile.yml
+    dir: mobile/android
 
 tasks:
   default:

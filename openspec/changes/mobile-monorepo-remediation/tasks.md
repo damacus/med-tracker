@@ -6,10 +6,10 @@
 
 ## Task 2: Relocate the Android phone application
 
-- [ ] 2.1 Record a deterministic manifest and SHA-256 checksums for the intended untracked Android source, wrapper, and configuration in the original checkout while excluding `.gradle`, all `build/` directories, and `local.properties`; retain the originals until the pushed relocation is verified.
-- [ ] 2.2 Copy the verified Android inputs to `mobile/android`, rename the application module from `app` to `phone`, and update Gradle settings so the Rails root contains no Android build root and Android Studio discovers only `:phone`; verify source and destination manifests match.
-- [ ] 2.3 Add scoped Android ignores, a nested Android Taskfile, root `android:test`, `android:api:check`, `android:api:update`, and `android:ci` commands, plus an Ubuntu/JDK 17 path-filtered workflow; verify the focused Gradle tests, lint, build, contract check, and `git status --ignored`.
-- [ ] 2.4 Add a pinned Android OpenAPI copy, provenance and checksum plus deterministic generated transport artifacts behind the app-owned API interface; verify an intentional generated-file drift causes `task android:api:check` to fail before restoring green state.
+- [x] 2.1 Record a deterministic manifest and SHA-256 checksums for the intended untracked Android source, wrapper, and configuration in the original checkout while excluding `.gradle`, all `build/` directories, and `local.properties`; retain the originals until the pushed relocation is verified.
+- [x] 2.2 Copy the verified Android inputs to `mobile/android`, rename the application module from `app` to `phone`, and update Gradle settings so the Rails root contains no Android build root and Android Studio discovers only `:phone`; verify source and destination manifests match.
+- [x] 2.3 Add scoped Android ignores, a nested Android Taskfile, root `android:test`, `android:api:check`, `android:api:update`, and `android:ci` commands, plus an Ubuntu/JDK 17 path-filtered workflow; verify the focused Gradle tests, lint, build, contract check, and `git status --ignored`.
+- [x] 2.4 Add a pinned Android OpenAPI copy, provenance and checksum plus deterministic generated transport artifacts behind the app-owned API interface; verify an intentional generated-file drift causes `task android:api:check` to fail before restoring green state.
 
 ## Task 3: Harden Android release boundaries
 
