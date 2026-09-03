@@ -23,6 +23,7 @@ module Households
       api_change_events
       api_idempotency_keys
       api_tombstones
+      medication_pause_periods
       medication_takes
       schedules
       person_medications

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_203000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_02_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -627,6 +627,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_203000) do
     t.index ["household_id"], name: "index_locations_on_household_id"
     t.index ["id", "household_id"], name: "index_locations_on_id_and_household_id", unique: true
     t.index ["name"], name: "index_locations_on_name_trigram", opclass: :gin_trgm_ops, using: :gin
+  end
+
+  create_table "medication_pause_periods", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "ended_at"
+    t.bigint "household_id", null: false
+    t.boolean "legacy_context", default: false, null: false
+    t.text "note"
+    t.bigint "person_medication_id"
+    t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
+    t.string "reason", null: false
+    t.bigint "recorded_by_membership_id"
+    t.bigint "resumed_by_membership_id"
+    t.bigint "schedule_id"
+    t.datetime "started_at"
+    t.datetime "updated_at", null: false
+    t.index ["household_id", "portable_id"], name: "index_medication_pause_periods_on_household_id_and_portable_id", unique: true
+    t.index ["household_id"], name: "index_medication_pause_periods_on_household_id"
+    t.index ["id", "household_id"], name: "index_medication_pause_periods_on_id_and_household_id", unique: true
+    t.index ["person_medication_id"], name: "idx_med_pause_periods_open_person_medication", unique: true, where: "((ended_at IS NULL) AND (person_medication_id IS NOT NULL))"
+    t.index ["person_medication_id"], name: "index_medication_pause_periods_on_person_medication_id"
+    t.index ["recorded_by_membership_id"], name: "index_medication_pause_periods_on_recorded_by_membership_id"
+    t.index ["resumed_by_membership_id"], name: "index_medication_pause_periods_on_resumed_by_membership_id"
+    t.index ["schedule_id"], name: "idx_med_pause_periods_open_schedule", unique: true, where: "((ended_at IS NULL) AND (schedule_id IS NOT NULL))"
+    t.index ["schedule_id"], name: "index_medication_pause_periods_on_schedule_id"
+    t.check_constraint "ended_at IS NULL AND resumed_by_membership_id IS NULL OR ended_at IS NOT NULL AND resumed_by_membership_id IS NOT NULL", name: "chk_medication_pause_periods_resuming_actor"
+    t.check_constraint "legacy_context = true AND reason::text = 'reason_not_recorded'::text OR legacy_context = false AND reason::text <> 'reason_not_recorded'::text AND started_at IS NOT NULL AND recorded_by_membership_id IS NOT NULL", name: "chk_medication_pause_periods_legacy_context"
+    t.check_constraint "num_nonnulls(schedule_id, person_medication_id) = 1", name: "chk_medication_pause_periods_exactly_one_source"
+    t.check_constraint "reason::text = ANY (ARRAY['out_of_supply'::character varying, 'temporarily_not_needed'::character varying, 'clinician_advice'::character varying, 'side_effects'::character varying, 'other'::character varying, 'reason_not_recorded'::character varying]::text[])", name: "chk_medication_pause_periods_reason"
+    t.check_constraint "started_at IS NULL OR ended_at IS NULL OR ended_at >= started_at", name: "chk_medication_pause_periods_interval"
   end
 
   create_table "medication_review_evidence_records", force: :cascade do |t|
@@ -1260,6 +1290,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_203000) do
   add_foreign_key "location_memberships", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_location_memberships_person_id_household"
   add_foreign_key "location_memberships", "people", deferrable: :deferred
   add_foreign_key "locations", "households"
+  add_foreign_key "medication_pause_periods", "household_memberships", column: "recorded_by_membership_id"
+  add_foreign_key "medication_pause_periods", "household_memberships", column: "resumed_by_membership_id"
+  add_foreign_key "medication_pause_periods", "household_memberships", column: ["recorded_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_med_pause_periods_recorded_actor_household", validate: false
+  add_foreign_key "medication_pause_periods", "household_memberships", column: ["resumed_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_med_pause_periods_resumed_actor_household", validate: false
+  add_foreign_key "medication_pause_periods", "households"
+  add_foreign_key "medication_pause_periods", "person_medications"
+  add_foreign_key "medication_pause_periods", "person_medications", column: ["person_medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_med_pause_periods_person_medication_household", validate: false
+  add_foreign_key "medication_pause_periods", "schedules"
+  add_foreign_key "medication_pause_periods", "schedules", column: ["schedule_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_med_pause_periods_schedule_household", validate: false
   add_foreign_key "medication_review_prompts", "household_memberships", column: "reviewed_by_membership_id", deferrable: :deferred
   add_foreign_key "medication_review_prompts", "household_memberships", column: ["reviewed_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_review_prompts_reviewer_household", validate: false
   add_foreign_key "medication_review_prompts", "households", deferrable: :deferred
@@ -1532,6 +1571,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_203000) do
     dosages
     schedules
     person_medications
+    medication_pause_periods
     medication_takes
     notification_preferences
     health_events

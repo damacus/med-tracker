@@ -320,13 +320,39 @@ RSpec.describe Households::Purger do
     person = create(:person, household:)
     notification_preference = create(:notification_preference, person: person, household: household)
     medication = create(:medication, household: household)
-    person.avatar.attach(io: StringIO.new('purged-bytes'), filename: 'purged.png', content_type: 'image/png')
-    person.avatar.blob.attachments.load
-    target_records(notification_preference, medication, person).merge(preserved_records)
+    pause_period = pause_period_for(person, medication)
+    purged_blob = purged_blob_for(person)
+    target_records(notification_preference, medication, pause_period, purged_blob).merge(preserved_records)
   end
 
-  def target_records(notification_preference, medication, person)
-    { notification_preference: notification_preference, medication: medication, purged_blob: person.avatar.blob }
+  def purged_blob_for(person)
+    person.avatar.attach(io: StringIO.new('purged-bytes'), filename: 'purged.png', content_type: 'image/png')
+    person.avatar.blob.attachments.load
+    person.avatar.blob
+  end
+
+  def pause_period_for(person, medication)
+    membership = household.household_memberships.create!(
+      account: account('hosted-purge-pause-actor@example.test'),
+      role: :owner,
+      status: :active
+    )
+    schedule = create(:schedule, household: household, person: person, medication: medication)
+    MedicationPausePeriod.create!(
+      schedule: schedule,
+      reason: 'clinician_advice',
+      started_at: Time.current,
+      recorded_by_membership: membership
+    )
+  end
+
+  def target_records(notification_preference, medication, pause_period, purged_blob)
+    {
+      notification_preference: notification_preference,
+      medication: medication,
+      pause_period: pause_period,
+      purged_blob: purged_blob
+    }
   end
 
   def spy_on_attachment_checks = allow(ActiveStorage::Attachment).to receive(:exists?).and_call_original
@@ -373,6 +399,7 @@ RSpec.describe Households::Purger do
 
   def verify_purged_data(records)
     verify_purgeable_inventory_empty
+    expect(MedicationPausePeriod.exists?(id: records.fetch(:pause_period).id)).to be(false)
     verify_storage(records)
     verify_uncached_attachment_check(records.fetch(:purged_blob))
   end
