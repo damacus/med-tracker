@@ -4,7 +4,18 @@ module Api
   class OidcSessionExchange
     class Error < StandardError; end
 
-    Result = Data.define(:api_session, :access_token, :refresh_token, :household_membership)
+    Result = Struct.new(
+      :api_session,
+      :access_token,
+      :refresh_token,
+      :household_membership,
+      :selection_grant,
+      :selection_token,
+      :household_memberships,
+      keyword_init: true
+    ) do
+      def household_selection_required? = selection_grant.present?
+    end
 
     def initialize(params:, request:)
       @params = params
@@ -17,21 +28,39 @@ module Api
       validate_nonce!(claims)
       reject_replay!(claims)
       account = account_for(claims)
-      membership = membership_for(account)
       validate_account!(account)
-      validate_membership!(membership)
+      memberships = operational_memberships(account)
+      membership = selected_membership(memberships)
 
-      result_for(account, membership, claims)
+      return session_result(account, membership, claims) if membership
+      return selection_result(account, memberships, claims) if !household_requested? && memberships.many?
+
+      raise Error, 'OIDC household membership is unavailable'
     end
 
     private
 
     attr_reader :params, :request
 
-    def result_for(account, membership, claims)
+    def session_result(account, membership, claims)
       api_session, access_token, refresh_token = issue_session(account, membership, claims)
-      Result.new(api_session: api_session, access_token: access_token, refresh_token: refresh_token,
-                 household_membership: membership)
+      Result.new(
+        api_session: api_session,
+        access_token: access_token,
+        refresh_token: refresh_token,
+        household_membership: membership
+      )
+    end
+
+    def selection_result(account, memberships, claims)
+      selection_grant, selection_token = ApiHouseholdSelectionGrant.issue_for(
+        account: account,
+        device_name: params[:device_name],
+        user_agent: request.user_agent,
+        **mfa_attributes(claims)
+      )
+      Result.new(selection_grant: selection_grant, selection_token: selection_token,
+                 household_memberships: memberships)
     end
 
     def issue_session(account, membership, claims)
@@ -91,30 +120,28 @@ module Api
       raise Error, 'OIDC identity is not linked'
     end
 
-    def membership_for(account)
-      scope = operational_memberships(account)
-      return scope.find_by(household_id: params[:household_id]) if params[:household_id].present?
-
-      sole_membership(scope)
-    end
-
     def operational_memberships(account)
-      account.household_memberships.active.joins(:household).merge(Household.operational)
-             .includes(:household).order(:id)
+      TenantContext.with(account: account, household: nil, request_id: request.request_id) do
+        account.household_memberships.active.joins(:household).merge(Household.operational)
+               .includes(:household).order(:id).to_a
+      end
     end
 
-    def sole_membership(scope)
-      memberships = scope.limit(2).to_a
-      memberships.first if memberships.one?
+    def selected_membership(memberships)
+      return memberships.first if !household_requested? && memberships.one?
+      return unless household_requested?
+
+      household_id = params[:household_id].to_s
+      memberships.find { |membership| membership.household_id.to_s == household_id }
+    end
+
+    def household_requested?
+      params[:household_id].present?
     end
 
     def validate_account!(account)
       raise Error, 'OIDC account is unavailable' unless account&.verified? && account.person&.user&.active?
       raise Error, 'OIDC account is unavailable' if ApiAuthState.locked_out?(account)
-    end
-
-    def validate_membership!(membership)
-      raise Error, 'OIDC household membership is unavailable' unless membership&.active?
     end
 
     def issuer
@@ -145,6 +172,14 @@ module Api
     def oidc_mfa_verified?(claims)
       Array(claims['amr']).map(&:to_s).intersect?(ApiAuthState::MFA_METHODS) ||
         claims['acr'].to_s.include?('mfa')
+    end
+
+    def mfa_attributes(claims)
+      verified = oidc_mfa_verified?(claims)
+      {
+        mfa_verified_at: verified ? Time.current : nil,
+        oidc_mfa_verified: verified
+      }
     end
   end
 end

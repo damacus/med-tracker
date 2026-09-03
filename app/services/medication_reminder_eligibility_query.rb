@@ -20,7 +20,8 @@ class MedicationReminderEligibilityQuery
   attr_reader :person, :scheduled_time, :now
 
   def due_schedule_names
-    due_schedules.map(&:medication_name)
+    due_schedules.reject { |schedule| scheduled_time.blank? && pause_projection_for(schedule).paused_at?(now) }
+                 .map(&:medication_name)
   end
 
   def due_person_medication_names
@@ -38,13 +39,16 @@ class MedicationReminderEligibilityQuery
     @schedules ||= if person.schedules.loaded?
                      loaded_active_schedules
                    else
-                     active_schedules_for_today.includes(:medication, :medication_takes).to_a
+                     active_schedules_for_today.includes(:medication, :medication_takes, :medication_pause_periods).to_a
                    end
   end
 
   def loaded_active_schedules
     person.schedules.select { |schedule| schedule.active_on?(today) }.tap do |schedules|
-      ActiveRecord::Associations::Preloader.new(records: schedules, associations: %i[medication medication_takes]).call
+      ActiveRecord::Associations::Preloader.new(
+        records: schedules,
+        associations: %i[medication medication_takes medication_pause_periods]
+      ).call
     end
   end
 
@@ -53,12 +57,16 @@ class MedicationReminderEligibilityQuery
   end
 
   def person_medications
-    @person_medications ||= person.person_medications.active.routine.includes(:medication, :medication_takes).to_a
+    @person_medications ||= person.person_medications.active.routine.includes(
+      :medication,
+      :medication_takes,
+      :medication_pause_periods
+    ).to_a
   end
 
   def due_schedule?(schedule)
     return false if as_needed_schedule?(schedule)
-    return false if configured_times_for(schedule).blank?
+    return false if configured_time_slots_for(schedule).blank?
     return false if taken_in_current_cycle?(schedule)
     return false unless schedule.applies_on?(today)
 
@@ -71,24 +79,25 @@ class MedicationReminderEligibilityQuery
 
   def due_person_medication?(person_medication)
     return false if taken_in_current_cycle?(person_medication)
+    return false if pause_projection_for(person_medication).paused_at?(now)
 
     taken_count_for_cycle(person_medication) < expected_person_medication_doses(person_medication)
   end
 
   def scheduled_occurrence_due?(schedule)
-    configured_times_for(schedule).each_with_index.any? do |time, index|
+    configured_time_slots_for(schedule).any? do |time, index|
       time == scheduled_time && taken_count_for_cycle(schedule) <= index
     end
   end
 
   def due_configured_times_for(schedule)
-    configured_times_for(schedule).filter.with_index do |_time, index|
-      taken_count_for_cycle(schedule) <= index
+    configured_time_slots_for(schedule).filter_map do |time, index|
+      time if taken_count_for_cycle(schedule) <= index
     end
   end
 
   def remaining_schedule_doses?(schedule)
-    expected = schedule.expected_doses_on(today)
+    expected = configured_time_slots_for(schedule).size
     expected.positive? && taken_count_for_cycle(schedule) < expected
   end
 
@@ -155,6 +164,21 @@ class MedicationReminderEligibilityQuery
 
   def configured_times_for(schedule)
     Array(schedule_config_value(schedule, 'times')).compact_blank
+  end
+
+  def configured_time_slots_for(schedule)
+    @configured_time_slots_by_schedule ||= {}
+    @configured_time_slots_by_schedule[schedule] ||= begin
+      slots = configured_times_for(schedule).each_with_index
+      slots.reject do |time, _index|
+        occurrence = MedicationPausePeriods::IntervalProjection.occurrences_on(date: today, times: [time]).first
+        occurrence.present? && pause_projection_for(schedule).paused_at?(occurrence)
+      end
+    end
+  end
+
+  def pause_projection_for(source)
+    MedicationPausePeriods::IntervalProjection.new(periods: source.medication_pause_periods)
   end
 
   def schedule_config_value(schedule, key)

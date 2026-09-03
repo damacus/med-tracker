@@ -9,8 +9,8 @@ RSpec.describe MedicationReminderEligibilityQuery do
 
   before { travel_to(now) }
 
-  def build_query(scheduled_time: nil)
-    described_class.new(person: person, scheduled_time: scheduled_time, now: now)
+  def build_query(scheduled_time: nil, at: now)
+    described_class.new(person: person, scheduled_time: scheduled_time, now: at)
   end
 
   def schedule_with_times(times:, medication: nil, takes: [], frequency: 'Daily', **attrs)
@@ -81,6 +81,14 @@ RSpec.describe MedicationReminderEligibilityQuery do
       expect(build_query.medication_names).not_to include(schedule.medication_name)
     end
 
+    it 'excludes a covered schedule occurrence and keeps its resumed occurrence' do
+      schedule = schedule_with_times(times: %w[08:00 20:00])
+      create_completed_pause(schedule, started_at: now.change(hour: 7), ended_at: now.change(hour: 12))
+
+      expect(build_query(scheduled_time: '08:00').medication_names).not_to include(schedule.medication_name)
+      expect(build_query(scheduled_time: '20:00').medication_names).to include(schedule.medication_name)
+    end
+
     it 'deduplicates medication names' do
       # Same medication on two active schedules
       med = create(:medication)
@@ -124,6 +132,20 @@ RSpec.describe MedicationReminderEligibilityQuery do
                                              max_daily_doses: 1)
 
         expect(build_query.medication_names).not_to include(medication.display_name)
+      end
+
+      it 'resumes routine person_medication eligibility after a completed pause' do
+        medication = create(:medication)
+        person_medication = create(:person_medication, :routine, person: person, medication: medication,
+                                                                 max_daily_doses: 1)
+        create_completed_pause(
+          person_medication,
+          started_at: now.change(hour: 7),
+          ended_at: now.change(hour: 9)
+        )
+
+        expect(build_query(at: now.change(hour: 8)).medication_names).not_to include(medication.display_name)
+        expect(build_query(at: now.change(hour: 10)).medication_names).to include(medication.display_name)
       end
     end
 
@@ -187,5 +209,24 @@ RSpec.describe MedicationReminderEligibilityQuery do
 
       expect(build_query.configured_times).not_to include('08:00')
     end
+
+    it 'returns only occurrences outside a completed pause interval' do
+      schedule = schedule_with_times(times: %w[08:00 20:00])
+      create_completed_pause(schedule, started_at: now.change(hour: 7), ended_at: now.change(hour: 12))
+
+      expect(build_query.configured_times).to contain_exactly('20:00')
+    end
+  end
+
+  def create_completed_pause(source, started_at:, ended_at:)
+    account = Account.create!(email: "pause-reminder-#{SecureRandom.hex(4)}@example.test", status: :verified)
+    membership = source.household.household_memberships.create!(account: account, role: :owner, status: :active)
+    source.medication_pause_periods.create!(
+      reason: 'clinician_advice',
+      started_at:,
+      ended_at:,
+      recorded_by_membership: membership,
+      resumed_by_membership: membership
+    )
   end
 end

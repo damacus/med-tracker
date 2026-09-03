@@ -52,7 +52,11 @@ class MedicationReminderJob < ApplicationJob
   end
 
   def eligible_medication_names(scheduled_time)
-    med_names = MedicationReminderEligibilityQuery.new(person: @person, scheduled_time: scheduled_time).medication_names
+    med_names = MedicationReminderEligibilityQuery.new(
+      person: @person,
+      scheduled_time: scheduled_time,
+      now: @intended_at
+    ).medication_names
     return record_unavailable(:no_medications) if med_names.empty?
 
     record_outcome(:eligible)

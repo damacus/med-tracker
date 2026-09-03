@@ -25,6 +25,7 @@ Rails.application.routes.draw do
       namespace :auth do
         post :login, to: 'sessions#create'
         post :oidc_exchange, to: 'sessions#oidc_exchange'
+        post :select_household, to: 'sessions#select_household'
         get :households, to: 'sessions#households'
         get :sessions, to: 'sessions#index'
         delete 'sessions/:id', to: 'sessions#revoke', as: :session
