@@ -109,6 +109,8 @@ RSpec.describe DoseCycle do
 
   describe '#to_s' do
     it { expect(described_class.new('weekly').to_s).to eq('weekly') }
+    it { expect(described_class.new(:monthly).to_s).to eq('monthly') }
+    it { expect(described_class.new(nil).to_s).to eq('daily') }
     it { expect(described_class.new('bogus').to_s).to eq('daily') }
   end
 end
