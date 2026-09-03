@@ -78,7 +78,7 @@ class DoseConstraints
   end
 
   sig do
-    params(takes: T::Array[MedicationTake], cycle: DoseCycle, now: Time).returns(T.nilable(Time))
+    params(takes: T::Array[MedicationTake], cycle: DoseCycle, now: Time).returns(T.nilable(DoseCycle::TimeValue))
   end
   def next_available_time(takes:, cycle:, now:)
     return nil unless restrictions?
@@ -110,7 +110,7 @@ class DoseConstraints
   end
 
   sig do
-    params(takes: T::Array[MedicationTake], cycle: DoseCycle, now: Time).returns(T.nilable(Time))
+    params(takes: T::Array[MedicationTake], cycle: DoseCycle, now: Time).returns(T.nilable(DoseCycle::TimeValue))
   end
   def next_time_from_daily_limit(takes:, cycle:, now:)
     return nil unless daily_limit?

@@ -26,18 +26,13 @@ class DoseCycle
     end
   end
 
-  sig do
-    type_parameters(:TimeType)
-      .params(time: T.all(T.type_parameter(:TimeType), TimeValue))
-      .returns(T.type_parameter(:TimeType))
-  end
+  sig { params(time: TimeValue).returns(TimeValue) }
   def next_reset_time(time)
-    result = case @value
-             when 'weekly' then time.end_of_week + 1.second
-             when 'monthly' then time.end_of_month + 1.second
-             else time.end_of_day + 1.second
-             end
-    T.cast(result, T.type_parameter(:TimeType))
+    case @value
+    when 'weekly' then time.end_of_week + 1.second
+    when 'monthly' then time.end_of_month + 1.second
+    else time.end_of_day + 1.second
+    end
   end
 
   sig { returns(ActiveSupport::Duration) }
