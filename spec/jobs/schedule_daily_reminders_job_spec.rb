@@ -189,6 +189,41 @@ RSpec.describe ScheduleDailyRemindersJob do
       .with(household.id, person.id, :scheduled, '07:15', Time.zone.local(2026, 5, 12, 7, 15))
   end
 
+  it 'skips covered occurrences and schedules reminders after the medication resumes' do
+    prepare_partially_paused_schedule
+
+    described_class.perform_now
+
+    expect_covered_dose_due_not_to_be_enqueued
+    expect_covered_missed_check_not_to_be_enqueued
+    expect_resumed_dose_due_to_be_enqueued
+    expect_resumed_missed_check_to_be_enqueued
+  end
+
+  def expect_covered_dose_due_not_to_be_enqueued
+    expect(MedicationReminderJob).not_to have_been_enqueued.with(
+      household.id, person.id, :scheduled, '07:15', Time.zone.local(2026, 5, 12, 7, 15)
+    )
+  end
+
+  def expect_covered_missed_check_not_to_be_enqueued
+    expect(MissedDoseNotificationJob).not_to have_been_enqueued.with(
+      household.id, person.id, '2026-05-12', '07:15'
+    )
+  end
+
+  def expect_resumed_dose_due_to_be_enqueued
+    expect(MedicationReminderJob).to have_been_enqueued.with(
+      household.id, person.id, :scheduled, '19:45', Time.zone.local(2026, 5, 12, 19, 45)
+    )
+  end
+
+  def expect_resumed_missed_check_to_be_enqueued
+    expect(MissedDoseNotificationJob).to have_been_enqueued.with(
+      household.id, person.id, '2026-05-12', '19:45'
+    )
+  end
+
   it 'loads schedule times once for enabled notification preferences' do
     create(:notification_preference, person: people(:john), morning_time: nil, afternoon_time: nil,
                                      evening_time: nil, night_time: nil)
@@ -214,6 +249,32 @@ RSpec.describe ScheduleDailyRemindersJob do
 
   def enable_missed_dose_notifications(target)
     create(:notification_preference, person: target, dose_due_enabled: false, missed_dose_enabled: true)
+  end
+
+  def create_completed_pause(source, started_at:, ended_at:)
+    FixtureHouseholdSetup.apply!
+    membership = accounts(:admin).household_memberships.find_by!(household: source.household)
+    source.medication_pause_periods.create!(
+      reason: 'clinician_advice',
+      started_at:,
+      ended_at:,
+      recorded_by_membership: membership,
+      resumed_by_membership: membership
+    )
+  end
+
+  def prepare_partially_paused_schedule
+    create(:notification_preference, person: person, morning_time: nil, afternoon_time: nil,
+                                     evening_time: nil, night_time: nil, dose_due_enabled: true,
+                                     missed_dose_enabled: true)
+    schedule = create(:schedule, person: person, medication: medications(:vitamin_d),
+                                 dosage: dosages(:vitamin_d_daily), frequency: 'Twice daily',
+                                 schedule_type: :multiple_daily, schedule_config: { 'times' => %w[07:15 19:45] })
+    create_completed_pause(
+      schedule,
+      started_at: Time.zone.local(2026, 5, 12, 7),
+      ended_at: Time.zone.local(2026, 5, 12, 12)
+    )
   end
 
   def prepare_london_collision
