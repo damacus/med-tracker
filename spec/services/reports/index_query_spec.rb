@@ -133,6 +133,47 @@ RSpec.describe Reports::IndexQuery do
       expect(result.inventory_alerts).to be_empty
     end
 
+    it 'excludes a completed pause day and restores later schedule expectations' do
+      report_start = Date.new(2026, 4, 20)
+      report_end = Date.new(2026, 4, 22)
+      person = create(:person)
+      schedule = create_timed_report_schedule(person, report_start, report_end, ['08:00'])
+      create_completed_pause(
+        schedule,
+        started_at: Time.zone.local(2026, 4, 21),
+        ended_at: Time.zone.local(2026, 4, 22)
+      )
+
+      result = report_result(person, report_start, report_end)
+
+      expect(result.daily_data.pluck(:expected)).to eq([1, 0, 1])
+    end
+
+    it 'preserves legacy expectations before an unknown pause migration time' do
+      report_date = Date.new(2026, 4, 21)
+      migration_time = Time.zone.local(2026, 4, 21, 12)
+      person = create(:person)
+      schedule = create_timed_report_schedule(person, report_date, report_date, %w[08:00 20:00], active: false)
+      create_legacy_pause(schedule, migration_time: migration_time)
+
+      result = report_result(person, report_date, report_date)
+
+      expect(result.daily_data.sole).to include(expected: 1, actual: 0, percentage: 0)
+    end
+
+    it 'keeps retired schedules with completed pause history out of compliance totals' do
+      report_date = Date.new(2026, 4, 21)
+      person = create(:person)
+      schedule = create_timed_report_schedule(person, report_date, report_date, ['08:00'])
+      create_completed_pause(schedule, started_at: report_date.noon, ended_at: report_date.noon + 1.hour)
+      create(:medication_take, :for_schedule, schedule: schedule, taken_at: report_date.in_time_zone + 8.hours)
+      schedule.retire!
+
+      result = report_result(person, report_date, report_date)
+
+      expect(result.daily_data.sole).to include(expected: 0, actual: 0, percentage: 100)
+    end
+
     it 'limits inventory alerts to the soonest two items under 14 days left' do
       medication_one = create(:medication, current_supply: 3, supply_at_last_restock: 3)
       medication_two = create(:medication, current_supply: 5, supply_at_last_restock: 5)
@@ -201,6 +242,48 @@ RSpec.describe Reports::IndexQuery do
       end_date: report_date
     )
     medication
+  end
+
+  def create_completed_pause(source, started_at:, ended_at:)
+    FixtureHouseholdSetup.apply!
+    membership = accounts(:admin).household_memberships.find_by!(household: source.household)
+    source.medication_pause_periods.create!(
+      reason: 'clinician_advice',
+      started_at: started_at,
+      ended_at: ended_at,
+      recorded_by_membership: membership,
+      resumed_by_membership: membership
+    )
+  end
+
+  def create_timed_report_schedule(person, start_date, end_date, times, active: true)
+    create(
+      :schedule,
+      person: person,
+      medication: create(:medication),
+      active: active,
+      schedule_type: times.one? ? :daily : :multiple_daily,
+      schedule_config: { 'times' => times },
+      start_date: start_date,
+      end_date: end_date
+    )
+  end
+
+  def report_result(person, report_start, report_end)
+    described_class.new(
+      people: Person.where(id: person.id), start_date: report_start, end_date: report_end
+    ).call
+  end
+
+  def create_legacy_pause(source, migration_time:)
+    source.medication_pause_periods.create!(
+      reason: MedicationPausePeriod::LEGACY_REASON,
+      started_at: nil,
+      ended_at: nil,
+      legacy_context: true,
+      created_at: migration_time,
+      updated_at: migration_time
+    )
   end
 
   def create_ml_report_medication
