@@ -27,8 +27,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Fish
-        run: sudo apt-get install --yes fish
+      - name: Install Fish and ripgrep
+        run: sudo apt-get install --yes fish ripgrep
       - name: Verify Android
         run: task android:ci
       - id: verified
