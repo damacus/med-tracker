@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe SmartInsights::Detectors::MissedDosePattern do
-  fixtures :accounts
+  fixtures :accounts, :people
 
   def context_with(daily_data) = instance_double(SmartInsights::Context, daily_data: daily_data)
   def day(expected:, actual:) = { expected: expected, actual: actual }
