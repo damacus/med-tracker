@@ -92,15 +92,19 @@ module Components
               href: page_url(pagy_obj.previous),
               variant: :link,
               class: nav_button_class('rounded-l-md'),
-              data: { turbo_frame: 'admin-users-frame' }
+              data: { turbo_frame: 'admin-users-frame' },
+              "aria-label": t('admin.users.pagination.previous')
             ) do
-              span(class: 'sr-only') { t('admin.users.pagination.previous') }
-              plain '‹'
+              span(aria_hidden: 'true') { plain '‹' }
             end
           else
-            span(class: "#{nav_button_class('rounded-l-md')} opacity-50 cursor-not-allowed") do
-              span(class: 'sr-only') { t('admin.users.pagination.previous') }
-              plain '‹'
+            span(
+              class: "#{nav_button_class('rounded-l-md')} opacity-50 cursor-not-allowed",
+              role: 'button',
+              "aria-disabled": 'true',
+              "aria-label": t('admin.users.pagination.previous')
+            ) do
+              span(aria_hidden: 'true') { plain '‹' }
             end
           end
         end
@@ -111,15 +115,19 @@ module Components
               href: page_url(pagy_obj.next),
               variant: :link,
               class: nav_button_class('rounded-r-md'),
-              data: { turbo_frame: 'admin-users-frame' }
+              data: { turbo_frame: 'admin-users-frame' },
+              "aria-label": t('admin.users.pagination.next')
             ) do
-              span(class: 'sr-only') { t('admin.users.pagination.next') }
-              plain '›'
+              span(aria_hidden: 'true') { plain '›' }
             end
           else
-            span(class: "#{nav_button_class('rounded-r-md')} opacity-50 cursor-not-allowed") do
-              span(class: 'sr-only') { t('admin.users.pagination.next') }
-              plain '›'
+            span(
+              class: "#{nav_button_class('rounded-r-md')} opacity-50 cursor-not-allowed",
+              role: 'button',
+              "aria-disabled": 'true',
+              "aria-label": t('admin.users.pagination.next')
+            ) do
+              span(aria_hidden: 'true') { plain '›' }
             end
           end
         end
