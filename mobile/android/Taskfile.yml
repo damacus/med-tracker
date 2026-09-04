@@ -54,7 +54,7 @@ tasks:
       - task: api:check
 
   ci:
-    desc: Run Android phone tests, lint, assemblies, and API drift verification
+    desc: Verify Android phone tests, lint, assemblies, and API drift
     cmds:
       - task: jvm:check
       - task: test
