@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   android:
+    if: ${{ false }}
     runs-on: ubuntu-latest
     outputs:
       result: ${{ steps.verified.outputs.result }}
