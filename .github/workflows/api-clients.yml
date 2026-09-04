@@ -2,9 +2,17 @@
 name: API Clients
 
 "on":
-  pull_request:
-  push:
-    branches: [main]
+  workflow_call:
+    outputs:
+      generation:
+        description: Deterministic generation job result
+        value: ${{ jobs.api_client_generation.outputs.result }}
+      kotlin:
+        description: Kotlin compilation job result
+        value: ${{ jobs.api_client_kotlin.outputs.result }}
+      swift:
+        description: Swift compilation job result
+        value: ${{ jobs.api_client_swift.outputs.result }}
 
 permissions:
   contents: read
@@ -13,6 +21,8 @@ jobs:
   api_client_generation:
     name: Generate and verify API clients
     runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.verified.outputs.result }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -36,11 +46,15 @@ jobs:
           path: tmp/api-clients
           if-no-files-found: error
           retention-days: 1
+      - id: verified
+        run: echo "result=success" >> "$GITHUB_OUTPUT"
 
   api_client_kotlin:
     name: Compile and test Kotlin API client
     needs: api_client_generation
     runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.verified.outputs.result }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -59,11 +73,15 @@ jobs:
 
       - name: Compile Kotlin client
         run: bash tmp/api-clients/kotlin/gradlew --no-daemon -p tmp/api-clients/kotlin check assemble
+      - id: verified
+        run: echo "result=success" >> "$GITHUB_OUTPUT"
 
   api_client_swift:
     name: Compile and test Swift API client
     needs: api_client_generation
     runs-on: macos-26
+    outputs:
+      result: ${{ steps.verified.outputs.result }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -86,3 +104,5 @@ jobs:
 
       - name: Compile Swift client
         run: swift build --package-path tmp/api-clients/swift
+      - id: verified
+        run: echo "result=success" >> "$GITHUB_OUTPUT"

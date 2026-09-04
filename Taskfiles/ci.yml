@@ -1,0 +1,25 @@
+version: "3"
+
+tasks:
+  classify:
+    desc: Select mandatory CI suites from the changed paths
+    cmds:
+      - node scripts/ci/classify.mjs
+
+  gate:
+    desc: Require every selected CI suite to succeed
+    cmds:
+      - node scripts/ci/gate.mjs
+
+  markdown:
+    desc: Check changed Markdown syntax and whitespace
+    cmds:
+      - node scripts/ci/markdown.mjs
+
+  check:
+    desc: Validate GitHub Actions workflows and CI scripts
+    cmds:
+      - actionlint
+      - node --check scripts/ci/classify.mjs
+      - node --check scripts/ci/gate.mjs
+      - node --check scripts/ci/markdown.mjs

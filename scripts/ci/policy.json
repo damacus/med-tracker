@@ -1,0 +1,38 @@
+{
+  "jobs": {
+    "rails": ["scan_ruby", "scan_js", "lint", "test_non_system", "test_system", "production_image_medication_search"],
+    "rust": ["client_tools"],
+    "docs": ["docs_check"],
+    "markdown": ["markdown_check"],
+    "api_clients": ["api_clients"],
+    "android": ["android"],
+    "policy": ["policy_check"]
+  },
+  "workflow_results": {
+    "android": ["android"],
+    "api_clients": ["generation", "kotlin", "swift"]
+  },
+  "rules": [
+    {"pattern": "^(scripts/ci/|Taskfiles/ci\\.yml$|\\.github/workflows/ci\\.yml$|Taskfile\\.yml$|mise\\.toml$)", "suites": ["all"], "prose": true},
+    {"pattern": "^mobile/android/", "suites": ["android"]},
+    {"pattern": "^docs/", "suites": ["docs"], "prose": true},
+    {"pattern": "^docs/api/openapi\\.v1\\.yaml$", "suites": ["api_clients", "android_if_present"]},
+    {"pattern": "^client-tools/openapi-generator/", "suites": ["api_clients"]},
+    {"pattern": "^client-tools/(?!openapi-generator/)", "suites": ["rust"]},
+    {"pattern": "^(app/|bin/|config/|db/|lib/|public/|spec/|test/|data/|vendor/|sorbet/|compose/|\\.kamal/|script/)", "suites": ["rails"]},
+    {"pattern": "^(Gemfile(?:\\.lock)?|package(?:-lock)?\\.json|Dockerfile|compose\\.yaml|config\\.ru|Rakefile|Procfile\\.dev|Taskfile\\.test\\.yml|run|\\.rspec|\\.ruby-version|\\.simplecov|\\.rubocop\\.yml|\\.dockerignore)$", "suites": ["rails"]},
+    {"pattern": "^Taskfiles/(audit|capture_test|dev|internal|lighthouse|local|prod|test|worktree)\\.yml$", "suites": ["rails"]},
+    {"pattern": "^scripts/(audit_oidc_security\\.rb|build_curated_product_yaml\\.rb|check_quality\\.sh|compare_ruby_ui\\.rb|hosted_restore_rehearsal\\.rb|portless_oidc\\.fish|production_[^/]+\\.fish|profile_dashboard_request\\.rb|run_ruby_ui_comparison\\.fish|search_grocery_vitamins\\.rb|take_2fa_screenshots\\.js|test_preflight\\.fish|translator_hook\\.fish|verify_otlp_trace_resources\\.rb|with_compose_lock\\.rb|worktree_[^/]+\\.fish)$", "suites": ["rails"]},
+    {"pattern": "^(zensical\\.toml|requirements\\.txt|pyproject\\.toml|uv\\.lock|\\.python-version|main\\.py|Taskfiles/docs\\.yml)$", "suites": ["docs"]},
+    {"pattern": "^\\.github/workflows/android\\.yml$", "suites": ["android_if_present", "policy"]},
+    {"pattern": "^\\.github/workflows/api-clients\\.yml$", "suites": ["api_clients", "policy"]},
+    {"pattern": "^\\.github/workflows/docs\\.yml$", "suites": ["docs", "policy"]},
+    {"pattern": "^\\.github/workflows/docker-publish\\.yml$", "suites": ["rails", "policy"]},
+    {"pattern": "^\\.github/workflows/client-tools-release\\.yml$", "suites": ["rust", "policy"]},
+    {"pattern": "^\\.github/(workflows/|actions/)", "suites": ["policy"]},
+    {"pattern": "^\\.yamllint\\.yaml$", "suites": ["policy"]},
+    {"pattern": "^(\\.markdownlintignore|\\.vale\\.ini)$", "suites": ["markdown"]},
+    {"pattern": "^(openspec/|\\.codex/|\\.serena/|\\.superpowers/|\\.jules/|\\.playwright-cli/|\\.github/ISSUE_TEMPLATE/|\\.github/agents/|log/|storage/)", "suites": []},
+    {"pattern": "^(LICENSE|\\.gitignore|\\.gitattributes|lefthook\\.yml|renovate\\.json|release-please-config\\.json|\\.release-please-manifest\\.json|Taskfiles/openspec\\.yml|scripts/create_github_issues\\.rb)$", "suites": []}
+  ]
+}

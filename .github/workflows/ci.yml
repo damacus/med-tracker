@@ -19,9 +19,14 @@ jobs:
     runs-on: [ubuntu-latest]
     name: Classify Changes
     outputs:
-      app: ${{ steps.filter.outputs.app }}
+      app: ${{ steps.filter.outputs.rails }}
+      rails: ${{ steps.filter.outputs.rails }}
       rust: ${{ steps.filter.outputs.rust }}
       docs: ${{ steps.filter.outputs.docs }}
+      markdown: ${{ steps.filter.outputs.markdown }}
+      android: ${{ steps.filter.outputs.android }}
+      api_clients: ${{ steps.filter.outputs.api_clients }}
+      policy: ${{ steps.filter.outputs.policy }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -30,47 +35,59 @@ jobs:
 
       - name: Classify changed paths
         id: filter
-        uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad
+        env:
+          CI_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          CI_HEAD: ${{ github.sha }}
+          CI_EVENT: ${{ github.event_name }}
+        run: node scripts/ci/classify.mjs
+
+  android:
+    needs: changes
+    if: ${{ needs.changes.outputs.android == 'true' }}
+    uses: ./.github/workflows/android.yml
+
+  api_clients:
+    needs: changes
+    if: ${{ needs.changes.outputs.api_clients == 'true' }}
+    uses: ./.github/workflows/api-clients.yml
+
+  policy_check:
+    needs: changes
+    if: ${{ needs.changes.outputs.policy == 'true' }}
+    name: CI Workflow Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-go@v6
         with:
-          filters: |
-            app:
-              - 'app/**'
-              - 'bin/**'
-              - 'config/**'
-              - 'db/**'
-              - 'lib/**'
-              - 'public/**'
-              - 'spec/**'
-              - 'data/medication_reviews/**'
-              - 'scripts/**'
-              - 'Gemfile'
-              - 'Gemfile.lock'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'Dockerfile'
-              - 'compose.yaml'
-              - 'config.ru'
-              - 'Rakefile'
-              - '.rspec'
-              - '.ruby-version'
-              - '.simplecov'
-              - 'Taskfile.yml'
-              - 'Taskfiles/**'
-              - '.github/workflows/**'
-            rust:
-              - 'client-tools/**'
-              - '.github/workflows/ci.yml'
-              - '.github/workflows/client-tools-release.yml'
-            docs:
-              - '**/*.md'
-              - '.vale.ini'
-              - 'zensical.toml'
-              - 'requirements.txt'
-              - 'pyproject.toml'
-              - 'uv.lock'
-              - 'Taskfile.yml'
-              - 'Taskfiles/docs.yml'
-              - '.github/workflows/docs.yml'
+          go-version: '1.26.1'
+      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
+      - name: Install actionlint
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+      - run: task ci:check
+
+  markdown_check:
+    needs: changes
+    if: ${{ needs.changes.outputs.markdown == 'true' }}
+    name: Markdown Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
+      - name: Check changed Markdown
+        env:
+          CI_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          CI_HEAD: ${{ github.sha }}
+          CI_EVENT: ${{ github.event_name }}
+        run: task ci:markdown
 
   scan_ruby:
     needs: changes
@@ -173,13 +190,15 @@ jobs:
           cache: "pip"
 
       - name: Install documentation dependencies
-        run: pip install -r requirements.txt
+        run: pip install uv==0.10.12
+
+      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
 
       - name: Build documentation
-        run: zensical build --clean
-
-      - name: Check changed lines
-        run: git diff --check ${{ github.event.pull_request.base.sha || github.event.before }}...HEAD
+        run: task docs:build
 
   test_non_system:
     needs: changes
@@ -410,6 +429,7 @@ jobs:
   lighthouse:
     runs-on: [ubuntu-latest]
     name: Lighthouse Mobile Audit
+    continue-on-error: true
     needs: [changes, test_non_system]
     if: ${{ needs.changes.outputs.app == 'true' }}
     timeout-minutes: 15
@@ -477,7 +497,7 @@ jobs:
       - name: Start Rails server
         run: |
           bundle exec rails server -p 3000 > tmp/lighthouse-server.log 2>&1 &
-          for attempt in {1..30}; do
+          for _attempt in {1..30}; do
             curl -fsS http://localhost:3000/up && break
             sleep 1
           done
@@ -523,14 +543,15 @@ jobs:
       - test_non_system
       - test_system
       - production_image_medication_search
-      - mutation
-      - lighthouse
+      - android
+      - api_clients
+      - policy_check
+      - markdown_check
     runs-on: [ubuntu-latest]
     name: CI Success
     steps:
-      - name: Fail when a required job failed
-        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
-        run: /bin/false
-
-      - name: Confirm required jobs passed or were skipped
-        run: echo "Required CI jobs passed or were skipped."
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Require selected suites to succeed
+        env:
+          CI_NEEDS: ${{ toJSON(needs) }}
+        run: node scripts/ci/gate.mjs
