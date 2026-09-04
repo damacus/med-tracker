@@ -4,6 +4,8 @@ silent: true
 run: once
 
 includes:
+  ci:
+    taskfile: Taskfiles/ci.yml
   dev:
     taskfile: Taskfiles/dev.yml
   test:
