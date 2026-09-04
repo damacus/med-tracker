@@ -728,7 +728,7 @@ GEM
     sghtmltopdf (0.3.0-x86_64-linux-musl)
     shoulda-matchers (8.0.1)
       activesupport (>= 7.2)
-    simplecov (1.1.1)
+    simplecov (1.2.0)
     simpleidn (0.2.3)
     sin_lru_redux (2.5.3)
     solid_cable (4.0.2)
