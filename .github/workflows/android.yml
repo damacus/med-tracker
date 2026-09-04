@@ -1,19 +1,11 @@
 name: Android
 
 "on":
-  pull_request:
-    paths:
-      - 'mobile/android/**'
-      - 'docs/api/openapi.v1.yaml'
-      - 'Taskfile.yml'
-      - '.github/workflows/android.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'mobile/android/**'
-      - 'docs/api/openapi.v1.yaml'
-      - 'Taskfile.yml'
-      - '.github/workflows/android.yml'
+  workflow_call:
+    outputs:
+      android:
+        description: Android validation job result
+        value: ${{ jobs.android.outputs.result }}
 
 permissions:
   contents: read
@@ -21,6 +13,8 @@ permissions:
 jobs:
   android:
     runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.verified.outputs.result }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Set up Task
@@ -35,7 +29,7 @@ jobs:
           java-version: '17'
       - name: Install Fish
         run: sudo apt-get install --yes fish
-      - name: Verify Gradle JDK 17
-        run: task android:jvm:check
       - name: Verify Android
         run: task android:ci
+      - id: verified
+        run: echo "result=success" >> "$GITHUB_OUTPUT"

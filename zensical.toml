@@ -20,6 +20,7 @@ nav = [
     { "Self-Hosting Setup" = "self-hosting.md" },
     { Deployment = "deployment.md" },
     { Testing = "testing.md" },
+    { "Required CI checks" = "development/ci.md" },
     { "MCP Integration" = "mcp.md" },
     { "API Contract Conventions" = "api/README.md" },
     { Design = "design.md" },
