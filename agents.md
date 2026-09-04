@@ -121,7 +121,12 @@ suite, system or Playwright tests, Lighthouse, or application end-to-end tests.
 Verify Markdown correctness with `task docs:build` and `git diff --check`, plus
 any narrower documentation-specific check relevant to the changed files.
 
-Run `task test:preflight` before implementation work. If it reports that Docker is unavailable or the test image is missing, fix that specific prerequisite. Use GitHub CI as the verification authority only when local Docker remains unavailable.
+Run `task test:preflight` only before implementation work that changes Rails code. If it reports that Docker is unavailable or the test image is missing, fix that specific prerequisite. Use GitHub CI as the Rails verification authority only when local Docker remains unavailable.
+
+Do not run `task test:preflight` or `task test` for changes confined to CI,
+Android, iOS, documentation, plans, or non-Rails tooling. Run the checks relevant
+to those areas instead. Mixed changes require Rails tests only when they also
+change Rails code.
 
 - Write RSpec tests in `_spec.rb` files using Rails/RSpec conventions.
 - Test public APIs and observable behavior, not implementation details.
@@ -145,22 +150,23 @@ Save PR screenshots under `docs/screenshots/` with page and viewport in the file
 
 ## Quality gates (run before every push)
 
-These full application gates apply when executable code or application
-configuration changes. For documentation-only changes, use the documentation
-verification rule above.
+Run `task test` only when Rails code changes. Run `task rubocop` when Ruby code
+changes. Changes to CI or other non-Rails executable code or configuration do
+not, by themselves, require the Rails suite. Run each changed area's relevant
+checks; for documentation-only changes, use the verification rule above.
 
 ```fish
 task rubocop          # lint — must pass with no offenses
 task test             # full test suite in Docker — must be green
 ```
 
-Run a single file during development:
+When developing a Rails change, run a single file with:
 
 ```fish
 task test TEST_FILE=spec/path/to/file_spec.rb
 ```
 
-Never push if either command fails.
+Never push if an applicable required check fails.
 
 ## Review and Security
 
@@ -196,7 +202,7 @@ Work is not done until `git push` succeeds.
 **MANDATORY WORKFLOW:**
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
+2. **Run applicable quality gates** - Use the changed-area rules above; run `task test` only when Rails code changes
 3. **Update issue status** - Close finished work, update in-progress items
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```fish
