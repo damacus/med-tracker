@@ -5,7 +5,7 @@ module Api
     class MedicationTakeOperation
       CLIENT_UUID_INDEX = 'index_medication_takes_on_client_uuid'
       STOCK_ERRORS = %i[out_of_stock].freeze
-      TIMING_ERRORS = %i[cooldown paused overlapping_prescription_restriction].freeze
+      TIMING_ERRORS = %i[cooldown inactive paused overlapping_prescription_restriction].freeze
 
       Result = Data.define(:take, :replayed)
 

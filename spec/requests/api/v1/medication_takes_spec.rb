@@ -53,6 +53,25 @@ RSpec.describe 'API v1 medication takes' do
   end
 
   describe 'POST /api/v1/households/:household_id/medication_takes' do
+    it 'rejects a weekly dose on an excluded weekday without consuming stock' do
+      login_data = api_login(user)
+      source = schedules(:jane_ibuprofen)
+      source.update!(schedule_type: :weekly, schedule_config: { 'weekdays' => [(Date.current.wday + 1) % 7] },
+                     max_daily_doses: nil, min_hours_between_doses: nil)
+      stock = source.medication.current_supply
+
+      expect do
+        post api_v1_household_medication_takes_path(login_data.dig('household', 'id')),
+             params: { medication_take: {
+               source_type: 'schedule', source_id: source.portable_id, taken_at: Time.current.iso8601
+             } },
+             headers: api_auth_headers(login_data.fetch('access_token')), as: :json
+      end.not_to change(MedicationTake, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(source.medication.reload.current_supply).to eq(stock)
+    end
+
     it 'rejects future doses without recording a take or consuming stock' do
       freeze_time do
         login_data = api_login(user)

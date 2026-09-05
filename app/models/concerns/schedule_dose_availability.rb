@@ -7,7 +7,7 @@ module ScheduleDoseAvailability
 
   def dose_blocked_reason(at: Time.current)
     at = normalize_time(at)
-    return :inactive if at.blank? || !active_on?(at.to_date)
+    return :inactive unless at.present? && active_on?(at.to_date) && applies_on?(at.to_date)
     return :stock if medication.out_of_stock?
     return :timing unless can_take_at?(at)
 
