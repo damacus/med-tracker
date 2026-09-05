@@ -36,6 +36,7 @@ RSpec.describe 'Medication stock sources' do
       schedule = build_schedule
       alternate_medication = build_alternate_medication
       submitted_time = Time.zone.local(2026, 4, 27, 7, 45)
+      schedule.update!(start_date: submitted_time.to_date)
 
       travel_to(Time.zone.local(2026, 4, 28, 12, 0)) do
         expect do

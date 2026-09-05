@@ -59,6 +59,7 @@ RSpec.describe 'API v1 write resources' do
 
   it 'creates medication takes idempotently using client_uuid' do
     schedule = schedules(:john_paracetamol)
+    schedule.update!(start_date: Date.new(2026, 2, 25))
     client_uuid = SecureRandom.uuid
     payload = {
       medication_take: {
@@ -143,6 +144,7 @@ RSpec.describe 'API v1 write resources' do
                                      current_supply: 0)
     schedule = create(:schedule, person: person, medication: medication, dosage: nil,
                                  dose_amount: medication.dose_amount, dose_unit: medication.dose_unit)
+    schedule.update!(start_date: Date.new(2026, 2, 25))
 
     post api_v1_household_medication_takes_path(household_id),
          params: {

@@ -15,6 +15,7 @@ class MedicationStockSourceResolver
 
   def blocked_reason
     return :paused if source.respond_to?(:paused?) && source.paused?
+    return :inactive if outside_schedule?
     return :out_of_stock if available_medications.empty?
     return :cooldown unless source.can_take_at?(taken_at)
 
@@ -38,6 +39,10 @@ class MedicationStockSourceResolver
   end
 
   private
+
+  def outside_schedule?
+    source.respond_to?(:applies_on?) && !source.applies_on?(taken_at.to_date)
+  end
 
   def matching_medications
     @matching_medications ||= begin

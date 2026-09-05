@@ -454,6 +454,14 @@ RSpec.describe Schedule do
       expect(schedule.expected_doses_on(monday + 1.day)).to eq(4)
     end
 
+    it 'blocks a dose on an excluded weekly day' do
+      at = Time.zone.local(2026, 9, 8, 12)
+      schedule = build(:schedule, start_date: at.to_date - 7, end_date: at.to_date + 7,
+                                  schedule_type: :weekly, schedule_config: { 'weekdays' => ['monday'] })
+
+      expect(schedule.dose_blocked_reason(at: at)).to eq(:inactive)
+    end
+
     it 'supports multiple daily doses from configured times' do
       schedule = build(
         :schedule,

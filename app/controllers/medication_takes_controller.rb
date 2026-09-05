@@ -40,9 +40,9 @@ class MedicationTakesController < ApplicationController
 
   def failure_message(error)
     case error
-    when :out_of_stock   then t('take_medications.out_of_stock', default: 'Cannot take medication: out of stock')
-    when :cooldown       then t('take_medications.cooldown', default: 'Cannot take medication: timing restrictions not met')
-    when :paused         then t('take_medications.paused', default: 'Cannot take medication: paused')
+    when :out_of_stock then t('take_medications.out_of_stock', default: 'Cannot take medication: out of stock')
+    when :cooldown, :inactive then t('take_medications.cooldown', default: 'Cannot take medication: timing restrictions not met')
+    when :paused then t('take_medications.paused', default: 'Cannot take medication: paused')
     when :overlapping_prescription_restriction then t('take_medications.overlapping_prescription_restriction')
     when :selection_required then t('take_medications.location_required', default: 'Choose a location to record this dose.')
     when :invalid_source then t('take_medications.invalid_location', default: 'Selected location is unavailable for this medication.')

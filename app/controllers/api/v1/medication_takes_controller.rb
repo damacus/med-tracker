@@ -7,6 +7,7 @@ module Api
         future_taken_at: 'Cannot record a dose more than one hour in the future',
         out_of_stock: 'Cannot take medication: out of stock',
         cooldown: 'Cannot take medication: timing restrictions not met',
+        inactive: 'Cannot take medication: schedule does not apply on this date',
         paused: 'Cannot take medication: paused',
         selection_required: 'Choose a location to record this dose.',
         invalid_source: 'Selected location is unavailable for this medication.',

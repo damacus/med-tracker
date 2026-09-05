@@ -51,6 +51,23 @@ RSpec.describe MedicationStockSourceResolver do
   end
 
   describe '#blocked_reason' do
+    it 'allows a backdated dose on its configured date even when today is excluded' do
+      at = 2.days.ago
+      source = build(:schedule, medication: medication, start_date: at.to_date, end_date: Date.current,
+                                schedule_type: :specific_dates, schedule_config: { 'dates' => [at.to_date.iso8601] },
+                                max_daily_doses: nil, min_hours_between_doses: nil)
+      resolver = described_class.new(user: nil, source: source, taken_at: at)
+
+      expect(resolver.blocked_reason).to be_nil
+    end
+
+    it 'blocks a dose outside the schedule date range' do
+      source = build(:schedule, medication: medication, start_date: Date.current + 1, end_date: Date.current + 7)
+      resolver = described_class.new(user: nil, source: source, taken_at: taken_at)
+
+      expect(resolver.blocked_reason).to eq(:inactive)
+    end
+
     context 'when medication is out of stock' do
       before { medication.update!(current_supply: 0) }
 

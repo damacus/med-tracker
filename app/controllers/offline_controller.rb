@@ -119,7 +119,7 @@ class OfflineController < ApplicationController
     case error
     when :out_of_stock
       t('take_medications.out_of_stock', default: 'Cannot take medication: out of stock')
-    when :cooldown, :overlapping_prescription_restriction
+    when :cooldown, :inactive, :overlapping_prescription_restriction
       timing_failure_message(error)
     when :paused
       t('take_medications.paused', default: 'Cannot take medication: paused')
