@@ -3,6 +3,16 @@
 module Api
   module V1
     class MedicationTakesController < BaseController
+      TAKE_FAILURE_MESSAGES = {
+        future_taken_at: 'Cannot record a dose more than one hour in the future',
+        out_of_stock: 'Cannot take medication: out of stock',
+        cooldown: 'Cannot take medication: timing restrictions not met',
+        paused: 'Cannot take medication: paused',
+        selection_required: 'Choose a location to record this dose.',
+        invalid_source: 'Selected location is unavailable for this medication.',
+        invalid_amount: 'Invalid dose configured'
+      }.freeze
+
       def index
         render_collection(
           policy_scope(MedicationTake),
@@ -82,22 +92,7 @@ module Api
       end
 
       def take_failure_message(error)
-        case error
-        when :out_of_stock
-          'Cannot take medication: out of stock'
-        when :cooldown
-          'Cannot take medication: timing restrictions not met'
-        when :paused
-          'Cannot take medication: paused'
-        when :selection_required
-          'Choose a location to record this dose.'
-        when :invalid_source
-          'Selected location is unavailable for this medication.'
-        when :invalid_amount
-          'Invalid dose configured'
-        else
-          'Could not record medication take'
-        end
+        TAKE_FAILURE_MESSAGES.fetch(error, 'Could not record medication take')
       end
     end
   end

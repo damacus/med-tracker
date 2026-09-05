@@ -53,6 +53,45 @@ RSpec.describe 'API v1 medication takes' do
   end
 
   describe 'POST /api/v1/households/:household_id/medication_takes' do
+    it 'rejects future doses without recording a take or consuming stock' do
+      freeze_time do
+        login_data = api_login(user)
+        source = person_medications(:jane_vitamin_d)
+        take_count = MedicationTake.count
+        stock = source.medication.current_supply
+
+        post api_v1_household_medication_takes_path(login_data.dig('household', 'id')),
+             params: { medication_take: {
+               source_type: 'person_medication', source_id: source.portable_id,
+               taken_at: 61.minutes.from_now.iso8601
+             } },
+             headers: api_auth_headers(login_data.fetch('access_token')), as: :json
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body.dig('error', 'message')).to eq(
+          'Cannot record a dose more than one hour in the future'
+        )
+        expect(MedicationTake.count).to eq(take_count)
+        expect(source.medication.reload.current_supply).to eq(stock)
+      end
+    end
+
+    it 'accepts a dose exactly one hour in the future' do
+      freeze_time do
+        login_data = api_login(user)
+        source = person_medications(:jane_vitamin_d)
+
+        post api_v1_household_medication_takes_path(login_data.dig('household', 'id')),
+             params: { medication_take: {
+               source_type: 'person_medication', source_id: source.portable_id,
+               taken_at: 1.hour.from_now.iso8601
+             } },
+             headers: api_auth_headers(login_data.fetch('access_token')), as: :json
+
+        expect(response).to have_http_status(:created)
+      end
+    end
+
     it 'records takes from person medication sources' do
       login_data = api_login(user)
       household_id = login_data.dig('household', 'id')

@@ -3,13 +3,15 @@
 module TakeMedicationGuardable
   extend ActiveSupport::Concern
 
-  FUTURE_TOLERANCE = 60.minutes
+  FUTURE_TOLERANCE = MedicationAdministration::RecordDose::FUTURE_TOLERANCE
 
   private
 
   # Maps a MedicationAdministration::RecordDose error symbol to the appropriate HTTP response.
   def handle_take_medication_failure(error, scope:)
     case error
+    when :future_taken_at
+      respond_take_medication_error(message: t('take_medications.future_taken_at'))
     when :out_of_stock, :cooldown, :paused, :overlapping_prescription_restriction
       default_message = take_medication_default_message(error)
       respond_take_medication_error(message: t("#{scope}.cannot_take_medication", default: default_message))
