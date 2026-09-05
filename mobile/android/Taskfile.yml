@@ -25,7 +25,7 @@ tasks:
   assemble:
     desc: Assemble Android phone debug, staging, and release APKs
     cmds:
-      - ./gradlew :phone:assembleDebug :phone:assembleStaging :phone:assembleRelease --no-daemon
+      - ./gradlew :phone:assembleDebug :phone:assembleStaging :phone:assembleRelease --no-daemon --stacktrace
 
   release:check:
     desc: Verify the release APK excludes staging authentication UI
