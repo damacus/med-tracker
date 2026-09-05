@@ -194,6 +194,7 @@ RSpec.describe 'API v1 domain parity' do
 
   it 'records medication takes using portable schedule ids' do
     schedule = schedules(:john_paracetamol)
+    schedule.update!(start_date: Date.new(2026, 2, 25))
 
     expect do
       post api_v1_household_medication_takes_path(household_id),

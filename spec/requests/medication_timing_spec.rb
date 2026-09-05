@@ -128,7 +128,7 @@ RSpec.describe 'Medication Timing Restrictions' do
 
       it 'allows another dose after the local midnight reset' do
         travel_to Time.zone.local(2026, 4, 29, 0, 5) do
-          schedule.update!(min_hours_between_doses: nil)
+          schedule.update!(start_date: Date.new(2026, 4, 29), min_hours_between_doses: nil)
           2.times do |index|
             MedicationTake.create!(
               schedule: schedule,
