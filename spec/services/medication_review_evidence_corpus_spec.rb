@@ -130,6 +130,22 @@ RSpec.describe MedicationReviewEvidenceCorpus do
     expect(corpus.matches_for('Warfarin', 'Ibuprofen')).to be_empty
   end
 
+  it 'prepares a label once while checking different interacting medicines' do
+    evidence = evidence_record(
+      candidate_terms: ['warfarin'],
+      evidence_text: 'Avoid ibuprofen. Monitor when metformin is used.'
+    )
+    allow(MedicationReviewSourceInstructionClassifier).to receive(:new).and_call_original
+    corpus = described_class.new([evidence])
+
+    expect(corpus.matches_for('Warfarin', 'Ibuprofen').sole.source_instruction).to eq('avoid')
+    expect(corpus.matches_for('Warfarin', 'Metformin').sole.source_instruction).to eq('monitor_or_adjust')
+    expect(MedicationReviewSourceInstructionClassifier).to have_received(:new).once
+
+    evidence.evidence_text.replace('No dosing adjustments required for ibuprofen.')
+    expect(corpus.matches_for('Warfarin', 'Ibuprofen')).to be_empty
+  end
+
   it 'does not evaluate evidence owned by neither medicine in the pair' do
     relevant = explicit_ingredient_evidence
     unrelated = evidence_record(source_record_id: 'unrelated', candidate_terms: ['acetaminophen'])

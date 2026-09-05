@@ -20,6 +20,7 @@ class MedicationReviewEvidenceCorpus
     @ownership = {}
     @records_by_medication = {}
     @normalizations = {}
+    @classifiers = {}
   end
 
   def matches_for(first_name, second_name)
@@ -114,9 +115,7 @@ class MedicationReviewEvidenceCorpus
   end
 
   def build_automatic_match(record, matched_term, match_type, confidence)
-    classification = MedicationReviewSourceInstructionClassifier.new(
-      record.evidence_text, matched_term: matched_term
-    ).call
+    classification = classifier_for(record.evidence_text).call(matched_term: matched_term)
     return if classification.instruction == 'no_action_required'
 
     Match.new(
@@ -129,6 +128,10 @@ class MedicationReviewEvidenceCorpus
       evidence_excerpt: classification.excerpt,
       reason: "The label explicitly names the #{match_type} #{matched_term}."
     )
+  end
+
+  def classifier_for(text)
+    @classifiers.fetch(text) { @classifiers[text] = MedicationReviewSourceInstructionClassifier.new(text) }
   end
 
   def explicit_term(text, terms)
