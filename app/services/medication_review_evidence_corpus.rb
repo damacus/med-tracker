@@ -19,6 +19,7 @@ class MedicationReviewEvidenceCorpus
     @identities = {}
     @ownership = {}
     @records_by_medication = {}
+    @normalizations = {}
   end
 
   def matches_for(first_name, second_name)
@@ -154,6 +155,6 @@ class MedicationReviewEvidenceCorpus
   end
 
   def normalize(value)
-    MedicationReviewTermNormalizer.label(value)
+    @normalizations.fetch(value) { @normalizations[value] = MedicationReviewTermNormalizer.label(value) }
   end
 end

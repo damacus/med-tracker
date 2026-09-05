@@ -110,6 +110,26 @@ RSpec.describe MedicationReviewEvidenceCorpus do
     expect(ownership_evidence).to have_received(:candidate_terms).once
   end
 
+  it 'normalizes an evidence label once across pairs that do not match' do
+    evidence = evidence_record(candidate_terms: ['warfarin'], evidence_text: 'Unrelated label wording.')
+    allow(MedicationReviewTermNormalizer).to receive(:label).and_call_original
+    corpus = described_class.new([evidence])
+
+    expect(corpus.matches_for('Warfarin', 'Ibuprofen')).to be_empty
+    expect(corpus.matches_for('Warfarin', 'Metformin')).to be_empty
+
+    expect(MedicationReviewTermNormalizer).to have_received(:label).with(evidence.evidence_text).once
+  end
+
+  it 'evaluates updated evidence text after an earlier pair check' do
+    evidence = explicit_ingredient_evidence
+    corpus = described_class.new([evidence])
+
+    expect(corpus.matches_for('Warfarin', 'Ibuprofen')).not_to be_empty
+    evidence.evidence_text.replace('Unrelated label wording.')
+    expect(corpus.matches_for('Warfarin', 'Ibuprofen')).to be_empty
+  end
+
   it 'does not evaluate evidence owned by neither medicine in the pair' do
     relevant = explicit_ingredient_evidence
     unrelated = evidence_record(source_record_id: 'unrelated', candidate_terms: ['acetaminophen'])
