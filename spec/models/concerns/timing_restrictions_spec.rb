@@ -71,6 +71,37 @@ RSpec.describe TimingRestrictions do
     end
   end
 
+  describe 'historical taper limits' do
+    let(:historical_time) { 45.days.ago.change(hour: 12) }
+    let(:taper) do
+      build(:schedule, start_date: historical_time.to_date, end_date: Date.current + 1,
+                       schedule_type: :tapering, max_daily_doses: nil, min_hours_between_doses: nil,
+                       schedule_config: { 'taper_steps' => [
+                         { 'start_date' => historical_time.to_date.iso8601,
+                           'end_date' => historical_time.to_date.iso8601, 'max_daily_doses' => 1 },
+                         { 'start_date' => Date.current.iso8601,
+                           'end_date' => Date.current.iso8601, 'max_daily_doses' => 3 }
+                       ] })
+    end
+
+    it 'uses historical limits after warming the current-day cache' do
+      taper.association(:medication_takes).target = [MedicationTake.new(taken_at: historical_time - 2.hours)]
+      taper.dose_constraints
+      taper.timing_policy
+
+      expect(taper.can_take_at?(historical_time)).to be(false)
+      expect(taper.can_take_now?).to be(true)
+    end
+
+    it 'loads the history around the requested date for an unloaded association' do
+      taper.save!
+      taper.medication_takes.create!(taken_at: historical_time - 1.hour, dose_amount: taper.dose_amount,
+                                     dose_unit: taper.dose_unit, skip_stock_mutation: true)
+
+      expect(taper.reload.can_take_at?(historical_time)).to be(false)
+    end
+  end
+
   describe '#can_administer?' do
     it 'returns false when the medication is out of stock' do
       allow(schedule.medication).to receive(:out_of_stock?).and_return(true)

@@ -3,27 +3,23 @@
 module TimingRestrictions
   extend ActiveSupport::Concern
 
-  def dose_constraints
-    return @dose_constraints if defined?(@dose_constraints)
+  def dose_constraints(date: Time.zone.today)
+    @dose_constraints ||= {}
 
-    @dose_constraints = DoseConstraints.new(
-      max_daily_doses: effective_constraint_value(:max_daily_doses),
-      min_hours_between_doses: effective_constraint_value(:min_hours_between_doses)
+    @dose_constraints[date] ||= DoseConstraints.new(
+      max_daily_doses: effective_constraint_value(:max_daily_doses, date),
+      min_hours_between_doses: effective_constraint_value(:min_hours_between_doses, date)
     )
   end
 
-  def timing_policy
-    return @timing_policy if defined?(@timing_policy)
+  def timing_policy(at: Time.current)
+    @timing_policy ||= {}
+    date = at.to_date
 
     cycle = respond_to?(:dose_cycle) ? dose_cycle : 'daily'
-    takes = if medication_takes.loaded?
-              medication_takes.to_a
-            else
-              medication_takes.where(taken_at: 31.days.ago.beginning_of_day..Time.current.end_of_day).to_a
-            end
-    @timing_policy = DoseTimingPolicy.new(
-      takes: takes,
-      dose_constraints: dose_constraints,
+    @timing_policy[date] ||= DoseTimingPolicy.new(
+      takes: timing_takes(at),
+      dose_constraints: dose_constraints(date: date),
       dose_cycle: cycle
     )
   end
@@ -39,9 +35,9 @@ module TimingRestrictions
   alias timing_restrictions? restrictions?
 
   def can_take_at?(check_time = Time.current)
-    return true unless timing_restrictions?
+    return true unless dose_constraints(date: check_time.to_date).restrictions?
 
-    timing_policy.can_take_at?(check_time)
+    timing_policy(at: check_time).can_take_at?(check_time)
   end
 
   def can_take_now?
@@ -64,9 +60,15 @@ module TimingRestrictions
 
   private
 
-  def effective_constraint_value(attribute)
+  def timing_takes(at)
+    return medication_takes.to_a if medication_takes.loaded?
+
+    medication_takes.where(taken_at: (at - 31.days).beginning_of_day..at.end_of_day).to_a
+  end
+
+  def effective_constraint_value(attribute, date)
     method_name = "effective_#{attribute}"
-    return public_send(method_name) if respond_to?(method_name)
+    return public_send(method_name, date) if respond_to?(method_name)
 
     public_send(attribute)
   end

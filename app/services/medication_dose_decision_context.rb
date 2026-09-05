@@ -36,11 +36,12 @@ class MedicationDoseDecisionContext
   end
 
   def blocks_take?(candidate)
-    return false unless candidate.restrictions?
+    constraints = candidate.dose_constraints(date: effective_date)
+    return false unless constraints.restrictions?
 
     !DoseTimingPolicy.new(
       takes: related_takes,
-      dose_constraints: candidate.dose_constraints,
+      dose_constraints: constraints,
       dose_cycle: candidate.respond_to?(:dose_cycle) ? candidate.dose_cycle : 'daily'
     ).can_take_at?(taken_at)
   end

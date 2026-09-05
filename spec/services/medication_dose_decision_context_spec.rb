@@ -87,6 +87,18 @@ RSpec.describe MedicationDoseDecisionContext do
     end
   end
 
+  it 'uses a related taper schedule limit from the administration date' do
+    step = {
+      'start_date' => taken_at.to_date.iso8601,
+      'end_date' => taken_at.to_date.iso8601,
+      'max_daily_doses' => 1
+    }
+    source.update!(schedule_type: :tapering, max_daily_doses: nil, schedule_config: { 'taper_steps' => [step] })
+    record_take_for(source)
+
+    expect(context.blocked?).to be(true)
+  end
+
   context 'when only inactive or expired schedules have reached restrictions' do
     before do
       expired_schedule = create(
