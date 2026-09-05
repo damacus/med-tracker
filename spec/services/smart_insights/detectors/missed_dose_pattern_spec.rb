@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe SmartInsights::Detectors::MissedDosePattern do
+  fixtures :accounts, :people
+
   def context_with(daily_data) = instance_double(SmartInsights::Context, daily_data: daily_data)
   def day(expected:, actual:) = { expected: expected, actual: actual }
 
@@ -38,5 +40,32 @@ RSpec.describe SmartInsights::Detectors::MissedDosePattern do
       day(expected: 1, actual: 1), day(expected: 1, actual: 0)
     ]
     expect(described_class.new(context_with(data)).call.size).to eq(1)
+  end
+
+  it 'counts resumed misses without counting completed pause days' do
+    start_date = Date.new(2026, 4, 20)
+    person = create(:person)
+    schedule = create(:schedule, person: person, start_date: start_date, end_date: start_date + 3.days,
+                                 schedule_type: :multiple_daily, schedule_config: { 'times' => ['08:00'] },
+                                 max_daily_doses: 1)
+    record_pause(schedule, started_at: start_date.in_time_zone + 8.hours,
+                           ended_at: (start_date + 2.days).in_time_zone + 8.hours)
+    context = SmartInsights::Context.new(people: [person], start_date: start_date, end_date: start_date + 3.days)
+
+    insight = described_class.new(context).call.sole
+
+    expect(insight.metric_value).to eq(I18n.t('smart_insights.detectors.missed_dose_pattern.metric_value', count: 2))
+  end
+
+  def record_pause(schedule, started_at:, ended_at:)
+    FixtureHouseholdSetup.apply!
+    membership = accounts(:admin).household_memberships.find_by!(household: schedule.household)
+    schedule.medication_pause_periods.create!(
+      reason: 'clinician_advice',
+      started_at: started_at,
+      ended_at: ended_at,
+      recorded_by_membership: membership,
+      resumed_by_membership: membership
+    )
   end
 end
