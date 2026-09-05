@@ -20,7 +20,6 @@ import okhttp3.Call
 import okhttp3.HttpUrl
 
 import io.medtracker.client.models.AuthHouseholdCollectionResponse
-import io.medtracker.client.models.AuthLoginRequest
 import io.medtracker.client.models.AuthLoginResponse
 import io.medtracker.client.models.AuthOidcExchangeRequest
 import io.medtracker.client.models.AuthRefreshRequest
@@ -51,80 +50,6 @@ open class AuthenticationApi(basePath: kotlin.String = defaultBasePath, client: 
         val defaultBasePath: String by lazy {
             System.getProperties().getProperty(ApiClient.baseUrlKey, "/api/v1")
         }
-    }
-
-    /**
-     * POST /auth/login
-     * Exchange development or migration password credentials for API tokens.
-     * 
-     * @param authLoginRequest 
-     * @return AuthLoginResponse
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     * @throws UnsupportedOperationException If the API returns an informational or redirection response
-     * @throws ClientException If the API returns a client error response
-     * @throws ServerException If the API returns a server error response
-     */
-    @Suppress("UNCHECKED_CAST")
-    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun createLoginSession(authLoginRequest: AuthLoginRequest) : AuthLoginResponse {
-        val localVarResponse = createLoginSessionWithHttpInfo(authLoginRequest = authLoginRequest)
-
-        return when (localVarResponse.responseType) {
-            ResponseType.Success -> (localVarResponse as Success<*>).data as AuthLoginResponse
-            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
-            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
-            ResponseType.ClientError -> {
-                val localVarError = localVarResponse as ClientError<*>
-                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
-            }
-            ResponseType.ServerError -> {
-                val localVarError = localVarResponse as ServerError<*>
-                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
-            }
-        }
-    }
-
-    /**
-     * POST /auth/login
-     * Exchange development or migration password credentials for API tokens.
-     * 
-     * @param authLoginRequest 
-     * @return ApiResponse<AuthLoginResponse?>
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     */
-    @Suppress("UNCHECKED_CAST")
-    @Throws(IllegalStateException::class, IOException::class)
-    fun createLoginSessionWithHttpInfo(authLoginRequest: AuthLoginRequest) : ApiResponse<AuthLoginResponse?> {
-        val localVariableConfig = createLoginSessionRequestConfig(authLoginRequest = authLoginRequest)
-
-        return request<AuthLoginRequest, AuthLoginResponse>(
-            localVariableConfig
-        )
-    }
-
-    /**
-     * To obtain the request config of the operation createLoginSession
-     *
-     * @param authLoginRequest 
-     * @return RequestConfig
-     */
-    fun createLoginSessionRequestConfig(authLoginRequest: AuthLoginRequest) : RequestConfig<AuthLoginRequest> {
-        val localVariableBody = authLoginRequest
-        val localVariableQuery: MultiValueMap = mutableMapOf()
-        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
-        localVariableHeaders["Content-Type"] = "application/json"
-        localVariableHeaders["Accept"] = "application/json"
-
-        return RequestConfig(
-            method = RequestMethod.POST,
-            path = "/auth/login",
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = false,
-            body = localVariableBody
-        )
     }
 
     /**

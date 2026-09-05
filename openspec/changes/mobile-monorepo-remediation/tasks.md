@@ -13,11 +13,11 @@
 
 ## Task 3: Harden Android release boundaries
 
-- [ ] 3.1 Add failing tests for release-only OIDC PKCE, absence of password/server override UI in release, and staging-only password/server configuration; implement the minimum build and UI changes and verify those tests pass.
-- [ ] 3.2 Add failing tests proving tokens never enter ordinary preferences or backup-eligible storage and backup is disabled; implement Keystore-backed encrypted credentials under no-backup storage and verify the security tests pass.
-- [ ] 3.3 Add failing tests for release logging `NONE`, opt-in non-release `BASIC` logging, redacted authorization/session headers, and absent body logging; implement the logging policy and verify tests pass.
-- [ ] 3.4 Move the canary test to a dedicated opt-in integration task with environment credentials and prove ordinary tests and pull-request CI neither select it nor contact canary.
-- [ ] 3.5 Run `task android:ci`, root configuration checks, `task rubocop`, and `task test`; commit only when all applicable gates pass with a clean tracked tree.
+- [x] 3.1 Add failing tests for release-only OIDC PKCE, absence of password/server override UI in release, and staging-only password/server configuration; implement the minimum build and UI changes and verify those tests pass.
+- [x] 3.2 Add failing tests proving tokens never enter ordinary preferences or backup-eligible storage and backup is disabled; implement Keystore-backed encrypted credentials under no-backup storage and verify the security tests pass.
+- [x] 3.3 Add failing tests for release logging `NONE`, opt-in non-release `BASIC` logging, redacted authorization/session headers, and absent body logging; implement the logging policy and verify tests pass.
+- [x] 3.4 Move the canary test to a dedicated opt-in integration task with environment credentials and prove ordinary tests and pull-request CI neither select it nor contact canary.
+- [x] 3.5 Run `task android:ci`, root configuration checks, `task rubocop`, and `task test`; commit only when all applicable gates pass with a clean tracked tree.
 
 ## Task 4: Add the Wear OS connectivity foundation
 

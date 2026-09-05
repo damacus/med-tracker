@@ -1,10 +1,12 @@
 da3dbdcea8896c9ae8bfac0e388c073e96650d049b7e26917b4d0e5fd4386fd3  openapi.v1.yaml
 b3848410eccdc287447c8b014bfd86a50184068a2a1ae6dca220c1bbeceea9e6  openapi-generator-config.yaml
+e8598107873b2da979d3fd889e36a7ea1c6d05cb187f5c8641f77a7846493c8f  openapi-generator-password-config.yaml
+6090b34100714e5768860b756b11058b77b9bb40af63de50a0b83ddf6ad5cf62  openapi-generator-release.ignore
 1d462b86cc428584ecd18db9b448915abe4547c0e872623ebacb22ac72671758  phone/src/main/kotlin/io/medtracker/client/apis/AccessGrantsApi.kt
 dae43d5de85132166ef330bb45af4fca86db1f035f610b85ddae23467417b9c4  phone/src/main/kotlin/io/medtracker/client/apis/AccountApi.kt
 21dc85894a365f1d555f438450afa70da869cacc8972241f6382b35722c52138  phone/src/main/kotlin/io/medtracker/client/apis/AppTokensApi.kt
 c5066c36d68fb5c1d85c3245b4d886949d90bac1201f639d1a806eb9fd6694cf  phone/src/main/kotlin/io/medtracker/client/apis/AuditLogsApi.kt
-c24348fefea819e0c8463fd9511ebada1e247564689bec090a1a5a9429ee99b8  phone/src/main/kotlin/io/medtracker/client/apis/AuthenticationApi.kt
+6f2e1120b2db1ee728ebef1cc47db4a3be0566f2ca004dab4eee996982fbb2dd  phone/src/main/kotlin/io/medtracker/client/apis/AuthenticationApi.kt
 2ef25f043b0ceea6c207893135bd5e465dc267988ffdd0319f0ba0b0b7c2e4b4  phone/src/main/kotlin/io/medtracker/client/apis/CapabilitiesApi.kt
 468be8108a7faf4830d7152b510d6c16372c297fc39f381be1b7a0db7ee66405  phone/src/main/kotlin/io/medtracker/client/apis/DevicesApi.kt
 5f3f5328e88175036ad35e2191b3a6fa69c90d9f1f689d9a49038ae3e6552f66  phone/src/main/kotlin/io/medtracker/client/apis/DosageOptionsApi.kt
@@ -23,7 +25,7 @@ e8ed1549d3da788fb35b9820a68bcf0b9cd07f022d5022110e37e5a894ff97cd  phone/src/main
 aa76e689bb885ffb22c2c733626aee2ec3d2c488c5229a08f35eb238109df8a4  phone/src/main/kotlin/io/medtracker/client/apis/PeopleApi.kt
 3fad581b6755bba4bcf80a1ffd100b7ccb076386c8b871b32c8f0a9b8786a4ef  phone/src/main/kotlin/io/medtracker/client/apis/PersonMedicationsApi.kt
 a9220f5b22be8d6bce1f79092f6226d57ef7baf06321250491801128f7dc9ac5  phone/src/main/kotlin/io/medtracker/client/apis/PortabilityApi.kt
-287c4d9fc0eb43953df10cba0f9b80b6289067c2c84ed10a620dda36fbd88c3a  phone/src/main/kotlin/io/medtracker/client/apis/PublicApi.kt
+f92d983ad626ff5d51e68231f4b8250d4e5e60a9010814bd42a742ca0aba5955  phone/src/main/kotlin/io/medtracker/client/apis/PublicApi.kt
 1523a55eb44cf9acfdab82742cca863c1441622c363fe0807d7bd962fa11814c  phone/src/main/kotlin/io/medtracker/client/apis/SchedulesApi.kt
 12edf316b8b60eb9ea06abbd1fc1b82226e5371605e561ead6c96aa4c14e34a2  phone/src/main/kotlin/io/medtracker/client/apis/SynchronizationApi.kt
 2e2c19601c36e32079b46106d5320f1b60f6fdda9672a107f53f068747a4906c  phone/src/main/kotlin/io/medtracker/client/infrastructure/ApiAbstractions.kt
@@ -65,7 +67,6 @@ a7b867b75ab9906ce3e9e32677701847b4a1526f8f442dfada1db3478595b652  phone/src/main
 05430747a62f2e38c3de7f14fb3f91d57c6b7b0a1295d7a92b8b2f20dc962d2d  phone/src/main/kotlin/io/medtracker/client/models/AuthHouseholdCollectionResponse.kt
 e5df51f9f9f981b45297d6651c28b8bdce106f25be5bcc49aa0a1b9da72e6141  phone/src/main/kotlin/io/medtracker/client/models/AuthHouseholdMembership.kt
 fc3c24e14c8a11efa5d5dcaea21d445892907002d59e996973847619493ce297  phone/src/main/kotlin/io/medtracker/client/models/AuthLoginData.kt
-c4235aa904f50d07b5e7aedc37adae68b9ec28ab161b49661d988b26e3253747  phone/src/main/kotlin/io/medtracker/client/models/AuthLoginRequest.kt
 014facff1568da0dfb6156b9cb4a956259449b74cd419f8146d80aae31450ddd  phone/src/main/kotlin/io/medtracker/client/models/AuthLoginResponse.kt
 985dc54016c66fe6cd788f33ae52aaf4138a34e518de35572c17520f4a0d979d  phone/src/main/kotlin/io/medtracker/client/models/AuthOidcExchangeRequest.kt
 41b8394f1772e9b3d4be4dfe71e85fb4944e4f7f04d9721e1854d82b92613f95  phone/src/main/kotlin/io/medtracker/client/models/AuthRefreshData.kt
@@ -222,3 +223,5 @@ c00e983af4e3b5fb9031906031ed2916c098df51aae9aa9c82ac7ffc91e20498  phone/src/main
 379e821436c93e5252bdd4163963906e556ba6e4d4c00a70464ec1a03ac199a9  phone/src/main/kotlin/io/medtracker/client/models/SyncSnapshot.kt
 33e7ed0f405fe83d50b43fd82aa206c5bbdc43a8422fa91ab7f6659f0725e7d8  phone/src/main/kotlin/io/medtracker/client/models/SyncSnapshotResponse.kt
 eccee1d899d116f98b7ad653401014d4e50d13438176079a790e64b6de068e0d  phone/src/main/kotlin/io/medtracker/client/models/SyncTombstone.kt
+c4235aa904f50d07b5e7aedc37adae68b9ec28ab161b49661d988b26e3253747  phone/src/nonRelease/kotlin/io/medtracker/client/models/AuthLoginRequest.kt
+e1468932062aa4235a1df43b2420289d53d9bc217d6664839f264f8799bbd145  phone/src/nonRelease/kotlin/io/medtracker/password/client/apis/AuthenticationApi.kt
