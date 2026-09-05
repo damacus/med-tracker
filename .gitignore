@@ -71,3 +71,9 @@ vendor/**/*
 
 # Mutant incremental result cache
 .mutant/
+/mobile/android/.gradle/
+/mobile/android/.kotlin/
+/mobile/android/**/build/
+/mobile/android/local.properties
+/mobile/android/.idea/
+/mobile/android/*.iml

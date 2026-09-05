@@ -1,0 +1,6499 @@
+openapi: 3.0.3
+info:
+  title: MedTracker API
+  version: v1
+  description: Hosted MedTracker API contract for mobile clients, API clients, and portable migration.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: Public
+    description: Unauthenticated capability discovery and session-establishment operations.
+  - name: Account
+    description: Authenticated account and session operations outside a selected household.
+  - name: Household
+    description: Ordinary operations within a selected household, including portability and synchronization.
+  - name: Household administration
+    description: Administrative operations scoped to a selected household.
+  - name: Capabilities
+    description: API capability discovery.
+  - name: Authentication
+    description: Login, session, and credential lifecycle operations.
+  - name: People
+    description: Household people and current-profile operations.
+  - name: Locations
+    description: Household location records.
+  - name: Medications
+    description: Medication records and inventory/reorder actions.
+  - name: Dosage options
+    description: Medication dosage-option records.
+  - name: Health events
+    description: Health-event records.
+  - name: Schedules
+    description: Medication schedules and lifecycle actions.
+  - name: Person medications
+    description: Medication assignments to people.
+  - name: Medication takes
+    description: Medication administration records.
+  - name: Notification preferences
+    description: Signed-in notification preferences.
+  - name: Devices
+    description: Native device tokens and web push subscriptions.
+  - name: Medication lookup
+    description: External medication lookup operations.
+  - name: Medication suggestions
+    description: AI-assisted medication setup suggestions.
+  - name: Portability
+    description: Portable household import/export and data-export operations.
+  - name: Synchronization
+    description: Mobile snapshots and incremental synchronization feeds/batches.
+  - name: Household settings
+    description: Household administration settings.
+  - name: Memberships
+    description: Household membership administration.
+  - name: Invitations
+    description: Household invitation administration.
+  - name: Access grants
+    description: Person access-grant administration.
+  - name: App tokens
+    description: Household API app-token administration.
+  - name: Audit logs
+    description: Household security audit events.
+paths:
+  /capabilities:
+    get:
+      operationId: getCapabilities
+      tags:
+        - Public
+        - Capabilities
+      summary: Describe supported API features, diagnostics, and first-party client-tool contracts.
+      security: []
+      responses:
+        '200':
+          description: API capability document, including CLI and MCP availability.
+          headers:
+            Cache-Control:
+              description: Prevent capability responses from being stored by intermediaries or clients.
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilitiesResponse'
+  /auth/login:
+    post:
+      operationId: createLoginSession
+      tags:
+        - Public
+        - Authentication
+      summary: Exchange development or migration password credentials for API tokens.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLoginRequest'
+      responses:
+        '201':
+          description: API session created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthLoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/refresh:
+    post:
+      operationId: refreshSession
+      tags:
+        - Account
+        - Authentication
+      summary: Rotate an API session refresh token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRefreshRequest'
+      responses:
+        '200':
+          description: New access and refresh tokens.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthRefreshResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/oidc_exchange:
+    post:
+      operationId: exchangeOidcSession
+      tags:
+        - Public
+        - Authentication
+      summary: Exchange a hosted OIDC ID token for an API session.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthOidcExchangeRequest'
+      responses:
+        '201':
+          description: API session created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthLoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/households:
+    get:
+      operationId: listHouseholds
+      tags:
+        - Account
+        - Authentication
+      summary: List households available to the current API credential.
+      responses:
+        '200':
+          description: Household collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthHouseholdCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/sessions:
+    get:
+      operationId: listSessions
+      tags:
+        - Account
+        - Authentication
+      summary: List active API sessions for the current account.
+      responses:
+        '200':
+          description: API session collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/sessions/{id}:
+    delete:
+      operationId: deleteSession
+      tags:
+        - Account
+        - Authentication
+      summary: Revoke an API session.
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: API session revoked.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/logout:
+    delete:
+      operationId: logoutSession
+      tags:
+        - Account
+        - Authentication
+      summary: Revoke the current API session or app token.
+      responses:
+        '204':
+          description: Credential revoked.
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/me:
+    get:
+      operationId: getCurrentProfile
+      tags:
+        - Household
+        - People
+      summary: Read the current account and person profile for a household session.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Current user profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/people:
+    get:
+      operationId: listPeople
+      tags:
+        - Household
+        - People
+      summary: List visible people in the household.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - $ref: '#/components/parameters/updated_since'
+      responses:
+        '200':
+          description: People collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    post:
+      operationId: createPerson
+      tags:
+        - Household
+        - People
+      summary: Create a person in the household.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonCreateRequest'
+      responses:
+        '201':
+          description: Person created.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/people/{id}:
+    get:
+      operationId: getPerson
+      tags:
+        - Household
+        - People
+      summary: Read a person.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Person resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    patch:
+      operationId: updatePerson
+      tags:
+        - Household
+        - People
+      summary: Update a person.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonUpdateRequest'
+      responses:
+        '200':
+          description: Person updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    put:
+      operationId: updatePersonWithPut
+      tags:
+        - Household
+        - People
+      summary: Update a person using the PUT route.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonUpdateRequest'
+      responses:
+        '200':
+          description: Person updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/locations:
+    get:
+      operationId: listLocations
+      tags:
+        - Household
+        - Locations
+      summary: List visible locations.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - $ref: '#/components/parameters/updated_since'
+      responses:
+        '200':
+          description: Locations collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/locations/{id}:
+    get:
+      operationId: getLocation
+      tags:
+        - Household
+        - Locations
+      summary: Read a location.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+      responses:
+        '200':
+          description: Location resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/medications:
+    get:
+      operationId: listMedications
+      tags:
+        - Household
+        - Medications
+      summary: List visible medications.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - $ref: '#/components/parameters/updated_since'
+      responses:
+        '200':
+          description: Medications collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    post:
+      operationId: createMedication
+      tags:
+        - Household
+        - Medications
+      summary: Create a medication.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationCreateRequest'
+      responses:
+        '201':
+          description: Medication created.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/medications/{id}:
+    get:
+      operationId: getMedication
+      tags:
+        - Household
+        - Medications
+      summary: Read a medication.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+      responses:
+        '200':
+          description: Medication resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    patch:
+      operationId: updateMedication
+      tags:
+        - Household
+        - Medications
+      summary: Update a medication.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationUpdateRequest'
+      responses:
+        '200':
+          description: Medication updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    put:
+      operationId: replaceMedication
+      tags:
+        - Household
+        - Medications
+      summary: Replace a medication.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationUpdateRequest'
+      responses:
+        '200':
+          description: Medication updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/medications/{id}/adjust_inventory:
+    patch:
+      operationId: adjustMedicationInventory
+      tags:
+        - Household
+        - Medications
+      summary: Adjust medication inventory.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationInventoryAdjustmentRequest'
+      responses:
+        '200':
+          description: Medication inventory adjusted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/medications/{id}/mark_as_ordered:
+    patch:
+      operationId: markMedicationAsOrdered
+      tags:
+        - Household
+        - Medications
+      summary: Mark a medication reorder as ordered.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationOrderDetailsRequest'
+      responses:
+        '200':
+          description: Reorder status updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/medications/{id}/mark_as_received:
+    patch:
+      operationId: markMedicationAsReceived
+      tags:
+        - Household
+        - Medications
+      summary: Mark a medication reorder as received.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+      responses:
+        '200':
+          description: Reorder status updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/dosage_options:
+    get:
+      operationId: listDosageOptions
+      tags:
+        - Household
+        - Dosage options
+      summary: List medication dosage options.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - $ref: '#/components/parameters/updated_since'
+      responses:
+        '200':
+          description: Dosage option collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DosageOptionCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    post:
+      operationId: createDosageOption
+      tags:
+        - Household
+        - Dosage options
+      summary: Create a medication dosage option.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DosageOptionCreateRequest'
+      responses:
+        '201':
+          description: Dosage option created.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DosageOptionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/dosage_options/{id}:
+    get:
+      operationId: getDosageOption
+      tags:
+        - Household
+        - Dosage options
+      summary: Read a medication dosage option.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+      responses:
+        '200':
+          description: Dosage option resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DosageOptionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    patch:
+      operationId: updateDosageOption
+      tags:
+        - Household
+        - Dosage options
+      summary: Update a medication dosage option.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DosageOptionUpdateRequest'
+      responses:
+        '200':
+          description: Dosage option updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DosageOptionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    put:
+      operationId: replaceDosageOption
+      tags:
+        - Household
+        - Dosage options
+      summary: Replace a medication dosage option.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DosageOptionUpdateRequest'
+      responses:
+        '200':
+          description: Dosage option updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DosageOptionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/health_events:
+    get:
+      operationId: listHealthEvents
+      tags:
+        - Household
+        - Health events
+      summary: List visible health events.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - $ref: '#/components/parameters/updated_since'
+      responses:
+        '200':
+          description: Health event collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthEventCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    post:
+      operationId: createHealthEvent
+      tags:
+        - Household
+        - Health events
+      summary: Create a health event.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HealthEventCreateRequest'
+      responses:
+        '201':
+          description: Health event created.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthEventResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/health_events/{id}:
+    get:
+      operationId: getHealthEvent
+      tags:
+        - Household
+        - Health events
+      summary: Read a health event.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+      responses:
+        '200':
+          description: Health event resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthEventResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    patch:
+      operationId: updateHealthEvent
+      tags:
+        - Household
+        - Health events
+      summary: Update a health event.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HealthEventUpdateRequest'
+      responses:
+        '200':
+          description: Health event updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthEventResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    put:
+      operationId: replaceHealthEvent
+      tags:
+        - Household
+        - Health events
+      summary: Replace a health event.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HealthEventUpdateRequest'
+      responses:
+        '200':
+          description: Health event updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthEventResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/schedules:
+    get:
+      operationId: listSchedules
+      tags:
+        - Household
+        - Schedules
+      summary: List visible schedules.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - $ref: '#/components/parameters/updated_since'
+      responses:
+        '200':
+          description: Schedules collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    post:
+      operationId: createSchedule
+      tags:
+        - Household
+        - Schedules
+      summary: Create a schedule.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleCreateRequest'
+      responses:
+        '201':
+          description: Schedule created.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/schedules/{id}:
+    get:
+      operationId: getSchedule
+      tags:
+        - Household
+        - Schedules
+      summary: Read a schedule.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+      responses:
+        '200':
+          description: Schedule resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    patch:
+      operationId: updateSchedule
+      tags:
+        - Household
+        - Schedules
+      summary: Update a schedule.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleUpdateRequest'
+      responses:
+        '200':
+          description: Schedule updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    put:
+      operationId: replaceSchedule
+      tags:
+        - Household
+        - Schedules
+      summary: Replace a schedule.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleUpdateRequest'
+      responses:
+        '200':
+          description: Schedule updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/schedules/{id}/pause:
+    patch:
+      operationId: pauseSchedule
+      tags:
+        - Household
+        - Schedules
+      summary: Pause a schedule.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+      responses:
+        '200':
+          description: Schedule paused.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/schedules/{id}/resume:
+    patch:
+      operationId: resumeSchedule
+      tags:
+        - Household
+        - Schedules
+      summary: Resume a schedule.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+      responses:
+        '200':
+          description: Schedule resumed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/person_medications:
+    get:
+      operationId: listPersonMedications
+      tags:
+        - Household
+        - Person medications
+      summary: List visible person medication assignments.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - $ref: '#/components/parameters/updated_since'
+      responses:
+        '200':
+          description: Person medication collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMedicationCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    post:
+      operationId: createPersonMedication
+      tags:
+        - Household
+        - Person medications
+      summary: Create a person medication assignment.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonMedicationCreateRequest'
+      responses:
+        '201':
+          description: Person medication created.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMedicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/person_medications/{id}:
+    get:
+      operationId: getPersonMedication
+      tags:
+        - Household
+        - Person medications
+      summary: Read a person medication assignment.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+      responses:
+        '200':
+          description: Person medication resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMedicationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    patch:
+      operationId: updatePersonMedication
+      tags:
+        - Household
+        - Person medications
+      summary: Update a person medication assignment.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonMedicationUpdateRequest'
+      responses:
+        '200':
+          description: Person medication updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMedicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    put:
+      operationId: replacePersonMedication
+      tags:
+        - Household
+        - Person medications
+      summary: Replace a person medication assignment.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_match'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonMedicationUpdateRequest'
+      responses:
+        '200':
+          description: Person medication updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMedicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/person_medications/{id}/pause:
+    patch:
+      operationId: pausePersonMedication
+      tags:
+        - Household
+        - Person medications
+      summary: Pause a person medication assignment.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+      responses:
+        '200':
+          description: Person medication paused.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMedicationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/person_medications/{id}/resume:
+    patch:
+      operationId: resumePersonMedication
+      tags:
+        - Household
+        - Person medications
+      summary: Resume a person medication assignment.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+      responses:
+        '200':
+          description: Person medication resumed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMedicationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/person_medications/{id}/reorder:
+    patch:
+      operationId: reorderPersonMedication
+      tags:
+        - Household
+        - Person medications
+      summary: Reorder a person medication assignment.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonMedicationReorderRequest'
+      responses:
+        '200':
+          description: Person medication reordered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonMedicationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/medication_takes:
+    get:
+      operationId: listMedicationTakes
+      tags:
+        - Household
+        - Medication takes
+      summary: List visible medication takes.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - $ref: '#/components/parameters/updated_since'
+      responses:
+        '200':
+          description: Medication takes collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationTakeCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    post:
+      operationId: createMedicationTake
+      tags:
+        - Household
+        - Medication takes
+      summary: Record a medication take.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationTakeCreateRequest'
+      responses:
+        '200':
+          description: Existing medication take returned for a repeated client UUID.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationTakeResponse'
+        '201':
+          description: Medication take created.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationTakeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/notification_preference:
+    get:
+      operationId: getNotificationPreference
+      tags:
+        - Household
+        - Notification preferences
+      summary: Read the signed-in person's notification preference.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Notification preference resource.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferenceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    patch:
+      operationId: updateNotificationPreference
+      tags:
+        - Household
+        - Notification preferences
+      summary: Update the signed-in person's notification preference.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationPreferenceUpdateRequest'
+      responses:
+        '200':
+          description: Notification preference updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferenceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    put:
+      operationId: replaceNotificationPreference
+      tags:
+        - Household
+        - Notification preferences
+      summary: Replace the signed-in person's notification preference.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationPreferenceUpdateRequest'
+      responses:
+        '200':
+          description: Notification preference updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferenceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/native_device_tokens:
+    post:
+      operationId: createNativeDeviceToken
+      tags:
+        - Household
+        - Devices
+      summary: Register a native device token.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NativeDeviceTokenCreateRequest'
+      responses:
+        '201':
+          description: Device token registered.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/native_device_tokens/{id}:
+    delete:
+      operationId: deleteNativeDeviceToken
+      tags:
+        - Household
+        - Devices
+      summary: Revoke a native device token.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/native_device_token'
+      responses:
+        '204':
+          description: Device token revoked.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/push_subscription:
+    post:
+      operationId: createPushSubscription
+      tags:
+        - Household
+        - Devices
+      summary: Register a web push subscription.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushSubscriptionCreateRequest'
+      responses:
+        '201':
+          description: Push subscription registered.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    delete:
+      operationId: deletePushSubscription
+      tags:
+        - Household
+        - Devices
+      summary: Revoke a web push subscription.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/push_subscription_endpoint'
+      responses:
+        '204':
+          description: Push subscription revoked.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/push_subscription/test:
+    post:
+      operationId: testPushSubscription
+      tags:
+        - Household
+        - Devices
+      summary: Send a test push notification.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '204':
+          description: Test notification queued.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          description: The test notification could not be sent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushTestFailedErrorEnvelope'
+  /households/{household_id}/medication_lookup:
+    get:
+      operationId: searchMedicationLookup
+      tags:
+        - Household
+        - Medication lookup
+      summary: Search external medication lookup data.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: q
+          in: query
+          required: false
+          description: Medicine name, dm+d code, or barcode to search for.
+          schema:
+            type: string
+        - name: form
+          in: query
+          required: false
+          description: Dosage form used to filter search results.
+          schema:
+            type: string
+        - name: strength
+          in: query
+          required: false
+          description: Medicine strength used to filter search results.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Medication lookup results.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationLookupResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          description: Medication lookup is temporarily unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationLookupUnavailableResponse'
+  /households/{household_id}/ai_medication_suggestions:
+    post:
+      operationId: generateAiMedicationSuggestions
+      tags:
+        - Household
+        - Medication suggestions
+      summary: Generate medication setup suggestions.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiMedicationSuggestionRequest'
+      responses:
+        '200':
+          description: Suggestion payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiMedicationSuggestionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: The household or paid suggestion feature is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/portable_export:
+    get:
+      operationId: exportPortableHouseholdBundle
+      tags:
+        - Household
+        - Portability
+      summary: Export an encrypted portable household bundle.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/portable_passphrase'
+      responses:
+        '200':
+          description: Encrypted portable bundle.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortableEnvelopeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/mobile_snapshot:
+    get:
+      operationId: getMobileSnapshot
+      tags:
+        - Household
+        - Synchronization
+      summary: Read a plaintext mobile sync snapshot over authenticated transport.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Mobile snapshot payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortableSnapshotResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/portable_imports/dry_run:
+    post:
+      operationId: dryRunPortableImport
+      tags:
+        - Household
+        - Portability
+      summary: Validate an encrypted portable import without writing data.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/portable_passphrase'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PortableImportRequest'
+      responses:
+        '200':
+          description: Import validation summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortableImportResultResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/portable_imports:
+    post:
+      operationId: createPortableImport
+      tags:
+        - Household
+        - Portability
+      summary: Apply an encrypted portable import transactionally.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/portable_passphrase'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PortableImportRequest'
+      responses:
+        '201':
+          description: Import applied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortableImportResultResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: The import was not applied or its encrypted bundle is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortableImportUnprocessableResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/data_exports/{mode}:
+    get:
+      operationId: getDataExport
+      tags:
+        - Household
+        - Portability
+      summary: Export household data in a selected backup/profile mode.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: mode
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - encrypted_migration_bundle
+              - backup_zip
+              - health_data_json
+        - $ref: '#/components/parameters/optional_portable_passphrase'
+      responses:
+        '200':
+          description: Export payload.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataExportResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/sync/snapshot:
+    get:
+      operationId: getSyncSnapshot
+      tags:
+        - Household
+        - Synchronization
+      summary: Read a portable v2 sync snapshot.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Sync snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncSnapshotResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/sync/changes:
+    get:
+      operationId: getSyncChanges
+      tags:
+        - Household
+        - Synchronization
+      summary: Read sync changes after a cursor.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: cursor
+          in: query
+          required: true
+          description: Return changes and tombstones at or after this timestamp.
+          schema:
+            $ref: '#/components/schemas/Timestamp'
+      responses:
+        '200':
+          description: Change feed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncChangesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/sync/batches:
+    post:
+      operationId: createSyncBatch
+      tags:
+        - Household
+        - Synchronization
+      summary: Apply transactional sync batch operations.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncBatchRequest'
+      responses:
+        '201':
+          description: Batch applied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncBatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/admin/settings:
+    get:
+      operationId: getHouseholdAdminSettings
+      tags:
+        - Household administration
+        - Household settings
+      summary: Read household administration settings.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Household settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdAdminSettingsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    patch:
+      operationId: updateHouseholdAdminSettings
+      tags:
+        - Household administration
+        - Household settings
+      summary: Update household administration settings.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HouseholdAdminSettingsUpdateRequest'
+      responses:
+        '200':
+          description: Household settings updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdAdminSettingsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    put:
+      operationId: replaceHouseholdAdminSettings
+      tags:
+        - Household administration
+        - Household settings
+      summary: Replace household administration settings.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HouseholdAdminSettingsUpdateRequest'
+      responses:
+        '200':
+          description: Household settings updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdAdminSettingsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/admin/memberships:
+    get:
+      operationId: listMemberships
+      tags:
+        - Household administration
+        - Memberships
+      summary: List household memberships.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Membership collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdMembershipCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/admin/memberships/{id}:
+    patch:
+      operationId: updateMembership
+      tags:
+        - Household administration
+        - Memberships
+      summary: Update a household membership.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HouseholdMembershipUpdateRequest'
+      responses:
+        '200':
+          description: Membership updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdMembershipResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    put:
+      operationId: replaceMembership
+      tags:
+        - Household administration
+        - Memberships
+      summary: Replace a household membership.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HouseholdMembershipUpdateRequest'
+      responses:
+        '200':
+          description: Membership updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdMembershipResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    delete:
+      operationId: deleteMembership
+      tags:
+        - Household administration
+        - Memberships
+      summary: Revoke a household membership.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: Membership revoked.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/admin/invitations:
+    get:
+      operationId: listInvitations
+      tags:
+        - Household administration
+        - Invitations
+      summary: List household invitations.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Invitation collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdInvitationCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    post:
+      operationId: createInvitation
+      tags:
+        - Household administration
+        - Invitations
+      summary: Create a household invitation.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HouseholdInvitationCreateRequest'
+      responses:
+        '201':
+          description: Invitation created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdInvitationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/admin/invitations/{id}:
+    delete:
+      operationId: deleteInvitation
+      tags:
+        - Household administration
+        - Invitations
+      summary: Revoke a household invitation.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: Invitation revoked.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/admin/person_access_grants:
+    get:
+      operationId: listPersonAccessGrants
+      tags:
+        - Household administration
+        - Access grants
+      summary: List person access grants.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Access grant collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonAccessGrantCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    post:
+      operationId: createPersonAccessGrant
+      tags:
+        - Household administration
+        - Access grants
+      summary: Create a person access grant.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonAccessGrantCreateRequest'
+      responses:
+        '201':
+          description: Access grant created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonAccessGrantResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/admin/person_access_grants/{id}:
+    delete:
+      operationId: deletePersonAccessGrant
+      tags:
+        - Household administration
+        - Access grants
+      summary: Revoke a person access grant.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: Access grant revoked.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/admin/app_tokens:
+    get:
+      operationId: listAppTokens
+      tags:
+        - Household administration
+        - App tokens
+      summary: List API app tokens.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: API app token collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiAppTokenCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    post:
+      operationId: createAppToken
+      tags:
+        - Household administration
+        - App tokens
+      summary: Create an API app token.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiAppTokenCreateRequest'
+      responses:
+        '201':
+          description: API app token created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiAppTokenCreateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/admin/app_tokens/{id}:
+    delete:
+      operationId: deleteAppToken
+      tags:
+        - Household administration
+        - App tokens
+      summary: Revoke an API app token.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: API app token revoked.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/admin/audit_logs:
+    get:
+      operationId: listAuditLogs
+      tags:
+        - Household administration
+        - Audit logs
+      summary: List household security audit events.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Audit event collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecurityAuditEventCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+  parameters:
+    household_id:
+      name: household_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/NumericId'
+    id:
+      name: id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/NumericId'
+    resource_id:
+      name: id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/ResourceIdentifier'
+    native_device_token:
+      name: id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/DeviceTokenIdentifier'
+    push_subscription_endpoint:
+      name: endpoint
+      in: query
+      required: true
+      schema:
+        type: string
+        format: uri
+        pattern: '^https://'
+    page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    per_page:
+      name: per_page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    updated_since:
+      name: updated_since
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/Timestamp'
+    if_match:
+      name: If-Match
+      in: header
+      required: false
+      schema:
+        type: string
+    portable_passphrase:
+      name: X-MedTracker-Portable-Passphrase
+      in: header
+      required: true
+      description: Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
+      schema:
+        type: string
+        minLength: 1
+    optional_portable_passphrase:
+      name: X-MedTracker-Portable-Passphrase
+      in: header
+      required: false
+      description: Required only for the encrypted migration bundle mode.
+      schema:
+        type: string
+        minLength: 1
+  headers:
+    etag:
+      description: Version identifier for optimistic concurrency.
+      required: true
+      schema:
+        type: string
+    retry_after:
+      description: Seconds until the request may be retried.
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+  responses:
+    BadRequest:
+      description: A required request parameter is missing or invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Unauthorized:
+      description: The bearer credential is absent, invalid, expired, revoked, or no longer active.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Forbidden:
+      description: The credential cannot perform the operation in the routed household or person scope.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    AdminWriteForbidden:
+      description: The credential cannot manage the household, or fresh MFA or OIDC MFA proof is required.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AdminWriteForbiddenErrorEnvelope'
+    NotFound:
+      description: The resource does not exist inside the authorized scope.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    ValidationFailed:
+      description: The submitted attributes or filters are invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Conflict:
+      description: The resource or idempotency state conflicts with the requested mutation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    PreconditionRequired:
+      description: The mutation requires a version precondition.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    RateLimited:
+      description: The request exceeded an API rate limit.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/retry_after'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RateLimitErrorEnvelope'
+  schemas:
+    NumericId:
+      type: integer
+      minimum: 1
+    PortableId:
+      type: string
+      format: uuid
+    ResourceIdentifier:
+      type: string
+      minLength: 1
+      pattern: '^(?:[1-9][0-9]*|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$'
+    DeviceTokenIdentifier:
+      type: string
+      minLength: 1
+    NullableNumericId:
+      type: integer
+      minimum: 1
+      nullable: true
+    NullablePortableId:
+      type: string
+      format: uuid
+      nullable: true
+    Timestamp:
+      type: string
+      format: date-time
+    NullableTimestamp:
+      type: string
+      format: date-time
+      nullable: true
+    Date:
+      type: string
+      format: date
+    DecimalValue:
+      type: string
+      pattern: '^-?[0-9]+(?:\.[0-9]+)?$'
+    NullableDecimalValue:
+      type: string
+      pattern: '^-?[0-9]+(?:\.[0-9]+)?$'
+      nullable: true
+    PaginationMeta:
+      type: object
+      additionalProperties: false
+      required:
+        - page
+        - per_page
+        - total_count
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        per_page:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total_count:
+          type: integer
+          minimum: 0
+    PersonAttributes:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+          nullable: true
+        date_of_birth:
+          $ref: '#/components/schemas/Date'
+        person_type:
+          type: string
+          enum:
+            - adult
+            - minor
+            - dependent_adult
+        has_capacity:
+          type: boolean
+    HouseholdAdminSettings:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - slug
+        - timezone
+        - subscription_plan
+        - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        name:
+          type: string
+          minLength: 1
+        slug:
+          type: string
+          minLength: 1
+        timezone:
+          type: string
+          minLength: 1
+        subscription_plan:
+          type: string
+          enum:
+            - free
+            - family_plus
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+    HouseholdAdminSettingsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/HouseholdAdminSettings'
+    HouseholdAdminSettingsAttributes:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+        timezone:
+          type: string
+          minLength: 1
+        subscription_plan:
+          type: string
+          enum:
+            - free
+            - family_plus
+    HouseholdAdminSettingsUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - household
+      properties:
+        household:
+          $ref: '#/components/schemas/HouseholdAdminSettingsAttributes'
+    HouseholdMembership:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - account_id
+        - email
+        - person_id
+        - person_name
+        - role
+        - status
+        - permissions_version
+        - joined_at
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        account_id:
+          $ref: '#/components/schemas/NumericId'
+        email:
+          type: string
+          format: email
+        person_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        person_name:
+          type: string
+          minLength: 1
+          nullable: true
+        role:
+          type: string
+          enum:
+            - owner
+            - administrator
+            - member
+        status:
+          type: string
+          enum:
+            - active
+            - suspended
+            - revoked
+        permissions_version:
+          type: integer
+          minimum: 0
+        joined_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+    HouseholdMembershipResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/HouseholdMembership'
+    HouseholdMembershipCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/HouseholdMembership'
+    HouseholdMembershipAttributes:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        role:
+          type: string
+          enum:
+            - owner
+            - administrator
+            - member
+        status:
+          type: string
+          enum:
+            - active
+            - suspended
+            - revoked
+        person_id:
+          $ref: '#/components/schemas/NullableNumericId'
+    HouseholdMembershipUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - household_membership
+      properties:
+        household_membership:
+          $ref: '#/components/schemas/HouseholdMembershipAttributes'
+    HouseholdInvitation:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - email
+        - membership_role
+        - pending
+        - accepted_at
+        - revoked_at
+        - expires_at
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        email:
+          type: string
+          format: email
+        membership_role:
+          type: string
+          enum:
+            - administrator
+            - member
+        pending:
+          type: boolean
+        accepted_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        revoked_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        expires_at:
+          $ref: '#/components/schemas/Timestamp'
+    HouseholdInvitationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/HouseholdInvitation'
+    HouseholdInvitationCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/HouseholdInvitation'
+    HouseholdInvitationAttributes:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - membership_role
+      properties:
+        email:
+          type: string
+          format: email
+        membership_role:
+          type: string
+          enum:
+            - administrator
+            - member
+    HouseholdInvitationCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - household_invitation
+      properties:
+        household_invitation:
+          $ref: '#/components/schemas/HouseholdInvitationAttributes'
+    PersonAccessGrant:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - household_membership_id
+        - person_id
+        - person_name
+        - access_level
+        - relationship_type
+        - expires_at
+        - revoked_at
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        household_membership_id:
+          $ref: '#/components/schemas/NumericId'
+        person_id:
+          $ref: '#/components/schemas/NumericId'
+        person_name:
+          type: string
+          minLength: 1
+        access_level:
+          type: string
+          enum:
+            - view
+            - record
+            - manage
+        relationship_type:
+          type: string
+          enum:
+            - self
+            - parent
+            - family_member
+            - carer
+            - professional
+        expires_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        revoked_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+    PersonAccessGrantResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/PersonAccessGrant'
+    PersonAccessGrantCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PersonAccessGrant'
+    PersonAccessGrantAttributes:
+      type: object
+      additionalProperties: false
+      required:
+        - household_membership_id
+        - person_id
+        - access_level
+        - relationship_type
+      properties:
+        household_membership_id:
+          $ref: '#/components/schemas/NumericId'
+        person_id:
+          $ref: '#/components/schemas/NumericId'
+        access_level:
+          type: string
+          enum:
+            - view
+            - record
+            - manage
+        relationship_type:
+          type: string
+          enum:
+            - self
+            - parent
+            - family_member
+            - carer
+            - professional
+        expires_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+    PersonAccessGrantCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - person_access_grant
+      properties:
+        person_access_grant:
+          $ref: '#/components/schemas/PersonAccessGrantAttributes'
+    ApiAppTokenSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - last_used_at
+        - revoked_at
+        - permissions_version
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        name:
+          type: string
+          minLength: 1
+        last_used_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        revoked_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        permissions_version:
+          type: integer
+          minimum: 0
+    ApiAppTokenCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiAppTokenSummary'
+    ApiAppTokenAttributes:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+    ApiAppTokenCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - api_app_token
+      properties:
+        api_app_token:
+          $ref: '#/components/schemas/ApiAppTokenAttributes'
+    ApiAppTokenCreated:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - last_used_at
+        - revoked_at
+        - permissions_version
+        - token
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        name:
+          type: string
+          minLength: 1
+        last_used_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        revoked_at:
+          $ref: '#/components/schemas/NullableTimestamp'
+        permissions_version:
+          type: integer
+          minimum: 0
+        token:
+          type: string
+          pattern: '^mt_app_'
+          description: One-time bearer token. Store it securely because later responses omit it.
+    ApiAppTokenCreateResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ApiAppTokenCreated'
+    SecurityAuditEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - event_type
+        - actor_account_id
+        - actor_membership_id
+        - request_id
+        - metadata
+        - created_at
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        event_type:
+          type: string
+          minLength: 1
+        actor_account_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        actor_membership_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        request_id:
+          type: string
+          minLength: 1
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties: true
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    SecurityAuditEventCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/SecurityAuditEvent'
+    MedicationLookupResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - results
+        - permissions
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicationLookupResult'
+        permissions:
+          $ref: '#/components/schemas/MedicationLookupPermissions'
+        review_guidance:
+          $ref: '#/components/schemas/MedicationLookupReviewGuidance'
+        query:
+          type: string
+          minLength: 1
+        barcode:
+          type: string
+          nullable: true
+        barcode_resolution:
+          $ref: '#/components/schemas/MedicationLookupBarcodeResolution'
+        form:
+          type: string
+          nullable: true
+        strength:
+          type: string
+          nullable: true
+    MedicationLookupUnavailableResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - results
+        - error
+      properties:
+        results:
+          type: array
+          maxItems: 0
+          items:
+            $ref: '#/components/schemas/MedicationLookupResult'
+        error:
+          $ref: '#/components/schemas/MedicationLookupUnavailableError'
+    MedicationLookupUnavailableError:
+      type: string
+      enum:
+        - Medication search is temporarily unavailable.
+    MedicationLookupPermissions:
+      type: object
+      additionalProperties: false
+      required:
+        - can_create
+        - can_update
+      properties:
+        can_create:
+          type: boolean
+        can_update:
+          type: boolean
+    MedicationLookupBarcodeResolution:
+      type: object
+      nullable: true
+      additionalProperties: false
+      required:
+        - status
+        - source
+      properties:
+        status:
+          type: string
+          enum:
+            - resolved
+        source:
+          type: string
+          nullable: true
+    MedicationLookupReviewGuidance:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - available
+            - unavailable
+    MedicationLookupResult:
+      type: object
+      additionalProperties: false
+      required:
+        - barcode
+        - code
+        - name
+        - description
+        - display
+        - system
+        - concept_class
+        - category
+        - trade_family
+        - trade_family_group
+        - package_size
+        - package_quantity
+        - package_unit
+        - directions
+        - warnings
+        - pil_url
+        - spc_url
+        - concept_class_label
+        - source_label
+        - match_reason
+        - match_reason_label
+        - related_medications
+        - review_prompts
+        - review_prompt_filter
+      properties:
+        barcode:
+          type: string
+          nullable: true
+        code:
+          type: string
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        display:
+          type: string
+          minLength: 1
+        system:
+          type: string
+          nullable: true
+        concept_class:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
+        trade_family:
+          $ref: '#/components/schemas/MedicationLookupTradeFamily'
+        trade_family_group:
+          $ref: '#/components/schemas/MedicationLookupTradeFamily'
+        package_size:
+          type: string
+          nullable: true
+        package_quantity:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        package_unit:
+          type: string
+          nullable: true
+        directions:
+          type: string
+          nullable: true
+        warnings:
+          type: string
+          nullable: true
+        pil_url:
+          type: string
+          nullable: true
+          format: uri
+        spc_url:
+          type: string
+          nullable: true
+          format: uri
+        concept_class_label:
+          type: string
+          nullable: true
+        source_label:
+          type: string
+          nullable: true
+        match_reason:
+          type: string
+          nullable: true
+        match_reason_label:
+          type: string
+          nullable: true
+        existing_medication:
+          $ref: '#/components/schemas/MedicationLookupExistingMedication'
+        related_medications:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicationLookupRelatedMedication'
+        review_prompts:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicationLookupReviewPrompt'
+        review_prompt_filter:
+          $ref: '#/components/schemas/MedicationLookupReviewPromptFilter'
+    MedicationLookupTradeFamily:
+      type: object
+      nullable: true
+      additionalProperties: false
+      required:
+        - code
+        - name
+      properties:
+        code:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          minLength: 1
+    MedicationLookupExistingMedication:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - location
+        - current_supply
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        name:
+          type: string
+          minLength: 1
+        location:
+          type: string
+          minLength: 1
+        path:
+          type: string
+        refill_path:
+          type: string
+        current_supply:
+          type: string
+    MedicationLookupRelatedMedication:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - location
+        - current_supply
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        name:
+          type: string
+          minLength: 1
+        location:
+          type: string
+          minLength: 1
+        path:
+          type: string
+        current_supply:
+          type: string
+    MedicationLookupReviewPrompt:
+      type: object
+      additionalProperties: false
+      required:
+        - evidence_record_id
+        - risk_level
+        - risk_level_label
+        - match_confidence
+        - match_confidence_label
+        - matched_term
+        - match_type
+        - source_instruction
+        - match_reason
+        - interacting_medication_name
+        - description
+        - source_name
+        - source_checked_on
+        - source_version
+        - source_effective_on
+        - source_url
+        - evidence_text
+      properties:
+        evidence_record_id:
+          $ref: '#/components/schemas/NumericId'
+        risk_level:
+          type: string
+          enum:
+            - high
+            - moderate
+            - low
+            - unknown
+        risk_level_label:
+          type: string
+          minLength: 1
+        match_confidence:
+          type: string
+          enum:
+            - high
+            - moderate
+            - low
+            - unknown
+        match_confidence_label:
+          type: string
+          minLength: 1
+        matched_term:
+          type: string
+          minLength: 1
+        match_type:
+          type: string
+          enum:
+            - curated
+            - ingredient
+            - class
+        source_instruction:
+          type: string
+          minLength: 1
+        match_reason:
+          type: string
+          minLength: 1
+        interacting_medication_name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          minLength: 1
+        source_name:
+          type: string
+          minLength: 1
+        source_checked_on:
+          $ref: '#/components/schemas/Date'
+        source_version:
+          type: string
+          nullable: true
+        source_effective_on:
+          type: string
+          format: date
+          nullable: true
+        source_url:
+          type: string
+          format: uri
+        evidence_text:
+          type: string
+          minLength: 1
+    MedicationLookupReviewPromptFilter:
+      type: object
+      additionalProperties: false
+      required:
+        - hidden_count
+      properties:
+        hidden_count:
+          type: integer
+          minimum: 0
+    AiMedicationSuggestionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        medication:
+          $ref: '#/components/schemas/AiMedicationIdentity'
+    AiMedicationIdentity:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        barcode:
+          type: string
+        dmd_code:
+          type: string
+        dmd_system:
+          type: string
+        dmd_concept_class:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+    AiMedicationSuggestionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/AiMedicationSuggestion'
+    AiMedicationSuggestion:
+      type: object
+      additionalProperties: false
+      required:
+        - medication
+        - doses
+        - sources
+        - errors
+      properties:
+        medication:
+          $ref: '#/components/schemas/AiMedicationAttributes'
+        doses:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiMedicationDoseSuggestion'
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiMedicationEvidenceSource'
+        errors:
+          type: array
+          items:
+            type: string
+            minLength: 1
+    AiMedicationAttributes:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        warnings:
+          type: string
+    AiMedicationDoseSuggestion:
+      type: object
+      additionalProperties: false
+      required:
+        - amount
+        - unit
+        - default_max_daily_doses
+        - default_min_hours_between_doses
+        - default_dose_cycle
+        - evidence
+      properties:
+        amount:
+          type: string
+          pattern: '^-?[0-9]+(?:\.[0-9]+)?$'
+        unit:
+          type: string
+          enum:
+            - tablet
+            - capsule
+            - gummy
+            - mg
+            - ml
+            - g
+            - mcg
+            - IU
+            - spray
+            - drop
+            - sachet
+            - pad
+        description:
+          type: string
+        default_max_daily_doses:
+          type: integer
+          minimum: 1
+        default_min_hours_between_doses:
+          type: string
+          pattern: '^-?[0-9]+(?:\.[0-9]+)?$'
+        default_dose_cycle:
+          type: string
+          enum:
+            - daily
+            - weekly
+            - monthly
+        evidence:
+          $ref: '#/components/schemas/AiMedicationDoseEvidence'
+    AiMedicationDoseEvidence:
+      type: object
+      additionalProperties: false
+      required:
+        - url
+        - title
+        - text
+      properties:
+        url:
+          type: string
+          format: uri
+          pattern: '^https://'
+        title:
+          type: string
+          minLength: 1
+        text:
+          type: string
+          minLength: 1
+    AiMedicationEvidenceSource:
+      type: object
+      additionalProperties: false
+      required:
+        - url
+        - title
+      properties:
+        url:
+          type: string
+          format: uri
+          pattern: '^https://'
+        title:
+          type: string
+          minLength: 1
+    AuthLoginRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+        device_name:
+          type: string
+          nullable: true
+        household_id:
+          $ref: '#/components/schemas/NumericId'
+    AuthRefreshRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          minLength: 1
+    AuthOidcExchangeRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - id_token
+        - nonce
+        - code_verifier
+      properties:
+        id_token:
+          type: string
+          minLength: 1
+        nonce:
+          type: string
+          minLength: 1
+        code_verifier:
+          type: string
+          minLength: 1
+        device_name:
+          type: string
+          nullable: true
+        household_id:
+          $ref: '#/components/schemas/NumericId'
+        provider:
+          type: string
+          minLength: 1
+    AuthHousehold:
+      type: object
+      nullable: true
+      additionalProperties: false
+      required:
+        - id
+        - slug
+        - name
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        slug:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          minLength: 1
+    AuthHouseholdMembership:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - slug
+        - name
+        - role
+        - membership_id
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        slug:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          minLength: 1
+        role:
+          type: string
+          enum:
+            - owner
+            - administrator
+            - member
+        membership_id:
+          $ref: '#/components/schemas/NumericId'
+    AuthHouseholdCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthHouseholdMembership'
+    AuthSession:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - device_name
+        - household_id
+        - last_used_at
+        - access_token_expires_at
+        - refresh_token_expires_at
+        - created_at
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        device_name:
+          type: string
+          nullable: true
+        household_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        last_used_at:
+          $ref: '#/components/schemas/Timestamp'
+        access_token_expires_at:
+          $ref: '#/components/schemas/Timestamp'
+        refresh_token_expires_at:
+          $ref: '#/components/schemas/Timestamp'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    AuthSessionCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthSession'
+    AuthRefreshData:
+      type: object
+      additionalProperties: false
+      required:
+        - access_token
+        - access_token_expires_at
+        - refresh_token
+        - refresh_token_expires_at
+        - household
+      properties:
+        access_token:
+          type: string
+          minLength: 1
+        access_token_expires_at:
+          $ref: '#/components/schemas/Timestamp'
+        refresh_token:
+          type: string
+          minLength: 1
+        refresh_token_expires_at:
+          $ref: '#/components/schemas/Timestamp'
+        household:
+          $ref: '#/components/schemas/AuthHousehold'
+    AuthRefreshResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/AuthRefreshData'
+    AuthLoginData:
+      type: object
+      additionalProperties: false
+      required:
+        - access_token
+        - access_token_expires_at
+        - refresh_token
+        - refresh_token_expires_at
+        - household
+        - me
+      properties:
+        access_token:
+          type: string
+          minLength: 1
+        access_token_expires_at:
+          $ref: '#/components/schemas/Timestamp'
+        refresh_token:
+          type: string
+          minLength: 1
+        refresh_token_expires_at:
+          $ref: '#/components/schemas/Timestamp'
+        household:
+          $ref: '#/components/schemas/AuthHousehold'
+        me:
+          $ref: '#/components/schemas/Me'
+    AuthLoginResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/AuthLoginData'
+    MeAccount:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - email
+        - status
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        email:
+          type: string
+          format: email
+        status:
+          type: string
+          enum:
+            - unverified
+            - verified
+            - closed
+    Me:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - email_address
+        - membership_role
+        - active
+        - person
+        - account
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        email_address:
+          type: string
+          format: email
+        membership_role:
+          type: string
+          nullable: true
+          enum:
+            - owner
+            - administrator
+            - member
+        active:
+          type: boolean
+        person:
+          $ref: '#/components/schemas/Person'
+        account:
+          $ref: '#/components/schemas/MeAccount'
+    MeResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Me'
+    Location:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - name
+        - description
+        - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          nullable: true
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+    LocationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Location'
+    LocationCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Location'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    Medication:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - name
+        - display_name
+        - category
+        - description
+        - dose_amount
+        - dose_unit
+        - current_supply
+        - reorder_threshold
+        - reorder_status
+        - location_id
+        - location_portable_id
+        - updated_at
+        - low_stock
+        - out_of_stock
+        - days_until_low_stock
+        - days_until_out_of_stock
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        name:
+          type: string
+          minLength: 1
+        display_name:
+          type: string
+          minLength: 1
+        category:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        dose_amount:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        dose_unit:
+          type: string
+          nullable: true
+        current_supply:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        reorder_threshold:
+          $ref: '#/components/schemas/DecimalValue'
+        reorder_status:
+          type: string
+          nullable: true
+          enum:
+            - ordered
+            - received
+        location_id:
+          $ref: '#/components/schemas/NumericId'
+        location_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        low_stock:
+          type: boolean
+        out_of_stock:
+          type: boolean
+        days_until_low_stock:
+          type: integer
+          nullable: true
+        days_until_out_of_stock:
+          type: integer
+          nullable: true
+    MedicationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Medication'
+    MedicationCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Medication'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    MedicationCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - medication
+      properties:
+        medication:
+          $ref: '#/components/schemas/MedicationCreateAttributes'
+    MedicationUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - medication
+      properties:
+        medication:
+          $ref: '#/components/schemas/MedicationUpdateAttributes'
+    MedicationCreateAttributes:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - reorder_threshold
+        - location_id
+      properties:
+        name:
+          type: string
+          minLength: 1
+        friendly_name:
+          type: string
+        barcode:
+          type: string
+          pattern: '^[0-9]{13,14}$'
+        dmd_code:
+          type: string
+        dmd_system:
+          type: string
+        dmd_concept_class:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        dose_amount:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        dose_unit:
+          type: string
+          enum:
+            - tablet
+            - capsule
+            - gummy
+            - mg
+            - ml
+            - g
+            - mcg
+            - IU
+            - spray
+            - drop
+            - sachet
+            - pad
+        current_supply:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        reorder_threshold:
+          $ref: '#/components/schemas/DecimalValue'
+        warnings:
+          type: string
+        location_id:
+          $ref: '#/components/schemas/NumericId'
+        default_schedule_type:
+          type: string
+          enum:
+            - daily
+            - multiple_daily
+            - weekly
+            - specific_dates
+            - prn
+            - tapering
+            - every_other_day
+    MedicationUpdateAttributes:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+        friendly_name:
+          type: string
+        barcode:
+          type: string
+          pattern: '^[0-9]{13,14}$'
+        dmd_code:
+          type: string
+        dmd_system:
+          type: string
+        dmd_concept_class:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        dose_amount:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        dose_unit:
+          type: string
+          enum:
+            - tablet
+            - capsule
+            - gummy
+            - mg
+            - ml
+            - g
+            - mcg
+            - IU
+            - spray
+            - drop
+            - sachet
+            - pad
+        current_supply:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        reorder_threshold:
+          $ref: '#/components/schemas/DecimalValue'
+        warnings:
+          type: string
+        location_id:
+          $ref: '#/components/schemas/NumericId'
+        default_schedule_type:
+          type: string
+          enum:
+            - daily
+            - multiple_daily
+            - weekly
+            - specific_dates
+            - prn
+            - tapering
+            - every_other_day
+    MedicationInventoryAdjustmentRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - adjustment
+      properties:
+        adjustment:
+          type: object
+          additionalProperties: false
+          required:
+            - new_quantity
+          properties:
+            new_quantity:
+              $ref: '#/components/schemas/DecimalValue'
+            reason:
+              type: string
+    MedicationOrderDetailsRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        order_details:
+          type: object
+          additionalProperties: false
+          properties:
+            supplier:
+              type: string
+            quantity:
+              $ref: '#/components/schemas/NullableDecimalValue'
+            expected_arrival_on:
+              $ref: '#/components/schemas/Date'
+    DosageOption:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - medication_id
+        - medication_portable_id
+        - amount
+        - unit
+        - frequency
+        - description
+        - default_for_adults
+        - default_for_children
+        - default_max_daily_doses
+        - default_min_hours_between_doses
+        - default_dose_cycle
+        - current_supply
+        - reorder_threshold
+        - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        medication_id:
+          $ref: '#/components/schemas/NumericId'
+        medication_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        amount:
+          $ref: '#/components/schemas/DecimalValue'
+        unit:
+          type: string
+          minLength: 1
+        frequency:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          nullable: true
+        default_for_adults:
+          type: boolean
+        default_for_children:
+          type: boolean
+        default_max_daily_doses:
+          type: integer
+          minimum: 1
+        default_min_hours_between_doses:
+          $ref: '#/components/schemas/DecimalValue'
+        default_dose_cycle:
+          type: string
+          enum:
+            - daily
+            - weekly
+            - monthly
+        current_supply:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        reorder_threshold:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+    DosageOptionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/DosageOption'
+    DosageOptionCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DosageOption'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    DosageOptionCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - dosage_option
+      properties:
+        dosage_option:
+          $ref: '#/components/schemas/DosageOptionCreateAttributes'
+    DosageOptionUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - dosage_option
+      properties:
+        dosage_option:
+          $ref: '#/components/schemas/DosageOptionUpdateAttributes'
+    DosageOptionCreateAttributes:
+      type: object
+      additionalProperties: false
+      required:
+        - medication_id
+        - amount
+        - unit
+        - frequency
+        - default_max_daily_doses
+        - default_min_hours_between_doses
+        - default_dose_cycle
+      properties:
+        medication_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        amount:
+          $ref: '#/components/schemas/DecimalValue'
+        unit:
+          type: string
+          minLength: 1
+        frequency:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        default_for_adults:
+          type: boolean
+        default_for_children:
+          type: boolean
+        default_max_daily_doses:
+          type: integer
+          minimum: 1
+        default_min_hours_between_doses:
+          $ref: '#/components/schemas/DecimalValue'
+        default_dose_cycle:
+          type: string
+          enum:
+            - daily
+            - weekly
+            - monthly
+        current_supply:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        reorder_threshold:
+          $ref: '#/components/schemas/NullableDecimalValue'
+    DosageOptionUpdateAttributes:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        amount:
+          $ref: '#/components/schemas/DecimalValue'
+        unit:
+          type: string
+          minLength: 1
+        frequency:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        default_for_adults:
+          type: boolean
+        default_for_children:
+          type: boolean
+        default_max_daily_doses:
+          type: integer
+          minimum: 1
+        default_min_hours_between_doses:
+          $ref: '#/components/schemas/DecimalValue'
+        default_dose_cycle:
+          type: string
+          enum:
+            - daily
+            - weekly
+            - monthly
+        current_supply:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        reorder_threshold:
+          $ref: '#/components/schemas/NullableDecimalValue'
+    HealthEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - person_id
+        - person_portable_id
+        - event_kind
+        - severity
+        - title
+        - notes
+        - started_on
+        - ended_on
+        - updated_at
+        - medication_ids
+        - medication_portable_ids
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        person_id:
+          $ref: '#/components/schemas/NumericId'
+        person_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        event_kind:
+          type: string
+          enum:
+            - illness
+            - suspected_side_effect
+        severity:
+          type: string
+          nullable: true
+          enum:
+            - mild
+            - moderate
+            - severe
+        title:
+          type: string
+          minLength: 1
+        notes:
+          type: string
+          nullable: true
+        started_on:
+          $ref: '#/components/schemas/Date'
+        ended_on:
+          type: string
+          format: date
+          nullable: true
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        medication_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/NumericId'
+        medication_portable_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortableId'
+    HealthEventResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/HealthEvent'
+    HealthEventCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/HealthEvent'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    HealthEventCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - health_event
+      properties:
+        health_event:
+          type: object
+          additionalProperties: false
+          required:
+            - person_id
+            - event_kind
+            - title
+            - started_on
+          properties:
+            person_id:
+              $ref: '#/components/schemas/ResourceIdentifier'
+            event_kind:
+              type: string
+              enum:
+                - illness
+                - suspected_side_effect
+            severity:
+              type: string
+              enum:
+                - mild
+                - moderate
+                - severe
+            title:
+              type: string
+              minLength: 1
+            notes:
+              type: string
+            started_on:
+              $ref: '#/components/schemas/Date'
+            ended_on:
+              $ref: '#/components/schemas/Date'
+            medication_ids:
+              type: array
+              uniqueItems: true
+              items:
+                $ref: '#/components/schemas/ResourceIdentifier'
+    HealthEventUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - health_event
+      properties:
+        health_event:
+          $ref: '#/components/schemas/HealthEventAttributes'
+    HealthEventAttributes:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        person_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        event_kind:
+          type: string
+          enum:
+            - illness
+            - suspected_side_effect
+        severity:
+          type: string
+          enum:
+            - mild
+            - moderate
+            - severe
+        title:
+          type: string
+          minLength: 1
+        notes:
+          type: string
+        started_on:
+          $ref: '#/components/schemas/Date'
+        ended_on:
+          $ref: '#/components/schemas/Date'
+        medication_ids:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ResourceIdentifier'
+    Schedule:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - person_id
+        - person_portable_id
+        - medication_id
+        - medication_portable_id
+        - dose_amount
+        - dose_unit
+        - frequency
+        - dose_cycle
+        - start_date
+        - end_date
+        - active
+        - paused
+        - notes
+        - updated_at
+        - max_daily_doses
+        - min_hours_between_doses
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        person_id:
+          $ref: '#/components/schemas/NumericId'
+        person_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        medication_id:
+          $ref: '#/components/schemas/NumericId'
+        medication_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        dose_amount:
+          $ref: '#/components/schemas/DecimalValue'
+        dose_unit:
+          type: string
+          minLength: 1
+        frequency:
+          type: string
+          nullable: true
+        dose_cycle:
+          type: string
+          nullable: true
+          enum:
+            - daily
+            - weekly
+            - monthly
+        start_date:
+          $ref: '#/components/schemas/Date'
+        end_date:
+          $ref: '#/components/schemas/Date'
+        active:
+          type: boolean
+        paused:
+          type: boolean
+        notes:
+          type: string
+          nullable: true
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        max_daily_doses:
+          type: integer
+          nullable: true
+          minimum: 1
+        min_hours_between_doses:
+          $ref: '#/components/schemas/NullableDecimalValue'
+    ScheduleResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Schedule'
+    ScheduleCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Schedule'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    ScheduleCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - schedule
+      properties:
+        schedule:
+          type: object
+          additionalProperties: false
+          required:
+            - person_id
+            - medication_id
+            - dose_amount
+            - dose_unit
+            - start_date
+            - end_date
+          properties:
+            person_id:
+              $ref: '#/components/schemas/ResourceIdentifier'
+            medication_id:
+              $ref: '#/components/schemas/ResourceIdentifier'
+            source_dosage_option_id:
+              $ref: '#/components/schemas/ResourceIdentifier'
+            dose_amount:
+              $ref: '#/components/schemas/DecimalValue'
+            dose_unit:
+              type: string
+              minLength: 1
+            frequency:
+              type: string
+            start_date:
+              $ref: '#/components/schemas/Date'
+            end_date:
+              $ref: '#/components/schemas/Date'
+            notes:
+              type: string
+            max_daily_doses:
+              type: integer
+              minimum: 1
+            min_hours_between_doses:
+              $ref: '#/components/schemas/NullableDecimalValue'
+            dose_cycle:
+              type: string
+              enum:
+                - daily
+                - weekly
+                - monthly
+            schedule_type:
+              type: string
+              enum:
+                - daily
+                - multiple_daily
+                - weekly
+                - specific_dates
+                - prn
+                - tapering
+                - every_other_day
+            schedule_config:
+              $ref: '#/components/schemas/ScheduleConfig'
+    ScheduleUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - schedule
+      properties:
+        schedule:
+          $ref: '#/components/schemas/ScheduleAttributes'
+    ScheduleAttributes:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        person_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        medication_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        source_dosage_option_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        dose_amount:
+          $ref: '#/components/schemas/DecimalValue'
+        dose_unit:
+          type: string
+          minLength: 1
+        frequency:
+          type: string
+        start_date:
+          $ref: '#/components/schemas/Date'
+        end_date:
+          $ref: '#/components/schemas/Date'
+        notes:
+          type: string
+        max_daily_doses:
+          type: integer
+          minimum: 1
+        min_hours_between_doses:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        dose_cycle:
+          type: string
+          enum:
+            - daily
+            - weekly
+            - monthly
+        schedule_type:
+          type: string
+          enum:
+            - daily
+            - multiple_daily
+            - weekly
+            - specific_dates
+            - prn
+            - tapering
+            - every_other_day
+        schedule_config:
+          $ref: '#/components/schemas/ScheduleConfig'
+    ScheduleConfig:
+      type: object
+      additionalProperties: false
+      properties:
+        times:
+          type: array
+          items:
+            type: string
+            pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+        weekdays:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        dates:
+          type: array
+          items:
+            $ref: '#/components/schemas/Date'
+        as_needed:
+          type: boolean
+        taper_steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleTaperStep'
+    ScheduleTaperStep:
+      type: object
+      additionalProperties: false
+      required:
+        - start_date
+        - end_date
+      properties:
+        start_date:
+          $ref: '#/components/schemas/Date'
+        end_date:
+          $ref: '#/components/schemas/Date'
+        amount:
+          $ref: '#/components/schemas/DecimalValue'
+        dose_amount:
+          $ref: '#/components/schemas/DecimalValue'
+        unit:
+          type: string
+        dose_unit:
+          type: string
+        max_daily_doses:
+          type: integer
+          minimum: 1
+        min_hours_between_doses:
+          $ref: '#/components/schemas/DecimalValue'
+        times:
+          type: array
+          items:
+            type: string
+            pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+    PersonMedication:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - person_id
+        - person_portable_id
+        - medication_id
+        - medication_portable_id
+        - dose_amount
+        - dose_unit
+        - active
+        - paused
+        - dose_cycle
+        - administration_kind
+        - notes
+        - position
+        - updated_at
+        - max_daily_doses
+        - min_hours_between_doses
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        person_id:
+          $ref: '#/components/schemas/NumericId'
+        person_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        medication_id:
+          $ref: '#/components/schemas/NumericId'
+        medication_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        dose_amount:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        dose_unit:
+          type: string
+          nullable: true
+        active:
+          type: boolean
+        paused:
+          type: boolean
+        dose_cycle:
+          type: string
+          nullable: true
+          enum:
+            - daily
+            - weekly
+            - monthly
+        administration_kind:
+          type: string
+          enum:
+            - routine
+            - as_needed
+        notes:
+          type: string
+          nullable: true
+        position:
+          type: integer
+          nullable: true
+          minimum: 0
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        max_daily_doses:
+          type: integer
+          nullable: true
+          minimum: 1
+        min_hours_between_doses:
+          $ref: '#/components/schemas/NullableDecimalValue'
+    PersonMedicationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/PersonMedication'
+    PersonMedicationCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PersonMedication'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    PersonMedicationCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - person_medication
+      properties:
+        person_medication:
+          type: object
+          additionalProperties: false
+          required:
+            - person_id
+            - medication_id
+          properties:
+            person_id:
+              $ref: '#/components/schemas/ResourceIdentifier'
+            medication_id:
+              $ref: '#/components/schemas/ResourceIdentifier'
+            source_dosage_option_id:
+              $ref: '#/components/schemas/ResourceIdentifier'
+            dose_amount:
+              $ref: '#/components/schemas/DecimalValue'
+            dose_unit:
+              type: string
+              minLength: 1
+            administration_kind:
+              type: string
+              enum:
+                - routine
+                - as_needed
+            notes:
+              type: string
+            max_daily_doses:
+              type: integer
+              minimum: 1
+            min_hours_between_doses:
+              $ref: '#/components/schemas/NullableDecimalValue'
+            dose_cycle:
+              type: string
+              enum:
+                - daily
+                - weekly
+                - monthly
+    PersonMedicationUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - person_medication
+      properties:
+        person_medication:
+          $ref: '#/components/schemas/PersonMedicationAttributes'
+    PersonMedicationAttributes:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        person_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        medication_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        source_dosage_option_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        dose_amount:
+          $ref: '#/components/schemas/DecimalValue'
+        dose_unit:
+          type: string
+          minLength: 1
+        administration_kind:
+          type: string
+          enum:
+            - routine
+            - as_needed
+        notes:
+          type: string
+        max_daily_doses:
+          type: integer
+          minimum: 1
+        min_hours_between_doses:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        dose_cycle:
+          type: string
+          enum:
+            - daily
+            - weekly
+            - monthly
+    PersonMedicationReorderRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - direction
+      properties:
+        direction:
+          type: string
+          enum:
+            - up
+            - down
+    MedicationTake:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - client_uuid
+        - schedule_id
+        - schedule_portable_id
+        - person_medication_id
+        - person_medication_portable_id
+        - taken_from_medication_id
+        - taken_from_medication_portable_id
+        - taken_from_location_id
+        - taken_from_location_portable_id
+        - dose_amount
+        - dose_unit
+        - taken_at
+        - updated_at
+        - person_id
+        - person_portable_id
+        - medication_id
+        - medication_portable_id
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        client_uuid:
+          $ref: '#/components/schemas/NullablePortableId'
+        schedule_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        schedule_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+        person_medication_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        person_medication_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+        taken_from_medication_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        taken_from_medication_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+        taken_from_location_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        taken_from_location_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+        dose_amount:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        dose_unit:
+          type: string
+          nullable: true
+        taken_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        person_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        person_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+        medication_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        medication_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+    MedicationTakeResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/MedicationTake'
+    MedicationTakeCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicationTake'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    MedicationTakeCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - medication_take
+      properties:
+        medication_take:
+          type: object
+          additionalProperties: false
+          required:
+            - source_type
+            - source_id
+            - taken_at
+          properties:
+            client_uuid:
+              $ref: '#/components/schemas/PortableId'
+            source_type:
+              type: string
+              enum:
+                - schedule
+                - person_medication
+            source_id:
+              $ref: '#/components/schemas/ResourceIdentifier'
+            taken_at:
+              $ref: '#/components/schemas/Timestamp'
+            dose_amount:
+              $ref: '#/components/schemas/DecimalValue'
+            dose_unit:
+              type: string
+              minLength: 1
+            taken_from_medication_id:
+              $ref: '#/components/schemas/NumericId'
+    Person:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - updated_at
+        - name
+        - email
+        - date_of_birth
+        - person_type
+        - has_capacity
+        - age
+        - location_ids
+        - location_portable_ids
+        - notification_preference_id
+        - notification_preference_portable_id
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          nullable: true
+          format: email
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        person_type:
+          type: string
+          enum:
+            - adult
+            - minor
+            - dependent_adult
+        has_capacity:
+          type: boolean
+        age:
+          type: integer
+          nullable: true
+        location_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/NumericId'
+        location_portable_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortableId'
+        notification_preference_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        notification_preference_portable_id:
+          $ref: '#/components/schemas/NullablePortableId'
+    PersonCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - person
+      properties:
+        person:
+          type: object
+          additionalProperties: false
+          required:
+            - name
+            - date_of_birth
+          properties:
+            name:
+              type: string
+              minLength: 1
+            email:
+              type: string
+              format: email
+              nullable: true
+            date_of_birth:
+              $ref: '#/components/schemas/Date'
+            person_type:
+              type: string
+              enum:
+                - adult
+                - minor
+                - dependent_adult
+            has_capacity:
+              type: boolean
+    PersonUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - person
+      properties:
+        person:
+          $ref: '#/components/schemas/PersonAttributes'
+    PersonResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Person'
+    PersonCollectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Person'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    CapabilitiesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Capabilities'
+    Capabilities:
+      type: object
+      additionalProperties: false
+      required:
+        - format
+        - api_version
+        - authentication
+        - administration
+        - portable_formats
+        - backups
+        - fhir
+        - sync
+        - client_tools
+      properties:
+        format:
+          type: string
+          enum:
+            - medtracker.api.capabilities.v1
+        api_version:
+          type: string
+          enum:
+            - v1
+        authentication:
+          $ref: '#/components/schemas/CapabilityAuthentication'
+        administration:
+          $ref: '#/components/schemas/CapabilityAdministration'
+        portable_formats:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - medtracker.portable.v1
+              - medtracker.portable.encrypted.v1
+              - medtracker.portable.v2
+        backups:
+          $ref: '#/components/schemas/CapabilityBackups'
+        fhir:
+          $ref: '#/components/schemas/CapabilityFhir'
+        sync:
+          $ref: '#/components/schemas/CapabilitySync'
+        client_tools:
+          $ref: '#/components/schemas/CapabilityClientTools'
+    CapabilityAuthentication:
+      type: object
+      additionalProperties: false
+      required:
+        - methods
+        - hosted_mobile
+        - password_login
+        - oidc_exchange
+      properties:
+        methods:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - bearer_session
+              - api_app_token
+        hosted_mobile:
+          type: string
+          enum:
+            - oidc_authorization_code_pkce
+        password_login:
+          type: string
+          enum:
+            - development_or_migration
+        oidc_exchange:
+          $ref: '#/components/schemas/CapabilityOidcExchange'
+    CapabilityOidcExchange:
+      type: object
+      additionalProperties: false
+      required:
+        - supported
+        - pkce_required
+        - session_listing
+        - session_revocation
+      properties:
+        supported:
+          type: boolean
+          description: Whether OIDC exchange is supported.
+        pkce_required:
+          type: boolean
+          description: Whether PKCE is required.
+        session_listing:
+          type: boolean
+          description: Whether clients may list sessions.
+        session_revocation:
+          type: boolean
+          description: Whether clients may revoke sessions.
+    CapabilityAdministration:
+      type: object
+      additionalProperties: false
+      required:
+        - household
+        - fresh_mfa_required
+        - app_tokens
+        - audit_logs
+        - invitations
+        - person_access_grants
+      properties:
+        household:
+          type: boolean
+          description: Whether household administration is supported.
+        fresh_mfa_required:
+          type: boolean
+          description: Whether fresh MFA is required for writes.
+        app_tokens:
+          type: boolean
+          description: Whether API app tokens are supported.
+        audit_logs:
+          type: boolean
+          description: Whether audit logs are supported.
+        invitations:
+          type: boolean
+          description: Whether invitations are supported.
+        person_access_grants:
+          type: boolean
+          description: Whether person access grants are supported.
+    CapabilityBackups:
+      type: object
+      additionalProperties: false
+      required:
+        - encrypted_migration_bundle
+        - unencrypted_zip
+        - health_data_json
+      properties:
+        encrypted_migration_bundle:
+          type: boolean
+          description: Whether encrypted migration bundles are supported.
+        unencrypted_zip:
+          type: boolean
+          description: Whether unencrypted ZIP backups are supported.
+        health_data_json:
+          type: boolean
+          description: Whether health data JSON exports are supported.
+    CapabilityFhir:
+      type: object
+      additionalProperties: false
+      required:
+        - version
+        - resources
+      properties:
+        version:
+          type: string
+          enum:
+            - R4
+        resources:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - Patient
+              - Medication
+              - MedicationRequest
+              - MedicationStatement
+              - MedicationAdministration
+    CapabilitySync:
+      type: object
+      additionalProperties: false
+      required:
+        - portable_ids
+        - numeric_ids
+        - mobile_snapshot
+        - dry_run_import
+        - idempotency_keys
+        - etag_conflicts
+        - change_feed
+        - batch_mutations
+        - tombstones
+      properties:
+        portable_ids:
+          type: boolean
+          description: Whether portable identifiers are supported.
+        numeric_ids:
+          type: string
+          enum:
+            - backward_compatible
+        mobile_snapshot:
+          type: boolean
+          description: Whether mobile snapshots are supported.
+        dry_run_import:
+          type: boolean
+          description: Whether dry-run imports are supported.
+        idempotency_keys:
+          type: boolean
+          description: Whether idempotency keys are supported.
+        etag_conflicts:
+          type: boolean
+          description: Whether ETag conflicts are supported.
+        change_feed:
+          type: boolean
+          description: Whether the change feed is supported.
+        batch_mutations:
+          type: boolean
+          description: Whether batch mutations are supported.
+        tombstones:
+          type: boolean
+          description: Whether tombstones are supported.
+    CapabilityClientTools:
+      type: object
+      additionalProperties: false
+      required:
+        - cli
+        - mcp_server
+        - diagnostics
+      properties:
+        cli:
+          $ref: '#/components/schemas/CapabilityCli'
+        mcp_server:
+          $ref: '#/components/schemas/CapabilityMcpServer'
+        diagnostics:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - request_id
+              - retry_after
+    CapabilityCli:
+      type: object
+      additionalProperties: false
+      required:
+        - supported
+        - status
+        - binary
+        - api_boundary
+        - distribution
+      properties:
+        supported:
+          type: boolean
+          description: Whether the CLI is supported.
+        status:
+          type: string
+          enum:
+            - available
+        binary:
+          type: string
+          enum:
+            - medtracker
+        api_boundary:
+          type: string
+          enum:
+            - /api/v1
+        distribution:
+          type: string
+          enum:
+            - github_release
+    CapabilityMcpServer:
+      type: object
+      additionalProperties: false
+      required:
+        - supported
+        - transport
+        - endpoint
+        - stdio_binary
+        - tools
+        - resources
+      properties:
+        supported:
+          type: boolean
+          description: Whether the MCP server is supported.
+        transport:
+          type: string
+          enum:
+            - streamable_http
+        endpoint:
+          type: string
+          enum:
+            - /mcp
+        stdio_binary:
+          type: string
+          enum:
+            - medtracker-mcp
+        tools:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        resources:
+          type: array
+          items:
+            type: string
+            minLength: 1
+    NotificationPreferenceTime:
+      type: string
+      pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$'
+      nullable: true
+    NotificationPreferenceTimeInput:
+      type: string
+      pattern: '^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$'
+      nullable: true
+    NotificationPreference:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - portable_id
+        - person_id
+        - person_portable_id
+        - enabled
+        - dose_due_enabled
+        - missed_dose_enabled
+        - low_stock_enabled
+        - private_text_enabled
+        - morning_time
+        - afternoon_time
+        - evening_time
+        - night_time
+        - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        person_id:
+          $ref: '#/components/schemas/NumericId'
+        person_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        enabled:
+          type: boolean
+        dose_due_enabled:
+          type: boolean
+        missed_dose_enabled:
+          type: boolean
+        low_stock_enabled:
+          type: boolean
+        private_text_enabled:
+          type: boolean
+        morning_time:
+          $ref: '#/components/schemas/NotificationPreferenceTime'
+        afternoon_time:
+          $ref: '#/components/schemas/NotificationPreferenceTime'
+        evening_time:
+          $ref: '#/components/schemas/NotificationPreferenceTime'
+        night_time:
+          $ref: '#/components/schemas/NotificationPreferenceTime'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+    NotificationPreferenceResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/NotificationPreference'
+    NotificationPreferenceAttributes:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        enabled:
+          type: boolean
+        dose_due_enabled:
+          type: boolean
+        missed_dose_enabled:
+          type: boolean
+        low_stock_enabled:
+          type: boolean
+        private_text_enabled:
+          type: boolean
+        morning_time:
+          $ref: '#/components/schemas/NotificationPreferenceTimeInput'
+        afternoon_time:
+          $ref: '#/components/schemas/NotificationPreferenceTimeInput'
+        evening_time:
+          $ref: '#/components/schemas/NotificationPreferenceTimeInput'
+        night_time:
+          $ref: '#/components/schemas/NotificationPreferenceTimeInput'
+    NotificationPreferenceUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - notification_preference
+      properties:
+        notification_preference:
+          $ref: '#/components/schemas/NotificationPreferenceAttributes'
+    NativeDeviceTokenAttributes:
+      type: object
+      additionalProperties: false
+      required:
+        - device_token
+        - platform
+      properties:
+        device_token:
+          type: string
+          minLength: 1
+        platform:
+          type: string
+          enum:
+            - ios
+            - android
+    NativeDeviceTokenCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - native_device_token
+      properties:
+        native_device_token:
+          $ref: '#/components/schemas/NativeDeviceTokenAttributes'
+    PushSubscriptionKeys:
+      type: object
+      additionalProperties: false
+      required:
+        - p256dh
+        - auth
+      properties:
+        p256dh:
+          type: string
+          minLength: 1
+        auth:
+          type: string
+          minLength: 1
+    PushSubscriptionAttributes:
+      type: object
+      additionalProperties: false
+      required:
+        - endpoint
+        - keys
+      properties:
+        endpoint:
+          type: string
+          format: uri
+          pattern: '^https://'
+        keys:
+          $ref: '#/components/schemas/PushSubscriptionKeys'
+    PushSubscriptionCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - push_subscription
+      properties:
+        push_subscription:
+          $ref: '#/components/schemas/PushSubscriptionAttributes'
+    PushTestFailedError:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+        - request_id
+      properties:
+        code:
+          type: string
+          enum:
+            - push_test_failed
+        message:
+          type: string
+          enum:
+            - Unable to send test notification.
+        request_id:
+          type: string
+          minLength: 1
+    PushTestFailedErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/PushTestFailedError'
+    ValidationErrors:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: string
+    Error:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+        - request_id
+      properties:
+        code:
+          type: string
+          minLength: 1
+        message:
+          type: string
+          minLength: 1
+        request_id:
+          type: string
+          minLength: 1
+        errors:
+          $ref: '#/components/schemas/ValidationErrors'
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/Error'
+    AdminWriteForbiddenError:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+        - request_id
+      properties:
+        code:
+          type: string
+          enum:
+            - forbidden
+            - fresh_privileged_action_required
+        message:
+          type: string
+          minLength: 1
+        request_id:
+          type: string
+          minLength: 1
+    AdminWriteForbiddenErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/AdminWriteForbiddenError'
+    RateLimitError:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          enum:
+            - rate_limited
+        message:
+          type: string
+          minLength: 1
+    RateLimitErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/RateLimitError'
+    PortableRecord:
+      type: object
+      description: A format-specific portable record. Every record has a portable identity and version.
+      additionalProperties: true
+      required:
+        - portable_id
+        - updated_at
+        - etag
+      properties:
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        etag:
+          type: string
+          minLength: 1
+    PortableRecords:
+      type: object
+      additionalProperties: false
+      required:
+        - people
+        - locations
+        - medications
+        - dosage_options
+        - schedules
+        - person_medications
+        - medication_takes
+        - notification_preferences
+      properties:
+        people:
+          $ref: '#/components/schemas/PortableRecordCollection'
+        locations:
+          $ref: '#/components/schemas/PortableRecordCollection'
+        medications:
+          $ref: '#/components/schemas/PortableRecordCollection'
+        dosage_options:
+          $ref: '#/components/schemas/PortableRecordCollection'
+        schedules:
+          $ref: '#/components/schemas/PortableRecordCollection'
+        person_medications:
+          $ref: '#/components/schemas/PortableRecordCollection'
+        medication_takes:
+          $ref: '#/components/schemas/PortableRecordCollection'
+        notification_preferences:
+          $ref: '#/components/schemas/PortableRecordCollection'
+        health_events:
+          $ref: '#/components/schemas/PortableRecordCollection'
+    PortableRecordCollection:
+      type: array
+      items:
+        $ref: '#/components/schemas/PortableRecord'
+    PortableSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+        - format
+        - scope
+        - exported_at
+        - source_instance_id
+        - records
+      properties:
+        format:
+          type: string
+          enum:
+            - medtracker.portable.v1
+        scope:
+          type: string
+          enum:
+            - single_person
+            - household
+        exported_at:
+          $ref: '#/components/schemas/Timestamp'
+        source_instance_id:
+          type: string
+          minLength: 1
+        records:
+          $ref: '#/components/schemas/PortableRecords'
+    PortableSnapshotResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/PortableSnapshot'
+    SyncSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+        - format
+        - scope
+        - exported_at
+        - source_instance_id
+        - records
+        - cursor
+      properties:
+        format:
+          type: string
+          enum:
+            - medtracker.portable.v2
+        scope:
+          type: string
+          enum:
+            - single_person
+            - household
+        exported_at:
+          $ref: '#/components/schemas/Timestamp'
+        source_instance_id:
+          type: string
+          minLength: 1
+        records:
+          $ref: '#/components/schemas/PortableRecords'
+        cursor:
+          $ref: '#/components/schemas/Timestamp'
+    SyncSnapshotResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/SyncSnapshot'
+    BackupZipResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - filename
+            - content_type
+            - base64
+          properties:
+            filename:
+              type: string
+              pattern: '^medtracker-backup-[0-9]{14}\\.zip$'
+            content_type:
+              type: string
+              enum:
+                - application/zip
+            base64:
+              type: string
+              format: byte
+    HealthDataExportResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - format
+            - scope
+            - exported_at
+            - source_instance_id
+            - records
+          properties:
+            format:
+              type: string
+              enum:
+                - medtracker.health_data.v1
+            scope:
+              type: string
+              enum:
+                - single_person
+                - household
+            exported_at:
+              $ref: '#/components/schemas/Timestamp'
+            source_instance_id:
+              type: string
+              minLength: 1
+            records:
+              $ref: '#/components/schemas/PortableRecords'
+    DataExportResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          properties:
+            format:
+              type: string
+              enum:
+                - medtracker.portable.v1
+                - medtracker.portable.v2
+                - medtracker.health_data.v1
+                - medtracker.portable.encrypted.v1
+            scope:
+              type: string
+              enum:
+                - single_person
+                - household
+            exported_at:
+              $ref: '#/components/schemas/Timestamp'
+            encrypted_at:
+              $ref: '#/components/schemas/Timestamp'
+            source_instance_id:
+              type: string
+              minLength: 1
+            records:
+              $ref: '#/components/schemas/PortableRecords'
+            cursor:
+              $ref: '#/components/schemas/Timestamp'
+            cipher:
+              type: string
+              enum:
+                - aes-256-gcm
+            kdf:
+              type: string
+              enum:
+                - pbkdf2_sha256
+            salt:
+              type: string
+              minLength: 1
+            checksum:
+              type: string
+              pattern: '^[a-f0-9]{64}$'
+            ciphertext:
+              type: string
+              minLength: 1
+            filename:
+              type: string
+              pattern: '^medtracker-backup-[0-9]{14}\\.zip$'
+            content_type:
+              type: string
+              enum:
+                - application/zip
+            base64:
+              type: string
+              format: byte
+    PortableEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - format
+        - encrypted_at
+        - cipher
+        - kdf
+        - salt
+        - checksum
+        - ciphertext
+      properties:
+        format:
+          type: string
+          enum:
+            - medtracker.portable.encrypted.v1
+        encrypted_at:
+          $ref: '#/components/schemas/Timestamp'
+        cipher:
+          type: string
+          enum:
+            - aes-256-gcm
+        kdf:
+          type: string
+          enum:
+            - pbkdf2_sha256
+        salt:
+          type: string
+          minLength: 1
+        checksum:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        ciphertext:
+          type: string
+          minLength: 1
+    PortableEnvelopeResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/PortableEnvelope'
+    PortableImportRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - bundle
+      properties:
+        bundle:
+          $ref: '#/components/schemas/PortableEnvelope'
+    PortableImportResultResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/PortableImportResult'
+    PortableImportUnprocessableResponse:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        data:
+          $ref: '#/components/schemas/PortableImportResult'
+        error:
+          $ref: '#/components/schemas/Error'
+      not:
+        required:
+          - data
+          - error
+    PortableImportResult:
+      type: object
+      additionalProperties: false
+      required:
+        - applied
+        - counts
+        - conflicts
+        - errors
+      properties:
+        applied:
+          type: boolean
+        counts:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortableImportConflict'
+        errors:
+          type: array
+          items:
+            type: string
+    PortableImportConflict:
+      type: object
+      additionalProperties: false
+      required:
+        - record_type
+        - portable_id
+        - field
+        - existing_portable_id
+      properties:
+        record_type:
+          type: string
+          enum:
+            - people
+            - locations
+            - medications
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        field:
+          $ref: '#/components/schemas/PortableImportConflictField'
+        existing_portable_id:
+          $ref: '#/components/schemas/PortableId'
+    PortableImportConflictField:
+      type: string
+      enum:
+        - name
+        - email
+      x-enum-varnames:
+        - field_name
+        - email
+    SyncChangesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - cursor
+            - changes
+            - tombstones
+          properties:
+            cursor:
+              $ref: '#/components/schemas/Timestamp'
+            changes:
+              type: array
+              items:
+                $ref: '#/components/schemas/SyncChange'
+            tombstones:
+              type: array
+              items:
+                $ref: '#/components/schemas/SyncTombstone'
+    SyncChange:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - record_type
+        - record_id
+        - record_portable_id
+        - action
+        - occurred_at
+        - metadata
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        record_type:
+          type: string
+          minLength: 1
+        record_id:
+          $ref: '#/components/schemas/NumericId'
+        record_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        action:
+          type: string
+          enum:
+            - create
+            - update
+            - delete
+        occurred_at:
+          $ref: '#/components/schemas/Timestamp'
+        metadata:
+          type: object
+          additionalProperties: true
+    SyncTombstone:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - record_type
+        - record_portable_id
+        - action
+        - deleted_at
+        - metadata
+      properties:
+        id:
+          $ref: '#/components/schemas/NumericId'
+        record_type:
+          type: string
+          minLength: 1
+        record_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        action:
+          type: string
+          enum:
+            - delete
+        deleted_at:
+          $ref: '#/components/schemas/Timestamp'
+        metadata:
+          type: object
+          additionalProperties: true
+    SyncBatchRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - batch
+      properties:
+        batch:
+          type: object
+          additionalProperties: false
+          required:
+            - operations
+          properties:
+            operations:
+              type: array
+              minItems: 1
+              items:
+                $ref: '#/components/schemas/SyncBatchOperation'
+    SyncBatchOperation:
+      type: object
+      additionalProperties: false
+      required:
+        - action
+        - resource_type
+      properties:
+        action:
+          type: string
+          enum:
+            - create
+            - update
+            - delete
+        resource_type:
+          type: string
+          enum:
+            - medication
+            - health_event
+            - medication_take
+        id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        if_match:
+          type: string
+          description: Required for update and delete operations. Use the exact latest ETag.
+        attributes:
+          type: object
+          additionalProperties: true
+          description: Fields accepted by the selected resource and action.
+    SyncBatchResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - applied
+            - results
+          properties:
+            applied:
+              type: boolean
+              description: Whether every operation in the batch was applied.
+            results:
+              type: array
+              items:
+                $ref: '#/components/schemas/SyncBatchResult'
+    SyncBatchResult:
+      type: object
+      additionalProperties: false
+      required:
+        - index
+        - action
+        - record_type
+        - record_portable_id
+      properties:
+        index:
+          type: integer
+          minimum: 0
+        action:
+          type: string
+          enum:
+            - create
+            - update
+            - delete
+        record_type:
+          type: string
+          enum:
+            - Medication
+            - HealthEvent
+            - MedicationTake
+        record_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        etag:
+          type: string
+        replayed:
+          type: boolean
