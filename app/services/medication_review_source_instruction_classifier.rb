@@ -13,21 +13,21 @@ class MedicationReviewSourceInstructionClassifier
     /\bno clinically (?:meaningful|relevant|significant) (?:change|effect|interaction)\b/
   ].freeze
 
-  def initialize(text, matched_term:)
-    @text = text.to_s
-    @matched_term = MedicationReviewTermNormalizer.label(matched_term)
+  def initialize(text)
+    @text = text.to_s.dup.freeze
   end
 
-  def call
-    instruction, risk_level = classification
+  def call(matched_term:)
+    excerpt = excerpt_for(MedicationReviewTermNormalizer.label(matched_term))
+    instruction, risk_level = classification(excerpt)
     Result.new(instruction: instruction, risk_level: risk_level, excerpt: excerpt)
   end
 
   private
 
-  attr_reader :text, :matched_term
+  attr_reader :text
 
-  def classification
+  def classification(excerpt)
     normalized_excerpt = MedicationReviewTermNormalizer.label(excerpt)
     return %w[no_action_required low] if NO_ACTION_PATTERNS.any? { |pattern| normalized_excerpt.match?(pattern) }
 
@@ -35,18 +35,17 @@ class MedicationReviewSourceInstructionClassifier
     match ? match.first(2) : %w[unclassified unknown]
   end
 
-  def excerpt
-    @excerpt ||= begin
-      matching_sentences = sentences.select { |sentence| contains_term?(sentence, matched_term) }
-      matching_sentences.presence&.join(' ') || text
+  def excerpt_for(term)
+    padded_term = " #{term} "
+    matching_sentences = sentences.filter_map do |sentence, normalized|
+      sentence if normalized.include?(padded_term)
     end
+    matching_sentences.presence&.join(' ') || text
   end
 
   def sentences
-    text.split(/(?<=[.!?])\s+/).compact_blank
-  end
-
-  def contains_term?(value, term)
-    " #{MedicationReviewTermNormalizer.label(value)} ".include?(" #{term} ")
+    @sentences ||= text.split(/(?<=[.!?])\s+/).compact_blank.map do |sentence|
+      [sentence, " #{MedicationReviewTermNormalizer.label(sentence)} "]
+    end
   end
 end
