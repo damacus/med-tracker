@@ -18,6 +18,7 @@ module MedicationAdministration
     include RecordDoseObservability
 
     Result = Data.define(:success, :take, :error)
+    FUTURE_TOLERANCE = 60.minutes
     PreparedTake = Data.define(
       :source, :amount, :unit, :medication, :taken_at, :client_uuid, :error, :decision_context
     ) do
@@ -115,6 +116,12 @@ module MedicationAdministration
     end
 
     def prepare_take(source:, amount_override:, taken_from_medication_id:, user:, options:)
+      return prepared_error(:future_taken_at) if future_taken_at?(options.fetch(:taken_at, Time.current))
+
+      prepare_valid_take(source:, amount_override:, taken_from_medication_id:, user:, options:)
+    end
+
+    def prepare_valid_take(source:, amount_override:, taken_from_medication_id:, user:, options:)
       taken_at = options.fetch(:taken_at, Time.current)
       resolver = MedicationStockSourceResolver.new(user: user, source: source, taken_at: taken_at)
       return prepared_error(resolver.blocked_reason) if resolver.blocked_reason
@@ -136,6 +143,10 @@ module MedicationAdministration
       return unless decision_context.blocked?
 
       prepared_error(decision_context.blocked_reason, decision_context: decision_context.audit_payload)
+    end
+
+    def future_taken_at?(taken_at)
+      taken_at > Time.current + FUTURE_TOLERANCE
     end
 
     def prepared_error(error, decision_context: nil)

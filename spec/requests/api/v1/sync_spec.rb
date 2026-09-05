@@ -432,6 +432,17 @@ RSpec.describe 'API v1 sync' do
   end
 
   describe 'medication-take create operations' do
+    before { travel_to(2.days.from_now) }
+
+    it 'rejects future queued doses without creating a take' do
+      expect do
+        post_batch(medication_take_operation(source: schedules(:jane_ibuprofen), taken_at: 2.days.from_now.iso8601))
+      end.not_to change(MedicationTake, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body.fetch('error')).to include('code' => 'medication_take_invalid')
+    end
+
     it 'records a queued schedule take through the batch result contract' do
       source = schedules(:jane_ibuprofen)
       client_uuid = SecureRandom.uuid
@@ -692,7 +703,7 @@ RSpec.describe 'API v1 sync' do
         medication_take_operation(
           source: source,
           client_uuid: client_uuid,
-          taken_at: 2.days.from_now.iso8601
+          taken_at: Time.current.iso8601
         ),
         {
           action: 'replace',
@@ -743,7 +754,7 @@ RSpec.describe 'API v1 sync' do
   end
 
   def medication_take_operation(
-    source:, client_uuid: SecureRandom.uuid, taken_at: 2.days.from_now.iso8601, **attributes
+    source:, client_uuid: SecureRandom.uuid, taken_at: Time.current.iso8601, **attributes
   )
     source_type = source.is_a?(Schedule) ? 'schedule' : 'person_medication'
     {

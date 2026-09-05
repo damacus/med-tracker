@@ -251,7 +251,7 @@ RSpec.describe 'API v1 medication-take sync concurrency' do
       client_uuid: client_uuid,
       source_type: 'schedule',
       source_id: schedule.portable_id,
-      taken_at: 2.days.from_now.iso8601,
+      taken_at: Time.current.iso8601,
       taken_from_medication_id: medication.id
     }
   end
