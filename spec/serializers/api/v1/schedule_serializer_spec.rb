@@ -3,6 +3,15 @@
 require 'rails_helper'
 
 RSpec.describe Api::V1::ScheduleSerializer do
+  it 'serialises the recurrence configuration without losing configured dates or times' do
+    config = { 'dates' => ['2026-09-08'], 'times' => ['08:00'] }
+    schedule = build_stubbed(:schedule, schedule_type: :specific_dates, schedule_config: config)
+
+    expect(described_class.new(schedule).as_json).to include(
+      schedule_type: 'specific_dates', schedule_config: config
+    )
+  end
+
   it 'serialises association, timing and dosing data' do
     schedule = create(:schedule)
     json = described_class.new(schedule).as_json
@@ -69,7 +78,7 @@ RSpec.describe Api::V1::ScheduleSerializer do
       medication_id: nil, medication: nil, dose_amount: nil, dose_unit: nil,
       frequency: nil, dose_cycle: 'daily', start_date: nil, end_date: nil,
       active?: false, paused?: true, notes: nil, updated_at: updated_at,
-      max_daily_doses: nil, min_hours_between_doses: nil
+      max_daily_doses: nil, min_hours_between_doses: nil, schedule_type: 'daily', schedule_config: {}
     )
   end
 end

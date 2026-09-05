@@ -24,6 +24,17 @@ RSpec.describe 'API v1 schedules' do
   end
 
   describe 'GET /api/v1/households/:household_id/schedules/:id' do
+    it 'returns the stored recurrence rules for native and offline clients' do
+      schedule = schedules(:john_paracetamol)
+      config = { 'weekdays' => ['monday'], 'times' => ['08:00'] }
+      schedule.update!(schedule_type: :weekly, schedule_config: config)
+
+      get api_v1_household_schedule_path(household_id, schedule.id), headers: headers, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.fetch('data')).to include('schedule_type' => 'weekly', 'schedule_config' => config)
+    end
+
     it 'returns a specific schedule' do
       schedule = schedules(:john_paracetamol)
 

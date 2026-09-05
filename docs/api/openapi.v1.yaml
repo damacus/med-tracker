@@ -4809,6 +4809,8 @@ components:
       additionalProperties: false
       required:
         - id
+        - schedule_type
+        - schedule_config
         - portable_id
         - person_id
         - person_portable_id
@@ -4873,6 +4875,18 @@ components:
           minimum: 1
         min_hours_between_doses:
           $ref: '#/components/schemas/NullableDecimalValue'
+        schedule_type:
+          type: string
+          enum:
+            - daily
+            - multiple_daily
+            - weekly
+            - specific_dates
+            - prn
+            - tapering
+            - every_other_day
+        schedule_config:
+          $ref: '#/components/schemas/ScheduleConfig'
     ScheduleResponse:
       type: object
       additionalProperties: false

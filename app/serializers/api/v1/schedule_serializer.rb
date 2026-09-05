@@ -63,6 +63,8 @@ module Api
 
       def dosing_data
         {
+          schedule_type: schedule.schedule_type,
+          schedule_config: schedule.schedule_config,
           max_daily_doses: schedule.max_daily_doses,
           min_hours_between_doses: decimal_as_json(schedule.min_hours_between_doses)
         }
