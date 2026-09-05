@@ -95,7 +95,8 @@ module TakeMedicationGuardable
     return parse_time_only_taken_at(raw_taken_at) if raw_taken_at.match?(/\A\d{2}:\d{2}(:\d{2})?\z/)
 
     medication_taken_at_formats.each do |format|
-      return Time.zone.strptime(raw_taken_at, format)
+      parsed = Time.zone.strptime(raw_taken_at, format)
+      return parsed if parsed.strftime(format) == raw_taken_at
     rescue ArgumentError, TypeError
       next
     end

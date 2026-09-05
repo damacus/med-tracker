@@ -16,6 +16,29 @@ RSpec.describe 'Medication stock sources' do
   end
 
   describe 'POST /people/:person_id/schedules/:id/take_medication' do
+    it 'preserves seconds in a submitted administration timestamp' do
+      schedule = build_schedule
+      submitted_time = Time.current.change(sec: 56, usec: 0)
+
+      post take_medication_person_schedule_path(person, schedule),
+           params: { medication_take: { taken_at: submitted_time.strftime('%Y-%m-%dT%H:%M:%S') } }
+
+      expect(response).to redirect_to(person_path(person))
+      expect(MedicationTake.order(:id).last.taken_at).to eq(submitted_time)
+    end
+
+    it 'rejects timestamp suffixes instead of silently truncating them' do
+      schedule = build_schedule
+      timestamp = "#{Time.current.strftime('%Y-%m-%dT%H:%M:%S')}junk"
+
+      expect do
+        post take_medication_person_schedule_path(person, schedule),
+             params: { medication_take: { taken_at: timestamp } }
+      end.not_to change(MedicationTake, :count)
+
+      expect(flash[:alert]).to be_present
+    end
+
     it 'deducts stock from the selected alternate medication location' do
       schedule = build_schedule
       alternate_medication = build_alternate_medication
