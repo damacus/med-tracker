@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "MedTracker Android"
 include(":phone")
+include(":wear", ":wear-protocol")

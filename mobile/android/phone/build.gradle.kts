@@ -123,6 +123,9 @@ tasks.withType<Test>().configureEach {
 }
 
 dependencies {
+    implementation(project(":wear-protocol"))
+    implementation(libs.wearable)
+    implementation(libs.kotlinx.coroutines.play.services)
     val composeBom = platform(libs.androidx.compose.bom)
     implementation(composeBom)
     androidTestImplementation(composeBom)
@@ -153,6 +156,7 @@ dependencies {
     implementation(libs.material)
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

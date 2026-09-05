@@ -3,6 +3,7 @@ package io.damacus.medtracker.ui.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import io.damacus.medtracker.data.AppSession
 import io.damacus.medtracker.data.SessionManager
 import io.damacus.medtracker.data.api.ApiResult
 import io.damacus.medtracker.data.api.GeneratedMedTrackerApi
@@ -13,6 +14,10 @@ import io.damacus.medtracker.data.model.MedicationTakeDto
 import io.damacus.medtracker.data.model.PersonDto
 import io.damacus.medtracker.data.model.RecordDosePayload
 import io.damacus.medtracker.data.model.ScheduleDto
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,50 +30,78 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 data class DashboardUiState(
+    val sessionRevision: String? = null,
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val takingScheduleId: Long? = null,
     val dashboardData: DashboardData = DashboardData(),
     val errorMessage: String? = null,
     val actionSuccessMessage: String? = null
-)
+) {
+    fun forSession(session: AppSession): DashboardUiState =
+        if (sessionRevision == session.revision) this else DashboardUiState(sessionRevision = session.revision)
+}
 
 class DashboardViewModel(
     private val sessionManager: SessionManager,
     private val apiClient: MedTrackerApi = GeneratedMedTrackerApi()
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(DashboardUiState(isLoading = true))
+    private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+    private var sessionWork: Job = SupervisorJob(viewModelScope.coroutineContext[Job])
+    private var loadJob: Job? = null
+    private val sessionObservation: AutoCloseable
 
     init {
-        loadDashboardData()
+        sessionObservation = sessionManager.observeSession { session ->
+            sessionWork.cancel()
+            sessionWork = SupervisorJob(viewModelScope.coroutineContext[Job])
+            _uiState.value = DashboardUiState(sessionRevision = session.revision)
+            loadDashboardData(session)
+        }
     }
 
-    fun refresh() {
+    override fun onCleared() {
+        sessionObservation.close()
+        sessionWork.cancel()
+        super.onCleared()
+    }
+
+    fun refresh(sessionRevision: String = sessionManager.sessionState.value.revision) {
+        if (sessionRevision != sessionManager.sessionState.value.revision) return
         loadDashboardData(isRefresh = true)
     }
 
-    fun selectPerson(personId: Long?) {
-        _uiState.update { current ->
+    fun selectPerson(personId: Long?, sessionRevision: String = sessionManager.sessionState.value.revision) {
+        val session = sessionManager.sessionState.value
+        if (sessionRevision != session.revision) return
+        updateForSession(session, sessionWork) { current ->
+            if (personId != null && current.dashboardData.people.none { it.id == personId }) return@updateForSession current
             current.copy(
                 dashboardData = current.dashboardData.copy(selectedPersonId = personId)
             )
         }
     }
 
-    fun clearMessages() {
-        _uiState.update { it.copy(errorMessage = null, actionSuccessMessage = null) }
+    fun clearMessages(sessionRevision: String = sessionManager.sessionState.value.revision) {
+        val session = sessionManager.sessionState.value
+        if (sessionRevision != session.revision) return
+        updateForSession(session, sessionWork) { it.copy(errorMessage = null, actionSuccessMessage = null) }
     }
 
-    fun recordDose(schedule: ScheduleDto) {
+    fun recordDose(schedule: ScheduleDto, sessionRevision: String = sessionManager.sessionState.value.revision) {
         val scheduleId = schedule.id ?: return
         val session = sessionManager.sessionState.value
+        if (sessionRevision != session.revision || _uiState.value.sessionRevision != session.revision) return
+        if (schedule !in _uiState.value.dashboardData.schedules) return
         val householdId = session.household?.id ?: return
         val token = session.accessToken ?: return
 
-        viewModelScope.launch {
-            _uiState.update { it.copy(takingScheduleId = scheduleId, errorMessage = null) }
+        val work = sessionWork
+        CoroutineScope(viewModelScope.coroutineContext + work).launch {
+            if (!isCurrentSession(session, work)) return@launch
+            updateForSession(session, work) { it.copy(takingScheduleId = scheduleId, errorMessage = null) }
 
             val nowIso = DateTimeFormatter.ISO_INSTANT.format(Instant.now())
             val clientUuid = UUID.randomUUID().toString()
@@ -88,10 +121,11 @@ class DashboardViewModel(
                 householdId = householdId,
                 request = request
             )
+            if (!isCurrentSession(session, work)) return@launch
 
             when (result) {
                 is ApiResult.Success -> {
-                    _uiState.update { current ->
+                    updateForSession(session, work) { current ->
                         val updatedTakes = listOf(result.data) + current.dashboardData.recentTakes
                         current.copy(
                             takingScheduleId = null,
@@ -100,10 +134,10 @@ class DashboardViewModel(
                         )
                     }
                     // Refresh data in background to ensure stock and schedules are synced
-                    loadDashboardData(isRefresh = true)
+                    loadDashboardData(session, isRefresh = true)
                 }
                 is ApiResult.Error -> {
-                    _uiState.update {
+                    updateForSession(session, work) {
                         it.copy(
                             takingScheduleId = null,
                             errorMessage = result.message
@@ -111,7 +145,7 @@ class DashboardViewModel(
                     }
                 }
                 is ApiResult.NetworkError -> {
-                    _uiState.update {
+                    updateForSession(session, work) {
                         it.copy(
                             takingScheduleId = null,
                             errorMessage = "Network error: ${result.cause.localizedMessage ?: "Unable to record dose"}"
@@ -122,27 +156,24 @@ class DashboardViewModel(
         }
     }
 
-    private fun loadDashboardData(isRefresh: Boolean = false) {
-        val session = sessionManager.sessionState.value
+    private fun loadDashboardData(session: AppSession = sessionManager.sessionState.value, isRefresh: Boolean = false) {
+        val work = sessionWork
+        if (!isCurrentSession(session, work)) return
         val householdId = session.household?.id
         val token = session.accessToken
 
         if (householdId == null || token.isNullOrBlank()) {
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    isRefreshing = false,
-                    errorMessage = "No active household or session found"
-                )
-            }
             return
         }
 
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = CoroutineScope(viewModelScope.coroutineContext + work).launch {
+            val requestJob = coroutineContext[Job]!!
+            if (!isCurrentSession(session, requestJob)) return@launch
             if (isRefresh) {
-                _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
+                updateForSession(session, requestJob) { it.copy(isRefreshing = true, errorMessage = null) }
             } else {
-                _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+                updateForSession(session, requestJob) { it.copy(isLoading = true, errorMessage = null) }
             }
 
             try {
@@ -182,7 +213,7 @@ class DashboardViewModel(
                         is ApiResult.NetworkError -> { errors.add("Takes: Network error"); emptyList() }
                     }
 
-                    _uiState.update { current ->
+                    updateForSession(session, requestJob) { current ->
                         current.copy(
                             isLoading = false,
                             isRefreshing = false,
@@ -196,8 +227,10 @@ class DashboardViewModel(
                         )
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                _uiState.update {
+                updateForSession(session, requestJob) {
                     it.copy(
                         isLoading = false,
                         isRefreshing = false,
@@ -205,6 +238,15 @@ class DashboardViewModel(
                     )
                 }
             }
+        }
+    }
+
+    private fun isCurrentSession(session: AppSession, work: Job): Boolean =
+        work.isActive && sessionManager.sessionState.value.revision == session.revision
+
+    private fun updateForSession(session: AppSession, work: Job, update: (DashboardUiState) -> DashboardUiState) {
+        _uiState.update { current ->
+            if (isCurrentSession(session, work) && current.sessionRevision == session.revision) update(current) else current
         }
     }
 

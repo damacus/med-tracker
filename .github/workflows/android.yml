@@ -27,9 +27,25 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Fish
-        run: sudo apt-get install --yes fish
+      - name: Install Fish and ripgrep
+        run: sudo apt-get install --yes fish ripgrep
       - name: Verify Android
         run: task android:ci
       - id: verified
         run: echo "result=success" >> "$GITHUB_OUTPUT"
+      - name: Upload Android failure reports
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: android-failure-reports-${{ github.sha }}
+          path: |
+            mobile/android/phone/build/test-results/**/*.xml
+            mobile/android/phone/build/reports/tests/**
+            mobile/android/phone/build/reports/lint-results*
+            mobile/android/wear/build/test-results/**/*.xml
+            mobile/android/wear/build/reports/tests/**
+            mobile/android/wear/build/reports/lint-results*
+            mobile/android/wear-protocol/build/test-results/**/*.xml
+            mobile/android/wear-protocol/build/reports/tests/**
+          if-no-files-found: ignore
+          retention-days: 7

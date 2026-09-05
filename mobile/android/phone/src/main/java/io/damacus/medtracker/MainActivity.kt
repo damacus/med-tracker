@@ -18,7 +18,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.damacus.medtracker.data.SessionManager
 import io.damacus.medtracker.ui.MainViewModel
 import io.damacus.medtracker.ui.dashboard.DashboardScreen
 import io.damacus.medtracker.ui.dashboard.DashboardViewModel
@@ -39,7 +38,7 @@ enum class AppDestination {
 class MainActivity : ComponentActivity() {
 
     private lateinit var authorizationService: AuthorizationService
-    private val sessionManager by lazy { SessionManager(applicationContext) }
+    private val sessionManager by lazy { (application as MedTrackerApplication).sessionManager }
     private val mainViewModel by viewModels<MainViewModel> {
         MainViewModel.Factory(sessionManager)
     }
@@ -122,14 +121,16 @@ fun MedTrackerApp(
 ) {
     val session by mainViewModel.sessionState.collectAsStateWithLifecycle()
     val mainUiState by mainViewModel.uiState.collectAsStateWithLifecycle()
-    val dashboardUiState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
-    var currentDestination by remember { mutableStateOf(AppDestination.Dashboard) }
+    val collectedDashboardUiState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
+    val dashboardUiState = collectedDashboardUiState.forSession(session)
+    val sessionRevision = session.revision
+    var currentDestination by remember(sessionRevision) { mutableStateOf(AppDestination.Dashboard) }
 
     Crossfade(
         targetState = session.isLoggedIn,
         label = "AuthCrossfade"
     ) { loggedIn ->
-        if (loggedIn) {
+        if (loggedIn && session.isLoggedIn) {
             Crossfade(
                 targetState = currentDestination,
                 label = "MainFlowCrossfade"
@@ -139,12 +140,12 @@ fun MedTrackerApp(
                         DashboardScreen(
                             session = session,
                             uiState = dashboardUiState,
-                            onRefresh = { dashboardViewModel.refresh() },
-                            onSelectPerson = { personId -> dashboardViewModel.selectPerson(personId) },
-                            onRecordDose = { schedule -> dashboardViewModel.recordDose(schedule) },
+                            onRefresh = { dashboardViewModel.refresh(sessionRevision) },
+                            onSelectPerson = { personId -> dashboardViewModel.selectPerson(personId, sessionRevision) },
+                            onRecordDose = { schedule -> dashboardViewModel.recordDose(schedule, sessionRevision) },
                             onNavigateToProfile = { currentDestination = AppDestination.Profile },
-                            onLogoutClick = { mainViewModel.logout() },
-                            onDismissMessage = { dashboardViewModel.clearMessages() }
+                            onLogoutClick = { mainViewModel.logout(sessionRevision) },
+                            onDismissMessage = { dashboardViewModel.clearMessages(sessionRevision) }
                         )
                     }
                     AppDestination.Profile -> {
@@ -152,7 +153,7 @@ fun MedTrackerApp(
                             session = session,
                             activePerson = dashboardUiState.dashboardData.selectedPerson,
                             onBackClick = { currentDestination = AppDestination.Dashboard },
-                            onLogoutClick = { mainViewModel.logout() }
+                            onLogoutClick = { mainViewModel.logout(sessionRevision) }
                         )
                     }
                 }

@@ -8,9 +8,19 @@ tasks:
       - fish --no-config ./scripts/check-jdk.fish
 
   test:
-    desc: Run Android phone unit tests
+    desc: Run protocol, phone, and Wear unit tests
     cmds:
-      - ./gradlew :phone:testDebugUnitTest --no-daemon
+      - ./gradlew :wear-protocol:test :phone:testDebugUnitTest :wear:testDebugUnitTest --no-daemon
+
+  projects:
+    desc: List Android Gradle modules
+    cmds:
+      - ./gradlew projects --no-daemon
+
+  phone:test:
+    desc: Run phone unit tests
+    cmds:
+      - ./gradlew :phone:testDebugUnitTest {{.CLI_ARGS}} --no-daemon
 
   integration:canary:
     desc: Run the opt-in live canary integration test
@@ -18,14 +28,28 @@ tasks:
       - fish --no-config ./scripts/canary-integration.fish
 
   lint:
-    desc: Run Android phone lint
+    desc: Run phone and Wear lint
     cmds:
-      - ./gradlew :phone:lint --no-daemon
+      - ./gradlew :phone:lint :wear:lint --no-daemon
 
   assemble:
-    desc: Assemble Android phone debug, staging, and release APKs
+    desc: Assemble phone and Wear debug, staging, and release APKs
     cmds:
-      - ./gradlew :phone:assembleDebug :phone:assembleStaging :phone:assembleRelease --no-daemon --stacktrace
+      - ./gradlew :phone:assembleDebug :phone:assembleStaging :phone:assembleRelease :wear:assembleDebug :wear:assembleStaging :wear:assembleRelease --no-daemon --stacktrace
+
+  wear:boundary:
+    desc: Verify Wear source, runtime dependencies, and packaged permission boundaries
+    cmds:
+      - fish --no-config ./scripts/verify-wear-boundary.fish
+      - ./gradlew :wear:verifyCompanionDependencies --no-daemon
+
+  wear:smoke:
+    desc: Verify persistent signed-out connectivity on an explicitly selected emulator pair
+    env:
+      PHONE_SERIAL: '{{ .PHONE_SERIAL | default "" }}'
+      WATCH_SERIAL: '{{ .WATCH_SERIAL | default "" }}'
+    cmds:
+      - fish --no-config ./scripts/wear-smoke.fish
 
   release:check:
     desc: Verify the release APK excludes staging authentication UI
@@ -54,11 +78,12 @@ tasks:
       - task: api:check
 
   ci:
-    desc: Run Android phone tests, lint, assemblies, and API drift verification
+    desc: Run phone, Wear and protocol checks plus release, boundary and API verification
     cmds:
       - task: jvm:check
       - task: test
       - task: lint
       - task: assemble
       - task: release:check
+      - task: wear:boundary
       - task: api:check
