@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_03_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -828,6 +828,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_03_140000) do
 
   create_table "native_device_tokens", force: :cascade do |t|
     t.bigint "account_id", null: false
+    t.string "apns_environment"
     t.datetime "created_at", null: false
     t.string "device_token", null: false
     t.string "platform", null: false

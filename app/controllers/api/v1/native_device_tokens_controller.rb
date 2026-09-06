@@ -5,7 +5,7 @@ module Api
     class NativeDeviceTokensController < BaseController
       def create
         token = current_account.native_device_tokens.find_or_initialize_by(device_token: token_params[:device_token])
-        token.assign_attributes(platform: token_params[:platform], user_agent: request.user_agent)
+        token.assign_attributes(token_params.except(:device_token).merge(user_agent: request.user_agent))
         authorize token, :create?
 
         return render_validation_errors(token) unless token.save
@@ -28,7 +28,7 @@ module Api
       private
 
       def token_params
-        params.expect(native_device_token: %i[device_token platform])
+        params.expect(native_device_token: %i[device_token platform apns_environment])
       end
     end
   end

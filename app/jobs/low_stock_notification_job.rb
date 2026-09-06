@@ -61,7 +61,9 @@ class LowStockNotificationJob < ApplicationJob
   end
 
   def deliver_or_record_skip(event, medication, person)
-    return record_skip(event, 'no_active_push_subscriptions') if person.account.push_subscriptions.none?
+    unless person.account.push_subscriptions.exists? || person.account.native_device_tokens.exists?
+      return record_skip(event, 'no_active_push_subscriptions')
+    end
 
     record_outcome(:attempted, stage: :recipient_attempt)
     PushNotificationService.send_to_account(

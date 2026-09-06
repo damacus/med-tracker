@@ -34,7 +34,9 @@ module Api
         PushNotificationService.send_to_account(
           current_account,
           title: 'MedTracker Test',
-          body: 'Push notifications are working correctly from the server.'
+          body: 'Push notifications are working correctly from the server.',
+          path: "/households/#{current_household.slug}/dashboard",
+          notification_kind: :test
         )
         head :no_content
       rescue StandardError

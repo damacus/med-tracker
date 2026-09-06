@@ -132,6 +132,37 @@ RSpec.describe PushNotificationService do
     end
   end
 
+  describe NativePush::ApnsClient do
+    fixtures :accounts
+
+    before do
+      allow(described_class).to receive_messages(
+        bundle_id: 'test.medtracker', team_id: 'team', key_id: 'key',
+        private_key: OpenSSL::PKey::EC.generate('prime256v1').to_pem
+      )
+    end
+
+    it 'sends private alert text with typed routing metadata' do
+      token = NativeDeviceToken.new(account: accounts(:admin), device_token: 'test-token', platform: 'ios')
+      request = stub_request(:post, 'https://api.sandbox.push.apple.com/3/device/test-token')
+                .with do |req|
+        payload = JSON.parse(req.body)
+        expect(payload.fetch('aps').fetch('alert')).to eq(
+          'title' => 'MedTracker', 'body' => 'Open MedTracker to view your notification.'
+        )
+        expect(payload).to include('path' => '/households/home/dashboard', 'kind' => 'dose_due')
+        expect(req.body).not_to include('Aspirin', 'John')
+      end.to_return(status: 200)
+
+      result = described_class.new(environment: 'sandbox').deliver(
+        token, title: 'John', body: 'Aspirin', path: '/households/home/dashboard', notification_kind: :dose_due
+      )
+
+      expect(result.status).to eq(:delivered)
+      expect(request).to have_been_requested.once
+    end
+  end
+
   def create_native_device_token(platform: 'ios', device_token: 'native-token-for-privacy-test')
     NativeDeviceToken.create!(
       account: account,
@@ -147,11 +178,13 @@ RSpec.describe PushNotificationService do
   end
 
   def expect_native_delivery(client, token)
+    routing = token.platform == 'ios' ? { notification_kind: :unknown } : {}
     expect(client).to have_received(:deliver).with(
       token,
       title: 'Medication Reminder',
       body: 'Take aspirin',
-      path: '/today'
+      path: '/today',
+      **routing
     )
   end
 
