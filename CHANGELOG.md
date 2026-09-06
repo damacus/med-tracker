@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.26](https://github.com/damacus/med-tracker/compare/v0.5.25...v0.5.26) (2026-09-06)
+
+
+### Features
+
+* **sync:** accept queued schedule and assignment changes ([#2096](https://github.com/damacus/med-tracker/issues/2096)) ([fad08ef](https://github.com/damacus/med-tracker/commit/fad08ef32ec35c1f7a706695f146a11a77a09642))
+* **ui:** personalise mobile shortcuts ([#2097](https://github.com/damacus/med-tracker/issues/2097)) ([8b6f347](https://github.com/damacus/med-tracker/commit/8b6f347721a4089f171eeb56684075ea1fbf4aec))
+
+
+### Bug Fixes
+
+* **ui:** polish locations and finish medication setup ([#2098](https://github.com/damacus/med-tracker/issues/2098)) ([cd69567](https://github.com/damacus/med-tracker/commit/cd695677b66606cdff6d94283ec44bcc2ea1df48))
+
 ## [0.5.25](https://github.com/damacus/med-tracker/compare/v0.5.24...v0.5.25) (2026-09-05)
 
 
