@@ -22,19 +22,47 @@ RSpec.describe Components::Layouts::MobileRail, type: :component do
     vc.singleton_class.define_method(:current_user) { user }
     allow(vc.request).to receive(:path).and_return(path)
 
-    html = vc.render(described_class.new(current_user: user))
+    component = described_class.new(current_user: user)
+    yield component if block_given?
+    html = vc.render(component)
     Nokogiri::HTML::DocumentFragment.parse(html)
   end
 
-  it 'renders icon-only navigation with aria labels and no logout action', :aggregate_failures do
+  it 'renders only the three labelled quick links in order', :aggregate_failures do
     rendered = render_rail(user: admin_user)
 
     expect(rendered.css('aside[data-testid="mobile-rail"]')).to be_present
-    expect(rendered.css('a[aria-label="Dashboard"]')).to be_present
-    expect(rendered.css('a[aria-label="Inventory"]')).to be_present
-    expect(rendered.css('a[aria-label="Profile"]')).to be_present
+    expect(rendered.css('a').map { |link| link.text.strip }).to eq(['Home', 'Inventory', 'Medicine Finder'])
+    expect(rendered.css('a').pluck('href')).to eq(
+      %i[dashboard_path medications_path medication_finder_path].map do |route|
+        Rails.application.routes.url_helpers.public_send(route, household_slug: household_slug)
+      end
+    )
     expect(rendered.css('button[aria-label="Sign Out"]')).to be_empty
     expect(rendered.css('a[aria-label] svg')).to all(satisfy { |icon| icon['aria-hidden'] == 'true' })
+  end
+
+  it 'does not render for an unauthenticated visitor' do
+    expect(render_rail(user: nil).css('aside')).to be_empty
+  end
+
+  it 'renders the saved order and omits an administration shortcut without an admin membership' do
+    Current.account = accounts(:jane_doe)
+    Current.account.update!(mobile_shortcuts: %w[reports administration people])
+
+    rendered = render_rail(user: admin_user)
+
+    expect(rendered.css('a').map { |link| link.text.strip }).to eq(%w[Reports People])
+  end
+
+  it 'does not restore destinations excluded from the shared navigation' do
+    rendered = render_rail(user: admin_user) do |component|
+      allow(component).to receive(:primary_navigation_items).and_wrap_original do |method|
+        method.call.reject { |item| item[:path].end_with?('/medication-finder') }
+      end
+    end
+
+    expect(rendered.css('a').map { |link| link.text.strip }).to eq(%w[Home Inventory])
   end
 
   it 'renders the inventory item with the inventory icon' do
@@ -53,12 +81,12 @@ RSpec.describe Components::Layouts::MobileRail, type: :component do
     expect(inventory_link['aria-current']).to eq('page')
   end
 
-  it 'marks Dashboard active on the dashboard alias route' do
+  it 'marks Home active on the dashboard alias route' do
     rendered = render_rail(
       user: admin_user,
       path: Rails.application.routes.url_helpers.dashboard_path(household_slug: household_slug)
     )
-    dashboard_link = rendered.at_css(%(a[aria-label="Dashboard"]))
+    dashboard_link = rendered.at_css(%(a[aria-label="Home"]))
 
     expect(dashboard_link['aria-current']).to eq('page')
   end

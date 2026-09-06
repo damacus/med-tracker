@@ -78,4 +78,33 @@ RSpec.describe Account do
       expect(version.object.to_s).not_to include('password_hash')
     end
   end
+
+  describe 'mobile shortcuts' do
+    let(:account) { accounts(:jane_doe) }
+
+    it 'persists the chosen destinations in their chosen order' do
+      account.update!(mobile_shortcuts: %w[people reports profile])
+
+      expect(account.reload.preferred_mobile_shortcuts).to eq(%w[people reports profile])
+    end
+
+    it 'uses defaults only when no choice has been saved' do
+      expect(account.preferred_mobile_shortcuts).to eq(%w[dashboard inventory finder])
+    end
+
+    it 'allows fewer shortcuts and removes empty slots' do
+      account.update!(mobile_shortcuts: ['people', '', ''])
+
+      expect(account.reload.preferred_mobile_shortcuts).to eq(['people'])
+    end
+
+    it 'rejects unknown, duplicate, empty and excessive choices' do
+      [%w[unknown], %w[people people], [], %w[people reports profile inventory], 'people'].each do |value|
+        account.mobile_shortcuts = value
+        account.validate
+
+        expect(account.errors[:mobile_shortcuts]).to be_present
+      end
+    end
+  end
 end

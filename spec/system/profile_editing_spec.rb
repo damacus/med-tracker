@@ -16,7 +16,7 @@ RSpec.describe 'Profile Editing' do
 
   after do |example|
     # Clean up any inserted modal content between JS tests
-    page.execute_script('document.querySelectorAll("[data-state]").forEach(el => el.remove())') if example.metadata[:js]
+    page.execute_script('document.getElementById("modal")?.replaceChildren()') if example.metadata[:js]
   end
 
   describe 'changing email', :js do
@@ -259,6 +259,16 @@ RSpec.describe 'Profile Editing' do
   end
 
   def open_profile_section(section)
-    find("[data-profile-section='#{section}']").click
+    trigger = find("[data-profile-section='#{section}']")
+    page.document.synchronize do
+      ready = trigger.evaluate_script(<<~JS)
+        Boolean(window.Stimulus?.getControllerForElementAndIdentifier(
+          this.closest('[data-controller~="ruby-ui--tabs"]'), 'ruby-ui--tabs'
+        ))
+      JS
+      raise Capybara::ExpectationNotMet, 'Profile tabs are not ready' unless ready
+    end
+    trigger.click
+    expect(page).to have_css("#profile-#{section}-panel:not([hidden])")
   end
 end

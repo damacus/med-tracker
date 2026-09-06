@@ -154,6 +154,32 @@ RSpec.describe 'Profiles' do
   end
 
   describe 'PATCH /profile' do
+    it 'saves only the signed-in account shortcuts and refreshes the rail after redirect' do
+      other = accounts(:jane_doe)
+      original = other.preferences.deep_dup
+
+      patch profile_path, params: { account: { id: other.id, mobile_shortcuts: %w[people reports profile] } }
+
+      expect(response).to redirect_to(profile_path)
+      expect(account.reload.preferred_mobile_shortcuts).to eq(%w[people reports profile])
+      expect(other.reload.preferences).to eq(original)
+      follow_redirect!
+      expect(response.parsed_body.css('[data-testid="mobile-rail"] a').map { |link| link.text.strip })
+        .to eq(%w[People Reports Profile])
+    end
+
+    it 'keeps saved shortcuts when a duplicate selection is submitted' do
+      account.update!(mobile_shortcuts: %w[people reports profile])
+
+      patch profile_path,
+            params: { profile_setting: 'mobile_shortcuts', account: { mobile_shortcuts: %w[people people] } },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('profile-mobile-shortcuts-errors')
+      expect(account.reload.preferred_mobile_shortcuts).to eq(%w[people reports profile])
+    end
+
     it 'uploads the signed-in person avatar' do
       file = Tempfile.new(['avatar', '.png'])
       file.write('avatar')

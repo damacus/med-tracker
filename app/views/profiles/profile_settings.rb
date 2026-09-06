@@ -5,6 +5,8 @@ module Views
     class ProfileSettings < Views::Base
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::Routes
+      include Components::Layouts::CurrentUserContext
+      include Components::Layouts::NavigationItems
 
       def initialize(person:, account:)
         super()
@@ -16,11 +18,49 @@ module Views
         div(class: 'space-y-3') do
           render_avatar_sheet
           render_time_zone_dialog
+          render_setting_sheet(
+            title: t('profiles.mobile_shortcuts.title'),
+            description: t('profiles.mobile_shortcuts.description'),
+            testid: 'profile-mobile-shortcuts-sheet'
+          ) do
+            render_sheet_error('profile-mobile-shortcuts-errors')
+            render_mobile_shortcuts_form
+          end
           render_appearance_sheet
         end
       end
 
       private
+
+      def render_mobile_shortcuts_form
+        form_with(url: profile_path, method: :patch, class: 'space-y-5') do
+          input(type: 'hidden', name: 'section', value: 'profile')
+          input(type: 'hidden', name: 'profile_setting', value: 'mobile_shortcuts')
+          items = mobile_shortcut_items
+          3.times { |index| render_shortcut_slot(index, items) }
+          render_sheet_actions(t('profiles.mobile_shortcuts.save'))
+        end
+      end
+
+      def render_shortcut_slot(index, items)
+        id = "mobile-shortcut-#{index}"
+        div(class: 'space-y-2') do
+          label(for: id, class: 'block text-sm font-semibold') do
+            t('profiles.mobile_shortcuts.slot', number: index + 1)
+          end
+          select(id:, name: 'account[mobile_shortcuts][]', class: shortcut_select_classes) do
+            option(value: '') { t('profiles.mobile_shortcuts.none') }
+            items.each do |item|
+              option(value: item[:key], selected: @account.preferred_mobile_shortcuts[index] == item[:key]) { item[:label] }
+            end
+          end
+        end
+      end
+
+      def shortcut_select_classes
+        'block min-h-11 w-full rounded-shape-sm border border-border bg-card px-3 py-2 text-sm text-foreground ' \
+          'focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/5'
+      end
 
       def render_avatar_sheet
         render_setting_sheet(

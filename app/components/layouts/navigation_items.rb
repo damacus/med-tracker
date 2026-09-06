@@ -28,6 +28,23 @@ module Components
         navigation_item(t('layouts.profile_menu.profile'), household_navigation_path(:profile_path), Icons::User)
       end
 
+      def mobile_shortcut_items
+        routes = {
+          dashboard: :dashboard_path, inventory: :medications_path, locations: :locations_path,
+          people: :people_path, finder: :medication_finder_path, medicine_reviews: :medication_review_prompts_path,
+          reports: :reports_path, profile: :profile_path, administration: :admin_root_path
+        }
+        available = (primary_navigation_items + [profile_navigation_item] + admin_navigation_items)
+                    .index_by { |item| item[:path] }
+        routes.filter_map do |key, route|
+          item = available[household_navigation_path(route)]
+          next unless item
+
+          label_key = { dashboard: :home, inventory: :inventory, finder: :finder }[key]
+          item.merge(key: key.to_s, label: label_key ? t("layouts.mobile_rail.#{label_key}") : item[:label])
+        end
+      end
+
       def active_navigation_path?(path)
         current_path = view_context.request.path
         dashboard_path = household_navigation_path(:dashboard_path)

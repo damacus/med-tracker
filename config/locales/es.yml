@@ -1464,6 +1464,13 @@ es:
     paused: 'No se puede tomar el medicamento: está en pausa'
     overlapping_prescription_restriction: 'No se puede tomar el medicamento: otra receta activa para este medicamento establece un límite de tiempo más estricto.'
   profiles:
+    mobile_shortcuts:
+      title: "Accesos directos de la barra inferior"
+      description: "Elige de uno a tres accesos directos en el orden en que quieras que aparezcan."
+      slot: "Acceso directo %{number}"
+      none: "Sin acceso directo"
+      save: "Guardar accesos directos"
+      invalid: "Elige de uno a tres accesos directos diferentes."
     common:
       "on": Activado
       "off": Desactivado
@@ -1694,6 +1701,9 @@ es:
       user_fallback: Usuario
     mobile_rail:
       primary_navigation: Navegación principal
+      home: Inicio
+      inventory: Inventario
+      finder: Buscador de Medicamentos
   medication_reviews:
     eyebrow: Registro de revisión profesional
     title: Revisiones de medicamentos

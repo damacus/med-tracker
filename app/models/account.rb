@@ -8,11 +8,15 @@ class Account < ApplicationRecord
   WIZARD_VARIANTS = %w[fullpage modal slideover].freeze
   DASHBOARD_VARIANTS = %w[current time_first family_lanes calm_focus].freeze
   MEDICATION_LAUNCHER_VARIANTS = %w[current context_aware].freeze
+  MOBILE_SHORTCUTS = %w[
+    dashboard inventory locations people finder medicine_reviews reports profile administration
+  ].freeze
+  DEFAULT_MOBILE_SHORTCUTS = %w[dashboard inventory finder].freeze
 
   TIME_ZONE_NAMES = ActiveSupport::TimeZone.all.map(&:name).freeze
 
   store_accessor :preferences, :wizard_variant, :dashboard_variant, :medication_launcher_variant, :gravatar_enabled,
-                 :time_zone
+                 :time_zone, :mobile_shortcuts
 
   enum :status, { unverified: 1, verified: 2, closed: 3 }
 
@@ -33,6 +37,7 @@ class Account < ApplicationRecord
 
   validates :email, presence: true, uniqueness: true
   validate :time_zone_must_be_valid
+  validate :mobile_shortcuts_must_be_valid
 
   def self.valid_time_zone?(value)
     value.blank? || ActiveSupport::TimeZone[value].present?
@@ -77,7 +82,25 @@ class Account < ApplicationRecord
     time_zone.presence || Rails.application.config.time_zone
   end
 
+  def preferred_mobile_shortcuts
+    mobile_shortcuts || DEFAULT_MOBILE_SHORTCUTS
+  end
+
+  def mobile_shortcuts=(value)
+    super(value.is_a?(Array) ? value.compact_blank : value)
+  end
+
   private
+
+  def mobile_shortcuts_must_be_valid
+    value = mobile_shortcuts
+    return if value.nil?
+    if value.is_a?(Array) && value.size.between?(1, 3) && value.uniq == value && (value - MOBILE_SHORTCUTS).empty?
+      return
+    end
+
+    errors.add(:mobile_shortcuts, I18n.t('profiles.mobile_shortcuts.invalid'))
+  end
 
   def time_zone_must_be_valid
     errors.add(:time_zone, :inclusion) unless self.class.valid_time_zone?(time_zone)

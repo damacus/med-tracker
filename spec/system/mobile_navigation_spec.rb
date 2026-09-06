@@ -65,19 +65,77 @@ RSpec.describe 'Mobile Navigation', :browser do
 
     expect(page).to have_css('button[aria-label="Open menu"]')
     expect(page).to have_css('aside[data-testid="mobile-rail"]')
-    expect(page).to have_css(%(a[aria-label="Dashboard"][aria-current="page"]))
-    expect(page).to have_css(%(a[aria-label="Inventory"][href="#{medications_path}"]))
-    expect(page).to have_css(%(a[aria-label="Locations"][href="#{locations_path}"]))
-    expect(page).to have_css(%(a[aria-label="Reports"][href="#{reports_path}"]))
-    expect(page).to have_css(%(a[aria-label="Profile"][href="#{profile_path}"]))
+    within('[data-testid="mobile-rail"]') do
+      expect(page).to have_link('Home', href: dashboard_path)
+      expect(page).to have_link('Inventory', href: medications_path)
+      expect(page).to have_link('Medicine Finder', href: medication_finder_path)
+      expect(page).to have_css('a', count: 3)
+      expect(page).to have_css('a[aria-label="Home"][aria-current="page"]')
+    end
     expect(page).to have_no_css('nav.mobile-nav')
   end
 
-  scenario 'marks Dashboard active on the dashboard route' do
+  scenario 'marks Home active on the dashboard route' do
     page.current_window.resize_to(375, 667)
     visit dashboard_path
 
-    expect(page).to have_css(%(a[aria-label="Dashboard"][aria-current="page"]))
+    expect(page).to have_css(%(a[aria-label="Home"][aria-current="page"]))
+  end
+
+  scenario 'chooses and reorders shortcuts from profile settings and retains them after reload' do
+    page.current_window.resize_to(320, 844)
+    visit profile_path
+    within('[data-testid="profile-mobile-shortcuts-sheet"]') do
+      click_button 'Bottom bar shortcuts'
+    end
+    select 'People', from: 'Shortcut 1'
+    select 'Reports', from: 'Shortcut 2'
+    select 'Profile', from: 'Shortcut 3'
+    click_button 'Save shortcuts'
+
+    within('[data-testid="mobile-rail"]') do
+      expect(page).to have_link('People')
+      expect(all('a').map(&:text)).to eq(%w[People Reports Profile])
+      click_link 'People'
+    end
+    expect(page).to have_current_path(people_path)
+    page.refresh
+    within('[data-testid="mobile-rail"]') do
+      expect(all('a').map(&:text)).to eq(%w[People Reports Profile])
+      expect(page).to have_css('a[aria-label="People"][aria-current="page"]')
+    end
+  end
+
+  scenario 'keeps labelled quick links inside a narrow phone viewport' do
+    page.current_window.resize_to(320, 844)
+    visit dashboard_path
+    page.evaluate_script('document.fonts.ready.then(() => true)')
+
+    within('[data-testid="mobile-rail"]') do
+      expect(all('a').map(&:text)).to eq(['Home', 'Inventory', 'Medicine Finder'])
+      find('a[aria-label="Medicine Finder"] span').execute_script("this.innerHTML = 'Medicine<br>Finder'")
+      icon_tops = all('a svg').map { |icon| icon.evaluate_script('this.getBoundingClientRect().top') }
+      expect(icon_tops.max - icon_tops.min).to be <= 1
+      all('a').each do |link|
+        bounds = link.evaluate_script('this.getBoundingClientRect().toJSON()')
+        expect(bounds['width']).to be >= 44
+        expect(bounds['height']).to be >= 44
+        expect(bounds['left']).to be >= 0
+        expect(bounds['right']).to be <= 320
+        expect(link.evaluate_script('this.scrollWidth <= this.clientWidth')).to be(true)
+      end
+      click_link 'Inventory'
+    end
+
+    within('[data-testid="mobile-rail"]') do
+      expect(page).to have_css('a[aria-label="Inventory"][aria-current="page"]')
+      click_link 'Medicine Finder'
+    end
+
+    expect(page).to have_current_path(medication_finder_path)
+    within('[data-testid="mobile-rail"]') do
+      expect(page).to have_css('a[aria-label="Medicine Finder"][aria-current="page"]')
+    end
   end
 
   scenario 'uses one navigation system at the md breakpoint' do
@@ -99,6 +157,22 @@ RSpec.describe 'Mobile Navigation', :browser do
       'header' => false,
       'fab' => false
     )
+  end
+
+  scenario 'keeps translated quick-link labels inside their touch targets' do
+    allow(I18n).to receive(:locale).and_return(:cy)
+    page.current_window.resize_to(320, 844)
+    visit dashboard_path
+
+    within('[data-testid="mobile-rail"]') do
+      expect(page).to have_link(I18n.t('layouts.mobile_rail.finder'))
+      icon_tops = all('a svg').map { |icon| icon.evaluate_script('this.getBoundingClientRect().top') }
+      expect(icon_tops.max - icon_tops.min).to be <= 1
+      all('a').each do |link|
+        expect(link.evaluate_script('this.scrollWidth <= this.clientWidth')).to be(true)
+        expect(link.evaluate_script('this.scrollHeight <= this.clientHeight')).to be(true)
+      end
+    end
   end
 
   scenario 'keeps core mobile dashboard metric labels readable beside the rail' do

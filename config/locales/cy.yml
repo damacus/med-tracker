@@ -1486,6 +1486,13 @@ cy:
     paused: 'Methu cymryd meddyginiaeth: wedi''i hoedi'
     overlapping_prescription_restriction: 'Methu cymryd meddyginiaeth: mae presgripsiwn gweithredol arall ar gyfer y feddyginiaeth hon yn gosod terfyn amser llymach.'
   profiles:
+    mobile_shortcuts:
+      title: "Llwybrau byr y bar gwaelod"
+      description: "Dewiswch un i dri llwybr byr yn y drefn rydych am iddynt ymddangos."
+      slot: "Llwybr byr %{number}"
+      none: "Dim llwybr byr"
+      save: "Cadw llwybrau byr"
+      invalid: "Dewiswch un i dri llwybr byr gwahanol."
     common:
       "on": Ymlaen
       "off": I ffwrdd
@@ -1713,6 +1720,9 @@ cy:
       user_fallback: Defnyddiwr
     mobile_rail:
       primary_navigation: Llywio cynradd
+      home: Cartref
+      inventory: Stoc
+      finder: Darganfyddwr Meddyginiaethau
   medication_reviews:
     eyebrow: Cofnod adolygiad ymarferydd
     title: Adolygiadau meddyginiaethau
