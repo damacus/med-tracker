@@ -18,7 +18,9 @@ module Api
         class SyncConflict < BatchError; end
 
         def create
-          results = apply_batch_with_retry
+          results = Households::LifecycleCutoffLock.with(household: current_household) do
+            apply_batch_with_retry
+          end
 
           render json: { data: { applied: true, results: results } }, status: :created
         rescue PreconditionRequired => e
@@ -67,12 +69,19 @@ module Api
         end
 
         def operations
-          reject_numeric_contract_values!(%w[id source_id dose_amount current_supply reorder_threshold])
+          reject_numeric_contract_values!(%w[
+                                            id source_id person_id medication_id source_dosage_option_id dose_amount
+                                            current_supply reorder_threshold min_hours_between_doses amount
+                                          ])
           params.expect(batch: [{ operations: [[:action, :resource_type, :id, :if_match, { attributes: {} }]] }])
                 .fetch(:operations)
         end
 
         def apply_operation(operation, index)
+          if Api::Sync::AssignmentOperation::RESOURCE_CLASSES.key?(operation[:resource_type])
+            return apply_assignment_operation(operation, index)
+          end
+
           reject_medication_take_mutation!(operation, index)
 
           case operation.fetch(:action)
@@ -85,6 +94,18 @@ module Api
           else
             raise BatchError, "operation #{index} action is unsupported"
           end
+        end
+
+        def apply_assignment_operation(operation, index)
+          record = Api::Sync::AssignmentOperation.new(
+            authorization: pundit_user, household: current_household
+          ).call(operation: operation)
+          result = batch_result(record, index, operation.fetch(:action))
+          operation[:action] == 'delete' ? result : result.merge(etag: api_etag(record))
+        rescue Api::Sync::AssignmentOperation::Error => e
+          raise BatchError.new("operation #{index} #{e.message}", code: e.code, status: e.status)
+        rescue KeyError
+          raise BatchError, "operation #{index} resource_type, action and id are required"
         end
 
         def reject_medication_take_mutation!(operation, index)

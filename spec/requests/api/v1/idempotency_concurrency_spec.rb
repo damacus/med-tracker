@@ -46,6 +46,86 @@ RSpec.describe 'API v1 idempotency concurrency' do
     expect(replacement.response_headers.fetch('ETag')).to eq(responses.first.fetch(:etag))
   end
 
+  %w[schedule person_medication].each do |resource_type|
+    it "records concurrent #{resource_type} batch retries once" do
+      prepare_assignment_batch(resource_type)
+      pause_first_assignment(service_class: Api::Sync::AssignmentOperation)
+      first, second = start_concurrent_requests
+      wait_for_competing_request(second)
+      release_assignment << true
+      responses = collect_responses(first, second)
+
+      expect_status_and_body_parity(responses)
+      expect(responses.count { it.fetch(:replayed) }).to eq(1)
+      expect_assignment_batch_side_effects(resource_type)
+    end
+
+    it "rejects a concurrent stale #{resource_type} edit after the first edit commits" do
+      prepare_assignment_batch(resource_type, update: true)
+      records[:second_key] = SecureRandom.uuid
+      pause_first_assignment(service_class: Api::Sync::AssignmentOperation)
+      first, second = start_concurrent_requests
+      wait_for_competing_request(second)
+      release_assignment << true
+      responses = collect_responses(first, second)
+
+      expect(responses.map { it.fetch(:status) }).to eq([201, 409])
+      expect(responses.last.dig(:body, 'error', 'code')).to eq('sync_conflict')
+      expect_assignment_batch_side_effects(resource_type, event: 'update')
+    end
+  end
+
+  def prepare_assignment_batch(resource_type, update: false)
+    parents = assignment_batch_parents
+    operation = { action: 'create', resource_type: resource_type, attributes: assignment_attributes(parents) }
+    if update
+      record = create(resource_type.to_sym, **parents)
+      operation.merge!(action: 'update', id: record.portable_id, if_match: Api::RecordEtag.for(record),
+                       attributes: { notes: 'Concurrent batch' })
+    end
+    records[:batch_payload] = { batch: { operations: [operation] } }
+  end
+
+  def assignment_batch_parents
+    household = Household.find(records.fetch(:household_id))
+    person = household.people.find_by!(account_id: records.fetch(:account_id))
+    grant_batch_owner(household, person)
+    location = household.locations.first || create(:location, household: household)
+    medication = create(:medication, household: household, location: location)
+    { household: household, person: person, medication: medication }
+  end
+
+  def grant_batch_owner(household, person)
+    membership = household.household_memberships.find_by!(account_id: person.account_id)
+    PersonAccessGrant.create!(household: household, person: person, household_membership: membership,
+                              access_level: :manage, relationship_type: :self)
+  end
+
+  def assignment_attributes(parents)
+    { person_id: parents.fetch(:person).portable_id, medication_id: parents.fetch(:medication).portable_id,
+      dose_amount: '1', dose_unit: 'mg', notes: 'Concurrent batch',
+      start_date: Date.current.iso8601, end_date: 1.year.from_now.to_date.iso8601 }
+  end
+
+  def expect_assignment_batch_side_effects(resource_type, event: 'create')
+    resource_class = resource_type == 'schedule' ? Schedule : PersonMedication
+    scope = resource_class.where(household_id: records.fetch(:household_id))
+    expect(scope.count).to eq(1)
+    record = scope.first!
+    expect(record.notes).to eq('Concurrent batch')
+    expect_assignment_audit(record, event)
+  end
+
+  def expect_assignment_audit(record, event)
+    expect(assignment_versions(record, event).count).to eq(1)
+    expect(ApiChangeEvent.where(record_portable_id: record.portable_id, action: event).count).to eq(1)
+  end
+
+  def assignment_versions(record, event)
+    PaperTrail::Version.where(household_id: records.fetch(:household_id), item_type: record.class.name,
+                              item_id: record.id, event: event)
+  end
+
   def perform_concurrent_people_creates
     pause_first_assignment
     first, second = start_concurrent_requests
@@ -112,7 +192,7 @@ RSpec.describe 'API v1 idempotency concurrency' do
   end
 
   def expect_audit_and_idempotency(person)
-    expect(PaperTrail::Version.where(item_type: 'Person', item_id: person.id, event: 'create').count).to eq(1)
+    expect(assignment_versions(person, 'create').count).to eq(1)
     expect(ApiIdempotencyKey.where(household_id: records.fetch(:household_id), key: records.fetch(:key)).count).to eq(1)
   end
 
@@ -132,10 +212,10 @@ RSpec.describe 'API v1 idempotency concurrency' do
     )
   end
 
-  def pause_first_assignment
+  def pause_first_assignment(service_class: CareDelegation::Assign)
     gate = Mutex.new
     paused = false
-    allow(CareDelegation::Assign).to receive(:new).and_wrap_original do |original, *arguments, **keywords|
+    allow(service_class).to receive(:new).and_wrap_original do |original, *arguments, **keywords|
       service = original.call(*arguments, **keywords)
       should_pause = gate.synchronize do
         next false if paused
@@ -149,10 +229,10 @@ RSpec.describe 'API v1 idempotency concurrency' do
 
   def pause_assignment(service)
     original_call = service.method(:call)
-    allow(service).to receive(:call) do
+    allow(service).to receive(:call) do |**arguments|
       assignment_entered << true
       wait_for(release_assignment, 'People assignment release')
-      original_call.call
+      original_call.call(**arguments)
     end
   end
 
@@ -174,12 +254,26 @@ RSpec.describe 'API v1 idempotency concurrency' do
   end
 
   def post_person(session, token)
+    return post_assignment_batch(session, token) if records[:batch_payload]
+
     session.post(
       api_v1_household_people_path(records.fetch(:household_id)),
       params: person_payload,
       headers: api_auth_headers(token).merge('Idempotency-Key' => records.fetch(:key)),
       as: :json
     )
+  end
+
+  def post_assignment_batch(session, token)
+    session.post(
+      api_v1_household_sync_batches_path(records.fetch(:household_id)),
+      params: records.fetch(:batch_payload),
+      headers: api_auth_headers(token).merge('Idempotency-Key' => assignment_request_key(token)), as: :json
+    )
+  end
+
+  def assignment_request_key(token)
+    token == records.fetch(:tokens).last ? records.fetch(:second_key, records.fetch(:key)) : records.fetch(:key)
   end
 
   def response_result(request_response)
@@ -322,9 +416,16 @@ RSpec.describe 'API v1 idempotency concurrency' do
     person_ids = created_people.ids
     user_ids = User.where(person_id: person_ids).ids
     ApiChangeEvent.where(household_id: records.fetch(:household_id)).delete_all
+    cleanup_assignment_records
     cleanup_person_records(person_ids)
     cleanup_request_records
     cleanup_identity_records(created_people, user_ids)
+  end
+
+  def cleanup_assignment_records
+    [Schedule, PersonMedication, MedicationDosageOption, Medication].each do |model|
+      model.where(household_id: records.fetch(:household_id)).delete_all
+    end
   end
 
   def cleanup_identity_records(created_people, user_ids)
@@ -356,7 +457,7 @@ RSpec.describe 'API v1 idempotency concurrency' do
   end
 
   def cleanup_request_records
-    ApiIdempotencyKey.where(household_id: records.fetch(:household_id), key: records.fetch(:key)).delete_all
+    ApiIdempotencyKey.where(household_id: records.fetch(:household_id)).delete_all
     ApiSession.where(id: records.fetch(:session_ids)).delete_all
   end
 

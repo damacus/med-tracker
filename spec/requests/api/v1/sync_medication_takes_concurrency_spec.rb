@@ -89,6 +89,8 @@ RSpec.describe 'API v1 medication-take sync concurrency' do
     lock = Households::LifecycleCutoffLock
     allow(lock).to receive(:with).and_wrap_original do |original, *arguments, **keywords, &operation|
       result = original.call(*arguments, **keywords, &operation)
+      next result unless keywords[:household]
+
       should_pause = gate.synchronize do
         next false if state[:paused]
 
