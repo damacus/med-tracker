@@ -18,32 +18,39 @@ module Components
           data: { testid: 'mobile-rail', responsive_shell_role: 'mobile-rail' }
         ) do
           nav(
-            class: 'flex w-full items-center justify-between gap-0',
+            class: 'flex h-full w-full items-center justify-between gap-1',
             aria: { label: t('layouts.mobile_rail.primary_navigation') }
           ) do
-            primary_navigation_items.each do |item|
+            quick_navigation_items.each do |item|
               render_nav_item(item)
             end
-            render_nav_item(profile_navigation_item)
           end
         end
       end
 
       private
 
+      def quick_navigation_items
+        available = mobile_shortcut_items.index_by { |item| item[:key] }
+        shortcuts = Current.account&.preferred_mobile_shortcuts || Account::DEFAULT_MOBILE_SHORTCUTS
+        shortcuts.filter_map { |key| available[key] }
+      end
+
       def render_nav_item(item)
         is_active = active_navigation_path?(item[:path])
 
         link_to(
           item[:path],
-          class: 'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl no-underline',
+          class: 'flex h-full min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 ' \
+                 'rounded-2xl px-1 text-center no-underline focus-visible:outline-none ' \
+                 'focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset',
           aria: {
             label: item[:label],
             current: is_active ? 'page' : nil
           }
         ) do
           div(
-            class: 'flex h-11 w-11 items-center justify-center rounded-2xl transition-all state-layer ' \
+            class: 'flex h-7 w-16 shrink-0 items-center justify-center rounded-2xl transition-all state-layer ' \
                    "#{if is_active
                         'bg-secondary-container text-on-secondary-container shadow-sm'
                       else
@@ -52,6 +59,7 @@ module Components
           ) do
             render item[:icon].new(size: 24, aria_hidden: 'true')
           end
+          span(class: 'h-[2.5em] text-xs font-semibold leading-tight text-on-surface') { item[:label] }
         end
       end
     end

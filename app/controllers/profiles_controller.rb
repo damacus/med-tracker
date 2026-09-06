@@ -4,7 +4,8 @@
 class ProfilesController < ApplicationController
   PROFILE_SETTING_TARGETS = {
     'avatar' => 'profile-avatar-errors',
-    'time_zone' => 'profile-time-zone-errors'
+    'time_zone' => 'profile-time-zone-errors',
+    'mobile_shortcuts' => 'profile-mobile-shortcuts-errors'
   }.freeze
 
   before_action :require_authentication
@@ -145,6 +146,10 @@ class ProfilesController < ApplicationController
 
   def update_account_profile(attributes)
     if @account.update(attributes)
+      if attributes.key?(:mobile_shortcuts)
+        return redirect_to profile_redirect_path, notice: t('profiles.updated'), status: :see_other
+      end
+
       respond_profile_updated(person: @person, account: @account)
     else
       respond_profile_failed(@account)
@@ -207,7 +212,7 @@ class ProfilesController < ApplicationController
   end
 
   def account_params
-    params.expect(account: %i[gravatar_enabled time_zone]) if params[:account]
+    params.expect(account: [:gravatar_enabled, :time_zone, { mobile_shortcuts: [] }]) if params[:account]
   end
 
   def direct_email_change_requested?

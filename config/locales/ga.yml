@@ -1466,6 +1466,13 @@ ga:
     paused: 'Ní féidir an leigheas a thógáil: ar sos'
     overlapping_prescription_restriction: 'Ní féidir an leigheas a thógáil: leagann oideas gníomhach eile don leigheas seo teorainn ama níos déine síos.'
   profiles:
+    mobile_shortcuts:
+      title: "Aicearraí an bharra íochtair"
+      description: "Roghnaigh idir aicearra amháin agus trí aicearra san ord is mian leat."
+      slot: "Aicearra %{number}"
+      none: "Gan aicearra"
+      save: "Sábháil aicearraí"
+      invalid: "Roghnaigh idir aicearra amháin agus trí aicearra dhifriúla."
     common:
       "on": Ar siúl
       "off": As
@@ -1694,6 +1701,9 @@ ga:
       user_fallback: Úsáideoir
     mobile_rail:
       primary_navigation: Nascleanúint phríomha
+      home: Baile
+      inventory: Fardal
+      finder: Aimsitheoir Leigheas
   medication_reviews:
     eyebrow: Taifead athbhreithnithe cleachtóra
     title: Athbhreithnithe cógas

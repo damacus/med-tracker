@@ -1756,6 +1756,13 @@ pt:
         metric_label: Rever
         metric_value: Horário
   profiles:
+    mobile_shortcuts:
+      title: "Atalhos da barra inferior"
+      description: "Escolha entre um e três atalhos pela ordem em que pretende que apareçam."
+      slot: "Atalho %{number}"
+      none: "Sem atalho"
+      save: "Guardar atalhos"
+      invalid: "Escolha entre um e três atalhos diferentes."
     common:
       "on": Ligado
       "off": Desligado
@@ -1983,6 +1990,9 @@ pt:
       user_fallback: Utilizador
     mobile_rail:
       primary_navigation: Navegação principal
+      home: Início
+      inventory: Inventário
+      finder: Pesquisador de Medicamentos
   medication_reviews:
     eyebrow: Registo de revisão profissional
     title: Revisões de medicamentos

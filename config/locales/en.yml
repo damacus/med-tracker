@@ -1757,6 +1757,13 @@ en:
         metric_label: Review
         metric_value: Schedule
   profiles:
+    mobile_shortcuts:
+      title: "Bottom bar shortcuts"
+      description: "Choose one to three shortcuts in the order you want them to appear."
+      slot: "Shortcut %{number}"
+      none: "No shortcut"
+      save: "Save shortcuts"
+      invalid: "Choose one to three different shortcuts."
     updated: Profile updated successfully.
     common:
       "on": "On"
@@ -1970,6 +1977,9 @@ en:
       logout: Logout
     mobile_rail:
       primary_navigation: Primary navigation
+      home: Home
+      inventory: Inventory
+      finder: Medicine Finder
     sidebar:
       dashboard: Dashboard
       inventory: Inventory
