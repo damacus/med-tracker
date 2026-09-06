@@ -25,18 +25,7 @@ class MedicationAssignmentsController < ApplicationController
     ).call
 
     if result.success
-      respond_to do |format|
-        format.html { redirect_to person_path(@person), notice: assignment_success_message(result) }
-        format.turbo_stream do
-          flash.now[:notice] = assignment_success_message(result)
-          render turbo_stream: [
-            turbo_stream.update('modal', ''),
-            turbo_stream.replace(tenant_dom_id(@person), Components::People::PersonCard.new(person: @person.reload)),
-            turbo_stream.replace(tenant_dom_target("person_show_#{@person.id}"), person_show_view(@person.reload)),
-            turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-          ]
-        end
-      end
+      redirect_to person_path(@person), status: :see_other, notice: assignment_success_message(result)
     else
       @assignment = result.assignment
       render_assignment_form(status: :unprocessable_content)

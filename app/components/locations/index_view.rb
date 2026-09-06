@@ -14,7 +14,7 @@ module Components
       end
 
       def view_template
-        div(id: 'locations_index', class: 'container mx-auto px-4 py-12 max-w-6xl',
+        div(id: 'locations_index', class: 'container mx-auto px-4 py-6 md:py-10 max-w-6xl',
             data: { testid: 'locations-list' }) do
           render_header
           render_locations_grid
@@ -24,12 +24,12 @@ module Components
       private
 
       def render_header
-        header(class: 'mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between') do
+        header(class: 'mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between') do
           div do
-            m3_text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
+            m3_text(variant: :label_medium, class: 'text-on-surface-variant mb-1 block') do
               t('locations.index.manage_locations')
             end
-            m3_heading(level: 1, size: '7', class: 'font-bold tracking-tight') { t('locations.index.title') }
+            m3_heading(level: 1, variant: :headline_large, class: 'font-bold') { t('locations.index.title') }
           end
           if view_context.policy(Location).create?
             m3_link(
@@ -45,7 +45,7 @@ module Components
       end
 
       def render_locations_grid
-        div(class: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8', id: tenant_dom_target('locations')) do
+        div(class: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4', id: tenant_dom_target('locations')) do
           locations.each do |location|
             render_location_card(location)
           end
@@ -55,22 +55,21 @@ module Components
       def render_location_card(location)
         m3_card(
           id: tenant_dom_id(location),
-          class: 'h-full flex flex-col border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card ' \
-                 'rounded-[2.5rem] transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ' \
-                 'group overflow-hidden'
+          variant: :elevated,
+          class: 'h-full flex flex-col bg-surface-container-lowest border border-outline-variant group overflow-hidden'
         ) do
-          CardHeader(class: 'pb-4 pt-8 px-8') do
+          CardHeader(class: 'p-5 pb-3') do
             div(class: 'flex justify-between items-start mb-4') do
               render_location_icon
               # Fallback for medication word
-              Badge(variant: :outlined) do
+              m3_badge(variant: :tonal) do
                 pluralize(location.medications.size, t('medications.created').split.first.downcase)
               end
             end
-            m3_heading(level: 2, size: '5', class: 'font-bold tracking-tight') { location.name }
+            m3_heading(level: 2, variant: :title_large, class: 'font-bold break-words') { location.name }
           end
 
-          CardContent(class: 'flex-grow space-y-4 px-8 pb-4') do
+          CardContent(class: 'flex-grow space-y-4 px-5 pb-4') do
             if location.description.present?
               m3_text(size: '2', class: 'text-on-surface-variant line-clamp-2 leading-relaxed') { location.description }
             end
@@ -96,7 +95,7 @@ module Components
             end
           end
 
-          CardFooter(class: 'px-8 pb-8 pt-2 mt-auto') do
+          CardFooter(class: 'px-5 pb-5 pt-2 mt-auto') do
             render_location_actions(location)
           end
         end
@@ -104,9 +103,8 @@ module Components
 
       def render_location_icon
         div(
-          class: 'w-12 h-12 rounded-2xl bg-secondary-container flex items-center ' \
-                 'justify-center text-on-surface-variant group-hover:text-primary ' \
-                 'group-hover:bg-primary/5 transition-all'
+          class: 'w-12 h-12 rounded-shape-lg bg-primary-container flex items-center ' \
+                 'justify-center text-on-primary-container'
         ) do
           render Icons::Home.new(size: 24)
         end
@@ -118,10 +116,9 @@ module Components
         div(class: 'flex items-center gap-2 w-full') do
           m3_link(
             href: location_path(location),
-            variant: :outlined,
+            variant: :filled,
             size: :sm,
-            class: 'flex-1 border-border bg-card ' \
-                   'hover:bg-tertiary-container text-on-surface-variant'
+            class: 'flex-1'
           ) do
             t('locations.index.view')
           end

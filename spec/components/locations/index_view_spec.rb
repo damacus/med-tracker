@@ -31,7 +31,7 @@ RSpec.describe Components::Locations::IndexView, type: :component do
     header = rendered.at_css('header')
     action = header.at_css("a[href='#{view_context.new_location_path}']")
 
-    expect(header['class']).to include('flex-col', 'md:flex-row', 'md:items-end')
+    expect(header['class']).to include('flex-col', 'md:flex-row', 'md:items-center')
     expect(header.at_css('h1')['class']).to include('font-bold')
     expect(action['class']).to include('w-full', 'md:w-auto')
   end

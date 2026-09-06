@@ -27,6 +27,7 @@ RSpec.describe 'Add schedule modal flow', :browser do
 
     click_on 'Add Plan'
 
+    expect(page).to have_current_path(person_path(person))
     expect(page).to have_text('Schedule was successfully created.')
     expect(page).to have_no_text("New Schedule for #{person.name}")
     expect(page).to have_text('Ibuprofen')

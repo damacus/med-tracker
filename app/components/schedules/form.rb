@@ -118,7 +118,7 @@ module Components
             frequency_preview: schedules_frequency_preview_path
           },
           translations: form_translations
-        ).data
+        ).data.merge(schedule.new_record? ? { turbo_frame: '_top' } : {})
       end
 
       def form_translations

@@ -964,6 +964,7 @@ en:
       edit_subtitle: Update %{name}'s details.
     index:
       your_inventory: Your Inventory
+      add_for_person: Add medication for someone
       title: Medications
       add_medication: Add Medication
       scan_stock: Scan stock

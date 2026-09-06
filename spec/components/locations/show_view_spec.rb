@@ -30,6 +30,14 @@ RSpec.describe Components::Locations::ShowView, type: :component do
     expect(rendered.text).not_to include('1.0 tablet')
   end
 
+  it 'keeps the remaining quantity visible when stock is low' do
+    medication.update!(current_supply: 3)
+
+    rendered = render_location
+
+    expect(rendered.text).to include('3 units', 'Low Stock')
+  end
+
   it 'renders location members with the shared person avatar' do
     person = create(:person, name: 'Location Member')
     create(:location_membership, location: location, person: person)

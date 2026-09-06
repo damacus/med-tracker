@@ -948,6 +948,7 @@ ga:
       edit_subtitle: Nuashonraigh sonraí %{name}.
     index:
       your_inventory: Do Stoc
+      add_for_person: Cuir cógas le duine
       title: Leigheasanna
       add_medication: Cuir Leigheas Leis
       scan_stock: Scan stoc

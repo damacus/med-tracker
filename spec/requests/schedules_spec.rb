@@ -71,6 +71,21 @@ RSpec.describe 'Schedules' do
   describe 'POST /people/:person_id/schedules' do
     before { sign_in(users(:admin)) }
 
+    it 'navigates to the saved schedule when a full-page form submits through Turbo' do
+      person = people(:john)
+
+      post person_schedules_path(person),
+           params: { schedule: { medication_id: medications(:paracetamol).id,
+                                 dose_amount: '500', dose_unit: 'mg', frequency: 'Daily',
+                                 start_date: Time.zone.today, end_date: 1.month.from_now.to_date } },
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html, text/html' }
+
+      expect(response).to have_http_status(:see_other)
+      expect(response).to redirect_to(person_path(person))
+      follow_redirect!
+      expect(response.body).to include(person.name, 'Paracetamol', I18n.t('schedules.created'))
+    end
+
     it 'creates a schedule and redirects to the person page' do
       person = people(:john)
       medication = medications(:paracetamol)
