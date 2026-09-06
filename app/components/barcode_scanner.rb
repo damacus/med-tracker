@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Components
-  # rubocop:disable Layout/LineLength
+  # rubocop:disable-next-line Layout/LineLength
   class BarcodeScanner < Components::Base
     def initialize(formats: nil, **attrs)
       @formats = formats || %w[EAN_13 EAN_8 CODE_128 CODE_39 QR_CODE]
@@ -113,5 +113,4 @@ module Components
       end
     end
   end
-  # rubocop:enable Layout/LineLength
 end

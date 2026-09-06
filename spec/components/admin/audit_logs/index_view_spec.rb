@@ -237,12 +237,10 @@ RSpec.describe Components::Admin::AuditLogs::IndexView, type: :component do
         total_count: 100,
         per_page: 50
       )
-      # rubocop:disable RSpec/AnyInstance
+      # rubocop:disable-next-line RSpec/AnyInstance
       allow_any_instance_of(described_class).to receive(:view_context).and_return(
         double(admin_audit_logs_path: '/households/test-household/admin/audit_logs?item_type=User&page=2')
       )
-      # rubocop:enable RSpec/AnyInstance
-
       url = view.send(:pagination_url, 2)
       expect(url).to include('item_type=User')
       expect(url).to include('page=2')

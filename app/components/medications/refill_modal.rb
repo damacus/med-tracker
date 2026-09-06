@@ -8,7 +8,7 @@ module Components
       attr_reader :medication, :button_variant, :button_class, :button_size, :quantity,
                   :restock_date, :icon_only, :button_label, :icon
 
-      # rubocop:disable Metrics/ParameterLists
+      # rubocop:disable-next-line Metrics/ParameterLists
       def initialize(medication:, button_variant: :outlined, button_class: '', button_size: :md,
                      quantity: nil, restock_date: nil, icon_only: false, button_label: nil, icon: nil)
         @medication = medication
@@ -22,8 +22,6 @@ module Components
         @icon = icon
         super()
       end
-      # rubocop:enable Metrics/ParameterLists
-
       def view_template
         Dialog do
           DialogTrigger do

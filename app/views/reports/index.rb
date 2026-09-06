@@ -118,7 +118,7 @@ module Views
       def render_today_section = render Components::Reports::TodaySection.new(today_taken_medications: @today_taken_medications)
       def formatted_date_range = "#{@start_date.strftime('%B %d')} — #{@end_date.strftime('%B %d, %Y')}"
 
-      # rubocop:disable Metrics/AbcSize
+      # rubocop:disable-next-line Metrics/AbcSize
       def render_summary_card
         total_expected = @daily_data.sum { |d| d[:expected] }
         total_actual = @daily_data.sum { |d| d[:actual] }
@@ -146,8 +146,6 @@ module Views
           end
         end
       end
-      # rubocop:enable Metrics/AbcSize
-
       def summary_stat(label, value, subtext)
         div(class: 'space-y-1') do
           m3_text(size: '1', class: 'font-bold uppercase tracking-widest text-primary-foreground/85') { label }
@@ -240,7 +238,7 @@ module Views
         end
       end
 
-      # rubocop:disable Metrics/AbcSize
+      # rubocop:disable-next-line Metrics/AbcSize
       def render_insight_card(card)
         m3_card(class: 'space-y-4 border border-border/70 bg-card p-8 shadow-elevation-1 transition-transform hover:scale-[1.02] hover:shadow-elevation-2') do
           div(class: 'flex items-center gap-4') do
@@ -259,8 +257,6 @@ module Views
           end
         end
       end
-
-      # rubocop:enable Metrics/AbcSize
 
       def render_smart_insight_card(insight)
         render_insight_card(

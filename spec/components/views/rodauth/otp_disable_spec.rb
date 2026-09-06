@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Views::Rodauth::OtpDisable, type: :component do
-  # rubocop:disable RSpec/VerifiedDoubles
+  # rubocop:disable-next-line RSpec/VerifiedDoubles
   it 'renders the OTP disable form' do
     rodauth = double(
       'Rodauth',
@@ -22,5 +22,4 @@ RSpec.describe Views::Rodauth::OtpDisable, type: :component do
     expect(rendered.to_html).to include('Disable TOTP Authentication')
     expect(rendered.to_html).to include('min-h-screen')
   end
-  # rubocop:enable RSpec/VerifiedDoubles
 end

@@ -6,9 +6,8 @@ class AuthTokenAuditLogger
 
   def record(account:, token_type:, action:, metadata: {}, context: nil)
     ActiveRecord::Base.transaction(requires_new: true) do
-      # rubocop:disable Rails/SkipsModelValidations, Lint/RedundantCopDisableDirective
+      # rubocop:disable-next-line Rails/SkipsModelValidations, Lint/RedundantCopDisableDirective
       Audit::VersionEvent.record!(**version_attrs(account:, token_type:, action:, metadata:, context:))
-      # rubocop:enable Rails/SkipsModelValidations, Lint/RedundantCopDisableDirective
       security_event_attrs = security_event_attrs(account:, token_type:, action:, metadata:, context:)
       if security_event_attrs[:household_id].present?
         Audit::Event.record!(**security_event_attrs, audit_context: context.to_h)
