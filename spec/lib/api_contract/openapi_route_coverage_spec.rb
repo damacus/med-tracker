@@ -1550,6 +1550,20 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(described_class.schema_errors('SyncBatchRequest', request)).to be_empty
     end
 
+    it 'accepts queued schedule and assignment requests and their results' do
+      %w[schedule person_medication].each do |resource_type|
+        %w[create update delete].each do |action|
+          operation = { action: action, resource_type: resource_type, id: SecureRandom.uuid, if_match: 'version' }
+          result = { index: 0, action: action, record_type: resource_type.classify,
+                     record_portable_id: SecureRandom.uuid }
+
+          expect(described_class.schema_errors('SyncBatchRequest', { batch: { operations: [operation] } })).to be_empty
+          expect(described_class.schema_errors('SyncBatchResponse', { data: { applied: true, results: [result] } }))
+            .to be_empty
+        end
+      end
+    end
+
     it 'types encrypted portable exports and imports' do
       export = described_class.operation('/households/{household_id}/portable_export', 'get')
       dry_run = described_class.operation('/households/{household_id}/portable_imports/dry_run', 'post')

@@ -7,6 +7,7 @@ RSpec.describe Households::LifecycleCutoffLock do
     connection = instance_double(ActiveRecord::ConnectionAdapters::PostgreSQLAdapter)
     allow(ActiveRecord::Base).to receive(:connection).and_return(connection)
     allow(connection).to receive(:select_value).and_return(1, true)
+    allow(connection).to receive(:uncached).and_yield
 
     described_class.with(household_id: 41) { nil }
 
@@ -17,6 +18,7 @@ RSpec.describe Households::LifecycleCutoffLock do
     connection = instance_double(ActiveRecord::ConnectionAdapters::PostgreSQLAdapter)
     allow(ActiveRecord::Base).to receive(:connection).and_return(connection)
     allow(connection).to receive(:select_value).and_return(1, true)
+    allow(connection).to receive(:uncached).and_yield
 
     expect do
       described_class.with(household_id: 42) { raise 'cutoff failure' }
@@ -29,6 +31,7 @@ RSpec.describe Households::LifecycleCutoffLock do
     connection = instance_double(ActiveRecord::ConnectionAdapters::PostgreSQLAdapter)
     allow(ActiveRecord::Base).to receive(:connection).and_return(connection)
     allow(connection).to receive(:select_value).and_return(1, true)
+    allow(connection).to receive(:uncached).and_yield
 
     expect do
       described_class.with(household_id: 43) do
@@ -61,6 +64,23 @@ RSpec.describe Households::LifecycleCutoffLock do
     'WITH lock_acquired AS MATERIALIZED (' \
       'SELECT pg_advisory_lock(hashtextextended($1, 0))' \
       ') SELECT 1 FROM lock_acquired'
+  end
+
+  it 'keeps the outer lock held after a nested acquisition with query caching enabled' do
+    connection = ActiveRecord::Base.connection
+    observer = PG.connect(connection.raw_connection.conninfo_hash.compact_blank)
+    key = 'med_tracker.household_purge:53'
+
+    connection.cache do
+      described_class.with(household_id: 53) do
+        described_class.with(household_id: 53) { nil }
+        expect(try_lock?(observer, key)).to be(false)
+      end
+    end
+    expect(try_lock?(observer, key)).to be(true)
+  ensure
+    observer&.exec('SELECT pg_advisory_unlock_all()')
+    observer&.close
   end
 
   def try_lock_sql

@@ -114,3 +114,43 @@ An applied import is transactional. If any record fails, MedTracker does not kee
 Start with `GET /sync/snapshot`. Store its cursor and each record ETag. Use the cursor with `GET /sync/changes` to read later changes and tombstones.
 
 Send local writes to `POST /sync/batches`. Update and delete operations need the latest ETag in `if_match`. Medication-take creation uses `client_uuid` for idempotency. A stale ETag returns a sync conflict, and the complete batch rolls back.
+
+### Queued schedules and medication assignments
+
+The batch endpoint accepts `create`, `update`, and `delete` for `schedule` and `person_medication`. The caller needs manage access to the person. Every referenced person, medicine and dosage option must be visible in the active household.
+
+Both resources accept `person_id`, `medication_id`, `dose_amount`, `dose_unit`, `source_dosage_option_id`, `notes`, `max_daily_doses`, `min_hours_between_doses`, and `dose_cycle`. Schedules also accept `frequency`, `start_date`, `end_date`, `schedule_type`, and `schedule_config`. Medication assignments also accept `administration_kind`. These fields follow the same validation rules as the direct API. Updates cannot change `person_id`.
+
+Use portable IDs or string database IDs for references. Decimal values, including `dose_amount`, `min_hours_between_doses`, and amounts inside a taper schedule, must be JSON strings. Portable IDs, household ownership, audit fields, active state and retirement timestamps are server-controlled.
+
+For example, send the following body to `POST /api/v1/households/{household_id}/sync/batches` with bearer authentication and an `Idempotency-Key` header:
+
+```json
+{
+  "batch": {
+    "operations": [
+      {
+        "action": "create",
+        "resource_type": "schedule",
+        "attributes": {
+          "person_id": "<person-portable-id>",
+          "medication_id": "<medication-portable-id>",
+          "dose_amount": "1",
+          "dose_unit": "tablet",
+          "start_date": "2026-09-05",
+          "end_date": "2026-10-05",
+          "schedule_type": "daily"
+        }
+      }
+    ]
+  }
+}
+```
+
+Each successful result contains its operation index, action, record type and server-assigned `record_portable_id`. Create and update results also contain an `etag`. Use the latest ETag as the exact `if_match` string on the next update or delete, with the portable ID in `id`. A missing version returns `428 precondition_required`; a stale version returns `409 sync_conflict`.
+
+Delete retires the schedule or assignment. It no longer appears in active lists, but its past doses and pause history remain unchanged. The change feed records the retirement and a deletion marker for the same portable ID. Retrying a successful delete with the same idempotency key replays the result. A new request for a retired item returns not found. Pause, resume, reorder and reactivation are not batch actions.
+
+Persist one `Idempotency-Key` with each queued batch. If the connection drops, resend the identical body and key. The existing response is replayed without repeating writes, stock changes, audit entries or deletion markers. Changing the body while reusing the key returns `409 idempotency_key_reused`. The existing replay window is 24 hours; after that window, reconcile with the server before sending a new request. Requests without a key do not receive this batch-level replay protection.
+
+Operations run in their submitted order. A failed operation rolls back every domain write in the batch, including earlier dose recording, stock changes and associated audit and sync records. Error responses do not include submitted clinical values. References to results of earlier operations are not supported: use the returned portable IDs in a later batch. A corrected batch should use a new idempotency key.

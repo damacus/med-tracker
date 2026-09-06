@@ -6536,6 +6536,8 @@ components:
             - medication
             - health_event
             - medication_take
+            - schedule
+            - person_medication
         id:
           $ref: '#/components/schemas/ResourceIdentifier'
         if_match:
@@ -6589,6 +6591,8 @@ components:
             - Medication
             - HealthEvent
             - MedicationTake
+            - Schedule
+            - PersonMedication
         record_portable_id:
           $ref: '#/components/schemas/PortableId'
         etag:

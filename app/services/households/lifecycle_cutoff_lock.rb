@@ -11,11 +11,11 @@ module Households
         lock_key = "#{LOCK_NAMESPACE}:#{target_id}"
         acquired = false
 
-        acquire(connection, lock_key)
+        connection.uncached { acquire(connection, lock_key) }
         acquired = true
         yield
       ensure
-        release(connection, lock_key) if acquired
+        connection.uncached { release(connection, lock_key) } if acquired
       end
 
       private
