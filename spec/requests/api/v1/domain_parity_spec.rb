@@ -10,6 +10,41 @@ RSpec.describe 'API v1 domain parity' do
   let(:household_id) { login_data.dig('household', 'id') }
   let(:headers) { api_auth_headers(login_data.fetch('access_token')) }
 
+  it 'stores the APNs environment and registers retries only once' do
+    2.times { register_native_device('sandbox') }
+
+    expect(response).to have_http_status(:created)
+    tokens = NativeDeviceToken.where(device_token: 'ios-environment-test')
+    expect(tokens.count).to eq(1)
+    expect(tokens.first.apns_environment).to eq('sandbox')
+  end
+
+  it 'rejects an unknown APNs environment' do
+    register_native_device('invalid')
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(NativeDeviceToken.exists?(device_token: 'ios-environment-test')).to be(false)
+  end
+
+  it 'addresses test notifications to the authenticated household' do
+    allow(PushNotificationService).to receive(:send_to_account)
+
+    post test_api_v1_household_push_subscription_path(household_id), headers: headers, as: :json
+
+    expect(response).to have_http_status(:no_content)
+    expect(PushNotificationService).to have_received(:send_to_account).with(
+      users(:admin).person.account,
+      hash_including(path: "/households/#{login_data.dig('household', 'slug')}/dashboard", notification_kind: :test)
+    )
+  end
+
+  def register_native_device(environment)
+    post api_v1_household_native_device_tokens_path(household_id),
+         params: { native_device_token: { device_token: 'ios-environment-test', platform: 'ios',
+                                          apns_environment: environment } },
+         headers: headers, as: :json
+  end
+
   it 'creates and reads dosage options using portable medication ids' do
     medication = medications(:paracetamol)
 

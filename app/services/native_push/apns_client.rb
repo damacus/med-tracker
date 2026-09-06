@@ -27,12 +27,14 @@ module NativePush
       end
     end
 
-    def initialize(connection: nil)
+    def initialize(connection: nil, environment: nil)
+      @environment = environment
       @connection = connection || Faraday.new(url: apns_host)
     end
 
-    def deliver(token, title:, body:, path: '/')
-      response = connection.post(device_path(token), payload(title: title, body: body, path: path).to_json, headers)
+    def deliver(token, path: '/', notification_kind: :unknown, **_message)
+      response = connection.post(device_path(token), payload(path: path, notification_kind: notification_kind).to_json,
+                                 headers)
       result_for(response)
     rescue StandardError => e
       DeliveryResult.failed(provider_status: nil, provider_error: e.class.name)
@@ -57,6 +59,9 @@ module NativePush
     end
 
     def apns_host
+      return 'https://api.sandbox.push.apple.com' if @environment == 'sandbox'
+      return 'https://api.push.apple.com' if @environment == 'production'
+
       ENV['APNS_HOST'].presence || Rails.application.credentials.dig(:apns, :host) || default_apns_host
     end
 
@@ -76,16 +81,17 @@ module NativePush
       )
     end
 
-    def payload(title:, body:, path:)
+    def payload(path:, notification_kind:)
       {
         aps: {
           alert: {
-            title: title,
-            body: body
+            title: 'MedTracker',
+            body: 'Open MedTracker to view your notification.'
           },
           sound: 'default'
         },
-        path: path
+        path: path,
+        kind: notification_kind.to_s
       }
     end
 

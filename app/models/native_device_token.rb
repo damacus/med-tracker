@@ -7,4 +7,5 @@ class NativeDeviceToken < ApplicationRecord
 
   validates :device_token, presence: true, uniqueness: true
   validates :platform, inclusion: { in: PLATFORMS }
+  validates :apns_environment, inclusion: { in: %w[sandbox production] }, allow_nil: true
 end

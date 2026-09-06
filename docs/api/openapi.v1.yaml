@@ -5895,6 +5895,12 @@ components:
         - device_token
         - platform
       properties:
+        apns_environment:
+          type: string
+          description: APNs environment from the signed iOS entitlement. Omit for legacy clients.
+          enum:
+            - sandbox
+            - production
         device_token:
           type: string
           minLength: 1

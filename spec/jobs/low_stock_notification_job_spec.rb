@@ -47,6 +47,16 @@ RSpec.describe LowStockNotificationJob do
     expect(PushNotificationService).to have_received(:send_to_account).once
   end
 
+  it 'delivers to a native-only account' do
+    person.account.push_subscriptions.destroy_all
+    NativeDeviceToken.create!(account: person.account, device_token: 'ios-low-stock', platform: 'ios')
+
+    described_class.perform_now(household.id, medication.id, take_id)
+
+    expect(PushNotificationService).to have_received(:send_to_account).once
+    expect(NotificationEvent.find_by!(event_type: 'low_stock').sent_at).to be_present
+  end
+
   it 'allows a later notification for a later threshold crossing' do
     described_class.perform_now(household.id, medication.id, take_id)
     described_class.perform_now(household.id, medication.id, take_id + 1)

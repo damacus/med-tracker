@@ -48,7 +48,9 @@ class PushNotificationService
   def self.deliver_native(token, title:, body:, path:, notification_kind:)
     provider = token.platform == 'ios' ? :apns : :fcm
     record_attempt(notification_kind, channel: :native_push, provider:)
-    result = native_client_for(token)&.deliver(token, title: title, body: body, path: path)
+    message = { title: title, body: body, path: path }
+    message[:notification_kind] = notification_kind if token.platform == 'ios'
+    result = native_client_for(token)&.deliver(token, **message)
     return record_provider_result(notification_kind, :delivery_unknown, channel: :native_push, provider:) unless result
 
     if result.unregistered?
@@ -66,7 +68,7 @@ class PushNotificationService
   def self.native_client_for(token)
     case token.platform
     when 'ios'
-      NativePush::ApnsClient.new if NativePush::ApnsClient.configured?
+      NativePush::ApnsClient.new(environment: token.apns_environment) if NativePush::ApnsClient.configured?
     when 'android'
       NativePush::FcmClient.new if NativePush::FcmClient.configured?
     end
