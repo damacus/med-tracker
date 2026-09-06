@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.5.25](https://github.com/damacus/med-tracker/compare/v0.5.24...v0.5.25) (2026-09-05)
+
+
+### Features
+
+* **android:** add Wear connectivity and session isolation ([#2045](https://github.com/damacus/med-tracker/issues/2045)) ([1f32dec](https://github.com/damacus/med-tracker/commit/1f32dec318c1aa0f9628762936744d5fef26c0cd))
+* **android:** relocate phone application ([#2041](https://github.com/damacus/med-tracker/issues/2041)) ([f53eaaf](https://github.com/damacus/med-tracker/commit/f53eaafa6f960945f816bfcc16a327c15fa7706b))
+
+
+### Bug Fixes
+
+* **android:** enforce release security boundaries ([#2042](https://github.com/damacus/med-tracker/issues/2042)) ([833c88f](https://github.com/damacus/med-tracker/commit/833c88f5e28e8a3bb80f7da57199ace27ba096b9))
+* **api:** return schedule recurrence rules ([#2089](https://github.com/damacus/med-tracker/issues/2089)) ([7f64501](https://github.com/damacus/med-tracker/commit/7f645010d8eb0da3fa6910c150e2e6e77d88736d))
+* **ci:** require every selected suite to pass ([aac4a60](https://github.com/damacus/med-tracker/commit/aac4a60bbd7d7058bc05f61ac27002345f1616e1))
+* **doses:** apply historical taper limits ([#2088](https://github.com/damacus/med-tracker/issues/2088)) ([46e2f0b](https://github.com/damacus/med-tracker/commit/46e2f0b24ea494cd2db01b41c6c2b541a09f1c61))
+* **doses:** preserve timestamp precision ([#2090](https://github.com/damacus/med-tracker/issues/2090)) ([a48535c](https://github.com/damacus/med-tracker/commit/a48535c84e703298816e95add659e83af867c5a4))
+* **doses:** reject future administration times ([#2086](https://github.com/damacus/med-tracker/issues/2086)) ([f77f0c0](https://github.com/damacus/med-tracker/commit/f77f0c028f36a5202a4102d68ec7957c78f01008))
+* **schedules:** enforce administration dates ([#2087](https://github.com/damacus/med-tracker/issues/2087)) ([afa7d06](https://github.com/damacus/med-tracker/commit/afa7d06fb39225c50b9c9697fce0ea6b3da09cbb))
+
+
+### Performance Improvements
+
+* **medication-reviews:** reuse normalized evidence text ([#2092](https://github.com/damacus/med-tracker/issues/2092)) ([448cc39](https://github.com/damacus/med-tracker/commit/448cc3909d5d5477de2a745c28b2171430aa442a))
+* **medication-reviews:** reuse prepared label sentences ([#2093](https://github.com/damacus/med-tracker/issues/2093)) ([c349bef](https://github.com/damacus/med-tracker/commit/c349bef7aef2c600b33929f6cbf1caec6724955a))
+
 ## [0.5.24](https://github.com/damacus/med-tracker/compare/v0.5.23...v0.5.24) (2026-09-03)
 
 
