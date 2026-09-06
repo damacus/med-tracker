@@ -15,12 +15,12 @@ module Components
       def view_template
         div(
           id: tenant_dom_target("location_show_#{location.id}"),
-          class: 'container mx-auto px-4 py-12 max-w-6xl space-y-12'
+          class: 'container mx-auto px-4 py-6 md:py-10 max-w-6xl space-y-6'
         ) do
           render_notice if notice.present?
           render_header
 
-          div(class: 'grid grid-cols-1 lg:grid-cols-3 gap-12') do
+          div(class: 'grid grid-cols-1 lg:grid-cols-3 gap-6') do
             div(class: 'lg:col-span-2 space-y-8') do
               render_medications_section
             end
@@ -42,32 +42,31 @@ module Components
       end
 
       def render_header
-        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-border') do
-          div(class: 'flex items-center gap-6') do
+        m3_card(variant: :filled,
+                class: 'p-5 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6') do
+          div(class: 'flex items-center gap-4 min-w-0') do
             div(
-              class: 'w-20 h-20 rounded-[2rem] bg-primary/10 flex items-center justify-center text-primary shadow-inner'
+              class: 'w-14 h-14 shrink-0 rounded-shape-lg bg-primary-container flex items-center ' \
+                     'justify-center text-on-primary-container'
             ) do
               render Icons::Home.new(size: 32)
             end
-            div(class: 'space-y-1') do
-              m3_text(size: '2', weight: 'bold',
-                      class: 'uppercase tracking-[0.2em] font-black opacity-40 block mb-1') do
+            div(class: 'space-y-1 min-w-0') do
+              m3_text(variant: :label_medium, class: 'text-on-surface-variant') do
                 t('locations.show.location')
               end
-              m3_heading(level: 1, size: '8', class: 'font-black tracking-tight') { location.name }
+              m3_heading(level: 1, variant: :headline_large, class: 'font-bold break-words') { location.name }
             end
           end
 
-          div(class: 'flex gap-3') do
+          div(class: 'flex flex-wrap gap-2 shrink-0') do
             if view_context.policy(location).update?
-              Link(href: edit_location_path(location, return_to: location_path(location)),
-                   variant: :outlined, size: :lg,
-                   class: 'rounded-2xl font-bold text-sm bg-card') do
+              m3_link(href: edit_location_path(location, return_to: location_path(location)),
+                      variant: :filled, size: :lg) do
                 t('locations.show.edit_location')
               end
             end
-            Link(href: locations_path, variant: :text, size: :lg,
-                 class: 'rounded-2xl font-bold text-sm text-on-surface-variant hover:text-foreground') do
+            m3_link(href: locations_path, variant: :text, size: :lg) do
               t('locations.show.all_locations')
             end
           end
@@ -97,8 +96,8 @@ module Components
       end
 
       def render_medication_card(medication)
-        m3_card(class: 'p-6 hover:shadow-md transition-shadow overflow-hidden') do
-          div(class: 'flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between') do
+        m3_card(variant: :outlined, class: 'p-4 bg-surface-container-lowest border-outline-variant overflow-hidden') do
+          div(class: 'flex flex-col items-start gap-3') do
             div(class: 'flex items-start gap-4 min-w-0 flex-1') do
               div(
                 class: 'w-10 h-10 rounded-xl bg-secondary-container flex items-center ' \
@@ -107,10 +106,11 @@ module Components
                 render Components::Shared::MedicationIcon.new(medication: medication, size: 20)
               end
               div(class: 'min-w-0 flex-1') do
-                Link(
+                m3_link(
                   href: medication_path(medication),
                   variant: :link,
-                  class: 'font-semibold text-base no-underline whitespace-normal break-words text-left leading-snug'
+                  class: 'h-auto p-0 font-semibold text-base no-underline whitespace-normal break-words ' \
+                         'text-left leading-snug text-on-surface'
                 ) do
                   medication.display_name
                 end
@@ -121,29 +121,32 @@ module Components
                 end
               end
             end
-            if medication.low_stock?
-              Badge(variant: :destructive, class: 'shrink-0 whitespace-nowrap justify-center') { 'Low Stock' }
-            else
-              Badge(variant: :success, class: 'shrink-0 whitespace-nowrap justify-center') do
-                ::Medications::SupplyStatusPresenter.new(medication: medication).inventory_units_label
-              end
-            end
           end
 
-          if view_context.policy(medication).refill?
-            div(class: 'pt-4') do
+          div(class: 'flex flex-wrap items-center justify-between gap-3 mt-3 pt-3 border-t border-outline-variant') do
+            render_stock_badges(medication)
+            if view_context.policy(medication).refill?
               render Components::Medications::RefillModal.new(
                 medication: medication,
                 button_variant: :outlined,
-                button_class: 'w-full'
+                button_class: 'shrink-0'
               )
             end
           end
         end
       end
 
+      def render_stock_badges(medication)
+        div(class: 'flex flex-wrap items-center gap-2') do
+          m3_badge(variant: :tonal, class: 'shrink-0 whitespace-nowrap') do
+            ::Medications::SupplyStatusPresenter.new(medication: medication).inventory_units_label
+          end
+          Badge(variant: :destructive, class: 'shrink-0 whitespace-nowrap') { 'Low Stock' } if medication.low_stock?
+        end
+      end
+
       def render_members_card
-        m3_card(class: 'p-8 space-y-6') do
+        m3_card(variant: :filled, class: 'p-5 md:p-6 space-y-6') do
           div(class: 'flex items-center justify-between') do
             m3_heading(level: 3, size: '4', class: 'font-bold') { t('locations.show.members') }
             render_add_member_dialog if view_context.policy(location).update?
@@ -210,7 +213,7 @@ module Components
       end
 
       def render_details_card
-        m3_card(class: 'p-8 space-y-4') do
+        m3_card(variant: :filled, class: 'p-5 md:p-6 space-y-4') do
           div(class: 'flex items-center justify-between') do
             m3_heading(level: 3, size: '4', class: 'font-bold') { t('locations.show.details') }
             if view_context.policy(location).update?

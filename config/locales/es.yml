@@ -959,6 +959,7 @@ es:
       edit_subtitle: Actualizar detalles de %{name}.
     index:
       your_inventory: Su Inventario
+      add_for_person: Añadir medicación para alguien
       title: Medicamentos
       add_medication: Añadir Medicamento
       scan_stock: Escanear stock

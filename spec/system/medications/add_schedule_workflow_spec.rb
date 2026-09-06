@@ -14,7 +14,7 @@ RSpec.describe 'Inventory add schedule workflow', :browser do
     visit medications_path
 
     within '[data-testid="medications-list"]' do
-      click_on 'Add Schedule'
+      click_on I18n.t('medications.index.add_for_person')
     end
 
     expect(page).to have_text('Who is this medication for?')
@@ -30,7 +30,7 @@ RSpec.describe 'Inventory add schedule workflow', :browser do
     visit medications_path
 
     within '[data-testid="medications-list"]' do
-      click_on 'Add Schedule'
+      click_on I18n.t('medications.index.add_for_person')
     end
 
     click_button 'Search people'
@@ -42,5 +42,24 @@ RSpec.describe 'Inventory add schedule workflow', :browser do
     expect(page).to have_current_path(medications_path)
     expect(page).to have_text('Inventory')
     expect(page).to have_no_text("Add Medication for #{people(:john).name}")
+  end
+
+  it 'shows the saved medication on the person page after completing the standalone launcher' do
+    person = people(:john)
+    medication = medications(:paracetamol)
+
+    visit add_medication_path(medication_id: medication.id)
+    click_button 'Search people'
+    find('[role="option"]', text: person.name, wait: 10).click
+
+    expect(page).to have_text("Add Medication for #{person.name}")
+    select '1000 mg - Standard adult dose', from: 'Dose'
+    click_button 'Next'
+    click_button 'Add Medication'
+
+    expect(page).to have_current_path(person_path(person))
+    expect(page).to have_text(I18n.t('person_medications.created'))
+    expect(page).to have_text(medication.name)
+    expect(page).to have_no_css('[role="dialog"]')
   end
 end

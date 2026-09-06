@@ -37,6 +37,7 @@ module Components
       def form_data
         {
           controller: 'medication-assignment-form',
+          turbo_frame: '_top',
           person_type: person.person_type,
           medication_assignment_form_options_value: medication_options_payload.to_json,
           medication_assignment_form_current_step_value: initial_step,

@@ -953,6 +953,7 @@ cy:
       edit_subtitle: Diweddaru manylion %{name}.
     index:
       your_inventory: Eich Rhestr
+      add_for_person: Ychwanegu meddyginiaeth i rywun
       title: Meddyginiaethau
       add_medication: Ychwanegu Meddyginiaeth
       scan_stock: Sganio stoc

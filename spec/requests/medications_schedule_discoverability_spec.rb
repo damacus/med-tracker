@@ -7,15 +7,15 @@ RSpec.describe 'Medication schedule discoverability' do
 
   before { sign_in(users(:admin)) }
 
-  it 'shows Add Schedule entry point on medications index' do
+  it 'shows Add medication for someone entry point on medications index' do
     get medications_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include('Add Schedule')
+    expect(response.body).to include('Add medication for someone')
     expect(response.body).to include(add_medication_path)
   end
 
-  it 'shows Add Schedule entry point on medication details page' do
+  it 'shows the schedule action on medication details' do
     medication = medications(:paracetamol)
 
     get medication_path(medication)

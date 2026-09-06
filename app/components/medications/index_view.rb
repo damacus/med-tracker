@@ -85,7 +85,7 @@ module Components
                   data: { turbo_frame: 'modal' }
                 ) do
                   render Icons::PlusCircle.new(size: 20, class: 'mr-2 text-primary')
-                  span { 'Add Schedule' }
+                  span { t('medications.index.add_for_person') }
                 end
                 m3_link(
                   href: new_medication_path,

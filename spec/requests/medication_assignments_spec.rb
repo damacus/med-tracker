@@ -44,6 +44,18 @@ RSpec.describe 'Medication assignments' do
   end
 
   describe 'POST /people/:person_id/medication_assignments' do
+    it 'navigates to the person after a Turbo submission from the global workflow' do
+      post person_medication_assignments_path(person),
+           params: { medication_assignment: { medication_id: medications(:paracetamol).id,
+                                              source_dosage_option_id: dosages(:paracetamol_child).id } },
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html, text/html' }
+
+      expect(response).to have_http_status(:see_other)
+      expect(response).to redirect_to(person_path(person))
+      follow_redirect!
+      expect(response.body).to include(person.name, 'Paracetamol', I18n.t('person_medications.created'))
+    end
+
     it 'creates an as-needed person medication from PRN medication metadata and the selected predefined dose' do
       medication = medications(:paracetamol)
       dosage = dosages(:paracetamol_child)

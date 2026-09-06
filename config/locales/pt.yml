@@ -961,6 +961,7 @@ pt:
       edit_subtitle: Atualizar detalhes de %{name}.
     index:
       your_inventory: O Seu Inventário
+      add_for_person: Adicionar medicação para alguém
       title: Medicamentos
       add_medication: Adicionar Medicamento
       scan_stock: Digitalizar stock

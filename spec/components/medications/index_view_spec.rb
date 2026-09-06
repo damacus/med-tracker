@@ -37,7 +37,7 @@ RSpec.describe Components::Medications::IndexView, type: :component do
   it 'renders medication actions with m3 link variants' do
     rendered = render_view(medications: [])
 
-    add_schedule_link = rendered.css('a').find { |link| link.text.include?('Add Schedule') }
+    add_schedule_link = rendered.css('a').find { |link| link.text.include?('Add medication for someone') }
     add_medication_link = rendered.css('a').find { |link| link.text.include?('Add Medication') }
 
     expect(add_schedule_link[:class]).to include('rounded-shape-full')
@@ -90,7 +90,7 @@ RSpec.describe Components::Medications::IndexView, type: :component do
     actions = rendered.at_css('.medications-index-actions')
 
     scan_button = actions.at_css('button')
-    add_schedule_link = actions.css('a').find { |link| link.text.include?('Add Schedule') }
+    add_schedule_link = actions.css('a').find { |link| link.text.include?('Add medication for someone') }
     add_medication_link = actions.css('a').find { |link| link.text.include?('Add Medication') }
     action_classes = [scan_button, add_schedule_link, add_medication_link].map { |element| element[:class].to_s }
 
@@ -104,7 +104,7 @@ RSpec.describe Components::Medications::IndexView, type: :component do
 
     action_elements = [
       actions.css('button').find { |button| button.text.include?('Scan stock') },
-      actions.css('a').find { |link| link.text.include?('Add Schedule') },
+      actions.css('a').find { |link| link.text.include?('Add medication for someone') },
       actions.css('a').find { |link| link.text.include?('Add Medication') }
     ]
     action_classes = action_elements.map { |element| element[:class].to_s.split }

@@ -219,22 +219,7 @@ class SchedulesController < ApplicationController
   end
 
   def render_schedule_create_success
-    respond_to do |format|
-      format.html { redirect_to person_path(@person), notice: t('schedules.created') }
-      format.turbo_stream do
-        flash.now[:notice] = t('schedules.created')
-        render turbo_stream: schedule_create_streams
-      end
-    end
-  end
-
-  def schedule_create_streams
-    [
-      turbo_stream.update('modal', ''),
-      turbo_stream.replace(tenant_dom_id(@person), Components::People::PersonCard.new(person: @person.reload)),
-      turbo_stream.replace(tenant_dom_target("person_show_#{@person.id}"), person_show_view(@person.reload)),
-      turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-    ]
+    redirect_to person_path(@person), status: :see_other, notice: t('schedules.created')
   end
 
   def render_schedule_create_failure
