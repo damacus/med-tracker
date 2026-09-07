@@ -312,7 +312,7 @@ GEM
       net-smtp
     marcel (1.2.1)
     matrix (0.4.3)
-    mcp (1.4.0)
+    mcp (1.5.0)
       json_schemer (>= 2.4)
     mime-types (3.7.0)
       logger
@@ -729,7 +729,7 @@ GEM
     shoulda-matchers (8.0.1)
       activesupport (>= 7.2)
     simplecov (1.2.0)
-    simpleidn (0.2.3)
+    simpleidn (0.3.0)
     sin_lru_redux (2.5.3)
     solid_cable (4.0.2)
       actioncable (>= 7.2)
