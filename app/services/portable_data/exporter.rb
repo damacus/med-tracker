@@ -54,7 +54,9 @@ module PortableData
     end
 
     def household_payload
-      export_payload(include_health_events: true, scope: 'household')
+      data = export_payload(include_health_events: true, scope: 'household').merge(format: 'medtracker.portable.v2')
+      data[:records].merge!(ExportRecordSerializer.new(medication_pause_periods: medication_pause_periods).as_json)
+      data
     end
 
     private

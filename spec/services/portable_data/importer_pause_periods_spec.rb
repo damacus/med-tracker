@@ -191,7 +191,7 @@ RSpec.describe PortableData::Importer do
   it 'rejects attempts to replace an original recording actor' do
     period
     exported = exporter.v2_payload.dig(:records, :medication_pause_periods).first
-    exported[:recorded_by_person_portable_id] = people(:john).portable_id
+    exported[:recorded_by_person_portable_id] = people(:jane).portable_id
 
     expect(restore([exported])).not_to be_applied
     expect(period.reload.recorded_by_membership).to eq(membership)
