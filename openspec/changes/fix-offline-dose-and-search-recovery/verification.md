@@ -17,3 +17,14 @@ The whole-locale tree checker reports three pre-existing English pagination key 
 The first full-suite run was stopped after detecting the new split-locale layout conflicted with existing locale checks. The translations were moved into the existing language files before the successful full run. Final snapshot checks were rerun after refining the timing/stock text.
 
 This verification does not claim a deployed application or configured OIDC acceptance run.
+
+## Published stack
+
+All four PRs are open and ready for review, with verified parent branches:
+
+1. https://github.com/damacus/med-tracker/pull/2130 — sync recovery, based on main.
+2. https://github.com/damacus/med-tracker/pull/2131 — pending stock, based on the sync fix.
+3. https://github.com/damacus/med-tracker/pull/2132 — cached eligibility, based on the stock fix.
+4. https://github.com/damacus/med-tracker/pull/2133 — search recovery, based on eligibility.
+
+GitHub's native stack identifier is 2134. No PR has been merged or deployed by this change.
