@@ -12,6 +12,7 @@ module Components
         @current_user = current_user
         @dashboard_person_id = options[:dashboard_person_id]
         @not_taken_outcomes = options.fetch(:not_taken_outcomes, [])
+        @can_correct_outcomes = options.fetch(:can_correct_outcomes, false)
         super()
       end
 
@@ -39,8 +40,14 @@ module Components
               m3_text(variant: :body_small) { t("dashboard.outcomes.reasons.#{outcome.reason}") }
             end
             m3_text(variant: :body_small) { outcome.note } if outcome.note.present?
+            render_correction_link(outcome) if @can_correct_outcomes
           end
         end
+      end
+
+      def render_correction_link(outcome)
+        m3_link(href: edit_schedule_dose_occurrence_path(outcome.source, outcome), variant: :text,
+                data: { turbo_frame: '_top' }) { t('dose_outcomes.correct') }
       end
 
       def render_header

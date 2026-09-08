@@ -242,6 +242,7 @@ module Components
                   routine_tasks: routine_tasks_by_person.fetch(person, []),
                   as_needed_items: as_needed_by_person.fetch(person, []),
                   not_taken_outcomes: presenter.today_not_taken_by_person.fetch(person, []),
+                  can_correct_outcomes: presenter.can_correct_outcomes?(person),
                   current_user: current_user,
                   dashboard_person_id: presenter.selected_person_id
                 )
