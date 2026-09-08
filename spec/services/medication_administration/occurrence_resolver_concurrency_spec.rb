@@ -8,13 +8,26 @@ RSpec.describe MedicationAdministration::OccurrenceResolver do
 
   let(:source) { schedules(:john_movicol) }
   let(:membership) { accounts(:admin).household_memberships.find_by!(household: source.household) }
+  let(:initial_supply) { source.medication.current_supply }
 
   before do
     FixtureHouseholdSetup.apply!
+    initial_supply
     clear_outcomes
   end
 
-  after { clear_outcomes }
+  after do
+    clear_outcomes
+    source.medication.reload.update!(current_supply: initial_supply)
+  end
+
+  it 'commits one of a competing take and not-taken decision' do
+    results = resolve_concurrently(%w[take unwell])
+
+    expect(results.grep(MedicationDoseOccurrence).size).to eq(1)
+    expect(results.grep(described_class::Error).sole.code).to be_in(%w[already_resolved precondition_required])
+    expect(source.medication_dose_occurrences.count).to eq(1)
+  end
 
   it 'converges concurrent identical not-taken submissions on one audited outcome' do
     rows = resolve_concurrently(%w[unwell unwell])
@@ -74,12 +87,17 @@ RSpec.describe MedicationAdministration::OccurrenceResolver do
     actor = HouseholdMembership.find(membership_id)
     context = AuthorizationContext.new(account: actor.account, household: current_source.household, membership: actor)
     resolver = described_class.new(source: current_source, authorization: context)
+    return resolver.take(key: key, client_uuid: SecureRandom.uuid, if_match: nil) if reason == 'take'
+
     resolver.call(key: key, action: 'not_taken', reason: reason)
   end
 
   def clear_outcomes
+    take_ids = source.medication_dose_occurrences.pluck(:medication_take_id).compact
     ids = source.medication_dose_occurrences.pluck(:id)
     MedicationDoseOccurrence.where(id: ids).delete_all
     PaperTrail::Version.where(item_type: 'MedicationDoseOccurrence', item_id: ids).delete_all
+    MedicationTake.where(id: take_ids).delete_all
+    PaperTrail::Version.where(item_type: 'MedicationTake', item_id: take_ids).delete_all
   end
 end

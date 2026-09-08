@@ -1308,6 +1308,119 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/schedules/{schedule_id}/dose_occurrences/reopen:
+    patch:
+      operationId: reopenScheduleDoseOccurrence
+      tags: [Household, Schedules]
+      summary: Reopen a not-taken dose with manage access and a current version.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: schedule_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ResourceIdentifier'
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DoseReopenRequest'
+      responses:
+        '200':
+          description: Current outcome; identical submissions converge on one record.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoseOccurrenceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '428':
+          description: A current outcome version is required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/schedules/{schedule_id}/dose_occurrences/take:
+    post:
+      operationId: takeScheduleDoseOccurrence
+      tags: [Household, Schedules]
+      summary: Resolve a dose through normal administration while retaining former outcome history.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: schedule_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ResourceIdentifier'
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: If-Match
+          in: header
+          required: false
+          description: Required when replacing a not-taken decision; must match its current outcome version.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DoseTakeRequest'
+      responses:
+        '200':
+          description: Current taken outcome; a matching client UUID replays without another stock decrement.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoseOccurrenceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/schedules:
     get:
       operationId: listSchedules
@@ -5352,6 +5465,40 @@ components:
               type: string
               nullable: true
               maxLength: 2000
+    DoseReopenRequest:
+      type: object
+      additionalProperties: false
+      required: [dose_occurrence]
+      properties:
+        dose_occurrence:
+          type: object
+          additionalProperties: false
+          required: [key]
+          properties:
+            key:
+              type: string
+    DoseTakeRequest:
+      type: object
+      additionalProperties: false
+      required: [dose_occurrence]
+      properties:
+        dose_occurrence:
+          type: object
+          additionalProperties: false
+          required: [key, taken_at]
+          properties:
+            key:
+              type: string
+            taken_at:
+              $ref: '#/components/schemas/Timestamp'
+            client_uuid:
+              type: string
+              format: uuid
+              description: Stable client identity for retrying an administration.
+            dose_amount:
+              $ref: '#/components/schemas/DecimalValue'
+            taken_from_medication_id:
+              $ref: '#/components/schemas/NumericId'
     ScheduleResponse:
       type: object
       additionalProperties: false
