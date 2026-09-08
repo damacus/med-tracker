@@ -6,12 +6,18 @@ module Api
       def show
         return render_unprocessable('Portable passphrase header is required') if portable_passphrase.blank?
 
-        render json: { data: exporter.call }
+        return render_unprocessable('Unsupported portable data version') unless portable_version_valid?
+
+        render json: { data: exporter.call(version: params[:version].to_s == '2' ? 2 : 1) }
       rescue PortableData::Encryptor::Error => e
         render_unprocessable(e.message)
       end
 
       private
+
+      def portable_version_valid?
+        params[:version].nil? || params[:version].to_s.in?(%w[1 2])
+      end
 
       def exporter
         PortableData::Exporter.new(

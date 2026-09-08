@@ -4,6 +4,7 @@ module PortableData
   class ImportWriter
     include ImportWriterPersonMedications
     include ImportWriterRecords
+    include ImportWriterPausePeriods
 
     def initialize(household:, membership:, payload:)
       @household = household
@@ -19,6 +20,7 @@ module PortableData
       import_dosage_options
       import_schedules
       import_person_medications
+      import_medication_pause_periods
       import_medication_takes
       import_notification_preferences
       restore_exported_inventory

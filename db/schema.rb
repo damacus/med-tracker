@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_08_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -650,6 +650,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
     t.datetime "created_at", null: false
     t.datetime "ended_at"
     t.bigint "household_id", null: false
+    t.jsonb "imported_actor_references", default: {}, null: false
+    t.boolean "imported_context", default: false, null: false
     t.boolean "legacy_context", default: false, null: false
     t.text "note"
     t.bigint "person_medication_id"
@@ -669,10 +671,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
     t.index ["resumed_by_membership_id"], name: "index_medication_pause_periods_on_resumed_by_membership_id"
     t.index ["schedule_id"], name: "idx_med_pause_periods_open_schedule", unique: true, where: "((ended_at IS NULL) AND (schedule_id IS NOT NULL))"
     t.index ["schedule_id"], name: "index_medication_pause_periods_on_schedule_id"
-    t.check_constraint "ended_at IS NULL AND resumed_by_membership_id IS NULL OR ended_at IS NOT NULL AND resumed_by_membership_id IS NOT NULL", name: "chk_medication_pause_periods_resuming_actor"
-    t.check_constraint "legacy_context = true AND reason::text = 'reason_not_recorded'::text OR legacy_context = false AND reason::text <> 'reason_not_recorded'::text AND started_at IS NOT NULL AND recorded_by_membership_id IS NOT NULL", name: "chk_medication_pause_periods_legacy_context"
+    t.check_constraint "ended_at IS NULL AND resumed_by_membership_id IS NULL OR ended_at IS NOT NULL AND (resumed_by_membership_id IS NOT NULL OR imported_context)", name: "chk_medication_pause_periods_resuming_actor"
+    t.check_constraint "legacy_context AND reason::text = 'reason_not_recorded'::text OR NOT legacy_context AND reason::text <> 'reason_not_recorded'::text AND started_at IS NOT NULL AND (recorded_by_membership_id IS NOT NULL OR imported_context)", name: "chk_medication_pause_periods_legacy_context"
     t.check_constraint "num_nonnulls(schedule_id, person_medication_id) = 1", name: "chk_medication_pause_periods_exactly_one_source"
-    t.check_constraint "reason::text = ANY (ARRAY['out_of_supply'::character varying, 'temporarily_not_needed'::character varying, 'clinician_advice'::character varying, 'side_effects'::character varying, 'other'::character varying, 'reason_not_recorded'::character varying]::text[])", name: "chk_medication_pause_periods_reason"
+    t.check_constraint "reason::text = ANY (ARRAY['out_of_supply'::character varying::text, 'temporarily_not_needed'::character varying::text, 'clinician_advice'::character varying::text, 'side_effects'::character varying::text, 'other'::character varying::text, 'reason_not_recorded'::character varying::text])", name: "chk_medication_pause_periods_reason"
     t.check_constraint "started_at IS NULL OR ended_at IS NULL OR ended_at >= started_at", name: "chk_medication_pause_periods_interval"
   end
 

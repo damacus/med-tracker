@@ -12,8 +12,8 @@ module PortableData
       @request = request
     end
 
-    def call
-      export_payload = payload
+    def call(version: 1)
+      export_payload = version == 2 ? v2_payload : payload
       envelope = Encryptor.encrypt(export_payload, passphrase: passphrase)
       record_audit_event(export_payload, export_mode: 'encrypted_migration_bundle')
       envelope
@@ -41,6 +41,16 @@ module PortableData
 
     def mobile_payload
       export_payload(include_health_events: true)
+    end
+
+    def v2_payload(include_health_events: false)
+      export_payload(include_health_events:).merge(format: 'medtracker.portable.v2').tap do |data|
+        data[:records].merge!(ExportRecordSerializer.new(medication_pause_periods: medication_pause_periods).as_json)
+      end
+    end
+
+    def mobile_v2_payload
+      v2_payload(include_health_events: true)
     end
 
     def household_payload
@@ -181,6 +191,13 @@ module PortableData
       @notification_preferences ||= NotificationPreference.where(household: household, person_id: person_id_values)
                                                           .includes(:person)
                                                           .order(:id)
+    end
+
+    def medication_pause_periods
+      scheduled = MedicationPausePeriod.where(household: household, schedule_id: schedules.select(:id))
+      assigned = MedicationPausePeriod.where(household: household, person_medication_id: person_medications.select(:id))
+      scheduled.or(assigned).includes(:schedule, :person_medication,
+                                      recorded_by_membership: :person, resumed_by_membership: :person).order(:id)
     end
 
     def health_events

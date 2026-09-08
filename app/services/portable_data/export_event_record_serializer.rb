@@ -2,6 +2,17 @@
 
 module PortableData
   class ExportEventRecordSerializer
+    def medication_pause_period_payload(period)
+      sync_identity(period).merge(medication_take_source(period)).merge(
+        reason: period.reason, note: period.note,
+        started_at: period.started_at&.iso8601(6), ended_at: period.ended_at&.iso8601(6),
+        created_at: period.created_at.iso8601(6), legacy_context: period.legacy_context,
+        imported_context: period.imported_context,
+        recorded_by_person_portable_id: pause_actor_reference(period, :recorded_by),
+        resumed_by_person_portable_id: pause_actor_reference(period, :resumed_by)
+      )
+    end
+
     def medication_take_payload(take)
       medication_take_identity(take).merge(medication_take_source(take))
                                     .merge(medication_take_event(take))
@@ -27,6 +38,11 @@ module PortableData
     end
 
     private
+
+    def pause_actor_reference(period, actor)
+      period.public_send("#{actor}_membership")&.person&.portable_id ||
+        period.imported_actor_references["#{actor}_person_portable_id"]
+    end
 
     def medication_take_identity(take)
       sync_identity(take).merge(client_uuid: take.client_uuid)

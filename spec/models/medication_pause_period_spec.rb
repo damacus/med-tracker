@@ -79,6 +79,18 @@ RSpec.describe MedicationPausePeriod do
       expect(pause_period.errors[:resumed_by_membership]).to include("can't be blank")
     end
 
+    it 'preserves unavailable imported actors without weakening reason and start requirements' do
+      pause_period.assign_attributes(imported_context: true, recorded_by_membership: nil,
+                                     ended_at: Time.current, resumed_by_membership: nil)
+
+      expect(pause_period).to be_valid
+      pause_period.started_at = nil
+      expect(pause_period).not_to be_valid
+      pause_period.started_at = Time.current
+      pause_period.reason = described_class::LEGACY_REASON
+      expect(pause_period).not_to be_valid
+    end
+
     it 'rejects an ending actor while the period remains open' do
       pause_period.resumed_by_membership = membership
 

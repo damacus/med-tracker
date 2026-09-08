@@ -32,8 +32,16 @@ module PortableData
       ids.concat(records(:schedules).pluck(:person_portable_id))
       ids.concat(records(:person_medications).pluck(:person_portable_id))
       ids.concat(records(:notification_preferences).pluck(:person_portable_id))
-      ids.concat(medication_take_person_portable_ids)
+      ids.concat(event_person_portable_ids)
       ids.compact_blank.uniq
+    end
+
+    def pause_period_person_portable_ids
+      records(:medication_pause_periods).filter_map { |row| portable_id_for_medication_take_source(row) }
+    end
+
+    def event_person_portable_ids
+      medication_take_person_portable_ids + pause_period_person_portable_ids
     end
 
     def medication_take_person_portable_ids
