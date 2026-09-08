@@ -19,6 +19,7 @@ module Api
           administration: administration,
           medication_pause_periods: { supported: true, reasons: MedicationPausePeriod::PUBLIC_REASONS,
                                       effective_time: 'server_acceptance' },
+          dose_outcomes: dose_outcomes,
           portable_formats: portable_formats,
           backups: backups,
           fhir: fhir,
@@ -59,6 +60,15 @@ module Api
           medtracker.portable.encrypted.v1
           medtracker.portable.v2
         ]
+      end
+
+      def dose_outcomes
+        {
+          source_types: ['schedule'],
+          max_read_days: MedicationAdministration::OccurrenceProjection::MAX_DAYS,
+          actions: %w[not_taken reopen take],
+          replacement_requires_version: true
+        }
       end
 
       def backups
