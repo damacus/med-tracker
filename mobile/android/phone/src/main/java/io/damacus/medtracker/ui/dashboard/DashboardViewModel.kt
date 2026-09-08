@@ -8,6 +8,8 @@ import io.damacus.medtracker.data.SessionManager
 import io.damacus.medtracker.data.api.ApiResult
 import io.damacus.medtracker.data.api.GeneratedMedTrackerApi
 import io.damacus.medtracker.data.api.MedTrackerApi
+import io.damacus.medtracker.data.api.MedicationPauseGateway
+import io.damacus.medtracker.data.api.GeneratedMedicationPauseGateway
 import io.damacus.medtracker.data.model.DashboardData
 import io.damacus.medtracker.data.model.MedicationDto
 import io.damacus.medtracker.data.model.MedicationTakeDto
@@ -36,7 +38,8 @@ data class DashboardUiState(
     val takingScheduleId: Long? = null,
     val dashboardData: DashboardData = DashboardData(),
     val errorMessage: String? = null,
-    val actionSuccessMessage: String? = null
+    val actionSuccessMessage: String? = null,
+    val pauseController: MedicationPauseController? = null
 ) {
     fun forSession(session: AppSession): DashboardUiState =
         if (sessionRevision == session.revision) this else DashboardUiState(sessionRevision = session.revision)
@@ -44,7 +47,8 @@ data class DashboardUiState(
 
 class DashboardViewModel(
     private val sessionManager: SessionManager,
-    private val apiClient: MedTrackerApi = GeneratedMedTrackerApi()
+    private val apiClient: MedTrackerApi = GeneratedMedTrackerApi(),
+    private val pauseGateway: MedicationPauseGateway? = if (apiClient is GeneratedMedTrackerApi) GeneratedMedicationPauseGateway(apiClient) else null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -58,6 +62,13 @@ class DashboardViewModel(
             sessionWork.cancel()
             sessionWork = SupervisorJob(viewModelScope.coroutineContext[Job])
             _uiState.value = DashboardUiState(sessionRevision = session.revision)
+            if (session.isLoggedIn && pauseGateway != null) {
+                val work = sessionWork
+                val controller = MedicationPauseController(session, pauseGateway, CoroutineScope(viewModelScope.coroutineContext + work),
+                    { isCurrentSession(session, work) }, { loadDashboardData(session, isRefresh = true) })
+                _uiState.update { it.copy(pauseController = controller) }
+                controller.refresh()
+            }
             loadDashboardData(session)
         }
     }
@@ -71,6 +82,7 @@ class DashboardViewModel(
     fun refresh(sessionRevision: String = sessionManager.sessionState.value.revision) {
         if (sessionRevision != sessionManager.sessionState.value.revision) return
         loadDashboardData(isRefresh = true)
+        _uiState.value.pauseController?.refresh()
     }
 
     fun selectPerson(personId: Long?, sessionRevision: String = sessionManager.sessionState.value.revision) {

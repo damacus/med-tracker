@@ -214,11 +214,30 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
     }
 
     /**
+     * enum for parameter version
+     */
+     enum class VersionExportPortableHouseholdBundle(val value: kotlin.Int) {
+         @Json(name = "1") _1(1),
+         @Json(name = "2") _2(2),
+         @Json(name = "11184809") unknown_default_open_api(11184809);
+
+        /**
+         * Override [toString()] to avoid using the enum variable name as the value, and instead use
+         * the actual value defined in the API spec file.
+         *
+         * This solves a problem when the variable name and its value are different, and ensures that
+         * the client sends the correct enum values to the server always.
+         */
+        override fun toString(): kotlin.String = "$value"
+     }
+
+    /**
      * GET /households/{household_id}/portable_export
      * Export an encrypted portable household bundle.
      * 
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
+     * @param version Select portable v2 to include medication pause history. (optional, default to Version._1)
      * @return PortableEnvelopeResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -228,8 +247,8 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun exportPortableHouseholdBundle(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String) : PortableEnvelopeResponse {
-        val localVarResponse = exportPortableHouseholdBundleWithHttpInfo(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase)
+    fun exportPortableHouseholdBundle(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle? = VersionExportPortableHouseholdBundle._1) : PortableEnvelopeResponse {
+        val localVarResponse = exportPortableHouseholdBundleWithHttpInfo(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase, version = version)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as PortableEnvelopeResponse
@@ -252,14 +271,15 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      * 
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
+     * @param version Select portable v2 to include medication pause history. (optional, default to Version._1)
      * @return ApiResponse<PortableEnvelopeResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun exportPortableHouseholdBundleWithHttpInfo(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String) : ApiResponse<PortableEnvelopeResponse?> {
-        val localVariableConfig = exportPortableHouseholdBundleRequestConfig(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase)
+    fun exportPortableHouseholdBundleWithHttpInfo(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?) : ApiResponse<PortableEnvelopeResponse?> {
+        val localVariableConfig = exportPortableHouseholdBundleRequestConfig(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase, version = version)
 
         return request<Unit, PortableEnvelopeResponse>(
             localVariableConfig
@@ -271,11 +291,17 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      *
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
+     * @param version Select portable v2 to include medication pause history. (optional, default to Version._1)
      * @return RequestConfig
      */
-    fun exportPortableHouseholdBundleRequestConfig(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String) : RequestConfig<Unit> {
+    fun exportPortableHouseholdBundleRequestConfig(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?) : RequestConfig<Unit> {
         val localVariableBody = null
-        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
+            .apply {
+                if (version != null) {
+                    put("version", listOf(version.toString()))
+                }
+            }
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         xMedTrackerPortablePassphrase.apply { localVariableHeaders["X-MedTracker-Portable-Passphrase"] = this.toString() }
         localVariableHeaders["Accept"] = "application/json"

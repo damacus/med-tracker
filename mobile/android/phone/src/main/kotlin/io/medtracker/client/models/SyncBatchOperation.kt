@@ -25,8 +25,8 @@ import com.squareup.moshi.JsonClass
  * @param action 
  * @param resourceType 
  * @param id 
- * @param ifMatch Required for update and delete operations. Use the exact latest ETag.
- * @param attributes Fields accepted by the selected resource and action.
+ * @param ifMatch Required for update, delete and pause-period close operations. Use the exact latest ETag.
+ * @param attributes Fields accepted by the selected resource and action. medication_pause_period supports create with source_type (schedule or person_medication), portable source_id, required public reason and optional note; close requires the portable period id, if_match and empty attributes. No timestamps, update or delete are accepted for pause periods. Repeating close for a completed period cannot close a later pause.
  */
 
 
@@ -41,11 +41,11 @@ data class SyncBatchOperation (
     @Json(name = "id")
     val id: kotlin.String? = null,
 
-    /* Required for update and delete operations. Use the exact latest ETag. */
+    /* Required for update, delete and pause-period close operations. Use the exact latest ETag. */
     @Json(name = "if_match")
     val ifMatch: kotlin.String? = null,
 
-    /* Fields accepted by the selected resource and action. */
+    /* Fields accepted by the selected resource and action. medication_pause_period supports create with source_type (schedule or person_medication), portable source_id, required public reason and optional note; close requires the portable period id, if_match and empty attributes. No timestamps, update or delete are accepted for pause periods. Repeating close for a completed period cannot close a later pause. */
     @Json(name = "attributes")
     val attributes: kotlin.collections.Map<kotlin.String, kotlin.Any>? = null
 
@@ -54,25 +54,29 @@ data class SyncBatchOperation (
     /**
      * 
      *
-     * Values: create,update,delete,unknown_default_open_api
+     * Values: create,update,delete,close,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class Action(val value: kotlin.String) {
         @Json(name = "create") create("create"),
         @Json(name = "update") update("update"),
         @Json(name = "delete") delete("delete"),
+        @Json(name = "close") close("close"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
     /**
      * 
      *
-     * Values: medication,health_event,medication_take,unknown_default_open_api
+     * Values: medication,health_event,medication_take,schedule,person_medication,medication_pause_period,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class ResourceType(val value: kotlin.String) {
         @Json(name = "medication") medication("medication"),
         @Json(name = "health_event") health_event("health_event"),
         @Json(name = "medication_take") medication_take("medication_take"),
+        @Json(name = "schedule") schedule("schedule"),
+        @Json(name = "person_medication") person_medication("person_medication"),
+        @Json(name = "medication_pause_period") medication_pause_period("medication_pause_period"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
 

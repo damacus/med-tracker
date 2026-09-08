@@ -62,6 +62,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -565,8 +566,16 @@ private fun DashboardMainContent(
                     ScheduleAndInventorySection(
                         scheduleItems = scheduleItems,
                         takingScheduleId = uiState.takingScheduleId,
-                        onRecordDose = onRecordDose
+                        onRecordDose = onRecordDose,
+                        pauseController = uiState.pauseController
                     )
+                }
+
+                uiState.pauseController?.let { controller ->
+                    item {
+                        val pauseState by controller.state.collectAsState()
+                        MedicationPauseControls(pauseState, dashboard.selectedPersonId, controller, scheduleItems.mapNotNull { it.schedule.portableId }.toSet())
+                    }
                 }
 
                 // 6. Smart Insights Card
@@ -960,7 +969,8 @@ private fun MetricStatsCardsRow(
 private fun ScheduleAndInventorySection(
     scheduleItems: List<DashboardScheduleItem>,
     takingScheduleId: Long?,
-    onRecordDose: (ScheduleDto) -> Unit
+    onRecordDose: (ScheduleDto) -> Unit,
+    pauseController: MedicationPauseController? = null
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -1005,6 +1015,7 @@ private fun ScheduleAndInventorySection(
                             isTaking = takingScheduleId == item.schedule.id,
                             onTakeClick = { onRecordDose(item.schedule) }
                         )
+                        pauseController?.let { SchedulePauseActions(it, item.schedule.portableId) }
                     }
                 }
             }

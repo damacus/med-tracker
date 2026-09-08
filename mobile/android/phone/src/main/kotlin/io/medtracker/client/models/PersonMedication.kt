@@ -15,6 +15,7 @@
 
 package io.medtracker.client.models
 
+import io.medtracker.client.models.NullableMedicationPausePeriod
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -39,6 +40,7 @@ import com.squareup.moshi.JsonClass
  * @param updatedAt 
  * @param maxDailyDoses 
  * @param minHoursBetweenDoses 
+ * @param currentPausePeriod 
  */
 
 
@@ -93,7 +95,10 @@ data class PersonMedication (
     val maxDailyDoses: kotlin.Int?,
 
     @Json(name = "min_hours_between_doses")
-    val minHoursBetweenDoses: kotlin.String?
+    val minHoursBetweenDoses: kotlin.String?,
+
+    @Json(name = "current_pause_period")
+    val currentPausePeriod: NullableMedicationPausePeriod? = null
 
 ) {
 

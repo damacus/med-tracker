@@ -20,6 +20,7 @@ import io.medtracker.client.models.CapabilityAuthentication
 import io.medtracker.client.models.CapabilityBackups
 import io.medtracker.client.models.CapabilityClientTools
 import io.medtracker.client.models.CapabilityFhir
+import io.medtracker.client.models.CapabilityMedicationPausePeriods
 import io.medtracker.client.models.CapabilitySync
 
 import com.squareup.moshi.Json
@@ -37,6 +38,7 @@ import com.squareup.moshi.JsonClass
  * @param fhir 
  * @param sync 
  * @param clientTools 
+ * @param medicationPausePeriods 
  */
 
 
@@ -67,7 +69,10 @@ data class Capabilities (
     val sync: CapabilitySync,
 
     @Json(name = "client_tools")
-    val clientTools: CapabilityClientTools
+    val clientTools: CapabilityClientTools,
+
+    @Json(name = "medication_pause_periods")
+    val medicationPausePeriods: CapabilityMedicationPausePeriods? = null
 
 ) {
 

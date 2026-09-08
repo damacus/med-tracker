@@ -24,6 +24,7 @@ import com.squareup.moshi.JsonClass
  *
  * @param supported Whether OIDC exchange is supported.
  * @param pkceRequired Whether PKCE is required.
+ * @param householdSelection Whether first-time household selection grants are supported.
  * @param sessionListing Whether clients may list sessions.
  * @param sessionRevocation Whether clients may revoke sessions.
  */
@@ -38,6 +39,10 @@ data class CapabilityOidcExchange (
     /* Whether PKCE is required. */
     @Json(name = "pkce_required")
     val pkceRequired: kotlin.Boolean,
+
+    /* Whether first-time household selection grants are supported. */
+    @Json(name = "household_selection")
+    val householdSelection: kotlin.Boolean,
 
     /* Whether clients may list sessions. */
     @Json(name = "session_listing")

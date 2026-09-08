@@ -19,6 +19,7 @@ import java.io.IOException
 import okhttp3.Call
 import okhttp3.HttpUrl
 
+import io.medtracker.client.models.AuthHouseholdSelectionResponse
 import io.medtracker.client.models.AuthLoginRequest
 import io.medtracker.client.models.AuthLoginResponse
 import io.medtracker.client.models.ErrorEnvelope

@@ -1,8 +1,8 @@
 # Android OpenAPI generated-client provenance
 
 - Pinned OpenAPI source: docs/api/openapi.v1.yaml
-- Source revision: a359034d50bb3ca91b939af361a7066fddf4e402
-- Pinned OpenAPI SHA-256: da3dbdcea8896c9ae8bfac0e388c073e96650d049b7e26917b4d0e5fd4386fd3
+- Source revision: 80e9c9070cba45523ad70b268f8a546e51a873ef
+- Pinned OpenAPI SHA-256: 798d5ea61040c4f7c3330c9e0f9d0f694bb14f405fc1048f5b4513f0f87f65e1
 - Generator image: openapitools/openapi-generator-cli:v7.20.0@sha256:fa4add01856e44becf70674164df354d61bd37ba0f444d27be949801e013921b
 - Generator: OpenAPI Generator 7.20.0
 - Release generator configuration: mobile/android/openapi-generator-config.yaml plus openapi-generator-release.ignore
