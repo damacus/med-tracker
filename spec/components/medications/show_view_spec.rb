@@ -95,6 +95,16 @@ RSpec.describe Components::Medications::ShowView, type: :component do
 
       expect(refill_button[:class]).to include('rounded-shape-full')
     end
+
+    it 'contains the adjust inventory trigger within the actions grid' do
+      adjust_button = rendered.css("[data-controller='ruby-ui--dialog'] button").find do |button|
+        button.text.include?('Adjust Inventory')
+      end
+
+      wrapper = adjust_button.ancestors.find { |ancestor| ancestor[:class].to_s.include?('col-span-2') }
+
+      expect(wrapper[:class]).to include('col-span-2', 'min-w-0')
+    end
   end
 
   it 'renders the log administration link' do

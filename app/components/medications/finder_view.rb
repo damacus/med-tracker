@@ -32,6 +32,7 @@ module Components
               detailsDescription: t('medications.finder.details.description'),
               detailsCategory: t('medications.finder.details.category'),
               detailsPackage: t('medications.finder.details.package'),
+              packageLabel: t('medications.finder.details.package'),
               detailsDirections: t('medications.finder.details.directions'),
               detailsWarnings: t('medications.finder.details.warnings'),
               reviewPromptSummary: {

@@ -69,6 +69,14 @@ RSpec.describe Views::Profiles::Show, type: :component do
     )
   end
 
+  it 'allows profile tab labels to wrap inside their controls' do
+    rendered = render_inline(described_class.new(presenter:))
+
+    expect(rendered.css('[data-testid="profile-section-tab"]').pluck('class')).to all(
+      include('whitespace-normal', 'leading-tight')
+    )
+  end
+
   it 'renders the selected profile summary' do
     rendered = render_inline(described_class.new(presenter:))
 

@@ -2,6 +2,35 @@
 
 require 'rails_helper'
 
+module MobileUiRouteDiagnostics
+  ROUTE_OVERFLOW_SCRIPT = <<~JS
+    (() => {
+      const viewport = document.documentElement.clientWidth;
+      const visible = (element) => {
+        const styles = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return styles.display !== 'none' && styles.visibility !== 'hidden' &&
+          rect.width > 0 && rect.height > 0;
+      };
+      return Array.from(document.querySelectorAll('a, button, [role="button"]'))
+        .filter((element) => visible(element) && element.getBoundingClientRect().right > viewport + 1)
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          const ancestor = element.closest('[data-testid], header, main, section, form, div');
+          return {
+            text: element.textContent.trim(),
+            tag: element.tagName.toLowerCase(),
+            className: element.className,
+            rect: { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom },
+            ancestorTag: ancestor?.tagName.toLowerCase(),
+            ancestorTestid: ancestor?.dataset.testid,
+            ancestorClass: ancestor?.className
+          };
+        });
+    })()
+  JS
+end
+
 RSpec.describe 'Mobile UI audit' do
   fixtures :all
 
@@ -29,39 +58,95 @@ RSpec.describe 'Mobile UI audit' do
     end
   end
 
-  it 'keeps authenticated UI routes readable without mobile overflow in dark mode', :js do
-    apply_appearance('dark')
+  it 'keeps authenticated UI routes readable at mobile and desktop widths in both themes', :aggregate_failures, :js do
+    [390, 1280].each do |width|
+      page.current_window.resize_to(width, width == 390 ? 844 : 800)
 
-    audited_ui_paths.each do |path|
-      visit path
+      %w[light dark].each do |appearance|
+        apply_appearance(appearance)
 
-      expect(page).to have_css('body')
-      expect(page_horizontal_overflow).to be <= 1,
-                                          format(
-                                            'overflow=%<overflow>s diagnostics=%<diagnostics>s',
-                                            overflow: page_horizontal_overflow,
-                                            diagnostics: overflowing_elements.inspect
-                                          )
-      expect(low_contrast_text).to be_empty, "contrast_failures=#{low_contrast_text.inspect}"
+        audited_ui_routes.each do |path, expected_path|
+          visit path
+
+          expect(page).to have_current_path(expected_path)
+          expect(page).to have_css('body')
+          expect(page_horizontal_overflow).to be <= 1,
+                                              format(
+                                                'route=%<route>s width=%<width>s appearance=%<appearance>s ' \
+                                                'overflow=%<overflow>s diagnostics=%<diagnostics>s ' \
+                                                'route_elements=%<route_elements>s',
+                                                route: path,
+                                                width: width,
+                                                appearance: appearance,
+                                                overflow: page_horizontal_overflow,
+                                                diagnostics: overflowing_elements.inspect,
+                                                route_elements: route_overflow_diagnostics.inspect
+                                              )
+          expect(low_contrast_text).to be_empty,
+                                       "route=#{path} width=#{width} appearance=#{appearance} " \
+                                       "contrast_failures=#{low_contrast_text.inspect}"
+        end
+      end
     end
   end
 
-  it 'keeps signed-out UI routes readable without mobile overflow in dark mode', :js do
+  it 'keeps signed-out UI routes readable at mobile and desktop widths in both themes', :aggregate_failures, :js do
     invitation = create(:household_invitation, email: 'mobile-audit@example.org', membership_role: :member)
 
     rodauth_logout
-    apply_appearance('dark')
+    routes = signed_out_ui_paths(invitation)
 
-    [
-      login_path,
-      create_account_path,
-      accept_invitation_path(token: invitation.token)
-    ].each do |path|
-      visit path
+    [390, 1280].each do |width|
+      page.current_window.resize_to(width, width == 390 ? 844 : 800)
 
-      expect(page_horizontal_overflow).to be <= 1, "overflow=#{page_horizontal_overflow}"
-      expect(low_contrast_text).to be_empty, "contrast_failures=#{low_contrast_text.inspect}"
+      %w[light dark].each do |appearance|
+        apply_appearance(appearance)
+
+        routes.each do |path|
+          visit path
+
+          expect(page).to have_current_path(path)
+          expect(page_horizontal_overflow).to be <= 1,
+                                              "route=#{path} width=#{width} appearance=#{appearance} " \
+                                              "overflow=#{page_horizontal_overflow}"
+          expect(low_contrast_text).to be_empty,
+                                       "route=#{path} width=#{width} appearance=#{appearance} " \
+                                       "contrast_failures=#{low_contrast_text.inspect}"
+        end
+      end
     end
+  end
+
+  it 'audits the platform-only dm+d import page with an explicit capability', :aggregate_failures, :js do
+    PlatformAdmin.find_or_create_by!(account: users(:admin).person.account)
+    paths = [new_admin_nhs_dmd_import_path, platform_settings_path]
+
+    [390, 1280].each do |width|
+      page.current_window.resize_to(width, width == 390 ? 844 : 800)
+
+      %w[light dark].each do |appearance|
+        apply_appearance(appearance)
+
+        paths.each do |path|
+          visit path
+
+          expect(page).to have_current_path(path)
+          expect(page).to have_css('body')
+          expect(page_horizontal_overflow).to be <= 1
+          expect(low_contrast_text).to be_empty
+        end
+      end
+    end
+  end
+
+  it 'records the health-history report as a download-only route', :js do
+    path = download_ui_paths.fetch(:health_history_report)
+
+    visit reports_path
+    select people(:john).name, from: 'Person for GP report'
+    form = find('form[action*="reports/health-history"]')
+
+    expect(form[:action]).to include(path.split('?').first)
   end
 
   it 'audits the signed-out accessibility journey at desktop and mobile widths', :js do
@@ -152,8 +237,15 @@ RSpec.describe 'Mobile UI audit' do
     base_ui_paths + medication_ui_paths + schedule_ui_paths + people_ui_paths + admin_ui_paths
   end
 
+  def audited_ui_routes
+    audited_ui_paths.map do |path|
+      expected_path = path == household_path(:new_schedule_path) ? household_path(:schedules_workflow_path) : path
+      [path, expected_path]
+    end
+  end
+
   def base_ui_paths
-    [root_path] + household_paths(
+    household_paths(
       :dashboard_path,
       :profile_path,
       :reports_path,
@@ -168,6 +260,8 @@ RSpec.describe 'Mobile UI audit' do
 
   def medication_ui_paths
     household_paths(:medications_path, :new_medication_path, :medication_finder_path) + [
+      household_path(:stock_check_medications_path),
+      household_path(:medication_review_prompts_path),
       household_path(:medication_path, id: medications(:paracetamol)),
       household_path(:edit_medication_path, id: medications(:paracetamol)),
       household_path(:administration_medication_path, id: medications(:paracetamol)),
@@ -204,7 +298,7 @@ RSpec.describe 'Mobile UI audit' do
         person_id: people(:john),
         id: person_medications(:john_vitamin_d)
       ),
-      household_path(:new_person_carer_relationship_path, person_id: people(:john)),
+      household_path(:new_person_carer_relationship_path, person_id: people(:child_patient)),
       household_path(:new_person_medication_assignment_path, person_id: people(:john))
     ]
   end
@@ -212,7 +306,6 @@ RSpec.describe 'Mobile UI audit' do
   def admin_ui_paths
     household_paths(
       :admin_root_path,
-      :new_admin_nhs_dmd_import_path,
       :admin_users_path,
       :new_admin_user_path,
       :admin_invitations_path,
@@ -220,7 +313,7 @@ RSpec.describe 'Mobile UI audit' do
       :new_admin_carer_relationship_path,
       :admin_people_path,
       :admin_audit_logs_path,
-      :admin_settings_path
+      :edit_admin_household_path
     ) + [
       household_path(:edit_admin_user_path, id: users(:jane)),
       household_path(:admin_audit_log_path, id: PaperTrail::Version.last)
@@ -237,6 +330,23 @@ RSpec.describe 'Mobile UI audit' do
 
   def household_route_params
     { household_slug: browser_household.slug }
+  end
+
+  def signed_out_ui_paths(invitation)
+    [
+      login_path,
+      "#{create_account_path}?invitation_token=#{CGI.escape(invitation.token)}",
+      accept_invitation_path(token: invitation.token),
+      '/reset-password-request',
+      '/verify-account-resend',
+      '/unlock-account-request'
+    ]
+  end
+
+  def download_ui_paths
+    {
+      health_history_report: household_path(:health_history_report_path, person_id: people(:john).id)
+    }
   end
 
   def apply_appearance(appearance)
@@ -283,6 +393,10 @@ RSpec.describe 'Mobile UI audit' do
 
   def overflowing_elements
     page.evaluate_script(Rails.root.join('spec/support/mobile_ui_overflowing_elements.js').read)
+  end
+
+  def route_overflow_diagnostics
+    page.evaluate_script(MobileUiRouteDiagnostics::ROUTE_OVERFLOW_SCRIPT)
   end
 
   def low_contrast_text

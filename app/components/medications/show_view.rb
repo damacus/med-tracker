@@ -262,13 +262,15 @@ module Components
       end
 
       def render_adjust_inventory_modal
-        render Components::Medications::AdjustInventoryModal.new(
-          medication: medication,
-          button_variant: :filled,
-          button_size: :lg,
-          button_class: 'w-full justify-center col-span-2',
-          button_label: t('medications.show.adjust_inventory')
-        )
+        div(class: 'col-span-2 min-w-0') do
+          render Components::Medications::AdjustInventoryModal.new(
+            medication: medication,
+            button_variant: :filled,
+            button_size: :lg,
+            button_class: 'w-full justify-center',
+            button_label: t('medications.show.adjust_inventory')
+          )
+        end
       end
 
       def render_dosages_section

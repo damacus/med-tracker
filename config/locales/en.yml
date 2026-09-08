@@ -110,6 +110,20 @@ en:
       linked_to_health_event: has already been linked to this health event
       on_or_after_start_date: must be on or after the start date
   admin:
+    labels:
+      membership_roles:
+        owner: Owner
+        administrator: Administrator
+        member: Member
+      relationship_types:
+        parent: Parent
+        carer: Carer
+        family_member: Family member
+        professional: Professional
+      access_levels:
+        view: View
+        record: Record
+        manage: Manage
     invitations:
       created: Invitation sent
       resent: Invitation resent
@@ -126,7 +140,11 @@ en:
         cancel: Cancel
         form:
           email: Email
-          role: Role
+          role: Household role
+          relationship_type: Dependent relationship
+          select_relationship_type: Select relationship
+          access_level: Dependent access
+          select_access_level: Select access level
           dependents: Existing dependents
           dependents_hint: Select existing children or dependent adults this invited parent or carer should manage.
           submit: Send invitation
@@ -197,6 +215,9 @@ en:
           to: to
           of: of
           results: results
+          previous: Previous
+          next: Next
+          label: Pagination
     ambiguous_person_access_grants:
       index:
         title: Ambiguous access grants
@@ -227,6 +248,8 @@ en:
       unauthorized: You are not authorized to perform this action.
       missing_account: User does not have an account to verify.
       index:
+        title: User Management
+        new_user: New User
         helper: Household roles apply only to this household. System administrators can manage every household.
       form:
         subtitle: Fill in the details below to create a new user account.
@@ -241,6 +264,10 @@ en:
         role: Household role
         membership_role_helper: Only system administrators can assign the Owner role.
         select_role: Select role
+        dependent_relationship_type: Dependent relationship
+        select_dependent_relationship_type: Select relationship
+        dependent_access_level: Dependent access
+        select_dependent_access_level: Select access level
         dependents: Existing dependents
         cancel: Cancel
         create_submit: Create User
@@ -576,7 +603,7 @@ en:
         email_placeholder: Enter your email address
         submit: Request Password Reset
         other_options: Other Options
-        back_to_login: Back to Login
+        back_to_login: Back to sign in
         create_account: Create a New Account
       reset_password:
         page_subtitle: Create a new password for your account.
@@ -600,9 +627,9 @@ en:
           link.
         email_label: Email address
         email_placeholder: Enter your email address
-        submit: Resend Verify Account Information
+        submit: Resend verification email
         other_options: Other Options
-        back_to_login: Back to Login
+        back_to_login: Back to sign in
         create_account: Create a New Account
       otp_auth:
         page_title: Enter your authentication code
@@ -741,6 +768,9 @@ en:
       title: Locations
       add_location: Add Location
       members: Members
+      medication_count:
+        one: "%{count} medication"
+        other: "%{count} medications"
       view: View
       delete_dialog:
         title: Delete Location
@@ -758,6 +788,7 @@ en:
       no_members: No members assigned.
       details: Details
       no_details: No description provided.
+      stock_warning: Low stock
       add_member:
         title: Add Member
         description: Add a person to %{name}
@@ -895,7 +926,9 @@ en:
         damaged_or_disposed: Damaged or disposed
         other: Other
       clear_batch: Clear batch
-      apply: Apply %{count} amendments
+      apply:
+        one: Apply 1 amendment
+        other: Apply %{count} amendments
       medicines: "%{count} medicines"
       net_change: total net change
       units: units
@@ -1142,8 +1175,19 @@ en:
       paused: Paused
       notes: 'Notes:'
       timing_restrictions: 'Timing Restrictions:'
-      max_doses_per_day: Maximum %{count} dose(s) per day
-      wait_hours: Wait at least %{hours} hours between doses
+      max_doses:
+        daily:
+          one: Maximum 1 dose per day
+          other: Maximum %{count} doses per day
+        weekly:
+          one: Maximum 1 dose per week
+          other: Maximum %{count} doses per week
+        monthly:
+          one: Maximum 1 dose per month
+          other: Maximum %{count} doses per month
+      wait_hours:
+        one: Wait at least 1 hour between doses
+        other: Wait at least %{count} hours between doses
       next_dose_available: 'Next dose available in:'
       todays_doses: Today's Doses
       no_doses_today: No doses taken today
@@ -1365,11 +1409,11 @@ en:
         prescribed: Prescribed
       person_label: Person name
       person_placeholder: Select person
-      medication_label: Name of med
+      medication_label: Medication
       medication_placeholder: Select medication
-      frequency_label: Dose, frequency
+      frequency_label: Frequency
       frequency_placeholder: e.g. Once daily
-      summary_title: Schedule (break this down)
+      summary_title: Schedule summary
       none: "-"
     index:
       title: Active Schedules
