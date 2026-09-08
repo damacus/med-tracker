@@ -134,6 +134,31 @@ RSpec.describe 'API v1 pause-period sync' do
       expect(side_effect_counts).to eq(counts)
     end
 
+    [
+      { reason: 'unsupported' },
+      { note: 123 },
+      { started_at: '2026-09-08T12:00:00Z' },
+      { source_id: nil }
+    ].each do |invalid_attributes|
+      it "replays a safe validation failure for #{invalid_attributes.keys.join(', ')}" do
+        retry_headers = headers.merge('Idempotency-Key' => SecureRandom.uuid)
+        operation = create_operation(schedule)
+        operation[:attributes].merge!(invalid_attributes)
+        operation[:attributes].delete(:source_id) if invalid_attributes.key?(:source_id)
+        counts = side_effect_counts
+
+        post_batch(operation, request_headers: retry_headers)
+        expect(response).to have_http_status(:unprocessable_content)
+        original = response.parsed_body
+        post_batch(operation, request_headers: retry_headers)
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body).to eq(original)
+        expect(response.headers['Idempotency-Replayed']).to eq('true')
+        expect(side_effect_counts).to eq(counts)
+      end
+    end
+
     it 'does not replay a success after the member loses source access' do
       access = restricted_access(people(:john))
       retry_headers = access.fetch(:headers).merge('Idempotency-Key' => SecureRandom.uuid)

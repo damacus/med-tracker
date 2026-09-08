@@ -72,12 +72,11 @@ RSpec.describe Api::V1::ScheduleSerializer do
   end
 
   def missing_association_schedule(updated_at)
-    instance_double(
-      Schedule,
+    Schedule.new(
       id: 1, portable_id: SecureRandom.uuid, person_id: nil, person: nil,
       medication_id: nil, medication: nil, dose_amount: nil, dose_unit: nil,
       frequency: nil, dose_cycle: 'daily', start_date: nil, end_date: nil,
-      active?: false, paused?: true, notes: nil, updated_at: updated_at,
+      active: false, notes: nil, updated_at: updated_at,
       max_daily_doses: nil, min_hours_between_doses: nil, schedule_type: 'daily', schedule_config: {}
     )
   end

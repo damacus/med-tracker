@@ -59,11 +59,10 @@ RSpec.describe Api::V1::PersonMedicationSerializer do
   end
 
   def missing_association_person_medication(updated_at)
-    instance_double(
-      PersonMedication,
+    PersonMedication.new(
       id: 1, portable_id: SecureRandom.uuid, person_id: nil, person: nil,
       medication_id: nil, medication: nil, dose_amount: nil, dose_unit: nil,
-      active?: false, paused?: true, dose_cycle: 'daily',
+      active: false, dose_cycle: 'daily',
       administration_kind: 'as_needed', notes: nil, position: nil,
       updated_at: updated_at, max_daily_doses: nil, min_hours_between_doses: nil
     )

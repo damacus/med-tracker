@@ -303,7 +303,7 @@ module Api
 
         result = store.with_reservation(response: response, &action)
         if result.replayed
-          authorize_api_replay!
+          authorize_api_replay! if result.record.response_status < 400
           result.response_headers.each { |name, value| response.set_header(name, value) }
           response.set_header('Idempotency-Replayed', 'true')
           render json: result.record.response_body, status: result.record.response_status
