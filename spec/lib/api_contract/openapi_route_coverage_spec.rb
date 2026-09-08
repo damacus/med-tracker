@@ -409,6 +409,18 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(described_class.schema_errors('DoseOccurrenceResponse', response.parsed_body)).to be_empty
     end
 
+    it 'types outcome corrections and requires the reopen version header' do
+      attributes = { dose_occurrence: { key: 'opaque-key', taken_at: Time.current.iso8601, dose_amount: '1.0' } }
+      expect(described_class.schema_errors('DoseTakeRequest', attributes)).to be_empty
+      attributes[:dose_occurrence][:dose_amount] = 1
+      expect(described_class.schema_errors('DoseTakeRequest', attributes)).to include('/dose_occurrence/dose_amount')
+      expect(described_class.schema_errors('DoseReopenRequest', dose_occurrence: { key: 'opaque-key' })).to be_empty
+      operation = described_class.document.dig(
+        'paths', '/households/{household_id}/schedules/{schedule_id}/dose_occurrences/reopen', 'patch'
+      )
+      expect(operation.fetch('parameters')).to include(include('name' => 'If-Match', 'required' => true))
+    end
+
     it 'uses the canonical API v1 server address' do
       expect(described_class.document.fetch('servers').first.fetch('url')).to eq('/api/v1')
     end

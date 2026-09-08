@@ -55,12 +55,23 @@ RSpec.describe 'API v1 dose outcome corrections' do
     expect(response).to have_http_status(:forbidden)
   end
 
+  it 'requires the observed version before replacing a not-taken decision' do
+    row = record_not_taken
+    [nil, 'stale-version'].each do |etag|
+      post path('take'), params: { dose_occurrence: { key: row.fetch('key'), taken_at: Time.current.iso8601 } },
+                         headers: headers.merge('If-Match' => etag), as: :json
+      expect(response).to have_http_status(etag ? :conflict : :precondition_required)
+      expect(source.medication_dose_occurrences.sole).to be_not_taken
+    end
+  end
+
   it 'replaces not-taken with one immutable take and one stock decrement' do
     row = record_not_taken
     source.medication.update!(current_supply: 100)
     attributes = { key: row.fetch('key'), taken_at: Time.current.iso8601, client_uuid: SecureRandom.uuid }
     expect do
-      post path('take'), params: { dose_occurrence: attributes }, headers: headers, as: :json
+      post path('take'), params: { dose_occurrence: attributes },
+                         headers: headers.merge('If-Match' => row.fetch('etag')), as: :json
     end.to change(MedicationTake, :count).by(1)
     expect(response).to have_http_status(:ok)
     record = source.medication_dose_occurrences.sole
