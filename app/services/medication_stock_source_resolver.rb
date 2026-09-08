@@ -3,10 +3,21 @@
 class MedicationStockSourceResolver
   attr_reader :user, :source, :taken_at
 
-  def initialize(user:, source:, taken_at: Time.current)
+  def initialize(user:, source:, taken_at: Time.current, matching_medications: nil)
     @user = user
     @source = source
     @taken_at = taken_at
+    @matching_medications = matching_medications
+  end
+
+  def preload(sources)
+    context = authorization_context
+    assignments = stock_assignments(sources, context)
+    stock = batch_stock(sources, context).group_by { |medication| stock_signature(medication) }
+    sources.index_with do |candidate|
+      matches = batch_matches(candidate, stock, assignments, context)
+      self.class.new(user: user, source: candidate, taken_at: taken_at, matching_medications: matches)
+    end
   end
 
   def available_medications
@@ -39,6 +50,37 @@ class MedicationStockSourceResolver
   end
 
   private
+
+  def batch_matches(candidate, stock, assignments, context)
+    matches = stock.fetch(stock_signature(candidate.medication), [])
+    return matches.select { |medication| medication.id == candidate.medication_id } unless context
+    return matches unless assignments
+
+    ids = assignments.fetch(candidate.person_id, []) + [candidate.medication_id]
+    matches.select { |medication| ids.include?(medication.id) }
+  end
+
+  def stock_signature(medication)
+    [medication.name, medication.dose_amount, medication.dose_unit]
+  end
+
+  def batch_stock(sources, context)
+    scope = if context
+              MedicationPolicy::Scope.new(context, Medication.all).resolve
+            else
+              Medication.where(id: sources.map(&:medication_id))
+            end
+    scope.joins(:location).includes(:location).order('locations.name ASC, medications.id ASC').to_a
+  end
+
+  def stock_assignments(sources, context)
+    return unless context && !household_manager_context?(context)
+
+    people = sources.map(&:person_id).uniq
+    schedules = Schedule.where(household: context.household, person_id: people).pluck(:person_id, :medication_id)
+    direct = PersonMedication.where(household: context.household, person_id: people).pluck(:person_id, :medication_id)
+    (schedules + direct).group_by(&:first).transform_values { |pairs| pairs.map(&:last).uniq }
+  end
 
   def outside_schedule?
     source.respond_to?(:applies_on?) && !source.applies_on?(taken_at.to_date)

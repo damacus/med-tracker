@@ -28,6 +28,11 @@ The browser SHALL preserve the original queued dose and UUID after transient HTT
 - **WHEN** one membership synchronises
 - **THEN** the other membership's doses remain untouched
 
+#### Scenario: Only permanent rejections remain
+- **GIVEN** no pending sync failure and a retained rejected dose
+- **WHEN** the recovery panel is displayed
+- **THEN** the rejection is visible without an ineffective retry button
+
 ### Requirement: Stock selection includes pending consumption
 The browser SHALL choose available stock after accounting for pending doses and SHALL prevent overlapping repeated submissions of a single action.
 
@@ -35,6 +40,21 @@ The browser SHALL choose available stock after accounting for pending doses and 
 - **GIVEN** two matching stock locations and pending doses consuming the first
 - **WHEN** a dose from another eligible source is queued
 - **THEN** it uses the remaining stock location
+
+#### Scenario: Concurrent reservations
+- **GIVEN** separate browser documents sharing the same pending-dose store
+- **WHEN** both attempt to reserve the last available unit
+- **THEN** stock selection and insertion are serialised and only one reservation succeeds
+
+#### Scenario: Different medicines are clicked rapidly
+- **WHEN** two different eligible medicine buttons are clicked while storage is pending
+- **THEN** both actions are queued and a duplicate click on the same button is ignored
+
+#### Scenario: A dose consumes multiple stock units
+- **GIVEN** a countable-unit or volume dose greater than the remaining stock
+- **WHEN** its offline action is rendered
+- **THEN** the action is disabled
+- **AND** pending doses deduct their full quantity from displayed supply
 
 ### Requirement: Offline controls reflect cached eligibility
 The browser SHALL disable dose actions for sources that the server assessed as unavailable or unauthorised, for outdated eligibility, and when pending doses make the cached decision uncertain. It SHALL display a reason and SHALL preserve server validation on sync.
@@ -53,3 +73,8 @@ The browser SHALL disable dose actions for sources that the server assessed as u
 - **GIVEN** cached eligibility is absent or from a previous date
 - **WHEN** the offline screen is displayed
 - **THEN** it asks for a refreshed snapshot before another dose can be queued
+
+#### Scenario: A larger care plan
+- **WHEN** schedules and direct medicines are added for existing people
+- **THEN** eligibility and forecast reads remain batched rather than querying for each source
+- **AND** delegated stock access, overlapping prescriptions and timing rules retain their existing decisions

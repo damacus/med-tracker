@@ -22,3 +22,10 @@
 
 - [x] 5.1 Run OpenSpec validation, applicable lint/full Rails tests, documentation build and diff checks; record outcomes.
 - [x] 5.2 Capture desktop/mobile UI evidence and verify four published stacked PRs against their intended parents.
+
+## 6. Review follow-up
+
+- [x] 6.1 Close read connections and hide retry for permanent-only failures; verify browser regressions.
+- [x] 6.2 Reserve stock atomically across documents and retain rapid actions for different medicines; verify rendered controls.
+- [x] 6.3 Match countable stock units and batch snapshot eligibility; verify query growth and resolver parity.
+- [ ] 6.4 Capture eligibility screenshots, run final stack gates, then reply to and resolve verified review threads.

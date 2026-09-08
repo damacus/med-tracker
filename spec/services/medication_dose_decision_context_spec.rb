@@ -58,6 +58,7 @@ RSpec.describe MedicationDoseDecisionContext do
     expect(context.blocked?).to be(false)
     expect(context.blocked_reason).to be_nil
     expect(context.audit_payload).to eq(decision_source_count: 2)
+    expect(context.preload([source]).fetch(source).audit_payload).to eq(decision_source_count: 2)
   end
 
   context 'when a related person medication blocks the dose' do
@@ -79,6 +80,8 @@ RSpec.describe MedicationDoseDecisionContext do
     it 'reports the related person medication' do
       expect(context.blocked?).to be(true)
       expect(context.blocked_reason).to eq(:overlapping_prescription_restriction)
+      expect(context.preload([source, related_person_medication]).fetch(source).blocked_reason)
+        .to eq(:overlapping_prescription_restriction)
       expect(context.audit_payload).to eq(
         decision_source_count: 2,
         decision_blocking_source_type: 'person_medication',
@@ -97,6 +100,7 @@ RSpec.describe MedicationDoseDecisionContext do
     record_take_for(source)
 
     expect(context.blocked?).to be(true)
+    expect(context.preload([source]).fetch(source).blocked?).to be(true)
   end
 
   context 'when only inactive or expired schedules have reached restrictions' do
@@ -135,6 +139,7 @@ RSpec.describe MedicationDoseDecisionContext do
     it 'does not block the dose' do
       expect(context.blocked?).to be(false)
       expect(context.audit_payload).to eq(decision_source_count: 1)
+      expect(context.preload([source]).fetch(source).audit_payload).to eq(decision_source_count: 1)
     end
   end
 
@@ -165,6 +170,7 @@ RSpec.describe MedicationDoseDecisionContext do
 
     it 'blocks a backdated dose from exceeding the cycle limit' do
       expect(context.blocked?).to be(true)
+      expect(context.preload([source]).fetch(source).blocked?).to be(true)
     end
   end
 end

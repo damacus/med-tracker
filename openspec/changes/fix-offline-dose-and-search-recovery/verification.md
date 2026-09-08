@@ -1,10 +1,10 @@
 # Verification
 
-- Full Rails suite: 5,582 examples, zero failures, one existing pending OIDC auto-link example because OIDC is not configured.
-- Focused offline sync browser checks: nine examples passed, including temporary HTTP failures, transport/malformed responses, authentication, tenant isolation, atomic rollback and recovery UI.
+- Full Rails suite after review fixes: 5,599 examples, zero failures, one existing pending OIDC auto-link example because OIDC is not configured.
+- Focused offline browser checks: 29 examples passed together, including temporary HTTP failures, transport/malformed responses, authentication, tenant isolation, atomic rollback, connection closure, recovery UI, stock reservations and cached eligibility.
 - Offline snapshot, eligibility and stock browser checks passed, including restricted sources, stale metadata, pending overlaps, remaining stock and concurrent clicks.
 - Search browser checks: eight examples passed, including all existing search scenarios and HTTP/network/malformed-response recovery.
-- Repository RuboCop: 1,838 files, no offences.
+- Repository RuboCop after review fixes: 1,839 files, no offences.
 - Documentation build and strict OpenSpec validation passed. Git diff whitespace checks passed.
 - Desktop/mobile screenshots under docs/screenshots use application test fixtures and simulated failed HTTP responses. They are runtime captures, not design mockups.
 
@@ -18,13 +18,23 @@ The first full-suite run was stopped after detecting the new split-locale layout
 
 This verification does not claim a deployed application or configured OIDC acceptance run.
 
+## Review verification
+
+The first review verification run exposed two stock fixture failures: the tests seeded the active cache while startup refreshes could still replace it. Stock and eligibility fixtures now run with a simulated offline connection. All 29 offline browser checks then passed together, followed by the full 5,599-example suite in 12 minutes 55 seconds.
+
+The snapshot query-growth regression passes when adding four schedules and four direct medicines. Stock resolver parity checks cover delegated isolation, same-person alternate stock and manager access; dose decision checks cover overlapping sources, taper limits, expired schedules and weekly cycles.
+
+Dedicated desktop and mobile unavailable-dose captures are committed as `docs/screenshots/offline-eligibility-desktop.png` and `docs/screenshots/offline-eligibility-mobile.png`. The disabled action and its explanation were visually inspected at both sizes.
+
 ## Published stack
 
-All four PRs are open and ready for review, with verified parent branches:
+The original four PRs were merged while the review corrections were being verified:
 
 1. https://github.com/damacus/med-tracker/pull/2130 — sync recovery, based on main.
 2. https://github.com/damacus/med-tracker/pull/2131 — pending stock, based on the sync fix.
 3. https://github.com/damacus/med-tracker/pull/2132 — cached eligibility, based on the stock fix.
 4. https://github.com/damacus/med-tracker/pull/2133 — search recovery, based on eligibility.
 
-GitHub's native stack identifier is 2134. No PR has been merged or deployed by this change.
+Their merged main tree (`0eda8a7c`) exactly matched the original published stack tip (`fa31b7a7`). The review corrections were therefore carried onto that main tree as three follow-up layers: sync recovery, atomic stock reservations, and eligibility/batching. Before publication-only documentation edits, the complete follow-up tree was verified identical to the tested review candidate (`5b29259b`).
+
+The original stack identifier is 2134. This session did not perform those merges or a deployment. Follow-up PR links are recorded after publication.

@@ -293,7 +293,8 @@ export default class extends Controller {
   }
 
   stockConsumptionFor(take) {
-    return take.dose_unit === "ml" ? Number(take.dose_amount || 0) : 1
+    if (!take.dose_amount) return 0
+    return ["tablet", "capsule", "gummy", "sachet", "spray", "drop", "pad", "ml"].includes(take.dose_unit) ? Number(take.dose_amount) : 1
   }
 
   formatQuantity(quantity) {
