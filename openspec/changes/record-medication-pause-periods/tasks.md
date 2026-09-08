@@ -80,8 +80,8 @@
 
 ## 13. Native iOS Pause Controls
 
-- [ ] 13.1 Red: specify reason validation, online-only writes, capability gating, retained input on failure, person filtering and completed history.
-- [ ] 13.2 Green: add native pause form, labelled card actions and Paused treatments on Today, using the new API contract.
+- [x] 13.1 Red: specify reason validation, online-only writes, capability gating, retained input on failure, person filtering and completed history.
+- [x] 13.2 Green: add native pause form, labelled card actions and Paused treatments on Today, using the new API contract.
 - [ ] 13.3 Verify: run iOS API, lint, unit/UI and CI tasks; capture iPhone/iPad accessibility and appearance evidence.
 
 ## 14. Native Android Pause Controls

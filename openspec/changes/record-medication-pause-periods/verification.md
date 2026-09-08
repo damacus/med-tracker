@@ -48,12 +48,66 @@ review approved retry identity, mutation ordering and discovery across all sourc
 
 Screenshot: `mobile/android/docs/screenshots/medication-pause-phone.png`.
 
+The integrated review found that real paused API sources have `active: false`.
+Resume now uses pause state and the current period. New gateway, controller and
+Compose regressions cover both schedules and direct assignments. All 17 focused
+pause unit tests and six emulator UI tests passed; Android lint passed. The final
+UI run targeted the emulator because an unrelated connected physical device could
+not create the Compose test hierarchy.
+
+The full Android `task ci` passed again after the Resume correction, including
+phone/Wear tests, lint, all build variants, release security, Wear boundaries and
+API drift checks. The command used the installed JDK 17 and Android SDK explicitly.
+
+## Final review corrections
+
+Cached invalid sync batches now return the original 422 response on retry.
+Successful cached responses still require fresh authorisation. The regression
+covers invalid reasons, notes, timestamps and missing sources.
+
+Hosted household archives now embed portable v2 and include pause history. The
+outer household archive format and explicit portable v1 endpoint stay compatible.
+The exported schedule and pause records restore through the supported importer
+boundary. Full household archive restoration is not established: the existing
+importer rejects the `health_events` collection, including an empty array. This
+separate gap is tracked in [#2146](https://github.com/damacus/med-tracker/issues/2146).
+
+The final Rails correction checks passed 66 examples, followed by 42 examples for
+the exported-source round trip and adjacent replay safety. RuboCop passed across
+1,853 Ruby files. A previous full Rails run completed 5,691 examples with three
+failures and one expected OIDC pending example; the three failures were fixed.
+The final full run passed: 5,696 examples, zero failures and one expected OIDC
+pending example, in 15 minutes 53 seconds. After stack integration, the complete
+feature diff matched the tested diff byte for byte before provenance updates.
+
+## Verification environment follow-ups
+
+The test task wrapper skipped its requested second command because an included
+task used `run: once`. This is tracked in
+[#2144](https://github.com/damacus/med-tracker/issues/2144).
+
+A rebuilt image retained stale Playwright dependencies in its mounted test
+volume. Refreshing that isolated volume with the frozen npm lock restored browser
+tests. This is tracked in [#2145](https://github.com/damacus/med-tracker/issues/2145).
+Neither workaround changed application or shared tooling source.
+
 ## Integrated checks and remaining gates
 
-Brakeman passed with zero errors and zero warnings. Documentation builds and strict OpenSpec
-validation passed. The full Rails suite and final RuboCop checks are running.
+The final independent review approved all four corrections: Android paused-source
+Resume, cached invalid sync replay, iOS V4 store hydration and confirmed iOS pause
+handling after refresh failure. No further material regression was found.
 
-iOS review, simulator checks and screenshots, final integrated review, stacked publication
-and remote verification remain pending.
+iOS focused native checks passed 33 tests, with a separate 11-test model regression
+run. Four pause UI tests passed on iPhone and four on iPad. The final iPad
+accessibility rerun passed reason selection, empty optional note submission and
+retained input after failure. Screenshots cover light/dark forms, history, paused
+treatments and the largest accessibility text size. The full iOS CI and unsigned
+archive run are in progress.
+
+Brakeman passed with zero errors and zero warnings. Documentation builds and strict OpenSpec
+validation passed. The full Rails suite and final RuboCop checks passed.
+
+iOS full CI and unsigned archive, stacked publication and remote verification
+remain pending.
 
 No merges, deployments or native distribution are authorised by this implementation.
