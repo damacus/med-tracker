@@ -89,6 +89,40 @@ RSpec.describe 'Offline sync recovery', :browser do
     expect(result).to eq('pending' => 0, 'failed' => 1)
   end
 
+  it 'closes database connections after reads' do
+    result = run_store_script(<<~JS)
+      await new Promise(resolve => setTimeout(resolve, 0));
+      const originalClose = IDBDatabase.prototype.close;
+      let closed = 0;
+      IDBDatabase.prototype.close = function() { closed += 1; return originalClose.call(this); };
+      try {
+        await store.getValue('missing');
+        await store.getQueuedTakes(tenant);
+        await store.getFailedTakes(tenant);
+        return closed;
+      } finally { IDBDatabase.prototype.close = originalClose; }
+    JS
+
+    expect(result).to eq(3)
+  end
+
+  it 'shows permanent rejections without offering an ineffective retry' do
+    visit offline_path
+    expect(page).to have_css('[data-offline-shell-target="snapshotAge"]', text: /ago|Just now/)
+    page.driver.with_playwright_page do |browser|
+      browser.evaluate(<<~JS)
+        async () => {
+          const store = await import('controllers/offline_store');
+          await store.saveFailedTake({ client_uuid: crypto.randomUUID() }, 'Dose rejected');
+          window.dispatchEvent(new CustomEvent('medtracker:offline-take-queued'));
+        }
+      JS
+    end
+
+    expect(page).to have_text('Dose rejected')
+    expect(page).to have_no_button('Retry sync')
+  end
+
   it 'explains a temporary sync failure and exposes retry without losing the dose' do
     visit offline_path
     expect(page).to have_css('[data-offline-shell-target="snapshotAge"]', text: /ago|Just now/)
