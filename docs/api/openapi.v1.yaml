@@ -2297,6 +2297,14 @@ paths:
             type: string
             enum: ['1', '2']
             default: '1'
+        - name: portable_format
+          in: query
+          required: false
+          description: Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape.
+          schema:
+            type: string
+            enum: [medtracker.portable.v1, medtracker.portable.v2]
+            default: medtracker.portable.v1
       responses:
         '200':
           description: Encrypted portable bundle.
@@ -6751,10 +6759,60 @@ components:
           $ref: '#/components/schemas/PortableRecordCollection'
         medication_takes:
           $ref: '#/components/schemas/PortableRecordCollection'
+        dose_occurrences:
+          type: array
+          description: Persisted outcomes included in portable v2 bundles.
+          items:
+            $ref: '#/components/schemas/PortableDoseOccurrence'
         notification_preferences:
           $ref: '#/components/schemas/PortableRecordCollection'
         health_events:
           $ref: '#/components/schemas/PortableRecordCollection'
+    PortableDoseOccurrence:
+      type: object
+      additionalProperties: false
+      required: [portable_id, updated_at, etag, source_type, source_portable_id, window_starts_on, position, scheduled_at, outcome, reason, note, resolved_at, medication_take_portable_id]
+      properties:
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        etag:
+          type: string
+        source_type:
+          type: string
+          enum: [schedule, person_medication]
+        source_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        window_starts_on:
+          type: string
+          format: date
+        position:
+          type: integer
+          minimum: 1
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+        outcome:
+          type: string
+          enum: [open, taken, not_taken]
+        reason:
+          type: string
+          nullable: true
+          enum: [refused, unwell, asleep, medicine_unavailable, clinician_advice, other]
+        note:
+          type: string
+          nullable: true
+          maxLength: 2000
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+        medication_take_portable_id:
+          type: string
+          format: uuid
+          nullable: true
     PortableRecordCollection:
       type: array
       items:

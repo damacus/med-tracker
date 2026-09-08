@@ -8,8 +8,9 @@ module Api
 
         return render_unprocessable('Unsupported portable data version') unless portable_version_valid?
 
-        render json: { data: exporter.call(version: params[:version].to_s == '2' ? 2 : 1) }
-      rescue PortableData::Encryptor::Error => e
+        render json: { data: exporter.call(version: params[:version].to_s == '2' ? 2 : 1,
+                                           format: params.fetch(:portable_format, PortableData::Exporter::FORMAT)) }
+      rescue PortableData::Encryptor::Error, PortableData::Exporter::Error => e
         render_unprocessable(e.message)
       end
 
