@@ -45,6 +45,12 @@ The API SHALL implement the existing scheduled and routine outcome semantics: du
 - **WHEN** the client requests reopen
 - **THEN** the request fails without changing the take
 
+#### Scenario: Protect replacement from competing decisions
+- **GIVEN** an occurrence was recorded as not taken
+- **WHEN** a client attempts to replace it with a take without its current ETag
+- **THEN** the API rejects the missing or stale precondition without changing history or stock
+- **AND** an explicit replacement with the current ETag uses the canonical administration transaction
+
 #### Scenario: Retain legacy clients
 - **GIVEN** a valid take request without an occurrence key
 - **WHEN** the client records the dose

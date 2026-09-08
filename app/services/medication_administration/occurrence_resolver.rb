@@ -44,6 +44,7 @@ module MedicationAdministration
     def administer(row, taken_at:, **options)
       return replay_take(row.record, options[:client_uuid]) if row.record&.taken?
 
+      validate_take_version!(row.record, options)
       validate_actionable!(row)
       unless taken_at.in_time_zone.to_date == row.window_starts_on
         raise Error, 'Dose does not match the occurrence window'
@@ -129,11 +130,25 @@ module MedicationAdministration
     def reopen(row, if_match:)
       record = row.record
       raise Error, 'Occurrence cannot be reopened' unless record&.not_taken?
-      raise Error.new('A current version is required', code: 'precondition_required') if if_match.blank?
-      raise Error.new('Occurrence has changed', code: 'sync_conflict') unless if_match == Api::RecordEtag.for(record)
+
+      validate_version!(record, if_match)
 
       record.update!(outcome: 'open', reason: nil, note: nil, resolved_at: nil, resolved_by_membership: nil)
       record
+    end
+
+    def validate_take_version!(record, options)
+      return unless options.key?(:if_match)
+      return if !record&.not_taken? && options[:if_match].blank?
+
+      validate_version!(record, options[:if_match])
+    end
+
+    def validate_version!(record, if_match)
+      raise Error.new('A current version is required', code: 'precondition_required') if if_match.blank?
+      return if record && if_match == Api::RecordEtag.for(record)
+
+      raise Error.new('Occurrence has changed', code: 'sync_conflict')
     end
   end
 end

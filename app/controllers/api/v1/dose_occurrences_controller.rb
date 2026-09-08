@@ -37,6 +37,7 @@ module Api
         attributes = params.expect(dose_occurrence: %i[key taken_at client_uuid dose_amount taken_from_medication_id])
         record = occurrence_resolver.take(
           key: attributes[:key], taken_at: Time.iso8601(attributes[:taken_at].to_s),
+          if_match: request.headers['If-Match'],
           **attributes.slice(:client_uuid, :dose_amount, :taken_from_medication_id).to_h.symbolize_keys
         )
         render_outcome(record)
