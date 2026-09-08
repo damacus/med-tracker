@@ -3,7 +3,7 @@ import {
   getFailedTakes,
   getQueuedTakes,
   getSnapshot,
-  queueTake,
+  queueTakeIfAvailable,
   refreshSnapshot,
   syncQueuedTakes
 } from "controllers/offline_store"
@@ -74,12 +74,14 @@ export default class extends Controller {
   }
 
   async queue(event) {
-    if (this.queueing) return
-    this.queueing = true
+    const button = event.currentTarget
+    this.queueing ||= new WeakSet()
+    if (this.queueing.has(button)) return
+    this.queueing.add(button)
     try {
       await this.queueDose(event)
     } finally {
-      this.queueing = false
+      this.queueing.delete(button)
     }
   }
 
@@ -94,20 +96,21 @@ export default class extends Controller {
 
     if (!source || !medication) return
 
-    const queued = await getQueuedTakes(this.tenantKeyValue)
-    if (this.eligibilityReason(data, source, queued)) return
-    const inventory = this.inventoryFor(data, medication, queued, this.effectiveSource(source))
-    if (!inventory) return
-    const take = await queueTake({
-      source_type: sourceType,
-      source_id: sourceId,
-      dose_amount: source.offline_eligibility.dose_amount,
-      dose_unit: source.offline_eligibility.dose_unit,
-      taken_at: new Date().toISOString(),
-      taken_from_medication_id: inventory?.id || medication.id
+    const take = await queueTakeIfAvailable((queued) => {
+      if (this.eligibilityReason(data, source, queued)) return null
+      const inventory = this.inventoryFor(data, medication, queued, this.effectiveSource(source))
+      if (!inventory) return null
+      return {
+        source_type: sourceType,
+        source_id: sourceId,
+        dose_amount: source.offline_eligibility.dose_amount,
+        dose_unit: source.offline_eligibility.dose_unit,
+        taken_at: new Date().toISOString(),
+        taken_from_medication_id: inventory.id
+      }
     }, this.tenantKeyValue)
 
-    window.dispatchEvent(new CustomEvent("medtracker:offline-take-queued", { detail: { take } }))
+    if (take) window.dispatchEvent(new CustomEvent("medtracker:offline-take-queued", { detail: { take } }))
   }
 
   async render() {

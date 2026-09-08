@@ -119,9 +119,31 @@ export function buildClientUuid() {
 }
 
 export async function queueTake(attributes, tenantKey = defaultTenantKey()) {
+  const take = buildTake(attributes, tenantKey)
+  await transaction("queuedTakes", "readwrite", (store) => store.put(take))
+  return take
+}
+
+export async function queueTakeIfAvailable(selectAttributes, tenantKey = defaultTenantKey()) {
+  tenantKey = normalizedTenantKey(tenantKey)
+  let take
+  await transaction("queuedTakes", "readwrite", (store) => {
+    const request = store.getAll()
+    request.onsuccess = () => {
+      const attributes = selectAttributes(request.result.filter((item) => item.household_key === tenantKey))
+      if (!attributes) return
+
+      take = buildTake(attributes, tenantKey)
+      store.put(take)
+    }
+  })
+  return take
+}
+
+function buildTake(attributes, tenantKey) {
   tenantKey = normalizedTenantKey(tenantKey)
   const clientUuid = attributes.client_uuid || buildClientUuid()
-  const take = {
+  return {
     ...attributes,
     household_key: tenantKey,
     client_uuid: clientUuid,
@@ -129,8 +151,6 @@ export async function queueTake(attributes, tenantKey = defaultTenantKey()) {
     attempts: attributes.attempts || 0
   }
 
-  await transaction("queuedTakes", "readwrite", (store) => store.put(take))
-  return take
 }
 
 export async function getQueuedTakes(tenantKey = defaultTenantKey()) {
