@@ -21,6 +21,13 @@ AllCops:
 
 Style/FrozenStringLiteralComment:
   Exclude:
+    - "app/services/portable_data/health_event_import_writer.rb"
+    - "app/services/portable_data/dose_occurrence_import_validator.rb"
+    - "app/services/portable_data/dose_occurrence_import_links.rb"
+    - "app/services/portable_data/import_preflight_events.rb"
+    - "app/services/portable_data/dose_occurrence_import_preflight.rb"
+    - "app/services/portable_data/dose_occurrence_import_writer.rb"
+    - "spec/services/portable_data/importer_dose_occurrences_spec.rb"
     - "spec/requests/api/v1/portable_dose_occurrences_spec.rb"
     - "app/services/portable_data/dose_occurrence_serializer.rb"
     - "spec/services/portable_data/exporter_dose_occurrences_spec.rb"
