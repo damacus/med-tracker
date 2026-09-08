@@ -69,6 +69,37 @@ RSpec.describe 'Offline mode' do
   end
 
   describe 'GET /households/:household_slug/offline/snapshot' do
+    def snapshot_selects
+      queries = []
+      subscriber = lambda do |*, payload|
+        queries << payload[:sql] if payload[:sql].match?(/\ASELECT/i) && payload[:name] != 'SCHEMA'
+      end
+      ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record') do
+        get "/households/#{household.slug}/offline/snapshot", as: :json
+      end
+      expect(response).to have_http_status(:ok)
+      queries.size
+    end
+
+    it 'keeps snapshot queries bounded as schedules and direct medicines grow' do
+      schedule.update!(min_hours_between_doses: 4)
+      snapshot_selects
+      baseline = snapshot_selects
+      4.times do |index|
+        stock = medication.dup
+        stock.assign_attributes(name: "Query medicine #{index}", portable_id: SecureRandom.uuid)
+        stock.save!
+        schedule.dup.tap do |source|
+          source.assign_attributes(medication: stock, portable_id: SecureRandom.uuid)
+          source.save!
+        end
+        PersonMedication.create!(person: user.person, medication: stock, dose_amount: 300, dose_unit: 'mg',
+                                 min_hours_between_doses: 4, administration_kind: :as_needed)
+      end
+
+      expect(snapshot_selects).to be <= baseline + 2
+    end
+
     it 'includes server-assessed dose eligibility and effective dose for the offline UI' do
       schedule
       get "/households/#{household.slug}/offline/snapshot", as: :json

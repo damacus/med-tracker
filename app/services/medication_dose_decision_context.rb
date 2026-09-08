@@ -3,9 +3,18 @@
 class MedicationDoseDecisionContext
   Decision = Data.define(:blocking_source, :source_count)
 
-  def initialize(source:, taken_at:)
+  def initialize(source:, taken_at:, related_sources: nil, related_takes: nil)
     @source = source
     @taken_at = taken_at
+    @related_sources = related_sources
+    @related_takes = related_takes
+  end
+
+  def preload(sources)
+    candidates = batch_sources(sources).sort_by { |candidate| [source_sort_order(candidate), candidate.id] }
+    takes = batch_takes(candidates)
+    grouped = candidates.group_by { |candidate| [candidate.person_id, candidate.medication_id] }
+    sources.index_with { |candidate| preloaded_context(candidate, grouped, takes) }
   end
 
   def blocked?
@@ -27,6 +36,32 @@ class MedicationDoseDecisionContext
   private
 
   attr_reader :source, :taken_at
+
+  def preloaded_context(candidate, grouped, takes)
+    related = grouped.fetch([candidate.person_id, candidate.medication_id], [])
+    history = related.flat_map { |record| takes.fetch([source_type(record), record.id], []) }
+    self.class.new(source: candidate, taken_at: taken_at, related_sources: related, related_takes: history)
+  end
+
+  def batch_sources(sources)
+    filters = { person_id: sources.map(&:person_id).uniq,
+                medication_id: sources.map(&:medication_id).uniq, active: true }
+    schedules = Schedule.where(filters).where('start_date <= ? AND end_date >= ?', effective_date, effective_date).to_a
+    schedules + PersonMedication.where(filters).to_a
+  end
+
+  def batch_takes(candidates)
+    takes_for_sources(candidates)
+      .where(taken_at: (taken_at - 31.days).beginning_of_day..[taken_at, Time.current].max.end_of_day)
+      .to_a.group_by do |take|
+      take.schedule_id ? ['schedule', take.schedule_id] : ['person_medication', take.person_medication_id]
+    end
+  end
+
+  def takes_for_sources(candidates)
+    MedicationTake.where(schedule_id: candidates.grep(Schedule).map(&:id))
+                  .or(MedicationTake.where(person_medication_id: candidates.grep(PersonMedication).map(&:id)))
+  end
 
   def decision
     @decision ||= Decision.new(

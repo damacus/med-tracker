@@ -1,11 +1,15 @@
 # frozen_string_literal: true
 
 class OfflineDoseEligibility
-  def initialize(source:, user:, policy:, now: Time.current)
+  Context = Data.define(:record_access, :resolver, :decision_context)
+
+  def initialize(source:, user:, policy: nil, now: Time.current, context: nil)
     @source = source
     @user = user
-    @policy = policy
     @now = now
+    @record_access = context ? context.record_access : policy.take_medication?
+    @resolver = context&.resolver
+    @decision_context = context&.decision_context
   end
 
   def as_json(*)
@@ -21,14 +25,14 @@ class OfflineDoseEligibility
 
   private
 
-  attr_reader :source, :user, :policy, :now
+  attr_reader :source, :user, :now
 
   def blocked_reason
-    return I18n.t('offline.record_access_required') unless policy.take_medication?
+    return I18n.t('offline.record_access_required') unless @record_access
 
-    resolver = MedicationStockSourceResolver.new(source: source, user: user, taken_at: now)
+    resolver = @resolver || MedicationStockSourceResolver.new(source: source, user: user, taken_at: now)
     error = resolver.blocked_reason
-    error ||= MedicationDoseDecisionContext.new(source: source, taken_at: now).blocked_reason
+    error ||= (@decision_context || MedicationDoseDecisionContext.new(source: source, taken_at: now)).blocked_reason
     return unless error
 
     key = error == :inactive ? :cooldown : error

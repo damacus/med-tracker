@@ -22,3 +22,16 @@
 
 - [x] 5.1 Run OpenSpec validation, applicable lint/full Rails tests, documentation build and diff checks; record outcomes.
 - [x] 5.2 Capture desktop/mobile UI evidence and verify four published stacked PRs against their intended parents.
+
+## 6. Review follow-up
+
+- [x] 6.1 Close read connections and hide retry for permanent-only failures; verify browser regressions.
+- [x] 6.2 Reserve stock atomically across documents and retain rapid actions for different medicines; verify rendered controls.
+- [x] 6.3 Match countable stock units and batch snapshot eligibility; verify query growth and resolver parity.
+- [x] 6.4 Capture eligibility screenshots, run final stack gates, then reply to and resolve verified review threads.
+
+## 7. Follow-up PR review
+
+- [x] 7.1 Replace connection-close call counting with an observable database deletion check.
+- [x] 7.2 Reproduce stale availability in another browser document, then notify connected offline pages after reservations commit.
+- [x] 7.3 Run stack gates, publish both fixes, and reply to and resolve the two follow-up review threads.
