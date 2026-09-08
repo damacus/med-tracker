@@ -399,8 +399,14 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
           params: { start_date: Date.current.iso8601, end_date: Date.current.iso8601 },
           headers: api_auth_headers(login.fetch('access_token'))
 
-      expect(response).to have_http_status(:ok)
       expect(described_class.schema_errors('DoseOccurrenceCollectionResponse', response.parsed_body)).to be_empty
+      key = response.parsed_body.fetch('data').sole.fetch('key')
+      post "/api/v1/households/#{household.id}/schedules/#{schedule.id}/dose_occurrences/not_taken",
+           params: { dose_occurrence: { key: key, reason: 'unwell', note: 'Resting' } },
+           headers: api_auth_headers(login.fetch('access_token')), as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('DoseOccurrenceResponse', response.parsed_body)).to be_empty
     end
 
     it 'uses the canonical API v1 server address' do
