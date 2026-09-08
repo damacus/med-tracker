@@ -46,3 +46,11 @@ The published follow-up stack is:
 3. https://github.com/damacus/med-tracker/pull/2138 — full stock quantities, batched eligibility and unavailable-dose screenshots; based on #2137.
 
 All nine original review threads received individual replies linking their follow-up PR, followed by resolution. A separate GraphQL read verified all nine resolved states and the created reply IDs. Remote follow-up CI runs independently from the completed local gates.
+
+## Follow-up PR review
+
+PR #2136 now checks that the offline database can be deleted after all three public read operations. This observes whether connections prevent deletion instead of counting calls to `close`. The recovery browser suite passes all 11 examples.
+
+PR #2137 adds a tenant-specific BroadcastChannel after the controller connects and closes it on disconnect. A committed reservation notifies other connected pages without sending dose details. The existing DOM event still refreshes the originating page. A rendered second-document regression first reproduced a stale pending count of zero, then passed with the notification: both pages show one pending take and the remaining dose action becomes unavailable. All four stock browser examples pass.
+
+The updated complete stack passed the full Rails suite: 5,600 examples, zero failures, one existing pending OIDC example, in 16 minutes 9 seconds. Both changed browser suites also passed within that full run. Test preflight passed 31 examples. Documentation build and strict OpenSpec validation passed.
