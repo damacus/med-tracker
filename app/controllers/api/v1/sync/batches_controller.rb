@@ -153,6 +153,7 @@ module Api
             attributes: attributes,
             existing_take: existing_take,
             user: current_user,
+            authorization: pundit_user,
             route: request.path
           ) do |source_type, source_id|
             medication_take_source(source_type, source_id).tap do |source|

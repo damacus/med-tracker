@@ -32,10 +32,14 @@ module Api
         end
       end
 
-      def call(attributes:, user:, existing_take: nil, route: nil, &source_resolver)
+      def call(attributes:, user:, existing_take: nil, route: nil, authorization: nil, &source_resolver)
         attributes = attributes.to_h.symbolize_keys
         client_uuid = attributes[:client_uuid].to_s
         validate_client_uuid!(client_uuid)
+        if attributes.key?(:occurrence_key)
+          return OccurrenceTakeOperation.new.call(attributes: attributes, authorization: authorization,
+                                                  existing_take: existing_take, route: route, &source_resolver)
+        end
         return Result.new(take: existing_take, replayed: true) if existing_take
 
         context = { client_uuid: client_uuid, user: user, route: route }
