@@ -389,6 +389,20 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       ]
     end
 
+    it 'matches projected dose occurrences to the typed read response' do
+      login = api_login(users(:john))
+      household = Household.find(login.dig('household', 'id'))
+      medication = create(:medication, household: household)
+      schedule = create(:schedule, household: household, person: users(:john).person, medication: medication,
+                                   frequency: 'Daily', start_date: Date.current, max_daily_doses: 1)
+      get "/api/v1/households/#{household.id}/schedules/#{schedule.id}/dose_occurrences",
+          params: { start_date: Date.current.iso8601, end_date: Date.current.iso8601 },
+          headers: api_auth_headers(login.fetch('access_token'))
+
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('DoseOccurrenceCollectionResponse', response.parsed_body)).to be_empty
+    end
+
     it 'uses the canonical API v1 server address' do
       expect(described_class.document.fetch('servers').first.fetch('url')).to eq('/api/v1')
     end
