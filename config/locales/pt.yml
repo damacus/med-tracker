@@ -1,5 +1,7 @@
 ---
 pt:
+  offline:
+    record_access_required: Não tem permissão para registar esta dose.
   hello: Olá mundo
   ruby_ui:
     common:

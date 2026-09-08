@@ -1,5 +1,7 @@
 ---
 cy:
+  offline:
+    record_access_required: Nid oes gennych ganiatâd i gofnodi'r dos hwn.
   hello: Helo byd
   ruby_ui:
     common:

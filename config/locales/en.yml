@@ -1,5 +1,7 @@
 ---
 en:
+  offline:
+    record_access_required: You do not have permission to record this dose.
   hello: Hello world
   app:
     name: MedTracker
