@@ -50,6 +50,8 @@ Rails.application.routes.draw do
         resources :schedules, only: %i[index show create update] do
           resources :dose_occurrences, only: [:index] do
             post :not_taken, on: :collection
+            patch :reopen, on: :collection
+            post :take, on: :collection
           end
           member do
             patch :pause
