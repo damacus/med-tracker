@@ -79,6 +79,28 @@ RSpec.describe 'Offline stock selection', :browser do
     expect(page).to have_css('[data-offline-shell-target="pendingCount"]', text: '2')
   end
 
+  it 'refreshes another open offline page after a dose is reserved' do
+    seed_snapshot
+    page.execute_script(<<~JS)
+      const frame = document.createElement('iframe');
+      frame.id = 'other-offline-shell';
+      frame.src = window.location.href;
+      frame.width = '1000';
+      frame.height = '900';
+      frame.style.marginLeft = '280px';
+      document.body.append(frame);
+    JS
+    within_frame('other-offline-shell') do
+      expect(page).to have_button('Take now')
+      click_button 'Take now'
+      expect(page).to have_css('[data-offline-shell-target="pendingCount"]', text: '1')
+    end
+
+    expect(page).to have_css('[data-offline-shell-target="pendingCount"]', text: '1')
+    expect(page).to have_button('Unavailable', disabled: true)
+    expect(page).to have_text('Sync the pending dose before recording another dose of this medicine.')
+  end
+
   it 'serializes stock reservations from separate browser documents' do
     result = page.driver.with_playwright_page do |browser|
       browser.evaluate(<<~JS)

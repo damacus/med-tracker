@@ -17,6 +17,10 @@ export default class extends Controller {
     window.addEventListener("online", this.online)
     window.addEventListener("offline", this.offline)
     window.addEventListener("medtracker:offline-take-queued", this.refresh)
+    if (typeof BroadcastChannel !== "undefined") {
+      this.queueChannel = new BroadcastChannel(`medtracker:offline-takes:${this.tenantKeyValue}`)
+      this.queueChannel.onmessage = this.refresh
+    }
 
     if (navigator.onLine) await this.refreshSnapshot()
     await this.sync()
@@ -27,6 +31,8 @@ export default class extends Controller {
     window.removeEventListener("online", this.online)
     window.removeEventListener("offline", this.offline)
     window.removeEventListener("medtracker:offline-take-queued", this.refresh)
+    this.queueChannel?.close()
+    this.queueChannel = null
   }
 
   online = async () => {
@@ -110,7 +116,10 @@ export default class extends Controller {
       }
     }, this.tenantKeyValue)
 
-    if (take) window.dispatchEvent(new CustomEvent("medtracker:offline-take-queued", { detail: { take } }))
+    if (take) {
+      window.dispatchEvent(new CustomEvent("medtracker:offline-take-queued", { detail: { take } }))
+      this.queueChannel?.postMessage(null)
+    }
   }
 
   async render() {
