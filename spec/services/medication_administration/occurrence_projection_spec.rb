@@ -104,4 +104,17 @@ RSpec.describe MedicationAdministration::OccurrenceProjection do
     expect(described_class.decode(row.key)).to eq(['schedule', schedule.portable_id, date.iso8601, 1])
     expect(described_class.decode("#{row.key}tampered")).to be_nil
   end
+
+  it 'projects supplied report inputs without querying inside the projection' do
+    schedule.medication_pause_periods.load
+    inputs = described_class::Inputs.new(outcomes: [], takes: [])
+    projection = described_class.new(source: schedule, start_date: date, end_date: date, preloaded: inputs)
+    queries = []
+    subscriber = ->(*arguments) { queries << arguments.last[:sql] }
+
+    rows = ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record') { projection.call }
+
+    expect(rows.size).to eq(1)
+    expect(queries).to be_empty
+  end
 end
