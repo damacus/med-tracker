@@ -2258,6 +2258,14 @@ es:
       pdf_unavailable: No se ha podido preparar el PDF. Inténtelo de nuevo.
       preparing_pdf: Preparando PDF...
     health_history:
+      outcomes:
+        title: Resultados de las dosis
+        not_taken: No tomadas
+        date: Fecha
+        expected: Previstas
+        taken: Tomadas
+        unexplained_missed: Omisiones sin explicación
+        reason: Razón
       person_required: Selecciona una persona para descargar un historial de salud para el médico de cabecera.
       title: Informe del historial de salud de MedTracker
       people: "Personas: %{people}"

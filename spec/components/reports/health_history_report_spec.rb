@@ -11,7 +11,7 @@ RSpec.describe Components::Reports::HealthHistoryReport, type: :component do
     rendered = Nokogiri::HTML5(described_class.new(result: empty_result).call)
 
     expect(rendered.css('.empty-state').map(&:text)).to all(include('No records in this section.'))
-    expect(rendered.css('.empty-state').size).to eq(4)
+    expect(rendered.css('.empty-state').size).to eq(6)
     expect(rendered.css('h2').map(&:text)).to eq(expected_section_titles)
     expect(rendered.text).to include('This report reflects information entered into MedTracker.')
   end
@@ -66,13 +66,31 @@ RSpec.describe Components::Reports::HealthHistoryReport, type: :component do
     )
   end
 
+  it 'renders not-taken context separately from administration and missed-dose counts' do
+    person = Data.define(:name).new('Alex Smith')
+    outcome = Reports::HealthHistoryQuery::NotTakenEntry.new(
+      person: person, date: start_date, scheduled_at: nil, medication_name: 'Paracetamol',
+      reason: 'unwell', note: 'Feeling unwell'
+    )
+    result = empty_result.with(not_taken_outcomes: [outcome], daily_outcomes: [
+                                 { date: start_date, expected: 2, actual: 0, not_taken: 1, unexplained_missed: 1 }
+                               ])
+    rendered = Nokogiri::HTML5(described_class.new(result: result).call)
+
+    expect(rendered.css('.health-history-not-taken-table').text).to include('Alex Smith', 'Unwell', 'Feeling unwell')
+    expect(rendered.css('.health-history-outcomes-table thead').text).to include('Taken', 'Not taken',
+                                                                                 'Unexplained misses')
+  end
+
   def empty_result
     Reports::HealthHistoryQuery::Result.new(
       people: [],
       medication_takes: [],
       suspected_side_effects: [],
       notable_illnesses: [],
-      illness_patterns: []
+      illness_patterns: [],
+      not_taken_outcomes: [],
+      daily_outcomes: []
     )
   end
 
@@ -134,6 +152,8 @@ RSpec.describe Components::Reports::HealthHistoryReport, type: :component do
   def expected_section_titles
     [
       'Medication administrations',
+      'Not taken',
+      'Dose outcomes',
       'Suspected side effects',
       'Notable illnesses',
       'Recorded illness patterns',
