@@ -12,6 +12,7 @@ RSpec.describe 'Enlarged text layout', :js do
     sign_in(users(:admin))
     page.current_window.resize_to(320, 844)
     visit profile_path
+    find('#profile-profile-panel[role="tabpanel"]:not([hidden])', visible: :visible)
   end
 
   it 'keeps shell and notice content inside their bounds at ordinary and enlarged text sizes',

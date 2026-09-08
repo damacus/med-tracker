@@ -10,6 +10,7 @@
 | long content | accepted | #2123 | Nightingale (Luna) / Hubble (Terra) | Rail passed en/pt/cy at 320/390; invitation wrapping fixed; 9 overflow examples passed |
 | screenshots | accepted | #2123 | Nightingale (Luna) / coordinator | Matching card pair, ordinary states and replacement enlarged profile/warning images inspected |
 | enlarged text | accepted | #2123 | Nightingale (Luna) / Sol / coordinator | Final images and settled-font regression accepted; full suite passed |
+| PR feedback | accepted | PR #2126 | Nightingale (Luna) / Sol / coordinator | Shared dropdown stacking fixed; screenshots refreshed; full suite 5,515/0/1 pending; review accepted |
 | sweep | local verification | #2123 | scouts / coordinator | See scout-review and local-browser-evidence |
 
 All implementation tranches are accepted. Final full suite: 5,585 examples, zero failures,

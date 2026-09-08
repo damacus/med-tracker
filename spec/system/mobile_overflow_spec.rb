@@ -126,6 +126,57 @@ module MobileOverflowActionMenuGeometry
   JAVASCRIPT
 end
 
+module MobileOverflowNavigationHitTest
+  SCRIPT = <<~JAVASCRIPT
+    (() => {
+      const trigger = document.querySelector(__TRIGGER_SELECTOR__);
+      const rail = document.querySelector('[data-testid="mobile-rail"]');
+      const scrollElement = document.scrollingElement;
+      const rectData = (rect) => rect && ({
+        left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
+        width: rect.width, height: rect.height
+      });
+      const initialTriggerRect = trigger?.getBoundingClientRect();
+      const initialRailRect = rail?.getBoundingClientRect();
+      if (scrollElement && initialTriggerRect && initialRailRect) {
+        const targetBottom = initialRailRect.top + 20;
+        scrollElement.scrollTop = Math.max(
+          0,
+          scrollElement.scrollTop + initialTriggerRect.bottom - targetBottom
+        );
+      }
+      const triggerRect = rectData(trigger?.getBoundingClientRect());
+      const railRect = rectData(rail?.getBoundingClientRect());
+      const links = rail ? Array.from(rail.querySelectorAll('a')) : [];
+      const link = links.find((candidate) => {
+        const rect = candidate.getBoundingClientRect();
+        return triggerRect && rect.left < triggerRect.right && rect.right > triggerRect.left &&
+          rect.top < triggerRect.bottom && rect.bottom > triggerRect.top;
+      });
+      const linkRect = rectData(link?.getBoundingClientRect());
+      const point = triggerRect && linkRect && {
+        x: Math.max(triggerRect.left, linkRect.left) +
+          (Math.min(triggerRect.right, linkRect.right) - Math.max(triggerRect.left, linkRect.left)) / 2,
+        y: Math.max(triggerRect.top, linkRect.top) +
+          (Math.min(triggerRect.bottom, linkRect.bottom) - Math.max(triggerRect.top, linkRect.top)) / 2
+      };
+      const hit = point && document.elementFromPoint(point.x, point.y);
+
+      return {
+        triggerFound: Boolean(trigger),
+        railFound: Boolean(rail),
+        linkFound: Boolean(link),
+        triggerOverlapsRail: Boolean(triggerRect && railRect && triggerRect.bottom > railRect.top),
+        navigationHit: Boolean(link && hit && (hit === link || link.contains(hit))),
+        triggerRect,
+        railRect,
+        linkRect,
+        scrollTop: scrollElement?.scrollTop
+      };
+    })()
+  JAVASCRIPT
+end
+
 module MobileOverflowLongContentGeometry
   SHORTCUT_GEOMETRY_SCRIPT = <<~JAVASCRIPT
     (() => Array.from(document.querySelectorAll('[data-testid="mobile-rail"] a')).map((link) => {
@@ -411,6 +462,38 @@ RSpec.describe 'Mobile overflow handling' do
           expect(page.evaluate_script('document.activeElement?.dataset.testid')).to eq(card[:trigger_testid])
         end
       end
+    end
+  end
+
+  it 'keeps mobile navigation hit targets above closed card actions', :js do
+    medications(:paracetamol).update!(
+      name: 'Paracetamol extended release oral suspension with an intentionally long label'
+    )
+    medications(:vitamin_d).update!(
+      name: 'Vitamin D high-strength daily supplement with an intentionally long label'
+    )
+    page.current_window.resize_to(390, 844)
+    trigger_testids = [
+      "schedule-actions-#{schedules(:john_paracetamol).id}",
+      "person-medication-actions-#{person_medications(:john_vitamin_d).id}"
+    ]
+
+    trigger_testids.each do |trigger_testid|
+      visit person_path(people(:john))
+
+      hit_test = page.evaluate_script(
+        MobileOverflowNavigationHitTest::SCRIPT.sub(
+          '__TRIGGER_SELECTOR__', "[data-testid='#{trigger_testid}']".to_json
+        )
+      )
+
+      expect(hit_test).to include(
+        'triggerFound' => true,
+        'railFound' => true,
+        'linkFound' => true,
+        'triggerOverlapsRail' => true,
+        'navigationHit' => true
+      ), "navigation hit test for #{trigger_testid}: #{hit_test.inspect}"
     end
   end
 
