@@ -89,21 +89,20 @@ RSpec.describe 'Offline sync recovery', :browser do
     expect(result).to eq('pending' => 0, 'failed' => 1)
   end
 
-  it 'closes database connections after reads' do
+  it 'allows the offline database to be deleted after reads' do
     result = run_store_script(<<~JS)
-      await new Promise(resolve => setTimeout(resolve, 0));
-      const originalClose = IDBDatabase.prototype.close;
-      let closed = 0;
-      IDBDatabase.prototype.close = function() { closed += 1; return originalClose.call(this); };
-      try {
-        await store.getValue('missing');
-        await store.getQueuedTakes(tenant);
-        await store.getFailedTakes(tenant);
-        return closed;
-      } finally { IDBDatabase.prototype.close = originalClose; }
+      await store.getValue('missing');
+      await store.getQueuedTakes(tenant);
+      await store.getFailedTakes(tenant);
+      return await new Promise((resolve, reject) => {
+        const request = indexedDB.deleteDatabase('medtracker-offline');
+        const timeout = setTimeout(() => resolve('blocked'), 2000);
+        request.onsuccess = () => { clearTimeout(timeout); resolve('deleted'); };
+        request.onerror = () => { clearTimeout(timeout); reject(request.error); };
+      });
     JS
 
-    expect(result).to eq(3)
+    expect(result).to eq('deleted')
   end
 
   it 'shows permanent rejections without offering an ineffective retry' do
