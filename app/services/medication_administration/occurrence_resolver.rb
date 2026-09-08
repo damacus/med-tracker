@@ -57,7 +57,7 @@ module MedicationAdministration
       result = RecordDose.new.call(source: source, user: authorization, taken_at: taken_at,
                                    amount_override: options[:dose_amount],
                                    taken_from_medication_id: options[:taken_from_medication_id],
-                                   client_uuid: options[:client_uuid])
+                                   client_uuid: options[:client_uuid], route: options[:route])
       raise Error.new('Dose could not be recorded', code: result.error.to_s) unless result.success
 
       result.take

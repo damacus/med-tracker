@@ -60,8 +60,8 @@
 
 ## 11. Link Queued Takes to Formal Occurrences
 
-- [ ] 11.1 Red: specify optional identity, old-client compatibility, mismatch rollback, and replay safety.
-- [ ] 11.2 Green: add atomic linkage to medication-take sync operations and batches.
+- [x] 11.1 Red: specify optional identity, old-client compatibility, mismatch rollback, and replay safety.
+- [x] 11.2 Green: add atomic linkage to medication-take sync operations and batches.
 
 ## 12E. Export Formal Outcomes through Portable Data
 
