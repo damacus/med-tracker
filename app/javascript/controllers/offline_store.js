@@ -24,12 +24,21 @@ async function transaction(storeName, mode, callback) {
 
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, mode)
-    const store = tx.objectStore(storeName)
-    const result = callback(store)
+    let result
+    try {
+      result = callback(Array.isArray(storeName) ? tx : tx.objectStore(storeName))
+    } catch (error) {
+      tx.abort()
+      db.close()
+      reject(error)
+      return
+    }
 
     tx.oncomplete = () => resolve(result)
     tx.onerror = () => reject(tx.error)
     tx.onabort = () => reject(tx.error)
+    tx.addEventListener("complete", () => db.close())
+    tx.addEventListener("abort", () => db.close())
   })
 }
 
@@ -139,13 +148,14 @@ export async function getFailedTakes(tenantKey = defaultTenantKey()) {
 
 export async function saveFailedTake(take, message, tenantKey = take.household_key || defaultTenantKey()) {
   tenantKey = normalizedTenantKey(tenantKey)
-  return transaction("failedTakes", "readwrite", (store) => {
-    store.put({
+  return transaction(["queuedTakes", "failedTakes"], "readwrite", (tx) => {
+    tx.objectStore("failedTakes").put({
       ...take,
       household_key: tenantKey,
       failed_at: new Date().toISOString(),
       failure_message: message
     })
+    tx.objectStore("queuedTakes").delete(take.client_uuid)
   })
 }
 
@@ -153,35 +163,45 @@ export async function syncQueuedTakes(syncUrl, tenantKey = defaultTenantKey()) {
   tenantKey = normalizedTenantKey(tenantKey)
   const queued = await getQueuedTakes(tenantKey)
   const csrfToken = document.querySelector("meta[name='csrf-token']")?.content
-  const result = { synced: [], failed: [], authRequired: false }
+  const result = { synced: [], failed: [], authRequired: false, retryable: false }
 
   for (const take of queued) {
-    const response = await fetch(syncUrl, {
-      method: "POST",
-      credentials: "same-origin",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {})
-      },
-      body: JSON.stringify({ ...take, household_key: undefined, attempts: undefined, queued_at: undefined })
-    })
+    try {
+      const response = await fetch(syncUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {})
+        },
+        body: JSON.stringify({ ...take, household_key: undefined, attempts: undefined, queued_at: undefined })
+      })
 
-    const contentType = response.headers.get("content-type") || ""
-    if (response.status === 401 || response.status === 403 || !contentType.includes("application/json")) {
-      result.authRequired = true
+      const contentType = response.headers.get("content-type") || ""
+      if (response.status === 401 || response.status === 403 || response.redirected) {
+        result.authRequired = true
+        break
+      }
+
+      if ([408, 429].includes(response.status) || response.status >= 500 || !contentType.includes("application/json")) {
+        result.retryable = true
+        break
+      }
+
+      const payload = await response.json()
+      if (response.ok) {
+        if (!payload?.data || typeof payload.data !== "object") throw new Error("Invalid sync response")
+        await removeQueuedTake(take.client_uuid)
+        result.synced.push(payload.data)
+      } else {
+        const message = payload.error?.message || "Sync failed"
+        await saveFailedTake(take, message, tenantKey)
+        result.failed.push({ take, message })
+      }
+    } catch (_) {
+      result.retryable = true
       break
-    }
-
-    const payload = await response.json()
-    if (response.ok) {
-      await removeQueuedTake(take.client_uuid)
-      result.synced.push(payload.data)
-    } else {
-      const message = payload.error?.message || "Sync failed"
-      await removeQueuedTake(take.client_uuid)
-      await saveFailedTake(take, message, tenantKey)
-      result.failed.push({ take, message })
     }
   }
 

@@ -58,8 +58,19 @@ export default class extends Controller {
   async sync() {
     if (!navigator.onLine) return
 
-    const result = await syncQueuedTakes(this.syncUrlValue, this.tenantKeyValue)
-    if (result.synced.length > 0) await this.refreshSnapshot()
+    try {
+      const result = await syncQueuedTakes(this.syncUrlValue, this.tenantKeyValue)
+      this.syncMessage = result.authRequired ? "Sign in to sync your pending doses." :
+        result.retryable ? "Sync is unavailable. Your doses are saved on this device. Retry when connected." : ""
+      if (result.synced.length > 0) await this.refreshSnapshot()
+    } catch (_) {
+      this.syncMessage = "Sync is unavailable. Your doses are saved on this device. Retry when connected."
+    }
+  }
+
+  async retrySync() {
+    await this.sync()
+    await this.render()
   }
 
   async queue(event) {
@@ -174,7 +185,7 @@ export default class extends Controller {
   }
 
   renderFailures(failed) {
-    if (failed.length === 0) {
+    if (failed.length === 0 && !this.syncMessage) {
       this.failuresTarget.innerHTML = ""
       return
     }
@@ -182,6 +193,8 @@ export default class extends Controller {
     this.failuresTarget.innerHTML = `
       <div class="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
         <p class="text-sm font-bold text-destructive">Sync needs attention</p>
+        ${this.syncMessage ? `<p role="status" class="mt-2 text-sm">${this.escape(this.syncMessage)}</p>` : ""}
+        <button type="button" class="mt-3 rounded-lg border px-4 py-2 focus-visible:outline" data-action="offline-shell#retrySync">Retry sync</button>
         <div class="mt-3 space-y-2">${failed.map((failure) => `
           <p class="text-xs text-destructive/90">${this.escape(failure.failure_message)}</p>
         `).join("")}</div>
