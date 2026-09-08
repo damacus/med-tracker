@@ -45,8 +45,8 @@
 
 ## 9N. Record Not-Taken Formal Outcomes through the API
 
-- [ ] 9N.1 Red: specify not-taken, backdating, idempotency, and concurrency.
-- [ ] 9N.2 Green: add the not-taken API adapter using the domain service.
+- [x] 9N.1 Red: specify not-taken, backdating, idempotency, and concurrency.
+- [x] 9N.2 Green: add the not-taken API adapter using the domain service.
 
 ## 9C. Correct Formal Outcomes through the API
 
