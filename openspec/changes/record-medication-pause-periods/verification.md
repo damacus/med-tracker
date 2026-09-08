@@ -1,6 +1,14 @@
 # Pause-period completion evidence
 
-Implementation is in progress. No feature PR has been published yet.
+Implementation is under review in a lower-first feature stack:
+
+- [Portable history #2147](https://github.com/damacus/med-tracker/pull/2147)
+- [API and sync #2148](https://github.com/damacus/med-tracker/pull/2148)
+- [Web forms and history #2149](https://github.com/damacus/med-tracker/pull/2149)
+- [Android controls #2150](https://github.com/damacus/med-tracker/pull/2150)
+
+The separate native implementation is published as
+[iOS PR #24](https://forgejo.ironstone.casa/damacus/med-tracker-ios/pulls/24).
 
 ## Existing downstream behaviour
 
@@ -101,13 +109,35 @@ iOS focused native checks passed 33 tests, with a separate 11-test model regress
 run. Four pause UI tests passed on iPhone and four on iPad. The final iPad
 accessibility rerun passed reason selection, empty optional note submission and
 retained input after failure. Screenshots cover light/dark forms, history, paused
-treatments and the largest accessibility text size. The full iOS CI and unsigned
-archive run are in progress.
+treatments and the largest accessibility text size. The final full iOS `task ci`
+passed: API 25 tests, native unit 158 tests, UI 39 tests, lint, contract regeneration,
+simulator build and unsigned release archive. The published iOS commit is
+`8aa896fffebb1b1c7b5873bd0a05c79086dcaa5f`.
+
+The full iOS gate exposed two test-only issues after production review. The shared
+refresh test now waits for both readers to join before releasing its transport,
+and still requires exactly one request. At the largest iPhone text size, the pause
+test scrolls the native picker menu before selecting Other. The affected sync
+suite passed 16 tests, and the four pause UI tests passed together with selection
+and submission assertions intact. Production code did not change for these fixes.
 
 Brakeman passed with zero errors and zero warnings. Documentation builds and strict OpenSpec
 validation passed. The full Rails suite and final RuboCop checks passed.
 
-iOS full CI and unsigned archive, stacked publication and remote verification
-remain pending.
+GitHub's initial non-browser jobs completed the examples but reported API branch
+coverage of 586/655 (89.47%), below the unchanged 90% threshold. Eight additional
+behaviour tests passed 51 focused examples and hit ten previously missed branches.
+The final full non-browser suite passed 5,478 examples with zero failures and one
+expected OIDC pending example. API branch coverage is 596/655 (90.99%); overall
+line coverage is 94.77% and branch coverage is 79.06%. All thresholds remain
+unchanged. Final RuboCop passed across 1,854 files. Stack integration reproduced
+the tested tree exactly and retained the same OpenAPI source revision, so the
+verified native contract pins remain valid. Remote CI reruns on the refreshed
+API and dependent PR heads; those results are distinct from the passing local
+coverage gate. Forgejo PR #24 also has a pending remote pull-request check.
+
+All five PRs are open for review. Publication does not establish a deployed
+feature or a signed/distributed native build. The separate health-event restore
+gap and test-tooling follow-ups remain tracked in #2144, #2145 and #2146.
 
 No merges, deployments or native distribution are authorised by this implementation.
