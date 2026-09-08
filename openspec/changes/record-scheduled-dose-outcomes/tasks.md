@@ -80,8 +80,8 @@
 
 ## 14. Correct Formal Outcomes on the Web
 
-- [ ] 14.1 Red: specify reopen and replacement without MedicationTake mutation.
-- [ ] 14.2 Green: add the audited correction action and one focused browser flow.
+- [x] 14.1 Red: specify reopen and replacement without MedicationTake mutation.
+- [x] 14.2 Green: add the audited correction action and one focused browser flow.
 
 ## 15R. Read Formal Outcomes through Sync
 

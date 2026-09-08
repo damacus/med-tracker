@@ -8,6 +8,7 @@ class DashboardPresenter
 
   delegate :routine_tasks_by_person, :as_needed_by_person, :today_takes_by_person, to: :dashboard_schedule
   delegate :today_not_taken_by_person, to: :dashboard_schedule
+  delegate :can_correct_outcomes?, to: :dashboard_schedule
 
   attr_reader :current_user, :selected_person_id, :base_people_scope, :household
 
