@@ -43,6 +43,44 @@ RSpec.describe MedicationReminderEligibilityQuery do
   end
 
   describe '#medication_names' do
+    it 'excludes a not-taken occurrence from due and missed-dose reminders' do
+      schedule = daily_schedule
+      record_not_taken(schedule)
+
+      expect(build_query.medication_names).to be_empty
+      expect(build_query(scheduled_time: '08:00').medication_names).to be_empty
+      expect(build_query.configured_times).to be_empty
+    end
+
+    it 'keeps another unresolved occurrence eligible after a not-taken outcome' do
+      schedule = schedule_with_times(times: %w[08:00 20:00])
+      record_not_taken(schedule)
+
+      expect(build_query(scheduled_time: '08:00').medication_names).to be_empty
+      expect(build_query(scheduled_time: '20:00').medication_names).to include(schedule.medication_name)
+      expect(build_query.configured_times).to contain_exactly('20:00')
+    end
+
+    it 'restores reminder eligibility when a not-taken occurrence is reopened' do
+      schedule = daily_schedule
+      outcome = record_not_taken(schedule)
+      outcome.update!(outcome: 'open', reason: nil, resolved_at: nil, resolved_by_membership: nil)
+
+      expect(build_query(scheduled_time: '08:00').medication_names).to include(schedule.medication_name)
+    end
+
+    it 'keeps the evening reminder after an explicitly linked morning take' do
+      schedule = schedule_with_times(times: %w[08:00 20:00])
+      outcome = record_not_taken(schedule)
+      take = create(:medication_take, :for_schedule, schedule: schedule, taken_at: now.change(hour: 8))
+      outcome.update!(outcome: 'taken', medication_take: take, reason: nil)
+
+      expect(build_query(scheduled_time: '08:00').medication_names).to be_empty
+      expect(build_query(scheduled_time: '20:00').medication_names).to include(schedule.medication_name)
+      expect(build_query.medication_names).to include(schedule.medication_name)
+      expect(build_query.configured_times).to contain_exactly('20:00')
+    end
+
     it 'returns an empty array when there are no schedules' do
       expect(build_query.medication_names).to eq([])
     end
@@ -227,6 +265,15 @@ RSpec.describe MedicationReminderEligibilityQuery do
       ended_at:,
       recorded_by_membership: membership,
       resumed_by_membership: membership
+    )
+  end
+
+  def record_not_taken(source)
+    account = Account.create!(email: "outcome-reminder-#{SecureRandom.hex(4)}@example.test", status: :verified)
+    membership = source.household.household_memberships.create!(account: account, role: :member, status: :active)
+    source.medication_dose_occurrences.create!(
+      window_starts_on: today, position: 1, scheduled_at: now.change(hour: 8),
+      outcome: 'not_taken', reason: 'unwell', resolved_at: now, resolved_by_membership: membership
     )
   end
 end

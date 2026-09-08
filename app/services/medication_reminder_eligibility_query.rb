@@ -67,7 +67,7 @@ class MedicationReminderEligibilityQuery
   def due_schedule?(schedule)
     return false if as_needed_schedule?(schedule)
     return false if configured_time_slots_for(schedule).blank?
-    return false if taken_in_current_cycle?(schedule)
+    return false if unlinked_schedule_take_count(schedule).positive?
     return false unless schedule.applies_on?(today)
 
     if scheduled_time.present?
@@ -86,19 +86,19 @@ class MedicationReminderEligibilityQuery
 
   def scheduled_occurrence_due?(schedule)
     configured_time_slots_for(schedule).any? do |time, index|
-      time == scheduled_time && taken_count_for_cycle(schedule) <= index
+      time == scheduled_time && unlinked_schedule_take_count(schedule) <= index
     end
   end
 
   def due_configured_times_for(schedule)
     configured_time_slots_for(schedule).filter_map do |time, index|
-      time if taken_count_for_cycle(schedule) <= index
+      time if unlinked_schedule_take_count(schedule) <= index
     end
   end
 
   def remaining_schedule_doses?(schedule)
     expected = configured_time_slots_for(schedule).size
-    expected.positive? && taken_count_for_cycle(schedule) < expected
+    expected.positive? && unlinked_schedule_take_count(schedule) < expected
   end
 
   def expected_person_medication_doses(person_medication)
@@ -169,12 +169,39 @@ class MedicationReminderEligibilityQuery
   def configured_time_slots_for(schedule)
     @configured_time_slots_by_schedule ||= {}
     @configured_time_slots_by_schedule[schedule] ||= begin
-      slots = configured_times_for(schedule).each_with_index
+      slots = unresolved_time_slots_for(schedule)
       slots.reject do |time, _index|
         occurrence = MedicationPausePeriods::IntervalProjection.occurrences_on(date: today, times: [time]).first
         occurrence.present? && pause_projection_for(schedule).paused_at?(occurrence)
       end
     end
+  end
+
+  def unresolved_time_slots_for(schedule)
+    configured_times_for(schedule).each_with_index.reject do |_time, index|
+      resolved_schedule_positions.fetch(schedule.id, []).include?(index + 1)
+    end
+  end
+
+  def unlinked_schedule_take_count(schedule)
+    cycle = DoseCycle.new(schedule.dose_cycle)
+    linked_ids = resolved_schedule_rows.filter_map(&:last)
+    medication_takes_for(schedule).count do |take|
+      cycle.range_for(now).cover?(take.taken_at) && linked_ids.exclude?(take.id)
+    end
+  end
+
+  def resolved_schedule_positions
+    @resolved_schedule_positions ||= resolved_schedule_rows.group_by(&:first).transform_values do |rows|
+      rows.map { |row| row[1] }
+    end
+  end
+
+  def resolved_schedule_rows
+    @resolved_schedule_rows ||= MedicationDoseOccurrence
+                                .where(schedule_id: schedules.map(&:id), window_starts_on: today,
+                                       outcome: %w[taken not_taken])
+                                .pluck(:schedule_id, :position, :medication_take_id)
   end
 
   def pause_projection_for(source)

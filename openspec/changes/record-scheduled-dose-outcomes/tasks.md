@@ -25,8 +25,8 @@
 
 ## 6. Stop Formal Outcome Reminders
 
-- [ ] 6.1 Red: specify resolved suppression and unexplained-overdue eligibility.
-- [ ] 6.2 Green: update reminder eligibility and directly affected jobs.
+- [x] 6.1 Red: specify resolved suppression and unexplained-overdue eligibility.
+- [x] 6.2 Green: update reminder eligibility and directly affected jobs.
 
 ## 7R. Report Formal Outcomes
 
