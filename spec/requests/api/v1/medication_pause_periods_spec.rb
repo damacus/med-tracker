@@ -153,6 +153,46 @@ RSpec.describe 'API v1 medication pause periods' do
     expect(response.parsed_body.to_s).not_to include('Delivery tomorrow')
   end
 
+  it 'rejects an unsupported source type without changing treatment activity' do
+    create_pause(attributes.merge(source_type: 'medication'))
+
+    expect(response).to have_http_status(:not_found)
+    expect(source.reload).not_to be_paused
+  end
+
+  it 'rejects numeric source identifiers without changing treatment activity' do
+    create_pause(attributes.merge(source_id: source.id))
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(source.reload).not_to be_paused
+  end
+
+  it 'rejects resume with a stale period precondition' do
+    create_pause
+    period = source.medication_pause_periods.sole
+
+    post "#{path}/#{period.portable_id}/resume", headers: headers.merge('If-Match' => '"stale"'), as: :json
+
+    expect(response).to have_http_status(:conflict)
+    expect(period.reload.ended_at).to be_nil
+    expect(source.reload).to be_paused
+  end
+
+  it 'does not replay an accepted resume after its source is retired' do
+    create_pause
+    period = source.medication_pause_periods.sole
+    request_headers = headers.merge('Idempotency-Key' => SecureRandom.uuid)
+    post "#{path}/#{period.portable_id}/resume", headers: request_headers, as: :json
+    expect(response).to have_http_status(:ok)
+    source.retire!
+
+    post "#{path}/#{period.portable_id}/resume", headers: request_headers, as: :json
+
+    expect(response).to have_http_status(:not_found)
+    expect(response.headers['Idempotency-Replayed']).to be_nil
+    expect(response.parsed_body.to_s).not_to include('Delivery tomorrow')
+  end
+
   it 'does not expose another household pause through history or resume' do
     other_household = create(:household)
     other_source = create(:schedule, household: other_household,

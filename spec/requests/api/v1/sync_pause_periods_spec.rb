@@ -175,6 +175,23 @@ RSpec.describe 'API v1 pause-period sync' do
   end
 
   describe 'batch close' do
+    it 'reauthorizes a cached assignment close before returning its response' do
+      period = create_period(person_medications(:john_vitamin_d))
+      access = restricted_access(people(:john))
+      request_headers = access.fetch(:headers).merge('Idempotency-Key' => SecureRandom.uuid)
+      operation = close_operation(period)
+      post_batch(operation, request_headers: request_headers)
+      expect(response).to have_http_status(:created)
+      post_batch(operation, request_headers: request_headers)
+      expect(response.headers['Idempotency-Replayed']).to eq('true')
+
+      access.fetch(:grant).update!(revoked_at: Time.current)
+      post_batch(operation, request_headers: request_headers)
+
+      expect(response).to have_http_status(:not_found)
+      expect(response.headers['Idempotency-Replayed']).to be_nil
+    end
+
     it 'closes the addressed period through the lifecycle service' do
       period = create_period(schedule)
 
@@ -238,6 +255,17 @@ RSpec.describe 'API v1 pause-period sync' do
     expect(response).to have_http_status(:unprocessable_content)
     expect(period.reload.ended_at).to be_nil
     expect(schedule.reload).to be_paused
+  end
+
+  it 'rejects unsupported pause source types without side effects' do
+    operation = create_operation(schedule, source_type: 'medication')
+    original_counts = side_effect_counts
+
+    post_batch(operation)
+
+    expect(response).to have_http_status(:not_found)
+    expect(side_effect_counts).to eq(original_counts)
+    expect(schedule.reload).not_to be_paused
   end
 
   it 'rolls back source, period, audit and sync writes when a later operation fails' do

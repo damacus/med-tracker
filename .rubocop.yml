@@ -30,6 +30,7 @@ Style/FrozenStringLiteralComment:
     - "spec/system/medications/stock_removals_spec.rb"
     - "app/controllers/api/v1/medication_pause_periods_controller.rb"
     - "app/serializers/api/v1/medication_pause_period_serializer.rb"
+    - "spec/serializers/api/v1/medication_pause_period_serializer_spec.rb"
     - "app/services/api/medication_pause_period_visibility.rb"
     - "spec/requests/api/v1/medication_pause_periods_spec.rb"
     - "app/services/portable_data/import_writer_pause_periods.rb"
