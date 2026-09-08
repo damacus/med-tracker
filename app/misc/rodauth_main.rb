@@ -2,9 +2,9 @@
 
 require 'sequel/core'
 
-# rubocop:disable Metrics/ClassLength
+# rubocop:disable-next Metrics/ClassLength
 class RodauthMain < Rodauth::Rails::Auth
-  # rubocop:disable Metrics/BlockLength -- Rodauth configuration DSL requires a single configure block
+  # rubocop:disable-next Metrics/BlockLength -- Rodauth configuration DSL requires a single configure block
   configure do
     # List of authentication features that are loaded.
     enable :create_account, :verify_account, :verify_account_grace_period,
@@ -805,6 +805,4 @@ class RodauthMain < Rodauth::Rails::Auth
     # verify_login_change_deadline_interval Hash[days: 2]
     # remember_deadline_interval Hash[days: 30]
   end
-  # rubocop:enable Metrics/BlockLength
 end
-# rubocop:enable Metrics/ClassLength
