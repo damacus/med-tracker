@@ -5,8 +5,8 @@
 
 ## 2. Pending stock
 
-- [ ] 2.1 Reproduce selection of locally exhausted stock and overlapping clicks in browser tests.
-- [ ] 2.2 Select using pending consumption and guard submission; pass focused browser specs.
+- [x] 2.1 Reproduce selection of locally exhausted stock and overlapping clicks in browser tests.
+- [x] 2.2 Select using pending consumption and guard submission; pass focused browser specs.
 
 ## 3. Cached eligibility
 

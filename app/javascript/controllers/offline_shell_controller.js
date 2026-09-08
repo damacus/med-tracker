@@ -74,6 +74,16 @@ export default class extends Controller {
   }
 
   async queue(event) {
+    if (this.queueing) return
+    this.queueing = true
+    try {
+      await this.queueDose(event)
+    } finally {
+      this.queueing = false
+    }
+  }
+
+  async queueDose(event) {
     const button = event.currentTarget
     const sourceType = button.dataset.sourceType
     const sourceId = Number(button.dataset.sourceId)
@@ -86,7 +96,9 @@ export default class extends Controller {
 
     if (!source || !medication) return
 
-    const inventory = this.inventoryFor(data, medication, [], source)
+    const queued = await getQueuedTakes(this.tenantKeyValue)
+    const inventory = this.inventoryFor(data, medication, queued, source)
+    if (!inventory) return
     const take = await queueTake({
       source_type: sourceType,
       source_id: sourceId,
