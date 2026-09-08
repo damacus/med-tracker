@@ -75,8 +75,8 @@
 
 ## 13. Record Not-Taken Outcomes on the Web
 
-- [ ] 13.1 Red: specify reason/note, access, validation errors, display, and accessible confirmation.
-- [ ] 13.2 Green: add the standard web action and one desktop/mobile browser flow.
+- [x] 13.1 Red: specify reason/note, access, validation errors, display, and accessible confirmation.
+- [x] 13.2 Green: add the standard web action and one desktop/mobile browser flow.
 
 ## 14. Correct Formal Outcomes on the Web
 

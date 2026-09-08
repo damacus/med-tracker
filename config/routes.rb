@@ -251,6 +251,7 @@ Rails.application.routes.draw do
     get 'schedules/frequency_preview', to: 'schedules#frequency_preview', as: :schedules_frequency_preview
     resources :schedules do
       resources :medication_takes, only: [:create]
+      resources :dose_occurrences, only: %i[new create]
     end
 
     get 'people/:person_id/avatar', to: 'people/avatars#show', as: :person_avatar

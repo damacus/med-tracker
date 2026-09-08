@@ -106,6 +106,7 @@ module Components
           end
           div(class: 'flex shrink-0 items-center gap-2 sm:justify-end') do
             render_action(row)
+            render_not_taken_action(row) if routine
             render_status_badge(row) if row[:overdue] || %i[upcoming available].exclude?(row[:status])
           end
         end
@@ -136,6 +137,16 @@ module Components
                  class: 'px-3 py-1 text-[10px] font-black uppercase tracking-wider') do
           overdue_label(row) || status_label(row)
         end
+      end
+
+      def render_not_taken_action(row)
+        source = row[:source]
+        return unless source.is_a?(::Schedule) && row[:status] != :taken
+        return if row[:scheduled_at] && row[:scheduled_at] > Time.current
+        return unless row[:can_record_outcome]
+
+        m3_link(href: new_schedule_dose_occurrence_path(source), variant: :text,
+                data: { turbo_frame: '_top' }) { t('dashboard.outcomes.not_taken') }
       end
 
       def routine_summary

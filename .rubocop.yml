@@ -21,6 +21,10 @@ AllCops:
 
 Style/FrozenStringLiteralComment:
   Exclude:
+    - "app/controllers/dose_occurrences_controller.rb"
+    - "app/components/dose_occurrences/new_view.rb"
+    - "spec/requests/dose_occurrences_spec.rb"
+    - "spec/system/web_dose_outcomes_spec.rb"
     - "app/services/portable_data/health_event_import_writer.rb"
     - "app/services/portable_data/dose_occurrence_import_validator.rb"
     - "app/services/portable_data/dose_occurrence_import_links.rb"
