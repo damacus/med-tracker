@@ -1,5 +1,40 @@
 ---
 es:
+  stock_removals:
+    title: "Retirar existencias"
+    description: "Registre el medicamento que salió de las existencias sin administrarse. Esto no registra una dosis."
+    quantity: "Cantidad retirada"
+    note: "Nota"
+    reason: "Motivo"
+    source: "Origen de existencias"
+    choose_source: "Elija existencias"
+    choose_reason: "Elija un motivo"
+    submit: "Registrar retirada"
+    cancel: "Cancelar"
+    history: "Retiradas recientes"
+    empty: "No hay retiradas registradas."
+    available: "%{quantity} %{unit} disponibles"
+    history_summary: "Retirado: %{quantity} %{unit} · %{reason}"
+    unknown_actor: "Autor desconocido"
+    units: "unidades"
+    success: "Retirada registrada."
+    reasons:
+      dropped: "Caído"
+      damaged: "Dañado"
+      expired: "Caducado"
+      discarded: "Desechado"
+      lost: "Perdido"
+      transferred_out: "Entregado / transferido"
+      other: "Otro"
+    errors:
+      invalid_quantity: "Introduzca una cantidad positiva con un máximo de dos decimales."
+      invalid_reason: "Elija un motivo de retirada."
+      invalid_note: "Limite la nota a 1.000 caracteres."
+      invalid_submission: "Vuelva a cargar este formulario e inténtelo de nuevo."
+      invalid_source: "Elija existencias controladas de este medicamento."
+      untracked: "Estas existencias no se controlan."
+      insufficient_stock: "No hay suficientes existencias. Compruebe la cantidad restante."
+      changed_submission: "Este envío ya se utilizó con otros datos."
   offline:
     record_access_required: No tienes permiso para registrar esta dosis.
   hello: Hola mundo

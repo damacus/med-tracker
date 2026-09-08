@@ -1,5 +1,40 @@
 ---
 pt:
+  stock_removals:
+    title: "Remover stock"
+    description: "Registe o medicamento que saiu do stock sem ser administrado. Isto não regista uma dose."
+    quantity: "Quantidade removida"
+    note: "Nota"
+    reason: "Motivo"
+    source: "Origem do stock"
+    choose_source: "Escolha o stock"
+    choose_reason: "Escolha um motivo"
+    submit: "Registar remoção"
+    cancel: "Cancelar"
+    history: "Remoções recentes"
+    empty: "Não há remoções registadas."
+    available: "%{quantity} %{unit} disponíveis"
+    history_summary: "Removido: %{quantity} %{unit} · %{reason}"
+    unknown_actor: "Autor desconhecido"
+    units: "unidades"
+    success: "Remoção de stock registada."
+    reasons:
+      dropped: "Caiu"
+      damaged: "Danificado"
+      expired: "Fora de prazo"
+      discarded: "Descartado"
+      lost: "Perdido"
+      transferred_out: "Dado / transferido"
+      other: "Outro"
+    errors:
+      invalid_quantity: "Introduza uma quantidade positiva com até duas casas decimais."
+      invalid_reason: "Escolha um motivo de remoção."
+      invalid_note: "Limite a nota a 1.000 caracteres."
+      invalid_submission: "Recarregue este formulário e tente novamente."
+      invalid_source: "Escolha stock controlado deste medicamento."
+      untracked: "Este stock não é controlado."
+      insufficient_stock: "Stock insuficiente. Verifique a quantidade restante."
+      changed_submission: "Este envio já foi utilizado com outros dados."
   offline:
     record_access_required: Não tem permissão para registar esta dose.
   hello: Olá mundo

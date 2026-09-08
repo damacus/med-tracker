@@ -151,6 +151,11 @@ module Components
           render_reorder_actions if can_refill?
           render_refill_modal if can_refill?
           render_adjust_inventory_modal if can_update?
+          if can_update? && medication.current_supply.present?
+            m3_link(href: new_medication_stock_removal_path(medication), variant: :outlined) do
+              t('stock_removals.title')
+            end
+          end
         end
       end
 

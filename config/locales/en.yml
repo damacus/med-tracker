@@ -1,5 +1,40 @@
 ---
 en:
+  stock_removals:
+    title: "Remove stock"
+    description: "Record medicine that left stock without being taken. This does not record a dose."
+    quantity: "Quantity removed"
+    note: "Note"
+    reason: "Reason"
+    source: "Stock source"
+    choose_source: "Choose stock"
+    choose_reason: "Choose a reason"
+    submit: "Record removal"
+    cancel: "Cancel"
+    history: "Recent removals"
+    empty: "No stock removals recorded."
+    available: "%{quantity} %{unit} available"
+    history_summary: "Removed %{quantity} %{unit} · %{reason}"
+    unknown_actor: "Unknown recorder"
+    units: "units"
+    success: "Stock removal recorded."
+    reasons:
+      dropped: "Dropped"
+      damaged: "Damaged"
+      expired: "Expired"
+      discarded: "Discarded"
+      lost: "Lost"
+      transferred_out: "Given away / transferred out"
+      other: "Other"
+    errors:
+      invalid_quantity: "Enter a positive quantity with at most two decimal places."
+      invalid_reason: "Choose a removal reason."
+      invalid_note: "Keep the note to 1,000 characters or fewer."
+      invalid_submission: "Reload this form and try again."
+      invalid_source: "Choose tracked stock from this medicine."
+      untracked: "This stock is not tracked."
+      insufficient_stock: "Not enough stock. Check the remaining quantity."
+      changed_submission: "This submission has already been used with different details."
   offline:
     record_access_required: You do not have permission to record this dose.
   hello: Hello world
