@@ -147,6 +147,10 @@ Imports reject unknown record collections, Rails numeric IDs, invalid capacity r
 
 An applied import is transactional. If any record fails, MedTracker does not keep a partial import.
 
+Imports accept v1 and v2 plaintext inside the same encrypted envelope. V2 can restore saved dose outcomes and health events. Outcome references must resolve within the destination household or the imported graph. A linked take must match the source and day. Duplicate dose slots and changes to existing outcome history are rejected during dry run.
+
+Restoring outcomes does not administer doses or deduct stock. An unchanged outcome can be imported again. The original resolution time is retained; the importing membership is recorded as the local actor for a newly restored outcome. Existing outcomes retain their local actor. Members need a current manage grant for every affected person.
+
 ## Incremental sync
 
 Start with `GET /sync/snapshot`. Store its cursor and each record ETag. Use the cursor with `GET /sync/changes` to read later changes and tombstones.

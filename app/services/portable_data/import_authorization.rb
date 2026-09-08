@@ -28,10 +28,11 @@ module PortableData
     end
 
     def referenced_person_portable_ids
-      ids = records(:people).pluck(:portable_id)
-      ids.concat(records(:schedules).pluck(:person_portable_id))
-      ids.concat(records(:person_medications).pluck(:person_portable_id))
-      ids.concat(records(:notification_preferences).pluck(:person_portable_id))
+      ids = %i[schedules person_medications notification_preferences].flat_map do |name|
+        records(name).pluck(:person_portable_id)
+      end
+      ids.concat(records(:people).pluck(:portable_id))
+      ids.concat(health_event_person_portable_ids)
       ids.concat(event_person_portable_ids)
       ids.compact_blank.uniq
     end
@@ -45,9 +46,16 @@ module PortableData
     end
 
     def medication_take_person_portable_ids
-      records(:medication_takes).filter_map do |row|
+      (records(:medication_takes) + records(:dose_occurrences)).filter_map do |row|
         portable_id_for_medication_take_source(row)
       end
+    end
+
+    def health_event_person_portable_ids
+      rows = records(:health_events)
+      existing = HealthEvent.joins(:person).where(household: household, portable_id: rows.pluck(:portable_id))
+                            .pluck('people.portable_id')
+      rows.pluck(:person_portable_id) + existing
     end
 
     def portable_id_for_medication_take_source(row)
@@ -82,6 +90,7 @@ module PortableData
       Person.joins(:person_access_grants)
             .where(household: household, portable_id: payload_person_ids)
             .where(person_access_grants: manage_grant_conditions)
+            .merge(PersonAccessGrant.active)
             .pluck(:portable_id)
     end
 
