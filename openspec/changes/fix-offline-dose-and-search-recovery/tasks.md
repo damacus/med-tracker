@@ -20,5 +20,5 @@
 
 ## 5. Delivery
 
-- [ ] 5.1 Run OpenSpec validation, applicable lint/full Rails tests, documentation build and diff checks; record outcomes.
+- [x] 5.1 Run OpenSpec validation, applicable lint/full Rails tests, documentation build and diff checks; record outcomes.
 - [ ] 5.2 Capture desktop/mobile UI evidence and verify four published stacked PRs against their intended parents.
