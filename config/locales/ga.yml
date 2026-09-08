@@ -97,6 +97,8 @@ ga:
   app:
     name: MedTracker
   global_search:
+    error: Níl an cuardach ar fáil. Bain triail eile as.
+    retry: Bain triail eile as an gcuardach
     dialog_label: Cuardach domhanda
     open: Oscail cuardach domhanda
     open_short: Cuardaigh

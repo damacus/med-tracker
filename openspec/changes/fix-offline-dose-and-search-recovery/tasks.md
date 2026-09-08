@@ -15,8 +15,8 @@
 
 ## 4. Search recovery
 
-- [ ] 4.1 Add failing browser tests for HTTP/network/malformed failures and retry.
-- [ ] 4.2 Render translated accessible errors and retry the retained query; pass focused search specs.
+- [x] 4.1 Add failing browser tests for HTTP/network/malformed failures and retry.
+- [x] 4.2 Render translated accessible errors and retry the retained query; pass focused search specs.
 
 ## 5. Delivery
 
