@@ -2511,3 +2511,23 @@ pt:
       title: Ações Rápidas
       add_medication: Adicionar Medicamento
       add_person: Adicionar Pessoa
+  medication_pauses:
+    title: "Pausar medicamento"
+    reason: "Motivo"
+    note: "Nota (opcional)"
+    choose_reason: "Escolha um motivo"
+    submit: "Pausar"
+    cancel: "Cancelar"
+    timing: "A pausa começa quando é guardada."
+    history: "Histórico de pausas"
+    start_unknown: "Início desconhecido"
+    actor_unknown: "Pessoa não registada"
+    started: "Pausa: %{date} · %{actor}"
+    resumed: "Retoma: %{date} · %{actor}"
+    reasons:
+      out_of_supply: "Sem stock"
+      temporarily_not_needed: "Temporariamente desnecessário"
+      clinician_advice: "Conselho clínico"
+      side_effects: "Efeitos secundários"
+      other: "Outro"
+      reason_not_recorded: "Motivo não registado"

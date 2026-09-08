@@ -7,7 +7,8 @@ Medication pauses currently suppress future doses without recording why the trea
 - Record each pause as a household-scoped period with a reason, optional note, start, end, and actors.
 - Apply the same pause history to `Schedule` and `PersonMedication`, including routine and as-needed assignments.
 - Require the web workflow and new API operation to select `out_of_supply`, `temporarily_not_needed`, `clinician_advice`, `side_effects`, or `other`.
-- Show the active pause context and retain completed periods in medication history, reports, audit evidence, sync, and portable data.
+- Show the active pause context and retain completed periods in medication history, audit evidence, sync, and portable data. Reports use pause intervals for calculations without displaying reasons or notes.
+- Add matching iOS and Android pause forms, source history, and a compact paused-treatment section on Today.
 - Exclude paused periods from expected-dose and adherence calculations.
 - Add an additive, capability-advertised API operation that requires pause context. Keep the existing `/api/v1` pause operation compatible during its deprecation period and record omitted context as `reason_not_recorded`.
 - Preserve existing paused records without inventing a historical start date or reason.

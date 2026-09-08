@@ -2514,3 +2514,23 @@ ga:
     actions:
       cancel: Cealaigh
       save: Sábháil Socruithe
+  medication_pauses:
+    title: "Cuir cógas ar sos"
+    reason: "Cúis"
+    note: "Nóta (roghnach)"
+    choose_reason: "Roghnaigh cúis"
+    submit: "Cuir ar sos"
+    cancel: "Cealaigh"
+    timing: "Tosaíonn an sos nuair a shábháiltear é."
+    history: "Stair na sosanna"
+    start_unknown: "Tús anaithnid"
+    actor_unknown: "Duine gan taifead"
+    started: "Ar sos: %{date} · %{actor}"
+    resumed: "Atosaithe: %{date} · %{actor}"
+    reasons:
+      out_of_supply: "Soláthar ídithe"
+      temporarily_not_needed: "Níl gá leis go sealadach"
+      clinician_advice: "Comhairle cliniceora"
+      side_effects: "Fo-iarmhairtí"
+      other: "Eile"
+      reason_not_recorded: "Cúis gan taifead"

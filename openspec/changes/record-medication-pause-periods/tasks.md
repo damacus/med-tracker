@@ -20,60 +20,78 @@
 
 ## 4. Apply Pause Intervals to Reminders
 
-- [ ] 4.1 Red: specify reminder exclusion inside intervals and unchanged eligibility after resume.
-- [ ] 4.2 Green: update reminder eligibility and directly affected jobs through the shared projection.
+- [x] 4.1 Red: specify reminder exclusion inside intervals and unchanged eligibility after resume.
+- [x] 4.2 Green: update reminder eligibility and directly affected jobs through the shared projection.
 
 ## 5R. Apply Pause Intervals to History and Reports
 
-- [ ] 5R.1 Red: specify history and report boundaries, including unknown legacy starts.
-- [ ] 5R.2 Green: update history and report queries without changing unrelated results.
+- [x] 5R.1 Red: specify history and report boundaries, including unknown legacy starts.
+- [x] 5R.2 Green: update history and report queries without changing unrelated results.
 
 ## 5I. Apply Pause Intervals to Insights
 
-- [ ] 5I.1 Red: specify insight boundaries and preserve unrelated detector results.
-- [ ] 5I.2 Green: update only the affected insight context and detectors.
+- [x] 5I.1 Red: specify insight boundaries and preserve unrelated detector results.
+- [x] 5I.2 Green: update only the affected insight context and detectors.
 
 ## 6. Collect Schedule Pause Context on the Web
 
-- [ ] 6.1 Red: specify required reason, optional note, access, validation errors, and active context for Schedule.
-- [ ] 6.2 Green: add the shared accessible pause form and Schedule web workflow.
+- [x] 6.1 Red: specify required reason, optional note, access, validation errors, and active context for Schedule.
+- [x] 6.2 Green: add the shared accessible pause form and Schedule web workflow.
 
 ## 7. Collect Assignment Pause Context on the Web
 
-- [ ] 7.1 Red: specify the same contract for routine and as-needed PersonMedication assignments.
-- [ ] 7.2 Green: reuse the Schedule pause form in the PersonMedication workflow.
+- [x] 7.1 Red: specify the same contract for routine and as-needed PersonMedication assignments.
+- [x] 7.2 Green: reuse the Schedule pause form in the PersonMedication workflow.
 
 ## 8. Show Completed Pause History
 
-- [ ] 8.1 Red: specify preloaded, authorised completed-period history without view queries.
-- [ ] 8.2 Green: add the history query and shared component to the existing medication history surface.
+- [x] 8.1 Red: specify preloaded, authorised completed-period history without view queries.
+- [x] 8.2 Green: add the history query and shared component to the existing medication history surface.
 
 ## 9. Add the Pause API Server Operations
 
-- [ ] 9.1 Red: specify reason-required create/close, legacy compatibility, idempotency, isolation, and safe errors.
-- [ ] 9.2 Green: add server routes, controller adapters, serializers, and focused request specs.
+- [x] 9.1 Red: specify reason-required create/close, legacy compatibility, idempotency, isolation, and safe errors.
+- [x] 9.2 Green: add server routes, controller adapters, serializers, and focused request specs.
 
 ## 10. Publish the Pause API Contract
 
-- [ ] 10.1 Red: specify capability and OpenAPI coverage for P09 operations and legacy deprecation.
-- [ ] 10.2 Green: update metadata, OpenAPI, contract fixtures, and client sources within the tranche limit.
+- [x] 10.1 Red: specify capability and OpenAPI coverage for P09 operations and legacy deprecation.
+- [x] 10.2 Green: update metadata, OpenAPI, contract fixtures, and client sources within the tranche limit.
 
 ## 11E. Export Pause Periods through Portable Data
 
-- [ ] 11E.1 Red: specify the v2 pause-period export shape, references, and legacy state.
-- [ ] 11E.2 Green: add exporter, serializer, and format documentation support.
+- [x] 11E.1 Red: specify the v2 pause-period export shape, references, and legacy state.
+- [x] 11E.2 Green: add exporter, serializer, and format documentation support.
 
 ## 11I. Import Pause Periods through Portable Data
 
-- [ ] 11I.1 Red: specify one v2 round trip, reference resolution, final active state, and rollback.
-- [ ] 11I.2 Green: add importer, preflight, and transactional writer support without replaying effects.
+- [x] 11I.1 Red: specify one v2 round trip, reference resolution, final active state, and rollback.
+- [x] 11I.2 Green: add importer, preflight, and transactional writer support without replaying effects.
 
 ## 12R. Read Pause Periods through Sync
 
-- [ ] 12R.1 Red: specify snapshot and feed visibility with household isolation.
-- [ ] 12R.2 Green: expose pause periods through existing sync read contracts.
+- [x] 12R.1 Red: specify snapshot and feed visibility with household isolation.
+- [x] 12R.2 Green: expose pause periods through existing sync read contracts.
 
 ## 12B. Write Pause Periods through Sync Batches
 
-- [ ] 12B.1 Red: specify idempotent create/close, ETag conflict, and complete-batch rollback.
-- [ ] 12B.2 Green: add batch operations through the lifecycle service without wiring-only tests.
+- [x] 12B.1 Red: specify idempotent create/close, ETag conflict, and complete-batch rollback.
+- [x] 12B.2 Green: add batch operations through the lifecycle service without wiring-only tests.
+
+## 13. Native iOS Pause Controls
+
+- [ ] 13.1 Red: specify reason validation, online-only writes, capability gating, retained input on failure, person filtering and completed history.
+- [ ] 13.2 Green: add native pause form, labelled card actions and Paused treatments on Today, using the new API contract.
+- [ ] 13.3 Verify: run iOS API, lint, unit/UI and CI tasks; capture iPhone/iPad accessibility and appearance evidence.
+
+## 14. Native Android Pause Controls
+
+- [x] 14.1 Red: specify the same native pause, resume, history and connection contract.
+- [x] 14.2 Green: add native pause form, labelled card actions and Paused treatments on Today, using the new API contract.
+- [x] 14.3 Verify: run Android contract, unit/UI, lint and build tasks and capture emulator evidence.
+
+## 15. Completion Review
+
+- [x] 15.1 Reconcile existing reminders, reports and insights against focused verification before marking their earlier tasks complete.
+- [ ] 15.2 Independently review each delivery slice and the integrated feature, resolve findings and run applicable broad checks.
+- [ ] 15.3 Publish focused feature PRs and record exact verification and remaining environment limits; do not merge or deploy.

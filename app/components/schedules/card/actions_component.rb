@@ -84,6 +84,8 @@ module Components
         end
 
         def render_active_state_action
+          return render_pause_link unless schedule.paused?
+
           form_with(
             url: active_state_path,
             method: :patch,
@@ -98,6 +100,17 @@ module Components
               render active_state_icon.new(size: 16, aria_hidden: 'true', class: 'mr-2 shrink-0')
               span { active_state_label }
             end
+          end
+        end
+
+        def render_pause_link
+          render RubyUI::DropdownMenuItem.new(
+            href: pause_form_person_schedule_path(person, schedule),
+            class: menu_item_class,
+            data: { turbo_frame: 'modal', testid: active_state_testid }
+          ) do
+            render Icons::Clock.new(size: 16, aria_hidden: 'true', class: 'mr-2 shrink-0')
+            span { active_state_label }
           end
         end
 

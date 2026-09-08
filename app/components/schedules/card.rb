@@ -20,6 +20,9 @@ module Components
         ) do
           render HeaderComponent.new(schedule: schedule, presenter: presenter)
           render DoseStatusComponent.new(schedule: schedule, presenter: presenter)
+          render Components::MedicationPauses::History.new(
+            periods: schedule.association(:medication_pause_periods).target
+          )
           render ActionsComponent.new(
             schedule: schedule,
             person: person,
