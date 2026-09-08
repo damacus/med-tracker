@@ -2261,6 +2261,16 @@ ga:
         other: 'Chuir %{count} earráid cosc ar an leigheas a shábháil:'
       starting_supply: Méid tosaigh
   dashboard:
+    outcomes:
+      not_taken: Gan glacadh
+      overdue: Thar am
+      reasons:
+        refused: Diúltaithe
+        unwell: Tinn
+        asleep: Ina chodladh
+        medicine_unavailable: Cógas gan fáil
+        clinician_advice: Comhairle cliniceora
+        other: Eile
     title: Dashboard an Teaghlaigh
     greeting_morning: Maidin mhaith, %{name}
     greeting_afternoon: Tráthnóna maith, %{name}

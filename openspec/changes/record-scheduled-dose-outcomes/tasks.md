@@ -20,8 +20,8 @@
 
 ## 5. Show Formal Outcomes on the Dashboard
 
-- [ ] 5.1 Red: specify open, taken, not-taken, and unexplained-overdue standard dashboard states.
-- [ ] 5.2 Green: update the standard query and task-card presentation only.
+- [x] 5.1 Red: specify open, taken, not-taken, and unexplained-overdue standard dashboard states.
+- [x] 5.2 Green: update the standard query and task-card presentation only.
 
 ## 6. Stop Formal Outcome Reminders
 

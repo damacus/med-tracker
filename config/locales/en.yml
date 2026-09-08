@@ -2335,6 +2335,16 @@ en:
         one: '1 error prevented this medication from being saved:'
         other: "%{count} errors prevented this medication from being saved:"
   dashboard:
+    outcomes:
+      not_taken: Not taken
+      overdue: Overdue
+      reasons:
+        refused: Declined
+        unwell: Unwell
+        asleep: Asleep
+        medicine_unavailable: Medicine unavailable
+        clinician_advice: Clinician advice
+        other: Other
     title: Family Dashboard
     greeting_morning: Good morning, %{name}
     greeting_afternoon: Good afternoon, %{name}
