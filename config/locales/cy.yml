@@ -97,6 +97,8 @@ cy:
   app:
     name: MedTracker
   global_search:
+    error: Nid yw chwilio ar gael. Rhowch gynnig arall arni.
+    retry: Rhoi cynnig arall ar y chwiliad
     dialog_label: Chwilio byd-eang
     open: Agor chwilio byd-eang
     open_short: Chwilio

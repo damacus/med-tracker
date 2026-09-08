@@ -15,10 +15,10 @@
 
 ## 4. Search recovery
 
-- [ ] 4.1 Add failing browser tests for HTTP/network/malformed failures and retry.
-- [ ] 4.2 Render translated accessible errors and retry the retained query; pass focused search specs.
+- [x] 4.1 Add failing browser tests for HTTP/network/malformed failures and retry.
+- [x] 4.2 Render translated accessible errors and retry the retained query; pass focused search specs.
 
 ## 5. Delivery
 
-- [ ] 5.1 Run OpenSpec validation, applicable lint/full Rails tests, documentation build and diff checks; record outcomes.
-- [ ] 5.2 Capture desktop/mobile UI evidence and verify four published stacked PRs against their intended parents.
+- [x] 5.1 Run OpenSpec validation, applicable lint/full Rails tests, documentation build and diff checks; record outcomes.
+- [x] 5.2 Capture desktop/mobile UI evidence and verify four published stacked PRs against their intended parents.

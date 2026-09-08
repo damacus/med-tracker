@@ -97,6 +97,8 @@ es:
   app:
     name: MedTracker
   global_search:
+    error: La búsqueda no está disponible. Inténtalo de nuevo.
+    retry: Reintentar búsqueda
     dialog_label: Búsqueda global
     open: Abrir búsqueda global
     open_short: Buscar

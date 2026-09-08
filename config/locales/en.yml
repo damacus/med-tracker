@@ -6,6 +6,8 @@ en:
   app:
     name: MedTracker
   global_search:
+    error: Search is unavailable. Please try again.
+    retry: Retry search
     dialog_label: Global search
     open: Open global search
     open_short: Search
