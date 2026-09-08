@@ -107,7 +107,7 @@ module Components
             m3_select(name: 'invitation[membership_role]', id: 'invitation_membership_role', size: :sm,
                       required: true) do
               HouseholdInvitation.membership_roles.each_key do |role|
-                option(value: role, selected: selected_membership_role == role) { role.titleize }
+                option(value: role, selected: selected_membership_role == role) { membership_role_label(role) }
               end
             end
           end
@@ -117,15 +117,15 @@ module Components
           FormField(class: 'space-y-2') do
             FormFieldLabel(for: 'invitation_relationship_type',
                            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
-              t('admin.invitations.index.form.relationship_type', default: 'Dependent relationship')
+              t('admin.invitations.index.form.relationship_type')
             end
             m3_select(name: 'invitation[relationship_type]', id: 'invitation_relationship_type', size: :sm) do
               option(value: '', selected: selected_relationship_type.blank?) do
-                t('admin.invitations.index.form.select_relationship_type', default: 'Select relationship')
+                t('admin.invitations.index.form.select_relationship_type')
               end
               %w[parent carer family_member professional].each do |relationship_type|
                 option(value: relationship_type, selected: selected_relationship_type == relationship_type) do
-                  relationship_type.titleize
+                  relationship_type_label(relationship_type)
                 end
               end
             end
@@ -136,11 +136,13 @@ module Components
           FormField(class: 'space-y-2') do
             FormFieldLabel(for: 'invitation_access_level',
                            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
-              t('admin.invitations.index.form.access_level', default: 'Dependent access')
+              t('admin.invitations.index.form.access_level')
             end
             m3_select(name: 'invitation[access_level]', id: 'invitation_access_level', size: :sm) do
               HouseholdInvitationGrant.access_levels.each_key do |access_level|
-                option(value: access_level, selected: selected_access_level == access_level) { access_level.titleize }
+                option(value: access_level, selected: selected_access_level == access_level) do
+                  access_level_label(access_level)
+                end
               end
             end
           end
@@ -209,9 +211,9 @@ module Components
         def render_invitation_row(invitation)
           div(class: 'px-8 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4') do
             div(class: 'space-y-1') do
-              p(class: 'text-sm font-semibold text-foreground') { invitation.email }
+              p(class: 'text-sm font-semibold text-foreground break-all') { invitation.email }
               p(class: 'text-sm text-on-surface-variant') do
-                plain "#{invitation.membership_role.titleize} • #{invitation_status_label(invitation)}"
+                plain "#{membership_role_label(invitation.membership_role)} • #{invitation_status_label(invitation)}"
               end
               p(class: 'text-xs text-on-surface-variant') { invitation_metadata(invitation) }
             end
@@ -287,6 +289,18 @@ module Components
 
         def selected_access_level
           @invitation.access_level.presence || 'record'
+        end
+
+        def membership_role_label(role)
+          t("admin.labels.membership_roles.#{role}")
+        end
+
+        def relationship_type_label(relationship_type)
+          t("admin.labels.relationship_types.#{relationship_type}")
+        end
+
+        def access_level_label(access_level)
+          t("admin.labels.access_levels.#{access_level}")
         end
 
         def render_errors

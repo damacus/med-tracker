@@ -22,7 +22,10 @@ module RubyUI
       base = {
         data: {
           ruby_ui__tabs_target: 'trigger',
-          action: 'click->ruby-ui--tabs#show',
+          action: [
+            'click->ruby-ui--tabs#show',
+            ('keydown->ruby-ui--tabs#navigate' unless @as == :a)
+          ].compact.join(' '),
           value: @value
         },
         class: [

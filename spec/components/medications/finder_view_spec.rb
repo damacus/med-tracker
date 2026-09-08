@@ -17,6 +17,7 @@ RSpec.describe Components::Medications::FinderView, type: :component do
       'loading' => I18n.t('medications.finder.loading'),
       'resultsTitle' => I18n.t('medications.finder.results_title'),
       'dmdCode' => I18n.t('medications.finder.dmd_code'),
+      'packageLabel' => I18n.t('medications.finder.details.package'),
       'updateStock' => 'Update stock',
       'pilLink' => I18n.t('medications.finder.pil_link'),
       'spcLink' => I18n.t('medications.finder.spc_link')

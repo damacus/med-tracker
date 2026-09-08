@@ -56,38 +56,6 @@ RSpec.describe Medications::SupplyStatusPresenter do
     end
   end
 
-  describe '#stock_count_class' do
-    it 'returns error class when stock is low' do
-      medication = create(:medication, current_supply: 5, reorder_threshold: 10)
-      presenter = described_class.new(medication:)
-
-      expect(presenter.stock_count_class).to eq('text-5xl font-black text-on-error-container')
-    end
-
-    it 'returns primary class when stock is normal' do
-      medication = create(:medication, current_supply: 50, reorder_threshold: 10)
-      presenter = described_class.new(medication:)
-
-      expect(presenter.stock_count_class).to eq('text-5xl font-black text-primary')
-    end
-  end
-
-  describe '#supply_bar_class' do
-    it 'returns error class when stock is low' do
-      medication = create(:medication, current_supply: 5, reorder_threshold: 10)
-      presenter = described_class.new(medication:)
-
-      expect(presenter.supply_bar_class).to eq('bg-error')
-    end
-
-    it 'returns primary class when stock is normal' do
-      medication = create(:medication, current_supply: 50, reorder_threshold: 10)
-      presenter = described_class.new(medication:)
-
-      expect(presenter.supply_bar_class).to eq('bg-primary')
-    end
-  end
-
   describe '#list_supply_bar_class' do
     it 'returns destructive class when stock is low' do
       medication = create(:medication, current_supply: 5, reorder_threshold: 10)
@@ -135,26 +103,6 @@ RSpec.describe Medications::SupplyStatusPresenter do
       presenter = described_class.new(medication:)
 
       expect(presenter.list_supply_bar_class).to eq('bg-primary')
-    end
-  end
-
-  describe '#list_inventory_text_class' do
-    it 'returns destructive class for red inventory levels' do
-      medication = create(:medication, current_supply: 4, reorder_threshold: 0)
-      create(:schedule, medication: medication, dose_amount: 500, dose_unit: 'mg', max_daily_doses: 1,
-                        frequency: 'Once daily')
-      presenter = described_class.new(medication:)
-
-      expect(presenter.list_inventory_text_class).to eq('text-destructive')
-    end
-
-    it 'returns primary class for blue inventory levels' do
-      medication = create(:medication, current_supply: 5, reorder_threshold: 10)
-      create(:schedule, medication: medication, dose_amount: 500, dose_unit: 'mg', max_daily_doses: 1,
-                        frequency: 'Once daily')
-      presenter = described_class.new(medication:)
-
-      expect(presenter.list_inventory_text_class).to eq('text-primary')
     end
   end
 

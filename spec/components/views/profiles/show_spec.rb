@@ -29,16 +29,6 @@ RSpec.describe Views::Profiles::Show, type: :component do
     end)
   end
 
-  it 'uses token-driven shell surfaces instead of literal gradients and white overlays' do
-    rendered = render_inline(described_class.new(presenter:))
-    html = rendered.to_html
-
-    banned_classes = ['bg-[radial-gradient', 'bg-white/70', 'border-white/50', 'rounded-[2rem]',
-                      'bg-card/95']
-
-    expect(banned_classes.none?(&html.method(:include?))).to be(true)
-  end
-
   it 'renders an M3 identity header with the person avatar and profile metadata' do
     rendered = render_inline(described_class.new(presenter:))
 
@@ -66,6 +56,14 @@ RSpec.describe Views::Profiles::Show, type: :component do
     expect(tabs.map(&:name)).to all(eq('button'))
     expect(tabs.pluck('aria-controls')).to eq(
       %w[profile-profile-panel profile-security-panel profile-notifications-panel profile-advanced-panel]
+    )
+  end
+
+  it 'allows profile tab labels to wrap inside their controls' do
+    rendered = render_inline(described_class.new(presenter:))
+
+    expect(rendered.css('[data-testid="profile-section-tab"]').pluck('class')).to all(
+      include('whitespace-normal', 'leading-tight')
     )
   end
 

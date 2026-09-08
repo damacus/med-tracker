@@ -215,7 +215,7 @@ pt:
         email_placeholder: Introduza o seu email
         submit: Solicitar redefinição de palavra-passe
         other_options: Outras opções
-        back_to_login: Voltar ao Início de Sessão
+        back_to_login: Voltar a iniciar sessão
         create_account: Criar uma Nova Conta
       reset_password:
         page_subtitle: Crie uma nova palavra-passe para a sua conta.
@@ -238,9 +238,9 @@ pt:
         card_description: Introduza o seu email e enviaremos um novo link de verificação.
         email_label: Endereço de email
         email_placeholder: Introduza o seu email
-        submit: Reenviar Informação de Verificação de Conta
+        submit: Reenviar email de verificação
         other_options: Outras opções
-        back_to_login: Voltar ao Início de Sessão
+        back_to_login: Voltar a iniciar sessão
         create_account: Criar uma Nova Conta
       otp_auth:
         page_title: Introduza o seu código de autenticação
@@ -377,6 +377,20 @@ pt:
         new_password_label: Nova Palavra-passe
         confirm_password_label: Confirmar Nova Palavra-passe
   admin:
+    labels:
+      membership_roles:
+        owner: Proprietário
+        administrator: Administrador
+        member: Membro
+      relationship_types:
+        parent: Pai ou mãe
+        carer: Cuidador
+        family_member: Membro da família
+        professional: Profissional
+      access_levels:
+        view: Ver
+        record: Registar
+        manage: Gerir
     invitations:
       created: Convite enviado
       resent: Convite reenviado
@@ -393,7 +407,11 @@ pt:
         cancel: Cancelar
         form:
           email: Email
-          role: Função
+          role: Função do agregado
+          relationship_type: Relação do dependente
+          select_relationship_type: Selecione a relação
+          access_level: Acesso do dependente
+          select_access_level: Selecione o nível de acesso
           dependents: Dependentes existentes
           dependents_hint: Selecione crianças existentes ou adultos dependentes que
             este pai/mãe ou cuidador convidado deve gerir.
@@ -469,6 +487,8 @@ pt:
       unauthorized: Não está autorizado a realizar esta ação.
       missing_account: O utilizador não tem uma conta para verificar.
       index:
+        title: Gestão de utilizadores
+        new_user: Novo utilizador
         helper: As funções do agregado aplicam-se apenas a este agregado. Os administradores do sistema podem gerir todos os agregados.
       form:
         subtitle: Preencha os dados abaixo para criar uma nova conta de utilizador.
@@ -483,6 +503,10 @@ pt:
         role: Função do agregado
         membership_role_helper: Apenas os administradores do sistema podem atribuir a função de Proprietário.
         select_role: Selecione uma função
+        dependent_relationship_type: Relação do dependente
+        select_dependent_relationship_type: Selecione a relação
+        dependent_access_level: Acesso do dependente
+        select_dependent_access_level: Selecione o nível de acesso
         dependents: Dependentes existentes
         cancel: Cancelar
         create_submit: Criar utilizador
@@ -798,6 +822,9 @@ pt:
       title: Localizações
       add_location: Adicionar Localização
       members: Membros
+      medication_count:
+        one: "%{count} medicamento"
+        other: "%{count} medicamentos"
       view: Ver
       delete_dialog:
         title: Eliminar Localização
@@ -815,6 +842,7 @@ pt:
       no_members: Nenhum membro atribuído.
       details: Detalhes
       no_details: Nenhuma descrição fornecida.
+      stock_warning: Stock baixo
       add_member:
         title: Adicionar Membro
         description: Adicionar uma pessoa a %{name}
@@ -1083,7 +1111,9 @@ pt:
         damaged_or_disposed: Danificado ou eliminado
         other: Outro
       clear_batch: Limpar lote
-      apply: Aplicar %{count} alterações
+      apply:
+        one: Aplicar 1 alteração
+        other: Aplicar %{count} alterações
       medicines: "%{count} medicamentos"
       net_change: alteração líquida total
       units: unidades
@@ -1202,8 +1232,19 @@ pt:
       paused: Em pausa
       notes: 'Notas:'
       timing_restrictions: 'Restrições de Tempo:'
-      max_doses_per_day: Máximo %{count} dose(s) por dia
-      wait_hours: Esperar pelo menos %{hours} horas entre doses
+      max_doses:
+        daily:
+          one: Máximo 1 dose por dia
+          other: Máximo %{count} doses por dia
+        weekly:
+          one: Máximo 1 dose por semana
+          other: Máximo %{count} doses por semana
+        monthly:
+          one: Máximo 1 dose por mês
+          other: Máximo %{count} doses por mês
+      wait_hours:
+        one: Esperar pelo menos 1 hora entre doses
+        other: Esperar pelo menos %{count} horas entre doses
       next_dose_available: 'Próxima dose disponível em:'
       todays_doses: Doses de Hoje
       no_doses_today: Nenhuma dose tomada hoje
@@ -1400,11 +1441,11 @@ pt:
         prescribed: Prescrita
       person_label: Nome da pessoa
       person_placeholder: Selecionar pessoa
-      medication_label: Nome do medicamento
+      medication_label: Medicamento
       medication_placeholder: Selecionar medicamento
-      frequency_label: Dose, frequência
+      frequency_label: Frequência
       frequency_placeholder: p. ex., Uma vez por dia
-      summary_title: Receita (desdobrar isto)
+      summary_title: Resumo do horário
       none: "-"
     index:
       title: Receitas ativas

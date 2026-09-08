@@ -2,6 +2,235 @@
 
 require 'rails_helper'
 
+module MobileOverflowCardGeometry
+  CARD_ACTION_GEOMETRY_SCRIPT = <<~JAVASCRIPT
+    (() => {
+      const cards = __CARDS__;
+      const viewportWidth = document.documentElement.clientWidth;
+      const within = (inner, outer, allowance = 1) =>
+        inner.left >= outer.left - allowance && inner.right <= outer.right + allowance;
+      const textRects = (element) => {
+        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+        const rects = [];
+        let node = walker.nextNode();
+
+        while (node) {
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          rects.push(...Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0));
+          node = walker.nextNode();
+        }
+
+        return rects;
+      };
+
+      return cards.map(({ selector, action_testid: actionTestid }) => {
+        const card = document.querySelector(selector);
+        const actions = card?.querySelector(`[data-testid="${actionTestid}"]`);
+        const controls = actions
+          ? Array.from(actions.querySelectorAll('a, button')).filter((element) => {
+              const rect = element.getBoundingClientRect();
+              return rect.width > 0 && rect.height > 0;
+            })
+          : [];
+        const cardRect = card?.getBoundingClientRect();
+        const actionsRect = actions?.getBoundingClientRect();
+        const controlsWithLabels = controls.map((element) => {
+          const controlRect = element.getBoundingClientRect();
+          const labels = textRects(element);
+
+          return {
+            controlRect,
+            labels,
+            labelsWithinControl: labels.length > 0 && labels.every((label) => within(label, controlRect)),
+            labelsWithinCard: cardRect && labels.length > 0 &&
+              labels.every((label) => within(label, cardRect))
+          };
+        });
+
+        return {
+          selector,
+          cardWithinViewport: Boolean(cardRect && cardRect.left >= -1 && cardRect.right <= viewportWidth + 1),
+          actionWithinCard: Boolean(cardRect && actionsRect && within(actionsRect, cardRect)),
+          actionContentContained: Boolean(actions && actions.scrollWidth <= actions.clientWidth + 1),
+          controlsWithinCard: Boolean(cardRect && controls.every((element) =>
+            within(element.getBoundingClientRect(), cardRect)
+          )),
+          controlContentContained: Boolean(controls.length > 0 && controls.every((element) =>
+            element.scrollWidth <= element.clientWidth + 1
+          )),
+          controlLabelWithinControl: Boolean(controlsWithLabels.length > 0 && controlsWithLabels.every((control) =>
+            control.labelsWithinControl
+          )),
+          controlLabelWithinCard: Boolean(controlsWithLabels.length > 0 && controlsWithLabels.every((control) =>
+            control.labelsWithinCard
+          )),
+          pageWithinViewport: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) -
+            document.documentElement.clientWidth <= 1
+        };
+      });
+    })()
+  JAVASCRIPT
+end
+
+module MobileOverflowFocusGeometry
+  FOCUS_GEOMETRY_SCRIPT = <<~JAVASCRIPT
+    (() => {
+      const element = document.querySelector(__SELECTOR__);
+      const card = document.querySelector(__CARD_SELECTOR__);
+      element?.focus({ preventScroll: true });
+      const elementRect = element?.getBoundingClientRect();
+      const cardRect = card?.getBoundingClientRect();
+      const styles = element ? window.getComputedStyle(element) : null;
+
+      return {
+        focused: Boolean(element && document.activeElement === element),
+        focusVisible: Boolean(element && element.matches(':focus-visible')),
+        withinCard: Boolean(elementRect && cardRect &&
+          elementRect.left >= cardRect.left - 1 && elementRect.right <= cardRect.right + 1 &&
+          elementRect.top >= cardRect.top - 1 && elementRect.bottom <= cardRect.bottom + 1),
+        visible: Boolean(elementRect && styles && styles.display !== 'none' &&
+          styles.visibility !== 'hidden' && elementRect.width > 0 && elementRect.height > 0)
+      };
+    })()
+  JAVASCRIPT
+end
+
+module MobileOverflowActionMenuGeometry
+  ACTION_MENU_GEOMETRY_SCRIPT = <<~JAVASCRIPT
+    (() => {
+      const menu = document.querySelector('[data-testid="__MENU_TESTID__"]');
+      const viewportWidth = document.documentElement.clientWidth;
+      const viewportHeight = document.documentElement.clientHeight;
+      const items = menu
+        ? Array.from(menu.querySelectorAll('[role="menuitem"]')).filter((element) => {
+            const rect = element.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+          })
+        : [];
+      const menuRect = menu?.getBoundingClientRect();
+
+      return {
+        menuWithinViewport: Boolean(menuRect && menuRect.left >= -1 && menuRect.right <= viewportWidth + 1 &&
+          menuRect.top >= -1 && menuRect.bottom <= viewportHeight + 1),
+        itemsWithinViewport: Boolean(items.length > 0 && items.every((element) => {
+          const rect = element.getBoundingClientRect();
+          return rect.left >= -1 && rect.right <= viewportWidth + 1 &&
+            rect.top >= -1 && rect.bottom <= viewportHeight + 1;
+        })),
+        itemContentContained: Boolean(items.length > 0 && items.every((element) =>
+          element.scrollWidth <= element.clientWidth + 1
+        ))
+      };
+    })()
+  JAVASCRIPT
+end
+
+module MobileOverflowNavigationHitTest
+  SCRIPT = <<~JAVASCRIPT
+    (() => {
+      const trigger = document.querySelector(__TRIGGER_SELECTOR__);
+      const rail = document.querySelector('[data-testid="mobile-rail"]');
+      const scrollElement = document.scrollingElement;
+      const rectData = (rect) => rect && ({
+        left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
+        width: rect.width, height: rect.height
+      });
+      const initialTriggerRect = trigger?.getBoundingClientRect();
+      const initialRailRect = rail?.getBoundingClientRect();
+      if (scrollElement && initialTriggerRect && initialRailRect) {
+        const targetBottom = initialRailRect.top + 20;
+        scrollElement.scrollTop = Math.max(
+          0,
+          scrollElement.scrollTop + initialTriggerRect.bottom - targetBottom
+        );
+      }
+      const triggerRect = rectData(trigger?.getBoundingClientRect());
+      const railRect = rectData(rail?.getBoundingClientRect());
+      const links = rail ? Array.from(rail.querySelectorAll('a')) : [];
+      const link = links.find((candidate) => {
+        const rect = candidate.getBoundingClientRect();
+        return triggerRect && rect.left < triggerRect.right && rect.right > triggerRect.left &&
+          rect.top < triggerRect.bottom && rect.bottom > triggerRect.top;
+      });
+      const linkRect = rectData(link?.getBoundingClientRect());
+      const point = triggerRect && linkRect && {
+        x: Math.max(triggerRect.left, linkRect.left) +
+          (Math.min(triggerRect.right, linkRect.right) - Math.max(triggerRect.left, linkRect.left)) / 2,
+        y: Math.max(triggerRect.top, linkRect.top) +
+          (Math.min(triggerRect.bottom, linkRect.bottom) - Math.max(triggerRect.top, linkRect.top)) / 2
+      };
+      const hit = point && document.elementFromPoint(point.x, point.y);
+
+      return {
+        triggerFound: Boolean(trigger),
+        railFound: Boolean(rail),
+        linkFound: Boolean(link),
+        triggerOverlapsRail: Boolean(triggerRect && railRect && triggerRect.bottom > railRect.top),
+        navigationHit: Boolean(link && hit && (hit === link || link.contains(hit))),
+        triggerRect,
+        railRect,
+        linkRect,
+        scrollTop: scrollElement?.scrollTop
+      };
+    })()
+  JAVASCRIPT
+end
+
+module MobileOverflowLongContentGeometry
+  SHORTCUT_GEOMETRY_SCRIPT = <<~JAVASCRIPT
+    (() => Array.from(document.querySelectorAll('[data-testid="mobile-rail"] a')).map((link) => {
+      const linkRect = link.getBoundingClientRect();
+      const label = link.querySelector('span');
+      const labelRect = label?.getBoundingClientRect();
+
+      return {
+        label: label?.textContent.trim(),
+        linkRect: { left: linkRect.left, right: linkRect.right, top: linkRect.top, bottom: linkRect.bottom },
+        labelRect: labelRect && {
+          left: labelRect.left, right: labelRect.right, top: labelRect.top, bottom: labelRect.bottom
+        },
+        usableHeight: linkRect.height >= 44,
+        labelWithinLink: Boolean(labelRect && labelRect.left >= linkRect.left - 1 &&
+          labelRect.right <= linkRect.right + 1 && labelRect.top >= linkRect.top - 1 &&
+          labelRect.bottom <= linkRect.bottom + 1),
+        labelContained: Boolean(label && label.scrollWidth <= label.clientWidth + 1 &&
+          label.scrollHeight <= label.clientHeight + 1)
+      };
+    }))()
+  JAVASCRIPT
+
+  INVITATION_GEOMETRY_SCRIPT = <<~JAVASCRIPT
+    (() => {
+      const email = Array.from(document.querySelectorAll('#admin_invitations p'))
+        .find((element) => element.textContent.trim() === __EMAIL__);
+      const row = email?.closest('[class*="md:flex-row"]');
+      const emailRect = email?.getBoundingClientRect();
+      const rowRect = row?.getBoundingClientRect();
+      const actions = row ? Array.from(row.querySelectorAll('button, a')).filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      }) : [];
+
+      return {
+        found: Boolean(email && row),
+        emailWithinRow: Boolean(emailRect && rowRect && emailRect.left >= rowRect.left - 1 &&
+          emailRect.right <= rowRect.right + 1),
+        emailContained: Boolean(email && email.scrollWidth <= email.clientWidth + 1),
+        actionsReachable: Boolean(actions.length > 0 && actions.every((element) => {
+          const rect = element.getBoundingClientRect();
+          return rect.left >= -1 && rect.right <= document.documentElement.clientWidth + 1 &&
+            rect.top >= -1 && rect.bottom <= document.documentElement.scrollHeight;
+        })),
+        emailRect: emailRect && { left: emailRect.left, right: emailRect.right, width: emailRect.width },
+        rowRect: rowRect && { left: rowRect.left, right: rowRect.right, width: rowRect.width },
+        pageOverflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) -
+          document.documentElement.clientWidth
+      };
+    })()
+  JAVASCRIPT
+end
+
 RSpec.describe 'Mobile overflow handling' do
   fixtures :all
 
@@ -34,6 +263,59 @@ RSpec.describe 'Mobile overflow handling' do
     expect(page).to have_no_css('[data-testid="floating-action-menu-toggle"]')
     expect(page).to have_no_css('[data-testid="floating-action-menu-items"]')
     expect(page_horizontal_overflow).to be <= 1
+  end
+
+  it 'contains long translated mobile shortcut labels at phone widths', :js do
+    users(:admin).person.account.update!(mobile_shortcuts: %w[finder medicine_reviews administration])
+
+    %i[en pt cy].each do |locale|
+      allow(I18n).to receive(:locale).and_return(locale)
+
+      [320, 390].each do |width|
+        page.current_window.resize_to(width, 844)
+        visit dashboard_path
+
+        geometry = page.evaluate_script(MobileOverflowLongContentGeometry::SHORTCUT_GEOMETRY_SCRIPT)
+
+        expect(geometry.size).to eq(3), "locale=#{locale} width=#{width} geometry=#{geometry.inspect}"
+        expect(geometry).to all(
+          include(
+            'usableHeight' => true,
+            'labelWithinLink' => true,
+            'labelContained' => true
+          )
+        ), "locale=#{locale} width=#{width} geometry=#{geometry.inspect}"
+        expect(page_horizontal_overflow).to be <= 1, "locale=#{locale} width=#{width}"
+      end
+    end
+  end
+
+  it 'contains a long invitation email while keeping row actions reachable', :aggregate_failures, :js do
+    local_part = "long#{'x' * 60}"
+    email = "#{local_part}@example.com"
+    HouseholdInvitation.create!(
+      household: browser_household,
+      invited_by_membership: browser_membership,
+      email: email,
+      membership_role: :member
+    )
+
+    [320, 390].each do |width|
+      page.current_window.resize_to(width, 844)
+      visit admin_invitations_path
+
+      geometry = page.evaluate_script(
+        MobileOverflowLongContentGeometry::INVITATION_GEOMETRY_SCRIPT.sub('__EMAIL__', email.to_json)
+      )
+
+      expect(geometry).to include(
+        'found' => true,
+        'emailWithinRow' => true,
+        'emailContained' => true,
+        'actionsReachable' => true
+      ), "width=#{width} geometry=#{geometry.inspect}"
+      expect(geometry.fetch('pageOverflow')).to be <= 1, "width=#{width} geometry=#{geometry.inspect}"
+    end
   end
 
   it 'uses mobile cards without page-level overflow on dense table pages', :js do
@@ -101,6 +383,120 @@ RSpec.describe 'Mobile overflow handling' do
     end
   end
 
+  it 'keeps schedule and person-medication card actions contained across themes and widths', :js do
+    medications(:paracetamol).update!(
+      name: 'Paracetamol extended release oral suspension with an intentionally long label'
+    )
+    medications(:vitamin_d).update!(
+      name: 'Vitamin D high-strength daily supplement with an intentionally long label'
+    )
+
+    schedule = schedules(:john_paracetamol)
+    person_medication = person_medications(:john_vitamin_d)
+    cards = [
+      {
+        kind: 'schedule',
+        selector: "##{tenant_dom_id(schedule)}",
+        action_testid: 'schedule-card-actions',
+        past_testid: "log-past-dose-schedule-#{schedule.id}",
+        trigger_testid: "schedule-actions-#{schedule.id}",
+        menu_testid: "schedule-actions-menu-#{schedule.id}"
+      },
+      {
+        kind: 'person-medication',
+        selector: "##{tenant_dom_id(person_medication)}",
+        action_testid: 'person-medication-card-actions',
+        past_testid: "log-past-dose-person-medication-#{person_medication.id}",
+        trigger_testid: "person-medication-actions-#{person_medication.id}",
+        menu_testid: "person-medication-actions-menu-#{person_medication.id}"
+      }
+    ]
+
+    [320, 390, 768, 1280].each do |width|
+      page.current_window.resize_to(width, width == 1280 ? 900 : 844)
+
+      %w[light dark].each do |appearance|
+        apply_appearance(appearance)
+        visit person_path(people(:john))
+
+        expect(page).to have_css("#{cards.first[:selector]} [data-testid='#{cards.first[:action_testid]}']")
+        expect(page).to have_css("#{cards.last[:selector]} [data-testid='#{cards.last[:action_testid]}']")
+
+        geometry = card_action_geometry(cards)
+        expect(geometry).to all(
+          include(
+            'cardWithinViewport' => true,
+            'actionWithinCard' => true,
+            'actionContentContained' => true,
+            'controlsWithinCard' => true,
+            'controlContentContained' => true,
+            'controlLabelWithinControl' => true,
+            'controlLabelWithinCard' => true,
+            'pageWithinViewport' => true
+          )
+        ), "card geometry at #{width}px in #{appearance}: #{geometry.inspect}"
+        save_page_screenshot(width: width, appearance: appearance)
+
+        cards.each do |card|
+          [card[:past_testid], card[:trigger_testid]].each do |testid|
+            focus = focus_geometry("#{card[:selector]} [data-testid='#{testid}']", card[:selector])
+            expect(focus).to include(
+              'focused' => true,
+              'focusVisible' => true,
+              'withinCard' => true
+            ), "focus geometry at #{width}px in #{appearance}: #{focus.inspect}"
+          end
+
+          find("#{card[:selector]} [data-testid='#{card[:trigger_testid]}']").click
+          expect(page).to have_css("[data-testid='#{card[:menu_testid]}']", visible: :visible)
+
+          menu_geometry = action_menu_geometry(card[:menu_testid])
+          expect(menu_geometry).to include(
+            'menuWithinViewport' => true,
+            'itemsWithinViewport' => true,
+            'itemContentContained' => true
+          ), "menu geometry at #{width}px in #{appearance}: #{menu_geometry.inspect}"
+          save_card_screenshot(width: width, appearance: appearance, kind: card[:kind])
+
+          page.send_keys(:escape)
+          expect(page.evaluate_script('document.activeElement?.dataset.testid')).to eq(card[:trigger_testid])
+        end
+      end
+    end
+  end
+
+  it 'keeps mobile navigation hit targets above closed card actions', :js do
+    medications(:paracetamol).update!(
+      name: 'Paracetamol extended release oral suspension with an intentionally long label'
+    )
+    medications(:vitamin_d).update!(
+      name: 'Vitamin D high-strength daily supplement with an intentionally long label'
+    )
+    page.current_window.resize_to(390, 844)
+    trigger_testids = [
+      "schedule-actions-#{schedules(:john_paracetamol).id}",
+      "person-medication-actions-#{person_medications(:john_vitamin_d).id}"
+    ]
+
+    trigger_testids.each do |trigger_testid|
+      visit person_path(people(:john))
+
+      hit_test = page.evaluate_script(
+        MobileOverflowNavigationHitTest::SCRIPT.sub(
+          '__TRIGGER_SELECTOR__', "[data-testid='#{trigger_testid}']".to_json
+        )
+      )
+
+      expect(hit_test).to include(
+        'triggerFound' => true,
+        'railFound' => true,
+        'linkFound' => true,
+        'triggerOverlapsRail' => true,
+        'navigationHit' => true
+      ), "navigation hit test for #{trigger_testid}: #{hit_test.inspect}"
+    end
+  end
+
   it 'keeps overflow diagnostics privacy-safe', :js do
     visit root_path
     page.execute_script(<<~JS)
@@ -127,6 +523,55 @@ RSpec.describe 'Mobile overflow handling' do
         return width - document.documentElement.clientWidth;
       })()
     JS
+  end
+
+  def apply_appearance(appearance)
+    visit root_path
+    page.execute_script(<<~JS)
+      localStorage.setItem("med-tracker-appearance", "#{appearance}");
+      document.documentElement.classList.toggle("dark", "#{appearance}" === "dark");
+      document.documentElement.dataset.appearance = "#{appearance}";
+    JS
+  end
+
+  def card_action_geometry(cards)
+    page.evaluate_script(
+      MobileOverflowCardGeometry::CARD_ACTION_GEOMETRY_SCRIPT.sub('__CARDS__', cards.to_json)
+    )
+  end
+
+  def focus_geometry(selector, card_selector)
+    page.evaluate_script(
+      MobileOverflowFocusGeometry::FOCUS_GEOMETRY_SCRIPT
+        .sub('__SELECTOR__', selector.to_json)
+        .sub('__CARD_SELECTOR__', card_selector.to_json)
+    )
+  end
+
+  def save_card_screenshot(width:, appearance:, kind:)
+    return unless [320, 390].include?(width)
+
+    filename = "ui-sweep-card-fixed-#{kind}-#{width}-#{appearance}-menu.png"
+    save_ui_screenshot(filename)
+  end
+
+  def save_page_screenshot(width:, appearance:)
+    return unless [390, 1280].include?(width)
+
+    filename = "ui-sweep-card-fixed-page-#{width}-#{appearance}-closed.png"
+    save_ui_screenshot(filename)
+  end
+
+  def save_ui_screenshot(filename)
+    path = File.join(Capybara.save_path, filename)
+    FileUtils.mkdir_p(File.dirname(path))
+    page.driver.with_playwright_page { |playwright_page| playwright_page.screenshot(path: path) }
+  end
+
+  def action_menu_geometry(menu_testid)
+    page.evaluate_script(
+      MobileOverflowActionMenuGeometry::ACTION_MENU_GEOMETRY_SCRIPT.sub('__MENU_TESTID__', menu_testid)
+    )
   end
 
   def offscreen_header_actions

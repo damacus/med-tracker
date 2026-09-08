@@ -49,7 +49,7 @@ module Components
                 Time.current.strftime('%A, %b %d')
               end
               m3_heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
-                'User Management'
+                t('admin.users.index.title')
               end
               m3_text(weight: 'muted', class: 'mt-2 block') do
                 t('admin.users.index.helper')
@@ -61,7 +61,7 @@ module Components
               size: :lg,
               class: 'rounded-2xl shadow-lg shadow-primary/20',
               data: { turbo_frame: '_top' }
-            ) { 'New User' }
+            ) { t('admin.users.index.new_user') }
           end
         end
       end

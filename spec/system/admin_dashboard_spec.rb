@@ -48,6 +48,26 @@ RSpec.describe 'Admin Dashboard' do
       expect(page).to have_text('User Access')
       expect(page).to have_text('Operations')
     end
+
+    it 'hides dm+d import actions and attention from household managers' do
+      users(:admin).person.account.platform_admin&.destroy!
+      sign_in(users(:admin))
+
+      visit admin_root_path
+
+      expect(page).to have_css('[data-testid="admin-dashboard"] h1', text: 'Admin Dashboard')
+      expect(page).to have_no_link('Import dm+d release', href: new_admin_nhs_dmd_import_path)
+      expect(page).to have_no_text('dm+d release')
+    end
+
+    it 'keeps dm+d import actions visible for platform administrators' do
+      PlatformAdmin.create!(account: users(:admin).person.account)
+      sign_in(users(:admin))
+
+      visit admin_root_path
+
+      expect(page).to have_link('Import dm+d release', href: new_admin_nhs_dmd_import_path)
+    end
   end
 
   context 'when user is not an administrator' do

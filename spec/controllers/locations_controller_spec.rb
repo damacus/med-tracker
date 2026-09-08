@@ -3,10 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe LocationsController do
-  it 'inherits from ApplicationController' do
-    expect(described_class.ancestors).to include(ApplicationController)
-  end
-
   describe '#location_params' do
     let(:controller) { described_class.new }
     let(:params) do

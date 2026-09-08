@@ -128,6 +128,7 @@ module Views
       end
 
       def render_m3_alert(message, variant: :destructive)
+        view_context.content_for(:auth_inline_flash, '1')
         render RubyUI::Alert.new(variant: variant, class: 'rounded-2xl border-none shadow-sm') do
           div(class: 'flex items-center gap-2') do
             render Icons::AlertCircle.new(size: 18)

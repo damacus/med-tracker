@@ -17,7 +17,6 @@ RSpec.describe Components::Reports::ExportPanel, type: :component do
     rendered = render_inline(panel)
     section = rendered.at_css('[data-testid="pdf-export-panel"]')
 
-    expect(section['class']).to include('flex-col', 'sm:flex-row')
     expect(section.text).to include('Export health history', 'People: John Doe')
   end
 

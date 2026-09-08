@@ -215,7 +215,7 @@ es:
         email_placeholder: Introduce tu correo electrónico
         submit: Solicitar restablecimiento de contraseña
         other_options: Otras opciones
-        back_to_login: Volver al inicio de sesión
+        back_to_login: Volver a iniciar sesión
         create_account: Crear una cuenta nueva
       reset_password:
         page_subtitle: Crea una nueva contraseña para tu cuenta.
@@ -239,9 +239,9 @@ es:
           enlace de verificación.
         email_label: Correo electrónico
         email_placeholder: Introduce tu correo electrónico
-        submit: Reenviar información de verificación de cuenta
+        submit: Reenviar correo de verificación
         other_options: Otras opciones
-        back_to_login: Volver al inicio de sesión
+        back_to_login: Volver a iniciar sesión
         create_account: Crear una cuenta nueva
       otp_auth:
         page_title: Introduce tu código de autenticación
@@ -375,6 +375,20 @@ es:
         new_password_label: Nueva contraseña
         confirm_password_label: Confirmar nueva contraseña
   admin:
+    labels:
+      membership_roles:
+        owner: Propietario
+        administrator: Administrador
+        member: Miembro
+      relationship_types:
+        parent: Padre o madre
+        carer: Cuidador
+        family_member: Miembro de la familia
+        professional: Profesional
+      access_levels:
+        view: Ver
+        record: Registrar
+        manage: Gestionar
     invitations:
       created: Invitación enviada
       resent: Invitación reenviada
@@ -391,7 +405,11 @@ es:
         cancel: Cancelar
         form:
           email: Correo electrónico
-          role: Rol
+          role: Rol del hogar
+          relationship_type: Relación de la persona dependiente
+          select_relationship_type: Selecciona una relación
+          access_level: Acceso de la persona dependiente
+          select_access_level: Selecciona un nivel de acceso
           dependents: Dependientes existentes
           dependents_hint: Selecciona niños existentes o adultos dependientes que
             este padre, madre o cuidador invitado debe gestionar.
@@ -467,6 +485,8 @@ es:
       unauthorized: No está autorizado para realizar esta acción.
       missing_account: El usuario no tiene una cuenta para verificar.
       index:
+        title: Gestión de usuarios
+        new_user: Nuevo usuario
         helper: Los roles del hogar se aplican solo a este hogar. Los administradores del sistema pueden gestionar todos los hogares.
       form:
         subtitle: Rellena los datos a continuación para crear una nueva cuenta de
@@ -482,6 +502,10 @@ es:
         role: Rol del hogar
         membership_role_helper: Solo los administradores del sistema pueden asignar el rol de Propietario.
         select_role: Selecciona un rol
+        dependent_relationship_type: Relación de la persona dependiente
+        select_dependent_relationship_type: Selecciona una relación
+        dependent_access_level: Acceso de la persona dependiente
+        select_dependent_access_level: Selecciona un nivel de acceso
         dependents: Dependientes existentes
         cancel: Cancelar
         create_submit: Crear usuario
@@ -797,6 +821,9 @@ es:
       title: Ubicaciones
       add_location: Añadir Ubicación
       members: Miembros
+      medication_count:
+        one: "%{count} medicamento"
+        other: "%{count} medicamentos"
       view: Ver
       delete_dialog:
         title: Eliminar Ubicación
@@ -814,6 +841,7 @@ es:
       no_members: No hay miembros asignados.
       details: Detalles
       no_details: No se ha proporcionado ninguna descripción.
+      stock_warning: Stock bajo
       add_member:
         title: Añadir Miembro
         description: Añadir una persona a %{name}
@@ -1082,7 +1110,9 @@ es:
         damaged_or_disposed: Dañado o desechado
         other: Otro
       clear_batch: Borrar lote
-      apply: Aplicar %{count} ajustes
+      apply:
+        one: Aplicar 1 ajuste
+        other: Aplicar %{count} ajustes
       medicines: "%{count} medicamentos"
       net_change: cambio neto total
       units: unidades
@@ -1202,8 +1232,19 @@ es:
       paused: En pausa
       notes: 'Notas:'
       timing_restrictions: 'Restricciones de Tiempo:'
-      max_doses_per_day: Máximo %{count} dosis(es) por día
-      wait_hours: Esperar al menos %{hours} horas entre dosis
+      max_doses:
+        daily:
+          one: Máximo 1 dosis al día
+          other: Máximo %{count} dosis al día
+        weekly:
+          one: Máximo 1 dosis por semana
+          other: Máximo %{count} dosis por semana
+        monthly:
+          one: Máximo 1 dosis al mes
+          other: Máximo %{count} dosis al mes
+      wait_hours:
+        one: Esperar al menos 1 hora entre dosis
+        other: Esperar al menos %{count} horas entre dosis
       next_dose_available: 'Próxima dosis disponible en:'
       todays_doses: Dosis de Hoy
       no_doses_today: No se han tomado dosis hoy
@@ -1406,11 +1447,11 @@ es:
         prescribed: Con receta
       person_label: Nombre de la persona
       person_placeholder: Selecciona una persona
-      medication_label: Nombre del medicamento
+      medication_label: Medicamento
       medication_placeholder: Selecciona medicamento
-      frequency_label: Dosis, frecuencia
+      frequency_label: Frecuencia
       frequency_placeholder: p. ej. una vez al día
-      summary_title: Resumen de la receta
+      summary_title: Resumen del horario
       none: "-"
   sessions:
     rate_limit: Inténtelo de nuevo más tarde.

@@ -28,10 +28,16 @@ RSpec.describe 'User Sessions', :js do
       click_button 'Sign In to Dashboard'
 
       using_wait_time(3) do
+        expect(page).to have_css('[role="alert"]', count: 1)
         within '#login-flash' do
           aggregate_failures 'flash messages' do
             expect(page).to have_text('error logging in')
+            expect(page).to have_css('[role="alert"]', count: 1)
           end
+        end
+
+        within '[data-testid="notice-stack"]' do
+          expect(page).to have_css('[role="alert"]', count: 0)
         end
       end
     end
@@ -63,6 +69,13 @@ RSpec.describe 'User Sessions', :js do
       using_wait_time(5) do
         expect(page).to have_button('Sign In to Dashboard')
         expect(page).to have_no_button('Sign Out')
+        expect(page).to have_css('[role="alert"]', count: 1)
+        within '#login-flash' do
+          expect(page).to have_css('[role="alert"]', count: 1)
+        end
+        within '[data-testid="notice-stack"]' do
+          expect(page).to have_css('[role="alert"]', count: 0)
+        end
       end
     end
   end

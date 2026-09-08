@@ -21,6 +21,7 @@ module Views
       def flash_section
         return if flash_message.blank?
 
+        view_context.content_for(:auth_inline_flash, '1')
         div(id: 'reset-flash') do
           render RubyUI::Alert.new(variant: flash_variant) do
             plain(flash_message)
@@ -78,9 +79,8 @@ module Views
       def render_other_options
         div(class: 'space-y-4 border-t border-outline-variant/30 pt-8') do
           m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') do
-            plain "#{t('rodauth.views.reset_password_request.back_to_login')} "
             m3_link(href: view_context.rodauth.login_path, variant: :text, class: 'p-0 h-auto font-black underline') do
-              t('sessions.login.heading')
+              t('rodauth.views.reset_password_request.back_to_login')
             end
           end
         end

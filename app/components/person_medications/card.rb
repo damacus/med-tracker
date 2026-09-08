@@ -20,7 +20,7 @@ module Components
         ) do
           render HeaderComponent.new(person_medication: person_medication)
           render ContentComponent.new(person_medication: person_medication)
-          render CardFooter(class: 'px-6 pb-8 pt-2') do
+          CardFooter(class: 'px-8 pb-8 pt-2') do
             render ActionsComponent.new(
               person_medication: person_medication,
               person: person,
@@ -38,7 +38,7 @@ module Components
                'duration-300 group overflow-hidden'
         return "#{base} opacity-70 grayscale-[0.2]" if person_medication.paused?
 
-        "#{base} hover:scale-[1.02] hover:shadow-xl"
+        "#{base} hover:shadow-xl"
       end
     end
   end

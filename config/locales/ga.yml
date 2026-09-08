@@ -153,6 +153,20 @@ ga:
         title: Sreabhadh sceidil
         subtitle: Cruthaigh sceideal cógais
   admin:
+    labels:
+      membership_roles:
+        owner: Úinéir
+        administrator: Riarthóir
+        member: Ball
+      relationship_types:
+        parent: Tuismitheoir
+        carer: Cúramóir
+        family_member: Ball teaghlaigh
+        professional: Gairmí
+      access_levels:
+        view: Amharc
+        record: Taifead
+        manage: Bainistigh
     invitations:
       created: Cuireadh seolta
       resent: Cuireadh athsheolta
@@ -169,7 +183,11 @@ ga:
         cancel: Cealaigh
         form:
           email: Ríomhphost
-          role: Ról
+          role: Ról teaghlaigh
+          relationship_type: Gaol cleithiúnaí
+          select_relationship_type: Roghnaigh gaol
+          access_level: Rochtain cleithiúnaí
+          select_access_level: Roghnaigh leibhéal rochtana
           dependents: Cleithiúnaithe reatha
           dependents_hint: Roghnaigh leanaí reatha nó daoine fásta cleithiúnacha
             ar cheart don tuismitheoir nó cúramóir cuireadh seo iad a bhainistiú.
@@ -245,6 +263,8 @@ ga:
       unauthorized: Níl údarás agat an gníomh seo a dhéanamh.
       missing_account: Níl cuntas ag an úsáideoir le fíorú.
       index:
+        title: Bainistíocht úsáideoirí
+        new_user: Úsáideoir nua
         helper: Ní bhaineann róil teaghlaigh ach leis an teaghlach seo. Is féidir le riarthóirí córais gach teaghlach a bhainistiú.
       form:
         subtitle: Líon isteach na sonraí thíos chun cuntas úsáideora nua a chruthú.
@@ -259,6 +279,10 @@ ga:
         role: Ról teaghlaigh
         membership_role_helper: Ní féidir ach le riarthóirí córais ról an Úinéara a shannadh.
         select_role: Roghnaigh ról
+        dependent_relationship_type: Gaol cleithiúnaí
+        select_dependent_relationship_type: Roghnaigh gaol
+        dependent_access_level: Rochtain cleithiúnaí
+        select_dependent_access_level: Roghnaigh leibhéal rochtana
         dependents: Cleithiúnaithe reatha
         cancel: Cealaigh
         create_submit: Cruthaigh úsáideoir
@@ -573,6 +597,9 @@ ga:
       title: Suíomhanna
       add_location: Cuir Suíomh Leis
       members: Baill
+      medication_count:
+        one: "%{count} leigheas"
+        other: "%{count} leigheasanna"
       view: Amharc
       delete_dialog:
         title: Scrios Suíomh
@@ -590,6 +617,7 @@ ga:
       no_members: Níl aon bhaill sannta.
       details: Sonraí
       no_details: Níor cuireadh aon tuairisc ar fáil.
+      stock_warning: Stoc íseal
       add_member:
         title: Cuir Ball Leis
         description: Cuir duine le %{name}
@@ -672,7 +700,7 @@ ga:
         email_placeholder: Cuir do sheoladh ríomhphoist isteach
         submit: Iarr Athshocrú Focail Faire
         other_options: Roghanna Eile
-        back_to_login: Ar Ais go Sínigh Isteach
+        back_to_login: Ar ais le síniú isteach
         create_account: Cruthaigh Cuntas Nua
       reset_password:
         page_subtitle: Cruthaigh focal faire nua do do chuntas.
@@ -697,9 +725,9 @@ ga:
           fíoraithe nua.
         email_label: Seoladh ríomhphoist
         email_placeholder: Cuir do sheoladh ríomhphoist isteach
-        submit: Seol Eolas Fíoraithe Cuntais Arís
+        submit: Seol ríomhphost fíoraithe arís
         other_options: Roghanna Eile
-        back_to_login: Ar Ais go Sínigh Isteach
+        back_to_login: Ar ais le síniú isteach
         create_account: Cruthaigh Cuntas Nua
       otp_auth:
         page_title: Cuir do chód fíordheimhnithe isteach
@@ -1080,7 +1108,9 @@ ga:
         damaged_or_disposed: Damáistithe nó diúscartha
         other: Eile
       clear_batch: Glan an bhaisc
-      apply: Cuir %{count} leasú i bhfeidhm
+      apply:
+        one: Cuir 1 leasú i bhfeidhm
+        other: Cuir %{count} leasuithe i bhfeidhm
       medicines: "%{count} leigheas"
       net_change: glanathrú iomlán
       units: aonaid
@@ -1201,8 +1231,19 @@ ga:
       paused: Ar sos
       notes: 'Nótaí:'
       timing_restrictions: 'Srianta Ama:'
-      max_doses_per_day: Uasmhéid %{count} dáileog in aghaidh an lae
-      wait_hours: Fan ar a laghad %{hours} uair an chloig idir dáileoga
+      max_doses:
+        daily:
+          one: Uasmhéid 1 dáileog in aghaidh an lae
+          other: Uasmhéid %{count} dáileog in aghaidh an lae
+        weekly:
+          one: Uasmhéid 1 dáileog in aghaidh na seachtaine
+          other: Uasmhéid %{count} dáileog in aghaidh na seachtaine
+        monthly:
+          one: Uasmhéid 1 dáileog in aghaidh na míosa
+          other: Uasmhéid %{count} dáileog in aghaidh na míosa
+      wait_hours:
+        one: Fan ar a laghad 1 uair an chloig idir dáileoga
+        other: Fan ar a laghad %{count} uair an chloig idir dáileoga
       next_dose_available: 'An chéad dáileog eile ar fáil i:'
       todays_doses: Dáileoga an Lae Inniu
       no_doses_today: Níor tógadh aon dáileoga inniu
@@ -1400,11 +1441,11 @@ ga:
         prescribed: Forordaithe
       person_label: Ainm an duine
       person_placeholder: Roghnaigh duine
-      medication_label: Ainm an leighis
+      medication_label: Leigheas
       medication_placeholder: Roghnaigh leigheas
-      frequency_label: Dáileog, minicíocht
+      frequency_label: Minicíocht
       frequency_placeholder: m.sh. uair sa lá
-      summary_title: Sceideal (briseadh síos)
+      summary_title: Achoimre ar an sceideal
       none: "-"
     index:
       title: Sceidil Ghníomhacha

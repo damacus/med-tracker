@@ -287,7 +287,7 @@ module Components
         def render_membership_role_field(_form, field_name:, helper_text: nil)
           trigger_attributes = {
             id: 'membership_role_trigger',
-            placeholder: selected_membership_role.titleize || t('admin.users.form.select_role'),
+            placeholder: membership_role_label(selected_membership_role) || t('admin.users.form.select_role'),
             class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
           }
           trigger_attributes[:aria] = { describedby: 'membership_role_helper' } if helper_text
@@ -320,7 +320,7 @@ module Components
                         checked: selected_membership_role == role,
                         required: true
                       )
-                      span { role.titleize }
+                      span { membership_role_label(role) }
                     end
                   end
                 end
@@ -342,23 +342,23 @@ module Components
             render RubyUI::FormFieldLabel.new(
               for: 'user_dependent_relationship_type_trigger',
               class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
-            ) { t('admin.users.form.dependent_relationship_type', default: 'Dependent relationship') }
+            ) { t('admin.users.form.dependent_relationship_type') }
             render RubyUI::Combobox.new(class: 'w-full') do
               render RubyUI::ComboboxTrigger.new(
                 id: 'dependent_relationship_type_trigger',
-                placeholder: selected_dependent_relationship_type.presence&.titleize ||
-                  t('admin.users.form.select_dependent_relationship_type', default: 'Select relationship'),
+                placeholder: relationship_type_label(selected_dependent_relationship_type) ||
+                  t('admin.users.form.select_dependent_relationship_type'),
                 class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
               )
 
               render RubyUI::ComboboxPopover.new do
                 render RubyUI::ComboboxSearchInput.new(
-                  placeholder: t('admin.users.form.select_dependent_relationship_type', default: 'Select relationship')
+                  placeholder: t('admin.users.form.select_dependent_relationship_type')
                 )
 
                 render RubyUI::ComboboxList.new do
                   render(RubyUI::ComboboxEmptyState.new do
-                    t('admin.users.form.select_dependent_relationship_type', default: 'Select relationship')
+                    t('admin.users.form.select_dependent_relationship_type')
                   end)
 
                   %w[parent carer family_member professional].each do |relationship_type|
@@ -369,7 +369,7 @@ module Components
                         value: relationship_type,
                         checked: selected_dependent_relationship_type == relationship_type
                       )
-                      span { relationship_type.titleize }
+                      span { relationship_type_label(relationship_type) }
                     end
                   end
                 end
@@ -383,22 +383,22 @@ module Components
             render RubyUI::FormFieldLabel.new(
               for: 'user_dependent_access_level_trigger',
               class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
-            ) { t('admin.users.form.dependent_access_level', default: 'Dependent access') }
+            ) { t('admin.users.form.dependent_access_level') }
             render RubyUI::Combobox.new(class: 'w-full') do
               render RubyUI::ComboboxTrigger.new(
                 id: 'dependent_access_level_trigger',
-                placeholder: selected_dependent_access_level.titleize,
+                placeholder: access_level_label(selected_dependent_access_level),
                 class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
               )
 
               render RubyUI::ComboboxPopover.new do
                 render RubyUI::ComboboxSearchInput.new(
-                  placeholder: t('admin.users.form.select_dependent_access_level', default: 'Select access level')
+                  placeholder: t('admin.users.form.select_dependent_access_level')
                 )
 
                 render RubyUI::ComboboxList.new do
                   render(RubyUI::ComboboxEmptyState.new do
-                    t('admin.users.form.select_dependent_access_level', default: 'Select access level')
+                    t('admin.users.form.select_dependent_access_level')
                   end)
 
                   PersonAccessGrant.access_levels.each_key do |access_level|
@@ -409,7 +409,7 @@ module Components
                         value: access_level,
                         checked: selected_dependent_access_level == access_level
                       )
-                      span { access_level.titleize }
+                      span { access_level_label(access_level) }
                     end
                   end
                 end
@@ -502,6 +502,18 @@ module Components
 
         def selected_dependent_relationship_type
           user.dependent_relationship_type.to_s
+        end
+
+        def membership_role_label(role)
+          role.present? ? t("admin.labels.membership_roles.#{role}") : nil
+        end
+
+        def relationship_type_label(relationship_type)
+          relationship_type.present? ? t("admin.labels.relationship_types.#{relationship_type}") : nil
+        end
+
+        def access_level_label(access_level)
+          access_level.present? ? t("admin.labels.access_levels.#{access_level}") : nil
         end
 
         def selected_dependent_access_level

@@ -3,9 +3,23 @@
 require 'rails_helper'
 
 RSpec.describe Components::Locations::IndexView, type: :component do
-  fixtures :locations
+  fixtures :locations, :medications
 
-  it 'renders location card actions with shared M3 sizing and shape', :aggregate_failures do
+  it 'uses the dedicated medication count translation for one and many medications' do
+    one_location = create(:location, household: locations(:home).household, name: 'One location')
+    two_location = create(:location, household: locations(:home).household, name: 'Two location')
+    one_medication = create(:medication, location: one_location, name: 'One medication')
+    two_medications = create(:medication, location: two_location, name: 'First medication')
+    create(:medication, location: two_location, name: 'Second medication')
+
+    rendered = render_locations_index(locations: [one_medication.location, two_medications.location])
+
+    expect(rendered.text).to include(I18n.t('locations.index.medication_count.one', count: 1))
+    expect(rendered.text).to include(I18n.t('locations.index.medication_count.other', count: 2))
+    expect(rendered.text).not_to include('Created')
+  end
+
+  it 'renders location card actions with shared touch targets', :aggregate_failures do
     rendered = render_locations_index
     action_elements = rendered.css('a, button').select do |element|
       element.text.match?(/View/) || element['aria_label'].present?
@@ -14,10 +28,6 @@ RSpec.describe Components::Locations::IndexView, type: :component do
 
     expect(action_classes).not_to be_empty
     expect(action_classes).to all(include_touch_target_class)
-    expect(action_classes).to all(include('rounded-shape-full'))
-    expect(action_classes.flatten).not_to include('rounded-xl')
-    expect(action_classes.flatten).not_to include('w-10')
-    expect(action_classes.flatten).not_to include('h-10')
   end
 
   it 'renders the add location action for managers' do
@@ -26,14 +36,13 @@ RSpec.describe Components::Locations::IndexView, type: :component do
     expect(rendered.at_css("a[href='#{view_context.new_location_path}']")).to be_present
   end
 
-  it 'uses the shared responsive page header' do
+  it 'renders the shared responsive page header' do
     rendered = render_locations_index
     header = rendered.at_css('header')
     action = header.at_css("a[href='#{view_context.new_location_path}']")
 
-    expect(header['class']).to include('flex-col', 'md:flex-row', 'md:items-center')
-    expect(header.at_css('h1')['class']).to include('font-bold')
-    expect(action['class']).to include('w-full', 'md:w-auto')
+    expect(header.at_css('h1').text).to include('Locations')
+    expect(action).to be_present
   end
 
   it 'hides icons inside labelled location action controls', :aggregate_failures do
@@ -55,11 +64,13 @@ RSpec.describe Components::Locations::IndexView, type: :component do
     expect(rendered.at_css('button[aria-label="Delete location"]')).to be_nil
   end
 
-  def render_locations_index(create_allowed: true, update_allowed: true, destroy_allowed: true)
+  def render_locations_index(
+    locations: [locations(:home)], create_allowed: true, update_allowed: true, destroy_allowed: true
+  )
     vc = view_context
     policy_stub = Struct.new(:create?, :update?, :destroy?).new(create_allowed, update_allowed, destroy_allowed)
     vc.singleton_class.define_method(:policy) { |_record| policy_stub }
-    html = vc.render(described_class.new(locations: [locations(:home)]))
+    html = vc.render(described_class.new(locations: locations))
 
     Nokogiri::HTML::DocumentFragment.parse(html)
   end

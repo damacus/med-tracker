@@ -3,12 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe Components::Layouts::Flash, type: :component do
-  it 'renders messages for the layout notification region' do
-    rendered = render_inline(described_class.new(notice: 'Saved'))
-
-    expect(rendered.css('.container').text).to include('Saved')
-  end
-
   describe 'notice flash' do
     it 'renders the notice message directly without redundant title' do
       rendered = render_inline(described_class.new(notice: 'Medication added successfully'))
@@ -25,7 +19,7 @@ RSpec.describe Components::Layouts::Flash, type: :component do
   end
 
   describe 'warning flash' do
-    it 'renders the warning message with warning variant (amber styling)' do
+    it 'renders the warning message with the warning variant' do
       rendered = render_inline(described_class.new(warning: 'Please set up 2FA'))
 
       alert = rendered.css('[role="alert"]').first

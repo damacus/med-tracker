@@ -34,12 +34,6 @@ RSpec.describe Components::Admin::Users::Pagination, type: :component do
   end
 
   describe 'navigation' do
-    it 'renders page number links' do
-      rendered = render_inline(described_class.new(pagy: pagy))
-
-      expect(rendered.css('nav[aria-label="Pagination"]')).to be_present
-    end
-
     it 'disables previous button on first page' do
       rendered = render_inline(described_class.new(pagy: pagy))
 

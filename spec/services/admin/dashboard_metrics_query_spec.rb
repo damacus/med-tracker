@@ -31,6 +31,12 @@ RSpec.describe Admin::DashboardMetricsQuery do
       expect(result[:active_schedules]).to eq(household.schedules.where(active: true).count)
     end
 
+    it 'omits dm+d attention when import capability is unavailable' do
+      result = described_class.new(import_dmd_allowed: false).call
+
+      expect(result[:attention_items].pluck(:icon_type)).not_to include('refresh_cw')
+    end
+
     it 'returns the current grouped metrics' do
       result = described_class.new.call
 
@@ -106,7 +112,7 @@ RSpec.describe Admin::DashboardMetricsQuery do
       patient.has_capacity = false
       patient.save!(validate: false)
 
-      item = described_class.new.call[:attention_items].find do |attention_item|
+      item = described_class.new(import_dmd_allowed: true).call[:attention_items].find do |attention_item|
         attention_item[:href] == Rails.application.routes.url_helpers.admin_people_path(household_slug: household.slug)
       end
 
@@ -119,7 +125,7 @@ RSpec.describe Admin::DashboardMetricsQuery do
     it 'builds a medium expired-invitations item linking to admin invitations' do
       create_metrics_invitation(expires_at: 1.day.ago)
 
-      item = described_class.new.call[:attention_items].find do |attention_item|
+      item = described_class.new(import_dmd_allowed: true).call[:attention_items].find do |attention_item|
         attention_item[:href] ==
           Rails.application.routes.url_helpers.admin_invitations_path(household_slug: household.slug)
       end
@@ -138,7 +144,7 @@ RSpec.describe Admin::DashboardMetricsQuery do
     end
 
     it 'adds a high dm+d item when there has never been a release import' do
-      item = described_class.new.call[:attention_items].find do |attention_item|
+      item = described_class.new(import_dmd_allowed: true).call[:attention_items].find do |attention_item|
         attention_item[:icon_type] == 'refresh_cw'
       end
 
@@ -151,7 +157,7 @@ RSpec.describe Admin::DashboardMetricsQuery do
     it 'escalates a failed dm+d import to high severity' do
       NhsDmdImport.create!(uploaded_filename: 'release.zip', status: :failed, completed_at: 3.hours.ago)
 
-      item = described_class.new.call[:attention_items].find do |attention_item|
+      item = described_class.new(import_dmd_allowed: true).call[:attention_items].find do |attention_item|
         attention_item[:icon_type] == 'refresh_cw'
       end
 
@@ -166,7 +172,7 @@ RSpec.describe Admin::DashboardMetricsQuery do
         created_at: 2.hours.ago
       )
 
-      item = described_class.new.call[:attention_items].find do |attention_item|
+      item = described_class.new(import_dmd_allowed: true).call[:attention_items].find do |attention_item|
         attention_item[:icon_type] == 'refresh_cw'
       end
 
@@ -181,7 +187,7 @@ RSpec.describe Admin::DashboardMetricsQuery do
         created_at: 5.minutes.ago
       )
 
-      icons = described_class.new.call[:attention_items].pluck(:icon_type)
+      icons = described_class.new(import_dmd_allowed: true).call[:attention_items].pluck(:icon_type)
 
       expect(icons).not_to include('refresh_cw')
     end
@@ -189,7 +195,7 @@ RSpec.describe Admin::DashboardMetricsQuery do
     it 'adds a medium dm+d item when the latest completed import is stale' do
       NhsDmdImport.create!(uploaded_filename: 'release.zip', status: :completed, completed_at: 40.days.ago)
 
-      item = described_class.new.call[:attention_items].find do |attention_item|
+      item = described_class.new(import_dmd_allowed: true).call[:attention_items].find do |attention_item|
         attention_item[:icon_type] == 'refresh_cw'
       end
 
@@ -202,7 +208,7 @@ RSpec.describe Admin::DashboardMetricsQuery do
     it 'does not add an item for a recent completed dm+d import' do
       NhsDmdImport.create!(uploaded_filename: 'release.zip', status: :completed, completed_at: 1.hour.ago)
 
-      icons = described_class.new.call[:attention_items].pluck(:icon_type)
+      icons = described_class.new(import_dmd_allowed: true).call[:attention_items].pluck(:icon_type)
 
       expect(icons).not_to include('refresh_cw')
     end
@@ -210,12 +216,12 @@ RSpec.describe Admin::DashboardMetricsQuery do
     it 'returns an empty attention list when nothing is actionable' do
       NhsDmdImport.create!(uploaded_filename: 'release.zip', status: :completed, completed_at: 1.hour.ago)
 
-      expect(described_class.new.call[:attention_items]).to eq([])
+      expect(described_class.new(import_dmd_allowed: true).call[:attention_items]).to eq([])
     end
 
     it 'memoizes the latest dm+d import for a query instance' do
       NhsDmdImport.create!(uploaded_filename: 'release.zip', status: :completed, completed_at: 1.hour.ago)
-      query = described_class.new
+      query = described_class.new(import_dmd_allowed: true)
 
       query.call
       NhsDmdImport.create!(uploaded_filename: 'newer-release.zip', status: :failed, completed_at: Time.current)

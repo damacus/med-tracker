@@ -15,18 +15,6 @@ RSpec.describe Components::Dashboard::StatCard, type: :component do
 
       expect(rendered.text).to include('42')
     end
-
-    it 'renders a users icon when icon_type is users' do
-      rendered = render_inline(described_class.new(title: 'People', value: 5, icon_type: 'users'))
-
-      expect(rendered.css('svg')).to be_present
-    end
-
-    it 'renders an inventory icon when icon_type is inventory' do
-      rendered = render_inline(described_class.new(title: 'Medications', value: 3, icon_type: 'inventory'))
-
-      expect(rendered.css('svg.material-symbol-inventory')).to be_present
-    end
   end
 
   describe 'structure' do

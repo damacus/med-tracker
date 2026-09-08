@@ -4,10 +4,11 @@ module Components
   module Admin
     module Dashboard
       class IndexView < Components::Base
-        attr_reader :metrics
+        attr_reader :metrics, :import_dmd_allowed
 
-        def initialize(metrics: {})
+        def initialize(metrics: {}, import_dmd_allowed: false)
           @metrics = metrics
+          @import_dmd_allowed = import_dmd_allowed
           @actor_resolver = AuditActorResolver.new
           super()
         end
@@ -190,14 +191,12 @@ module Components
                 ['household_settings', edit_admin_household_path, Icons::Settings]
               ]
             )
-            render_action_group(
-              t('admin.dashboard.sections.operations'),
-              [
-                ['manage_people', people_path, Icons::Users],
-                ['audit_trail', admin_audit_logs_path, Icons::Activity],
-                ['import_dmd', new_admin_nhs_dmd_import_path, Icons::RefreshCw]
-              ]
-            )
+            operations_actions = [
+              ['manage_people', people_path, Icons::Users],
+              ['audit_trail', admin_audit_logs_path, Icons::Activity]
+            ]
+            operations_actions << ['import_dmd', new_admin_nhs_dmd_import_path, Icons::RefreshCw] if import_dmd_allowed
+            render_action_group(t('admin.dashboard.sections.operations'), operations_actions)
           end
         end
 

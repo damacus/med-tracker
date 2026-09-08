@@ -74,14 +74,13 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     expect(rendered.at_css("button[data-testid='pause-person-medication-#{person_medication.id}']")).to be_present
   end
 
-  it 'keeps the card footer on one line without clipping secondary actions' do
+  it 'stacks card actions on narrow screens and preserves secondary actions' do
     rendered = render_person_medication_card(update: true, destroy: true)
     actions = rendered.at_css('[data-testid="person-medication-card-actions"]')
     action_classes = actions['class'].split
     menu = rendered.at_css("[data-testid='person-medication-actions-menu-#{person_medication.id}']")
 
-    expect(action_classes).not_to include('flex-wrap')
-    expect(action_classes).to include('min-w-0')
+    expect(action_classes).to include('flex-col', 'lg:flex-row', 'items-stretch', 'w-full')
     expect(menu).not_to be_nil
     expect(rendered.at_css("button[data-testid='delete-person-medication-#{person_medication.id}']")).to be_present
   end
@@ -140,11 +139,50 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
   end
 
   it 'renders the timing status component independently' do
-    person_medication.update!(max_daily_doses: 2, min_hours_between_doses: 6)
+    {
+      ['daily', 1, 'Maximum 1 dose per day'] => 'Wait at least 1 hour between doses',
+      ['weekly', 4, 'Maximum 4 doses per week'] => 'Wait at least 4 hours between doses',
+      ['monthly', 2, 'Maximum 2 doses per month'] => 'Wait at least 4 hours between doses'
+    }.each do |(cycle, max_doses, max_doses_copy), wait_hours_copy|
+      person_medication.update!(dose_cycle: cycle, max_daily_doses: max_doses,
+                                min_hours_between_doses: wait_hours_copy.start_with?('Wait at least 1') ? 1 : 4)
+      rendered = render_component(described_class::TimingStatusComponent.new(person_medication: person_medication))
+
+      expect(rendered.text).to include(max_doses_copy, wait_hours_copy)
+      expect(rendered.text).not_to include('dose(s)')
+    end
+  end
+
+  it 'uses translated singular and plural timing copy for every supported locale' do
+    %i[en cy es ga pt].each do |locale|
+      I18n.with_locale(locale) do
+        person_medication.update!(dose_cycle: :weekly, max_daily_doses: 1, min_hours_between_doses: 1)
+        singular = render_component(described_class::TimingStatusComponent.new(person_medication: person_medication))
+
+        expect(singular.text).to include(I18n.t('person_medications.card.max_doses.weekly', count: 1))
+        expect(singular.text).to include(I18n.t('person_medications.card.wait_hours', count: 1))
+
+        person_medication.update!(max_daily_doses: 4, min_hours_between_doses: 4)
+        plural = render_component(described_class::TimingStatusComponent.new(person_medication: person_medication))
+
+        expect(plural.text).to include(I18n.t('person_medications.card.max_doses.weekly', count: 4))
+        expect(plural.text).to include(I18n.t('person_medications.card.wait_hours', count: 4))
+      end
+    end
+  end
+
+  it 'normalises a missing or invalid cycle to the daily display period' do
+    person_medication.update!(max_daily_doses: 1)
+    allow(person_medication).to receive(:dose_cycle).and_return(nil)
     rendered = render_component(described_class::TimingStatusComponent.new(person_medication: person_medication))
 
-    expect(rendered.text).to include('Maximum 2 dose(s) per day')
-    expect(rendered.text).to include('Wait at least 6 hours between doses')
+    expect(rendered.text).to include(I18n.t('person_medications.card.max_doses.daily', count: 1))
+    expect(rendered.text).not_to include('per week', 'per month')
+
+    allow(person_medication).to receive(:dose_cycle).and_return('fortnightly')
+    rendered = render_component(described_class::TimingStatusComponent.new(person_medication: person_medication))
+
+    expect(rendered.text).to include(I18n.t('person_medications.card.max_doses.daily', count: 1))
   end
 
   it 'renders the actions component independently' do

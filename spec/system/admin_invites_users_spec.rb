@@ -20,7 +20,7 @@ RSpec.describe 'Admin invites users' do
     click_link 'Invitations'
 
     fill_in 'Email', with: 'invited_parent@example.com'
-    select 'Member', from: 'Role'
+    select 'Member', from: 'Household role'
     select 'Parent', from: 'Dependent relationship'
 
     click_button 'Send invitation'
@@ -38,7 +38,8 @@ RSpec.describe 'Admin invites users' do
     visit admin_root_path
     click_link 'Invitations'
 
-    expect(page).to have_no_select('Role', with_options: ['Minor'])
+    expect(page).to have_select('Household role')
+    expect(page).to have_no_select('Household role', with_options: ['Minor'])
   end
 
   it 'shows accessible Email feedback when a blank invitation is submitted', :js do
@@ -61,7 +62,7 @@ RSpec.describe 'Admin invites users' do
     click_link 'Invitations'
 
     fill_in 'Email', with: 'invited_parent@example.com'
-    select 'Member', from: 'Role'
+    select 'Member', from: 'Household role'
     select 'Parent', from: 'Dependent relationship'
 
     click_button 'Send invitation'
@@ -98,7 +99,7 @@ RSpec.describe 'Admin invites users' do
     click_link 'Invitations'
 
     fill_in 'Email', with: 'invited_child@example.com'
-    select 'Member', from: 'Role'
+    select 'Member', from: 'Household role'
     select 'Parent', from: 'Dependent relationship'
     click_button 'Send invitation'
 

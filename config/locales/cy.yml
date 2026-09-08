@@ -214,7 +214,7 @@ cy:
         email_placeholder: Rhowch eich cyfeiriad e-bost
         submit: Gofyn am Ailosod Cyfrinair
         other_options: Opsiynau Eraill
-        back_to_login: Yn Ôl i Fewngofnodi
+        back_to_login: Yn ôl i fewngofnodi
         create_account: Creu Cyfrif Newydd
       reset_password:
         page_subtitle: Crëwch gyfrinair newydd ar gyfer eich cyfrif.
@@ -238,9 +238,9 @@ cy:
           newydd.
         email_label: Cyfeiriad e-bost
         email_placeholder: Rhowch eich cyfeiriad e-bost
-        submit: Ail-anfon Gwybodaeth Dilysu Cyfrif
+        submit: Ail-anfon e-bost dilysu
         other_options: Opsiynau Eraill
-        back_to_login: Yn Ôl i Fewngofnodi
+        back_to_login: Yn ôl i fewngofnodi
         create_account: Creu Cyfrif Newydd
       otp_auth:
         page_title: Rhowch eich cod dilysu
@@ -370,6 +370,20 @@ cy:
         new_password_label: Cyfrinair Newydd
         confirm_password_label: Cadarnhau Cyfrinair Newydd
   admin:
+    labels:
+      membership_roles:
+        owner: Perchennog
+        administrator: Gweinyddwr
+        member: Aelod
+      relationship_types:
+        parent: Rhiant
+        carer: Gofalwr
+        family_member: Aelod teulu
+        professional: Gweithiwr proffesiynol
+      access_levels:
+        view: Gweld
+        record: Cofnodi
+        manage: Rheoli
     invitations:
       created: Anfonwyd y gwahoddiad
       resent: Ailanfonwyd y gwahoddiad
@@ -386,7 +400,11 @@ cy:
         cancel: Canslo
         form:
           email: E-bost
-          role: Rôl
+          role: Rôl aelwyd
+          relationship_type: Perthynas ddibynnydd
+          select_relationship_type: Dewiswch berthynas
+          access_level: Mynediad dibynnydd
+          select_access_level: Dewiswch lefel mynediad
           dependents: Dibynyddion presennol
           dependents_hint: Dewiswch blant presennol neu oedolion dibynnol y dylai'r
             rhiant neu'r gofalwr gwahoddedig hwn eu rheoli.
@@ -462,6 +480,8 @@ cy:
       unauthorized: Nid oes gennych awdurdod i gyflawni'r weithred hon.
       missing_account: Nid oes gan y defnyddiwr gyfrif i'w ddilysu.
       index:
+        title: Rheoli defnyddwyr
+        new_user: Defnyddiwr newydd
         helper: Mae rolau aelwyd yn berthnasol i'r aelwyd hon yn unig. Gall gweinyddwyr system reoli pob aelwyd.
       form:
         subtitle: Llenwch y manylion isod i greu cyfrif defnyddiwr newydd.
@@ -476,6 +496,10 @@ cy:
         role: Rôl aelwyd
         membership_role_helper: Dim ond gweinyddwyr system sy'n gallu rhoi'r rôl Perchennog.
         select_role: Dewis rôl
+        dependent_relationship_type: Perthynas ddibynnydd
+        select_dependent_relationship_type: Dewiswch berthynas
+        dependent_access_level: Mynediad dibynnydd
+        select_dependent_access_level: Dewiswch lefel mynediad
         dependents: Dibynyddion presennol
         cancel: Canslo
         create_submit: Creu defnyddiwr
@@ -791,6 +815,9 @@ cy:
       title: Lleoliadau
       add_location: Ychwanegu Lleoliad
       members: Aelodau
+      medication_count:
+        one: "%{count} meddyginiaeth"
+        other: "%{count} meddyginiaeth"
       view: Gweld
       delete_dialog:
         title: Dileu Lleoliad
@@ -808,6 +835,7 @@ cy:
       no_members: Dim aelodau wedi'u neilltuo.
       details: Manylion
       no_details: Dim disgrifiad wedi'i ddarparu.
+      stock_warning: Stoc isel
       add_member:
         title: Ychwanegu Aelod
         description: Ychwanegu person at %{name}
@@ -1076,7 +1104,9 @@ cy:
         damaged_or_disposed: Wedi'i ddifrodi neu ei waredu
         other: Arall
       clear_batch: Clirio'r swp
-      apply: Cymhwyso %{count} addasiad
+      apply:
+        one: Cymhwyso 1 addasiad
+        other: Cymhwyso %{count} addasiad
       medicines: "%{count} meddyginiaeth"
       net_change: cyfanswm y newid net
       units: unedau
@@ -1195,8 +1225,19 @@ cy:
       paused: Wedi'i oedi
       notes: 'Nodiadau:'
       timing_restrictions: 'Cyfyngiadau Amseru:'
-      max_doses_per_day: Uchafswm %{count} dos(au) y dydd
-      wait_hours: Aros o leia %{hours} awr rhwng dosau
+      max_doses:
+        daily:
+          one: Uchafswm 1 dos y dydd
+          other: Uchafswm %{count} dos y dydd
+        weekly:
+          one: Uchafswm 1 dos yr wythnos
+          other: Uchafswm %{count} dos yr wythnos
+        monthly:
+          one: Uchafswm 1 dos y mis
+          other: Uchafswm %{count} dos y mis
+      wait_hours:
+        one: Aros o leiaf 1 awr rhwng dosau
+        other: Aros o leiaf %{count} awr rhwng dosau
       next_dose_available: 'Dos nesaf ar gael mewn:'
       todays_doses: Dosau Heddiw
       no_doses_today: Dim dosau wedi'u cymryd heddiw
@@ -1421,9 +1462,9 @@ cy:
         prescribed: Wedi'i ragnodi
       person_label: Enw'r person
       person_placeholder: Dewis person
-      medication_label: Enw'r feddyginiaeth
+      medication_label: Meddyginiaeth
       medication_placeholder: Dewis meddyginiaeth
-      frequency_label: Dos, amlder
+      frequency_label: Amlder
       frequency_placeholder: e.e. Unwaith y dydd
       summary_title: Crynodeb yr amserlen
       none: "-"

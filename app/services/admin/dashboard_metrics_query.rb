@@ -7,6 +7,10 @@ module Admin
     STALLED_IMPORT_THRESHOLD = 1.hour
     STALE_IMPORT_THRESHOLD = 35.days
 
+    def initialize(import_dmd_allowed: false)
+      @import_dmd_allowed = import_dmd_allowed
+    end
+
     def call
       user_metrics
         .merge(people_metrics)
@@ -129,6 +133,8 @@ module Admin
     end
 
     def dmd_item
+      return unless @import_dmd_allowed
+
       import = latest_dmd_import
       return dmd_static_attention(:high, 'dmd_missing') if import.blank?
 

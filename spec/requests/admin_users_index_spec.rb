@@ -49,6 +49,7 @@ RSpec.describe 'Admin users index' do
     expect(response.body).to include(
       'Household roles apply only to this household. System administrators can manage every household.'
     )
+    expect(response.body).to include('User Management', 'New User')
     expect(response.body).to include('Household role')
     expect(response.body).to include('System administrator')
 

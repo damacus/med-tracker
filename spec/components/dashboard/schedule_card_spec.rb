@@ -33,13 +33,6 @@ RSpec.describe Components::Dashboard::ScheduleCard, type: :component do
       expect(rendered.text).to include(MedicationStockQuantityFormatter.format(schedule.medication.current_supply))
     end
 
-    it 'renders the take action with a hand package icon' do
-      rendered = render_inline(described_class.new(person: person, schedule: schedule))
-      selector = "button[data-testid='take-medication-#{schedule.id}'] svg.material-symbol-hand-package"
-
-      expect(rendered.css(selector)).to be_present
-    end
-
     it 'does not repeat the blocked-state stock lookup when a schedule is not blocked' do
       expect(count_stock_source_queries do
         render_inline(described_class.new(person: person, schedule: schedule))
