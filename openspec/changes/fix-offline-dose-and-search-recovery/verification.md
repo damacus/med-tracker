@@ -37,4 +37,12 @@ The original four PRs were merged while the review corrections were being verifi
 
 Their merged main tree (`0eda8a7c`) exactly matched the original published stack tip (`fa31b7a7`). The review corrections were therefore carried onto that main tree as three follow-up layers: sync recovery, atomic stock reservations, and eligibility/batching. Before publication-only documentation edits, the complete follow-up tree was verified identical to the tested review candidate (`5b29259b`).
 
-The original stack identifier is 2134. This session did not perform those merges or a deployment. Follow-up PR links are recorded after publication.
+The original stack identifier is 2134. This session did not perform those merges or a deployment.
+
+The published follow-up stack is:
+
+1. https://github.com/damacus/med-tracker/pull/2136 — read-connection closure and effective retry controls; based on main.
+2. https://github.com/damacus/med-tracker/pull/2137 — atomic stock reservations and real browser coverage; based on #2136.
+3. https://github.com/damacus/med-tracker/pull/2138 — full stock quantities, batched eligibility and unavailable-dose screenshots; based on #2137.
+
+All nine original review threads received individual replies linking their follow-up PR, followed by resolution. A separate GraphQL read verified all nine resolved states and the created reply IDs. Remote follow-up CI runs independently from the completed local gates.

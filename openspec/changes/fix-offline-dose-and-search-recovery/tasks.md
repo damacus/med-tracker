@@ -28,4 +28,4 @@
 - [x] 6.1 Close read connections and hide retry for permanent-only failures; verify browser regressions.
 - [x] 6.2 Reserve stock atomically across documents and retain rapid actions for different medicines; verify rendered controls.
 - [x] 6.3 Match countable stock units and batch snapshot eligibility; verify query growth and resolver parity.
-- [ ] 6.4 Capture eligibility screenshots, run final stack gates, then reply to and resolve verified review threads.
+- [x] 6.4 Capture eligibility screenshots, run final stack gates, then reply to and resolve verified review threads.
