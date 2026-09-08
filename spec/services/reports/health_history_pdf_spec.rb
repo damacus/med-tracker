@@ -58,6 +58,23 @@ RSpec.describe Reports::HealthHistoryPdf do
     expect(pdf_text(pdf)).not_to include('People:')
   end
 
+  it 'renders non-administration notes and distinct outcome totals' do
+    person = Data.define(:name).new('Alex Smith')
+    entry = Reports::HealthHistoryQuery::NotTakenEntry.new(
+      person: person, date: start_date, scheduled_at: nil, medication_name: 'Paracetamol',
+      reason: 'unwell', note: 'Feeling unwell'
+    )
+    result = empty_result.with(people: [person], not_taken_outcomes: [entry], daily_outcomes: [
+                                 { date: start_date, expected: 2, actual: 0, not_taken: 1, unexplained_missed: 1 }
+                               ])
+    pdf = described_class.new(result: result, start_date: start_date, end_date: end_date,
+                              generated_at: generated_at).render
+
+    expect(pdf_text(pdf).downcase).to include('not taken', 'feeling unwell', 'dose outcomes', 'unexplained misses')
+    section_page = pdf_page_texts(pdf).find { |page| page.include?('Suspected side effects') }
+    expect(section_page).to match(/Suspected side effects.*No records in this section\./)
+  end
+
   it 'renders a large health-history table across multiple pages' do
     medication_takes = Array.new(240) { |index| medication_take(index:) }
     pdf = described_class.new(
@@ -193,7 +210,9 @@ RSpec.describe Reports::HealthHistoryPdf do
       medication_takes: [],
       suspected_side_effects: [],
       notable_illnesses: [],
-      illness_patterns: []
+      illness_patterns: [],
+      not_taken_outcomes: [],
+      daily_outcomes: []
     )
   end
 

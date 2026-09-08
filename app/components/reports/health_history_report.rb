@@ -10,6 +10,8 @@ module Components
 
       def view_template
         medication_takes_section
+        not_taken_section
+        dose_outcomes_section
         suspected_side_effects_section
         notable_illnesses_section
         illness_patterns_section
@@ -35,6 +37,31 @@ module Components
       def suspected_side_effects_section
         report_section(t('suspected_side_effects.title')) do
           event_table(result.suspected_side_effects, include_medications: true)
+        end
+      end
+
+      def not_taken_section
+        report_section(t('outcomes.not_taken')) do
+          headings = %w[time person medication].map { |key| t("medication_takes.#{key}") }
+          headings.push(t('outcomes.reason'), t('events.notes'))
+          table_or_empty(result.not_taken_outcomes, headings, table_class: 'health-history-not-taken-table') do |entry|
+            not_taken_row(entry)
+          end
+        end
+      end
+
+      def not_taken_row(entry)
+        reason = I18n.t("dashboard.outcomes.reasons.#{entry.reason}") if entry.reason.present?
+        time = entry.scheduled_at&.in_time_zone&.strftime('%Y-%m-%d %H:%M') || date(entry.date)
+        [time, entry.person.name, entry.medication_name, reason, entry.note]
+      end
+
+      def dose_outcomes_section
+        report_section(t('outcomes.title')) do
+          headings = %w[date expected taken not_taken unexplained_missed].map { |key| t("outcomes.#{key}") }
+          table_or_empty(result.daily_outcomes, headings, table_class: 'health-history-outcomes-table') do |day|
+            [date(day[:date]), day[:expected], day[:actual], day[:not_taken], day[:unexplained_missed]]
+          end
         end
       end
 

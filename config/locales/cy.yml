@@ -2183,6 +2183,14 @@ cy:
       pdf_unavailable: Ni ellid paratoi'r PDF. Rhowch gynnig arall arni.
       preparing_pdf: Wrthi'n paratoi PDF...
     health_history:
+      outcomes:
+        title: Canlyniadau dosau
+        not_taken: Heb eu cymryd
+        date: Dyddiad
+        expected: Disgwyliedig
+        taken: Cymrwyd
+        unexplained_missed: Dosau a gollwyd heb esboniad
+        reason: Rheswm
       person_required: Dewiswch un person i lawrlwytho hanes iechyd ar gyfer meddyg teulu.
       title: Adroddiad hanes iechyd MedTracker
       people: "Pobl: %{people}"
