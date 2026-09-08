@@ -48,6 +48,7 @@ Rails.application.routes.draw do
         resources :dosage_options, only: %i[index show create update]
         resources :health_events, only: %i[index show create update]
         resources :schedules, only: %i[index show create update] do
+          resources :dose_occurrences, only: [:index]
           member do
             patch :pause
             patch :resume

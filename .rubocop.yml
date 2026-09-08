@@ -21,7 +21,9 @@ AllCops:
 
 Style/FrozenStringLiteralComment:
   Exclude:
-    - "spec/lib/pdf_text_extractor_spec.rb"
+    - "app/controllers/api/v1/dose_occurrences_controller.rb"
+    - "app/serializers/api/v1/dose_occurrence_serializer.rb"
+    - "spec/requests/api/v1/dose_occurrences_spec.rb"
     - "spec/services/reports/health_history_query_outcomes_spec.rb"
     - "app/services/reports/dose_occurrence_query.rb"
     - "spec/services/reports/dose_occurrence_query_spec.rb"
@@ -40,6 +42,7 @@ Style/FrozenStringLiteralComment:
     - "spec/services/medication_administration/occurrence_projection_spec.rb"
     - "app/models/medication_dose_occurrence.rb"
     - "spec/models/medication_dose_occurrence_spec.rb"
+    - "spec/lib/pdf_text_extractor_spec.rb"
     - "app/components/medications/stock_removal_view.rb"
     - "app/controllers/medication_stock_removals_controller.rb"
     - "app/services/remove_medication_stock_service.rb"
