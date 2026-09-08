@@ -5,8 +5,8 @@
 
 ## 2. Project Formal Schedule Occurrences
 
-- [ ] 2.1 Red: specify timed/untimed identities, ordinals, eligibility, pause exclusion, and PRN exclusion.
-- [ ] 2.2 Green: add the Schedule occurrence projector without persisting open occurrences.
+- [x] 2.1 Red: specify timed/untimed identities, ordinals, eligibility, pause exclusion, and PRN exclusion.
+- [x] 2.2 Green: add the Schedule occurrence projector without persisting open occurrences.
 
 ## 3. Record Not-Taken Outcomes
 
