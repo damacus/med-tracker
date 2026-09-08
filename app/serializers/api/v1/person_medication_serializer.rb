@@ -10,12 +10,19 @@ module Api
       end
 
       def as_json(*)
-        medication_data.merge(dosing_limits)
+        medication_data.merge(dosing_limits).merge(pause_data)
       end
 
       private
 
       attr_reader :person_medication
+
+      def pause_data
+        return {} unless person_medication.association(:medication_pause_periods).loaded?
+
+        period = person_medication.medication_pause_periods.find { |item| item.ended_at.nil? }
+        { current_pause_period: period && MedicationPausePeriodSerializer.new(period).as_json }
+      end
 
       def medication_data
         association_data.merge(schedule_data)

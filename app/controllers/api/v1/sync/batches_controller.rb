@@ -33,6 +33,14 @@ module Api
 
         private
 
+        def authorize_api_replay!
+          operations.each do |operation|
+            next unless operation[:resource_type] == 'medication_pause_period'
+
+            medication_pause_period_operation.authorize_replay!(operation: operation)
+          end
+        end
+
         def apply_batch_with_retry
           retries = 0
 
@@ -78,6 +86,10 @@ module Api
         end
 
         def apply_operation(operation, index)
+          if operation[:resource_type] == 'medication_pause_period'
+            return apply_medication_pause_period_operation(operation, index)
+          end
+
           if Api::Sync::AssignmentOperation::RESOURCE_CLASSES.key?(operation[:resource_type])
             return apply_assignment_operation(operation, index)
           end
@@ -94,6 +106,15 @@ module Api
           else
             raise BatchError, "operation #{index} action is unsupported"
           end
+        end
+
+        def apply_medication_pause_period_operation(operation, index)
+          result = medication_pause_period_operation.call(operation: operation)
+          batch_result(result.period, index, operation.fetch(:action)).merge(
+            etag: api_etag(result.period), replayed: result.replayed
+          )
+        rescue Api::Sync::MedicationPausePeriodOperation::Error => e
+          raise BatchError.new("operation #{index} #{e.message}", code: e.code, status: e.status)
         end
 
         def apply_assignment_operation(operation, index)
@@ -165,6 +186,12 @@ module Api
 
         def medication_take_operation
           @medication_take_operation ||= Api::Sync::MedicationTakeOperation.new
+        end
+
+        def medication_pause_period_operation
+          @medication_pause_period_operation ||= Api::Sync::MedicationPausePeriodOperation.new(
+            authorization: pundit_user, household: current_household, membership: current_membership
+          )
         end
 
         def update_record(operation, index)

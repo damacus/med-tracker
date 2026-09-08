@@ -5,11 +5,11 @@ module Api
     class PersonMedicationsController < BaseController
       def index
         authorize PersonMedication
-        render_collection(policy_scope(PersonMedication), serializer: PersonMedicationSerializer, includes: %i[person medication])
+        render_collection(policy_scope(PersonMedication), serializer: PersonMedicationSerializer, includes: source_preloads)
       end
 
       def show
-        person_medication = find_api_record(policy_scope(PersonMedication).includes(:person, :medication),
+        person_medication = find_api_record(policy_scope(PersonMedication).includes(*source_preloads),
                                             params.expect(:id))
         authorize person_medication
 
@@ -30,7 +30,7 @@ module Api
       end
 
       def update
-        person_medication = find_api_record(policy_scope(PersonMedication).includes(:person, :medication),
+        person_medication = find_api_record(policy_scope(PersonMedication).includes(*source_preloads),
                                             params.expect(:id))
         authorize person_medication
         return unless fresh_api_record?(person_medication)
@@ -52,7 +52,7 @@ module Api
       end
 
       def reorder
-        person_medication = find_api_record(policy_scope(PersonMedication).includes(:person, :medication),
+        person_medication = find_api_record(policy_scope(PersonMedication).includes(*source_preloads),
                                             params.expect(:id))
         authorize person_medication, :update?
         PersonMedicationReorderService.new.call(
@@ -64,11 +64,24 @@ module Api
 
       private
 
+      def authorize_api_replay!
+        return super unless %w[pause resume].include?(action_name)
+
+        source = find_api_record(policy_scope(PersonMedication), params.expect(:id))
+        authorize source, :update?
+      end
+
+      def source_preloads
+        [:person, :medication, { medication_pause_periods: MedicationPausePeriodsController::PRELOADS }]
+      end
+
       def update_pause_state(method_name)
-        person_medication = find_api_record(policy_scope(PersonMedication).includes(:person, :medication),
+        person_medication = find_api_record(policy_scope(PersonMedication).includes(*source_preloads),
                                             params.expect(:id))
         authorize person_medication, :update?
         person_medication.public_send(method_name)
+        person_medication.association(:medication_pause_periods).reset
+        ActiveRecord::Associations::Preloader.new(records: [person_medication], associations: source_preloads).call
         render_resource(person_medication, serializer: PersonMedicationSerializer)
       end
 

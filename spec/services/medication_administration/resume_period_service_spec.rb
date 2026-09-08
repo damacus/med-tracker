@@ -51,6 +51,18 @@ RSpec.describe MedicationAdministration::ResumePeriodService do
       expect(source.reload).to be_active
     end
 
+    it 'does not resume a later pause when a completed period is addressed again' do
+      period = create_open_period
+      described_class.new(source:, membership:, ended_at:).call
+      newer = create_open_period
+
+      result = described_class.new(source:, membership:, ended_at: ended_at + 1.hour, period:).call
+
+      expect(result).to eq(period)
+      expect(source.reload).to be_paused
+      expect(newer.reload.ended_at).to be_nil
+    end
+
     it 'closes one period when callers resume concurrently' do
       period = create_open_period
 

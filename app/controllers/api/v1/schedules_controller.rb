@@ -5,11 +5,11 @@ module Api
     class SchedulesController < BaseController
       def index
         authorize Schedule
-        render_collection(policy_scope(Schedule), serializer: ScheduleSerializer, includes: %i[person medication])
+        render_collection(policy_scope(Schedule), serializer: ScheduleSerializer, includes: source_preloads)
       end
 
       def show
-        schedule = find_api_record(policy_scope(Schedule).includes(:person, :medication), params.expect(:id))
+        schedule = find_api_record(policy_scope(Schedule).includes(*source_preloads), params.expect(:id))
         authorize schedule
 
         render_resource(schedule, serializer: ScheduleSerializer)
@@ -29,7 +29,7 @@ module Api
       end
 
       def update
-        schedule = find_api_record(policy_scope(Schedule).includes(:person, :medication), params.expect(:id))
+        schedule = find_api_record(policy_scope(Schedule).includes(*source_preloads), params.expect(:id))
         authorize schedule
         return unless fresh_api_record?(schedule)
 
@@ -51,10 +51,23 @@ module Api
 
       private
 
+      def authorize_api_replay!
+        return super unless %w[pause resume].include?(action_name)
+
+        source = find_api_record(policy_scope(Schedule), params.expect(:id))
+        authorize source, :update?
+      end
+
+      def source_preloads
+        [:person, :medication, { medication_pause_periods: MedicationPausePeriodsController::PRELOADS }]
+      end
+
       def update_pause_state(method_name)
-        schedule = find_api_record(policy_scope(Schedule).includes(:person, :medication), params.expect(:id))
+        schedule = find_api_record(policy_scope(Schedule).includes(*source_preloads), params.expect(:id))
         authorize schedule, :update?
         schedule.public_send(method_name)
+        schedule.association(:medication_pause_periods).reset
+        ActiveRecord::Associations::Preloader.new(records: [schedule], associations: source_preloads).call
         render_resource(schedule, serializer: ScheduleSerializer)
       end
 

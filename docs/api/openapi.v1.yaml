@@ -1108,6 +1108,117 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/medication_pause_periods:
+    get:
+      operationId: listMedicationPausePeriods
+      tags: [Household, Schedules]
+      summary: List visible medication pause history.
+      description: Supply source_type and portable source_id together to select one source. Results include current and completed periods newest first by creation time, then ID, including history for retired sources. Retired sources cannot be paused or resumed.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - name: source_type
+          in: query
+          schema:
+            type: string
+            enum: [schedule, person_medication]
+        - name: source_id
+          in: query
+          schema:
+            $ref: '#/components/schemas/PortableId'
+      responses:
+        '200':
+          description: Visible pause periods.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationPausePeriodCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    post:
+      operationId: createMedicationPausePeriod
+      tags: [Household, Schedules]
+      summary: Pause a medication source with a reason.
+      description: Requires manage access. The start is server acceptance time; client timestamps are ignored. An already open period is returned unchanged. No edit or backdating operation is provided.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/idempotency_key'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationPausePeriodCreateRequest'
+      responses:
+        '201':
+          description: Pause period created or already open.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationPausePeriodResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/medication_pause_periods/{id}/resume:
+    post:
+      operationId: resumeMedicationPausePeriod
+      tags: [Household, Schedules]
+      summary: Resume the source for a recorded pause period.
+      description: Requires manage access. Ends the addressed period at server acceptance time. Retrying a completed period returns it unchanged and cannot close a newer pause. The original reason, note and recording actor remain intact.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/PortableId'
+        - $ref: '#/components/parameters/idempotency_key'
+        - $ref: '#/components/parameters/if_match'
+      responses:
+        '200':
+          description: Addressed completed pause period.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationPausePeriodResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/schedules:
     get:
       operationId: listSchedules
@@ -1284,6 +1395,8 @@ paths:
   /households/{household_id}/schedules/{id}/pause:
     patch:
       operationId: pauseSchedule
+      deprecated: true
+      description: Use createMedicationPausePeriod. Retained for at least two minor releases and 90 days after the first released replacement. Legacy pause calls record reason_not_recorded.
       tags:
         - Household
         - Schedules
@@ -1311,6 +1424,8 @@ paths:
   /households/{household_id}/schedules/{id}/resume:
     patch:
       operationId: resumeSchedule
+      deprecated: true
+      description: Use resumeMedicationPausePeriod. Retained for at least two minor releases and 90 days after the first released replacement. Legacy pause calls record reason_not_recorded.
       tags:
         - Household
         - Schedules
@@ -1511,6 +1626,8 @@ paths:
   /households/{household_id}/person_medications/{id}/pause:
     patch:
       operationId: pausePersonMedication
+      deprecated: true
+      description: Use createMedicationPausePeriod. Retained for at least two minor releases and 90 days after the first released replacement. Legacy pause calls record reason_not_recorded.
       tags:
         - Household
         - Person medications
@@ -1538,6 +1655,8 @@ paths:
   /households/{household_id}/person_medications/{id}/resume:
     patch:
       operationId: resumePersonMedication
+      deprecated: true
+      description: Use resumeMedicationPausePeriod. Retained for at least two minor releases and 90 days after the first released replacement. Legacy pause calls record reason_not_recorded.
       tags:
         - Household
         - Person medications
@@ -1968,6 +2087,13 @@ paths:
       summary: Export an encrypted portable household bundle.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - name: version
+          in: query
+          schema:
+            type: integer
+            enum: [1, 2]
+            default: 1
+          description: Select portable v2 to include medication pause history.
         - $ref: '#/components/parameters/portable_passphrase'
         - name: version
           in: query
@@ -2722,6 +2848,13 @@ components:
       scheme: bearer
       bearerFormat: opaque
   parameters:
+    idempotency_key:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+      description: Replays the committed response for a matching request; reuse with different content returns conflict.
     household_id:
       name: household_id
       in: path
@@ -4811,6 +4944,159 @@ components:
           uniqueItems: true
           items:
             $ref: '#/components/schemas/ResourceIdentifier'
+    MedicationPausePeriod:
+      type: object
+      additionalProperties: false
+      required: [id, portable_id, source_type, source_id, reason, note, legacy_context, started_at, ended_at, recorded_by_membership_id, resumed_by_membership_id, recorded_by_name, resumed_by_name, created_at, updated_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/PortableId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        source_type:
+          type: string
+          enum: [schedule, person_medication]
+        source_id:
+          $ref: '#/components/schemas/PortableId'
+        reason:
+          type: string
+          enum: [out_of_supply, temporarily_not_needed, clinician_advice, side_effects, other, reason_not_recorded]
+        note:
+          type: string
+          nullable: true
+        legacy_context:
+          type: boolean
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Unknown for migrated pauses; new requests use server acceptance time.
+        ended_at:
+          type: string
+          format: date-time
+          nullable: true
+        recorded_by_membership_id:
+          type: string
+          nullable: true
+        resumed_by_membership_id:
+          type: string
+          nullable: true
+        recorded_by_name:
+          type: string
+          nullable: true
+        resumed_by_name:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    NullableMedicationPausePeriod:
+      type: object
+      nullable: true
+      additionalProperties: false
+      required: [id, portable_id, source_type, source_id, reason, note, legacy_context, started_at, ended_at, recorded_by_membership_id, resumed_by_membership_id, recorded_by_name, resumed_by_name, created_at, updated_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/PortableId'
+        portable_id:
+          $ref: '#/components/schemas/PortableId'
+        source_type:
+          type: string
+          enum: [schedule, person_medication]
+        source_id:
+          $ref: '#/components/schemas/PortableId'
+        reason:
+          type: string
+          enum: [out_of_supply, temporarily_not_needed, clinician_advice, side_effects, other, reason_not_recorded]
+        note:
+          type: string
+          nullable: true
+        legacy_context:
+          type: boolean
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Unknown for migrated pauses; new requests use server acceptance time.
+        ended_at:
+          type: string
+          format: date-time
+          nullable: true
+        recorded_by_membership_id:
+          type: string
+          nullable: true
+        resumed_by_membership_id:
+          type: string
+          nullable: true
+        recorded_by_name:
+          type: string
+          nullable: true
+        resumed_by_name:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    MedicationPausePeriodCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [medication_pause_period]
+      properties:
+        medication_pause_period:
+          type: object
+          additionalProperties: false
+          required: [source_type, source_id, reason]
+          properties:
+            source_type:
+              type: string
+              enum: [schedule, person_medication]
+            source_id:
+              $ref: '#/components/schemas/PortableId'
+            reason:
+              type: string
+              enum: [out_of_supply, temporarily_not_needed, clinician_advice, side_effects, other]
+            note:
+              type: string
+              nullable: true
+    MedicationPausePeriodResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/MedicationPausePeriod'
+    MedicationPausePeriodCollectionResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicationPausePeriod'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    CapabilityMedicationPausePeriods:
+      type: object
+      additionalProperties: false
+      required: [supported, reasons, effective_time]
+      properties:
+        supported:
+          type: boolean
+        reasons:
+          type: array
+          items:
+            type: string
+            enum: [out_of_supply, temporarily_not_needed, clinician_advice, side_effects, other]
+        effective_time:
+          type: string
+          enum: [server_acceptance]
     Schedule:
       type: object
       additionalProperties: false
@@ -4836,6 +5122,8 @@ components:
         - max_daily_doses
         - min_hours_between_doses
       properties:
+        current_pause_period:
+          $ref: '#/components/schemas/NullableMedicationPausePeriod'
         id:
           $ref: '#/components/schemas/NumericId'
         portable_id:
@@ -5104,6 +5392,8 @@ components:
         - max_daily_doses
         - min_hours_between_doses
       properties:
+        current_pause_period:
+          $ref: '#/components/schemas/NullableMedicationPausePeriod'
         id:
           $ref: '#/components/schemas/NumericId'
         portable_id:
@@ -5525,6 +5815,8 @@ components:
         - sync
         - client_tools
       properties:
+        medication_pause_periods:
+          $ref: '#/components/schemas/CapabilityMedicationPausePeriods'
         format:
           type: string
           enum:
@@ -6096,6 +6388,8 @@ components:
         - medication_takes
         - notification_preferences
       properties:
+        medication_pause_periods:
+          $ref: '#/components/schemas/PortableRecordCollection'
         people:
           $ref: '#/components/schemas/PortableRecordCollection'
         locations:
@@ -6132,6 +6426,7 @@ components:
           type: string
           enum:
             - medtracker.portable.v1
+            - medtracker.portable.v2
         scope:
           type: string
           enum:
@@ -6543,6 +6838,7 @@ components:
             - create
             - update
             - delete
+            - close
         resource_type:
           type: string
           enum:
@@ -6551,15 +6847,22 @@ components:
             - medication_take
             - schedule
             - person_medication
+            - medication_pause_period
         id:
           $ref: '#/components/schemas/ResourceIdentifier'
         if_match:
           type: string
-          description: Required for update and delete operations. Use the exact latest ETag.
+          description: Required for update, delete and pause-period close operations. Use the exact latest ETag.
         attributes:
           type: object
           additionalProperties: true
-          description: Fields accepted by the selected resource and action.
+          description: >-
+            Fields accepted by the selected resource and action. medication_pause_period
+            supports create with source_type (schedule or person_medication), portable
+            source_id, required public reason and optional note; close requires the
+            portable period id, if_match and empty attributes. No timestamps, update
+            or delete are accepted for pause periods. Repeating close for a completed
+            period cannot close a later pause.
     SyncBatchResponse:
       type: object
       additionalProperties: false
@@ -6598,6 +6901,7 @@ components:
             - create
             - update
             - delete
+            - close
         record_type:
           type: string
           enum:
@@ -6606,6 +6910,7 @@ components:
             - MedicationTake
             - Schedule
             - PersonMedication
+            - MedicationPausePeriod
         record_portable_id:
           $ref: '#/components/schemas/PortableId'
         etag:
