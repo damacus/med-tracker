@@ -22,6 +22,11 @@ module FamilyDashboard
       result.routine_tasks
     end
 
+    def can_correct_outcomes?(person)
+      result
+      @recordable_person_ids.include?(person.id)
+    end
+
     private
 
     def result
