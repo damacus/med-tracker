@@ -79,7 +79,27 @@ module Reports
         percentage: compliance_percentage(expected_doses:, actual_doses:),
         expected: expected_doses,
         actual: actual_doses
-      }
+      }.merge(outcome_summary.for_date(date, expected_by_schedule: due_expectations_for(date)))
+    end
+
+    def outcome_summary
+      @outcome_summary ||= DoseOutcomeSummary.new(schedules: schedules, takes_by_date: takes_by_date,
+                                                  start_date: start_date, end_date: end_date)
+    end
+
+    def due_expectations_for(date)
+      schedules_for(date).to_h { |schedule| [schedule.id, due_expected_doses_for(schedule, date)] }
+    end
+
+    def due_expected_doses_for(schedule, date)
+      return 0 if date > Date.current
+      return expected_doses_for_schedule(schedule, date) if date < Date.current
+      return 0 if expected_doses_for_schedule(schedule, date).zero?
+
+      occurrences = MedicationPausePeriods::IntervalProjection.occurrences_on(
+        date: date, times: schedule.schedule_config.to_h['times']
+      )
+      pause_projection_for(schedule).active_occurrences(occurrences).count { |time| time <= Time.current }
     end
 
     def expected_doses_for(date)
