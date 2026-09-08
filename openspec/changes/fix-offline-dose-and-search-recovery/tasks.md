@@ -34,4 +34,4 @@
 
 - [x] 7.1 Replace connection-close call counting with an observable database deletion check.
 - [x] 7.2 Reproduce stale availability in another browser document, then notify connected offline pages after reservations commit.
-- [ ] 7.3 Run stack gates, publish both fixes, and reply to and resolve the two follow-up review threads.
+- [x] 7.3 Run stack gates, publish both fixes, and reply to and resolve the two follow-up review threads.
