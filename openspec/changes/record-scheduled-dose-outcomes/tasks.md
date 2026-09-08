@@ -40,8 +40,8 @@
 
 ## 8. List Formal Occurrences through the API
 
-- [ ] 8.1 Red: specify bounded dates, access, household isolation, and PHI-safe errors.
-- [ ] 8.2 Green: add the read-only API route, controller, serializer, and request specs.
+- [x] 8.1 Red: specify bounded dates, access, household isolation, and PHI-safe errors.
+- [x] 8.2 Green: add the read-only API route, controller, serializer, and request specs.
 
 ## 9N. Record Not-Taken Formal Outcomes through the API
 
