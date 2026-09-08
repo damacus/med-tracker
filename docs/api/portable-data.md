@@ -151,6 +151,8 @@ Imports accept v1 and v2 plaintext inside the same encrypted envelope. V2 can re
 
 Restoring outcomes does not administer doses or deduct stock. An unchanged outcome can be imported again. The original resolution time is retained; the importing membership is recorded as the local actor for a newly restored outcome. Existing outcomes retain their local actor. Members need a current manage grant for every affected person.
 
+Existing medication takes remain authoritative when the same portable ID is imported again. Validation uses their stored source and timestamp. Hosted household export archives include the v2 outcome collection in their portable payload.
+
 ## Incremental sync
 
 Start with `GET /sync/snapshot`. Store its cursor and each record ETag. Use the cursor with `GET /sync/changes` to read later changes and tombstones.
