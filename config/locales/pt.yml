@@ -1459,6 +1459,8 @@ pt:
       create_account: Criar uma
       resend_verification: Reenviar email de verificação
   take_medications:
+    cooldown: Esta dose não está disponível neste momento.
+    out_of_stock: 'Não é possível tomar o medicamento: sem stock'
     success: Toma de medicamento registada com sucesso.
     failure: Falha ao registar toma de medicamento.
     json_success: Toma de medicamento registada com sucesso.

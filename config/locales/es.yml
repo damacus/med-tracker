@@ -1459,6 +1459,8 @@ es:
       create_account: Crear una
       resend_verification: Reenviar correo de verificación
   take_medications:
+    cooldown: Esta dosis no está disponible en este momento.
+    out_of_stock: 'No se puede tomar el medicamento: sin existencias'
     success: Toma de medicamento registrada correctamente.
     failure: Error al registrar la toma de medicamento.
     json_success: Toma de medicamento registrada correctamente.

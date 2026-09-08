@@ -1460,6 +1460,8 @@ ga:
       create_account: Cruthaigh ceann
       resend_verification: Seol ríomhphost fíoraithe arís
   take_medications:
+    cooldown: Níl an dáileog seo ar fáil faoi láthair.
+    out_of_stock: 'Ní féidir an cógas a ghlacadh: as stoc'
     success: Cláraíodh an leigheas tógtha go rathúil.
     failure: Theip ar chlárú an leighis tógtha.
     json_success: Cláraíodh an leigheas tógtha go rathúil.
