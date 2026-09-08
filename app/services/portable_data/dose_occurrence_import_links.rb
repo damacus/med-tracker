@@ -20,8 +20,9 @@ module PortableData
     def take_rows
       rows = Array(@payload.dig(:records, :medication_takes))
       serializer = ExportEventRecordSerializer.new
-      existing_takes.map { |take| serializer.medication_take_payload(take).with_indifferent_access }
-                    .index_by { |row| row[:portable_id] }.merge(rows.index_by { |row| row[:portable_id] })
+      existing = existing_takes.map { |take| serializer.medication_take_payload(take).with_indifferent_access }
+                               .index_by { |row| row[:portable_id] }
+      rows.index_by { |row| row[:portable_id] }.merge(existing)
     end
 
     def existing_takes
