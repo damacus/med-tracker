@@ -1261,6 +1261,53 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/schedules/{schedule_id}/dose_occurrences/not_taken:
+    post:
+      operationId: recordScheduleDoseNotTaken
+      tags: [Household, Schedules]
+      summary: Record due non-administration without creating a take or reducing stock.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: schedule_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ResourceIdentifier'
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DoseNotTakenRequest'
+      responses:
+        '200':
+          description: Current outcome; identical submissions converge on one record.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoseOccurrenceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/schedules:
     get:
       operationId: listSchedules
@@ -5278,6 +5325,33 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DoseOccurrence'
+    DoseOccurrenceResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/DoseOccurrence'
+    DoseNotTakenRequest:
+      type: object
+      additionalProperties: false
+      required: [dose_occurrence]
+      properties:
+        dose_occurrence:
+          type: object
+          additionalProperties: false
+          required: [key]
+          properties:
+            key:
+              type: string
+            reason:
+              type: string
+              nullable: true
+              enum: [refused, unwell, asleep, medicine_unavailable, clinician_advice, other]
+            note:
+              type: string
+              nullable: true
+              maxLength: 2000
     ScheduleResponse:
       type: object
       additionalProperties: false
