@@ -115,20 +115,21 @@ class MedicationPauseControllerTest {
         assertFalse(controller.state.value.sources.single().paused)
     }
 
-    @Test fun `retired paused source retains history but cannot resume`() = runTest {
-        val gateway = FakeGateway()
-        gateway.extraSources = listOf(source.copy(id = "retired", active = false, paused = true, currentPauseId = "old"))
+    @Test fun `inactive paused assignment resumes and refreshes authoritative state`() = runTest {
+        val gateway = FakeGateway(paused = true, sourceType = "person_medication")
         val controller = MedicationPauseController(AppSession("https://example.test", null), gateway, backgroundScope, { true }, {})
         controller.refresh(); runCurrent()
-        val retired = controller.state.value.pausedSources(null).single()
-        controller.resume(retired); runCurrent()
-        assertNull(controller.state.value.busySource)
-        controller.showHistory(retired); runCurrent()
-        assertEquals(retired, controller.state.value.historySource)
-        assertEquals(1, controller.state.value.history.size)
+        val paused = controller.state.value.pausedSources(null).single()
+        assertFalse(paused.active)
+        controller.resume(paused); runCurrent()
+        assertEquals(paused.key, controller.state.value.busySource)
+        gateway.paused = false
+        gateway.result.complete(ApiResult.Success(period.copy(endedAt = "2026-09-08T13:00:00Z"))); runCurrent()
+        assertFalse(controller.state.value.sources.single().paused)
+        assertTrue(controller.state.value.sources.single().active)
     }
 
-    private inner class FakeGateway(val supported: Boolean = true, var paused: Boolean = false) : MedicationPauseGateway {
+    private inner class FakeGateway(val supported: Boolean = true, var paused: Boolean = false, val sourceType: String = "schedule") : MedicationPauseGateway {
         val result = CompletableDeferred<ApiResult<PausePeriod>>()
         var requests = 0
         var sourceRequests = 0
@@ -139,7 +140,7 @@ class MedicationPauseControllerTest {
         override suspend fun sources(session: AppSession): ApiResult<List<PauseSource>> {
             sourceRequests++
             delayedSources?.let { return it.await() }
-            return ApiResult.Success(listOf(source.copy(paused = paused, currentPauseId = if (paused) "period" else null)) + extraSources)
+            return ApiResult.Success(listOf(source.copy(type = sourceType, active = !paused, paused = paused, currentPauseId = if (paused) "period" else null)) + extraSources)
         }
         override suspend fun history(session: AppSession, source: PauseSource) = ApiResult.Success(listOf(period))
         override suspend fun pause(session: AppSession, source: PauseSource, reason: PauseReason, note: String, requestId: String): ApiResult<PausePeriod> {

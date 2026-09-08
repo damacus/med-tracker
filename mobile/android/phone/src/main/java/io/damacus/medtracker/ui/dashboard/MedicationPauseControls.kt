@@ -44,7 +44,7 @@ fun MedicationPauseControls(state: MedicationPauseState, personId: Long?, contro
                         Text(source.personName)
                         PausedTreatmentDetails(source)
                         Row {
-                            TextButton(onClick = { controller.resume(source) }, enabled = source.active && source.currentPauseId != null && state.busySource == null) {
+                            TextButton(onClick = { controller.resume(source) }, enabled = source.currentPauseId != null && state.busySource == null) {
                                 Text(if (state.busySource == source.key) "Resuming…" else "Resume")
                             }
                             TextButton(onClick = { controller.showHistory(source) }) { Text("Pause history") }

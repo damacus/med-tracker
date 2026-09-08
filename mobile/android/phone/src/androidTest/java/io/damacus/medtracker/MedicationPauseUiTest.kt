@@ -5,13 +5,31 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import android.os.ParcelFileDescriptor
+import io.damacus.medtracker.data.AppSession
+import io.damacus.medtracker.data.api.GeneratedMedicationPauseGateway
 import io.damacus.medtracker.data.model.*
 import io.damacus.medtracker.ui.dashboard.*
 import org.junit.Rule
 import org.junit.Test
+import kotlinx.coroutines.MainScope
 
 class MedicationPauseUiTest {
     @get:Rule val compose = createComposeRule()
+
+    @Test fun inactivePausedScheduleEnablesResume() = assertPausedResumeEnabled("schedule")
+
+    @Test fun inactivePausedAssignmentEnablesResume() = assertPausedResumeEnabled("person_medication")
+
+    private fun assertPausedResumeEnabled(type: String) {
+        val source = PauseSource(type, "id", 1, "Medicine", true, currentPauseId = "period", active = false)
+        val controller = MedicationPauseController(AppSession("https://example.test", null), GeneratedMedicationPauseGateway(), MainScope(), { true }, {})
+        compose.setContent {
+            MaterialTheme {
+                MedicationPauseControls(MedicationPauseState(supported = true, sources = listOf(source)), null, controller)
+            }
+        }
+        compose.onNodeWithText("Resume").assertIsEnabled()
+    }
 
     @Test fun failedPauseKeepsReasonAndNoteVisible() {
         compose.setContent {

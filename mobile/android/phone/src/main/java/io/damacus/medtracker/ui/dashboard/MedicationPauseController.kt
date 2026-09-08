@@ -86,7 +86,7 @@ class MedicationPauseController(
 
     fun resume(source: PauseSource) {
         val pauseId = source.currentPauseId ?: return
-        if (!isCurrent() || !source.active || !state.value.supported || state.value.form.submitting || state.value.busySource != null || source !in state.value.sources) return
+        if (!isCurrent() || !source.paused || !state.value.supported || state.value.form.submitting || state.value.busySource != null || source !in state.value.sources) return
         sourceGeneration++
         update { it.copy(busySource = source.key, error = null) }
         scope.launch {
