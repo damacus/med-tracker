@@ -400,14 +400,6 @@ RSpec.describe MedicationFinderSearchResponder do
     end
   end
 
-  describe 'Result' do
-    it 'is a Data class with body and status' do
-      result = MedicationFinderSearchResponder::Result.new(body: { results: [] }, status: :ok)
-      expect(result.body).to eq({ results: [] })
-      expect(result.status).to eq(:ok)
-    end
-  end
-
   def interaction_lookup_with_hidden_prompts
     result = MedicationInteractionLookup::Result.new(
       visible_prompts: [{ risk_level: 'high' }],

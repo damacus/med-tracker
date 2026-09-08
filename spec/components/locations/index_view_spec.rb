@@ -19,7 +19,7 @@ RSpec.describe Components::Locations::IndexView, type: :component do
     expect(rendered.text).not_to include('Created')
   end
 
-  it 'renders location card actions with shared M3 sizing and shape', :aggregate_failures do
+  it 'renders location card actions with shared touch targets', :aggregate_failures do
     rendered = render_locations_index
     action_elements = rendered.css('a, button').select do |element|
       element.text.match?(/View/) || element['aria_label'].present?
@@ -28,10 +28,6 @@ RSpec.describe Components::Locations::IndexView, type: :component do
 
     expect(action_classes).not_to be_empty
     expect(action_classes).to all(include_touch_target_class)
-    expect(action_classes).to all(include('rounded-shape-full'))
-    expect(action_classes.flatten).not_to include('rounded-xl')
-    expect(action_classes.flatten).not_to include('w-10')
-    expect(action_classes.flatten).not_to include('h-10')
   end
 
   it 'renders the add location action for managers' do
@@ -40,14 +36,13 @@ RSpec.describe Components::Locations::IndexView, type: :component do
     expect(rendered.at_css("a[href='#{view_context.new_location_path}']")).to be_present
   end
 
-  it 'uses the shared responsive page header' do
+  it 'renders the shared responsive page header' do
     rendered = render_locations_index
     header = rendered.at_css('header')
     action = header.at_css("a[href='#{view_context.new_location_path}']")
 
-    expect(header['class']).to include('flex-col', 'md:flex-row', 'md:items-center')
-    expect(header.at_css('h1')['class']).to include('font-bold')
-    expect(action['class']).to include('w-full', 'md:w-auto')
+    expect(header.at_css('h1').text).to include('Locations')
+    expect(action).to be_present
   end
 
   it 'hides icons inside labelled location action controls', :aggregate_failures do

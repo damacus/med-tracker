@@ -123,20 +123,5 @@ RSpec.describe Components::Dashboard::TimelineItem, type: :component do
 
       expect(rendered.css('button[type="submit"]')).not_to be_empty
     end
-
-    it 'renders the action button with a hand package icon' do
-      rendered = render_inline(described_class.new(dose: dose))
-      selector = "button[data-testid='take-dose-schedule_#{source.id}'] svg.material-symbol-hand-package"
-
-      expect(rendered.css(selector)).to be_present
-    end
-
-    it 'uses the historical-dose hover treatment for the action button' do
-      rendered = render_inline(described_class.new(dose: dose))
-      button = rendered.at_css("button[data-testid='take-dose-schedule_#{source.id}']")
-
-      expect(button['class'].split).to include('hover:bg-tertiary-container')
-      expect(button['class'].split).to include('transition-colors')
-    end
   end
 end

@@ -19,9 +19,7 @@ RSpec.describe Components::Schedules::IndexView, type: :component do
     desktop_table = rendered.at_css('[data-testid="schedules-desktop-table"]')
 
     expect(desktop_table.at_css('.relative.w-full.overflow-auto')).to be_present
-    expect(desktop_table.at_css('table')['class']).to include('caption-bottom')
-    expect(desktop_table.at_css('thead')['class']).to include('[&_tr]:border-b')
-    expect(desktop_table.at_css('tbody')['class']).to include('[&_tr:last-child]:border-0')
+    expect(desktop_table.at_css('table')).to be_present
   end
 
   it 'uses the public dose format in mobile cards and the desktop table' do

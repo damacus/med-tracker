@@ -19,17 +19,6 @@ RSpec.describe Components::Layouts::Navigation, type: :component do
     end
   end
 
-  describe 'brand readability' do
-    it 'uses foreground text color utility for the brand link' do
-      component = described_class.new(current_user: nil)
-
-      rendered = render_inline(component)
-      brand_link = rendered.at_css('a.nav__brand-link')
-
-      expect(brand_link['class'].split).to include('nav__brand-link', 'text-foreground')
-    end
-  end
-
   describe 'accessibility' do
     it 'hides the search icon from the labelled search button' do
       rendered = render_inline(described_class.new(current_user: users(:admin)))

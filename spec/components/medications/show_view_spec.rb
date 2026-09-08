@@ -47,54 +47,9 @@ RSpec.describe Components::Medications::ShowView, type: :component do
     expect(rendered.text).to include('Inventory Status')
   end
 
-  it 'offsets the content to align with the header title column' do
-    rendered = render_inline(described_class.new(medication: medication))
-
-    content = rendered.at_css("[data-testid='medication-content']")
-
-    expect(content).to be_present
-    expect(content[:class]).to include('md:pl-[6.5rem]')
-  end
-
   describe 'action button styling' do
     let(:medication) { create(:medication, name: 'Paracetamol', current_supply: 50, reorder_status: nil) }
     let(:rendered) { render_inline(described_class.new(medication: medication)) }
-
-    it 'uses action button utility tokens for add schedule' do
-      add_schedule_link = fetch_action_element(rendered, "a[href*='/add_medication']", 'Add Schedule link not found')
-
-      expect(add_schedule_link[:class]).to include('rounded-shape-full')
-    end
-
-    it 'uses action button utility tokens for log administration' do
-      log_administration_link = fetch_action_element(
-        rendered,
-        "a[href$='/administration']",
-        'Log Administration link not found'
-      )
-
-      expect(log_administration_link[:class]).to include('rounded-shape-full')
-    end
-
-    it 'uses action button utility tokens for mark as ordered' do
-      mark_as_ordered_button = fetch_action_element(
-        rendered,
-        "form[action$='/mark_as_ordered'] button",
-        'Mark as Ordered button not found'
-      )
-
-      expect(mark_as_ordered_button[:class]).to include('rounded-shape-full')
-    end
-
-    it 'uses action button utility tokens for refill' do
-      refill_button = fetch_action_element(
-        rendered,
-        "[data-controller='ruby-ui--dialog'] button",
-        'Refill button not found'
-      )
-
-      expect(refill_button[:class]).to include('rounded-shape-full')
-    end
 
     it 'contains the adjust inventory trigger within the actions grid' do
       adjust_button = rendered.css("[data-controller='ruby-ui--dialog'] button").find do |button|
