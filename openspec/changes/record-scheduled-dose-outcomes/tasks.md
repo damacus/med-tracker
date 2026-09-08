@@ -55,8 +55,8 @@
 
 ## 10. Publish the Formal Outcome API Contract
 
-- [ ] 10.1 Red: specify capability and OpenAPI coverage for S08/S09 operations.
-- [ ] 10.2 Green: update metadata, OpenAPI, contract fixtures, and client sources within the tranche limit.
+- [x] 10.1 Red: specify capability and OpenAPI coverage for S08/S09 operations.
+- [x] 10.2 Green: update metadata, OpenAPI, contract fixtures, and client sources within the tranche limit.
 
 ## 11. Link Queued Takes to Formal Occurrences
 

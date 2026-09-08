@@ -3,6 +3,17 @@
 require 'rails_helper'
 
 RSpec.describe 'API v1 capabilities' do
+  it 'advertises the implemented scheduled dose outcome operations and read bound' do
+    get api_v1_capabilities_path, as: :json
+
+    expect(response.parsed_body.dig('data', 'dose_outcomes')).to eq(
+      'source_types' => ['schedule'],
+      'max_read_days' => 31,
+      'actions' => %w[not_taken reopen take],
+      'replacement_requires_version' => true
+    )
+  end
+
   it 'publishes the supported API, auth, portability, sync, and client-tool contracts without auth' do
     get api_v1_capabilities_path, as: :json
 
