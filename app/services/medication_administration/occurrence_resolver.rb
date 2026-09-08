@@ -28,9 +28,52 @@ module MedicationAdministration
       end
     end
 
+    def take(key:, taken_at: Time.current, **)
+      Households::LifecycleCutoffLock.with(household_id: source.household_id) do
+        source.with_lock do
+          authorize_action!('take')
+          administer(find_occurrence(key), taken_at: taken_at, **)
+        end
+      end
+    end
+
     private
 
     attr_reader :source, :authorization
+
+    def administer(row, taken_at:, **options)
+      return replay_take(row.record, options[:client_uuid]) if row.record&.taken?
+
+      validate_actionable!(row)
+      unless taken_at.in_time_zone.to_date == row.window_starts_on
+        raise Error, 'Dose does not match the occurrence window'
+      end
+
+      link_take(row, record_dose(taken_at: taken_at, **options))
+    end
+
+    def record_dose(taken_at:, **options)
+      result = RecordDose.new.call(source: source, user: authorization, taken_at: taken_at,
+                                   amount_override: options[:dose_amount],
+                                   taken_from_medication_id: options[:taken_from_medication_id],
+                                   client_uuid: options[:client_uuid])
+      raise Error.new('Dose could not be recorded', code: result.error.to_s) unless result.success
+
+      result.take
+    end
+
+    def link_take(row, medication_take)
+      record = unresolved_record(row)
+      record.update!(outcome: 'taken', medication_take: medication_take, reason: nil, note: nil,
+                     resolved_at: Time.current, resolved_by_membership: authorization.membership)
+      record
+    end
+
+    def replay_take(record, client_uuid)
+      return record if client_uuid.present? && record.medication_take.client_uuid == client_uuid
+
+      raise Error.new('Occurrence is already resolved', code: 'already_resolved')
+    end
 
     def authorize_action!(action)
       raise Error, 'Occurrence is unavailable' unless source.household.reload.operational?

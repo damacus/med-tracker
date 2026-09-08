@@ -15,8 +15,8 @@
 
 ## 4. Link Taken Outcomes
 
-- [ ] 4.1 Red: specify canonical RecordDose use, one take, one stock decrement, mismatch rollback, and immutability.
-- [ ] 4.2 Green: link occurrences atomically through the existing dose-recording transaction.
+- [x] 4.1 Red: specify canonical RecordDose use, one take, one stock decrement, mismatch rollback, and immutability.
+- [x] 4.2 Green: link occurrences atomically through the existing dose-recording transaction.
 
 ## 5. Show Formal Outcomes on the Dashboard
 
