@@ -468,14 +468,20 @@ RSpec.describe 'Mobile overflow handling' do
   def save_card_screenshot(width:, appearance:, kind:)
     return unless [320, 390].include?(width)
 
-    path = "/app/tmp/capybara/ui-sweep-card-fixed-#{kind}-#{width}-#{appearance}-menu.png"
-    page.driver.with_playwright_page { |playwright_page| playwright_page.screenshot(path: path) }
+    filename = "ui-sweep-card-fixed-#{kind}-#{width}-#{appearance}-menu.png"
+    save_ui_screenshot(filename)
   end
 
   def save_page_screenshot(width:, appearance:)
     return unless [390, 1280].include?(width)
 
-    path = "/app/tmp/capybara/ui-sweep-card-fixed-page-#{width}-#{appearance}-closed.png"
+    filename = "ui-sweep-card-fixed-page-#{width}-#{appearance}-closed.png"
+    save_ui_screenshot(filename)
+  end
+
+  def save_ui_screenshot(filename)
+    path = File.join(Capybara.save_path, filename)
+    FileUtils.mkdir_p(File.dirname(path))
     page.driver.with_playwright_page { |playwright_page| playwright_page.screenshot(path: path) }
   end
 
