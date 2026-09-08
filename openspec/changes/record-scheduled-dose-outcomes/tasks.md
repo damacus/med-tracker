@@ -35,8 +35,8 @@
 
 ## 7I. Interpret Formal Outcomes in Insights
 
-- [ ] 7I.1 Red: specify that only unexplained misses drive affected insight patterns.
-- [ ] 7I.2 Green: update only the affected insight context and detectors.
+- [x] 7I.1 Red: specify that only unexplained misses drive affected insight patterns.
+- [x] 7I.2 Green: update only the affected insight context and detectors.
 
 ## 8. List Formal Occurrences through the API
 

@@ -46,7 +46,7 @@ module SmartInsights
     end
 
     def logged_events
-      daily_data.sum { |day| day[:actual] } + prn_takes.count
+      daily_data.sum { |day| day[:actual] + day.fetch(:not_taken, 0) } + prn_takes.count
     end
 
     def enough_evidence?
