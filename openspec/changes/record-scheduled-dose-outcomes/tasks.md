@@ -50,8 +50,8 @@
 
 ## 9C. Correct Formal Outcomes through the API
 
-- [ ] 9C.1 Red: specify audited reopen and replacement without mutating a MedicationTake.
-- [ ] 9C.2 Green: add correction API adapters using the domain services.
+- [x] 9C.1 Red: specify audited reopen and replacement without mutating a MedicationTake.
+- [x] 9C.2 Green: add correction API adapters using the domain services.
 
 ## 10. Publish the Formal Outcome API Contract
 
