@@ -87,8 +87,6 @@ export default class extends Controller {
     const button = event.currentTarget
     const sourceType = button.dataset.sourceType
     const sourceId = Number(button.dataset.sourceId)
-    const doseAmount = button.dataset.doseAmount
-    const doseUnit = button.dataset.doseUnit
     const snapshot = await getSnapshot(this.tenantKeyValue)
     const data = snapshot?.payload?.data || {}
     const source = this.sourceFor(data, sourceType, sourceId)
@@ -97,13 +95,14 @@ export default class extends Controller {
     if (!source || !medication) return
 
     const queued = await getQueuedTakes(this.tenantKeyValue)
-    const inventory = this.inventoryFor(data, medication, queued, source)
+    if (this.eligibilityReason(data, source, queued)) return
+    const inventory = this.inventoryFor(data, medication, queued, this.effectiveSource(source))
     if (!inventory) return
     const take = await queueTake({
       source_type: sourceType,
       source_id: sourceId,
-      dose_amount: doseAmount,
-      dose_unit: doseUnit,
+      dose_amount: source.offline_eligibility.dose_amount,
+      dose_unit: source.offline_eligibility.dose_unit,
       taken_at: new Date().toISOString(),
       taken_from_medication_id: inventory?.id || medication.id
     }, this.tenantKeyValue)
@@ -146,9 +145,12 @@ export default class extends Controller {
       const person = this.byId(data.people, source.person_id)
       const medication = this.byId(data.medications, source.medication_id)
       const pending = queued.filter((take) => take.source_type === sourceType && Number(take.source_id) === source.id)
-      const inventory = medication ? this.inventoryFor(data, medication, queued, source) : null
+      const effectiveSource = this.effectiveSource(source)
+      const inventory = medication ? this.inventoryFor(data, medication, queued, effectiveSource) : null
       const stockMedication = inventory || medication
-      const disabled = !medication || this.locallyOutOfStock(stockMedication, queued, source)
+      const outOfStock = !medication || this.locallyOutOfStock(stockMedication, queued, effectiveSource)
+      const reason = this.eligibilityReason(data, source, queued)
+      const disabled = outOfStock || !!reason
       const label = pending.length > 0 ? `${pending.length} pending` : "Take now"
 
       return `
@@ -156,7 +158,8 @@ export default class extends Controller {
           <div class="flex items-start justify-between gap-4">
             <div class="min-w-0">
               <p class="font-bold text-foreground">${this.escape(medication?.name || "Medication")}</p>
-              <p class="mt-1 text-sm text-on-surface-variant">${this.escape(person?.name || "Person")} · ${this.escape(this.doseLabel(source))}</p>
+              <p class="mt-1 text-sm text-on-surface-variant">${this.escape(person?.name || "Person")} · ${this.escape(this.doseLabel(effectiveSource))}</p>
+              ${reason ? `<p class="mt-2 text-sm text-on-surface-variant">${this.escape(reason)}</p>` : ""}
               ${pending.length > 0 ? `<p class="mt-2 text-xs font-bold uppercase tracking-widest text-primary">Queued locally</p>` : ""}
             </div>
             <button
@@ -168,7 +171,7 @@ export default class extends Controller {
               data-dose-amount="${this.escape(source.dose_amount || medication?.dose_amount || "")}"
               data-dose-unit="${this.escape(source.dose_unit || medication?.dose_unit || "")}"
               ${disabled ? "disabled" : ""}
-            >${this.escape(disabled ? "Out of stock" : label)}</button>
+            >${this.escape(outOfStock ? "Out of stock" : reason ? "Unavailable" : label)}</button>
           </div>
         </article>
       `
@@ -217,6 +220,23 @@ export default class extends Controller {
   sourceFor(data, sourceType, sourceId) {
     const collection = sourceType === "schedule" ? data.schedules : data.person_medications
     return this.byId(collection, sourceId)
+  }
+
+  effectiveSource(source) {
+    return source.offline_eligibility ? { ...source, dose_amount: source.offline_eligibility.dose_amount, dose_unit: source.offline_eligibility.dose_unit } : source
+  }
+
+  eligibilityReason(data, source, queued) {
+    const eligibility = source.offline_eligibility
+    if (!eligibility || !(Date.parse(eligibility.valid_until) > Date.now())) return "Refresh your care plan before recording another dose."
+    if (!eligibility.allowed) return eligibility.reason || "This dose is unavailable."
+    const overlapping = queued.some(take => {
+      const pendingSource = this.sourceFor(data, take.source_type, take.source_id)
+      return pendingSource && Number(pendingSource.person_id) === Number(source.person_id) &&
+        Number(pendingSource.medication_id) === Number(source.medication_id)
+    })
+    if (overlapping) return "Sync the pending dose before recording another dose of this medicine."
+    return null
   }
 
   medicationForSource(data, source) {

@@ -64,8 +64,8 @@ class OfflineController < ApplicationController
       people: serialized(policy_scope(Person).includes(:locations, :notification_preference), Api::V1::PersonSerializer),
       locations: serialized(policy_scope(Location), Api::V1::LocationSerializer),
       medications: serialized(policy_scope(Medication).includes(:location), Api::V1::MedicationSerializer),
-      schedules: serialized(policy_scope(Schedule).includes(:person, :medication), Api::V1::ScheduleSerializer),
-      person_medications: serialized(
+      schedules: serialized_sources(policy_scope(Schedule).includes(:person, :medication), Api::V1::ScheduleSerializer),
+      person_medications: serialized_sources(
         policy_scope(PersonMedication).includes(:person, :medication),
         Api::V1::PersonMedicationSerializer
       ),
@@ -75,6 +75,15 @@ class OfflineController < ApplicationController
 
   def serialized(records, serializer)
     records.map { |record| serializer.new(record).as_json }
+  end
+
+  def serialized_sources(records, serializer)
+    now = Time.current
+    records.map do |record|
+      serializer.new(record).as_json.merge(
+        offline_eligibility: OfflineDoseEligibility.new(source: record, user: current_user, policy: policy(record), now: now)
+      )
+    end
   end
 
   def recent_medication_takes

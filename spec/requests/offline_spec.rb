@@ -69,6 +69,45 @@ RSpec.describe 'Offline mode' do
   end
 
   describe 'GET /households/:household_slug/offline/snapshot' do
+    it 'includes server-assessed dose eligibility and effective dose for the offline UI' do
+      schedule
+      get "/households/#{household.slug}/offline/snapshot", as: :json
+
+      source = response.parsed_body.dig('data', 'schedules').find { |item| item['id'] == schedule.id }
+      expect(source.fetch('offline_eligibility')).to include(
+        'allowed' => true,
+        'dose_amount' => '300.0',
+        'dose_unit' => 'mg'
+      )
+      expect(Time.iso8601(source.dig('offline_eligibility', 'valid_until'))).to be > Time.current
+    end
+
+    it 'disables inactive sources without changing snapshot visibility' do
+      schedule.update!(active: false)
+      get "/households/#{household.slug}/offline/snapshot", as: :json
+
+      source = response.parsed_body.dig('data', 'schedules').find { |item| item['id'] == schedule.id }
+      expect(source.fetch('offline_eligibility')).to include('allowed' => false)
+      expect(source.dig('offline_eligibility', 'reason')).to be_present
+    end
+
+    it 'disables sources still in cooldown' do
+      schedule.update!(min_hours_between_doses: 8)
+      schedule.medication_takes.create!(taken_at: 1.hour.ago, dose_amount: 300, dose_unit: 'mg')
+      get "/households/#{household.slug}/offline/snapshot", as: :json
+
+      source = response.parsed_body.dig('data', 'schedules').find { |item| item['id'] == schedule.id }
+      expect(source.fetch('offline_eligibility')).to include('allowed' => false)
+    end
+
+    it 'disables expired schedules while keeping them visible' do
+      schedule.update!(start_date: 3.days.ago.to_date, end_date: 1.day.ago.to_date)
+      get "/households/#{household.slug}/offline/snapshot", as: :json
+
+      source = response.parsed_body.dig('data', 'schedules').find { |item| item['id'] == schedule.id }
+      expect(source.fetch('offline_eligibility')).to include('allowed' => false)
+    end
+
     it 'returns the current care snapshot' do
       get "/households/#{household.slug}/offline/snapshot", as: :json
 
@@ -127,7 +166,7 @@ RSpec.describe 'Offline mode' do
       expect(response.parsed_body.dig('data', 'id')).to eq(created_id)
     end
 
-    it 'returns validation errors without discarding the queued take' do
+    it 'returns validation errors for future doses' do
       post "/households/#{household.slug}/offline/medication_takes",
            params: payload.merge(taken_at: 61.minutes.from_now.iso8601),
            as: :json

@@ -1,5 +1,7 @@
 ---
 en:
+  offline:
+    record_access_required: You do not have permission to record this dose.
   hello: Hello world
   app:
     name: MedTracker
@@ -1424,6 +1426,8 @@ en:
       create_account: Create one
       resend_verification: Resend verification email
   take_medications:
+    cooldown: This dose is not available at this time.
+    out_of_stock: 'Cannot take medication: out of stock'
     success: Medication taken successfully.
     failure: Failed to record medication taken.
     json_success: Medication taken successfully.

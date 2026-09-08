@@ -1,5 +1,7 @@
 ---
 cy:
+  offline:
+    record_access_required: Nid oes gennych ganiatâd i gofnodi'r dos hwn.
   hello: Helo byd
   ruby_ui:
     common:
@@ -1479,6 +1481,8 @@ cy:
       create_account: Creu un
       resend_verification: Ailanfon e-bost dilysu
   take_medications:
+    cooldown: Nid yw'r dos hwn ar gael ar hyn o bryd.
+    out_of_stock: 'Ni ellir cymryd y feddyginiaeth: dim stoc ar ôl'
     success: Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus.
     failure: Methwyd â chofnodi cymryd y feddyginiaeth.
     json_success: Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus.
