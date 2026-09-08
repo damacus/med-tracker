@@ -1219,6 +1219,48 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/schedules/{schedule_id}/dose_occurrences:
+    get:
+      operationId: listScheduleDoseOccurrences
+      tags: [Household, Schedules]
+      summary: Read stable expected dose identities without creating history records.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: schedule_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ResourceIdentifier'
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: true
+          description: Inclusive end date; the range must contain at most 31 days.
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Timed or untimed doses and current resolutions; PRN schedules have no expected doses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoseOccurrenceCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/schedules:
     get:
       operationId: listSchedules
@@ -5178,6 +5220,64 @@ components:
             - every_other_day
         schedule_config:
           $ref: '#/components/schemas/ScheduleConfig'
+    DoseOccurrence:
+      type: object
+      additionalProperties: false
+      required: [key, source_type, source_id, source_portable_id, window_starts_on, position, scheduled_at, outcome, expected, due, reason, note, resolved_at, medication_take_id, etag]
+      properties:
+        key:
+          type: string
+          description: Opaque stable identity; clients must preserve this value without interpreting it.
+        source_type:
+          type: string
+          enum: [schedule]
+        source_id:
+          $ref: '#/components/schemas/NumericId'
+        source_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        window_starts_on:
+          type: string
+          format: date
+        position:
+          type: integer
+          minimum: 1
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+        outcome:
+          type: string
+          enum: [open, taken, not_taken]
+        expected:
+          type: boolean
+        due:
+          type: boolean
+        reason:
+          type: string
+          nullable: true
+          enum: [refused, unwell, asleep, medicine_unavailable, clinician_advice, other]
+        note:
+          type: string
+          nullable: true
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+        medication_take_id:
+          $ref: '#/components/schemas/NullableNumericId'
+        etag:
+          type: string
+          nullable: true
+          description: Current stored outcome version, required when reopening a not-taken outcome.
+    DoseOccurrenceCollectionResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoseOccurrence'
     ScheduleResponse:
       type: object
       additionalProperties: false
