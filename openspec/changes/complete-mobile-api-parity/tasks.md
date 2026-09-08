@@ -8,7 +8,7 @@
 - [x] 2.1 Red: add storage tests for exact source, household integrity, state/take constraints, unique identity, audit and portable ID; observe failure with `task test TEST_FILE=spec/models/medication_dose_occurrence_spec.rb`.
 - [x] 2.2 Green/Refactor: implement the dormant occurrence storage and purge inventory from `record-scheduled-dose-outcomes` tasks 1.1–1.2; verify the model and database constraint specs pass.
 - [x] 2.3 Red-Green-Refactor: implement formal projection and not-taken resolution from existing tasks 2–3, testing bounded applicability, pauses, PRN exclusion, future refusal, replay and concurrent outcomes through focused service specs.
-- [ ] 2.4 Red-Green-Refactor: implement canonical take linkage from existing task 4, testing single decrement, mismatch rollback, legacy allocation and immutable takes.
+- [x] 2.4 Red-Green-Refactor: implement canonical take linkage from existing task 4, testing single decrement, mismatch rollback, legacy allocation and immutable takes.
 - [ ] 2.5 Red-Green-Refactor: integrate dashboard, reminders, history, reports and insights from existing tasks 5–7I, verifying resolved occurrences stop escalation and remain correctly classified.
 
 ## 3. Dose outcome API and routine sources
