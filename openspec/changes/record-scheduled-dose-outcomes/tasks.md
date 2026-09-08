@@ -70,8 +70,8 @@
 
 ## 12I. Import Formal Outcomes through Portable Data
 
-- [ ] 12I.1 Red: specify one v2 round trip, reference restoration, rollback, and no stock replay.
-- [ ] 12I.2 Green: add importer, preflight, and transactional writer support.
+- [x] 12I.1 Red: specify one v2 round trip, reference restoration, rollback, and no stock replay.
+- [x] 12I.2 Green: add importer, preflight, and transactional writer support.
 
 ## 13. Record Not-Taken Outcomes on the Web
 

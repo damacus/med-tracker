@@ -3,6 +3,7 @@
 module PortableData
   class ImportPreflight
     include ImportPreflightPausePeriods
+    include ImportPreflightEvents
 
     Result = Data.define(:conflicts, :errors) do
       def blocked? = conflicts.any? || errors.any?
@@ -20,10 +21,6 @@ module PortableData
     private
 
     attr_reader :household, :payload
-
-    def preflight_errors
-      rails_id_errors + person_capacity_errors + missing_reference_errors
-    end
 
     def rails_id_errors
       payload.fetch(:records).flat_map do |record_type, rows|
@@ -58,6 +55,8 @@ module PortableData
       validate_person_medication_references(errors)
       validate_medication_take_references(errors)
       validate_pause_period_references(errors)
+      validate_dose_occurrence_references(errors)
+      validate_health_event_references(errors)
       validate_notification_preference_references(errors)
       errors
     end

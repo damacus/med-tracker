@@ -42,7 +42,7 @@ module PortableData
     end
 
     def validate_payload!
-      unless payload[:format].in?([Exporter::FORMAT, 'medtracker.portable.v2'])
+      unless [Exporter::FORMAT, Exporter::V2_FORMAT].include?(payload[:format])
         raise Error, 'Unsupported portable data format'
       end
       raise Error, 'Portable data records are required' unless payload[:records].is_a?(Hash)
@@ -63,8 +63,13 @@ module PortableData
     end
 
     def unknown_record_types
-      supported = RECORD_TYPES + (payload[:format] == 'medtracker.portable.v2' ? ['medication_pause_periods'] : [])
-      @unknown_record_types ||= payload[:records].keys.map(&:to_s) - supported
+      allowed = if payload[:format] == Exporter::V2_FORMAT
+                  RECORD_TYPES + %w[medication_pause_periods dose_occurrences
+                                    health_events]
+                else
+                  RECORD_TYPES
+                end
+      @unknown_record_types ||= payload[:records].keys.map(&:to_s) - allowed
     end
 
     def unsupported_record_types_message

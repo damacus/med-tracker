@@ -23,12 +23,19 @@ module PortableData
       import_medication_pause_periods
       import_medication_takes
       import_notification_preferences
+      import_v2_records
       restore_exported_inventory
     end
 
     private
 
     attr_reader :household, :membership, :payload
+
+    def import_v2_records
+      DoseOccurrenceImportWriter.new(household: household, membership: membership,
+                                     rows: records(:dose_occurrences)).call
+      HealthEventImportWriter.new(household: household, rows: records(:health_events)).call
+    end
 
     def records(name)
       Array(payload.dig(:records, name)).map(&:with_indifferent_access)
