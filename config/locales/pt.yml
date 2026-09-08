@@ -2549,3 +2549,17 @@ pt:
       side_effects: "Efeitos secundários"
       other: "Outro"
       reason_not_recorded: "Motivo não registado"
+
+  dose_outcomes:
+    title: "Registar dose não tomada"
+    description: "Isto regista que a dose não foi tomada. O stock não será alterado."
+    dose: "Dose"
+    reason: "Motivo (opcional)"
+    note: "Nota (opcional)"
+    unspecified: "Nenhum motivo selecionado"
+    confirm: "Confirmar dose não tomada"
+    cancel: "Cancelar"
+    empty: "Não há doses à espera de uma decisão."
+    saved: "Dose registada como não tomada."
+    invalid: "Não foi possível atualizar a dose. Verifique os dados e tente novamente."
+    slot: "Dose %{position} · %{date} · %{time}"

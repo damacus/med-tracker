@@ -2542,3 +2542,17 @@ cy:
       side_effects: "Sgil-effeithiau"
       other: "Arall"
       reason_not_recorded: "Rheswm heb ei gofnodi"
+
+  dose_outcomes:
+    title: "Cofnodi na chymerwyd y dos"
+    description: "Mae hyn yn cofnodi na chymerwyd y dos. Ni fydd y stoc yn newid."
+    dose: "Dos"
+    reason: "Rheswm (dewisol)"
+    note: "Nodyn (dewisol)"
+    unspecified: "Dim rheswm wedi ei ddewis"
+    confirm: "Cadarnhau na chymerwyd"
+    cancel: "Canslo"
+    empty: "Nid oes dosau yn aros am benderfyniad."
+    saved: "Cofnodwyd na chymerwyd y dos."
+    invalid: "Ni ellid diweddaru’r dos. Gwiriwch y manylion a rhowch gynnig arall arni."
+    slot: "Dos %{position} · %{date} · %{time}"

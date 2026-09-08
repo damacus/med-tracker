@@ -2520,3 +2520,17 @@ en:
       side_effects: "Side effects"
       other: "Other"
       reason_not_recorded: "Reason not recorded"
+
+  dose_outcomes:
+    title: "Record not taken"
+    description: "This records that the dose was not taken. Stock will not change."
+    dose: "Dose"
+    reason: "Reason (optional)"
+    note: "Note (optional)"
+    unspecified: "No reason selected"
+    confirm: "Confirm not taken"
+    cancel: "Cancel"
+    empty: "No doses are waiting for a decision."
+    saved: "Dose recorded as not taken."
+    invalid: "The dose could not be updated. Check the details and try again."
+    slot: "Dose %{position} · %{date} · %{time}"

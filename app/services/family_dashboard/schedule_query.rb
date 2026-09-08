@@ -37,6 +37,7 @@ module FamilyDashboard
 
       # 2. Preload takes using the specific IDs we just found
       preload_takes
+      @recordable_person_ids = recordable_person_ids
 
       # 3. Aggregate all doses
       routine_tasks = sort_rows(aggregate_family_doses)
@@ -165,12 +166,25 @@ module FamilyDashboard
       {
         person: person,
         source: source,
+        can_record_outcome: recordable_schedule?(source, person),
         scheduled_at: routine_scheduled_at(source, takes.length),
         taken_at: nil,
         status: MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason || :upcoming,
         not_taken_count: current_not_taken_outcomes(source).size,
         overdue: routine_scheduled_at(source, takes.length)&.before?(Time.current) || false
       }.merge(dose_progress_for(takes, expected_doses))
+    end
+
+    def recordable_person_ids
+      context = AuthorizationContext.current
+      return [] unless context&.membership&.active?
+
+      PersonAccessGrant.active.where(household: context.household, household_membership: context.membership,
+                                     person_id: @person_ids, access_level: %w[record manage]).pluck(:person_id)
+    end
+
+    def recordable_schedule?(source, person)
+      source.is_a?(Schedule) && @recordable_person_ids.include?(person.id)
     end
 
     def generate_as_needed_rows_for(source, person)

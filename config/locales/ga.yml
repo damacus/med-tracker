@@ -2552,3 +2552,17 @@ ga:
       side_effects: "Fo-iarmhairtí"
       other: "Eile"
       reason_not_recorded: "Cúis gan taifead"
+
+  dose_outcomes:
+    title: "Taifead dáileog nár tógadh"
+    description: "Taifeadann sé seo nár tógadh an dáileog. Ní athróidh an stoc."
+    dose: "Dáileog"
+    reason: "Cúis (roghnach)"
+    note: "Nóta (roghnach)"
+    unspecified: "Níor roghnaíodh cúis"
+    confirm: "Deimhnigh nár tógadh"
+    cancel: "Cealaigh"
+    empty: "Níl aon dáileoga ag fanacht le cinneadh."
+    saved: "Taifeadadh nár tógadh an dáileog."
+    invalid: "Níorbh fhéidir an dáileog a nuashonrú. Seiceáil na sonraí agus bain triail eile as."
+    slot: "Dáileog %{position} · %{date} · %{time}"
