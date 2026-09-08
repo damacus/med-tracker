@@ -6129,6 +6129,7 @@ components:
         - api_version
         - authentication
         - administration
+        - dose_outcomes
         - portable_formats
         - backups
         - fhir
@@ -6150,6 +6151,8 @@ components:
           $ref: '#/components/schemas/CapabilityAuthentication'
         administration:
           $ref: '#/components/schemas/CapabilityAdministration'
+        dose_outcomes:
+          $ref: '#/components/schemas/CapabilityDoseOutcomes'
         portable_formats:
           type: array
           uniqueItems: true
@@ -6167,6 +6170,29 @@ components:
           $ref: '#/components/schemas/CapabilitySync'
         client_tools:
           $ref: '#/components/schemas/CapabilityClientTools'
+    CapabilityDoseOutcomes:
+      type: object
+      additionalProperties: false
+      required: [source_types, max_read_days, actions, replacement_requires_version]
+      properties:
+        source_types:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: [schedule]
+        max_read_days:
+          type: integer
+          minimum: 1
+          maximum: 31
+        actions:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: [not_taken, reopen, take]
+        replacement_requires_version:
+          type: boolean
     CapabilityAuthentication:
       type: object
       additionalProperties: false
