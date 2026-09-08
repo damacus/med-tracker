@@ -71,8 +71,9 @@ RSpec.describe Reports::HealthHistoryPdf do
                               generated_at: generated_at).render
 
     expect(pdf_text(pdf).downcase).to include('not taken', 'feeling unwell', 'dose outcomes', 'unexplained misses')
-    section_page = pdf_page_texts(pdf).find { |page| page.include?('Suspected side effects') }
-    expect(section_page).to match(/Suspected side effects.*No records in this section\./)
+    pages = pdf_page_texts(pdf).map { |page| page.gsub(/\s+/, '') }
+    section_page = pages.find { |page| page.include?('Suspectedsideeffects') }
+    expect(section_page).to match(/Suspectedsideeffects.*Norecordsinthissection\./)
   end
 
   it 'renders a large health-history table across multiple pages' do
