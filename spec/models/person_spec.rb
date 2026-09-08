@@ -473,7 +473,7 @@ RSpec.describe Person do
       expect(person).to be_valid
     end
 
-    # rubocop:disable RSpec/ExampleLength
+    # rubocop:disable-next RSpec/ExampleLength
     it 'requires active carer when has_capacity is false and only inactive carers exist' do
       carer = described_class.create!(
         name: 'Inactive Carer',
@@ -495,7 +495,6 @@ RSpec.describe Person do
         'A person without capacity must have at least one carer assigned'
       )
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe 'carer relationships' do

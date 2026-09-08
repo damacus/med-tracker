@@ -33,7 +33,7 @@ fun String.asBuildConfigString(): String =
 android {
     namespace = "io.damacus.medtracker"
     compileSdk {
-        version = release(36)
+        version = release(37)
     }
 
     defaultConfig {
