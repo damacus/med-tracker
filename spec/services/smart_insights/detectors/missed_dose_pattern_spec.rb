@@ -63,7 +63,7 @@ RSpec.describe SmartInsights::Detectors::MissedDosePattern do
     person = create(:person)
     schedule = create(:schedule, person: person, start_date: start_date, end_date: start_date + 3.days,
                                  schedule_type: :multiple_daily, schedule_config: { 'times' => ['08:00'] },
-                                 max_daily_doses: 1)
+                                 max_daily_doses: 1, frequency: 'Daily')
     record_pause(schedule, started_at: start_date.in_time_zone + 8.hours,
                            ended_at: (start_date + 2.days).in_time_zone + 8.hours)
     context = SmartInsights::Context.new(people: [person], start_date: start_date, end_date: start_date + 3.days)
@@ -76,7 +76,8 @@ RSpec.describe SmartInsights::Detectors::MissedDosePattern do
   it 'uses persisted explanations without claiming an administration streak' do
     date = Date.current - 3.days
     person = create(:person)
-    schedule = create(:schedule, person: person, start_date: date, end_date: Date.yesterday, max_daily_doses: 1)
+    schedule = create(:schedule, person: person, start_date: date, end_date: Date.yesterday,
+                                 max_daily_doses: 1, frequency: 'Daily')
     (date..Date.yesterday).each { |day| record_not_taken(schedule, day) }
     context = SmartInsights::Context.new(people: [person], start_date: date, end_date: Date.yesterday)
 

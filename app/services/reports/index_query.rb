@@ -22,7 +22,8 @@ module Reports
     private
 
     def daily_data
-      (start_date..end_date).map { |date| daily_row_for(date) }
+      summary = outcome_summary
+      (start_date..end_date).map { |date| daily_row_for(date, summary.for_date(date)) }
     end
 
     def inventory_alerts
@@ -36,31 +37,6 @@ module Reports
             .take(2)
     end
 
-    def schedules
-      @schedules ||= begin
-        range_scope = Schedule.current.where(person_id: person_ids)
-                              .where(
-                                'start_date <= ? AND (end_date IS NULL OR end_date >= ?)',
-                                end_date,
-                                start_date
-                              )
-        paused_schedule_ids = MedicationPausePeriod.where.not(schedule_id: nil).select(:schedule_id)
-
-        range_scope.where(active: true)
-                   .or(range_scope.where(id: paused_schedule_ids))
-                   .includes(:medication_pause_periods)
-                   .to_a
-      end
-    end
-
-    def takes_by_date
-      @takes_by_date ||= MedicationTake.where(schedule_id: schedules.map(&:id))
-                                       .where(taken_at: start_date.beginning_of_day..end_date.end_of_day)
-                                       .to_a
-                                       .reject { |take| paused_medication_take?(take) }
-                                       .group_by { |take| take.taken_at.to_date }
-    end
-
     def person_ids
       @person_ids ||= if people.respond_to?(:pluck)
                         people.pluck(:id)
@@ -69,80 +45,16 @@ module Reports
                       end
     end
 
-    def daily_row_for(date)
-      expected_doses = expected_doses_for(date)
-      actual_doses = takes_by_date[date]&.size || 0
-
+    def daily_row_for(date, counts)
       {
         date: date,
         day_name: date.strftime('%a'),
-        percentage: compliance_percentage(expected_doses:, actual_doses:),
-        expected: expected_doses,
-        actual: actual_doses
-      }.merge(outcome_summary.for_date(date, expected_by_schedule: due_expectations_for(date)))
+        percentage: compliance_percentage(expected_doses: counts[:expected], actual_doses: counts[:actual])
+      }.merge(counts)
     end
 
     def outcome_summary
-      @outcome_summary ||= DoseOutcomeSummary.new(schedules: schedules, takes_by_date: takes_by_date,
-                                                  start_date: start_date, end_date: end_date)
-    end
-
-    def due_expectations_for(date)
-      schedules_for(date).to_h { |schedule| [schedule.id, due_expected_doses_for(schedule, date)] }
-    end
-
-    def due_expected_doses_for(schedule, date)
-      return 0 if date > Date.current
-      return expected_doses_for_schedule(schedule, date) if date < Date.current
-      return 0 if expected_doses_for_schedule(schedule, date).zero?
-
-      occurrences = MedicationPausePeriods::IntervalProjection.occurrences_on(
-        date: date, times: schedule.schedule_config.to_h['times']
-      )
-      pause_projection_for(schedule).active_occurrences(occurrences).count { |time| time <= Time.current }
-    end
-
-    def expected_doses_for(date)
-      schedules_for(date).sum { |schedule| expected_doses_for_schedule(schedule, date) }
-    end
-
-    def expected_doses_for_schedule(schedule, date)
-      expected = schedule.expected_doses_on(date)
-      return expected if expected.zero?
-
-      configured_times = Array(schedule.schedule_config.to_h['times']).compact_blank
-      return expected_without_paused_occurrences(schedule, date, configured_times, expected) if configured_times.any?
-      return 0 if pause_projection_for(schedule).paused_at?(date.in_time_zone.end_of_day)
-
-      expected
-    end
-
-    def expected_without_paused_occurrences(schedule, date, configured_times, expected)
-      paused_count = configured_times.count do |time|
-        occurrence = MedicationPausePeriods::IntervalProjection.occurrences_on(date: date, times: [time]).first
-        occurrence.present? && pause_projection_for(schedule).paused_at?(occurrence)
-      end
-
-      [expected - paused_count, 0].max
-    end
-
-    def paused_medication_take?(take)
-      schedule = schedules_by_id[take.schedule_id]
-      schedule.present? && pause_projection_for(schedule).paused_at?(take.taken_at)
-    end
-
-    def schedules_by_id
-      @schedules_by_id ||= schedules.index_by(&:id)
-    end
-
-    def pause_projection_for(source)
-      MedicationPausePeriods::IntervalProjection.new(periods: source.medication_pause_periods)
-    end
-
-    def schedules_for(date)
-      schedules.select do |schedule|
-        schedule.start_date <= date && (schedule.end_date.nil? || schedule.end_date >= date)
-      end
+      @outcome_summary ||= DoseOutcomeSummary.new(people: people, start_date: start_date, end_date: end_date)
     end
 
     def inventory_alert_for(schedule)

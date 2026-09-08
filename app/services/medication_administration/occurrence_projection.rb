@@ -1,6 +1,7 @@
 module MedicationAdministration
   class OccurrenceProjection
     MAX_DAYS = 31
+    Inputs = Data.define(:outcomes, :takes)
     Occurrence = Data.define(
       :key, :source, :window_starts_on, :position, :scheduled_at, :record, :now, :expected, :legacy_take
     ) do
@@ -17,11 +18,12 @@ module MedicationAdministration
       verifier.verified(key.to_s)
     end
 
-    def initialize(source:, start_date:, end_date:, now: Time.current)
+    def initialize(source:, start_date:, end_date:, now: Time.current, preloaded: nil)
       @source = source
       @start_date = start_date
       @end_date = end_date
       @now = now
+      @preloaded = preloaded
       validate_range!
       raise ArgumentError, 'Unsupported occurrence source' unless source.is_a?(Schedule)
     end
@@ -112,6 +114,12 @@ module MedicationAdministration
     end
 
     def persisted_outcomes
+      if @preloaded
+        return @preloaded.outcomes.select do |record|
+          record.schedule_id == source.id && (start_date..end_date).cover?(record.window_starts_on)
+        end
+      end
+
       @persisted_outcomes ||= source.medication_dose_occurrences.where(window_starts_on: start_date..end_date).to_a
     end
 
@@ -125,9 +133,25 @@ module MedicationAdministration
     end
 
     def legacy_takes
+      @preloaded ? preloaded_legacy_takes : queried_legacy_takes
+    end
+
+    def queried_legacy_takes
       linked_ids = source.medication_dose_occurrences.where.not(medication_take_id: nil).select(:medication_take_id)
       source.medication_takes.where(taken_at: start_date.in_time_zone...(end_date + 1).in_time_zone)
             .where.not(id: linked_ids).order(:taken_at, :id)
+    end
+
+    def preloaded_legacy_takes
+      linked_ids = @preloaded.outcomes.filter_map(&:medication_take_id)
+      takes = @preloaded.takes.select do |take|
+        preloaded_take_in_range?(take) && linked_ids.exclude?(take.id)
+      end
+      takes.sort_by { |take| [take.taken_at, take.id] }
+    end
+
+    def preloaded_take_in_range?(take)
+      take.schedule_id == source.id && (start_date..end_date).cover?(take.taken_at.in_time_zone.to_date)
     end
 
     def occurrence(date, position, scheduled_at, record: nil)
