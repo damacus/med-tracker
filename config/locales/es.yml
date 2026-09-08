@@ -1986,6 +1986,16 @@ es:
         other: "%{count} errores impidieron que este medicamento se guardara:"
       starting_supply: Cantidad inicial
   dashboard:
+    outcomes:
+      not_taken: No tomada
+      overdue: Atrasada
+      reasons:
+        refused: Rechazada
+        unwell: Malestar
+        asleep: Dormido
+        medicine_unavailable: Medicamento no disponible
+        clinician_advice: Indicación médica
+        other: Otro
     title: Panel Familiar
     greeting_morning: Buenos días, %{name}
     greeting_afternoon: Buenas tardes, %{name}
