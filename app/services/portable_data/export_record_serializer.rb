@@ -11,6 +11,7 @@ module PortableData
       person_medications: :person_medication_payload,
       medication_takes: :event_medication_take_payload,
       medication_pause_periods: :event_medication_pause_period_payload,
+      dose_occurrences: :dose_occurrence_payload,
       notification_preferences: :event_notification_preference_payload,
       health_events: :event_health_event_payload
     }.freeze
@@ -29,6 +30,8 @@ module PortableData
     private
 
     attr_reader :records
+
+    def dose_occurrence_payload(record) = DoseOccurrenceSerializer.new(record).as_json
 
     def person_payload(person)
       person_identity(person).merge(person_profile(person)).merge(person_relationships(person))

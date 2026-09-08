@@ -3,6 +3,9 @@
 module PortableData
   class Exporter
     FORMAT = 'medtracker.portable.v1'
+    V2_FORMAT = 'medtracker.portable.v2'
+
+    class Error < StandardError; end
 
     def initialize(household:, membership:, passphrase:, person_ids: nil, request: nil)
       @household = household
@@ -12,8 +15,8 @@ module PortableData
       @request = request
     end
 
-    def call(version: 1)
-      export_payload = version == 2 ? v2_payload : payload
+    def call(version: 1, format: FORMAT)
+      export_payload = payload(format: version == 2 ? V2_FORMAT : format)
       envelope = Encryptor.encrypt(export_payload, passphrase: passphrase)
       record_audit_event(export_payload, export_mode: 'encrypted_migration_bundle')
       envelope
@@ -35,18 +38,16 @@ module PortableData
       end
     end
 
-    def payload
-      export_payload
+    def payload(format: FORMAT)
+      export_payload(format: format)
     end
 
-    def mobile_payload
-      export_payload(include_health_events: true)
+    def mobile_payload(format: FORMAT)
+      export_payload(include_health_events: true, format: format)
     end
 
     def v2_payload(include_health_events: false)
-      export_payload(include_health_events:).merge(format: 'medtracker.portable.v2').tap do |data|
-        data[:records].merge!(ExportRecordSerializer.new(medication_pause_periods: medication_pause_periods).as_json)
-      end
+      export_payload(include_health_events: include_health_events, format: V2_FORMAT)
     end
 
     def mobile_v2_payload
@@ -54,29 +55,30 @@ module PortableData
     end
 
     def household_payload
-      data = export_payload(include_health_events: true, scope: 'household').merge(format: 'medtracker.portable.v2')
-      data[:records].merge!(ExportRecordSerializer.new(medication_pause_periods: medication_pause_periods).as_json)
-      data
+      export_payload(include_health_events: true, scope: 'household', format: V2_FORMAT)
     end
 
     private
 
     attr_reader :household, :membership, :passphrase, :person_ids, :request
 
-    def export_payload(include_health_events: false, scope: 'single_person')
+    def export_payload(include_health_events: false, scope: 'single_person', format: FORMAT)
+      raise Error, 'Unsupported portable data format' unless [FORMAT, V2_FORMAT].include?(format)
+
       {
-        format: FORMAT,
+        format: format,
         scope: scope,
         exported_at: Time.current.iso8601,
         source_instance_id: source_instance_id,
         records: records_payload(
           include_health_events: include_health_events,
-          household_wide: scope == 'household'
+          household_wide: scope == 'household',
+          include_outcomes: format == V2_FORMAT
         )
       }
     end
 
-    def records_payload(include_health_events:, household_wide:)
+    def records_payload(include_health_events:, household_wide:, include_outcomes: false)
       records = {
         people: people,
         locations: locations(include_health_events:, household_wide:),
@@ -88,6 +90,8 @@ module PortableData
         notification_preferences: notification_preferences
       }
       records[:health_events] = health_events if include_health_events
+      records[:dose_occurrences] = dose_occurrences if include_outcomes
+      records[:medication_pause_periods] = medication_pause_periods if include_outcomes
       ExportRecordSerializer.new(records).as_json
     end
 
@@ -200,6 +204,13 @@ module PortableData
       assigned = MedicationPausePeriod.where(household: household, person_medication_id: person_medications.select(:id))
       scheduled.or(assigned).includes(:schedule, :person_medication,
                                       recorded_by_membership: :person, resumed_by_membership: :person).order(:id)
+    end
+
+    def dose_occurrences
+      scope = MedicationDoseOccurrence.where(household: household)
+      scope.where(schedule_id: schedules.select(:id))
+           .or(scope.where(person_medication_id: person_medications.select(:id)))
+           .includes(:schedule, :person_medication, :medication_take).order(:id)
     end
 
     def health_events

@@ -9,12 +9,22 @@ Use the OpenAPI contract for endpoint parameters and response envelopes. This gu
 | Format | Purpose |
 |---|---|
 | `medtracker.portable.v1` | Plaintext mobile snapshot and the data encrypted inside a migration bundle. |
-| `medtracker.portable.v2` | Pause-history migration bundle, or consistent sync snapshot with a change-feed cursor. |
+| `medtracker.portable.v2` | Migration data with pause history and persisted dose outcomes, or a consistent sync snapshot with a cursor. |
 | `medtracker.portable.encrypted.v1` | AES-256-GCM envelope used for portable export and import. |
 | `medtracker.health_data.v1` | Plaintext health-data export. |
 | `medtracker.backup.v1` | JSON file stored inside a ZIP backup. |
 
 Every plaintext payload includes `scope`, `exported_at`, `source_instance_id`, and `records`. A sync snapshot also includes `cursor`.
+
+Request `portable_format=medtracker.portable.v2` on the encrypted export endpoint to include saved dose outcomes. Omitting this parameter retains the v1 format and collection shape.
+
+### Dose outcomes in v2 bundles
+
+The `dose_occurrences` collection contains persisted outcomes only. Export does not generate open dose rows or change stock. Records follow their source schedules and assignments, including retained sources.
+
+Each row includes the common portable identity and version fields, plus `source_type`, `source_portable_id`, `window_starts_on`, `position`, nullable `scheduled_at`, `outcome`, nullable `reason`, nullable `note`, nullable `resolved_at`, and nullable `medication_take_portable_id`.
+
+References use portable IDs. Local membership IDs and signed API occurrence keys are not portable. The destination derives its own opaque keys from the preserved source, window and position. V1 bundles do not contain this collection.
 
 ## Security rules
 

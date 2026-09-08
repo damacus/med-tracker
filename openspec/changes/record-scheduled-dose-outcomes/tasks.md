@@ -65,8 +65,8 @@
 
 ## 12E. Export Formal Outcomes through Portable Data
 
-- [ ] 12E.1 Red: specify the v2 formal-outcome export shape, references, order, and legacy compatibility.
-- [ ] 12E.2 Green: add exporter, serializer, and format documentation support.
+- [x] 12E.1 Red: specify the v2 formal-outcome export shape, references, order, and legacy compatibility.
+- [x] 12E.2 Green: add exporter, serializer, and format documentation support.
 
 ## 12I. Import Formal Outcomes through Portable Data
 
