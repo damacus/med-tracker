@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.5.27](https://github.com/damacus/med-tracker/compare/v0.5.26...v0.5.27) (2026-09-08)
+
+
+### Features
+
+* **notifications:** deliver private iOS alerts ([#2101](https://github.com/damacus/med-tracker/issues/2101)) ([0d7d015](https://github.com/damacus/med-tracker/commit/0d7d015a41ea7fd1f6219a855932d54df5ac73e3))
+
+
+### Bug Fixes
+
+* **deps:** consolidate dependency updates ([#2141](https://github.com/damacus/med-tracker/issues/2141)) ([39fff36](https://github.com/damacus/med-tracker/commit/39fff366a36a307b048eaedc9d1e1f63694deffb))
+* **offline:** account for pending stock use ([#2131](https://github.com/damacus/med-tracker/issues/2131)) ([cb08198](https://github.com/damacus/med-tracker/commit/cb08198db5e092388554bfa628adc23b1f2ccc64))
+* **offline:** batch eligibility and match stock quantities ([#2138](https://github.com/damacus/med-tracker/issues/2138)) ([72b0c6d](https://github.com/damacus/med-tracker/commit/72b0c6d34657b49e4b048363924161e3edeaca68))
+* **offline:** close reads and hide ineffective retries ([#2136](https://github.com/damacus/med-tracker/issues/2136)) ([6a419dc](https://github.com/damacus/med-tracker/commit/6a419dc2a310b45335f517d9e6175123ee18d777))
+* **offline:** preserve doses across sync failures ([#2130](https://github.com/damacus/med-tracker/issues/2130)) ([9739e7b](https://github.com/damacus/med-tracker/commit/9739e7bec3d66e507f5266fe9acba5221feb3f5f))
+* **offline:** reserve stock atomically across browser contexts ([#2137](https://github.com/damacus/med-tracker/issues/2137)) ([b5f5121](https://github.com/damacus/med-tracker/commit/b5f5121e405f9428c1b6378a4bd25d26b04e80d4))
+* **offline:** respect cached dose eligibility ([#2132](https://github.com/damacus/med-tracker/issues/2132)) ([fbf7f52](https://github.com/damacus/med-tracker/commit/fbf7f526cc7a7d7c20d2cd04b58486c481bfc296))
+* **search:** distinguish failures and allow retry ([#2133](https://github.com/damacus/med-tracker/issues/2133)) ([0eda8a7](https://github.com/damacus/med-tracker/commit/0eda8a7ce638931b19fc5aaa079c96df85aff4a3))
+* **ui:** contain actions and clarify feedback ([#2126](https://github.com/damacus/med-tracker/issues/2126)) ([52eb4c2](https://github.com/damacus/med-tracker/commit/52eb4c20cd3c6f5c2268cf6211799a7ec0cc6272))
+
 ## [0.5.26](https://github.com/damacus/med-tracker/compare/v0.5.25...v0.5.26) (2026-09-06)
 
 
