@@ -33,7 +33,7 @@ module SmartInsights
       end
 
       def missed_day?(day)
-        day[:expected].positive? && day[:actual] < day[:expected]
+        day.fetch(:unexplained_missed).positive?
       end
     end
   end

@@ -6,7 +6,23 @@ RSpec.describe SmartInsights::Detectors::MissedDosePattern do
   fixtures :accounts, :people
 
   def context_with(daily_data) = instance_double(SmartInsights::Context, daily_data: daily_data)
-  def day(expected:, actual:) = { expected: expected, actual: actual }
+
+  def day(expected:, actual:)
+    { expected: expected, actual: actual, unexplained_missed: [expected - actual, 0].max }
+  end
+
+  it 'does not turn consecutive explained not-taken outcomes into a missed-dose warning' do
+    explained = day(expected: 1, actual: 0).merge(not_taken: 1, unexplained_missed: 0)
+
+    expect(described_class.new(context_with([explained, explained])).call).to be_empty
+  end
+
+  it 'breaks an unexplained streak when an intervening day is explained' do
+    missed = day(expected: 1, actual: 0)
+    explained = missed.merge(not_taken: 1, unexplained_missed: 0)
+
+    expect(described_class.new(context_with([missed, explained, missed])).call).to be_empty
+  end
 
   it 'stays silent when the longest missed streak is 1' do
     data = [day(expected: 1, actual: 0), day(expected: 1, actual: 1), day(expected: 1, actual: 0)]
@@ -55,6 +71,27 @@ RSpec.describe SmartInsights::Detectors::MissedDosePattern do
     insight = described_class.new(context).call.sole
 
     expect(insight.metric_value).to eq(I18n.t('smart_insights.detectors.missed_dose_pattern.metric_value', count: 2))
+  end
+
+  it 'uses persisted explanations without claiming an administration streak' do
+    date = Date.current - 3.days
+    person = create(:person)
+    schedule = create(:schedule, person: person, start_date: date, end_date: Date.yesterday, max_daily_doses: 1)
+    (date..Date.yesterday).each { |day| record_not_taken(schedule, day) }
+    context = SmartInsights::Context.new(people: [person], start_date: date, end_date: Date.yesterday)
+
+    expect(described_class.new(context).call).to be_empty
+    expect(SmartInsights::Detectors::AdherenceStreak.new(context).call).to be_empty
+    expect(context.logged_events).to eq(3)
+  end
+
+  def record_not_taken(schedule, date)
+    account = Account.create!(email: "insight-outcome-#{date}@example.test", status: :verified)
+    actor = schedule.household.household_memberships.create!(account: account, role: :member, status: :active)
+    schedule.medication_dose_occurrences.create!(
+      window_starts_on: date, position: 1, outcome: 'not_taken', reason: 'unwell',
+      resolved_at: Time.current, resolved_by_membership: actor
+    )
   end
 
   def record_pause(schedule, started_at:, ended_at:)
