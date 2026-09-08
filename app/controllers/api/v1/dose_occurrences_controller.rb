@@ -1,6 +1,9 @@
 module Api
   module V1
     class DoseOccurrencesController < BaseController
+      ERROR_STATUSES = { 'already_resolved' => :conflict, 'sync_conflict' => :conflict,
+                         'precondition_required' => :precondition_required }.freeze
+
       rescue_from MedicationAdministration::OccurrenceResolver::Error, with: :render_occurrence_error
       rescue_from ActiveRecord::RecordInvalid, with: :render_invalid_outcome
 
@@ -22,10 +25,31 @@ module Api
         render_outcome(record)
       end
 
+      def reopen
+        attributes = params.expect(dose_occurrence: [:key])
+        record = occurrence_resolver.call(key: attributes[:key], action: 'reopen',
+                                          if_match: request.headers['If-Match'])
+        render_outcome(record)
+      end
+
+      def take
+        reject_numeric_contract_values!(%w[dose_amount taken_from_medication_id])
+        attributes = params.expect(dose_occurrence: %i[key taken_at client_uuid dose_amount taken_from_medication_id])
+        record = occurrence_resolver.take(
+          key: attributes[:key], taken_at: Time.iso8601(attributes[:taken_at].to_s),
+          **attributes.slice(:client_uuid, :dose_amount, :taken_from_medication_id).to_h.symbolize_keys
+        )
+        render_outcome(record)
+      rescue ArgumentError
+        render_unprocessable('taken_at must be ISO8601')
+      end
+
       private
 
       def with_api_idempotency(&)
-        authorize occurrence_source, :take_medication? unless action_name == 'index'
+        if action_name != 'index'
+          authorize occurrence_source, action_name == 'reopen' ? :update? : :take_medication?
+        end
         super
       end
 
@@ -47,7 +71,7 @@ module Api
       end
 
       def render_occurrence_error(error)
-        status = error.code == 'already_resolved' ? :conflict : :unprocessable_content
+        status = ERROR_STATUSES.fetch(error.code, :unprocessable_content)
         render_api_error(code: error.code, message: error.message, status: status)
       end
 

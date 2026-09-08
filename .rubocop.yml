@@ -21,6 +21,8 @@ AllCops:
 
 Style/FrozenStringLiteralComment:
   Exclude:
+    - "spec/requests/api/v1/dose_outcome_access_spec.rb"
+    - "spec/requests/api/v1/dose_outcome_corrections_spec.rb"
     - "spec/requests/api/v1/dose_outcome_writes_spec.rb"
     - "app/controllers/api/v1/dose_occurrences_controller.rb"
     - "app/serializers/api/v1/dose_occurrence_serializer.rb"
