@@ -17,4 +17,8 @@ The final verification uses an isolated Compose test project through the reposit
 
 Fresh image verification reproduced the browser revision mismatch tracked in #2129. Playwright 1.62.0 Chromium headless shell was installed in the ignored `tmp/playwright-stock-removal` cache and selected with `PLAYWRIGHT_BROWSERS_PATH`. Tailwind assets were rebuilt before the final checks. Dependency manifests and the browser image configuration were not changed.
 
+## Publication
+
+[Pull request #2142](https://github.com/damacus/med-tracker/pull/2142) is open against `main` from `feat/record-stock-removals` and closes #1982 on merge. The branch is published to origin. GitHub CI was queued when publication was verified; GitGuardian passed.
+
 The OpenSpec change remains available for review and later archive. This work does not deploy or merge the feature.

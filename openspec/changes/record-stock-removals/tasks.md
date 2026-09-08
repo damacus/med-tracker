@@ -11,4 +11,4 @@
 ## 3. Delivery
 
 - [x] 3.1 Verify integration using task rubocop, task test, task docs:build, strict OpenSpec validation and git diff --check; record any environmental limits.
-- [ ] 3.2 Publish the verified change in a pull request linked to #1982; verify remote branch and CI status.
+- [x] 3.2 Publish the verified change in a pull request linked to #1982; verify remote branch and CI status.
