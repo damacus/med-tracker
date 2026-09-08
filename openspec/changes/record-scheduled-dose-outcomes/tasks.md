@@ -10,8 +10,8 @@
 
 ## 3. Record Not-Taken Outcomes
 
-- [ ] 3.1 Red: specify due/overdue, future rejection, reason/note, no stock, replay, concurrency, and reopen.
-- [ ] 3.2 Green: add the transactional not-taken resolver without creating a MedicationTake.
+- [x] 3.1 Red: specify due/overdue, future rejection, reason/note, no stock, replay, concurrency, and reopen.
+- [x] 3.2 Green: add the transactional not-taken resolver without creating a MedicationTake.
 
 ## 4. Link Taken Outcomes
 

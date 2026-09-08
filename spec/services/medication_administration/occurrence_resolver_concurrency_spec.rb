@@ -1,0 +1,85 @@
+require 'rails_helper'
+require 'timeout'
+
+RSpec.describe MedicationAdministration::OccurrenceResolver do
+  self.use_transactional_tests = false
+
+  fixtures :households, :accounts, :people, :users, :locations, :medications, :dosages, :schedules
+
+  let(:source) { schedules(:john_movicol) }
+  let(:membership) { accounts(:admin).household_memberships.find_by!(household: source.household) }
+
+  before do
+    FixtureHouseholdSetup.apply!
+    clear_outcomes
+  end
+
+  after { clear_outcomes }
+
+  it 'converges concurrent identical not-taken submissions on one audited outcome' do
+    rows = resolve_concurrently(%w[unwell unwell])
+
+    expect(rows).to all(be_a(MedicationDoseOccurrence))
+    expect(rows.map(&:id).uniq.size).to eq(1)
+    expect(source.medication_dose_occurrences.count).to eq(1)
+    expect(rows.first.versions.count).to eq(1)
+  end
+
+  it 'commits one of two competing reasons and rejects the other' do
+    results = resolve_concurrently(%w[unwell refused])
+
+    expect(results.grep(MedicationDoseOccurrence).size).to eq(1)
+    expect(results.grep(described_class::Error).map(&:code)).to eq(['already_resolved'])
+    expect(source.medication_dose_occurrences.count).to eq(1)
+  end
+
+  def resolve_concurrently(reasons)
+    key = occurrence_key
+    ready = Queue.new
+    start = Queue.new
+    workers = reasons.map { |reason| resolution_worker(key, reason, ready, start) }
+    run_workers(workers, ready, start)
+  ensure
+    workers&.each { |worker| worker.kill if worker.alive? }
+  end
+
+  def occurrence_key
+    MedicationAdministration::OccurrenceProjection.new(
+      source: source, start_date: Date.current, end_date: Date.current
+    ).call.first.key
+  end
+
+  def run_workers(workers, ready, start)
+    workers.size.times { Timeout.timeout(10) { ready.pop } }
+    workers.size.times { start << true }
+    workers.map { |worker| Timeout.timeout(10) { worker.value } }
+  end
+
+  def resolution_worker(key, reason, ready, start)
+    source_id = source.id
+    membership_id = membership.id
+    Thread.new do
+      ActiveRecord::Base.connection_pool.with_connection do
+        ready << true
+        Timeout.timeout(10) { start.pop }
+        resolve_in_connection(source_id, membership_id, key, reason)
+      end
+    rescue StandardError => e
+      e
+    end
+  end
+
+  def resolve_in_connection(source_id, membership_id, key, reason)
+    current_source = Schedule.find(source_id)
+    actor = HouseholdMembership.find(membership_id)
+    context = AuthorizationContext.new(account: actor.account, household: current_source.household, membership: actor)
+    resolver = described_class.new(source: current_source, authorization: context)
+    resolver.call(key: key, action: 'not_taken', reason: reason)
+  end
+
+  def clear_outcomes
+    ids = source.medication_dose_occurrences.pluck(:id)
+    MedicationDoseOccurrence.where(id: ids).delete_all
+    PaperTrail::Version.where(item_type: 'MedicationDoseOccurrence', item_id: ids).delete_all
+  end
+end
