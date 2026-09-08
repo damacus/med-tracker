@@ -50,9 +50,16 @@ function requestResult(request) {
 }
 
 export async function getValue(key) {
+  return read("keyval", (store) => store.get(key))
+}
+
+async function read(storeName, callback) {
   const db = await openDatabase()
-  const tx = db.transaction("keyval", "readonly")
-  return requestResult(tx.objectStore("keyval").get(key))
+  try {
+    return await requestResult(callback(db.transaction(storeName, "readonly").objectStore(storeName)))
+  } finally {
+    db.close()
+  }
 }
 
 export async function setValue(key, value) {
@@ -128,9 +135,7 @@ export async function queueTake(attributes, tenantKey = defaultTenantKey()) {
 
 export async function getQueuedTakes(tenantKey = defaultTenantKey()) {
   tenantKey = normalizedTenantKey(tenantKey)
-  const db = await openDatabase()
-  const tx = db.transaction("queuedTakes", "readonly")
-  const takes = await requestResult(tx.objectStore("queuedTakes").getAll())
+  const takes = await read("queuedTakes", (store) => store.getAll())
   return takes.filter((take) => take.household_key === tenantKey)
 }
 
@@ -140,9 +145,7 @@ export async function removeQueuedTake(clientUuid) {
 
 export async function getFailedTakes(tenantKey = defaultTenantKey()) {
   tenantKey = normalizedTenantKey(tenantKey)
-  const db = await openDatabase()
-  const tx = db.transaction("failedTakes", "readonly")
-  const takes = await requestResult(tx.objectStore("failedTakes").getAll())
+  const takes = await read("failedTakes", (store) => store.getAll())
   return takes.filter((take) => take.household_key === tenantKey)
 }
 

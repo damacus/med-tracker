@@ -89,6 +89,39 @@ RSpec.describe 'Offline sync recovery', :browser do
     expect(result).to eq('pending' => 0, 'failed' => 1)
   end
 
+  it 'allows the offline database to be deleted after reads' do
+    result = run_store_script(<<~JS)
+      await store.getValue('missing');
+      await store.getQueuedTakes(tenant);
+      await store.getFailedTakes(tenant);
+      return await new Promise((resolve, reject) => {
+        const request = indexedDB.deleteDatabase('medtracker-offline');
+        const timeout = setTimeout(() => resolve('blocked'), 2000);
+        request.onsuccess = () => { clearTimeout(timeout); resolve('deleted'); };
+        request.onerror = () => { clearTimeout(timeout); reject(request.error); };
+      });
+    JS
+
+    expect(result).to eq('deleted')
+  end
+
+  it 'shows permanent rejections without offering an ineffective retry' do
+    visit offline_path
+    expect(page).to have_css('[data-offline-shell-target="snapshotAge"]', text: /ago|Just now/)
+    page.driver.with_playwright_page do |browser|
+      browser.evaluate(<<~JS)
+        async () => {
+          const store = await import('controllers/offline_store');
+          await store.saveFailedTake({ client_uuid: crypto.randomUUID() }, 'Dose rejected');
+          window.dispatchEvent(new CustomEvent('medtracker:offline-take-queued'));
+        }
+      JS
+    end
+
+    expect(page).to have_text('Dose rejected')
+    expect(page).to have_no_button('Retry sync')
+  end
+
   it 'explains a temporary sync failure and exposes retry without losing the dose' do
     visit offline_path
     expect(page).to have_css('[data-offline-shell-target="snapshotAge"]', text: /ago|Just now/)

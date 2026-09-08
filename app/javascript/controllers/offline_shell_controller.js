@@ -209,7 +209,7 @@ export default class extends Controller {
       <div class="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
         <p class="text-sm font-bold text-destructive">Sync needs attention</p>
         ${this.syncMessage ? `<p role="status" class="mt-2 text-sm">${this.escape(this.syncMessage)}</p>` : ""}
-        <button type="button" class="mt-3 rounded-lg border px-4 py-2 focus-visible:outline" data-action="offline-shell#retrySync">Retry sync</button>
+        ${this.syncMessage ? `<button type="button" class="mt-3 rounded-lg border px-4 py-2 focus-visible:outline" data-action="offline-shell#retrySync">Retry sync</button>` : ""}
         <div class="mt-3 space-y-2">${failed.map((failure) => `
           <p class="text-xs text-destructive/90">${this.escape(failure.failure_message)}</p>
         `).join("")}</div>
