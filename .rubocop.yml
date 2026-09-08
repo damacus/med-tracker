@@ -21,6 +21,8 @@ AllCops:
 
 Style/FrozenStringLiteralComment:
   Exclude:
+    - "app/services/reports/dose_occurrence_query.rb"
+    - "spec/services/reports/dose_occurrence_query_spec.rb"
     - "app/services/reports/dose_outcome_summary.rb"
     - "spec/services/reports/index_query_outcomes_spec.rb"
     - "app/services/family_dashboard/routine_dose_progress.rb"

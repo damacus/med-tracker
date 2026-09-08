@@ -200,6 +200,7 @@ RSpec.describe SmartInsights::IndexQuery do
         person: person,
         medication: medication,
         schedule_type: :multiple_daily,
+        frequency: 'Daily',
         schedule_config: { 'times' => ['08:00'] },
         max_daily_doses: 1
       }.merge(attributes)

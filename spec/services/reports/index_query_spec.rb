@@ -16,6 +16,7 @@ RSpec.describe Reports::IndexQuery do
       person: person,
       medication: medication,
       schedule_type: schedule_type,
+      frequency: 'Daily',
       schedule_config: attributes.fetch(:schedule_config, {}),
       start_date: report_date,
       end_date: report_date,
@@ -117,11 +118,11 @@ RSpec.describe Reports::IndexQuery do
       expect(result.daily_data.first).to include(expected: 2, actual: 0, percentage: 0)
     end
 
-    it 'excludes paused schedules from compliance and inventory calculations' do
+    it 'excludes fully paused days from compliance and inventory calculations' do
       report_date = Time.zone.today
       person = create(:person)
       schedule = create_daily_report_schedule(person, report_date)
-      schedule.pause!
+      schedule.pause!(started_at: report_date.in_time_zone)
 
       result = described_class.new(
         people: Person.where(id: person.id),
@@ -262,6 +263,7 @@ RSpec.describe Reports::IndexQuery do
       person: person,
       medication: create(:medication),
       active: active,
+      frequency: 'Daily',
       schedule_type: times.one? ? :daily : :multiple_daily,
       schedule_config: { 'times' => times },
       start_date: start_date,
