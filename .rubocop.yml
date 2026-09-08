@@ -21,6 +21,13 @@ AllCops:
 
 Style/FrozenStringLiteralComment:
   Exclude:
+    - "app/components/medications/stock_removal_view.rb"
+    - "app/controllers/medication_stock_removals_controller.rb"
+    - "app/services/remove_medication_stock_service.rb"
+    - "spec/requests/medication_stock_removals_spec.rb"
+    - "spec/services/remove_medication_stock_service_spec.rb"
+    - "spec/services/remove_medication_stock_service_concurrency_spec.rb"
+    - "spec/system/medications/stock_removals_spec.rb"
     - "app/services/api/sync/assignment_operation.rb"
     - "spec/requests/api/v1/sync_assignments_spec.rb"
     - "app/components/reports/pdf_document.rb"

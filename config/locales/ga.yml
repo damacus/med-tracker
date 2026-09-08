@@ -1,5 +1,40 @@
 ---
 ga:
+  stock_removals:
+    title: "Bain stoc"
+    description: "Taifead cógas a d'fhág an stoc gan é a thógáil. Ní thaifeadann sé seo dáileog."
+    quantity: "Cainníocht bainte"
+    note: "Nóta"
+    reason: "Cúis"
+    source: "Foinse stoic"
+    choose_source: "Roghnaigh stoc"
+    choose_reason: "Roghnaigh cúis"
+    submit: "Taifead baint"
+    cancel: "Cealaigh"
+    history: "Baintí le déanaí"
+    empty: "Níl aon bhaint stoic taifeadta."
+    available: "%{quantity} %{unit} ar fáil"
+    history_summary: "Baineadh %{quantity} %{unit} · %{reason}"
+    unknown_actor: "Taifeadóir anaithnid"
+    units: "aonad"
+    success: "Baint stoic taifeadta."
+    reasons:
+      dropped: "Tite"
+      damaged: "Damáistithe"
+      expired: "As dáta"
+      discarded: "Caite amach"
+      lost: "Caillte"
+      transferred_out: "Tugtha / aistrithe amach"
+      other: "Eile"
+    errors:
+      invalid_quantity: "Cuir isteach cainníocht dheimhneach le dhá ionad dheachúlacha ar a mhéad."
+      invalid_reason: "Roghnaigh cúis leis an mbaint."
+      invalid_note: "Coinnigh an nóta faoi 1,001 carachtar."
+      invalid_submission: "Athlódáil an fhoirm seo agus bain triail eile as."
+      invalid_source: "Roghnaigh stoc rianaithe ón gcógas seo."
+      untracked: "Ní dhéantar an stoc seo a rianú."
+      insufficient_stock: "Níl dóthain stoic ann. Seiceáil an chainníocht atá fágtha."
+      changed_submission: "Úsáideadh an t-aighneacht seo cheana le sonraí éagsúla."
   offline:
     record_access_required: Níl cead agat an dáileog seo a thaifeadadh.
   hello: Dia dhuit an domhan

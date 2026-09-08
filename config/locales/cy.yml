@@ -1,5 +1,40 @@
 ---
 cy:
+  stock_removals:
+    title: "Tynnu stoc"
+    description: "Cofnodwch feddyginiaeth a adawodd y stoc heb ei chymryd. Nid yw hyn yn cofnodi dos."
+    quantity: "Nifer a dynnwyd"
+    note: "Nodyn"
+    reason: "Rheswm"
+    source: "Ffynhonnell stoc"
+    choose_source: "Dewiswch stoc"
+    choose_reason: "Dewiswch reswm"
+    submit: "Cofnodi tynnu stoc"
+    cancel: "Canslo"
+    history: "Stoc a dynnwyd yn ddiweddar"
+    empty: "Ni chofnodwyd unrhyw dynnu stoc."
+    available: "%{quantity} %{unit} ar gael"
+    history_summary: "Tynnwyd %{quantity} %{unit} · %{reason}"
+    unknown_actor: "Cofnodwr anhysbys"
+    units: "unedau"
+    success: "Cofnodwyd tynnu stoc."
+    reasons:
+      dropped: "Wedi cwympo"
+      damaged: "Wedi difrodi"
+      expired: "Wedi dod i ben"
+      discarded: "Wedi taflu"
+      lost: "Ar goll"
+      transferred_out: "Wedi rhoi / trosglwyddo"
+      other: "Arall"
+    errors:
+      invalid_quantity: "Rhowch nifer positif gyda hyd at ddau le degol."
+      invalid_reason: "Dewiswch reswm dros dynnu stoc."
+      invalid_note: "Cadwch y nodyn i 1,000 nod neu lai."
+      invalid_submission: "Ail-lwythwch y ffurflen hon a rhowch gynnig arall arni."
+      invalid_source: "Dewiswch stoc a dracir ar gyfer y feddyginiaeth hon."
+      untracked: "Nid yw'r stoc hon yn cael ei thracio."
+      insufficient_stock: "Dim digon o stoc. Gwiriwch y nifer sy'n weddill."
+      changed_submission: "Defnyddiwyd y cyflwyniad hwn eisoes gyda manylion gwahanol."
   offline:
     record_access_required: Nid oes gennych ganiatâd i gofnodi'r dos hwn.
   hello: Helo byd

@@ -220,6 +220,7 @@ Rails.application.routes.draw do
     post 'medications/scan_restock', to: 'medications#scan_restock', as: :scan_restock_medications
     get 'medications/scan_restock_match', to: 'medications#scan_restock_match', as: :scan_restock_match_medications
     resources :medications do
+      resources :stock_removals, path: 'stock-removals', only: %i[new create], controller: 'medication_stock_removals'
       collection do
         get :stock_check
         patch :bulk_adjust_inventory
