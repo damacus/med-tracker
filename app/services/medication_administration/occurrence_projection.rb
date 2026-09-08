@@ -1,9 +1,12 @@
 module MedicationAdministration
   class OccurrenceProjection
     MAX_DAYS = 31
-    Occurrence = Data.define(:key, :source, :window_starts_on, :position, :scheduled_at, :record, :now) do
-      def outcome = record&.outcome || 'open'
+    Occurrence = Data.define(
+      :key, :source, :window_starts_on, :position, :scheduled_at, :record, :now, :expected, :legacy_take
+    ) do
+      def outcome = legacy_take ? 'taken' : record&.outcome || 'open'
       def due? = (scheduled_at || window_starts_on.in_time_zone) <= now
+      def expected? = expected
     end
 
     def self.verifier = Rails.application.message_verifier('medication_dose_occurrence')
@@ -24,16 +27,22 @@ module MedicationAdministration
     end
 
     def call
-      rows = derived_rows.index_by { |row| [row.window_starts_on, row.position] }
-      persisted_outcomes.each do |record|
-        rows[[record.window_starts_on, record.position]] = persisted_row(record)
-      end
-      rows.values.sort_by { |row| [row.window_starts_on, row.position] }
+      rows = merged_rows.sort_by { |row| [row.window_starts_on, row.position] }
+      allocate_legacy_takes(rows)
     end
 
     private
 
     attr_reader :source, :start_date, :end_date, :now
+
+    def merged_rows
+      rows = derived_rows.index_by { |row| [row.window_starts_on, row.position] }
+      persisted_outcomes.each do |record|
+        identity = [record.window_starts_on, record.position]
+        rows[identity] = persisted_row(record).with(expected: rows.key?(identity))
+      end
+      rows.values
+    end
 
     def validate_range!
       return if start_date.is_a?(Date) && end_date.is_a?(Date) &&
@@ -103,14 +112,29 @@ module MedicationAdministration
     end
 
     def persisted_outcomes
-      source.medication_dose_occurrences.where(window_starts_on: start_date..end_date).to_a
+      @persisted_outcomes ||= source.medication_dose_occurrences.where(window_starts_on: start_date..end_date).to_a
+    end
+
+    def allocate_legacy_takes(rows)
+      takes_by_date = legacy_takes.group_by { |take| take.taken_at.to_date }
+      rows.map do |row|
+        next row unless row.expected? && row.outcome == 'open'
+
+        row.with(legacy_take: takes_by_date[row.window_starts_on]&.shift)
+      end
+    end
+
+    def legacy_takes
+      linked_ids = source.medication_dose_occurrences.where.not(medication_take_id: nil).select(:medication_take_id)
+      source.medication_takes.where(taken_at: start_date.in_time_zone...(end_date + 1).in_time_zone)
+            .where.not(id: linked_ids).order(:taken_at, :id)
     end
 
     def occurrence(date, position, scheduled_at, record: nil)
       Occurrence.new(
         key: self.class.verifier.generate(['schedule', source.portable_id, date.iso8601, position]),
         source: source, window_starts_on: date, position: position, scheduled_at: scheduled_at,
-        record: record, now: now
+        record: record, now: now, expected: true, legacy_take: nil
       )
     end
   end
