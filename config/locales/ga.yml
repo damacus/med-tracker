@@ -1886,6 +1886,14 @@ ga:
       pdf_unavailable: Níorbh fhéidir an PDF a ullmhú. Bain triail eile as.
       preparing_pdf: Ag ullmhú PDF...
     health_history:
+      outcomes:
+        title: Torthaí dáileog
+        not_taken: Gan glacadh
+        date: Dáta
+        expected: Beartaithe
+        taken: Glactha
+        unexplained_missed: Dáileoga caillte gan mhíniú
+        reason: Cúis
       person_required: Roghnaigh duine amháin chun stair sláinte don dochtúir teaghlaigh a íoslódáil.
       title: Tuarascáil staire sláinte MedTracker
       people: "Daoine: %{people}"

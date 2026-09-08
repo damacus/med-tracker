@@ -1574,6 +1574,14 @@ pt:
       pdf_unavailable: Não foi possível preparar o PDF. Tente novamente.
       preparing_pdf: A preparar PDF...
     health_history:
+      outcomes:
+        title: Resultados das doses
+        not_taken: Não tomadas
+        date: Data
+        expected: Previstas
+        taken: Tomadas
+        unexplained_missed: Omissões sem explicação
+        reason: Motivo
       person_required: Selecione uma pessoa para transferir um historial de saúde para o médico de família.
       title: Relatório do historial de saúde do MedTracker
       people: "Pessoas: %{people}"

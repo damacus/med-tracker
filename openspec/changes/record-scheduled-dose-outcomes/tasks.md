@@ -30,8 +30,8 @@
 
 ## 7R. Report Formal Outcomes
 
-- [ ] 7R.1 Red: specify history and report categories for each formal outcome.
-- [ ] 7R.2 Green: update history and report projections without changing insights.
+- [x] 7R.1 Red: specify history and report categories for each formal outcome.
+- [x] 7R.2 Green: update history and report projections without changing insights.
 
 ## 7I. Interpret Formal Outcomes in Insights
 

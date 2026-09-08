@@ -2,7 +2,9 @@
 
 module Reports
   class HealthHistoryQuery
-    Result = Data.define(:people, :medication_takes, :suspected_side_effects, :notable_illnesses, :illness_patterns)
+    Result = Data.define(:people, :medication_takes, :suspected_side_effects, :notable_illnesses, :illness_patterns,
+                         :not_taken_outcomes, :daily_outcomes)
+    NotTakenEntry = Data.define(:person, :date, :scheduled_at, :medication_name, :reason, :note)
     MedicationTakeEntry = Data.define(:person, :taken_at, :medication_name, :dose_amount, :dose_unit, :source_type,
                                       :location_name) do
       def dose_display = [dose_amount, dose_unit].compact.join(' ')
@@ -34,11 +36,30 @@ module Reports
         medication_takes: medication_take_entries,
         suspected_side_effects: health_event_entries(suspected_side_effects),
         notable_illnesses: health_event_entries(illnesses),
-        illness_patterns: HealthEvents::PatternSummary.new(events: illnesses).call
+        illness_patterns: HealthEvents::PatternSummary.new(events: illnesses).call,
+        not_taken_outcomes: not_taken_entries,
+        daily_outcomes: daily_outcomes
       )
     end
 
     private
+
+    def not_taken_entries
+      outcome_summary.not_taken_outcomes.map do |row|
+        NotTakenEntry.new(person: row.source.person, date: row.window_starts_on, scheduled_at: row.scheduled_at,
+                          medication_name: medication_display_name(row.source.medication),
+                          reason: row.record.reason, note: row.record.note)
+      end
+    end
+
+    def daily_outcomes
+      summary = outcome_summary
+      (start_date..end_date).map { |date| { date: date }.merge(summary.for_date(date)) }
+    end
+
+    def outcome_summary
+      @outcome_summary ||= DoseOutcomeSummary.new(people: people, start_date: start_date, end_date: end_date)
+    end
 
     def people_records
       @people_records ||= Person.where(id: person_ids).order(:name, :id).to_a

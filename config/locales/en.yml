@@ -1625,6 +1625,14 @@ en:
             We recommend ordering a refill this afternoon.
       actionable_insight: Actionable insight
     health_history:
+      outcomes:
+        title: Dose outcomes
+        not_taken: Not taken
+        date: Date
+        expected: Expected
+        taken: Taken
+        unexplained_missed: Unexplained misses
+        reason: Reason
       person_required: Select one person to download a GP health history.
       title: MedTracker health history report
       people: "People: %{people}"

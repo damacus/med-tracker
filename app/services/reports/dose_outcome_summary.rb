@@ -15,6 +15,10 @@ module Reports
         unexplained_missed: rows.count { |row| row.outcome == 'open' && overdue?(row) } }
     end
 
+    def not_taken_outcomes
+      @rows_by_date.values.flatten.select { |row| row.outcome == 'not_taken' }
+    end
+
     private
 
     def overdue?(row)
