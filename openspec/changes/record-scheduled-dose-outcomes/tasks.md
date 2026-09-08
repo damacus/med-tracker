@@ -1,7 +1,7 @@
 ## 1. Store Formal Occurrences
 
-- [ ] 1.1 Red: specify exact-source, tenant, identity, state, audit, portable-ID, and take-link constraints.
-- [ ] 1.2 Green: add dormant storage, row-level tenancy, purge inventory, associations, and model specs.
+- [x] 1.1 Red: specify exact-source, tenant, identity, state, audit, portable-ID, and take-link constraints.
+- [x] 1.2 Green: add dormant storage, row-level tenancy, purge inventory, associations, and model specs.
 
 ## 2. Project Formal Schedule Occurrences
 

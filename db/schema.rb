@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_08_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_08_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -644,6 +644,38 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_120000) do
     t.index ["household_id"], name: "index_locations_on_household_id"
     t.index ["id", "household_id"], name: "index_locations_on_id_and_household_id", unique: true
     t.index ["name"], name: "index_locations_on_name_trigram", opclass: :gin_trgm_ops, using: :gin
+  end
+
+  create_table "medication_dose_occurrences", force: :cascade do |t|
+    t.bigint "household_id", null: false
+    t.bigint "schedule_id"
+    t.bigint "person_medication_id"
+    t.bigint "medication_take_id"
+    t.bigint "resolved_by_membership_id"
+    t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
+    t.date "window_starts_on", null: false
+    t.integer "position", null: false
+    t.datetime "scheduled_at"
+    t.string "outcome", default: "open", null: false
+    t.string "reason"
+    t.text "note"
+    t.datetime "resolved_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["household_id"], name: "index_medication_dose_occurrences_on_household_id"
+    t.index ["schedule_id"], name: "index_medication_dose_occurrences_on_schedule_id"
+    t.index ["person_medication_id"], name: "index_medication_dose_occurrences_on_person_medication_id"
+    t.index ["medication_take_id"], name: "index_medication_dose_occurrences_on_medication_take_id", unique: true
+    t.index ["resolved_by_membership_id"], name: "index_medication_dose_occurrences_on_resolved_by_membership_id"
+    t.index ["id", "household_id"], name: "index_medication_dose_occurrences_on_id_and_household_id", unique: true
+    t.index ["household_id", "portable_id"], name: "idx_dose_occurrences_household_portable_id", unique: true
+    t.index ["schedule_id", "window_starts_on", "position"], name: "idx_dose_occurrence_schedule_id_window", unique: true, where: "schedule_id IS NOT NULL"
+    t.index ["person_medication_id", "window_starts_on", "position"], name: "idx_dose_occurrence_person_medication_id_window", unique: true, where: "person_medication_id IS NOT NULL"
+    t.check_constraint "num_nonnulls(schedule_id, person_medication_id) = 1", name: "chk_dose_occurrences_exact_source"
+    t.check_constraint "position > 0", name: "chk_dose_occurrences_position"
+    t.check_constraint "(outcome = 'open' AND medication_take_id IS NULL AND reason IS NULL AND note IS NULL AND resolved_at IS NULL AND resolved_by_membership_id IS NULL) OR (outcome = 'not_taken' AND medication_take_id IS NULL AND resolved_at IS NOT NULL AND resolved_by_membership_id IS NOT NULL) OR (outcome = 'taken' AND medication_take_id IS NOT NULL AND reason IS NULL AND note IS NULL AND resolved_at IS NOT NULL AND resolved_by_membership_id IS NOT NULL)", name: "chk_dose_occurrences_state"
+    t.check_constraint "reason IS NULL OR reason IN ('refused', 'unwell', 'asleep', 'medicine_unavailable', 'clinician_advice', 'other')", name: "chk_dose_occurrences_reason"
+    t.check_constraint "note IS NULL OR char_length(note) <= 2000", name: "chk_dose_occurrences_note"
   end
 
   create_table "medication_pause_periods", force: :cascade do |t|
@@ -1311,6 +1343,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_120000) do
   add_foreign_key "location_memberships", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_location_memberships_person_id_household"
   add_foreign_key "location_memberships", "people", deferrable: :deferred
   add_foreign_key "locations", "households"
+  add_foreign_key "medication_dose_occurrences", "households"
+  add_foreign_key "medication_dose_occurrences", "schedules"
+  add_foreign_key "medication_dose_occurrences", "person_medications"
+  add_foreign_key "medication_dose_occurrences", "medication_takes"
+  add_foreign_key "medication_dose_occurrences", "household_memberships", column: "resolved_by_membership_id"
+  add_foreign_key "medication_dose_occurrences", "schedules", column: ["schedule_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dose_occurrence_schedule_id_household"
+  add_foreign_key "medication_dose_occurrences", "person_medications", column: ["person_medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dose_occurrence_person_medication_id_household"
+  add_foreign_key "medication_dose_occurrences", "medication_takes", column: ["medication_take_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dose_occurrence_medication_take_id_household"
+  add_foreign_key "medication_dose_occurrences", "household_memberships", column: ["resolved_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dose_occurrence_resolved_by_membership_id_household"
   add_foreign_key "medication_pause_periods", "household_memberships", column: "recorded_by_membership_id"
   add_foreign_key "medication_pause_periods", "household_memberships", column: "resumed_by_membership_id"
   add_foreign_key "medication_pause_periods", "household_memberships", column: ["recorded_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_med_pause_periods_recorded_actor_household", validate: false
@@ -1593,6 +1634,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_120000) do
     schedules
     person_medications
     medication_pause_periods
+    medication_dose_occurrences
     medication_takes
     notification_preferences
     health_events

@@ -12,6 +12,7 @@ RSpec.describe SchemaInventory do
       schedules
       person_medications
       medication_pause_periods
+      medication_dose_occurrences
       medication_takes
       notification_preferences
       health_events

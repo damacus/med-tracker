@@ -23,6 +23,7 @@ class Schedule < ApplicationRecord
   belongs_to :medication
   belongs_to :source_dosage_option, class_name: 'MedicationDosageOption', optional: true
   has_many :medication_pause_periods, dependent: :restrict_with_error, inverse_of: :schedule
+  has_many :medication_dose_occurrences, dependent: :restrict_with_error, inverse_of: :schedule
 
   enum :dose_cycle, { daily: 0, weekly: 1, monthly: 2 }
   enum :schedule_type, {
@@ -96,9 +97,7 @@ class Schedule < ApplicationRecord
 
   def active_on?(date) = active && (date = normalize_date(date)).present? && within_schedule_range?(date)
 
-  def cycle_period
-    DoseCycle.new(dose_cycle).period
-  end
+  def cycle_period = DoseCycle.new(dose_cycle).period
 
   def dose_display
     dose_snapshot&.to_s

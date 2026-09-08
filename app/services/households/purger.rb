@@ -24,6 +24,7 @@ module Households
       api_idempotency_keys
       api_tombstones
       medication_pause_periods
+      medication_dose_occurrences
       medication_takes
       schedules
       person_medications
