@@ -10,8 +10,8 @@
 
 ## 3. Cached eligibility
 
-- [ ] 3.1 Add failing request and browser tests for restricted sources, view-only access, stale metadata and pending overlap.
-- [ ] 3.2 Expose server eligibility and effective dose, consume it conservatively in the browser and pass focused checks.
+- [x] 3.1 Add failing request and browser tests for restricted sources, view-only access, stale metadata and pending overlap.
+- [x] 3.2 Expose server eligibility and effective dose, consume it conservatively in the browser and pass focused checks.
 
 ## 4. Search recovery
 

@@ -17,7 +17,7 @@ RSpec.describe 'Offline stock selection', :browser do
           const { default: Shell } = await import('controllers/offline_shell_controller');
           const tenant = `test:${crypto.randomUUID()}`;
           const medication = { id: 501, name: 'Test medicine', dose_amount: 1, dose_unit: 'tablet', current_supply: 1 };
-          const source = { id: 901, person_id: 801, medication_id: 501, dose_amount: 1, dose_unit: 'tablet' };
+          const source = { id: 901, person_id: 801, medication_id: 501, dose_amount: 1, dose_unit: 'tablet', offline_eligibility: { allowed: true, valid_until: new Date(Date.now() + 60000).toISOString(), dose_amount: '1', dose_unit: 'tablet' } };
           const payload = { data: { medications: [medication, { ...medication, id: 502 }], schedules: [source] } };
           await store.saveSnapshot(payload, tenant);
           await store.queueTake({ source_type: 'schedule', source_id: 900, taken_from_medication_id: 501, dose_amount: 1, dose_unit: 'tablet' }, tenant);
