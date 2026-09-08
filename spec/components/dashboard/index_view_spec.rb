@@ -425,7 +425,8 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       can_view_reports?: can_view_reports,
       routine_tasks_by_person: { person => [routine_dashboard_row(person, status: routine_status)] },
       as_needed_by_person: { person => [as_needed_dashboard_row(person)] },
-      today_takes_by_person: { person => [dashboard_today_take] }
+      today_takes_by_person: { person => [dashboard_today_take] },
+      today_not_taken_by_person: {}
     )
   end
 

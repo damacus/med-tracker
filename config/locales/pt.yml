@@ -2370,6 +2370,16 @@ pt:
         other: "%{count} erros impediram que este medicamento fosse guardado:"
       starting_supply: Quantidade inicial
   dashboard:
+    outcomes:
+      not_taken: Não tomada
+      overdue: Em atraso
+      reasons:
+        refused: Recusada
+        unwell: Indisposição
+        asleep: A dormir
+        medicine_unavailable: Medicamento indisponível
+        clinician_advice: Orientação médica
+        other: Outro
     title: Painel Familiar
     greeting_morning: Bom dia, %{name}
     greeting_afternoon: Boa tarde, %{name}

@@ -2005,6 +2005,16 @@ cy:
         other: "%{count} wall wedi atal y meddyginiaeth hon rhag cael ei chadw:"
       starting_supply: Nifer cychwynnol
   dashboard:
+    outcomes:
+      not_taken: Heb ei gymryd
+      overdue: Yn hwyr
+      reasons:
+        refused: Gwrthodwyd
+        unwell: Yn sâl
+        asleep: Yn cysgu
+        medicine_unavailable: Meddyginiaeth ddim ar gael
+        clinician_advice: Cyngor clinigwr
+        other: Arall
     title: Bwrdd Rheoli Teulu
     greeting_morning: Bore da, %{name}
     greeting_afternoon: Prynhawn da, %{name}

@@ -241,6 +241,7 @@ module Components
                   person: person,
                   routine_tasks: routine_tasks_by_person.fetch(person, []),
                   as_needed_items: as_needed_by_person.fetch(person, []),
+                  not_taken_outcomes: presenter.today_not_taken_by_person.fetch(person, []),
                   current_user: current_user,
                   dashboard_person_id: presenter.selected_person_id
                 )
@@ -262,7 +263,7 @@ module Components
         people.select do |person|
           routine_tasks_by_person.fetch(person, []).any? ||
             as_needed_by_person.fetch(person, []).any? ||
-            today_takes_by_person.fetch(person, []).any?
+            today_takes_by_person.fetch(person, []).any? || presenter.today_not_taken_by_person.fetch(person, []).any?
         end
       end
 
