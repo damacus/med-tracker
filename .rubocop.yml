@@ -21,6 +21,7 @@ AllCops:
 
 Style/FrozenStringLiteralComment:
   Exclude:
+    - "spec/services/medication_administration/occurrence_resolver_administration_spec.rb"
     - "spec/services/medication_administration/occurrence_resolver_concurrency_spec.rb"
     - "app/services/medication_administration/occurrence_resolver.rb"
     - "spec/services/medication_administration/occurrence_resolver_spec.rb"
