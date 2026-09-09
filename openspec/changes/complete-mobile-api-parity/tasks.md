@@ -40,7 +40,7 @@
 ## 7. Profile and invitation API
 
 - [x] 7.1 Red-Green-Refactor: add atomic current-profile updates for permitted fields with invalid-update rollback and forbidden-identity-field request tests.
-- [ ] 7.2 Red-Green-Refactor: add protected current-person avatar upload/read/removal; verify image validation, revoked access and attachment failure handling.
+- [x] 7.2 Red-Green-Refactor: add protected current-person avatar upload/read/removal; verify image validation, revoked access and attachment failure handling.
 - [ ] 7.3 Red-Green-Refactor: add authenticated invitation acceptance using the existing acceptance transaction, verifying matching verified identity, replay, expiry, revocation and grant isolation.
 - [ ] 7.4 Red-Green-Refactor: add fresh-authorized resend through the existing delivery workflow, testing old-token invalidation and denied stale MFA.
 - [ ] 7.5 Add typed contracts and capability metadata, run client and focused Rails/Ruby gates, then publish and verify the profile/invitation stack layer.

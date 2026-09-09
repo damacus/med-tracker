@@ -115,7 +115,7 @@ module Observability
         opentelemetry ai_audit ai_suggestion auth_token_audit barcode_catalog external_lookup
         medication_finder nhs_dmd_search nhs_dmd_supplementary nhs_dmd_vmp nhs_website_content
         open_food_facts open_products_facts passkey_renderer webauthn_renderer oidc rate_limit
-        mailpit database_pool span_sanitizer observability_canary api_report_export
+        mailpit database_pool span_sanitizer observability_canary api_report_export api_avatar
       ]
     }.freeze
     MESSAGES = {
