@@ -68,4 +68,53 @@ RSpec.describe TenantContext do
       expect(tenant_function_snapshot).to eq([account.id, nil, nil])
     end
   end
+
+  it 'restores the outer database context after a nested context succeeds' do
+    described_class.with(account: account, household: household, membership: membership, request_id: 'outer') do
+      described_class.with(account: account, household: nil, request_id: 'inner') do
+        expect(tenant_function_snapshot).to eq([account.id, nil, nil])
+      end
+
+      expect(current_context_snapshot).to eq([account, household, membership, 'outer'])
+      expect(tenant_function_snapshot).to eq([account.id, household.id, membership.id])
+    end
+    expect(tenant_setting_snapshot).to all(be_blank)
+  end
+
+  it 'restores the outer context when nested work raises' do
+    described_class.with(account: account, household: household, membership: membership, request_id: 'outer') do
+      expect do
+        described_class.with(account: account, household: nil, request_id: 'inner') { raise ArgumentError }
+      end.to raise_error(ArgumentError)
+
+      expect(current_context_snapshot).to eq([account, household, membership, 'outer'])
+      expect(tenant_function_snapshot).to eq([account.id, household.id, membership.id])
+    end
+    expect(tenant_setting_snapshot).to all(be_blank)
+  end
+
+  it 'does not copy a Ruby-only account into the previous database context' do
+    household
+    membership
+    Current.account = account
+    described_class.with(account: account, household: household, membership: membership) do
+      expect(tenant_function_snapshot).to eq([account.id, household.id, membership.id])
+    end
+
+    expect(Current.account).to eq(account)
+    expect(tenant_setting_snapshot).to all(be_blank)
+  end
+
+  it 'restores context after a database error without masking the original exception' do
+    described_class.with(account: account, household: household, membership: membership, request_id: 'outer') do
+      expect do
+        described_class.with(account: account, household: nil) do
+          ActiveRecord::Base.connection.execute('SELECT medtracker_missing_column')
+        end
+      end.to raise_error(ActiveRecord::StatementInvalid, /medtracker_missing_column/)
+
+      expect(current_context_snapshot).to eq([account, household, membership, 'outer'])
+      expect(tenant_function_snapshot).to eq([account.id, household.id, membership.id])
+    end
+  end
 end
