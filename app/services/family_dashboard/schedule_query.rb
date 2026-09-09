@@ -157,7 +157,7 @@ module FamilyDashboard
     def todays_takes(source) = source.medication_takes.select { |take| Time.current.all_day.cover?(take.taken_at) }
 
     def upcoming_routine_row?(source, expected_doses)
-      resolved = taken_count_for_cycle(source, Time.current) + outcome_query.for_source(source).size
+      resolved = taken_count_for_cycle(source, Time.current) + current_not_taken_outcomes(source).size
       expected_doses.positive? && resolved < expected_doses
     end
 
@@ -168,7 +168,7 @@ module FamilyDashboard
         scheduled_at: routine_scheduled_at(source, takes.length),
         taken_at: nil,
         status: MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason || :upcoming,
-        not_taken_count: outcome_query.for_source(source).size,
+        not_taken_count: current_not_taken_outcomes(source).size,
         overdue: routine_scheduled_at(source, takes.length)&.before?(Time.current) || false
       }.merge(dose_progress_for(takes, expected_doses))
     end
@@ -229,8 +229,16 @@ module FamilyDashboard
     def routine_scheduled_at(source, taken_count)
       return unless source.is_a?(Schedule)
 
-      resolved_times = outcome_query.for_source(source).map(&:scheduled_at)
+      resolved_times = current_not_taken_outcomes(source).map(&:scheduled_at)
       active_configured_occurrences_for(source).reject { |time| resolved_times.include?(time) }[taken_count]
+    end
+
+    def current_not_taken_outcomes(source)
+      outcomes = outcome_query.for_source(source)
+      return outcomes unless source.is_a?(Schedule)
+
+      positions = configured_times_for(source).size.nonzero? || expected_routine_doses_for(source)
+      outcomes.select { |outcome| outcome.position <= positions }
     end
 
     def active_configured_occurrences_for(schedule)
