@@ -2087,13 +2087,6 @@ paths:
       summary: Export an encrypted portable household bundle.
       parameters:
         - $ref: '#/components/parameters/household_id'
-        - name: version
-          in: query
-          schema:
-            type: integer
-            enum: [1, 2]
-            default: 1
-          description: Select portable v2 to include medication pause history.
         - $ref: '#/components/parameters/portable_passphrase'
         - name: version
           in: query
