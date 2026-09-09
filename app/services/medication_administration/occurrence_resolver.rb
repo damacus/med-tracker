@@ -99,7 +99,8 @@ module MedicationAdministration
 
       date = Date.iso8601(identity[2])
       rows = OccurrenceProjection.new(source: source, start_date: date, end_date: date).call
-      rows.find { |row| row.position == identity[3] } || raise(Error, 'Occurrence is unavailable')
+      rows.find { |row| row.window_starts_on == date && row.position == identity[3] } ||
+        raise(Error, 'Occurrence is unavailable')
     rescue Date::Error, TypeError
       raise Error, 'Occurrence is unavailable'
     end
