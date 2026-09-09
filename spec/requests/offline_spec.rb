@@ -25,7 +25,7 @@ RSpec.describe 'Offline mode' do
       dose_amount: 300,
       dose_unit: 'mg',
       frequency: 'As needed',
-      start_date: Time.zone.today,
+      start_date: Date.yesterday,
       end_date: 1.year.from_now.to_date,
       max_daily_doses: nil,
       min_hours_between_doses: nil
@@ -156,6 +156,8 @@ RSpec.describe 'Offline mode' do
   end
 
   describe 'POST /households/:household_slug/offline/medication_takes' do
+    before { travel_to(Time.current.beginning_of_day + 30.minutes) }
+
     def payload
       @payload ||= {
         client_uuid: SecureRandom.uuid,
