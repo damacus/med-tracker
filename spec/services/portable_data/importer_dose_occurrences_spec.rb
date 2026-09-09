@@ -173,6 +173,7 @@ RSpec.describe PortableData::Importer do
     legacy = payload.deep_dup
     legacy['format'] = 'medtracker.portable.v1'
     legacy['records'].delete('dose_occurrences')
+    legacy['records'].delete('medication_pause_periods')
     expect(restore(legacy)).to be_applied
     row = payload.dig('records', 'dose_occurrences').last
     row['window_starts_on'] = Date.yesterday.iso8601
