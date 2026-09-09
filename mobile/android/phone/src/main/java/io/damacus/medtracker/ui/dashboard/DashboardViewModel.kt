@@ -145,8 +145,6 @@ class DashboardViewModel(
                             dashboardData = current.dashboardData.copy(recentTakes = updatedTakes)
                         )
                     }
-                    // Refresh data in background to ensure stock and schedules are synced
-                    loadDashboardData(session, isRefresh = true)
                 }
                 is ApiResult.Error -> {
                     updateForSession(session, work) {
@@ -194,11 +192,15 @@ class DashboardViewModel(
                     val medsDeferred = async { apiClient.getMedications(session.serverUrl, token, householdId) }
                     val schedulesDeferred = async { apiClient.getSchedules(session.serverUrl, token, householdId) }
                     val takesDeferred = async { apiClient.getMedicationTakes(session.serverUrl, token, householdId) }
+                    val capabilitiesDeferred = async { apiClient.getCapabilities(session.serverUrl) }
+                    val aiSuggestionsDeferred = async { apiClient.getAiMedicationSuggestions(session.serverUrl, token, householdId) }
 
                     val peopleRes = peopleDeferred.await()
                     val medsRes = medsDeferred.await()
                     val schedulesRes = schedulesDeferred.await()
                     val takesRes = takesDeferred.await()
+                    val capabilitiesRes = capabilitiesDeferred.await()
+                    val aiSuggestionsRes = aiSuggestionsDeferred.await()
 
                     val errors = mutableListOf<String>()
                     val peopleList = when (peopleRes) {
@@ -225,6 +227,9 @@ class DashboardViewModel(
                         is ApiResult.NetworkError -> { errors.add("Takes: Network error"); emptyList() }
                     }
 
+                    val capabilities = (capabilitiesRes as? ApiResult.Success)?.data
+                    val aiSuggestions = (aiSuggestionsRes as? ApiResult.Success)?.data?.let { listOf(it) } ?: emptyList()
+
                     updateForSession(session, requestJob) { current ->
                         current.copy(
                             isLoading = false,
@@ -234,7 +239,9 @@ class DashboardViewModel(
                                 people = peopleList,
                                 medications = medsList,
                                 schedules = schedulesList,
-                                recentTakes = takesList
+                                recentTakes = takesList,
+                                capabilities = capabilities,
+                                aiSuggestions = aiSuggestions
                             )
                         )
                     }
