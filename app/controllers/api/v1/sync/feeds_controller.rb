@@ -22,18 +22,26 @@ module Api
             household: current_household,
             membership: current_membership,
             passphrase: nil,
-            request: request
+            request: request,
+            people_scope: policy_scope(Person)
           )
         end
 
         def changes_payload(since)
           Api::ConsistentSyncRead.new(household: current_household).call do |cursor|
+            events = outcome_projection.events(change_events_since(since)).to_a
+            @outcome_payloads = outcome_projection.payloads(events)
             {
               cursor: cursor,
-              changes: change_events_since(since).map { |event| change_payload(event) },
-              tombstones: tombstones_since(since).map { |tombstone| tombstone_payload(tombstone) }
+              changes: events.filter_map { |event| change_payload(event) },
+              tombstones: outcome_projection.tombstones(tombstones_since(since)).map { |row| tombstone_payload(row) }
             }
           end
+        end
+
+        def outcome_projection
+          @outcome_projection ||= Api::DoseOutcomeSyncProjection.new(household: current_household,
+                                                                     people_scope: policy_scope(Person))
         end
 
         def change_events_since(since)
@@ -55,6 +63,11 @@ module Api
         end
 
         def change_payload(event)
+          if event.record_type == Api::DoseOutcomeSyncProjection::RECORD_TYPE &&
+             !@outcome_payloads.key?(event.record_portable_id)
+            return
+          end
+
           {
             id: event.id,
             record_type: event.record_type,
@@ -63,7 +76,13 @@ module Api
             action: event.action,
             occurred_at: event.occurred_at.iso8601,
             metadata: event.metadata
-          }
+          }.merge(outcome_record_payload(event))
+        end
+
+        def outcome_record_payload(event)
+          return {} unless event.record_type == Api::DoseOutcomeSyncProjection::RECORD_TYPE
+
+          { record: @outcome_payloads.fetch(event.record_portable_id) }
         end
 
         def tombstone_payload(tombstone)

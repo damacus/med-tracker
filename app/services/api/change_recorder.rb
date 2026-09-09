@@ -62,7 +62,13 @@ module Api
         record_type: record.class.name,
         record_id: record.id,
         portable_id: portable_id(record)
-      }.compact
+      }.compact.merge(outcome_metadata(record))
+    end
+
+    def outcome_metadata(record)
+      return {} unless record.is_a?(MedicationDoseOccurrence)
+
+      { person_portable_id: record.source.person.portable_id }
     end
 
     def portable_id(record)

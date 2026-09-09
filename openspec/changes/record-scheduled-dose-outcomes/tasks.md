@@ -85,8 +85,8 @@
 
 ## 15R. Read Formal Outcomes through Sync
 
-- [ ] 15R.1 Red: specify snapshot and feed visibility for occurrence rows and outcomes.
-- [ ] 15R.2 Green: expose formal outcomes through existing sync read contracts.
+- [x] 15R.1 Red: specify snapshot and feed visibility for occurrence rows and outcomes.
+- [x] 15R.2 Green: expose formal outcomes through existing sync read contracts.
 
 ## 15B. Write Formal Outcomes through Sync Batches
 
