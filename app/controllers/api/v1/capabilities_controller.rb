@@ -25,6 +25,7 @@ module Api
           medication_reviews: medication_reviews,
           reports: reports,
           profile: profile,
+          invitations: { actions: %w[accept], online_only: true, acceptance_session_required: true },
           portable_formats: portable_formats,
           backups: backups,
           fhir: fhir,

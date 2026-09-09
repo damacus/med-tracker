@@ -445,6 +445,40 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /invitations/accept:
+    post:
+      operationId: acceptHouseholdInvitation
+      tags: [Account, Invitations]
+      summary: Accept an invitation matching the verified session account.
+      description: Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The operation runs online and rechecks accepted membership state on every retry. It never restores revoked grants or replaces an existing membership. Use the existing household-selection login flow to obtain a session for the new household.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationAcceptanceRequest'
+      responses:
+        '200':
+          description: Accepted membership or a still-active prior acceptance. IDs are strings.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/no_store'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationAcceptanceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Invitation unavailable, including expiry, revocation, mismatched identity or conflicting existing membership. No partial person, membership or grants persist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /households/{household_id}/profile/avatar:
     get:
       operationId: downloadCurrentAvatar
@@ -5754,6 +5788,50 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/MedicationReviewReport'
+    InvitationAcceptanceRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 1
+    AcceptedInvitationMembership:
+      type: object
+      additionalProperties: false
+      required: [household_id, membership_id, person_id, role]
+      properties:
+        household_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        membership_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        person_id:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [owner, administrator, member]
+    InvitationAcceptanceResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/AcceptedInvitationMembership'
+    CapabilityInvitations:
+      type: object
+      additionalProperties: false
+      required: [actions, online_only, acceptance_session_required]
+      properties:
+        actions:
+          type: array
+          items:
+            type: string
+            enum: [accept]
+        online_only:
+          type: boolean
+        acceptance_session_required:
+          type: boolean
     HouseholdProfileUpdate:
       type: object
       additionalProperties: false
@@ -7771,6 +7849,8 @@ components:
           $ref: '#/components/schemas/CapabilityLocationManagement'
         medication_reviews:
           $ref: '#/components/schemas/CapabilityMedicationReviews'
+        invitations:
+          $ref: '#/components/schemas/CapabilityInvitations'
         profile:
           $ref: '#/components/schemas/CapabilityProfile'
         reports:

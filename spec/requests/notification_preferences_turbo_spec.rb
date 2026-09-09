@@ -74,6 +74,7 @@ RSpec.describe 'Notification preferences turbo streams' do
       preference = user.person.notification_preference || user.person.create_notification_preference!
       allow(Account).to receive(:find_by).and_call_original
       allow(Account).to receive(:find_by).with(id: account.id).and_return(account)
+      allow(account).to receive(:person).and_return(user.person)
       allow(user.person).to receive(:notification_preference).and_return(preference)
       allow(preference).to receive(:update).and_return(false)
 
