@@ -21,6 +21,10 @@ AllCops:
 
 Style/FrozenStringLiteralComment:
   Exclude:
+    - "app/controllers/api/v1/invitation_acceptances_controller.rb"
+    - "app/services/household_invitations/accept.rb"
+    - "app/services/household_invitations/create_membership.rb"
+    - "spec/requests/api/v1/invitation_acceptance_spec.rb"
     - "app/controllers/api/v1/profile_avatars_controller.rb"
     - "app/services/profiles/avatar.rb"
     - "spec/requests/api/v1/profile_avatars_spec.rb"

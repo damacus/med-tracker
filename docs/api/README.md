@@ -26,6 +26,19 @@ presigned URL is returned. Invalid uploads and storage failures retain the
 existing image. Avatar requests run online and do not cache multipart responses
 under `Idempotency-Key`.
 
+## Invitation acceptance
+
+`POST /invitations/accept` accepts a `token` for the verified account behind a
+user API session. Household app tokens and delegated OAuth grants cannot use
+this account-level operation. The invitation email must match the account.
+
+Acceptance creates the target-household person, membership and intended grants
+in one transaction using the web signup grant workflow. Expired, revoked or
+mismatched invitations and existing membership conflicts return the same
+`invitation_unavailable` error. A retry returns the current active membership
+without recreating revoked grants. The API does not issue a new credential;
+use the existing household-selection login flow for the new household.
+
 ## Canonical addressing
 
 The document's first server URL is `/api/v1`. Path keys are relative to that

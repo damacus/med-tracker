@@ -283,47 +283,10 @@ class RodauthMain < Rodauth::Rails::Auth
       end
 
       def accept_household_invitation!(account_record, person, invitation)
-        membership = household_access_change(invitation.invited_by_membership).create_membership!(
-          household: invitation.household,
-          account: account_record,
-          person: person,
-          role: invitation.membership_role,
-          status: :active
-        )
-        create_owner_person_grant(invitation.household, membership, person)
-        apply_household_invitation_grants!(membership, person, invitation)
-      end
-
-      def apply_household_invitation_grants!(membership, person, invitation)
-        invitation.household_invitation_grants.find_each do |grant|
-          apply_household_invitation_grant!(membership, person, invitation, grant)
-        end
-      end
-
-      def apply_household_invitation_grant!(membership, person, invitation, grant)
-        relationship_type = carer_relationship_type_for_invitation_grant(grant.relationship_type)
-        return create_invitation_manual_grant!(membership, invitation, grant) unless relationship_type
-
-        CareDelegation::Assign.new(
-          carer: person,
-          patient: grant.person,
-          relationship_type: relationship_type,
-          access_level: grant.access_level,
-          expires_at: grant.expires_at,
-          granted_by_membership: invitation.invited_by_membership
+        HouseholdInvitations::CreateMembership.new(
+          invitation: invitation, account: account_record, person: person,
+          request: rails_controller_instance&.request
         ).call
-      end
-
-      def create_invitation_manual_grant!(membership, invitation, grant)
-        household_access_change(invitation.invited_by_membership).create_grant!(
-          household: invitation.household,
-          household_membership: membership,
-          person: grant.person,
-          access_level: grant.access_level,
-          relationship_type: grant.relationship_type,
-          expires_at: grant.expires_at,
-          granted_by_membership: invitation.invited_by_membership
-        )
       end
 
       def household_access_change(actor_membership)
@@ -332,17 +295,6 @@ class RodauthMain < Rodauth::Rails::Auth
           actor_membership: actor_membership,
           request: rails_controller_instance&.request
         )
-      end
-
-      def carer_relationship_type_for_invitation_grant(relationship_type)
-        case relationship_type.to_s
-        when 'parent'
-          'parent'
-        when 'family_member'
-          'family_member'
-        when 'carer', 'professional'
-          'professional_carer'
-        end
       end
 
       def invite_only_registration_required?
