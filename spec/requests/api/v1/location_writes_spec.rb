@@ -88,6 +88,21 @@ RSpec.describe 'API v1 location writes' do
     expect(medication.reload).to be_persisted
   end
 
+  it 'retains the location recorded on a take after its medication moves elsewhere' do
+    medication = create(:medication, household: location.household, location: location)
+    schedule = create(:schedule, household: location.household, medication: medication)
+    take = create(:medication_take, :for_schedule, schedule: schedule, taken_from_medication: medication)
+    expect(take.taken_from_location_id).to eq(location.id)
+    replacement = Location.create!(household: location.household, name: 'Replacement storage')
+    medication.update!(location: replacement)
+
+    delete "#{path}/#{location.id}", headers: version_headers, as: :json
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(location.reload).to be_persisted
+    expect(take.reload.taken_from_location_id).to eq(location.id)
+  end
+
   it 'does not disclose or edit foreign household storage' do
     foreign = Location.create!(household: create(:household), name: 'Private storage')
     foreign_headers = headers.merge('If-Match' => Api::RecordEtag.for(foreign))
