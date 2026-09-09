@@ -40,12 +40,13 @@ data class SyncOperationCapability (
     /**
      * 
      *
-     * Values: medication_take,medication_dose_occurrence,medication,medication_dosage_option,person,health_event,location,medication_review_prompt,schedule,person_medication,unknown_default_open_api
+     * Values: medication_take,medication_dose_occurrence,medication_pause_period,medication,medication_dosage_option,person,health_event,location,medication_review_prompt,schedule,person_medication,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class ResourceType(val value: kotlin.String) {
         @Json(name = "medication_take") medication_take("medication_take"),
         @Json(name = "medication_dose_occurrence") medication_dose_occurrence("medication_dose_occurrence"),
+        @Json(name = "medication_pause_period") medication_pause_period("medication_pause_period"),
         @Json(name = "medication") medication("medication"),
         @Json(name = "medication_dosage_option") medication_dosage_option("medication_dosage_option"),
         @Json(name = "person") person("person"),
@@ -59,13 +60,14 @@ data class SyncOperationCapability (
     /**
      * 
      *
-     * Values: create,update,delete,adjust_inventory,mark_as_ordered,mark_as_received,remove_stock,pause,resume,reorder,unknown_default_open_api
+     * Values: create,update,delete,close,adjust_inventory,mark_as_ordered,mark_as_received,remove_stock,pause,resume,reorder,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class Actions(val value: kotlin.String) {
         @Json(name = "create") create("create"),
         @Json(name = "update") update("update"),
         @Json(name = "delete") delete("delete"),
+        @Json(name = "close") close("close"),
         @Json(name = "adjust_inventory") adjust_inventory("adjust_inventory"),
         @Json(name = "mark_as_ordered") mark_as_ordered("mark_as_ordered"),
         @Json(name = "mark_as_received") mark_as_received("mark_as_received"),
