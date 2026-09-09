@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module PortableData
   module ImportWriterPausePeriods
     def import_medication_pause_periods

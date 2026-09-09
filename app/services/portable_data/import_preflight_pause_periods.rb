@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module PortableData
   module ImportPreflightPausePeriods
     def validate_pause_period_references(errors)
