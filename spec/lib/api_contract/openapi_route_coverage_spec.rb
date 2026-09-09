@@ -15,9 +15,10 @@ module OpenapiRouteCoverage
   end
 
   def mounted_paths
-    server_url = document.fetch('servers').first.fetch('url')
+    api_document = document
+    server_url = api_document.fetch('servers').first.fetch('url')
 
-    paths.to_h { |path, path_item| ["#{server_url}#{path}", path_item] }
+    api_document.fetch('paths').to_h { |path, path_item| ["#{server_url}#{path}", path_item] }
   end
 
   def api_route_operations
@@ -328,9 +329,11 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :carer_relationships
 
   it 'documents every mounted API v1 route' do
+    mounted_paths = described_class.mounted_paths
+
     described_class.api_route_operations.each do |path, verb|
-      expect(described_class.mounted_paths).to include(path)
-      expect(described_class.mounted_paths.fetch(path)).to include(verb.downcase)
+      expect(mounted_paths).to include(path)
+      expect(mounted_paths.fetch(path)).to include(verb.downcase)
     end
   end
 
@@ -647,9 +650,11 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
     end
 
     it 'loads every reusable schema through the JSON Schema validator' do
+      document = described_class.document
+
       expect do
-        described_class.components.fetch('schemas').each_key do |name|
-          JSONSchemer.schema(described_class.dereferenced_schema(name))
+        document.fetch('components').fetch('schemas').each_value do |schema|
+          JSONSchemer.schema(described_class.dereference(schema, root: document))
         end
       end.not_to raise_error
     end

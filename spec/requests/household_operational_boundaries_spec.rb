@@ -20,6 +20,7 @@ RSpec.describe 'Household operational boundaries' do
     %i[held offboarded purged].each do |state|
       household.update!(lifecycle_state: state)
       sign_in(user)
+      follow_redirect!
 
       get dashboard_path(household_slug: household.slug)
 

@@ -45,20 +45,6 @@ RSpec.describe 'Heading Order Accessibility', :browser, type: :system do
       expect(levels.first).to eq('H1')
       validate_heading_sequence(levels)
     end
-
-    it 'does not skip from h1 to h3' do
-      levels = extract_heading_levels(page)
-      h1_indices = levels.each_index.select { |i| levels[i] == 'H1' }
-      h1_indices.each do |h1_idx|
-        next_headings = levels[(h1_idx + 1)..]
-        next if next_headings.empty?
-
-        first_non_h1 = next_headings.find { |h| h != 'H1' }
-        next unless first_non_h1
-
-        expect(first_non_h1).not_to eq('H3'), 'Found h1 followed by h3 without h2'
-      end
-    end
   end
 
   describe 'Admin Dashboard page' do
@@ -72,20 +58,6 @@ RSpec.describe 'Heading Order Accessibility', :browser, type: :system do
       expect(levels).not_to be_empty
       expect(levels.first).to eq('H1')
       validate_heading_sequence(levels)
-    end
-
-    it 'does not skip from h1 to h3' do
-      levels = extract_heading_levels(page)
-      h1_indices = levels.each_index.select { |i| levels[i] == 'H1' }
-      h1_indices.each do |h1_idx|
-        next_headings = levels[(h1_idx + 1)..]
-        next if next_headings.empty?
-
-        first_non_h1 = next_headings.find { |h| h != 'H1' }
-        next unless first_non_h1
-
-        expect(first_non_h1).not_to eq('H3'), 'Found h1 followed by h3 without h2'
-      end
     end
   end
 
