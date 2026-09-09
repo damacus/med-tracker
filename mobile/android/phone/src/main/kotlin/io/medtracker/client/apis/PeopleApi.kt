@@ -20,12 +20,14 @@ import okhttp3.Call
 import okhttp3.HttpUrl
 
 import io.medtracker.client.models.ErrorEnvelope
+import io.medtracker.client.models.HouseholdProfileResponse
 import io.medtracker.client.models.MeResponse
 import io.medtracker.client.models.PersonCollectionResponse
 import io.medtracker.client.models.PersonCreateRequest
 import io.medtracker.client.models.PersonResponse
 import io.medtracker.client.models.PersonUpdateRequest
 import io.medtracker.client.models.RateLimitErrorEnvelope
+import io.medtracker.client.models.UpdateHouseholdProfileWithPutRequest
 
 import com.squareup.moshi.Json
 
@@ -129,6 +131,150 @@ open class PeopleApi(basePath: kotlin.String = defaultBasePath, client: Call.Fac
     }
 
     /**
+     * DELETE /households/{household_id}/profile/avatar
+     * Remove the current-person avatar.
+     * Online only. Every request checks current person access. Multipart writes are not response-cached by Idempotency-Key.
+     * @param householdId 
+     * @return void
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun deleteCurrentAvatar(householdId: kotlin.Int) : Unit {
+        val localVarResponse = deleteCurrentAvatarWithHttpInfo(householdId = householdId)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> Unit
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * DELETE /households/{household_id}/profile/avatar
+     * Remove the current-person avatar.
+     * Online only. Every request checks current person access. Multipart writes are not response-cached by Idempotency-Key.
+     * @param householdId 
+     * @return ApiResponse<Unit?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Throws(IllegalStateException::class, IOException::class)
+    fun deleteCurrentAvatarWithHttpInfo(householdId: kotlin.Int) : ApiResponse<Unit?> {
+        val localVariableConfig = deleteCurrentAvatarRequestConfig(householdId = householdId)
+
+        return request<Unit, Unit>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation deleteCurrentAvatar
+     *
+     * @param householdId 
+     * @return RequestConfig
+     */
+    fun deleteCurrentAvatarRequestConfig(householdId: kotlin.Int) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.DELETE,
+            path = "/households/{household_id}/profile/avatar".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /households/{household_id}/profile/avatar
+     * Download the protected current-person avatar.
+     * Online only. Every request checks current person access. Multipart writes are not response-cached by Idempotency-Key.
+     * @param householdId 
+     * @return java.io.File
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun downloadCurrentAvatar(householdId: kotlin.Int) : java.io.File {
+        val localVarResponse = downloadCurrentAvatarWithHttpInfo(householdId = householdId)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as java.io.File
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/profile/avatar
+     * Download the protected current-person avatar.
+     * Online only. Every request checks current person access. Multipart writes are not response-cached by Idempotency-Key.
+     * @param householdId 
+     * @return ApiResponse<java.io.File?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun downloadCurrentAvatarWithHttpInfo(householdId: kotlin.Int) : ApiResponse<java.io.File?> {
+        val localVariableConfig = downloadCurrentAvatarRequestConfig(householdId = householdId)
+
+        return request<Unit, java.io.File>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation downloadCurrentAvatar
+     *
+     * @param householdId 
+     * @return RequestConfig
+     */
+    fun downloadCurrentAvatarRequestConfig(householdId: kotlin.Int) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/profile/avatar".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * GET /households/{household_id}/me
      * Read the current account and person profile for a household session.
      * 
@@ -194,6 +340,79 @@ open class PeopleApi(basePath: kotlin.String = defaultBasePath, client: Call.Fac
         return RequestConfig(
             method = RequestMethod.GET,
             path = "/households/{household_id}/me".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /households/{household_id}/profile
+     * Read the current account preferences and household person profile.
+     * 
+     * @param householdId 
+     * @return HouseholdProfileResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun getHouseholdProfile(householdId: kotlin.Int) : HouseholdProfileResponse {
+        val localVarResponse = getHouseholdProfileWithHttpInfo(householdId = householdId)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as HouseholdProfileResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/profile
+     * Read the current account preferences and household person profile.
+     * 
+     * @param householdId 
+     * @return ApiResponse<HouseholdProfileResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun getHouseholdProfileWithHttpInfo(householdId: kotlin.Int) : ApiResponse<HouseholdProfileResponse?> {
+        val localVariableConfig = getHouseholdProfileRequestConfig(householdId = householdId)
+
+        return request<Unit, HouseholdProfileResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation getHouseholdProfile
+     *
+     * @param householdId 
+     * @return RequestConfig
+     */
+    fun getHouseholdProfileRequestConfig(householdId: kotlin.Int) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/profile".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -371,6 +590,160 @@ open class PeopleApi(basePath: kotlin.String = defaultBasePath, client: Call.Fac
     }
 
     /**
+     * PATCH /households/{household_id}/profile
+     * Atomically save non-security preferences and date of birth online.
+     * 
+     * @param householdId 
+     * @param updateHouseholdProfileWithPutRequest 
+     * @return HouseholdProfileResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun updateHouseholdProfile(householdId: kotlin.Int, updateHouseholdProfileWithPutRequest: UpdateHouseholdProfileWithPutRequest) : HouseholdProfileResponse {
+        val localVarResponse = updateHouseholdProfileWithHttpInfo(householdId = householdId, updateHouseholdProfileWithPutRequest = updateHouseholdProfileWithPutRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as HouseholdProfileResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PATCH /households/{household_id}/profile
+     * Atomically save non-security preferences and date of birth online.
+     * 
+     * @param householdId 
+     * @param updateHouseholdProfileWithPutRequest 
+     * @return ApiResponse<HouseholdProfileResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun updateHouseholdProfileWithHttpInfo(householdId: kotlin.Int, updateHouseholdProfileWithPutRequest: UpdateHouseholdProfileWithPutRequest) : ApiResponse<HouseholdProfileResponse?> {
+        val localVariableConfig = updateHouseholdProfileRequestConfig(householdId = householdId, updateHouseholdProfileWithPutRequest = updateHouseholdProfileWithPutRequest)
+
+        return request<UpdateHouseholdProfileWithPutRequest, HouseholdProfileResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation updateHouseholdProfile
+     *
+     * @param householdId 
+     * @param updateHouseholdProfileWithPutRequest 
+     * @return RequestConfig
+     */
+    fun updateHouseholdProfileRequestConfig(householdId: kotlin.Int, updateHouseholdProfileWithPutRequest: UpdateHouseholdProfileWithPutRequest) : RequestConfig<UpdateHouseholdProfileWithPutRequest> {
+        val localVariableBody = updateHouseholdProfileWithPutRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PATCH,
+            path = "/households/{household_id}/profile".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PUT /households/{household_id}/profile
+     * Atomically save non-security preferences and date of birth online.
+     * 
+     * @param householdId 
+     * @param updateHouseholdProfileWithPutRequest 
+     * @return HouseholdProfileResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun updateHouseholdProfileWithPut(householdId: kotlin.Int, updateHouseholdProfileWithPutRequest: UpdateHouseholdProfileWithPutRequest) : HouseholdProfileResponse {
+        val localVarResponse = updateHouseholdProfileWithPutWithHttpInfo(householdId = householdId, updateHouseholdProfileWithPutRequest = updateHouseholdProfileWithPutRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as HouseholdProfileResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PUT /households/{household_id}/profile
+     * Atomically save non-security preferences and date of birth online.
+     * 
+     * @param householdId 
+     * @param updateHouseholdProfileWithPutRequest 
+     * @return ApiResponse<HouseholdProfileResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun updateHouseholdProfileWithPutWithHttpInfo(householdId: kotlin.Int, updateHouseholdProfileWithPutRequest: UpdateHouseholdProfileWithPutRequest) : ApiResponse<HouseholdProfileResponse?> {
+        val localVariableConfig = updateHouseholdProfileWithPutRequestConfig(householdId = householdId, updateHouseholdProfileWithPutRequest = updateHouseholdProfileWithPutRequest)
+
+        return request<UpdateHouseholdProfileWithPutRequest, HouseholdProfileResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation updateHouseholdProfileWithPut
+     *
+     * @param householdId 
+     * @param updateHouseholdProfileWithPutRequest 
+     * @return RequestConfig
+     */
+    fun updateHouseholdProfileWithPutRequestConfig(householdId: kotlin.Int, updateHouseholdProfileWithPutRequest: UpdateHouseholdProfileWithPutRequest) : RequestConfig<UpdateHouseholdProfileWithPutRequest> {
+        val localVariableBody = updateHouseholdProfileWithPutRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PUT,
+            path = "/households/{household_id}/profile".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * PATCH /households/{household_id}/people/{id}
      * Update a person.
      * 
@@ -523,6 +896,83 @@ open class PeopleApi(basePath: kotlin.String = defaultBasePath, client: Call.Fac
         return RequestConfig(
             method = RequestMethod.PUT,
             path = "/households/{household_id}/people/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PUT /households/{household_id}/profile/avatar
+     * Upload a PNG, JPEG or WebP image of at most 5 MiB.
+     * Online only. Every request checks current person access. Multipart writes are not response-cached by Idempotency-Key.
+     * @param householdId 
+     * @param avatar 
+     * @return HouseholdProfileResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun uploadCurrentAvatar(householdId: kotlin.Int, avatar: java.io.File) : HouseholdProfileResponse {
+        val localVarResponse = uploadCurrentAvatarWithHttpInfo(householdId = householdId, avatar = avatar)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as HouseholdProfileResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PUT /households/{household_id}/profile/avatar
+     * Upload a PNG, JPEG or WebP image of at most 5 MiB.
+     * Online only. Every request checks current person access. Multipart writes are not response-cached by Idempotency-Key.
+     * @param householdId 
+     * @param avatar 
+     * @return ApiResponse<HouseholdProfileResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun uploadCurrentAvatarWithHttpInfo(householdId: kotlin.Int, avatar: java.io.File) : ApiResponse<HouseholdProfileResponse?> {
+        val localVariableConfig = uploadCurrentAvatarRequestConfig(householdId = householdId, avatar = avatar)
+
+        return request<Map<String, PartConfig<*>>, HouseholdProfileResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation uploadCurrentAvatar
+     *
+     * @param householdId 
+     * @param avatar 
+     * @return RequestConfig
+     */
+    fun uploadCurrentAvatarRequestConfig(householdId: kotlin.Int, avatar: java.io.File) : RequestConfig<Map<String, PartConfig<*>>> {
+        val localVariableBody = mapOf(
+            "avatar" to PartConfig(body = avatar, headers = mutableMapOf()),)
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf("Content-Type" to "multipart/form-data")
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PUT,
+            path = "/households/{household_id}/profile/avatar".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

@@ -26,13 +26,24 @@ import io.medtracker.client.models.DosageOptionCollectionResponse
 import io.medtracker.client.models.DosageOptionCreateRequest
 import io.medtracker.client.models.DosageOptionResponse
 import io.medtracker.client.models.DosageOptionUpdateRequest
+import io.medtracker.client.models.DoseNotTakenRequest
+import io.medtracker.client.models.DoseOccurrenceCollectionResponse
+import io.medtracker.client.models.DoseOccurrenceResponse
+import io.medtracker.client.models.DoseReopenRequest
+import io.medtracker.client.models.DoseTakeRequest
 import io.medtracker.client.models.ErrorEnvelope
 import io.medtracker.client.models.HealthEventCollectionResponse
 import io.medtracker.client.models.HealthEventCreateRequest
 import io.medtracker.client.models.HealthEventResponse
 import io.medtracker.client.models.HealthEventUpdateRequest
+import io.medtracker.client.models.HealthHistoryReportResponse
+import io.medtracker.client.models.HouseholdProfileResponse
 import io.medtracker.client.models.LocationCollectionResponse
+import io.medtracker.client.models.LocationCreateRequest
+import io.medtracker.client.models.LocationMembershipRequest
+import io.medtracker.client.models.LocationMembershipResponse
 import io.medtracker.client.models.LocationResponse
+import io.medtracker.client.models.LocationUpdateRequest
 import io.medtracker.client.models.MeResponse
 import io.medtracker.client.models.MedicationCollectionResponse
 import io.medtracker.client.models.MedicationCreateRequest
@@ -44,6 +55,11 @@ import io.medtracker.client.models.MedicationPausePeriodCollectionResponse
 import io.medtracker.client.models.MedicationPausePeriodCreateRequest
 import io.medtracker.client.models.MedicationPausePeriodResponse
 import io.medtracker.client.models.MedicationResponse
+import io.medtracker.client.models.MedicationReviewPromptCollectionResponse
+import io.medtracker.client.models.MedicationReviewPromptResponse
+import io.medtracker.client.models.MedicationReviewPromptStatus
+import io.medtracker.client.models.MedicationReviewPromptUpdateRequest
+import io.medtracker.client.models.MedicationReviewReportResponse
 import io.medtracker.client.models.MedicationTakeCollectionResponse
 import io.medtracker.client.models.MedicationTakeCreateRequest
 import io.medtracker.client.models.MedicationTakeResponse
@@ -72,10 +88,14 @@ import io.medtracker.client.models.ScheduleCollectionResponse
 import io.medtracker.client.models.ScheduleCreateRequest
 import io.medtracker.client.models.ScheduleResponse
 import io.medtracker.client.models.ScheduleUpdateRequest
+import io.medtracker.client.models.StockRemovalCollectionResponse
+import io.medtracker.client.models.StockRemovalRequest
+import io.medtracker.client.models.StockRemovalResponse
 import io.medtracker.client.models.SyncBatchRequest
 import io.medtracker.client.models.SyncBatchResponse
 import io.medtracker.client.models.SyncChangesResponse
 import io.medtracker.client.models.SyncSnapshotResponse
+import io.medtracker.client.models.UpdateHouseholdProfileWithPutRequest
 
 import com.squareup.moshi.Json
 
@@ -336,6 +356,163 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     }
 
     /**
+     * POST /households/{household_id}/locations
+     * Create household storage.
+     * 
+     * @param householdId 
+     * @param locationCreateRequest 
+     * @return LocationResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun createLocation(householdId: kotlin.Int, locationCreateRequest: LocationCreateRequest) : LocationResponse {
+        val localVarResponse = createLocationWithHttpInfo(householdId = householdId, locationCreateRequest = locationCreateRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as LocationResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/locations
+     * Create household storage.
+     * 
+     * @param householdId 
+     * @param locationCreateRequest 
+     * @return ApiResponse<LocationResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun createLocationWithHttpInfo(householdId: kotlin.Int, locationCreateRequest: LocationCreateRequest) : ApiResponse<LocationResponse?> {
+        val localVariableConfig = createLocationRequestConfig(householdId = householdId, locationCreateRequest = locationCreateRequest)
+
+        return request<LocationCreateRequest, LocationResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation createLocation
+     *
+     * @param householdId 
+     * @param locationCreateRequest 
+     * @return RequestConfig
+     */
+    fun createLocationRequestConfig(householdId: kotlin.Int, locationCreateRequest: LocationCreateRequest) : RequestConfig<LocationCreateRequest> {
+        val localVariableBody = locationCreateRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/locations".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/locations/{location_id}/location_memberships
+     * Assign a managed person to a location or replay the existing assignment.
+     * 
+     * @param householdId 
+     * @param locationId 
+     * @param locationMembershipRequest 
+     * @return LocationMembershipResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun createLocationMembership(householdId: kotlin.Int, locationId: kotlin.String, locationMembershipRequest: LocationMembershipRequest) : LocationMembershipResponse {
+        val localVarResponse = createLocationMembershipWithHttpInfo(householdId = householdId, locationId = locationId, locationMembershipRequest = locationMembershipRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as LocationMembershipResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/locations/{location_id}/location_memberships
+     * Assign a managed person to a location or replay the existing assignment.
+     * 
+     * @param householdId 
+     * @param locationId 
+     * @param locationMembershipRequest 
+     * @return ApiResponse<LocationMembershipResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun createLocationMembershipWithHttpInfo(householdId: kotlin.Int, locationId: kotlin.String, locationMembershipRequest: LocationMembershipRequest) : ApiResponse<LocationMembershipResponse?> {
+        val localVariableConfig = createLocationMembershipRequestConfig(householdId = householdId, locationId = locationId, locationMembershipRequest = locationMembershipRequest)
+
+        return request<LocationMembershipRequest, LocationMembershipResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation createLocationMembership
+     *
+     * @param householdId 
+     * @param locationId 
+     * @param locationMembershipRequest 
+     * @return RequestConfig
+     */
+    fun createLocationMembershipRequestConfig(householdId: kotlin.Int, locationId: kotlin.String, locationMembershipRequest: LocationMembershipRequest) : RequestConfig<LocationMembershipRequest> {
+        val localVariableBody = locationMembershipRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/locations/{location_id}/location_memberships".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"location_id"+"}", encodeURIComponent(locationId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * POST /households/{household_id}/medications
      * Create a medication.
      * 
@@ -486,6 +663,86 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
         return RequestConfig(
             method = RequestMethod.POST,
             path = "/households/{household_id}/medication_pause_periods".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/medications/{medication_id}/stock_removals
+     * Remove tracked stock without recording a dose.
+     * Replay the same submission_id and facts to return the original removal without another decrement. Changed facts are rejected. Current inventory-management permission is required even for cached requests.
+     * @param householdId 
+     * @param medicationId 
+     * @param stockRemovalRequest 
+     * @return StockRemovalResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun createMedicationStockRemoval(householdId: kotlin.Int, medicationId: kotlin.String, stockRemovalRequest: StockRemovalRequest) : StockRemovalResponse {
+        val localVarResponse = createMedicationStockRemovalWithHttpInfo(householdId = householdId, medicationId = medicationId, stockRemovalRequest = stockRemovalRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as StockRemovalResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/medications/{medication_id}/stock_removals
+     * Remove tracked stock without recording a dose.
+     * Replay the same submission_id and facts to return the original removal without another decrement. Changed facts are rejected. Current inventory-management permission is required even for cached requests.
+     * @param householdId 
+     * @param medicationId 
+     * @param stockRemovalRequest 
+     * @return ApiResponse<StockRemovalResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun createMedicationStockRemovalWithHttpInfo(householdId: kotlin.Int, medicationId: kotlin.String, stockRemovalRequest: StockRemovalRequest) : ApiResponse<StockRemovalResponse?> {
+        val localVariableConfig = createMedicationStockRemovalRequestConfig(householdId = householdId, medicationId = medicationId, stockRemovalRequest = stockRemovalRequest)
+
+        return request<StockRemovalRequest, StockRemovalResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation createMedicationStockRemoval
+     *
+     * @param householdId 
+     * @param medicationId 
+     * @param stockRemovalRequest 
+     * @return RequestConfig
+     */
+    fun createMedicationStockRemovalRequestConfig(householdId: kotlin.Int, medicationId: kotlin.String, stockRemovalRequest: StockRemovalRequest) : RequestConfig<StockRemovalRequest> {
+        val localVariableBody = stockRemovalRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/medications/{medication_id}/stock_removals".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"medication_id"+"}", encodeURIComponent(medicationId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -1110,6 +1367,232 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     }
 
     /**
+     * DELETE /households/{household_id}/profile/avatar
+     * Remove the current-person avatar.
+     * Online only. Every request checks current person access. Multipart writes are not response-cached by Idempotency-Key.
+     * @param householdId 
+     * @return void
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun deleteCurrentAvatar(householdId: kotlin.Int) : Unit {
+        val localVarResponse = deleteCurrentAvatarWithHttpInfo(householdId = householdId)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> Unit
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * DELETE /households/{household_id}/profile/avatar
+     * Remove the current-person avatar.
+     * Online only. Every request checks current person access. Multipart writes are not response-cached by Idempotency-Key.
+     * @param householdId 
+     * @return ApiResponse<Unit?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Throws(IllegalStateException::class, IOException::class)
+    fun deleteCurrentAvatarWithHttpInfo(householdId: kotlin.Int) : ApiResponse<Unit?> {
+        val localVariableConfig = deleteCurrentAvatarRequestConfig(householdId = householdId)
+
+        return request<Unit, Unit>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation deleteCurrentAvatar
+     *
+     * @param householdId 
+     * @return RequestConfig
+     */
+    fun deleteCurrentAvatarRequestConfig(householdId: kotlin.Int) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.DELETE,
+            path = "/households/{household_id}/profile/avatar".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * DELETE /households/{household_id}/locations/{id}
+     * Delete storage only when retained history permits it.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @return void
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun deleteLocation(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String) : Unit {
+        val localVarResponse = deleteLocationWithHttpInfo(householdId = householdId, id = id, ifMatch = ifMatch)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> Unit
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * DELETE /households/{household_id}/locations/{id}
+     * Delete storage only when retained history permits it.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @return ApiResponse<Unit?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Throws(IllegalStateException::class, IOException::class)
+    fun deleteLocationWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String) : ApiResponse<Unit?> {
+        val localVariableConfig = deleteLocationRequestConfig(householdId = householdId, id = id, ifMatch = ifMatch)
+
+        return request<Unit, Unit>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation deleteLocation
+     *
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @return RequestConfig
+     */
+    fun deleteLocationRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        ifMatch.apply { localVariableHeaders["If-Match"] = this.toString() }
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.DELETE,
+            path = "/households/{household_id}/locations/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * DELETE /households/{household_id}/locations/{location_id}/location_memberships/{id}
+     * Remove a managed person from the selected location.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param locationId 
+     * @return void
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun deleteLocationMembership(householdId: kotlin.Int, id: kotlin.String, locationId: kotlin.String) : Unit {
+        val localVarResponse = deleteLocationMembershipWithHttpInfo(householdId = householdId, id = id, locationId = locationId)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> Unit
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * DELETE /households/{household_id}/locations/{location_id}/location_memberships/{id}
+     * Remove a managed person from the selected location.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param locationId 
+     * @return ApiResponse<Unit?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Throws(IllegalStateException::class, IOException::class)
+    fun deleteLocationMembershipWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, locationId: kotlin.String) : ApiResponse<Unit?> {
+        val localVariableConfig = deleteLocationMembershipRequestConfig(householdId = householdId, id = id, locationId = locationId)
+
+        return request<Unit, Unit>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation deleteLocationMembership
+     *
+     * @param householdId 
+     * @param id 
+     * @param locationId 
+     * @return RequestConfig
+     */
+    fun deleteLocationMembershipRequestConfig(householdId: kotlin.Int, id: kotlin.String, locationId: kotlin.String) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.DELETE,
+            path = "/households/{household_id}/locations/{location_id}/location_memberships/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())).replace("{"+"location_id"+"}", encodeURIComponent(locationId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * DELETE /households/{household_id}/native_device_tokens/{id}
      * Revoke a native device token.
      * 
@@ -1261,6 +1744,279 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     }
 
     /**
+     * GET /households/{household_id}/profile/avatar
+     * Download the protected current-person avatar.
+     * Online only. Every request checks current person access. Multipart writes are not response-cached by Idempotency-Key.
+     * @param householdId 
+     * @return java.io.File
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun downloadCurrentAvatar(householdId: kotlin.Int) : java.io.File {
+        val localVarResponse = downloadCurrentAvatarWithHttpInfo(householdId = householdId)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as java.io.File
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/profile/avatar
+     * Download the protected current-person avatar.
+     * Online only. Every request checks current person access. Multipart writes are not response-cached by Idempotency-Key.
+     * @param householdId 
+     * @return ApiResponse<java.io.File?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun downloadCurrentAvatarWithHttpInfo(householdId: kotlin.Int) : ApiResponse<java.io.File?> {
+        val localVariableConfig = downloadCurrentAvatarRequestConfig(householdId = householdId)
+
+        return request<Unit, java.io.File>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation downloadCurrentAvatar
+     *
+     * @param householdId 
+     * @return RequestConfig
+     */
+    fun downloadCurrentAvatarRequestConfig(householdId: kotlin.Int) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/profile/avatar".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * enum for parameter includeMedicationTakes
+     */
+     enum class IncludeMedicationTakesDownloadHealthHistoryReport(val value: kotlin.String) {
+         @Json(name = "0") _0("0"),
+         @Json(name = "1") _1("1"),
+         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
+
+        /**
+         * Override [toString()] to avoid using the enum variable name as the value, and instead use
+         * the actual value defined in the API spec file.
+         *
+         * This solves a problem when the variable name and its value are different, and ensures that
+         * the client sends the correct enum values to the server always.
+         */
+        override fun toString(): kotlin.String = "$value"
+     }
+
+    /**
+     * GET /households/{household_id}/reports/health_history.pdf
+     * Export health history for one manageable person.
+     * 
+     * @param householdId 
+     * @param personId 
+     * @param startDate ISO date; defaults to one year before the end date. The maximum difference between start and end is 366 days. (optional)
+     * @param endDate ISO date; defaults to today. (optional)
+     * @param includeMedicationTakes  (optional, default to IncludeMedicationTakes._0)
+     * @return java.io.File
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun downloadHealthHistoryReport(householdId: kotlin.Int, personId: kotlin.String, startDate: java.time.LocalDate? = null, endDate: java.time.LocalDate? = null, includeMedicationTakes: IncludeMedicationTakesDownloadHealthHistoryReport? = IncludeMedicationTakesDownloadHealthHistoryReport._0) : java.io.File {
+        val localVarResponse = downloadHealthHistoryReportWithHttpInfo(householdId = householdId, personId = personId, startDate = startDate, endDate = endDate, includeMedicationTakes = includeMedicationTakes)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as java.io.File
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/reports/health_history.pdf
+     * Export health history for one manageable person.
+     * 
+     * @param householdId 
+     * @param personId 
+     * @param startDate ISO date; defaults to one year before the end date. The maximum difference between start and end is 366 days. (optional)
+     * @param endDate ISO date; defaults to today. (optional)
+     * @param includeMedicationTakes  (optional, default to IncludeMedicationTakes._0)
+     * @return ApiResponse<java.io.File?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun downloadHealthHistoryReportWithHttpInfo(householdId: kotlin.Int, personId: kotlin.String, startDate: java.time.LocalDate?, endDate: java.time.LocalDate?, includeMedicationTakes: IncludeMedicationTakesDownloadHealthHistoryReport?) : ApiResponse<java.io.File?> {
+        val localVariableConfig = downloadHealthHistoryReportRequestConfig(householdId = householdId, personId = personId, startDate = startDate, endDate = endDate, includeMedicationTakes = includeMedicationTakes)
+
+        return request<Unit, java.io.File>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation downloadHealthHistoryReport
+     *
+     * @param householdId 
+     * @param personId 
+     * @param startDate ISO date; defaults to one year before the end date. The maximum difference between start and end is 366 days. (optional)
+     * @param endDate ISO date; defaults to today. (optional)
+     * @param includeMedicationTakes  (optional, default to IncludeMedicationTakes._0)
+     * @return RequestConfig
+     */
+    fun downloadHealthHistoryReportRequestConfig(householdId: kotlin.Int, personId: kotlin.String, startDate: java.time.LocalDate?, endDate: java.time.LocalDate?, includeMedicationTakes: IncludeMedicationTakesDownloadHealthHistoryReport?) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
+            .apply {
+                put("person_id", listOf(personId.toString()))
+                if (startDate != null) {
+                    put("start_date", listOf(parseDateToQueryString(startDate)))
+                }
+                if (endDate != null) {
+                    put("end_date", listOf(parseDateToQueryString(endDate)))
+                }
+                if (includeMedicationTakes != null) {
+                    put("include_medication_takes", listOf(includeMedicationTakes.value))
+                }
+            }
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/reports/health_history.pdf".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /households/{household_id}/reports/medication_reviews.pdf
+     * Export current medicine reviews for one visible person.
+     * 
+     * @param householdId 
+     * @param personId 
+     * @param status Omit to use the web report&#39;s default visible queue. This is a current snapshot; date filters are not supported. (optional)
+     * @return java.io.File
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun downloadMedicationReviewReport(householdId: kotlin.Int, personId: kotlin.String, status: MedicationReviewPromptStatus? = null) : java.io.File {
+        val localVarResponse = downloadMedicationReviewReportWithHttpInfo(householdId = householdId, personId = personId, status = status)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as java.io.File
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/reports/medication_reviews.pdf
+     * Export current medicine reviews for one visible person.
+     * 
+     * @param householdId 
+     * @param personId 
+     * @param status Omit to use the web report&#39;s default visible queue. This is a current snapshot; date filters are not supported. (optional)
+     * @return ApiResponse<java.io.File?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun downloadMedicationReviewReportWithHttpInfo(householdId: kotlin.Int, personId: kotlin.String, status: MedicationReviewPromptStatus?) : ApiResponse<java.io.File?> {
+        val localVariableConfig = downloadMedicationReviewReportRequestConfig(householdId = householdId, personId = personId, status = status)
+
+        return request<Unit, java.io.File>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation downloadMedicationReviewReport
+     *
+     * @param householdId 
+     * @param personId 
+     * @param status Omit to use the web report&#39;s default visible queue. This is a current snapshot; date filters are not supported. (optional)
+     * @return RequestConfig
+     */
+    fun downloadMedicationReviewReportRequestConfig(householdId: kotlin.Int, personId: kotlin.String, status: MedicationReviewPromptStatus?) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
+            .apply {
+                put("person_id", listOf(personId.toString()))
+                if (status != null) {
+                    put("status", listOf(status.toString()))
+                }
+            }
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/reports/medication_reviews.pdf".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * POST /households/{household_id}/portable_imports/dry_run
      * Validate an encrypted portable import without writing data.
      * 
@@ -1360,12 +2116,31 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      }
 
     /**
+     * enum for parameter portableFormat
+     */
+     enum class PortableFormatExportPortableHouseholdBundle(val value: kotlin.String) {
+         @Json(name = "medtracker.portable.v1") medtrackerPeriodPortablePeriodV1("medtracker.portable.v1"),
+         @Json(name = "medtracker.portable.v2") medtrackerPeriodPortablePeriodV2("medtracker.portable.v2"),
+         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
+
+        /**
+         * Override [toString()] to avoid using the enum variable name as the value, and instead use
+         * the actual value defined in the API spec file.
+         *
+         * This solves a problem when the variable name and its value are different, and ensures that
+         * the client sends the correct enum values to the server always.
+         */
+        override fun toString(): kotlin.String = "$value"
+     }
+
+    /**
      * GET /households/{household_id}/portable_export
      * Export an encrypted portable household bundle.
      * 
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
+     * @param portableFormat Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
      * @return PortableEnvelopeResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -1375,8 +2150,8 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun exportPortableHouseholdBundle(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle? = VersionExportPortableHouseholdBundle._1) : PortableEnvelopeResponse {
-        val localVarResponse = exportPortableHouseholdBundleWithHttpInfo(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase, version = version)
+    fun exportPortableHouseholdBundle(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle? = VersionExportPortableHouseholdBundle._1, portableFormat: PortableFormatExportPortableHouseholdBundle? = PortableFormatExportPortableHouseholdBundle.medtrackerPeriodPortablePeriodV1) : PortableEnvelopeResponse {
+        val localVarResponse = exportPortableHouseholdBundleWithHttpInfo(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase, version = version, portableFormat = portableFormat)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as PortableEnvelopeResponse
@@ -1400,14 +2175,15 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
+     * @param portableFormat Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
      * @return ApiResponse<PortableEnvelopeResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun exportPortableHouseholdBundleWithHttpInfo(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?) : ApiResponse<PortableEnvelopeResponse?> {
-        val localVariableConfig = exportPortableHouseholdBundleRequestConfig(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase, version = version)
+    fun exportPortableHouseholdBundleWithHttpInfo(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?, portableFormat: PortableFormatExportPortableHouseholdBundle?) : ApiResponse<PortableEnvelopeResponse?> {
+        val localVariableConfig = exportPortableHouseholdBundleRequestConfig(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase, version = version, portableFormat = portableFormat)
 
         return request<Unit, PortableEnvelopeResponse>(
             localVariableConfig
@@ -1420,14 +2196,18 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
+     * @param portableFormat Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
      * @return RequestConfig
      */
-    fun exportPortableHouseholdBundleRequestConfig(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?) : RequestConfig<Unit> {
+    fun exportPortableHouseholdBundleRequestConfig(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?, portableFormat: PortableFormatExportPortableHouseholdBundle?) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
             .apply {
                 if (version != null) {
                     put("version", listOf(version.value))
+                }
+                if (portableFormat != null) {
+                    put("portable_format", listOf(portableFormat.value))
                 }
             }
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
@@ -1846,6 +2626,194 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     }
 
     /**
+     * enum for parameter includeMedicationTakes
+     */
+     enum class IncludeMedicationTakesGetHealthHistoryReport(val value: kotlin.String) {
+         @Json(name = "0") _0("0"),
+         @Json(name = "1") _1("1"),
+         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
+
+        /**
+         * Override [toString()] to avoid using the enum variable name as the value, and instead use
+         * the actual value defined in the API spec file.
+         *
+         * This solves a problem when the variable name and its value are different, and ensures that
+         * the client sends the correct enum values to the server always.
+         */
+        override fun toString(): kotlin.String = "$value"
+     }
+
+    /**
+     * GET /households/{household_id}/reports/health_history
+     * Export health history for one manageable person.
+     * 
+     * @param householdId 
+     * @param personId 
+     * @param startDate ISO date; defaults to one year before the end date. The maximum difference between start and end is 366 days. (optional)
+     * @param endDate ISO date; defaults to today. (optional)
+     * @param includeMedicationTakes  (optional, default to IncludeMedicationTakes._0)
+     * @return HealthHistoryReportResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun getHealthHistoryReport(householdId: kotlin.Int, personId: kotlin.String, startDate: java.time.LocalDate? = null, endDate: java.time.LocalDate? = null, includeMedicationTakes: IncludeMedicationTakesGetHealthHistoryReport? = IncludeMedicationTakesGetHealthHistoryReport._0) : HealthHistoryReportResponse {
+        val localVarResponse = getHealthHistoryReportWithHttpInfo(householdId = householdId, personId = personId, startDate = startDate, endDate = endDate, includeMedicationTakes = includeMedicationTakes)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as HealthHistoryReportResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/reports/health_history
+     * Export health history for one manageable person.
+     * 
+     * @param householdId 
+     * @param personId 
+     * @param startDate ISO date; defaults to one year before the end date. The maximum difference between start and end is 366 days. (optional)
+     * @param endDate ISO date; defaults to today. (optional)
+     * @param includeMedicationTakes  (optional, default to IncludeMedicationTakes._0)
+     * @return ApiResponse<HealthHistoryReportResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun getHealthHistoryReportWithHttpInfo(householdId: kotlin.Int, personId: kotlin.String, startDate: java.time.LocalDate?, endDate: java.time.LocalDate?, includeMedicationTakes: IncludeMedicationTakesGetHealthHistoryReport?) : ApiResponse<HealthHistoryReportResponse?> {
+        val localVariableConfig = getHealthHistoryReportRequestConfig(householdId = householdId, personId = personId, startDate = startDate, endDate = endDate, includeMedicationTakes = includeMedicationTakes)
+
+        return request<Unit, HealthHistoryReportResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation getHealthHistoryReport
+     *
+     * @param householdId 
+     * @param personId 
+     * @param startDate ISO date; defaults to one year before the end date. The maximum difference between start and end is 366 days. (optional)
+     * @param endDate ISO date; defaults to today. (optional)
+     * @param includeMedicationTakes  (optional, default to IncludeMedicationTakes._0)
+     * @return RequestConfig
+     */
+    fun getHealthHistoryReportRequestConfig(householdId: kotlin.Int, personId: kotlin.String, startDate: java.time.LocalDate?, endDate: java.time.LocalDate?, includeMedicationTakes: IncludeMedicationTakesGetHealthHistoryReport?) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
+            .apply {
+                put("person_id", listOf(personId.toString()))
+                if (startDate != null) {
+                    put("start_date", listOf(parseDateToQueryString(startDate)))
+                }
+                if (endDate != null) {
+                    put("end_date", listOf(parseDateToQueryString(endDate)))
+                }
+                if (includeMedicationTakes != null) {
+                    put("include_medication_takes", listOf(includeMedicationTakes.value))
+                }
+            }
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/reports/health_history".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /households/{household_id}/profile
+     * Read the current account preferences and household person profile.
+     * 
+     * @param householdId 
+     * @return HouseholdProfileResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun getHouseholdProfile(householdId: kotlin.Int) : HouseholdProfileResponse {
+        val localVarResponse = getHouseholdProfileWithHttpInfo(householdId = householdId)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as HouseholdProfileResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/profile
+     * Read the current account preferences and household person profile.
+     * 
+     * @param householdId 
+     * @return ApiResponse<HouseholdProfileResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun getHouseholdProfileWithHttpInfo(householdId: kotlin.Int) : ApiResponse<HouseholdProfileResponse?> {
+        val localVariableConfig = getHouseholdProfileRequestConfig(householdId = householdId)
+
+        return request<Unit, HouseholdProfileResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation getHouseholdProfile
+     *
+     * @param householdId 
+     * @return RequestConfig
+     */
+    fun getHouseholdProfileRequestConfig(householdId: kotlin.Int) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/profile".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * GET /households/{household_id}/locations/{id}
      * Read a location.
      * 
@@ -1990,6 +2958,167 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
         return RequestConfig(
             method = RequestMethod.GET,
             path = "/households/{household_id}/medications/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /households/{household_id}/medication_review_prompts/{id}
+     * Read a review snapshot and its current version.
+     * 
+     * @param householdId 
+     * @param id 
+     * @return MedicationReviewPromptResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun getMedicationReviewPrompt(householdId: kotlin.Int, id: kotlin.String) : MedicationReviewPromptResponse {
+        val localVarResponse = getMedicationReviewPromptWithHttpInfo(householdId = householdId, id = id)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewPromptResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/medication_review_prompts/{id}
+     * Read a review snapshot and its current version.
+     * 
+     * @param householdId 
+     * @param id 
+     * @return ApiResponse<MedicationReviewPromptResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun getMedicationReviewPromptWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<MedicationReviewPromptResponse?> {
+        val localVariableConfig = getMedicationReviewPromptRequestConfig(householdId = householdId, id = id)
+
+        return request<Unit, MedicationReviewPromptResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation getMedicationReviewPrompt
+     *
+     * @param householdId 
+     * @param id 
+     * @return RequestConfig
+     */
+    fun getMedicationReviewPromptRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/medication_review_prompts/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /households/{household_id}/reports/medication_reviews
+     * Export current medicine reviews for one visible person.
+     * 
+     * @param householdId 
+     * @param personId 
+     * @param status Omit to use the web report&#39;s default visible queue. This is a current snapshot; date filters are not supported. (optional)
+     * @return MedicationReviewReportResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun getMedicationReviewReport(householdId: kotlin.Int, personId: kotlin.String, status: MedicationReviewPromptStatus? = null) : MedicationReviewReportResponse {
+        val localVarResponse = getMedicationReviewReportWithHttpInfo(householdId = householdId, personId = personId, status = status)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewReportResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/reports/medication_reviews
+     * Export current medicine reviews for one visible person.
+     * 
+     * @param householdId 
+     * @param personId 
+     * @param status Omit to use the web report&#39;s default visible queue. This is a current snapshot; date filters are not supported. (optional)
+     * @return ApiResponse<MedicationReviewReportResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun getMedicationReviewReportWithHttpInfo(householdId: kotlin.Int, personId: kotlin.String, status: MedicationReviewPromptStatus?) : ApiResponse<MedicationReviewReportResponse?> {
+        val localVariableConfig = getMedicationReviewReportRequestConfig(householdId = householdId, personId = personId, status = status)
+
+        return request<Unit, MedicationReviewReportResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation getMedicationReviewReport
+     *
+     * @param householdId 
+     * @param personId 
+     * @param status Omit to use the web report&#39;s default visible queue. This is a current snapshot; date filters are not supported. (optional)
+     * @return RequestConfig
+     */
+    fun getMedicationReviewReportRequestConfig(householdId: kotlin.Int, personId: kotlin.String, status: MedicationReviewPromptStatus?) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
+            .apply {
+                put("person_id", listOf(personId.toString()))
+                if (status != null) {
+                    put("status", listOf(status.toString()))
+                }
+            }
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/reports/medication_reviews".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -2920,6 +4049,258 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     }
 
     /**
+     * enum for parameter reviewStatus
+     */
+     enum class ReviewStatusListMedicationReviewPrompts(val value: kotlin.String) {
+         @Json(name = "needs_review") needs_review("needs_review"),
+         @Json(name = "reviewed") reviewed("reviewed"),
+         @Json(name = "all") all("all"),
+         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
+
+        /**
+         * Override [toString()] to avoid using the enum variable name as the value, and instead use
+         * the actual value defined in the API spec file.
+         *
+         * This solves a problem when the variable name and its value are different, and ensures that
+         * the client sends the correct enum values to the server always.
+         */
+        override fun toString(): kotlin.String = "$value"
+     }
+
+    /**
+     * enum for parameter priority
+     */
+     enum class PriorityListMedicationReviewPrompts(val value: kotlin.String) {
+         @Json(name = "all") all("all"),
+         @Json(name = "discuss_soon") discuss_soon("discuss_soon"),
+         @Json(name = "ask_when_convenient") ask_when_convenient("ask_when_convenient"),
+         @Json(name = "low_confidence") low_confidence("low_confidence"),
+         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
+
+        /**
+         * Override [toString()] to avoid using the enum variable name as the value, and instead use
+         * the actual value defined in the API spec file.
+         *
+         * This solves a problem when the variable name and its value are different, and ensures that
+         * the client sends the correct enum values to the server always.
+         */
+        override fun toString(): kotlin.String = "$value"
+     }
+
+    /**
+     * enum for parameter showHidden
+     */
+     enum class ShowHiddenListMedicationReviewPrompts(val value: kotlin.String) {
+         @Json(name = "0") _0("0"),
+         @Json(name = "1") _1("1"),
+         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
+
+        /**
+         * Override [toString()] to avoid using the enum variable name as the value, and instead use
+         * the actual value defined in the API spec file.
+         *
+         * This solves a problem when the variable name and its value are different, and ensures that
+         * the client sends the correct enum values to the server always.
+         */
+        override fun toString(): kotlin.String = "$value"
+     }
+
+    /**
+     * GET /households/{household_id}/medication_review_prompts
+     * List authorised evidence review snapshots with the existing queue filters.
+     * 
+     * @param householdId 
+     * @param page  (optional, default to 1)
+     * @param perPage  (optional, default to 20)
+     * @param reviewStatus  (optional, default to ReviewStatus.needs_review)
+     * @param priority  (optional, default to Priority.all)
+     * @param showHidden  (optional, default to ShowHidden._0)
+     * @return MedicationReviewPromptCollectionResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun listMedicationReviewPrompts(householdId: kotlin.Int, page: kotlin.Int? = 1, perPage: kotlin.Int? = 20, reviewStatus: ReviewStatusListMedicationReviewPrompts? = ReviewStatusListMedicationReviewPrompts.needs_review, priority: PriorityListMedicationReviewPrompts? = PriorityListMedicationReviewPrompts.all, showHidden: ShowHiddenListMedicationReviewPrompts? = ShowHiddenListMedicationReviewPrompts._0) : MedicationReviewPromptCollectionResponse {
+        val localVarResponse = listMedicationReviewPromptsWithHttpInfo(householdId = householdId, page = page, perPage = perPage, reviewStatus = reviewStatus, priority = priority, showHidden = showHidden)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewPromptCollectionResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/medication_review_prompts
+     * List authorised evidence review snapshots with the existing queue filters.
+     * 
+     * @param householdId 
+     * @param page  (optional, default to 1)
+     * @param perPage  (optional, default to 20)
+     * @param reviewStatus  (optional, default to ReviewStatus.needs_review)
+     * @param priority  (optional, default to Priority.all)
+     * @param showHidden  (optional, default to ShowHidden._0)
+     * @return ApiResponse<MedicationReviewPromptCollectionResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun listMedicationReviewPromptsWithHttpInfo(householdId: kotlin.Int, page: kotlin.Int?, perPage: kotlin.Int?, reviewStatus: ReviewStatusListMedicationReviewPrompts?, priority: PriorityListMedicationReviewPrompts?, showHidden: ShowHiddenListMedicationReviewPrompts?) : ApiResponse<MedicationReviewPromptCollectionResponse?> {
+        val localVariableConfig = listMedicationReviewPromptsRequestConfig(householdId = householdId, page = page, perPage = perPage, reviewStatus = reviewStatus, priority = priority, showHidden = showHidden)
+
+        return request<Unit, MedicationReviewPromptCollectionResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation listMedicationReviewPrompts
+     *
+     * @param householdId 
+     * @param page  (optional, default to 1)
+     * @param perPage  (optional, default to 20)
+     * @param reviewStatus  (optional, default to ReviewStatus.needs_review)
+     * @param priority  (optional, default to Priority.all)
+     * @param showHidden  (optional, default to ShowHidden._0)
+     * @return RequestConfig
+     */
+    fun listMedicationReviewPromptsRequestConfig(householdId: kotlin.Int, page: kotlin.Int?, perPage: kotlin.Int?, reviewStatus: ReviewStatusListMedicationReviewPrompts?, priority: PriorityListMedicationReviewPrompts?, showHidden: ShowHiddenListMedicationReviewPrompts?) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
+            .apply {
+                if (page != null) {
+                    put("page", listOf(page.toString()))
+                }
+                if (perPage != null) {
+                    put("per_page", listOf(perPage.toString()))
+                }
+                if (reviewStatus != null) {
+                    put("review_status", listOf(reviewStatus.value))
+                }
+                if (priority != null) {
+                    put("priority", listOf(priority.value))
+                }
+                if (showHidden != null) {
+                    put("show_hidden", listOf(showHidden.value))
+                }
+            }
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/medication_review_prompts".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /households/{household_id}/medications/{medication_id}/stock_removals
+     * List stock removals in newest-first order.
+     * Requires current household inventory-management permission.
+     * @param householdId 
+     * @param medicationId 
+     * @param page  (optional, default to 1)
+     * @param perPage  (optional, default to 20)
+     * @return StockRemovalCollectionResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun listMedicationStockRemovals(householdId: kotlin.Int, medicationId: kotlin.String, page: kotlin.Int? = 1, perPage: kotlin.Int? = 20) : StockRemovalCollectionResponse {
+        val localVarResponse = listMedicationStockRemovalsWithHttpInfo(householdId = householdId, medicationId = medicationId, page = page, perPage = perPage)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as StockRemovalCollectionResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/medications/{medication_id}/stock_removals
+     * List stock removals in newest-first order.
+     * Requires current household inventory-management permission.
+     * @param householdId 
+     * @param medicationId 
+     * @param page  (optional, default to 1)
+     * @param perPage  (optional, default to 20)
+     * @return ApiResponse<StockRemovalCollectionResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun listMedicationStockRemovalsWithHttpInfo(householdId: kotlin.Int, medicationId: kotlin.String, page: kotlin.Int?, perPage: kotlin.Int?) : ApiResponse<StockRemovalCollectionResponse?> {
+        val localVariableConfig = listMedicationStockRemovalsRequestConfig(householdId = householdId, medicationId = medicationId, page = page, perPage = perPage)
+
+        return request<Unit, StockRemovalCollectionResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation listMedicationStockRemovals
+     *
+     * @param householdId 
+     * @param medicationId 
+     * @param page  (optional, default to 1)
+     * @param perPage  (optional, default to 20)
+     * @return RequestConfig
+     */
+    fun listMedicationStockRemovalsRequestConfig(householdId: kotlin.Int, medicationId: kotlin.String, page: kotlin.Int?, perPage: kotlin.Int?) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
+            .apply {
+                if (page != null) {
+                    put("page", listOf(page.toString()))
+                }
+                if (perPage != null) {
+                    put("per_page", listOf(perPage.toString()))
+                }
+            }
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/medications/{medication_id}/stock_removals".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"medication_id"+"}", encodeURIComponent(medicationId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * GET /households/{household_id}/medication_takes
      * List visible medication takes.
      * 
@@ -3199,6 +4580,92 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     }
 
     /**
+     * GET /households/{household_id}/person_medications/{person_medication_id}/dose_occurrences
+     * Read stable expected dose identities without creating history records.
+     * 
+     * @param householdId 
+     * @param personMedicationId 
+     * @param startDate 
+     * @param endDate Inclusive end date; the range must contain at most 31 days.
+     * @return DoseOccurrenceCollectionResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun listPersonMedicationDoseOccurrences(householdId: kotlin.Int, personMedicationId: kotlin.String, startDate: java.time.LocalDate, endDate: java.time.LocalDate) : DoseOccurrenceCollectionResponse {
+        val localVarResponse = listPersonMedicationDoseOccurrencesWithHttpInfo(householdId = householdId, personMedicationId = personMedicationId, startDate = startDate, endDate = endDate)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as DoseOccurrenceCollectionResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/person_medications/{person_medication_id}/dose_occurrences
+     * Read stable expected dose identities without creating history records.
+     * 
+     * @param householdId 
+     * @param personMedicationId 
+     * @param startDate 
+     * @param endDate Inclusive end date; the range must contain at most 31 days.
+     * @return ApiResponse<DoseOccurrenceCollectionResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun listPersonMedicationDoseOccurrencesWithHttpInfo(householdId: kotlin.Int, personMedicationId: kotlin.String, startDate: java.time.LocalDate, endDate: java.time.LocalDate) : ApiResponse<DoseOccurrenceCollectionResponse?> {
+        val localVariableConfig = listPersonMedicationDoseOccurrencesRequestConfig(householdId = householdId, personMedicationId = personMedicationId, startDate = startDate, endDate = endDate)
+
+        return request<Unit, DoseOccurrenceCollectionResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation listPersonMedicationDoseOccurrences
+     *
+     * @param householdId 
+     * @param personMedicationId 
+     * @param startDate 
+     * @param endDate Inclusive end date; the range must contain at most 31 days.
+     * @return RequestConfig
+     */
+    fun listPersonMedicationDoseOccurrencesRequestConfig(householdId: kotlin.Int, personMedicationId: kotlin.String, startDate: java.time.LocalDate, endDate: java.time.LocalDate) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
+            .apply {
+                put("start_date", listOf(parseDateToQueryString(startDate)))
+                put("end_date", listOf(parseDateToQueryString(endDate)))
+            }
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/person_medications/{person_medication_id}/dose_occurrences".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"person_medication_id"+"}", encodeURIComponent(personMedicationId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * GET /households/{household_id}/person_medications
      * List visible person medication assignments.
      * 
@@ -3284,6 +4751,92 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
         return RequestConfig(
             method = RequestMethod.GET,
             path = "/households/{household_id}/person_medications".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /households/{household_id}/schedules/{schedule_id}/dose_occurrences
+     * Read stable expected dose identities without creating history records.
+     * 
+     * @param householdId 
+     * @param scheduleId 
+     * @param startDate 
+     * @param endDate Inclusive end date; the range must contain at most 31 days.
+     * @return DoseOccurrenceCollectionResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun listScheduleDoseOccurrences(householdId: kotlin.Int, scheduleId: kotlin.String, startDate: java.time.LocalDate, endDate: java.time.LocalDate) : DoseOccurrenceCollectionResponse {
+        val localVarResponse = listScheduleDoseOccurrencesWithHttpInfo(householdId = householdId, scheduleId = scheduleId, startDate = startDate, endDate = endDate)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as DoseOccurrenceCollectionResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/schedules/{schedule_id}/dose_occurrences
+     * Read stable expected dose identities without creating history records.
+     * 
+     * @param householdId 
+     * @param scheduleId 
+     * @param startDate 
+     * @param endDate Inclusive end date; the range must contain at most 31 days.
+     * @return ApiResponse<DoseOccurrenceCollectionResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun listScheduleDoseOccurrencesWithHttpInfo(householdId: kotlin.Int, scheduleId: kotlin.String, startDate: java.time.LocalDate, endDate: java.time.LocalDate) : ApiResponse<DoseOccurrenceCollectionResponse?> {
+        val localVariableConfig = listScheduleDoseOccurrencesRequestConfig(householdId = householdId, scheduleId = scheduleId, startDate = startDate, endDate = endDate)
+
+        return request<Unit, DoseOccurrenceCollectionResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation listScheduleDoseOccurrences
+     *
+     * @param householdId 
+     * @param scheduleId 
+     * @param startDate 
+     * @param endDate Inclusive end date; the range must contain at most 31 days.
+     * @return RequestConfig
+     */
+    fun listScheduleDoseOccurrencesRequestConfig(householdId: kotlin.Int, scheduleId: kotlin.String, startDate: java.time.LocalDate, endDate: java.time.LocalDate) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
+            .apply {
+                put("start_date", listOf(parseDateToQueryString(startDate)))
+                put("end_date", listOf(parseDateToQueryString(endDate)))
+            }
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/schedules/{schedule_id}/dose_occurrences".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"schedule_id"+"}", encodeURIComponent(scheduleId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -3695,6 +5248,350 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
         return RequestConfig(
             method = RequestMethod.PATCH,
             path = "/households/{household_id}/schedules/{id}/pause".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/not_taken
+     * Record due non-administration without creating a take or reducing stock.
+     * 
+     * @param householdId 
+     * @param personMedicationId 
+     * @param doseNotTakenRequest 
+     * @param idempotencyKey  (optional)
+     * @return DoseOccurrenceResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun recordPersonMedicationDoseNotTaken(householdId: kotlin.Int, personMedicationId: kotlin.String, doseNotTakenRequest: DoseNotTakenRequest, idempotencyKey: kotlin.String? = null) : DoseOccurrenceResponse {
+        val localVarResponse = recordPersonMedicationDoseNotTakenWithHttpInfo(householdId = householdId, personMedicationId = personMedicationId, doseNotTakenRequest = doseNotTakenRequest, idempotencyKey = idempotencyKey)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as DoseOccurrenceResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/not_taken
+     * Record due non-administration without creating a take or reducing stock.
+     * 
+     * @param householdId 
+     * @param personMedicationId 
+     * @param doseNotTakenRequest 
+     * @param idempotencyKey  (optional)
+     * @return ApiResponse<DoseOccurrenceResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun recordPersonMedicationDoseNotTakenWithHttpInfo(householdId: kotlin.Int, personMedicationId: kotlin.String, doseNotTakenRequest: DoseNotTakenRequest, idempotencyKey: kotlin.String?) : ApiResponse<DoseOccurrenceResponse?> {
+        val localVariableConfig = recordPersonMedicationDoseNotTakenRequestConfig(householdId = householdId, personMedicationId = personMedicationId, doseNotTakenRequest = doseNotTakenRequest, idempotencyKey = idempotencyKey)
+
+        return request<DoseNotTakenRequest, DoseOccurrenceResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation recordPersonMedicationDoseNotTaken
+     *
+     * @param householdId 
+     * @param personMedicationId 
+     * @param doseNotTakenRequest 
+     * @param idempotencyKey  (optional)
+     * @return RequestConfig
+     */
+    fun recordPersonMedicationDoseNotTakenRequestConfig(householdId: kotlin.Int, personMedicationId: kotlin.String, doseNotTakenRequest: DoseNotTakenRequest, idempotencyKey: kotlin.String?) : RequestConfig<DoseNotTakenRequest> {
+        val localVariableBody = doseNotTakenRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        idempotencyKey?.apply { localVariableHeaders["Idempotency-Key"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/not_taken".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"person_medication_id"+"}", encodeURIComponent(personMedicationId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/schedules/{schedule_id}/dose_occurrences/not_taken
+     * Record due non-administration without creating a take or reducing stock.
+     * 
+     * @param householdId 
+     * @param scheduleId 
+     * @param doseNotTakenRequest 
+     * @param idempotencyKey  (optional)
+     * @return DoseOccurrenceResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun recordScheduleDoseNotTaken(householdId: kotlin.Int, scheduleId: kotlin.String, doseNotTakenRequest: DoseNotTakenRequest, idempotencyKey: kotlin.String? = null) : DoseOccurrenceResponse {
+        val localVarResponse = recordScheduleDoseNotTakenWithHttpInfo(householdId = householdId, scheduleId = scheduleId, doseNotTakenRequest = doseNotTakenRequest, idempotencyKey = idempotencyKey)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as DoseOccurrenceResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/schedules/{schedule_id}/dose_occurrences/not_taken
+     * Record due non-administration without creating a take or reducing stock.
+     * 
+     * @param householdId 
+     * @param scheduleId 
+     * @param doseNotTakenRequest 
+     * @param idempotencyKey  (optional)
+     * @return ApiResponse<DoseOccurrenceResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun recordScheduleDoseNotTakenWithHttpInfo(householdId: kotlin.Int, scheduleId: kotlin.String, doseNotTakenRequest: DoseNotTakenRequest, idempotencyKey: kotlin.String?) : ApiResponse<DoseOccurrenceResponse?> {
+        val localVariableConfig = recordScheduleDoseNotTakenRequestConfig(householdId = householdId, scheduleId = scheduleId, doseNotTakenRequest = doseNotTakenRequest, idempotencyKey = idempotencyKey)
+
+        return request<DoseNotTakenRequest, DoseOccurrenceResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation recordScheduleDoseNotTaken
+     *
+     * @param householdId 
+     * @param scheduleId 
+     * @param doseNotTakenRequest 
+     * @param idempotencyKey  (optional)
+     * @return RequestConfig
+     */
+    fun recordScheduleDoseNotTakenRequestConfig(householdId: kotlin.Int, scheduleId: kotlin.String, doseNotTakenRequest: DoseNotTakenRequest, idempotencyKey: kotlin.String?) : RequestConfig<DoseNotTakenRequest> {
+        val localVariableBody = doseNotTakenRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        idempotencyKey?.apply { localVariableHeaders["Idempotency-Key"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/schedules/{schedule_id}/dose_occurrences/not_taken".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"schedule_id"+"}", encodeURIComponent(scheduleId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PATCH /households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/reopen
+     * Reopen a not-taken dose with manage access and a current version.
+     * 
+     * @param householdId 
+     * @param personMedicationId 
+     * @param ifMatch 
+     * @param doseReopenRequest 
+     * @param idempotencyKey  (optional)
+     * @return DoseOccurrenceResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun reopenPersonMedicationDoseOccurrence(householdId: kotlin.Int, personMedicationId: kotlin.String, ifMatch: kotlin.String, doseReopenRequest: DoseReopenRequest, idempotencyKey: kotlin.String? = null) : DoseOccurrenceResponse {
+        val localVarResponse = reopenPersonMedicationDoseOccurrenceWithHttpInfo(householdId = householdId, personMedicationId = personMedicationId, ifMatch = ifMatch, doseReopenRequest = doseReopenRequest, idempotencyKey = idempotencyKey)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as DoseOccurrenceResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PATCH /households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/reopen
+     * Reopen a not-taken dose with manage access and a current version.
+     * 
+     * @param householdId 
+     * @param personMedicationId 
+     * @param ifMatch 
+     * @param doseReopenRequest 
+     * @param idempotencyKey  (optional)
+     * @return ApiResponse<DoseOccurrenceResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun reopenPersonMedicationDoseOccurrenceWithHttpInfo(householdId: kotlin.Int, personMedicationId: kotlin.String, ifMatch: kotlin.String, doseReopenRequest: DoseReopenRequest, idempotencyKey: kotlin.String?) : ApiResponse<DoseOccurrenceResponse?> {
+        val localVariableConfig = reopenPersonMedicationDoseOccurrenceRequestConfig(householdId = householdId, personMedicationId = personMedicationId, ifMatch = ifMatch, doseReopenRequest = doseReopenRequest, idempotencyKey = idempotencyKey)
+
+        return request<DoseReopenRequest, DoseOccurrenceResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation reopenPersonMedicationDoseOccurrence
+     *
+     * @param householdId 
+     * @param personMedicationId 
+     * @param ifMatch 
+     * @param doseReopenRequest 
+     * @param idempotencyKey  (optional)
+     * @return RequestConfig
+     */
+    fun reopenPersonMedicationDoseOccurrenceRequestConfig(householdId: kotlin.Int, personMedicationId: kotlin.String, ifMatch: kotlin.String, doseReopenRequest: DoseReopenRequest, idempotencyKey: kotlin.String?) : RequestConfig<DoseReopenRequest> {
+        val localVariableBody = doseReopenRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        idempotencyKey?.apply { localVariableHeaders["Idempotency-Key"] = this.toString() }
+        ifMatch.apply { localVariableHeaders["If-Match"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PATCH,
+            path = "/households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/reopen".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"person_medication_id"+"}", encodeURIComponent(personMedicationId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PATCH /households/{household_id}/schedules/{schedule_id}/dose_occurrences/reopen
+     * Reopen a not-taken dose with manage access and a current version.
+     * 
+     * @param householdId 
+     * @param scheduleId 
+     * @param ifMatch 
+     * @param doseReopenRequest 
+     * @param idempotencyKey  (optional)
+     * @return DoseOccurrenceResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun reopenScheduleDoseOccurrence(householdId: kotlin.Int, scheduleId: kotlin.String, ifMatch: kotlin.String, doseReopenRequest: DoseReopenRequest, idempotencyKey: kotlin.String? = null) : DoseOccurrenceResponse {
+        val localVarResponse = reopenScheduleDoseOccurrenceWithHttpInfo(householdId = householdId, scheduleId = scheduleId, ifMatch = ifMatch, doseReopenRequest = doseReopenRequest, idempotencyKey = idempotencyKey)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as DoseOccurrenceResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PATCH /households/{household_id}/schedules/{schedule_id}/dose_occurrences/reopen
+     * Reopen a not-taken dose with manage access and a current version.
+     * 
+     * @param householdId 
+     * @param scheduleId 
+     * @param ifMatch 
+     * @param doseReopenRequest 
+     * @param idempotencyKey  (optional)
+     * @return ApiResponse<DoseOccurrenceResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun reopenScheduleDoseOccurrenceWithHttpInfo(householdId: kotlin.Int, scheduleId: kotlin.String, ifMatch: kotlin.String, doseReopenRequest: DoseReopenRequest, idempotencyKey: kotlin.String?) : ApiResponse<DoseOccurrenceResponse?> {
+        val localVariableConfig = reopenScheduleDoseOccurrenceRequestConfig(householdId = householdId, scheduleId = scheduleId, ifMatch = ifMatch, doseReopenRequest = doseReopenRequest, idempotencyKey = idempotencyKey)
+
+        return request<DoseReopenRequest, DoseOccurrenceResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation reopenScheduleDoseOccurrence
+     *
+     * @param householdId 
+     * @param scheduleId 
+     * @param ifMatch 
+     * @param doseReopenRequest 
+     * @param idempotencyKey  (optional)
+     * @return RequestConfig
+     */
+    fun reopenScheduleDoseOccurrenceRequestConfig(householdId: kotlin.Int, scheduleId: kotlin.String, ifMatch: kotlin.String, doseReopenRequest: DoseReopenRequest, idempotencyKey: kotlin.String?) : RequestConfig<DoseReopenRequest> {
+        val localVariableBody = doseReopenRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        idempotencyKey?.apply { localVariableHeaders["Idempotency-Key"] = this.toString() }
+        ifMatch.apply { localVariableHeaders["If-Match"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PATCH,
+            path = "/households/{household_id}/schedules/{schedule_id}/dose_occurrences/reopen".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"schedule_id"+"}", encodeURIComponent(scheduleId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -4619,6 +6516,182 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     }
 
     /**
+     * POST /households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/take
+     * Resolve a dose through normal administration while retaining former outcome history.
+     * 
+     * @param householdId 
+     * @param personMedicationId 
+     * @param doseTakeRequest 
+     * @param idempotencyKey  (optional)
+     * @param ifMatch Required when replacing a not-taken decision; must match its current outcome version. (optional)
+     * @return DoseOccurrenceResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun takePersonMedicationDoseOccurrence(householdId: kotlin.Int, personMedicationId: kotlin.String, doseTakeRequest: DoseTakeRequest, idempotencyKey: kotlin.String? = null, ifMatch: kotlin.String? = null) : DoseOccurrenceResponse {
+        val localVarResponse = takePersonMedicationDoseOccurrenceWithHttpInfo(householdId = householdId, personMedicationId = personMedicationId, doseTakeRequest = doseTakeRequest, idempotencyKey = idempotencyKey, ifMatch = ifMatch)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as DoseOccurrenceResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/take
+     * Resolve a dose through normal administration while retaining former outcome history.
+     * 
+     * @param householdId 
+     * @param personMedicationId 
+     * @param doseTakeRequest 
+     * @param idempotencyKey  (optional)
+     * @param ifMatch Required when replacing a not-taken decision; must match its current outcome version. (optional)
+     * @return ApiResponse<DoseOccurrenceResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun takePersonMedicationDoseOccurrenceWithHttpInfo(householdId: kotlin.Int, personMedicationId: kotlin.String, doseTakeRequest: DoseTakeRequest, idempotencyKey: kotlin.String?, ifMatch: kotlin.String?) : ApiResponse<DoseOccurrenceResponse?> {
+        val localVariableConfig = takePersonMedicationDoseOccurrenceRequestConfig(householdId = householdId, personMedicationId = personMedicationId, doseTakeRequest = doseTakeRequest, idempotencyKey = idempotencyKey, ifMatch = ifMatch)
+
+        return request<DoseTakeRequest, DoseOccurrenceResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation takePersonMedicationDoseOccurrence
+     *
+     * @param householdId 
+     * @param personMedicationId 
+     * @param doseTakeRequest 
+     * @param idempotencyKey  (optional)
+     * @param ifMatch Required when replacing a not-taken decision; must match its current outcome version. (optional)
+     * @return RequestConfig
+     */
+    fun takePersonMedicationDoseOccurrenceRequestConfig(householdId: kotlin.Int, personMedicationId: kotlin.String, doseTakeRequest: DoseTakeRequest, idempotencyKey: kotlin.String?, ifMatch: kotlin.String?) : RequestConfig<DoseTakeRequest> {
+        val localVariableBody = doseTakeRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        idempotencyKey?.apply { localVariableHeaders["Idempotency-Key"] = this.toString() }
+        ifMatch?.apply { localVariableHeaders["If-Match"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/take".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"person_medication_id"+"}", encodeURIComponent(personMedicationId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/schedules/{schedule_id}/dose_occurrences/take
+     * Resolve a dose through normal administration while retaining former outcome history.
+     * 
+     * @param householdId 
+     * @param scheduleId 
+     * @param doseTakeRequest 
+     * @param idempotencyKey  (optional)
+     * @param ifMatch Required when replacing a not-taken decision; must match its current outcome version. (optional)
+     * @return DoseOccurrenceResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun takeScheduleDoseOccurrence(householdId: kotlin.Int, scheduleId: kotlin.String, doseTakeRequest: DoseTakeRequest, idempotencyKey: kotlin.String? = null, ifMatch: kotlin.String? = null) : DoseOccurrenceResponse {
+        val localVarResponse = takeScheduleDoseOccurrenceWithHttpInfo(householdId = householdId, scheduleId = scheduleId, doseTakeRequest = doseTakeRequest, idempotencyKey = idempotencyKey, ifMatch = ifMatch)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as DoseOccurrenceResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/schedules/{schedule_id}/dose_occurrences/take
+     * Resolve a dose through normal administration while retaining former outcome history.
+     * 
+     * @param householdId 
+     * @param scheduleId 
+     * @param doseTakeRequest 
+     * @param idempotencyKey  (optional)
+     * @param ifMatch Required when replacing a not-taken decision; must match its current outcome version. (optional)
+     * @return ApiResponse<DoseOccurrenceResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun takeScheduleDoseOccurrenceWithHttpInfo(householdId: kotlin.Int, scheduleId: kotlin.String, doseTakeRequest: DoseTakeRequest, idempotencyKey: kotlin.String?, ifMatch: kotlin.String?) : ApiResponse<DoseOccurrenceResponse?> {
+        val localVariableConfig = takeScheduleDoseOccurrenceRequestConfig(householdId = householdId, scheduleId = scheduleId, doseTakeRequest = doseTakeRequest, idempotencyKey = idempotencyKey, ifMatch = ifMatch)
+
+        return request<DoseTakeRequest, DoseOccurrenceResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation takeScheduleDoseOccurrence
+     *
+     * @param householdId 
+     * @param scheduleId 
+     * @param doseTakeRequest 
+     * @param idempotencyKey  (optional)
+     * @param ifMatch Required when replacing a not-taken decision; must match its current outcome version. (optional)
+     * @return RequestConfig
+     */
+    fun takeScheduleDoseOccurrenceRequestConfig(householdId: kotlin.Int, scheduleId: kotlin.String, doseTakeRequest: DoseTakeRequest, idempotencyKey: kotlin.String?, ifMatch: kotlin.String?) : RequestConfig<DoseTakeRequest> {
+        val localVariableBody = doseTakeRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        idempotencyKey?.apply { localVariableHeaders["Idempotency-Key"] = this.toString() }
+        ifMatch?.apply { localVariableHeaders["If-Match"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/schedules/{schedule_id}/dose_occurrences/take".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"schedule_id"+"}", encodeURIComponent(scheduleId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * POST /households/{household_id}/push_subscription/test
      * Send a test push notification.
      * 
@@ -4858,6 +6931,328 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     }
 
     /**
+     * PATCH /households/{household_id}/profile
+     * Atomically save non-security preferences and date of birth online.
+     * 
+     * @param householdId 
+     * @param updateHouseholdProfileWithPutRequest 
+     * @return HouseholdProfileResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun updateHouseholdProfile(householdId: kotlin.Int, updateHouseholdProfileWithPutRequest: UpdateHouseholdProfileWithPutRequest) : HouseholdProfileResponse {
+        val localVarResponse = updateHouseholdProfileWithHttpInfo(householdId = householdId, updateHouseholdProfileWithPutRequest = updateHouseholdProfileWithPutRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as HouseholdProfileResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PATCH /households/{household_id}/profile
+     * Atomically save non-security preferences and date of birth online.
+     * 
+     * @param householdId 
+     * @param updateHouseholdProfileWithPutRequest 
+     * @return ApiResponse<HouseholdProfileResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun updateHouseholdProfileWithHttpInfo(householdId: kotlin.Int, updateHouseholdProfileWithPutRequest: UpdateHouseholdProfileWithPutRequest) : ApiResponse<HouseholdProfileResponse?> {
+        val localVariableConfig = updateHouseholdProfileRequestConfig(householdId = householdId, updateHouseholdProfileWithPutRequest = updateHouseholdProfileWithPutRequest)
+
+        return request<UpdateHouseholdProfileWithPutRequest, HouseholdProfileResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation updateHouseholdProfile
+     *
+     * @param householdId 
+     * @param updateHouseholdProfileWithPutRequest 
+     * @return RequestConfig
+     */
+    fun updateHouseholdProfileRequestConfig(householdId: kotlin.Int, updateHouseholdProfileWithPutRequest: UpdateHouseholdProfileWithPutRequest) : RequestConfig<UpdateHouseholdProfileWithPutRequest> {
+        val localVariableBody = updateHouseholdProfileWithPutRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PATCH,
+            path = "/households/{household_id}/profile".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PUT /households/{household_id}/profile
+     * Atomically save non-security preferences and date of birth online.
+     * 
+     * @param householdId 
+     * @param updateHouseholdProfileWithPutRequest 
+     * @return HouseholdProfileResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun updateHouseholdProfileWithPut(householdId: kotlin.Int, updateHouseholdProfileWithPutRequest: UpdateHouseholdProfileWithPutRequest) : HouseholdProfileResponse {
+        val localVarResponse = updateHouseholdProfileWithPutWithHttpInfo(householdId = householdId, updateHouseholdProfileWithPutRequest = updateHouseholdProfileWithPutRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as HouseholdProfileResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PUT /households/{household_id}/profile
+     * Atomically save non-security preferences and date of birth online.
+     * 
+     * @param householdId 
+     * @param updateHouseholdProfileWithPutRequest 
+     * @return ApiResponse<HouseholdProfileResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun updateHouseholdProfileWithPutWithHttpInfo(householdId: kotlin.Int, updateHouseholdProfileWithPutRequest: UpdateHouseholdProfileWithPutRequest) : ApiResponse<HouseholdProfileResponse?> {
+        val localVariableConfig = updateHouseholdProfileWithPutRequestConfig(householdId = householdId, updateHouseholdProfileWithPutRequest = updateHouseholdProfileWithPutRequest)
+
+        return request<UpdateHouseholdProfileWithPutRequest, HouseholdProfileResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation updateHouseholdProfileWithPut
+     *
+     * @param householdId 
+     * @param updateHouseholdProfileWithPutRequest 
+     * @return RequestConfig
+     */
+    fun updateHouseholdProfileWithPutRequestConfig(householdId: kotlin.Int, updateHouseholdProfileWithPutRequest: UpdateHouseholdProfileWithPutRequest) : RequestConfig<UpdateHouseholdProfileWithPutRequest> {
+        val localVariableBody = updateHouseholdProfileWithPutRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PUT,
+            path = "/households/{household_id}/profile".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PATCH /households/{household_id}/locations/{id}
+     * Update household storage with its current version.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @param locationUpdateRequest 
+     * @return LocationResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun updateLocation(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, locationUpdateRequest: LocationUpdateRequest) : LocationResponse {
+        val localVarResponse = updateLocationWithHttpInfo(householdId = householdId, id = id, ifMatch = ifMatch, locationUpdateRequest = locationUpdateRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as LocationResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PATCH /households/{household_id}/locations/{id}
+     * Update household storage with its current version.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @param locationUpdateRequest 
+     * @return ApiResponse<LocationResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun updateLocationWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, locationUpdateRequest: LocationUpdateRequest) : ApiResponse<LocationResponse?> {
+        val localVariableConfig = updateLocationRequestConfig(householdId = householdId, id = id, ifMatch = ifMatch, locationUpdateRequest = locationUpdateRequest)
+
+        return request<LocationUpdateRequest, LocationResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation updateLocation
+     *
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @param locationUpdateRequest 
+     * @return RequestConfig
+     */
+    fun updateLocationRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, locationUpdateRequest: LocationUpdateRequest) : RequestConfig<LocationUpdateRequest> {
+        val localVariableBody = locationUpdateRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        ifMatch.apply { localVariableHeaders["If-Match"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PATCH,
+            path = "/households/{household_id}/locations/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PUT /households/{household_id}/locations/{id}
+     * Update household storage with its current version.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @param locationUpdateRequest 
+     * @return LocationResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun updateLocationWithPut(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, locationUpdateRequest: LocationUpdateRequest) : LocationResponse {
+        val localVarResponse = updateLocationWithPutWithHttpInfo(householdId = householdId, id = id, ifMatch = ifMatch, locationUpdateRequest = locationUpdateRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as LocationResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PUT /households/{household_id}/locations/{id}
+     * Update household storage with its current version.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @param locationUpdateRequest 
+     * @return ApiResponse<LocationResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun updateLocationWithPutWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, locationUpdateRequest: LocationUpdateRequest) : ApiResponse<LocationResponse?> {
+        val localVariableConfig = updateLocationWithPutRequestConfig(householdId = householdId, id = id, ifMatch = ifMatch, locationUpdateRequest = locationUpdateRequest)
+
+        return request<LocationUpdateRequest, LocationResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation updateLocationWithPut
+     *
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @param locationUpdateRequest 
+     * @return RequestConfig
+     */
+    fun updateLocationWithPutRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, locationUpdateRequest: LocationUpdateRequest) : RequestConfig<LocationUpdateRequest> {
+        val localVariableBody = locationUpdateRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        ifMatch.apply { localVariableHeaders["If-Match"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PUT,
+            path = "/households/{household_id}/locations/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * PATCH /households/{household_id}/medications/{id}
      * Update a medication.
      * 
@@ -4934,6 +7329,174 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
         return RequestConfig(
             method = RequestMethod.PATCH,
             path = "/households/{household_id}/medications/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PATCH /households/{household_id}/medication_review_prompts/{id}
+     * Record an audited practitioner review without changing evidence.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @param medicationReviewPromptUpdateRequest 
+     * @return MedicationReviewPromptResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun updateMedicationReviewPrompt(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : MedicationReviewPromptResponse {
+        val localVarResponse = updateMedicationReviewPromptWithHttpInfo(householdId = householdId, id = id, ifMatch = ifMatch, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewPromptResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PATCH /households/{household_id}/medication_review_prompts/{id}
+     * Record an audited practitioner review without changing evidence.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @param medicationReviewPromptUpdateRequest 
+     * @return ApiResponse<MedicationReviewPromptResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun updateMedicationReviewPromptWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : ApiResponse<MedicationReviewPromptResponse?> {
+        val localVariableConfig = updateMedicationReviewPromptRequestConfig(householdId = householdId, id = id, ifMatch = ifMatch, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
+
+        return request<MedicationReviewPromptUpdateRequest, MedicationReviewPromptResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation updateMedicationReviewPrompt
+     *
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @param medicationReviewPromptUpdateRequest 
+     * @return RequestConfig
+     */
+    fun updateMedicationReviewPromptRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : RequestConfig<MedicationReviewPromptUpdateRequest> {
+        val localVariableBody = medicationReviewPromptUpdateRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        ifMatch.apply { localVariableHeaders["If-Match"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PATCH,
+            path = "/households/{household_id}/medication_review_prompts/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PUT /households/{household_id}/medication_review_prompts/{id}
+     * Record an audited practitioner review without changing evidence.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @param medicationReviewPromptUpdateRequest 
+     * @return MedicationReviewPromptResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun updateMedicationReviewPromptWithPut(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : MedicationReviewPromptResponse {
+        val localVarResponse = updateMedicationReviewPromptWithPutWithHttpInfo(householdId = householdId, id = id, ifMatch = ifMatch, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewPromptResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PUT /households/{household_id}/medication_review_prompts/{id}
+     * Record an audited practitioner review without changing evidence.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @param medicationReviewPromptUpdateRequest 
+     * @return ApiResponse<MedicationReviewPromptResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun updateMedicationReviewPromptWithPutWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : ApiResponse<MedicationReviewPromptResponse?> {
+        val localVariableConfig = updateMedicationReviewPromptWithPutRequestConfig(householdId = householdId, id = id, ifMatch = ifMatch, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
+
+        return request<MedicationReviewPromptUpdateRequest, MedicationReviewPromptResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation updateMedicationReviewPromptWithPut
+     *
+     * @param householdId 
+     * @param id 
+     * @param ifMatch 
+     * @param medicationReviewPromptUpdateRequest 
+     * @return RequestConfig
+     */
+    fun updateMedicationReviewPromptWithPutRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : RequestConfig<MedicationReviewPromptUpdateRequest> {
+        val localVariableBody = medicationReviewPromptUpdateRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        ifMatch.apply { localVariableHeaders["If-Match"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PUT,
+            path = "/households/{household_id}/medication_review_prompts/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -5339,6 +7902,83 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
         return RequestConfig(
             method = RequestMethod.PATCH,
             path = "/households/{household_id}/schedules/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PUT /households/{household_id}/profile/avatar
+     * Upload a PNG, JPEG or WebP image of at most 5 MiB.
+     * Online only. Every request checks current person access. Multipart writes are not response-cached by Idempotency-Key.
+     * @param householdId 
+     * @param avatar 
+     * @return HouseholdProfileResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun uploadCurrentAvatar(householdId: kotlin.Int, avatar: java.io.File) : HouseholdProfileResponse {
+        val localVarResponse = uploadCurrentAvatarWithHttpInfo(householdId = householdId, avatar = avatar)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as HouseholdProfileResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PUT /households/{household_id}/profile/avatar
+     * Upload a PNG, JPEG or WebP image of at most 5 MiB.
+     * Online only. Every request checks current person access. Multipart writes are not response-cached by Idempotency-Key.
+     * @param householdId 
+     * @param avatar 
+     * @return ApiResponse<HouseholdProfileResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun uploadCurrentAvatarWithHttpInfo(householdId: kotlin.Int, avatar: java.io.File) : ApiResponse<HouseholdProfileResponse?> {
+        val localVariableConfig = uploadCurrentAvatarRequestConfig(householdId = householdId, avatar = avatar)
+
+        return request<Map<String, PartConfig<*>>, HouseholdProfileResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation uploadCurrentAvatar
+     *
+     * @param householdId 
+     * @param avatar 
+     * @return RequestConfig
+     */
+    fun uploadCurrentAvatarRequestConfig(householdId: kotlin.Int, avatar: java.io.File) : RequestConfig<Map<String, PartConfig<*>>> {
+        val localVariableBody = mapOf(
+            "avatar" to PartConfig(body = avatar, headers = mutableMapOf()),)
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf("Content-Type" to "multipart/form-data")
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PUT,
+            path = "/households/{household_id}/profile/avatar".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

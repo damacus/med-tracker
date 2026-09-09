@@ -25,6 +25,7 @@ import com.squareup.moshi.JsonClass
  * @param index 
  * @param action 
  * @param recordType 
+ * @param recordId Server record ID. Review results use this identifier because review snapshots do not have portable IDs.
  * @param recordPortableId 
  * @param etag 
  * @param replayed 
@@ -42,8 +43,12 @@ data class SyncBatchResult (
     @Json(name = "record_type")
     val recordType: SyncBatchResult.RecordType,
 
+    /* Server record ID. Review results use this identifier because review snapshots do not have portable IDs. */
+    @Json(name = "record_id")
+    val recordId: kotlin.String? = null,
+
     @Json(name = "record_portable_id")
-    val recordPortableId: java.util.UUID,
+    val recordPortableId: java.util.UUID? = null,
 
     @Json(name = "etag")
     val etag: kotlin.String? = null,
@@ -56,7 +61,7 @@ data class SyncBatchResult (
     /**
      * 
      *
-     * Values: create,update,delete,close,unknown_default_open_api
+     * Values: create,update,delete,close,adjust_inventory,mark_as_ordered,mark_as_received,remove_stock,pause,resume,reorder,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class Action(val value: kotlin.String) {
@@ -64,21 +69,33 @@ data class SyncBatchResult (
         @Json(name = "update") update("update"),
         @Json(name = "delete") delete("delete"),
         @Json(name = "close") close("close"),
+        @Json(name = "adjust_inventory") adjust_inventory("adjust_inventory"),
+        @Json(name = "mark_as_ordered") mark_as_ordered("mark_as_ordered"),
+        @Json(name = "mark_as_received") mark_as_received("mark_as_received"),
+        @Json(name = "remove_stock") remove_stock("remove_stock"),
+        @Json(name = "pause") pause("pause"),
+        @Json(name = "resume") resume("resume"),
+        @Json(name = "reorder") reorder("reorder"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
     /**
      * 
      *
-     * Values: Medication,HealthEvent,MedicationTake,Schedule,PersonMedication,MedicationPausePeriod,unknown_default_open_api
+     * Values: Medication,HealthEvent,MedicationTake,MedicationDoseOccurrence,Schedule,PersonMedication,MedicationPausePeriod,Person,Location,MedicationReviewPrompt,MedicationDosageOption,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class RecordType(val value: kotlin.String) {
         @Json(name = "Medication") Medication("Medication"),
         @Json(name = "HealthEvent") HealthEvent("HealthEvent"),
         @Json(name = "MedicationTake") MedicationTake("MedicationTake"),
+        @Json(name = "MedicationDoseOccurrence") MedicationDoseOccurrence("MedicationDoseOccurrence"),
         @Json(name = "Schedule") Schedule("Schedule"),
         @Json(name = "PersonMedication") PersonMedication("PersonMedication"),
         @Json(name = "MedicationPausePeriod") MedicationPausePeriod("MedicationPausePeriod"),
+        @Json(name = "Person") Person("Person"),
+        @Json(name = "Location") Location("Location"),
+        @Json(name = "MedicationReviewPrompt") MedicationReviewPrompt("MedicationReviewPrompt"),
+        @Json(name = "MedicationDosageOption") MedicationDosageOption("MedicationDosageOption"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
 

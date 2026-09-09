@@ -15,6 +15,7 @@
 
 package io.medtracker.client.models
 
+import io.medtracker.client.models.PortableDoseOccurrence
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -29,6 +30,7 @@ import com.squareup.moshi.JsonClass
  * @param action 
  * @param occurredAt 
  * @param metadata 
+ * @param record Current saved outcome for MedicationDoseOccurrence changes. Other record types omit this field.
  */
 
 
@@ -53,7 +55,11 @@ data class SyncChange (
     val occurredAt: java.time.OffsetDateTime,
 
     @Json(name = "metadata")
-    val metadata: kotlin.collections.Map<kotlin.String, kotlin.Any>
+    val metadata: kotlin.collections.Map<kotlin.String, kotlin.Any>,
+
+    /* Current saved outcome for MedicationDoseOccurrence changes. Other record types omit this field. */
+    @Json(name = "record")
+    val record: PortableDoseOccurrence? = null
 
 ) {
 

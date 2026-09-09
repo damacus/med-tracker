@@ -15,6 +15,7 @@
 
 package io.medtracker.client.models
 
+import io.medtracker.client.models.PortableDoseOccurrence
 import io.medtracker.client.models.PortableRecord
 
 import com.squareup.moshi.Json
@@ -32,6 +33,7 @@ import com.squareup.moshi.JsonClass
  * @param medicationTakes 
  * @param notificationPreferences 
  * @param medicationPausePeriods 
+ * @param doseOccurrences Persisted outcomes included in portable v2 bundles.
  * @param healthEvents 
  */
 
@@ -64,6 +66,10 @@ data class PortableRecords (
 
     @Json(name = "medication_pause_periods")
     val medicationPausePeriods: kotlin.collections.List<PortableRecord>? = null,
+
+    /* Persisted outcomes included in portable v2 bundles. */
+    @Json(name = "dose_occurrences")
+    val doseOccurrences: kotlin.collections.List<PortableDoseOccurrence>? = null,
 
     @Json(name = "health_events")
     val healthEvents: kotlin.collections.List<PortableRecord>? = null

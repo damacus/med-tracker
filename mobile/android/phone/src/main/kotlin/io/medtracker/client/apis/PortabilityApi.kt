@@ -232,12 +232,31 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      }
 
     /**
+     * enum for parameter portableFormat
+     */
+     enum class PortableFormatExportPortableHouseholdBundle(val value: kotlin.String) {
+         @Json(name = "medtracker.portable.v1") medtrackerPeriodPortablePeriodV1("medtracker.portable.v1"),
+         @Json(name = "medtracker.portable.v2") medtrackerPeriodPortablePeriodV2("medtracker.portable.v2"),
+         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
+
+        /**
+         * Override [toString()] to avoid using the enum variable name as the value, and instead use
+         * the actual value defined in the API spec file.
+         *
+         * This solves a problem when the variable name and its value are different, and ensures that
+         * the client sends the correct enum values to the server always.
+         */
+        override fun toString(): kotlin.String = "$value"
+     }
+
+    /**
      * GET /households/{household_id}/portable_export
      * Export an encrypted portable household bundle.
      * 
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
+     * @param portableFormat Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
      * @return PortableEnvelopeResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -247,8 +266,8 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun exportPortableHouseholdBundle(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle? = VersionExportPortableHouseholdBundle._1) : PortableEnvelopeResponse {
-        val localVarResponse = exportPortableHouseholdBundleWithHttpInfo(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase, version = version)
+    fun exportPortableHouseholdBundle(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle? = VersionExportPortableHouseholdBundle._1, portableFormat: PortableFormatExportPortableHouseholdBundle? = PortableFormatExportPortableHouseholdBundle.medtrackerPeriodPortablePeriodV1) : PortableEnvelopeResponse {
+        val localVarResponse = exportPortableHouseholdBundleWithHttpInfo(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase, version = version, portableFormat = portableFormat)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as PortableEnvelopeResponse
@@ -272,14 +291,15 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
+     * @param portableFormat Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
      * @return ApiResponse<PortableEnvelopeResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun exportPortableHouseholdBundleWithHttpInfo(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?) : ApiResponse<PortableEnvelopeResponse?> {
-        val localVariableConfig = exportPortableHouseholdBundleRequestConfig(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase, version = version)
+    fun exportPortableHouseholdBundleWithHttpInfo(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?, portableFormat: PortableFormatExportPortableHouseholdBundle?) : ApiResponse<PortableEnvelopeResponse?> {
+        val localVariableConfig = exportPortableHouseholdBundleRequestConfig(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase, version = version, portableFormat = portableFormat)
 
         return request<Unit, PortableEnvelopeResponse>(
             localVariableConfig
@@ -292,14 +312,18 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
      * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
+     * @param portableFormat Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
      * @return RequestConfig
      */
-    fun exportPortableHouseholdBundleRequestConfig(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?) : RequestConfig<Unit> {
+    fun exportPortableHouseholdBundleRequestConfig(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?, portableFormat: PortableFormatExportPortableHouseholdBundle?) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
             .apply {
                 if (version != null) {
                     put("version", listOf(version.value))
+                }
+                if (portableFormat != null) {
+                    put("portable_format", listOf(portableFormat.value))
                 }
             }
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()

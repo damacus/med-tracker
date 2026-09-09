@@ -15,6 +15,7 @@
 
 package io.medtracker.client.models
 
+import io.medtracker.client.models.SyncBatchOperationAttributes
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -26,7 +27,7 @@ import com.squareup.moshi.JsonClass
  * @param resourceType 
  * @param id 
  * @param ifMatch Required for update, delete and pause-period close operations. Use the exact latest ETag.
- * @param attributes Fields accepted by the selected resource and action. medication_pause_period supports create with source_type (schedule or person_medication), portable source_id, required public reason and optional note; close requires the portable period id, if_match and empty attributes. No timestamps, update or delete are accepted for pause periods. Repeating close for a completed period cannot close a later pause.
+ * @param attributes 
  */
 
 
@@ -45,16 +46,15 @@ data class SyncBatchOperation (
     @Json(name = "if_match")
     val ifMatch: kotlin.String? = null,
 
-    /* Fields accepted by the selected resource and action. medication_pause_period supports create with source_type (schedule or person_medication), portable source_id, required public reason and optional note; close requires the portable period id, if_match and empty attributes. No timestamps, update or delete are accepted for pause periods. Repeating close for a completed period cannot close a later pause. */
     @Json(name = "attributes")
-    val attributes: kotlin.collections.Map<kotlin.String, kotlin.Any>? = null
+    val attributes: SyncBatchOperationAttributes? = null
 
 ) {
 
     /**
      * 
      *
-     * Values: create,update,delete,close,unknown_default_open_api
+     * Values: create,update,delete,close,adjust_inventory,mark_as_ordered,mark_as_received,remove_stock,pause,resume,reorder,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class Action(val value: kotlin.String) {
@@ -62,21 +62,33 @@ data class SyncBatchOperation (
         @Json(name = "update") update("update"),
         @Json(name = "delete") delete("delete"),
         @Json(name = "close") close("close"),
+        @Json(name = "adjust_inventory") adjust_inventory("adjust_inventory"),
+        @Json(name = "mark_as_ordered") mark_as_ordered("mark_as_ordered"),
+        @Json(name = "mark_as_received") mark_as_received("mark_as_received"),
+        @Json(name = "remove_stock") remove_stock("remove_stock"),
+        @Json(name = "pause") pause("pause"),
+        @Json(name = "resume") resume("resume"),
+        @Json(name = "reorder") reorder("reorder"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
     /**
      * 
      *
-     * Values: medication,health_event,medication_take,schedule,person_medication,medication_pause_period,unknown_default_open_api
+     * Values: medication,health_event,medication_take,medication_dose_occurrence,schedule,person_medication,medication_pause_period,person,location,medication_review_prompt,medication_dosage_option,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class ResourceType(val value: kotlin.String) {
         @Json(name = "medication") medication("medication"),
         @Json(name = "health_event") health_event("health_event"),
         @Json(name = "medication_take") medication_take("medication_take"),
+        @Json(name = "medication_dose_occurrence") medication_dose_occurrence("medication_dose_occurrence"),
         @Json(name = "schedule") schedule("schedule"),
         @Json(name = "person_medication") person_medication("person_medication"),
         @Json(name = "medication_pause_period") medication_pause_period("medication_pause_period"),
+        @Json(name = "person") person("person"),
+        @Json(name = "location") location("location"),
+        @Json(name = "medication_review_prompt") medication_review_prompt("medication_review_prompt"),
+        @Json(name = "medication_dosage_option") medication_dosage_option("medication_dosage_option"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
 
