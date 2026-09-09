@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Api::SyncSnapshot do
+  let(:exported_records) { { medication_pause_periods: [{ id: 'p1' }] } }
+
   it 'locks the household and captures the cursor before exporting records' do
     household = instance_double(Household)
     exporter = instance_double(PortableData::Exporter)
@@ -11,14 +13,13 @@ RSpec.describe Api::SyncSnapshot do
     allow(household).to receive(:lock!)
     allow(Time).to receive(:current).and_return(cursor)
     allow(exporter).to receive(:mobile_payload).with(format: 'medtracker.portable.v2')
-                                               .and_return(format: 'medtracker.portable.v2',
-                                                           records: { medication_pause_periods: [{ id: 'p1' }] })
+                                               .and_return(format: 'medtracker.portable.v2', records: exported_records)
 
     payload = described_class.new(household: household, exporter: exporter).payload
 
     expect(household).to have_received(:lock!).ordered
     expect(Time).to have_received(:current).ordered
-    expect(exporter).to have_received(:mobile_v2_payload).ordered
+    expect(exporter).to have_received(:mobile_payload).with(format: 'medtracker.portable.v2').ordered
     expect(payload).to include(
       format: 'medtracker.portable.v2', cursor: cursor.iso8601,
       records: { medication_pause_periods: [{ id: 'p1' }] }
