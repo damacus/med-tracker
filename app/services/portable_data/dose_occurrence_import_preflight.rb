@@ -1,7 +1,7 @@
 module PortableData
   class DoseOccurrenceImportPreflight
-    FIELDS = %w[source_type source_portable_id window_starts_on position scheduled_at outcome reason note resolved_at
-                medication_take_portable_id].freeze
+    FIELDS = %w[source_type source_portable_id window_starts_on window_ends_on position scheduled_at outcome
+                reason note resolved_at medication_take_portable_id].freeze
 
     def initialize(household:, rows:)
       @household = household
@@ -28,7 +28,13 @@ module PortableData
 
     def self.conflicting?(record, row)
       current = DoseOccurrenceSerializer.new(record).as_json.with_indifferent_access
-      facts(current) != facts(row)
+      current_facts = facts(current)
+      incoming_facts = facts(row)
+      unless row.key?(:window_ends_on) || row.key?('window_ends_on')
+        current_facts.delete('window_ends_on')
+        incoming_facts.delete('window_ends_on')
+      end
+      current_facts != incoming_facts
     rescue ArgumentError, TypeError
       true
     end
