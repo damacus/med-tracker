@@ -37,9 +37,7 @@ module PortableData
       person_identity(person).merge(person_profile(person)).merge(person_relationships(person))
     end
 
-    def person_identity(person)
-      sync_identity(person)
-    end
+    def person_identity(person) = sync_identity(person)
 
     def person_profile(person)
       {
