@@ -33,7 +33,7 @@ module Api
       end
 
       def take
-        reject_numeric_contract_values!(%w[dose_amount taken_from_medication_id])
+        reject_numeric_contract_values!(%w[dose_amount])
         attributes = params.expect(dose_occurrence: %i[key taken_at client_uuid dose_amount taken_from_medication_id])
         record = occurrence_resolver.take(
           key: attributes[:key], taken_at: Time.iso8601(attributes[:taken_at].to_s),
