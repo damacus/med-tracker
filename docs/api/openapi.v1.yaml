@@ -34,6 +34,8 @@ tags:
     description: Medication schedules and lifecycle actions.
   - name: Person medications
     description: Medication assignments to people.
+  - name: Medication reviews
+    description: Evidence review snapshots and practitioner review decisions.
   - name: Medication takes
     description: Medication administration records.
   - name: Notification preferences
@@ -439,6 +441,198 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/medication_review_prompts:
+    get:
+      operationId: listMedicationReviewPrompts
+      tags: [Household, Medication reviews]
+      summary: List authorised evidence review snapshots with the existing queue filters.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - name: review_status
+          in: query
+          schema:
+            type: string
+            enum: [needs_review, reviewed, all]
+            default: needs_review
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [all, discuss_soon, ask_when_convenient, low_confidence]
+            default: all
+        - name: show_hidden
+          in: query
+          schema:
+            type: string
+            enum: ['0', '1']
+            default: '0'
+      responses:
+        '200':
+          description: Authorised medication review data.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/no_store'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationReviewPromptCollectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/medication_review_prompts/{id}:
+    get:
+      operationId: getMedicationReviewPrompt
+      tags: [Household, Medication reviews]
+      summary: Read a review snapshot and its current version.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[1-9][0-9]*$'
+      responses:
+        '200':
+          description: Authorised medication review data.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/no_store'
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationReviewPromptResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    patch:
+      operationId: updateMedicationReviewPrompt
+      tags: [Household, Medication reviews]
+      summary: Record an audited practitioner review without changing evidence.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[1-9][0-9]*$'
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationReviewPromptUpdateRequest'
+      responses:
+        '200':
+          description: Authorised medication review data.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/no_store'
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationReviewPromptResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    put:
+      operationId: updateMedicationReviewPromptWithPut
+      tags: [Household, Medication reviews]
+      summary: Record an audited practitioner review without changing evidence.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[1-9][0-9]*$'
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationReviewPromptUpdateRequest'
+      responses:
+        '200':
+          description: Authorised medication review data.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/no_store'
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationReviewPromptResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
         '429':
           $ref: '#/components/responses/RateLimited'
   /households/{household_id}/locations:
@@ -3630,6 +3824,12 @@ components:
         type: string
         minLength: 1
   headers:
+    no_store:
+      description: Do not store private clinical responses.
+      required: true
+      schema:
+        type: string
+        enum: [no-store]
     etag:
       description: Version identifier for optimistic concurrency.
       required: true
@@ -5004,6 +5204,163 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/Me'
+    MedicationReviewPromptStatus:
+      type: string
+      enum: [needs_review, reviewed_with_practitioner, expected_prescribed_combination, not_relevant, hidden_low_signal]
+    MedicationReviewPrompt:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - person_id
+        - primary_medication_id
+        - interacting_medication_id
+        - evidence_record_id
+        - primary_medication_name
+        - interacting_medication_name
+        - evidence_source_name
+        - evidence_source_url
+        - evidence_source_version
+        - matched_term
+        - match_type
+        - source_instruction
+        - match_reason
+        - evidence_text
+        - etag
+        - evidence_source_checked_on
+        - evidence_source_effective_on
+        - risk_level
+        - match_confidence
+        - status
+        - practitioner_name
+        - practitioner_role
+        - review_note
+        - reviewed_on
+        - reviewed_by_membership_id
+        - updated_at
+      properties:
+        id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        person_id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        primary_medication_id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        interacting_medication_id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        evidence_record_id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        primary_medication_name:
+          type: string
+        interacting_medication_name:
+          type: string
+        evidence_source_name:
+          type: string
+        evidence_source_url:
+          type: string
+        evidence_source_version:
+          type: string
+        matched_term:
+          type: string
+        match_type:
+          type: string
+        source_instruction:
+          type: string
+        match_reason:
+          type: string
+        evidence_text:
+          type: string
+        etag:
+          type: string
+        evidence_source_checked_on:
+          $ref: '#/components/schemas/Date'
+        evidence_source_effective_on:
+          $ref: '#/components/schemas/Date'
+        risk_level:
+          type: string
+          enum: [low, moderate, high, unknown]
+        match_confidence:
+          type: string
+          enum: [low, moderate, high, unknown]
+        status:
+          $ref: '#/components/schemas/MedicationReviewPromptStatus'
+        practitioner_name:
+          type: string
+          nullable: true
+        practitioner_role:
+          type: string
+          nullable: true
+        review_note:
+          type: string
+          nullable: true
+        reviewed_on:
+          type: string
+          format: date
+          nullable: true
+        reviewed_by_membership_id:
+          type: string
+          nullable: true
+          pattern: '^[1-9][0-9]*$'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+    MedicationReviewPromptUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [medication_review_prompt]
+      properties:
+        medication_review_prompt:
+          type: object
+          additionalProperties: false
+          minProperties: 1
+          properties:
+            status:
+              $ref: '#/components/schemas/MedicationReviewPromptStatus'
+            practitioner_name:
+              type: string
+            practitioner_role:
+              type: string
+            reviewed_on:
+              $ref: '#/components/schemas/Date'
+            review_note:
+              type: string
+    MedicationReviewPromptResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/MedicationReviewPrompt'
+    MedicationReviewPromptCollectionResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicationReviewPrompt'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    CapabilityMedicationReviews:
+      type: object
+      additionalProperties: false
+      required: [actions, version_required, max_page_size]
+      properties:
+        actions:
+          type: array
+          items:
+            type: string
+            enum: [index, show, update]
+        version_required:
+          type: boolean
+        max_page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
     LocationCreateRequest:
       type: object
       additionalProperties: false
@@ -6728,6 +7085,7 @@ components:
         - dose_outcomes
         - stock_removals
         - location_management
+        - medication_reviews
         - portable_formats
         - backups
         - fhir
@@ -6755,6 +7113,8 @@ components:
           $ref: '#/components/schemas/CapabilityStockRemovals'
         location_management:
           $ref: '#/components/schemas/CapabilityLocationManagement'
+        medication_reviews:
+          $ref: '#/components/schemas/CapabilityMedicationReviews'
         portable_formats:
           type: array
           uniqueItems: true

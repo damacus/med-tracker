@@ -29,11 +29,11 @@
 - [x] 5.1 Red: specify create/edit/delete, ETag conflicts, retained history, portable IDs, cross-household and role access in location request specs; observe focused failures.
 - [x] 5.2 Green/Refactor: add location writes using shared policies and model guards; verify all location scenarios through focused specs.
 - [x] 5.3 Red-Green-Refactor: add authorized person membership create/delete with duplicate replay and access tests, and verify portable IDs and household constraints.
-- [ ] 5.4 Add typed contracts/capabilities, run relevant client checks, `task rubocop` and focused Rails specs, then publish and verify the location stack layer.
+- [x] 5.4 Add typed contracts/capabilities, run relevant client checks, `task rubocop` and focused Rails specs, then publish and verify the location stack layer.
 
 ## 6. Review and report API
 
-- [ ] 6.1 Red-Green-Refactor: expose filtered paginated review reads and audited ETag-protected review updates, verifying evidence immutability and person-policy scenarios.
+- [x] 6.1 Red-Green-Refactor: expose filtered paginated review reads and audited ETag-protected review updates, verifying evidence immutability and person-policy scenarios.
 - [ ] 6.2 Red-Green-Refactor: share health-history and medicine-review projections for typed JSON and protected PDF, verifying access, date bounds, download audit and renderer failures.
 - [ ] 6.3 Publish typed contracts after client checks and focused Rails/Ruby gates; verify the review/report PR targets the location layer.
 

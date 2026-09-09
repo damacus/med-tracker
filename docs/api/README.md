@@ -81,3 +81,18 @@ the returned membership ID below that collection. These actions require
 location-management permission and manage access to the selected person,
 including on cached replay. Membership changes remain online-only because
 they affect visibility.
+
+## Medicine reviews
+
+The review queue is available at
+`/households/{household_id}/medication_review_prompts`. Use `review_status`,
+`priority` and `show_hidden` with the same meanings as the web queue, plus
+`page` and `per_page` for bounded reads. Each prompt includes its immutable
+evidence snapshot and ETag. Responses use `Cache-Control: no-store`.
+
+Read an individual prompt or update it below that collection using its
+returned ID. Updates require the current ETag in `If-Match` and manage
+access to the prompt's person. Practitioner review statuses require a name,
+role and review date. Evidence fields cannot be changed through this API.
+The review and its audit event commit together; diagnostics filter private
+practitioner details and notes. Current access is checked before cached replay.
