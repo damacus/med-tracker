@@ -10,7 +10,7 @@ RSpec.describe Api::SyncSnapshot do
 
     allow(household).to receive(:lock!)
     allow(Time).to receive(:current).and_return(cursor)
-    allow(exporter).to receive(:mobile_v2_payload).and_return(records: { medication_pause_periods: [{ id: 'pause-1' }] })
+    allow(exporter).to receive(:mobile_v2_payload).and_return(records: { medication_pause_periods: [{ id: 'p1' }] })
 
     payload = described_class.new(household: household, exporter: exporter).payload
 
@@ -19,7 +19,7 @@ RSpec.describe Api::SyncSnapshot do
     expect(exporter).to have_received(:mobile_v2_payload).ordered
     expect(payload).to include(
       format: 'medtracker.portable.v2', cursor: cursor.iso8601,
-      records: { medication_pause_periods: [{ id: 'pause-1' }] }
+      records: { medication_pause_periods: [{ id: 'p1' }] }
     )
   end
 end
