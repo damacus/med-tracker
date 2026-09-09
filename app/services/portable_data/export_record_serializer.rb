@@ -10,6 +10,7 @@ module PortableData
       schedules: :schedule_payload,
       person_medications: :person_medication_payload,
       medication_takes: :event_medication_take_payload,
+      medication_pause_periods: :event_medication_pause_period_payload,
       notification_preferences: :event_notification_preference_payload,
       health_events: :event_health_event_payload
     }.freeze
@@ -215,13 +216,13 @@ module PortableData
 
     def event_medication_take_payload(take) = event_record_serializer.medication_take_payload(take)
 
+    def event_medication_pause_period_payload(period) = event_record_serializer.medication_pause_period_payload(period)
+
     def event_notification_preference_payload(preference)
       event_record_serializer.notification_preference_payload(preference)
     end
 
-    def event_health_event_payload(event)
-      event_record_serializer.health_event_payload(event)
-    end
+    def event_health_event_payload(event) = event_record_serializer.health_event_payload(event)
 
     def sync_identity(record)
       {

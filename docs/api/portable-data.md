@@ -9,7 +9,7 @@ Use the OpenAPI contract for endpoint parameters and response envelopes. This gu
 | Format | Purpose |
 |---|---|
 | `medtracker.portable.v1` | Plaintext mobile snapshot and the data encrypted inside a migration bundle. |
-| `medtracker.portable.v2` | Consistent sync snapshot with a cursor for later change-feed requests. |
+| `medtracker.portable.v2` | Pause-history migration bundle, or consistent sync snapshot with a change-feed cursor. |
 | `medtracker.portable.encrypted.v1` | AES-256-GCM envelope used for portable export and import. |
 | `medtracker.health_data.v1` | Plaintext health-data export. |
 | `medtracker.backup.v1` | JSON file stored inside a ZIP backup. |
@@ -19,6 +19,10 @@ Every plaintext payload includes `scope`, `exported_at`, `source_instance_id`, a
 ## Security rules
 
 Send the portable passphrase in `X-MedTracker-Portable-Passphrase`. Do not put it in a URL or JSON body.
+
+Request `portable_export?version=2` to include pause history in an encrypted migration
+bundle. The default remains version 1. Both versions can be imported; v1 collections
+remain unchanged. Sync v2 snapshots include pause periods automatically.
 
 The encrypted envelope identifies the cipher and key derivation function. It also contains a salt, plaintext checksum, and authenticated ciphertext. Treat the complete envelope as sensitive health data even though its record values are encrypted.
 
@@ -91,6 +95,30 @@ Dose records add `client_uuid`, `source_type`, `source_portable_id`, `taken_at`,
 
 `source_type` is `schedule` or `person_medication`. Medication takes are immutable after import.
 
+### Medication pause periods (v2)
+
+`medication_pause_periods` records contain `source_type` (`schedule` or
+`person_medication`), `source_portable_id`, `reason`, optional `note`, `started_at`,
+`ended_at`, `created_at`, `legacy_context`, and `imported_context`, plus the common
+portable identity fields. An open period has no end. Legacy context uses
+`reason_not_recorded` and may have an unknown start. Its creation time is preserved
+so reports do not invent an earlier pause boundary.
+
+`recorded_by_person_portable_id` and `resumed_by_person_portable_id` identify actors
+where their membership has a person. Import resolves an actor only when exactly one
+membership in the destination household matches. Otherwise the original reference is
+retained and the actor is unavailable. Imported records have `imported_context: true`;
+the import audit event identifies the importer separately from the original actors.
+
+Import restores records without calling pause or resume actions. It preserves original
+context, rejects conflicting history or multiple open periods, and derives each
+affected source's active state from its final open period. Any failure rolls back the
+entire import. Reimporting the same periods does not create duplicates or change stock.
+An inactive current source without an open period is rejected as incomplete history.
+Existing native pause records remain unchanged on reimport, including their provenance
+and closing actor. Only a previously imported open period can advance to a closed period
+through import; its original recording context remains immutable.
+
 ### Notification preferences
 
 Notification preferences add `person_portable_id`, `enabled`, `dose_due_enabled`, `missed_dose_enabled`, `low_stock_enabled`, `private_text_enabled`, `morning_time`, `afternoon_time`, `evening_time`, and `night_time`.
@@ -149,7 +177,20 @@ For example, send the following body to `POST /api/v1/households/{household_id}/
 
 Each successful result contains its operation index, action, record type and server-assigned `record_portable_id`. Create and update results also contain an `etag`. Use the latest ETag as the exact `if_match` string on the next update or delete, with the portable ID in `id`. A missing version returns `428 precondition_required`; a stale version returns `409 sync_conflict`.
 
-Delete retires the schedule or assignment. It no longer appears in active lists, but its past doses and pause history remain unchanged. The change feed records the retirement and a deletion marker for the same portable ID. Retrying a successful delete with the same idempotency key replays the result. A new request for a retired item returns not found. Pause, resume, reorder and reactivation are not batch actions.
+Delete retires the schedule or assignment. It no longer appears in active lists, but its past doses and pause history remain unchanged. The change feed records the retirement and a deletion marker for the same portable ID. Retrying a successful delete with the same idempotency key replays the result. A new request for a retired item returns not found. Reorder and reactivation are not batch actions.
+
+### Pause periods in sync batches
+
+Use `resource_type: medication_pause_period` with `action: create` to pause a
+source. Attributes are `source_type` (`schedule` or `person_medication`), portable
+`source_id`, a supported `reason`, and optional `note`. Do not send `id` or `if_match`
+for creation. The server records the effective start and actor.
+
+Use `action: close`, the period's portable `id`, its latest ETag in `if_match`, and
+empty attributes to resume. The server records the effective end and actor. Period
+update and delete operations are unsupported. Successful results include `index`,
+`action`, `record_type: MedicationPausePeriod`, `record_portable_id`, `etag`, and
+`replayed`. Failed operations roll back the complete batch.
 
 Persist one `Idempotency-Key` with each queued batch. If the connection drops, resend the identical body and key. The existing response is replayed without repeating writes, stock changes, audit entries or deletion markers. Changing the body while reusing the key returns `409 idempotency_key_reused`. The existing replay window is 24 hours; after that window, reconcile with the server before sending a new request. Requests without a key do not receive this batch-level replay protection.
 

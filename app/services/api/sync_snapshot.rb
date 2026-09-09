@@ -9,7 +9,7 @@ module Api
 
     def payload
       Api::ConsistentSyncRead.new(household: household).call do |cursor|
-        exporter.mobile_payload.merge(format: 'medtracker.portable.v2', cursor: cursor)
+        exporter.mobile_v2_payload.merge(format: 'medtracker.portable.v2', cursor: cursor)
       end
     end
 

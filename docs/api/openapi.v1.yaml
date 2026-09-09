@@ -1969,6 +1969,13 @@ paths:
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/portable_passphrase'
+        - name: version
+          in: query
+          description: Portable export format. Omit or use `1` for the original format; use `2` to include pause history.
+          schema:
+            type: string
+            enum: ['1', '2']
+            default: '1'
       responses:
         '200':
           description: Encrypted portable bundle.

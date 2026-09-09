@@ -24,8 +24,9 @@ class MedicationPausePeriod < ApplicationRecord
   before_validation :assign_household
 
   validates :reason, presence: true, inclusion: { in: REASONS }
-  validates :started_at, :recorded_by_membership, presence: true, unless: :legacy_context?
-  validates :resumed_by_membership, presence: true, if: :ended_at?
+  validates :started_at, presence: true, unless: :legacy_context?
+  validates :recorded_by_membership, presence: true, unless: -> { legacy_context? || imported_context? }
+  validates :resumed_by_membership, presence: true, if: -> { ended_at? && !imported_context? }
   validates :resumed_by_membership, absence: true, unless: :ended_at?
   validate :exactly_one_source
   validate :legacy_context_is_explicit
