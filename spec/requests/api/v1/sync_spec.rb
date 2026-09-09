@@ -391,7 +391,7 @@ RSpec.describe 'API v1 sync' do
       post_batch(
         {
           action: 'create',
-          resource_type: 'medication',
+          resource_type: 'profile',
           attributes: { name: 'Unsupported Create' }
         }
       )
