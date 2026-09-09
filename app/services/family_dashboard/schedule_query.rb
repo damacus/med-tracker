@@ -233,14 +233,6 @@ module FamilyDashboard
       active_configured_occurrences_for(source).reject { |time| resolved_times.include?(time) }[taken_count]
     end
 
-    def current_not_taken_outcomes(source)
-      outcomes = outcome_query.for_source(source)
-      return outcomes unless source.is_a?(Schedule)
-
-      positions = configured_times_for(source).size.nonzero? || expected_routine_doses_for(source)
-      outcomes.select { |outcome| outcome.position <= positions }
-    end
-
     def active_configured_occurrences_for(schedule)
       occurrences = MedicationPausePeriods::IntervalProjection.occurrences_on(
         date: Date.current, times: configured_times_for(schedule)

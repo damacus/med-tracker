@@ -2,6 +2,14 @@ module FamilyDashboard
   module RoutineDoseProgress
     private
 
+    def current_not_taken_outcomes(source)
+      outcomes = outcome_query.for_source(source)
+      return outcomes unless source.is_a?(Schedule)
+
+      positions = configured_times_for(source).size.nonzero? || expected_routine_doses_for(source)
+      outcomes.select { |outcome| outcome.position <= positions }
+    end
+
     def dose_progress_for(takes, limit)
       { daily_dose_count: takes.size, daily_dose_limit: limit, today_takes: takes.sort_by(&:taken_at) }
     end
