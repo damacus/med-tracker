@@ -445,6 +445,37 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/admin/invitations/{id}/resend:
+    post:
+      operationId: resendHouseholdInvitation
+      tags: [Household administration, Invitations]
+      summary: Rotate an invitation token and queue its replacement email.
+      description: Online only. Requires current household administrator authority and fresh MFA on a user API session, including before idempotent replay. Accepted and revoked invitations cannot be resent. A delivery enqueue failure rolls back token rotation.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Replacement email queued, or the same result replayed without another email.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/no_store'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationResendResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminWriteForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '503':
+          $ref: '#/components/responses/InvitationDeliveryUnavailable'
   /invitations/accept:
     post:
       operationId: acceptHouseholdInvitation
@@ -4276,6 +4307,12 @@ components:
         type: integer
         minimum: 1
   responses:
+    InvitationDeliveryUnavailable:
+      description: Invitation delivery could not be queued; token rotation is rolled back.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
     AvatarUnavailable:
       description: Avatar storage is temporarily unavailable. A failed upload retains the existing attachment.
       content:
@@ -5788,6 +5825,26 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/MedicationReviewReport'
+    InvitationResendResult:
+      type: object
+      additionalProperties: false
+      required: [invitation_id, expires_at, delivery_status]
+      properties:
+        invitation_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        expires_at:
+          type: string
+          format: date-time
+        delivery_status:
+          type: string
+          enum: [queued]
+    InvitationResendResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/InvitationResendResult'
     InvitationAcceptanceRequest:
       type: object
       additionalProperties: false
@@ -5827,7 +5884,7 @@ components:
           type: array
           items:
             type: string
-            enum: [accept]
+            enum: [accept, resend]
         online_only:
           type: boolean
         acceptance_session_required:

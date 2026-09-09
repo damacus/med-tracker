@@ -25,7 +25,7 @@ RSpec.describe 'API v1 invitation acceptance' do
   it 'advertises session-only online invitation acceptance' do
     get '/api/v1/capabilities', as: :json
     expect(response.parsed_body.dig('data', 'invitations')).to include(
-      'actions' => ['accept'], 'online_only' => true, 'acceptance_session_required' => true
+      'actions' => %w[accept resend], 'online_only' => true, 'acceptance_session_required' => true
     )
   end
 
