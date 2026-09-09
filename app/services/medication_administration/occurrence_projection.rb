@@ -7,6 +7,13 @@ module MedicationAdministration
     ) do
       def outcome = legacy_take ? 'taken' : record&.outcome || 'open'
 
+      def window_ends_on
+        return record.window_ends_on if record&.window_ends_on
+        return window_starts_on if source.is_a?(Schedule)
+
+        DoseCycle.new(source.dose_cycle).range_for(window_starts_on.in_time_zone).end.to_date
+      end
+
       def due?
         (scheduled_at || window_starts_on.in_time_zone) <= now &&
           (source.is_a?(Schedule) || source.created_at <= now)

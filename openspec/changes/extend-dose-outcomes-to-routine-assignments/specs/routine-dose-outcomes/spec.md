@@ -22,6 +22,15 @@ The system SHALL identify expected occurrences for an active routine `PersonMedi
 - **WHEN** occurrences are derived
 - **THEN** the system uses the existing cycle boundary and dose limit without changing their meaning
 
+### Requirement: Saved outcomes retain their cycle boundaries
+The system SHALL persist an immutable inclusive window end when saving an occurrence. It SHALL preserve that boundary when the source's cycle changes and when validating a later correction.
+
+#### Scenario: Change a monthly assignment to daily
+- **GIVEN** an outcome was saved for a monthly cycle
+- **WHEN** the assignment changes to a daily cycle
+- **THEN** the saved outcome retains its original month-end boundary
+- **AND** a correction uses that saved window
+
 ### Requirement: As-needed assignments never generate expected outcomes
 The system SHALL NOT create expected occurrences, not-taken actions, missed-dose escalation, or adherence penalties for an as-needed direct assignment.
 

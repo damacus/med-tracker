@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_08_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -654,6 +654,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_200000) do
     t.bigint "resolved_by_membership_id"
     t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
     t.date "window_starts_on", null: false
+    t.date "window_ends_on"
     t.integer "position", null: false
     t.datetime "scheduled_at"
     t.string "outcome", default: "open", null: false
@@ -676,6 +677,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_200000) do
     t.check_constraint "(outcome = 'open' AND medication_take_id IS NULL AND reason IS NULL AND note IS NULL AND resolved_at IS NULL AND resolved_by_membership_id IS NULL) OR (outcome = 'not_taken' AND medication_take_id IS NULL AND resolved_at IS NOT NULL AND resolved_by_membership_id IS NOT NULL) OR (outcome = 'taken' AND medication_take_id IS NOT NULL AND reason IS NULL AND note IS NULL AND resolved_at IS NOT NULL AND resolved_by_membership_id IS NOT NULL)", name: "chk_dose_occurrences_state"
     t.check_constraint "reason IS NULL OR reason IN ('refused', 'unwell', 'asleep', 'medicine_unavailable', 'clinician_advice', 'other')", name: "chk_dose_occurrences_reason"
     t.check_constraint "note IS NULL OR char_length(note) <= 2000", name: "chk_dose_occurrences_note"
+    t.check_constraint "window_ends_on >= window_starts_on", name: "chk_dose_occurrences_window_order"
   end
 
   create_table "medication_pause_periods", force: :cascade do |t|
