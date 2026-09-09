@@ -68,7 +68,8 @@ RSpec.describe 'API v1 dose outcome corrections' do
   it 'replaces not-taken with one immutable take and one stock decrement' do
     row = record_not_taken
     source.medication.update!(current_supply: 100)
-    attributes = { key: row.fetch('key'), taken_at: Time.current.iso8601, client_uuid: SecureRandom.uuid }
+    attributes = { key: row.fetch('key'), taken_at: Time.current.iso8601, client_uuid: SecureRandom.uuid,
+                   taken_from_medication_id: source.medication_id }
     expect do
       post path('take'), params: { dose_occurrence: attributes },
                          headers: headers.merge('If-Match' => row.fetch('etag')), as: :json
@@ -76,6 +77,7 @@ RSpec.describe 'API v1 dose outcome corrections' do
     expect(response).to have_http_status(:ok)
     record = source.medication_dose_occurrences.sole
     expect(record).to be_taken
+    expect(record.medication_take.taken_from_medication_id).to eq(source.medication_id)
     supply = source.medication.reload.current_supply
     expect(supply).to be < 100
     expect(record.versions.last.reify.note).to eq('Resting')
