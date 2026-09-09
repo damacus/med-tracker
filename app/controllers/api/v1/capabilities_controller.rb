@@ -17,6 +17,8 @@ module Api
           api_version: 'v1',
           authentication: authentication,
           administration: administration,
+          medication_pause_periods: { supported: true, reasons: MedicationPausePeriod::PUBLIC_REASONS,
+                                      effective_time: 'server_acceptance' },
           portable_formats: portable_formats,
           backups: backups,
           fhir: fhir,

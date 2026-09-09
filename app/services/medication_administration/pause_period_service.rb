@@ -12,6 +12,8 @@ module MedicationAdministration
 
     def call
       source.with_lock do
+        raise ActiveRecord::RecordNotFound if source.retired_at?
+
         period = open_period
         return pause_source(period) if period
 

@@ -60,6 +60,9 @@ Rails.application.routes.draw do
             patch :reorder
           end
         end
+        resources :medication_pause_periods, only: %i[index create] do
+          post :resume, on: :member
+        end
         resources :medication_takes, only: %i[index create]
         resource :notification_preference, only: %i[show update]
         resources :native_device_tokens, only: %i[create destroy]

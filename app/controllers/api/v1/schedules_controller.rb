@@ -5,14 +5,17 @@ module Api
     class SchedulesController < BaseController
       def index
         authorize Schedule
-        render_collection(policy_scope(Schedule), serializer: ScheduleSerializer, includes: %i[person medication])
+        render_collection(
+          policy_scope(Schedule), serializer: ScheduleSerializer, includes: source_preloads,
+                                  serializer_options: method(:source_serializer_options)
+        )
       end
 
       def show
-        schedule = find_api_record(policy_scope(Schedule).includes(:person, :medication), params.expect(:id))
+        schedule = find_api_record(policy_scope(Schedule).includes(*source_preloads), params.expect(:id))
         authorize schedule
 
-        render_resource(schedule, serializer: ScheduleSerializer)
+        render_source(schedule)
       end
 
       def create
@@ -25,11 +28,11 @@ module Api
 
         return render_validation_errors(schedule) unless schedule.save
 
-        render_resource(schedule.reload, serializer: ScheduleSerializer, status: :created)
+        render_source(schedule.reload, status: :created)
       end
 
       def update
-        schedule = find_api_record(policy_scope(Schedule).includes(:person, :medication), params.expect(:id))
+        schedule = find_api_record(policy_scope(Schedule).includes(*source_preloads), params.expect(:id))
         authorize schedule
         return unless fresh_api_record?(schedule)
 
@@ -38,7 +41,7 @@ module Api
 
         return render_validation_errors(schedule) unless schedule.update(attributes)
 
-        render_resource(schedule.reload, serializer: ScheduleSerializer)
+        render_source(schedule.reload)
       end
 
       def pause
@@ -51,11 +54,33 @@ module Api
 
       private
 
+      def authorize_api_replay!
+        return super unless %w[pause resume].include?(action_name)
+
+        source = find_api_record(policy_scope(Schedule), params.expect(:id))
+        authorize source, :update?
+      end
+
+      def source_preloads
+        [:person, :medication, { medication_pause_periods: MedicationPausePeriodsController::PRELOADS }]
+      end
+
       def update_pause_state(method_name)
-        schedule = find_api_record(policy_scope(Schedule).includes(:person, :medication), params.expect(:id))
+        schedule = find_api_record(policy_scope(Schedule).includes(*source_preloads), params.expect(:id))
         authorize schedule, :update?
         schedule.public_send(method_name)
-        render_resource(schedule, serializer: ScheduleSerializer)
+        schedule.association(:medication_pause_periods).reset
+        ActiveRecord::Associations::Preloader.new(records: [schedule], associations: source_preloads).call
+        render_source(schedule)
+      end
+
+      def render_source(schedule, status: :ok)
+        render_resource(schedule, serializer: ScheduleSerializer, status:,
+                                  serializer_options: method(:source_serializer_options))
+      end
+
+      def source_serializer_options(schedule)
+        { can_manage: policy(schedule).update? }
       end
 
       def schedule_params

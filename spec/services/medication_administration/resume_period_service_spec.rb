@@ -51,6 +51,30 @@ RSpec.describe MedicationAdministration::ResumePeriodService do
       expect(source.reload).to be_active
     end
 
+    it 'does not resume a later pause when a completed period is addressed again' do
+      period = create_open_period
+      described_class.new(source:, membership:, ended_at:).call
+      newer = create_open_period
+
+      result = described_class.new(source:, membership:, ended_at: ended_at + 1.hour, period:).call
+
+      expect(result).to eq(period)
+      expect(source.reload).to be_paused
+      expect(newer.reload.ended_at).to be_nil
+    end
+
+    it 'rejects a stale precondition after reloading the period under the source lock' do
+      period = create_open_period
+      expected_etag = Api::RecordEtag.for(period)
+      period.update!(note: 'Changed concurrently')
+
+      service = described_class.new(source:, membership:, ended_at:, period:, expected_etag:)
+
+      expect { service.call }.to raise_error(described_class::StalePrecondition)
+      expect(period.reload.ended_at).to be_nil
+      expect(source.reload).to be_paused
+    end
+
     it 'closes one period when callers resume concurrently' do
       period = create_open_period
 
@@ -91,6 +115,17 @@ RSpec.describe MedicationAdministration::ResumePeriodService do
     let(:source) { schedules(:john_paracetamol) }
 
     it_behaves_like 'a resumable medication source'
+
+    it 'does not reactivate a source retired after it was loaded' do
+      period = create_open_period
+      source.update!(retired_at: Time.current)
+
+      expect { described_class.new(source:, membership:, ended_at:, period:).call }
+        .to raise_error(ActiveRecord::RecordNotFound)
+      expect(source.reload).to be_paused
+    ensure
+      source.update!(retired_at: nil)
+    end
 
     it 'rolls back a closed period when the source update fails' do
       period = create_open_period

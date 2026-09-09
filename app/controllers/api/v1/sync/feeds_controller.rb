@@ -37,11 +37,21 @@ module Api
         end
 
         def change_events_since(since)
-          ApiChangeEvent.where(household: current_household).where(occurred_at: since..).order(:occurred_at, :id)
+          scope = ApiChangeEvent.where(household: current_household).where(occurred_at: since..)
+          ordinary_events = scope.where.not(record_type: 'MedicationPausePeriod')
+          pause_events = scope.where(record_type: 'MedicationPausePeriod', record_id: visible_pause_period_ids)
+          ordinary_events.or(pause_events).order(:occurred_at, :id)
         end
 
         def tombstones_since(since)
-          ApiTombstone.where(household: current_household).where(deleted_at: since..).order(:deleted_at, :id)
+          ApiTombstone.where(household: current_household).where.not(record_type: 'MedicationPausePeriod')
+                      .where(deleted_at: since..).order(:deleted_at, :id)
+        end
+
+        def visible_pause_period_ids
+          Api::MedicationPausePeriodVisibility.new(
+            household: current_household, person_scope: policy_scope(Person)
+          ).periods.select(:id)
         end
 
         def change_payload(event)
