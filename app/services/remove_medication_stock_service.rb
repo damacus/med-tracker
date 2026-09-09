@@ -12,6 +12,13 @@ class RemoveMedicationStockService
                               event: 'stock_removal')
   end
 
+  def self.find_removal(medication, submission_id)
+    history(medication).where(
+      "CASE WHEN item_type = 'MedicationStockRemoval' THEN object::jsonb ->> 'submission_id' END = ?",
+      submission_id
+    ).first
+  end
+
   def call(medication:, **attributes)
     @medication = medication
     @quantity = parse_quantity(attributes[:quantity])
@@ -87,10 +94,7 @@ class RemoveMedicationStockService
   end
 
   def replay_event
-    self.class.history(medication).where(
-      "CASE WHEN item_type = 'MedicationStockRemoval' THEN object::jsonb ->> 'submission_id' END = ?",
-      payload['submission_id']
-    ).first
+    self.class.find_removal(medication, payload['submission_id'])
   end
 
   def replay_result(event)
