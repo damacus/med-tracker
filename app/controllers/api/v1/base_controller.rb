@@ -65,7 +65,6 @@ module Api
 
         Current.account = current_account
         Current.request_id = request.request_id
-        @current_api_session.touch_last_used!
       end
 
       def valid_session?
@@ -107,6 +106,7 @@ module Api
         Current.membership = @current_membership
         TenantContext.set_household!(@current_household)
         TenantContext.set_membership!(@current_membership)
+        @current_api_session.touch_last_used!
         Audit::Context.start!(
           request: request,
           account: current_account,
