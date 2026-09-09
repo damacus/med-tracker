@@ -32,10 +32,10 @@ class MedicationReviewReportsController < ApplicationController
   end
 
   def filtered_prompts
-    scope = policy_scope(MedicationReviewPrompt).includes(:person)
-    scope = filter_person(scope)
-    scope = filter_status(scope)
-    scope.order(:person_id, :created_at, :id).to_a
+    scope = filter_person(policy_scope(MedicationReviewPrompt))
+    MedicationReviewReportQuery.new(scope: scope, status: params[:status]).call.to_a
+  rescue ArgumentError
+    []
   end
 
   def filter_person(scope)
@@ -44,13 +44,5 @@ class MedicationReviewReportsController < ApplicationController
     return scope.none unless person_id.match?(/\A\d+\z/)
 
     scope.where(person_id: person_id)
-  end
-
-  def filter_status(scope)
-    status = params.permit(:status).fetch(:status, nil)
-    return scope.visible_by_default if status.blank?
-    return scope.none unless status.in?(MedicationReviewPrompt::STATUSES)
-
-    scope.where(status: status)
   end
 end

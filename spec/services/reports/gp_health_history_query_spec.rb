@@ -52,6 +52,15 @@ RSpec.describe Reports::GpHealthHistoryQuery do
     expect(included.medication_takes.map(&:taken_at)).to eq([range_start, range_end])
   end
 
+  it 'identifies direct routine administrations separately from as-needed doses' do
+    source = create_direct_medicine
+    source.update!(administration_kind: :routine)
+    create(:medication_take, :for_person_medication, person_medication: source,
+                                                     taken_at: start_date.in_time_zone + 1.day)
+    result = described_class.new(person:, start_date:, end_date:, include_medication_takes: true).call
+    expect(result.medication_takes.sole.source_type).to eq(:routine)
+  end
+
   def count_health_event_queries(&)
     count = 0
     subscriber = lambda do |_name, _start, _finish, _id, payload|

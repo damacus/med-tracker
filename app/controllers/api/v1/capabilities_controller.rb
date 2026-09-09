@@ -23,6 +23,7 @@ module Api
           stock_removals: stock_removals,
           location_management: location_management,
           medication_reviews: medication_reviews,
+          reports: reports,
           portable_formats: portable_formats,
           backups: backups,
           fhir: fhir,
@@ -72,6 +73,11 @@ module Api
           actions: %w[not_taken reopen take],
           replacement_requires_version: true
         }
+      end
+
+      def reports
+        { formats: %w[json pdf], health_history: true, medication_reviews: true,
+          selected_person_required: true, health_history_max_span_days: Reports::GpDateRange::MAX_RANGE_DAYS }
       end
 
       def medication_reviews
