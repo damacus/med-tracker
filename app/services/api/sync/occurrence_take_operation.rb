@@ -29,7 +29,8 @@ module Api
 
       def validate_replay!(source, attributes, take)
         record = linked_record!(source, take)
-        raise invalid_error unless parsed_time(attributes[:taken_at]).to_date == record.window_starts_on
+        window = record.window_starts_on..(record.window_ends_on || record.window_starts_on)
+        raise invalid_error unless window.cover?(parsed_time(attributes[:taken_at]).to_date)
 
         identity = replay_identity(source, record)
         return if MedicationAdministration::OccurrenceProjection.decode(attributes[:occurrence_key]) == identity
@@ -39,13 +40,14 @@ module Api
 
       def linked_record!(source, take)
         record = MedicationDoseOccurrence.find_by(household: source.household, medication_take: take)
-        return record if record && record.schedule_id == source.id
+        type = MedicationDoseSource.new(source).type
+        return record if record && record.public_send("#{type}_id") == source.id
 
         raise invalid_error
       end
 
       def replay_identity(source, record)
-        ['schedule', source.portable_id, record.window_starts_on.iso8601, record.position]
+        [MedicationDoseSource.new(source).type, source.portable_id, record.window_starts_on.iso8601, record.position]
       end
 
       def error_status(code)

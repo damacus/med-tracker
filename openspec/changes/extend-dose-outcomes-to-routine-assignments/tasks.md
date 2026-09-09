@@ -42,8 +42,8 @@
 
 ## 7. Accept Direct Routine Sources through Sync
 
-- [ ] 7.1 Red: specify optional routine identity, replay, rollback, and as-needed rejection.
-- [ ] 7.2 Green: enable the source in existing sync operations and batches.
+- [x] 7.1 Red: specify optional routine identity, replay, rollback, and as-needed rejection.
+- [x] 7.2 Green: enable the source in existing sync operations and batches.
 
 ## 8. Accept Direct Routine Sources through Portable Data
 

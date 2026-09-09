@@ -1,11 +1,10 @@
 require 'rails_helper'
 
-RSpec.describe 'API v1 dose outcome sync reads' do
+RSpec.shared_examples 'outcome sync read contract' do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :dosages, :schedules
 
   let(:login_data) { api_login(users(:admin)) }
   let(:headers) { api_auth_headers(login_data.fetch('access_token')) }
-  let(:source) { schedules(:john_movicol).reload }
   let(:session) { ApiSession.lookup_by_access_token(login_data.fetch('access_token')) }
   let(:membership) { session.household_membership }
 
@@ -63,7 +62,8 @@ RSpec.describe 'API v1 dose outcome sync reads' do
     get api_v1_household_sync_snapshot_path(household_id), headers: headers
     records = response.parsed_body.dig('data', 'records')
     expect(records.fetch('dose_occurrences')).to be_empty
-    expect(records.fetch('schedules').pluck('portable_id')).not_to include(source.portable_id)
+    collection = MedicationDoseSource.new(source).type.pluralize
+    expect(records.fetch(collection).pluck('portable_id')).not_to include(source.portable_id)
   end
 
   it 'returns the latest saved state when an outcome has changed more than once' do
@@ -97,6 +97,24 @@ RSpec.describe 'API v1 dose outcome sync reads' do
     expect(response).to have_http_status(:ok)
     records = response.parsed_body.dig('data', 'records')
     expect(records.fetch('dose_occurrences').pluck('portable_id')).to include(outcome.portable_id)
-    expect(records.fetch('schedules').pluck('portable_id')).to include(source.portable_id)
+    collection = MedicationDoseSource.new(source).type.pluralize
+    expect(records.fetch(collection).pluck('portable_id')).to include(source.portable_id)
+  end
+end
+
+RSpec.describe 'API v1 dose outcome sync reads' do
+  context 'with a formal schedule' do
+    let(:source) { schedules(:john_movicol).reload }
+
+    it_behaves_like 'outcome sync read contract'
+  end
+
+  context 'with a routine assignment' do
+    let(:source) do
+      create(:person_medication, :routine, person: people(:john), medication: medications(:vitamin_c),
+                                           max_daily_doses: 1, created_at: 2.months.ago)
+    end
+
+    it_behaves_like 'outcome sync read contract'
   end
 end

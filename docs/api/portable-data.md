@@ -155,7 +155,7 @@ Existing medication takes remain authoritative when the same portable ID is impo
 
 ## Incremental sync
 
-Sync batches accept `medication_dose_occurrence` creates with `source_type: schedule`, `source_id`, `occurrence_key`, and `outcome: not_taken`. Optional `reason` and `note` describe the decision. Repeating the same decision preserves the existing outcome without deducting stock. A different decision for an already resolved occurrence returns a conflict.
+Sync batches accept `medication_dose_occurrence` creates with `source_type: schedule` or `source_type: person_medication`, `source_id`, `occurrence_key`, and `outcome: not_taken`. Optional `reason` and `note` describe the decision. Repeating the same decision preserves the existing outcome without deducting stock. A different decision for an already resolved occurrence returns a conflict. Direct assignments must be routine; as-needed assignments have no expected outcomes. Weekly and monthly take replays retain the original cycle identity and saved window.
 
 To reopen a saved not-taken outcome, submit an update with its `id`, current `if_match` ETag, and `attributes: { outcome: open }`. This requires manage access. Outcome deletes and direct taken-state updates are unsupported; use a medication-take operation to record an actual dose. Each result includes the saved outcome's portable ID and ETag. A failed operation rolls back the complete batch. Current outcome access is checked before an idempotency cache replay.
 
