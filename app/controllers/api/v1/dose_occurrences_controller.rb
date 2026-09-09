@@ -73,7 +73,7 @@ module Api
         rows = MedicationAdministration::OccurrenceProjection.new(
           source: occurrence_source, start_date: record.window_starts_on, end_date: record.window_starts_on
         ).call
-        row = rows.find { |occurrence| occurrence.position == record.position }
+        row = rows.find { |occurrence| occurrence.record == record }
         response.set_header('ETag', api_etag(record))
         render json: { data: DoseOccurrenceSerializer.new(row).as_json }
       end
