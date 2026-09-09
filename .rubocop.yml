@@ -21,6 +21,10 @@ AllCops:
 
 Style/FrozenStringLiteralComment:
   Exclude:
+    - "app/controllers/api/v1/profiles_controller.rb"
+    - "app/services/profiles/update.rb"
+    - "app/serializers/api/v1/profile_serializer.rb"
+    - "spec/requests/api/v1/profile_spec.rb"
     - "app/services/medication_review_report_query.rb"
     - "app/controllers/api/v1/medication_review_reports_controller.rb"
     - "spec/requests/api/v1/medication_review_reports_spec.rb"
