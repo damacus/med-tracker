@@ -59,6 +59,19 @@ class MedicationPauseControllerTest {
         assertEquals(0, gateway.sourceRequests)
     }
 
+    @Test fun `a failed capability refresh retains loaded pause controls and reports the failure`() = runTest {
+        val gateway = FakeGateway()
+        val controller = MedicationPauseController(AppSession("https://example.test", null), gateway, backgroundScope, { true }, {})
+        controller.refresh(); runCurrent()
+        gateway.capability = ApiResult.NetworkError(java.io.IOException())
+
+        controller.refresh(); runCurrent()
+
+        assertTrue(controller.state.value.supported)
+        assertEquals(listOf(source), controller.state.value.sources)
+        assertEquals("Connect to the internet and try again. No change was confirmed.", controller.state.value.error)
+    }
+
     @Test fun `resume changes source only after server confirmation`() = runTest {
         val gateway = FakeGateway(paused = true)
         val controller = MedicationPauseController(AppSession("https://example.test", null), gateway, backgroundScope, { true }, {})
@@ -129,14 +142,15 @@ class MedicationPauseControllerTest {
         assertTrue(controller.state.value.sources.single().active)
     }
 
-    private inner class FakeGateway(val supported: Boolean = true, var paused: Boolean = false, val sourceType: String = "schedule") : MedicationPauseGateway {
+    private inner class FakeGateway(supported: Boolean = true, var paused: Boolean = false, val sourceType: String = "schedule") : MedicationPauseGateway {
         val result = CompletableDeferred<ApiResult<PausePeriod>>()
+        var capability: ApiResult<Boolean> = ApiResult.Success(supported)
         var requests = 0
         var sourceRequests = 0
         val requestIds = mutableListOf<String>()
         var extraSources = emptyList<PauseSource>()
         var delayedSources: CompletableDeferred<ApiResult<List<PauseSource>>>? = null
-        override suspend fun supported(session: AppSession) = ApiResult.Success(supported)
+        override suspend fun supported(session: AppSession) = capability
         override suspend fun sources(session: AppSession): ApiResult<List<PauseSource>> {
             sourceRequests++
             delayedSources?.let { return it.await() }

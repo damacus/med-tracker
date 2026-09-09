@@ -27,8 +27,12 @@ class MedicationPauseController(
         scope.launch {
             val capability = gateway.supported(session)
             if (!isCurrent() || generation != sourceGeneration) return@launch
-            if (capability !is ApiResult.Success || !capability.data) {
+            if (capability is ApiResult.Success && !capability.data) {
                 mutable.value = MedicationPauseState()
+                return@launch
+            }
+            if (capability !is ApiResult.Success) {
+                update { it.copy(error = message(capability)) }
                 return@launch
             }
             val result = gateway.sources(session)
