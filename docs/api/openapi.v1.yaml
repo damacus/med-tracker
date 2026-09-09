@@ -6993,6 +6993,10 @@ components:
         window_starts_on:
           type: string
           format: date
+        window_ends_on:
+          type: string
+          format: date
+          description: Inclusive saved cycle end. Older v2 records may omit this field.
         position:
           type: integer
           minimum: 1

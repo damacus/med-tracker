@@ -163,6 +163,7 @@ RSpec.describe PortableData::Importer do
   it 'rejects a take linked to a different occurrence window' do
     payload = exported_payload
     payload.dig('records', 'dose_occurrences').last['window_starts_on'] = Date.yesterday.iso8601
+    payload.dig('records', 'dose_occurrences').last['window_ends_on'] = Date.yesterday.iso8601
     result = restore(payload, dry_run: true)
     expect(result.errors.join).to include('take does not match')
     expect(destination.people).to be_empty
@@ -177,6 +178,7 @@ RSpec.describe PortableData::Importer do
     expect(restore(legacy)).to be_applied
     row = payload.dig('records', 'dose_occurrences').last
     row['window_starts_on'] = Date.yesterday.iso8601
+    row['window_ends_on'] = Date.yesterday.iso8601
     take = payload.dig('records', 'medication_takes').sole
     take['taken_at'] = "#{Date.yesterday.iso8601}T12:00:00Z"
     payload['records'] = { 'dose_occurrences' => [row], 'medication_takes' => [take] }

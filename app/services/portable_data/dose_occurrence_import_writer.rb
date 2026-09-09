@@ -29,8 +29,8 @@ module PortableData
       return if replay?(row)
 
       record = MedicationDoseOccurrence.new(household: @household, portable_id: row[:portable_id])
-      record.assign_attributes(row.slice(:window_starts_on, :position, :scheduled_at, :outcome, :reason, :note,
-                                         :resolved_at))
+      record.assign_attributes(row.slice(:window_starts_on, :window_ends_on, :position, :scheduled_at,
+                                         :outcome, :reason, :note, :resolved_at))
       assign_references(record, row)
       record.save!
       @existing[record.portable_id] = record

@@ -5,13 +5,16 @@ module PortableData
     end
 
     def valid?
-      valid_types? &&
-        valid_position? && valid_date? && valid_times? && valid_context? && valid_resolution?
+      valid_identity? && valid_times? && valid_context? && valid_resolution?
     rescue ArgumentError, TypeError
       false
     end
 
     private
+
+    def valid_identity?
+      valid_types? && valid_position? && valid_date? && valid_window?
+    end
 
     def valid_types?
       %w[schedule person_medication].include?(@row[:source_type]) &&
@@ -27,7 +30,25 @@ module PortableData
     end
 
     def valid_times?
+      return false if @row[:source_type] == 'person_medication' && @row[:scheduled_at].present?
+
       %i[scheduled_at resolved_at].all? { |field| @row[field].nil? || Time.iso8601(@row[field]).present? }
+    end
+
+    def valid_window?
+      return true unless @row.key?(:window_ends_on)
+
+      first = Date.iso8601(@row[:window_starts_on])
+      last = Date.iso8601(@row[:window_ends_on])
+      return false unless last.iso8601 == @row[:window_ends_on]
+      return last == first if @row[:source_type] == 'schedule'
+
+      valid_routine_window?(first, last)
+    end
+
+    def valid_routine_window?(first, last)
+      last == first || (first.monday? && last == first + 6) ||
+        (first == first.beginning_of_month && last == first.end_of_month)
     end
 
     def valid_context?

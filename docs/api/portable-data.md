@@ -22,7 +22,9 @@ Request `portable_format=medtracker.portable.v2` on the encrypted export endpoin
 
 The `dose_occurrences` collection contains persisted outcomes only. Export does not generate open dose rows or change stock. Records follow their source schedules and assignments, including retained sources.
 
-Each row includes the common portable identity and version fields, plus `source_type`, `source_portable_id`, `window_starts_on`, `position`, nullable `scheduled_at`, `outcome`, nullable `reason`, nullable `note`, nullable `resolved_at`, and nullable `medication_take_portable_id`.
+Each row includes the common portable identity and version fields, plus `source_type`, `source_portable_id`, `window_starts_on`, `window_ends_on`, `position`, nullable `scheduled_at`, `outcome`, nullable `reason`, nullable `note`, nullable `resolved_at`, and nullable `medication_take_portable_id`.
+
+Saved cycle ends survive later dose-cycle changes. Older v2 rows without an end date use the source cycle on first import; unchanged older rows can still be replayed. Routine outcomes require a routine assignment and cannot invent a scheduled time.
 
 References use portable IDs. Local membership IDs and signed API occurrence keys are not portable. The destination derives its own opaque keys from the preserved source, window and position. V1 bundles do not contain this collection.
 
@@ -147,7 +149,7 @@ Imports reject unknown record collections, Rails numeric IDs, invalid capacity r
 
 An applied import is transactional. If any record fails, MedTracker does not keep a partial import.
 
-Imports accept v1 and v2 plaintext inside the same encrypted envelope. V2 can restore saved dose outcomes and health events. Outcome references must resolve within the destination household or the imported graph. A linked take must match the source and day. Duplicate dose slots and changes to existing outcome history are rejected during dry run.
+Imports accept v1 and v2 plaintext inside the same encrypted envelope. V2 can restore saved dose outcomes and health events. Outcome references must resolve within the destination household or the imported graph. A linked take must match the source and saved cycle window. Duplicate dose slots and changes to existing outcome history are rejected during dry run.
 
 Restoring outcomes does not administer doses or deduct stock. An unchanged outcome can be imported again. The original resolution time is retained; the importing membership is recorded as the local actor for a newly restored outcome. Existing outcomes retain their local actor. Members need a current manage grant for every affected person.
 
