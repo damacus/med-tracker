@@ -32,6 +32,7 @@ import io.medtracker.client.models.HouseholdInvitationResponse
 import io.medtracker.client.models.HouseholdMembershipCollectionResponse
 import io.medtracker.client.models.HouseholdMembershipResponse
 import io.medtracker.client.models.HouseholdMembershipUpdateRequest
+import io.medtracker.client.models.InvitationResendResponse
 import io.medtracker.client.models.PersonAccessGrantCollectionResponse
 import io.medtracker.client.models.PersonAccessGrantCreateRequest
 import io.medtracker.client.models.PersonAccessGrantResponse
@@ -1177,6 +1178,82 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
         return RequestConfig(
             method = RequestMethod.PUT,
             path = "/households/{household_id}/admin/memberships/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/admin/invitations/{id}/resend
+     * Rotate an invitation token and queue its replacement email.
+     * Online only. Requires current household administrator authority and fresh MFA on a user API session, including before idempotent replay. Accepted and revoked invitations cannot be resent. A delivery enqueue failure rolls back token rotation.
+     * @param householdId 
+     * @param id 
+     * @return InvitationResendResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun resendHouseholdInvitation(householdId: kotlin.Int, id: kotlin.Int) : InvitationResendResponse {
+        val localVarResponse = resendHouseholdInvitationWithHttpInfo(householdId = householdId, id = id)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as InvitationResendResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/admin/invitations/{id}/resend
+     * Rotate an invitation token and queue its replacement email.
+     * Online only. Requires current household administrator authority and fresh MFA on a user API session, including before idempotent replay. Accepted and revoked invitations cannot be resent. A delivery enqueue failure rolls back token rotation.
+     * @param householdId 
+     * @param id 
+     * @return ApiResponse<InvitationResendResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun resendHouseholdInvitationWithHttpInfo(householdId: kotlin.Int, id: kotlin.Int) : ApiResponse<InvitationResendResponse?> {
+        val localVariableConfig = resendHouseholdInvitationRequestConfig(householdId = householdId, id = id)
+
+        return request<Unit, InvitationResendResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation resendHouseholdInvitation
+     *
+     * @param householdId 
+     * @param id 
+     * @return RequestConfig
+     */
+    fun resendHouseholdInvitationRequestConfig(householdId: kotlin.Int, id: kotlin.Int) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/admin/invitations/{id}/resend".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

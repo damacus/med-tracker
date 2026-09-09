@@ -19,6 +19,11 @@ import java.io.IOException
 import okhttp3.Call
 import okhttp3.HttpUrl
 
+import io.medtracker.client.models.DoseNotTakenRequest
+import io.medtracker.client.models.DoseOccurrenceCollectionResponse
+import io.medtracker.client.models.DoseOccurrenceResponse
+import io.medtracker.client.models.DoseReopenRequest
+import io.medtracker.client.models.DoseTakeRequest
 import io.medtracker.client.models.ErrorEnvelope
 import io.medtracker.client.models.PersonMedicationCollectionResponse
 import io.medtracker.client.models.PersonMedicationCreateRequest
@@ -205,6 +210,92 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
     }
 
     /**
+     * GET /households/{household_id}/person_medications/{person_medication_id}/dose_occurrences
+     * Read stable expected dose identities without creating history records.
+     * 
+     * @param householdId 
+     * @param personMedicationId 
+     * @param startDate 
+     * @param endDate Inclusive end date; the range must contain at most 31 days.
+     * @return DoseOccurrenceCollectionResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun listPersonMedicationDoseOccurrences(householdId: kotlin.Int, personMedicationId: kotlin.String, startDate: java.time.LocalDate, endDate: java.time.LocalDate) : DoseOccurrenceCollectionResponse {
+        val localVarResponse = listPersonMedicationDoseOccurrencesWithHttpInfo(householdId = householdId, personMedicationId = personMedicationId, startDate = startDate, endDate = endDate)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as DoseOccurrenceCollectionResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/person_medications/{person_medication_id}/dose_occurrences
+     * Read stable expected dose identities without creating history records.
+     * 
+     * @param householdId 
+     * @param personMedicationId 
+     * @param startDate 
+     * @param endDate Inclusive end date; the range must contain at most 31 days.
+     * @return ApiResponse<DoseOccurrenceCollectionResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun listPersonMedicationDoseOccurrencesWithHttpInfo(householdId: kotlin.Int, personMedicationId: kotlin.String, startDate: java.time.LocalDate, endDate: java.time.LocalDate) : ApiResponse<DoseOccurrenceCollectionResponse?> {
+        val localVariableConfig = listPersonMedicationDoseOccurrencesRequestConfig(householdId = householdId, personMedicationId = personMedicationId, startDate = startDate, endDate = endDate)
+
+        return request<Unit, DoseOccurrenceCollectionResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation listPersonMedicationDoseOccurrences
+     *
+     * @param householdId 
+     * @param personMedicationId 
+     * @param startDate 
+     * @param endDate Inclusive end date; the range must contain at most 31 days.
+     * @return RequestConfig
+     */
+    fun listPersonMedicationDoseOccurrencesRequestConfig(householdId: kotlin.Int, personMedicationId: kotlin.String, startDate: java.time.LocalDate, endDate: java.time.LocalDate) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
+            .apply {
+                put("start_date", listOf(parseDateToQueryString(startDate)))
+                put("end_date", listOf(parseDateToQueryString(endDate)))
+            }
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/person_medications/{person_medication_id}/dose_occurrences".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"person_medication_id"+"}", encodeURIComponent(personMedicationId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * GET /households/{household_id}/person_medications
      * List visible person medication assignments.
      * 
@@ -371,6 +462,178 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
         return RequestConfig(
             method = RequestMethod.PATCH,
             path = "/households/{household_id}/person_medications/{id}/pause".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/not_taken
+     * Record due non-administration without creating a take or reducing stock.
+     * 
+     * @param householdId 
+     * @param personMedicationId 
+     * @param doseNotTakenRequest 
+     * @param idempotencyKey  (optional)
+     * @return DoseOccurrenceResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun recordPersonMedicationDoseNotTaken(householdId: kotlin.Int, personMedicationId: kotlin.String, doseNotTakenRequest: DoseNotTakenRequest, idempotencyKey: kotlin.String? = null) : DoseOccurrenceResponse {
+        val localVarResponse = recordPersonMedicationDoseNotTakenWithHttpInfo(householdId = householdId, personMedicationId = personMedicationId, doseNotTakenRequest = doseNotTakenRequest, idempotencyKey = idempotencyKey)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as DoseOccurrenceResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/not_taken
+     * Record due non-administration without creating a take or reducing stock.
+     * 
+     * @param householdId 
+     * @param personMedicationId 
+     * @param doseNotTakenRequest 
+     * @param idempotencyKey  (optional)
+     * @return ApiResponse<DoseOccurrenceResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun recordPersonMedicationDoseNotTakenWithHttpInfo(householdId: kotlin.Int, personMedicationId: kotlin.String, doseNotTakenRequest: DoseNotTakenRequest, idempotencyKey: kotlin.String?) : ApiResponse<DoseOccurrenceResponse?> {
+        val localVariableConfig = recordPersonMedicationDoseNotTakenRequestConfig(householdId = householdId, personMedicationId = personMedicationId, doseNotTakenRequest = doseNotTakenRequest, idempotencyKey = idempotencyKey)
+
+        return request<DoseNotTakenRequest, DoseOccurrenceResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation recordPersonMedicationDoseNotTaken
+     *
+     * @param householdId 
+     * @param personMedicationId 
+     * @param doseNotTakenRequest 
+     * @param idempotencyKey  (optional)
+     * @return RequestConfig
+     */
+    fun recordPersonMedicationDoseNotTakenRequestConfig(householdId: kotlin.Int, personMedicationId: kotlin.String, doseNotTakenRequest: DoseNotTakenRequest, idempotencyKey: kotlin.String?) : RequestConfig<DoseNotTakenRequest> {
+        val localVariableBody = doseNotTakenRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        idempotencyKey?.apply { localVariableHeaders["Idempotency-Key"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/not_taken".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"person_medication_id"+"}", encodeURIComponent(personMedicationId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * PATCH /households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/reopen
+     * Reopen a not-taken dose with manage access and a current version.
+     * 
+     * @param householdId 
+     * @param personMedicationId 
+     * @param ifMatch 
+     * @param doseReopenRequest 
+     * @param idempotencyKey  (optional)
+     * @return DoseOccurrenceResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun reopenPersonMedicationDoseOccurrence(householdId: kotlin.Int, personMedicationId: kotlin.String, ifMatch: kotlin.String, doseReopenRequest: DoseReopenRequest, idempotencyKey: kotlin.String? = null) : DoseOccurrenceResponse {
+        val localVarResponse = reopenPersonMedicationDoseOccurrenceWithHttpInfo(householdId = householdId, personMedicationId = personMedicationId, ifMatch = ifMatch, doseReopenRequest = doseReopenRequest, idempotencyKey = idempotencyKey)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as DoseOccurrenceResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * PATCH /households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/reopen
+     * Reopen a not-taken dose with manage access and a current version.
+     * 
+     * @param householdId 
+     * @param personMedicationId 
+     * @param ifMatch 
+     * @param doseReopenRequest 
+     * @param idempotencyKey  (optional)
+     * @return ApiResponse<DoseOccurrenceResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun reopenPersonMedicationDoseOccurrenceWithHttpInfo(householdId: kotlin.Int, personMedicationId: kotlin.String, ifMatch: kotlin.String, doseReopenRequest: DoseReopenRequest, idempotencyKey: kotlin.String?) : ApiResponse<DoseOccurrenceResponse?> {
+        val localVariableConfig = reopenPersonMedicationDoseOccurrenceRequestConfig(householdId = householdId, personMedicationId = personMedicationId, ifMatch = ifMatch, doseReopenRequest = doseReopenRequest, idempotencyKey = idempotencyKey)
+
+        return request<DoseReopenRequest, DoseOccurrenceResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation reopenPersonMedicationDoseOccurrence
+     *
+     * @param householdId 
+     * @param personMedicationId 
+     * @param ifMatch 
+     * @param doseReopenRequest 
+     * @param idempotencyKey  (optional)
+     * @return RequestConfig
+     */
+    fun reopenPersonMedicationDoseOccurrenceRequestConfig(householdId: kotlin.Int, personMedicationId: kotlin.String, ifMatch: kotlin.String, doseReopenRequest: DoseReopenRequest, idempotencyKey: kotlin.String?) : RequestConfig<DoseReopenRequest> {
+        val localVariableBody = doseReopenRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        idempotencyKey?.apply { localVariableHeaders["Idempotency-Key"] = this.toString() }
+        ifMatch.apply { localVariableHeaders["If-Match"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.PATCH,
+            path = "/households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/reopen".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"person_medication_id"+"}", encodeURIComponent(personMedicationId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -616,6 +879,94 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
         return RequestConfig(
             method = RequestMethod.PATCH,
             path = "/households/{household_id}/person_medications/{id}/resume".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/take
+     * Resolve a dose through normal administration while retaining former outcome history.
+     * 
+     * @param householdId 
+     * @param personMedicationId 
+     * @param doseTakeRequest 
+     * @param idempotencyKey  (optional)
+     * @param ifMatch Required when replacing a not-taken decision; must match its current outcome version. (optional)
+     * @return DoseOccurrenceResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun takePersonMedicationDoseOccurrence(householdId: kotlin.Int, personMedicationId: kotlin.String, doseTakeRequest: DoseTakeRequest, idempotencyKey: kotlin.String? = null, ifMatch: kotlin.String? = null) : DoseOccurrenceResponse {
+        val localVarResponse = takePersonMedicationDoseOccurrenceWithHttpInfo(householdId = householdId, personMedicationId = personMedicationId, doseTakeRequest = doseTakeRequest, idempotencyKey = idempotencyKey, ifMatch = ifMatch)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as DoseOccurrenceResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/take
+     * Resolve a dose through normal administration while retaining former outcome history.
+     * 
+     * @param householdId 
+     * @param personMedicationId 
+     * @param doseTakeRequest 
+     * @param idempotencyKey  (optional)
+     * @param ifMatch Required when replacing a not-taken decision; must match its current outcome version. (optional)
+     * @return ApiResponse<DoseOccurrenceResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun takePersonMedicationDoseOccurrenceWithHttpInfo(householdId: kotlin.Int, personMedicationId: kotlin.String, doseTakeRequest: DoseTakeRequest, idempotencyKey: kotlin.String?, ifMatch: kotlin.String?) : ApiResponse<DoseOccurrenceResponse?> {
+        val localVariableConfig = takePersonMedicationDoseOccurrenceRequestConfig(householdId = householdId, personMedicationId = personMedicationId, doseTakeRequest = doseTakeRequest, idempotencyKey = idempotencyKey, ifMatch = ifMatch)
+
+        return request<DoseTakeRequest, DoseOccurrenceResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation takePersonMedicationDoseOccurrence
+     *
+     * @param householdId 
+     * @param personMedicationId 
+     * @param doseTakeRequest 
+     * @param idempotencyKey  (optional)
+     * @param ifMatch Required when replacing a not-taken decision; must match its current outcome version. (optional)
+     * @return RequestConfig
+     */
+    fun takePersonMedicationDoseOccurrenceRequestConfig(householdId: kotlin.Int, personMedicationId: kotlin.String, doseTakeRequest: DoseTakeRequest, idempotencyKey: kotlin.String?, ifMatch: kotlin.String?) : RequestConfig<DoseTakeRequest> {
+        val localVariableBody = doseTakeRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        idempotencyKey?.apply { localVariableHeaders["Idempotency-Key"] = this.toString() }
+        ifMatch?.apply { localVariableHeaders["If-Match"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/take".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"person_medication_id"+"}", encodeURIComponent(personMedicationId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
