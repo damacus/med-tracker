@@ -37,8 +37,8 @@
 
 ## 6. Accept Direct Routine Sources through the API
 
-- [ ] 6.1 Red: specify API validation, capability, and OpenAPI acceptance of routine PersonMedication identities.
-- [ ] 6.2 Green: enable the source in API validators and contracts without new operations.
+- [x] 6.1 Red: specify API validation, capability, and OpenAPI acceptance of routine PersonMedication identities.
+- [x] 6.2 Green: add source-specific routes using the existing API actions and contracts, preserving existing operation IDs.
 
 ## 7. Accept Direct Routine Sources through Sync
 

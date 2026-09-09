@@ -7,7 +7,7 @@ RSpec.describe 'API v1 capabilities' do
     get api_v1_capabilities_path, as: :json
 
     expect(response.parsed_body.dig('data', 'dose_outcomes')).to eq(
-      'source_types' => ['schedule'],
+      'source_types' => %w[schedule person_medication],
       'max_read_days' => 31,
       'actions' => %w[not_taken reopen take],
       'replacement_requires_version' => true
