@@ -77,7 +77,6 @@ class MedicationReminderEligibilityQuery
   end
 
   def due_person_medication?(person_medication)
-    return false if taken_in_current_cycle?(person_medication)
     return false if pause_projection_for(person_medication).paused_at?(now)
 
     resolved = taken_count_for_cycle(person_medication) + not_taken_routine_counts.fetch(person_medication.id, 0)
@@ -127,10 +126,6 @@ class MedicationReminderEligibilityQuery
   def taken_count_for_cycle(source)
     cycle = DoseCycle.new(source.respond_to?(:dose_cycle) ? source.dose_cycle : 'daily')
     medication_takes_for(source).count { |take| cycle.range_for(now).cover?(take.taken_at) }
-  end
-
-  def taken_in_current_cycle?(source)
-    taken_count_for_cycle(source).positive?
   end
 
   def medication_takes_for(source)
