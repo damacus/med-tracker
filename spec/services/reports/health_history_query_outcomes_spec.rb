@@ -50,4 +50,14 @@ RSpec.describe Reports::HealthHistoryQuery do
     expect(report.not_taken_outcomes).to be_empty
     expect(report.daily_outcomes.sole).to include(not_taken: 0, unexplained_missed: 1)
   end
+
+  it 'labels routine administrations and supplies longer cycle summaries' do
+    routine = create(:person_medication, :routine, person: person, dose_cycle: :monthly, created_at: 2.months.ago)
+    create(:medication_take, person_medication: routine, taken_at: date.in_time_zone + 12.hours)
+
+    result = report
+
+    expect(result.medication_takes.sole.source_type).to eq(:routine)
+    expect(result.cycle_summaries.sole).to include(source: routine, actual: 1)
+  end
 end

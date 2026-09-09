@@ -2183,6 +2183,10 @@ cy:
       pdf_unavailable: Ni ellid paratoi'r PDF. Rhowch gynnig arall arni.
       preparing_pdf: Wrthi'n paratoi PDF...
     health_history:
+      cycles:
+        title: Cylchoedd dos rheolaidd
+        description: Ni chyfrifir cylch fel un a gollwyd nes iddo ddod i ben.
+        window: Cyfnod y cylch
       outcomes:
         title: Canlyniadau dosau
         not_taken: Heb eu cymryd
@@ -2201,6 +2205,7 @@ cy:
       ongoing_from: Yn parhau ers %{started_on}
       event_date_range: "%{started_on} i %{ended_on}"
       sources:
+        routine: Rheolaidd
         scheduled: Wedi'i amserlennu
         as_needed: Yn ôl yr angen/uniongyrchol
       medication_takes:
@@ -2349,8 +2354,8 @@ cy:
         description: Meddyginiaethau a gymerwyd heddiw, wedi'u grwpio yn ôl person.
         empty: Dim meddyginiaethau wedi'u cymryd heddiw.
       summary:
-        overall_compliance: Cydymffurfiaeth Gyffredinol
-        total_doses_logged: Cyfanswm dosau wedi'u cofnodi
+        overall_compliance: Cydymffurfiaeth Ddyddiol
+        total_doses_logged: Dosau dyddiol wedi’u cofnodi
         evidence_reviewed: Tystiolaeth wedi'i hadolygu
         excellent: Ardderchog
         needs_attention: Angen sylw

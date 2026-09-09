@@ -1886,6 +1886,10 @@ ga:
       pdf_unavailable: Níorbh fhéidir an PDF a ullmhú. Bain triail eile as.
       preparing_pdf: Ag ullmhú PDF...
     health_history:
+      cycles:
+        title: Timthriallta dáileoige rialta
+        description: Ní áirítear timthriall mar cheann caillte go dtí go gcríochnaíonn sé.
+        window: Tréimhse an timthrialla
       outcomes:
         title: Torthaí dáileog
         not_taken: Gan glacadh
@@ -1904,6 +1908,7 @@ ga:
       ongoing_from: Ar siúl ó %{started_on}
       event_date_range: "%{started_on} go %{ended_on}"
       sources:
+        routine: Rialta
         scheduled: Sceidealaithe
         as_needed: De réir mar is gá/díreach
       medication_takes:
@@ -2052,8 +2057,8 @@ ga:
         description: Cógais a glacadh inniu, grúpáilte de réir duine.
         empty: Níor glacadh aon chógas inniu.
       summary:
-        overall_compliance: Cloí Iomlán
-        total_doses_logged: Líon Iomlán Dáileoga Logáilte
+        overall_compliance: Cloí Laethúil
+        total_doses_logged: Dáileoga Laethúla Logáilte
         evidence_reviewed: Fianaise Athbhreithnithe
         excellent: Sármhaith
         needs_attention: Teastaíonn aird

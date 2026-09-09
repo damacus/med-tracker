@@ -90,6 +90,18 @@ RSpec.describe Reports::HealthHistoryPdf do
     expect(pdf_text(pdf)).to include('Paracetamol')
   end
 
+  it 'preserves the full routine cycle window in the PDF' do
+    source = create(:person_medication, :routine, dose_cycle: :monthly)
+    result = empty_result.with(cycle_summaries: [
+                                 { source: source, window_starts_on: start_date, window_ends_on: end_date,
+                                   expected: 2, actual: 1, not_taken: 0, unexplained_missed: 0 }
+                               ])
+    pdf = described_class.new(result: result, start_date: start_date, end_date: end_date,
+                              generated_at: generated_at).render
+
+    expect(pdf_text(pdf)).to include('Routine dose cycles', '2026-02-01', '2026-02-28')
+  end
+
   it 'renders the single-person GP report through the shared PDF renderer' do
     pdf = described_class.new(result: gp_result, start_date:, end_date:, generated_at:).render
 
@@ -214,7 +226,8 @@ RSpec.describe Reports::HealthHistoryPdf do
       notable_illnesses: [],
       illness_patterns: [],
       not_taken_outcomes: [],
-      daily_outcomes: []
+      daily_outcomes: [],
+      cycle_summaries: []
     )
   end
 

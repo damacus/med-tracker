@@ -12,6 +12,7 @@ module Components
         medication_takes_section
         not_taken_section
         dose_outcomes_section
+        cycle_outcomes_section
         suspected_side_effects_section
         notable_illnesses_section
         illness_patterns_section
@@ -69,6 +70,26 @@ module Components
         report_section(t('notable_illnesses.title')) do
           event_table(result.notable_illnesses, include_medications: false)
         end
+      end
+
+      def cycle_outcomes_section
+        return if result.cycle_summaries.empty?
+
+        report_section(t('cycles.title')) do
+          p { t('cycles.description') }
+          headings = [t('cycles.window'), t('medication_takes.person'), t('medication_takes.medication')]
+          headings.concat(%w[expected taken not_taken unexplained_missed].map { |key| t("outcomes.#{key}") })
+          table_or_empty(result.cycle_summaries, headings, table_class: 'health-history-cycles-table') do |cycle|
+            cycle_row(cycle)
+          end
+        end
+      end
+
+      def cycle_row(cycle)
+        window = t('event_date_range', started_on: date(cycle[:window_starts_on]),
+                                       ended_on: date(cycle[:window_ends_on]))
+        [window, cycle[:source].person.name, cycle[:source].medication.display_name,
+         cycle[:expected], cycle[:actual], cycle[:not_taken], cycle[:unexplained_missed]]
       end
 
       def illness_patterns_section

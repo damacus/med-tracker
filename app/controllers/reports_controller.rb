@@ -25,6 +25,7 @@ class ReportsController < ApplicationController
 
     render Views::Reports::Index.new(
       daily_data: @daily_data,
+      cycle_summaries: report_data.cycle_summaries,
       smart_insights: smart_insights,
       start_date: @start_date,
       end_date: @end_date,

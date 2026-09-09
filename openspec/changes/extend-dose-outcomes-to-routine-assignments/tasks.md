@@ -27,8 +27,8 @@
 
 - [x] 5R.1 Red: specify daily and cycle report categories, retained outcomes, and unchanged PRN treatment.
 - [x] 5R.2 Green: extend the shared report query and separate daily totals from weekly/monthly summaries.
-- [ ] 5R.3 Red: specify routine labels and cycle summaries in the report and exported history.
-- [ ] 5R.4 Green: render routine history and cycle summaries in the existing reports.
+- [x] 5R.3 Red: specify routine labels and cycle summaries in the report and exported history.
+- [x] 5R.4 Green: render routine history and cycle summaries in the existing reports.
 
 ## 5I. Interpret Direct Routine Outcomes in Insights
 
