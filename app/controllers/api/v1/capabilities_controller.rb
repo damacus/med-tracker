@@ -20,6 +20,7 @@ module Api
           medication_pause_periods: { supported: true, reasons: MedicationPausePeriod::PUBLIC_REASONS,
                                       effective_time: 'server_acceptance' },
           dose_outcomes: dose_outcomes,
+          stock_removals: stock_removals,
           portable_formats: portable_formats,
           backups: backups,
           fhir: fhir,
@@ -69,6 +70,10 @@ module Api
           actions: %w[not_taken reopen take],
           replacement_requires_version: true
         }
+      end
+
+      def stock_removals
+        { actions: %w[create index], submission_id_required: true, max_page_size: 100 }
       end
 
       def backups
