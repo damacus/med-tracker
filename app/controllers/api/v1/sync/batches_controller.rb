@@ -17,6 +17,8 @@ module Api
         class PreconditionRequired < BatchError; end
         class SyncConflict < BatchError; end
 
+        rescue_from Api::Sync::DoseOutcomeOperation::Error, with: :render_outcome_error
+
         def create
           results = Households::LifecycleCutoffLock.with(household: current_household) do
             apply_batch_with_retry
@@ -39,6 +41,25 @@ module Api
 
             medication_pause_period_operation.authorize_replay!(operation: operation)
           end
+        end
+
+        def with_api_idempotency(&)
+          operations.each do |operation|
+            outcome_operation.authorize_operation!(operation) if outcome_operation?(operation)
+          end
+          super
+        end
+
+        def outcome_operation?(operation)
+          operation[:resource_type] == 'medication_dose_occurrence'
+        end
+
+        def outcome_operation
+          Api::Sync::DoseOutcomeOperation.new(authorization: pundit_user, household: current_household)
+        end
+
+        def render_outcome_error(error)
+          render_api_error(code: error.code, message: error.message, status: error.status)
         end
 
         def apply_batch_with_retry
@@ -88,6 +109,11 @@ module Api
         def apply_operation(operation, index)
           if operation[:resource_type] == 'medication_pause_period'
             return apply_medication_pause_period_operation(operation, index)
+          end
+
+          if outcome_operation?(operation)
+            record = outcome_operation.call(operation: operation)
+            return batch_result(record, index, operation[:action]).merge(etag: api_etag(record))
           end
 
           if Api::Sync::AssignmentOperation::RESOURCE_CLASSES.key?(operation[:resource_type])
