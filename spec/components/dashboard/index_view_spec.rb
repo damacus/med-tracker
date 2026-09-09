@@ -423,6 +423,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       **dashboard_action_metrics,
       smart_insights: insight_result || learning_insight_result,
       can_view_reports?: can_view_reports,
+      can_correct_outcomes?: false,
       routine_tasks_by_person: { person => [routine_dashboard_row(person, status: routine_status)] },
       as_needed_by_person: { person => [as_needed_dashboard_row(person)] },
       today_takes_by_person: { person => [dashboard_today_take] },
