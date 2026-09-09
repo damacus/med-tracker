@@ -34,6 +34,8 @@ tags:
     description: Medication schedules and lifecycle actions.
   - name: Person medications
     description: Medication assignments to people.
+  - name: Reports
+    description: Protected clinical report snapshots and PDF exports.
   - name: Medication reviews
     description: Evidence review snapshots and practitioner review decisions.
   - name: Medication takes
@@ -443,6 +445,202 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/reports/health_history:
+    get:
+      operationId: getHealthHistoryReport
+      tags: [Household, Reports]
+      summary: Export health history for one manageable person.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: person_id
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/ResourceIdentifier'
+        - name: start_date
+          in: query
+          description: ISO date; defaults to one year before the end date. The maximum difference between start and end is 366 days.
+          schema:
+            $ref: '#/components/schemas/Date'
+        - name: end_date
+          in: query
+          description: ISO date; defaults to today.
+          schema:
+            $ref: '#/components/schemas/Date'
+        - name: include_medication_takes
+          in: query
+          schema:
+            type: string
+            enum: ['0', '1']
+            default: '0'
+      responses:
+        '200':
+          description: Protected JSON report snapshot.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/no_store'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthHistoryReportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ReportUnavailable'
+  /households/{household_id}/reports/health_history.pdf:
+    get:
+      operationId: downloadHealthHistoryReport
+      tags: [Household, Reports]
+      summary: Export health history for one manageable person.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: person_id
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/ResourceIdentifier'
+        - name: start_date
+          in: query
+          description: ISO date; defaults to one year before the end date. The maximum difference between start and end is 366 days.
+          schema:
+            $ref: '#/components/schemas/Date'
+        - name: end_date
+          in: query
+          description: ISO date; defaults to today.
+          schema:
+            $ref: '#/components/schemas/Date'
+        - name: include_medication_takes
+          in: query
+          schema:
+            type: string
+            enum: ['0', '1']
+            default: '0'
+      responses:
+        '200':
+          description: Protected PDF report download.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/no_store'
+            Content-Disposition:
+              description: Attachment filename for PDF responses.
+              schema:
+                type: string
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ReportUnavailable'
+  /households/{household_id}/reports/medication_reviews:
+    get:
+      operationId: getMedicationReviewReport
+      tags: [Household, Reports]
+      summary: Export current medicine reviews for one visible person.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: person_id
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/ResourceIdentifier'
+        - name: status
+          in: query
+          description: Omit to use the web report's default visible queue. This is a current snapshot; date filters are not supported.
+          schema:
+            $ref: '#/components/schemas/MedicationReviewPromptStatus'
+      responses:
+        '200':
+          description: Protected JSON report snapshot.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/no_store'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationReviewReportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ReportUnavailable'
+  /households/{household_id}/reports/medication_reviews.pdf:
+    get:
+      operationId: downloadMedicationReviewReport
+      tags: [Household, Reports]
+      summary: Export current medicine reviews for one visible person.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: person_id
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/ResourceIdentifier'
+        - name: status
+          in: query
+          description: Omit to use the web report's default visible queue. This is a current snapshot; date filters are not supported.
+          schema:
+            $ref: '#/components/schemas/MedicationReviewPromptStatus'
+      responses:
+        '200':
+          description: Protected PDF report download.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/no_store'
+            Content-Disposition:
+              description: Attachment filename for PDF responses.
+              schema:
+                type: string
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ReportUnavailable'
   /households/{household_id}/medication_review_prompts:
     get:
       operationId: listMedicationReviewPrompts
@@ -3842,6 +4040,12 @@ components:
         type: integer
         minimum: 1
   responses:
+    ReportUnavailable:
+      description: The report could not be rendered or its download audit could not be saved.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
     BadRequest:
       description: A required request parameter is missing or invalid.
       content:
@@ -5204,6 +5408,164 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/Me'
+    ReportPerson:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        name:
+          type: string
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+    ReportMedicine:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        name:
+          type: string
+    ReportHealthEvent:
+      type: object
+      additionalProperties: false
+      required: [id, event_kind, title, started_on, ended_on, ongoing, duration_days, severity, notes, action_taken, medical_help_sought, medication_names]
+      properties:
+        id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        event_kind:
+          type: string
+          enum: [illness, suspected_side_effect]
+        title:
+          type: string
+        started_on:
+          $ref: '#/components/schemas/Date'
+        ended_on:
+          type: string
+          format: date
+          nullable: true
+        ongoing:
+          type: boolean
+        duration_days:
+          type: integer
+          minimum: 1
+          nullable: true
+        severity:
+          type: string
+          enum: [mild, moderate, severe]
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        action_taken:
+          type: string
+          nullable: true
+        medical_help_sought:
+          type: boolean
+        medication_names:
+          type: array
+          items:
+            type: string
+    ReportMedicationTake:
+      type: object
+      additionalProperties: false
+      required: [taken_at, medication_name, dose_amount, dose_unit, source_type, location_name]
+      properties:
+        taken_at:
+          $ref: '#/components/schemas/Timestamp'
+        medication_name:
+          type: string
+          nullable: true
+        dose_amount:
+          $ref: '#/components/schemas/NullableDecimalValue'
+        dose_unit:
+          type: string
+          nullable: true
+        source_type:
+          type: string
+          enum: [scheduled, routine, as_needed]
+        location_name:
+          type: string
+          nullable: true
+    HealthHistoryReport:
+      type: object
+      additionalProperties: false
+      required: [person, start_date, end_date, generated_at, current_medicines, chronology, medication_takes]
+      properties:
+        person:
+          $ref: '#/components/schemas/ReportPerson'
+        start_date:
+          $ref: '#/components/schemas/Date'
+        end_date:
+          $ref: '#/components/schemas/Date'
+        generated_at:
+          $ref: '#/components/schemas/Timestamp'
+        current_medicines:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportMedicine'
+        chronology:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportHealthEvent'
+        medication_takes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportMedicationTake'
+    HealthHistoryReportResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/HealthHistoryReport'
+    MedicationReviewReport:
+      type: object
+      additionalProperties: false
+      required: [person, generated_at, prompts]
+      properties:
+        person:
+          $ref: '#/components/schemas/ReportPerson'
+        generated_at:
+          $ref: '#/components/schemas/Timestamp'
+        prompts:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicationReviewPrompt'
+    MedicationReviewReportResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/MedicationReviewReport'
+    CapabilityReports:
+      type: object
+      additionalProperties: false
+      required: [formats, health_history, medication_reviews, selected_person_required, health_history_max_span_days]
+      properties:
+        formats:
+          type: array
+          items:
+            type: string
+            enum: [json, pdf]
+        health_history:
+          type: boolean
+        medication_reviews:
+          type: boolean
+        selected_person_required:
+          type: boolean
+        health_history_max_span_days:
+          type: integer
+          minimum: 1
+          maximum: 366
     MedicationReviewPromptStatus:
       type: string
       enum: [needs_review, reviewed_with_practitioner, expected_prescribed_combination, not_relevant, hidden_low_signal]
@@ -7086,6 +7448,7 @@ components:
         - stock_removals
         - location_management
         - medication_reviews
+        - reports
         - portable_formats
         - backups
         - fhir
@@ -7115,6 +7478,8 @@ components:
           $ref: '#/components/schemas/CapabilityLocationManagement'
         medication_reviews:
           $ref: '#/components/schemas/CapabilityMedicationReviews'
+        reports:
+          $ref: '#/components/schemas/CapabilityReports'
         portable_formats:
           type: array
           uniqueItems: true

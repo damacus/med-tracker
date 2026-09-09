@@ -96,3 +96,23 @@ access to the prompt's person. Practitioner review statuses require a name,
 role and review date. Evidence fields cannot be changed through this API.
 The review and its audit event commit together; diagnostics filter private
 practitioner details and notes. Current access is checked before cached replay.
+
+## Protected reports
+
+Read typed JSON snapshots at
+`/households/{household_id}/reports/health_history` and
+`/households/{household_id}/reports/medication_reviews`. Append `.pdf` for
+the corresponding binary download operation. Separate operation IDs keep
+PDF bytes out of generated clients' JSON response decoders.
+
+Both reports require one `person_id` (numeric or portable), use `no-store`,
+and audit successful JSON and PDF downloads. Health history requires manage
+access and accepts ISO `start_date` and `end_date` values. Their maximum
+difference is 366 days, matching the web GP report. Set
+`include_medication_takes=1` to include actual administrations.
+
+Medicine review reports require view access to the selected person and the
+existing adult review permission. They show the current visible queue, with
+an optional exact `status` filter. They do not accept date filters.
+Both formats share the web report queries and PDF renderers. Rendering or
+download-audit failures return a stable `report_unavailable` response.

@@ -37,6 +37,8 @@ Rails.application.routes.draw do
         resource :me, only: [:show], controller: 'me'
         resources :people, only: %i[index show create update]
         resources :medication_review_prompts, only: %i[index show update]
+        get 'reports/health_history', to: 'health_history_reports#show'
+        get 'reports/medication_reviews', to: 'medication_review_reports#show'
         resources :locations, only: %i[index show create update destroy] do
           resources :location_memberships, only: %i[create destroy]
         end
