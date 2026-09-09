@@ -69,6 +69,88 @@ data class RecordDosePayload(
     val doseUnit: String? = null
 )
 
+data class LocationDto(
+    val id: Long? = null,
+    val name: String,
+    val description: String? = null,
+    val personIds: List<Long> = emptyList()
+)
+
+data class HouseholdInvitationDto(
+    val id: Long? = null,
+    val email: String,
+    val role: String,
+    val status: String? = null,
+    val expiresAt: String? = null
+)
+
+data class CapabilitiesDto(
+    val apiVersion: String,
+    val format: String
+)
+
+data class AiSuggestionDto(
+    val id: Long? = null,
+    val title: String,
+    val text: String,
+    val doseCycle: String? = null
+)
+
+data class MedicationLookupResultDto(
+    val id: Long? = null,
+    val name: String,
+    val category: String? = null,
+    val description: String? = null
+)
+
+data class HealthEventDto(
+    val id: Long? = null,
+    val eventKind: String,
+    val severity: String? = null,
+    val title: String,
+    val notes: String? = null,
+    val occurredAt: String? = null
+)
+
+data class HouseholdAdminSettingsDto(
+    val subscriptionPlan: String,
+    val operational: Boolean = true
+)
+
+data class RecordNotTakenPayload(
+    val clientUuid: String,
+    val sourceType: String,
+    val sourceId: String,
+    val notTakenAt: String,
+    val reason: String
+)
+
+data class RecordStockRemovalPayload(
+    val medicationId: Long,
+    val quantity: Double,
+    val reason: String,
+    val removedAt: String
+)
+
+data class CreateMedicationPayload(
+    val name: String,
+    val category: String? = null,
+    val doseAmount: Double? = null,
+    val doseUnit: String? = null,
+    val currentSupply: Double? = null,
+    val reorderThreshold: Double? = null
+)
+
+data class CreateSchedulePayload(
+    val personId: Long,
+    val medicationId: Long,
+    val doseAmount: Double,
+    val doseUnit: String,
+    val frequency: String,
+    val doseCycle: String? = null,
+    val startDate: String
+)
+
 data class DashboardScheduleItem(
     val schedule: ScheduleDto,
     val person: PersonDto?,
@@ -83,7 +165,9 @@ data class DashboardData(
     val medications: List<MedicationDto> = emptyList(),
     val schedules: List<ScheduleDto> = emptyList(),
     val recentTakes: List<MedicationTakeDto> = emptyList(),
-    val selectedPersonId: Long? = null // null means "All family"
+    val selectedPersonId: Long? = null, // null means "All family"
+    val capabilities: CapabilitiesDto? = null,
+    val aiSuggestions: List<AiSuggestionDto> = emptyList()
 ) {
     val selectedPerson: PersonDto?
         get() = if (selectedPersonId == null) null else people.find { it.id == selectedPersonId }

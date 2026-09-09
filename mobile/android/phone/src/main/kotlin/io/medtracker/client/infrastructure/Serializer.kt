@@ -13,13 +13,13 @@ object Serializer {
         .add(UUIDAdapter())
         .add(ByteArrayAdapter())
         .add(URIAdapter())
-        .add(KotlinJsonAdapterFactory())
         .add(BigDecimalAdapter())
         .add(BigIntegerAdapter())
 
     @JvmStatic
     val moshi: Moshi by lazy {
         SerializerHelper.addEnumUnknownDefaultCase(moshiBuilder)
+        moshiBuilder.add(KotlinJsonAdapterFactory())
         moshiBuilder.build()
     }
 }

@@ -5,7 +5,22 @@ import io.damacus.medtracker.data.CredentialStore
 import io.damacus.medtracker.data.SessionManager
 import io.damacus.medtracker.data.api.ApiResult
 import io.damacus.medtracker.data.api.MedTrackerApi
-import io.damacus.medtracker.data.model.*
+import io.damacus.medtracker.data.model.CreateMedicationPayload
+import io.damacus.medtracker.data.model.CreateSchedulePayload
+import io.damacus.medtracker.data.model.DashboardData
+import io.damacus.medtracker.data.model.HouseholdDto
+import io.damacus.medtracker.data.model.HouseholdInvitationDto
+import io.damacus.medtracker.data.model.LocationDto
+import io.damacus.medtracker.data.model.MedicationDto
+import io.damacus.medtracker.data.model.MedicationTakeDto
+import io.damacus.medtracker.data.model.OidcExchangeRequest
+import io.damacus.medtracker.data.model.PersonDto
+import io.damacus.medtracker.data.model.RecordDosePayload
+import io.damacus.medtracker.data.model.RecordStockRemovalPayload
+import io.damacus.medtracker.data.model.RefreshRequest
+import io.damacus.medtracker.data.model.ScheduleDto
+import io.damacus.medtracker.data.model.SessionPayload
+import io.damacus.medtracker.data.model.UserDto
 import io.damacus.medtracker.ui.MainViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -17,7 +32,12 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import kotlin.coroutines.Continuation
@@ -253,6 +273,7 @@ class DashboardSessionTest {
         assertTrue(api.logoutTokens.isEmpty())
     }
 
+<<<<<<< Updated upstream
     @Test fun `household selection completes authentication against the original server`() = runTest(dispatcher) {
         val main = MainViewModel(sessions, api)
         store.put("main", main)
@@ -278,6 +299,9 @@ class DashboardSessionTest {
     }
 
     private suspend fun kotlinx.coroutines.test.TestScope.assertLateLogoutIgnored(fail: Boolean) {
+=======
+    private fun kotlinx.coroutines.test.TestScope.assertLateLogoutIgnored(fail: Boolean) {
+>>>>>>> Stashed changes
         signIn(1)
         val model = model()
         val main = MainViewModel(sessions, api)
@@ -307,7 +331,7 @@ class DashboardSessionTest {
         assertEquals(listOf("token-1"), api.logoutTokens)
     }
 
-    private suspend fun kotlinx.coroutines.test.TestScope.assertLateDoseIgnored(result: ApiResult<MedicationTakeDto>) {
+    private fun kotlinx.coroutines.test.TestScope.assertLateDoseIgnored(result: ApiResult<MedicationTakeDto>) {
         signIn(1)
         val model = model()
         runCurrent()
@@ -370,16 +394,16 @@ class DashboardSessionTest {
                 oldPeopleReturned = true
                 return result
             }
-            val id = accessToken.substringAfter("token-").toLong()
+            val id = accessToken.substringAfter("token-").toLongOrNull() ?: 1L
             return ApiResult.Success(listOf(PersonDto(id = id, name = "Person $id")))
         }
 
         override suspend fun getMedications(baseUrl: String, accessToken: String, householdId: Long) =
             ApiResult.Success(listOf(MedicationDto(id = householdId, name = "Medication $accessToken")))
         override suspend fun getSchedules(baseUrl: String, accessToken: String, householdId: Long) =
-            ApiResult.Success(listOf(ScheduleDto(id = accessToken.substringAfter("token-").toLong())))
+            ApiResult.Success(listOf(ScheduleDto(id = accessToken.substringAfter("token-").toLongOrNull() ?: 1L)))
         override suspend fun getMedicationTakes(baseUrl: String, accessToken: String, householdId: Long) =
-            ApiResult.Success(listOf(MedicationTakeDto(id = accessToken.substringAfter("token-").toLong())))
+            ApiResult.Success(listOf(MedicationTakeDto(id = accessToken.substringAfter("token-").toLongOrNull() ?: 1L)))
         override suspend fun recordDose(baseUrl: String, accessToken: String, householdId: Long, request: RecordDosePayload): ApiResult<MedicationTakeDto> {
             doseRequests += 1
             if (delayDose) {
@@ -388,7 +412,7 @@ class DashboardSessionTest {
                 oldDoseReturned = true
                 return result
             }
-            return ApiResult.Success(MedicationTakeDto(id = 99, scheduleId = request.sourceId.toLong()))
+            return ApiResult.Success(MedicationTakeDto(id = 99, scheduleId = request.sourceId.toLongOrNull() ?: 1L))
         }
 
         override suspend fun logout(baseUrl: String, accessToken: String): ApiResult<Unit> {
@@ -407,5 +431,15 @@ class DashboardSessionTest {
             )
         }
         override suspend fun refresh(baseUrl: String, request: RefreshRequest): ApiResult<SessionPayload> = error("Not used")
+        override suspend fun getLocations(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<LocationDto>> = ApiResult.Success(emptyList())
+        override suspend fun getInvitations(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<HouseholdInvitationDto>> = ApiResult.Success(emptyList())
+        override suspend fun createInvitation(baseUrl: String, accessToken: String, householdId: Long, email: String, role: String): ApiResult<HouseholdInvitationDto> = ApiResult.Success(
+	        HouseholdInvitationDto(1, email, role)
+        )
+        override suspend fun createMedication(baseUrl: String, accessToken: String, householdId: Long, locationId: Int, request: CreateMedicationPayload): ApiResult<MedicationDto> = ApiResult.Success(MedicationDto(1, name = request.name))
+        override suspend fun recordStockRemoval(baseUrl: String, accessToken: String, householdId: Long, request: RecordStockRemovalPayload): ApiResult<MedicationDto> = ApiResult.Success(MedicationDto(request.medicationId, name = "Med"))
+        override suspend fun createSchedule(baseUrl: String, accessToken: String, householdId: Long, request: CreateSchedulePayload): ApiResult<ScheduleDto> = ApiResult.Success(ScheduleDto(1))
+        override suspend fun pauseSchedule(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long): ApiResult<ScheduleDto> = ApiResult.Success(ScheduleDto(scheduleId, paused = true))
+        override suspend fun resumeSchedule(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long): ApiResult<ScheduleDto> = ApiResult.Success(ScheduleDto(scheduleId, paused = false))
     }
 }

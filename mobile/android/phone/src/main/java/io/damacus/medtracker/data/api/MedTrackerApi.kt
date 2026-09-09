@@ -1,19 +1,39 @@
 package io.damacus.medtracker.data.api
 
+import io.damacus.medtracker.data.model.AiSuggestionDto
+import io.damacus.medtracker.data.model.CapabilitiesDto
+import io.damacus.medtracker.data.model.CreateMedicationPayload
+import io.damacus.medtracker.data.model.CreateSchedulePayload
+import io.damacus.medtracker.data.model.HealthEventDto
+import io.damacus.medtracker.data.model.HouseholdAdminSettingsDto
 import io.damacus.medtracker.data.model.HouseholdDto
+<<<<<<< Updated upstream
 import io.damacus.medtracker.data.model.HouseholdChoice
 import io.damacus.medtracker.data.model.HouseholdSelectionRequest
 import io.damacus.medtracker.data.model.AuthenticationResult
+=======
+import io.damacus.medtracker.data.model.HouseholdInvitationDto
+import io.damacus.medtracker.data.model.LocationDto
+>>>>>>> Stashed changes
 import io.damacus.medtracker.data.model.MedicationDto
+import io.damacus.medtracker.data.model.MedicationLookupResultDto
 import io.damacus.medtracker.data.model.MedicationTakeDto
 import io.damacus.medtracker.data.model.OidcExchangeRequest
 import io.damacus.medtracker.data.model.PersonDto
 import io.damacus.medtracker.data.model.RecordDosePayload
+import io.damacus.medtracker.data.model.RecordStockRemovalPayload
 import io.damacus.medtracker.data.model.RefreshRequest
 import io.damacus.medtracker.data.model.ScheduleDto
 import io.damacus.medtracker.data.model.SessionPayload
 import io.damacus.medtracker.data.model.UserDto
 import io.medtracker.client.apis.AuthenticationApi
+import io.medtracker.client.apis.CapabilitiesApi
+import io.medtracker.client.apis.HealthEventsApi
+import io.medtracker.client.apis.HouseholdSettingsApi
+import io.medtracker.client.apis.InvitationsApi
+import io.medtracker.client.apis.LocationsApi
+import io.medtracker.client.apis.MedicationLookupApi
+import io.medtracker.client.apis.MedicationSuggestionsApi
 import io.medtracker.client.apis.MedicationTakesApi
 import io.medtracker.client.apis.MedicationsApi
 import io.medtracker.client.apis.PeopleApi
@@ -23,25 +43,47 @@ import io.medtracker.client.infrastructure.ApiResponse
 import io.medtracker.client.infrastructure.ClientError
 import io.medtracker.client.infrastructure.Redirection
 import io.medtracker.client.infrastructure.ServerException
+<<<<<<< Updated upstream
 import io.medtracker.client.infrastructure.ServerError
 import io.medtracker.client.infrastructure.Serializer
 import io.medtracker.client.infrastructure.Success
+=======
+import io.medtracker.client.models.AiMedicationSuggestion
+>>>>>>> Stashed changes
 import io.medtracker.client.models.AuthLoginData
 import io.medtracker.client.models.AuthLoginResponse
 import io.medtracker.client.models.AuthHouseholdSelectionRequest
 import io.medtracker.client.models.AuthHouseholdSelectionResponse
 import io.medtracker.client.models.AuthOidcExchangeRequest
+import io.medtracker.client.models.AuthRefreshData
 import io.medtracker.client.models.AuthRefreshRequest
+import io.medtracker.client.models.Capabilities
+import io.medtracker.client.models.HealthEvent
+import io.medtracker.client.models.HealthEventCreateRequest
+import io.medtracker.client.models.HealthEventCreateRequestHealthEvent
+import io.medtracker.client.models.HouseholdAdminSettings
+import io.medtracker.client.models.HouseholdInvitation
+import io.medtracker.client.models.HouseholdInvitationAttributes
+import io.medtracker.client.models.HouseholdInvitationCreateRequest
+import io.medtracker.client.models.Location
 import io.medtracker.client.models.Medication
+import io.medtracker.client.models.MedicationCreateAttributes
+import io.medtracker.client.models.MedicationCreateRequest
+import io.medtracker.client.models.MedicationInventoryAdjustmentRequest
+import io.medtracker.client.models.MedicationInventoryAdjustmentRequestAdjustment
+import io.medtracker.client.models.MedicationLookupResult
 import io.medtracker.client.models.MedicationTake
 import io.medtracker.client.models.MedicationTakeCreateRequest
 import io.medtracker.client.models.MedicationTakeCreateRequestMedicationTake
 import io.medtracker.client.models.Person
 import io.medtracker.client.models.Schedule
+import io.medtracker.client.models.ScheduleCreateRequest
+import io.medtracker.client.models.ScheduleCreateRequestSchedule
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Call
 import java.io.IOException
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -52,8 +94,13 @@ sealed class ApiResult<out T> {
 }
 
 interface MedTrackerApi {
+<<<<<<< Updated upstream
     suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest): ApiResult<AuthenticationResult>
     suspend fun selectHousehold(baseUrl: String, request: HouseholdSelectionRequest): ApiResult<SessionPayload>
+=======
+    suspend fun getCapabilities(baseUrl: String): ApiResult<CapabilitiesDto> = ApiResult.Success(CapabilitiesDto("v1", "medtracker.api.capabilities.v1"))
+    suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest): ApiResult<SessionPayload>
+>>>>>>> Stashed changes
     suspend fun refresh(baseUrl: String, request: RefreshRequest): ApiResult<SessionPayload>
     suspend fun logout(baseUrl: String, accessToken: String): ApiResult<Unit>
     suspend fun getPeople(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<PersonDto>>
@@ -61,6 +108,19 @@ interface MedTrackerApi {
     suspend fun getSchedules(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<ScheduleDto>>
     suspend fun getMedicationTakes(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<MedicationTakeDto>>
     suspend fun recordDose(baseUrl: String, accessToken: String, householdId: Long, request: RecordDosePayload): ApiResult<MedicationTakeDto>
+    suspend fun getLocations(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<LocationDto>>
+    suspend fun getInvitations(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<HouseholdInvitationDto>>
+    suspend fun createInvitation(baseUrl: String, accessToken: String, householdId: Long, email: String, role: String): ApiResult<HouseholdInvitationDto>
+    suspend fun createMedication(baseUrl: String, accessToken: String, householdId: Long, locationId: Int, request: CreateMedicationPayload): ApiResult<MedicationDto>
+    suspend fun recordStockRemoval(baseUrl: String, accessToken: String, householdId: Long, request: RecordStockRemovalPayload): ApiResult<MedicationDto>
+    suspend fun createSchedule(baseUrl: String, accessToken: String, householdId: Long, request: CreateSchedulePayload): ApiResult<ScheduleDto>
+    suspend fun pauseSchedule(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long): ApiResult<ScheduleDto>
+    suspend fun resumeSchedule(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long): ApiResult<ScheduleDto>
+    suspend fun getAiMedicationSuggestions(baseUrl: String, accessToken: String, householdId: Long): ApiResult<AiSuggestionDto?> = ApiResult.Success(null)
+    suspend fun lookupMedication(baseUrl: String, accessToken: String, householdId: Long, query: String): ApiResult<List<MedicationLookupResultDto>> = ApiResult.Success(emptyList())
+    suspend fun getHealthEvents(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<HealthEventDto>> = ApiResult.Success(emptyList())
+    suspend fun createHealthEvent(baseUrl: String, accessToken: String, householdId: Long, personId: Long, title: String, notes: String): ApiResult<HealthEventDto> = ApiResult.Error("not_implemented", "Not implemented")
+    suspend fun getAdminSettings(baseUrl: String, accessToken: String, householdId: Long): ApiResult<HouseholdAdminSettingsDto> = ApiResult.Success(HouseholdAdminSettingsDto("free"))
 }
 
 class GeneratedMedTrackerApi(
@@ -68,8 +128,17 @@ class GeneratedMedTrackerApi(
 ) : MedTrackerApi {
     private val unauthenticatedCalls = RequestAuthCallFactory(callFactory)
 
+<<<<<<< Updated upstream
     override suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest) = authenticationRequest {
         MultiResponseAuthenticationApi(apiBaseUrl(baseUrl), unauthenticatedCalls).exchange(
+=======
+    override suspend fun getCapabilities(baseUrl: String) = generated {
+        CapabilitiesApi(apiBaseUrl(baseUrl), unauthenticatedCalls).getCapabilities().data.toDomain()
+    }
+
+    override suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest) = generated {
+        AuthenticationApi(apiBaseUrl(baseUrl), unauthenticatedCalls).exchangeOidcSession(
+>>>>>>> Stashed changes
             AuthOidcExchangeRequest(request.idToken, request.nonce, request.codeVerifier, request.deviceName, request.householdId?.toInt())
         )
     }
@@ -127,6 +196,112 @@ class GeneratedMedTrackerApi(
                 request.doseAmount?.toString(), request.doseUnit
             )
         )).data.toDomain()
+    }
+
+    override suspend fun getLocations(baseUrl: String, accessToken: String, householdId: Long) = authenticated(accessToken) { requestCalls ->
+        LocationsApi(apiBaseUrl(baseUrl), requestCalls).listLocations(householdId.toInt()).data.map(Location::toDomain)
+    }
+
+    override suspend fun getInvitations(baseUrl: String, accessToken: String, householdId: Long) = authenticated(accessToken) { requestCalls ->
+        InvitationsApi(apiBaseUrl(baseUrl), requestCalls).listInvitations(householdId.toInt()).data.map(HouseholdInvitation::toDomain)
+    }
+
+    override suspend fun createInvitation(baseUrl: String, accessToken: String, householdId: Long, email: String, role: String) = authenticated(accessToken) { requestCalls ->
+        InvitationsApi(apiBaseUrl(baseUrl), requestCalls).createInvitation(
+            householdId.toInt(),
+            HouseholdInvitationCreateRequest(HouseholdInvitationAttributes(
+                email = email,
+                membershipRole = if (role == "administrator") HouseholdInvitationAttributes.MembershipRole.administrator else HouseholdInvitationAttributes.MembershipRole.member
+            ))
+        ).data.toDomain()
+    }
+
+    override suspend fun createMedication(baseUrl: String, accessToken: String, householdId: Long, locationId: Int, request: CreateMedicationPayload) = authenticated(accessToken) { requestCalls ->
+        MedicationsApi(apiBaseUrl(baseUrl), requestCalls).createMedication(
+            householdId.toInt(),
+            MedicationCreateRequest(MedicationCreateAttributes(
+                name = request.name,
+                reorderThreshold = request.reorderThreshold?.toString() ?: "0",
+                locationId = locationId,
+                category = request.category,
+                doseAmount = request.doseAmount?.toString(),
+                currentSupply = request.currentSupply?.toString()
+            ))
+        ).data.toDomain()
+    }
+
+    override suspend fun recordStockRemoval(baseUrl: String, accessToken: String, householdId: Long, request: RecordStockRemovalPayload) = authenticated(accessToken) { requestCalls ->
+        MedicationsApi(apiBaseUrl(baseUrl), requestCalls).adjustMedicationInventory(
+            householdId.toInt(),
+            request.medicationId.toString(),
+            MedicationInventoryAdjustmentRequest(MedicationInventoryAdjustmentRequestAdjustment(
+                newQuantity = request.quantity.toString(),
+                reason = request.reason
+            ))
+        ).data.toDomain()
+    }
+
+    override suspend fun createSchedule(baseUrl: String, accessToken: String, householdId: Long, request: CreateSchedulePayload) = authenticated(accessToken) { requestCalls ->
+        val startDate = LocalDate.parse(request.startDate)
+        SchedulesApi(apiBaseUrl(baseUrl), requestCalls).createSchedule(
+            householdId.toInt(),
+            ScheduleCreateRequest(
+                ScheduleCreateRequestSchedule(
+                    personId = request.personId.toString(),
+                    medicationId = request.medicationId.toString(),
+                    doseAmount = request.doseAmount.toString(),
+                    doseUnit = request.doseUnit,
+                    startDate = startDate,
+                    endDate = startDate.plusYears(1),
+                    frequency = request.frequency
+                )
+            )
+        ).data.toDomain()
+    }
+
+    override suspend fun pauseSchedule(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long) = authenticated(accessToken) { requestCalls ->
+        SchedulesApi(apiBaseUrl(baseUrl), requestCalls).pauseSchedule(
+            householdId.toInt(),
+            scheduleId.toString()
+        ).data.toDomain()
+    }
+
+    override suspend fun resumeSchedule(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long) = authenticated(accessToken) { requestCalls ->
+        SchedulesApi(apiBaseUrl(baseUrl), requestCalls).resumeSchedule(
+            householdId.toInt(),
+            scheduleId.toString()
+        ).data.toDomain()
+    }
+
+    override suspend fun getAiMedicationSuggestions(baseUrl: String, accessToken: String, householdId: Long) = authenticated(accessToken) { requestCalls ->
+        MedicationSuggestionsApi(apiBaseUrl(baseUrl), requestCalls).generateAiMedicationSuggestions(householdId.toInt()).data.toDomain()
+    }
+
+    override suspend fun lookupMedication(baseUrl: String, accessToken: String, householdId: Long, query: String) = authenticated(accessToken) { requestCalls ->
+        MedicationLookupApi(apiBaseUrl(baseUrl), requestCalls).searchMedicationLookup(householdId.toInt(), q = query).results.map(MedicationLookupResult::toDomain)
+    }
+
+    override suspend fun getHealthEvents(baseUrl: String, accessToken: String, householdId: Long) = authenticated(accessToken) { requestCalls ->
+        HealthEventsApi(apiBaseUrl(baseUrl), requestCalls).listHealthEvents(householdId.toInt()).data.map(HealthEvent::toDomain)
+    }
+
+    override suspend fun createHealthEvent(baseUrl: String, accessToken: String, householdId: Long, personId: Long, title: String, notes: String) = authenticated(accessToken) { requestCalls ->
+        HealthEventsApi(apiBaseUrl(baseUrl), requestCalls).createHealthEvent(
+            householdId.toInt(),
+            HealthEventCreateRequest(
+                HealthEventCreateRequestHealthEvent(
+                    personId = personId.toString(),
+                    eventKind = HealthEventCreateRequestHealthEvent.EventKind.suspected_side_effect,
+                    title = title,
+                    startedOn = LocalDate.now(),
+                    notes = notes
+                )
+            )
+        ).data.toDomain()
+    }
+
+    override suspend fun getAdminSettings(baseUrl: String, accessToken: String, householdId: Long) = authenticated(accessToken) { requestCalls ->
+        HouseholdSettingsApi(apiBaseUrl(baseUrl), requestCalls).getHouseholdAdminSettings(householdId.toInt()).data.toDomain()
     }
 
     internal suspend fun <T> generated(block: () -> T): ApiResult<T> = withContext(Dispatchers.IO) {
@@ -196,8 +371,22 @@ internal fun decodeAuthenticationResponse(
 }
 
 internal fun AuthLoginData.toSessionPayload() = SessionPayload(accessToken, accessTokenExpiresAt.toString(), refreshToken, refreshTokenExpiresAt.toString(), UserDto(me.id.toLong(), me.emailAddress, me.person.name, me.membershipRole?.value), household?.let { HouseholdDto(it.id.toLong(), it.name) })
-private fun io.medtracker.client.models.AuthRefreshData.toSessionPayload() = SessionPayload(accessToken, accessTokenExpiresAt.toString(), refreshToken, refreshTokenExpiresAt.toString(), household = household?.let { HouseholdDto(it.id.toLong(), it.name) })
+private fun AuthRefreshData.toSessionPayload() = SessionPayload(accessToken, accessTokenExpiresAt.toString(), refreshToken, refreshTokenExpiresAt.toString(), household = household?.let { HouseholdDto(it.id.toLong(), it.name) })
 private fun Person.toDomain() = PersonDto(id.toLong(), portableId.toString(), name, email, dateOfBirth?.toString(), personType.value, age, hasCapacity)
-private fun Medication.toDomain() = MedicationDto(id.toLong(), portableId.toString(), name, displayName, category, description, doseAmount?.toDoubleOrNull(), doseUnit, currentSupply?.toDoubleOrNull(), reorderThreshold.toDoubleOrNull(), reorderStatus?.value, lowStock, outOfStock)
+private fun Medication.toDomain() = MedicationDto(id.toLong(), portableId.toString(), name, displayName, category, description, doseAmount?.toDoubleOrNull(), doseUnit, currentSupply?.toDoubleOrNull(), reorderThreshold?.toDoubleOrNull(), reorderStatus?.value, lowStock, outOfStock)
 private fun Schedule.toDomain() = ScheduleDto(id.toLong(), portableId.toString(), personId.toLong(), personPortableId.toString(), medicationId.toLong(), medicationPortableId.toString(), doseAmount.toDoubleOrNull(), doseUnit, frequency, doseCycle?.value, startDate.toString(), endDate.toString(), active, paused, notes, maxDailyDoses, minHoursBetweenDoses?.toDoubleOrNull())
 private fun MedicationTake.toDomain() = MedicationTakeDto(id.toLong(), portableId.toString(), clientUuid?.toString(), scheduleId?.toLong(), personMedicationId?.toLong(), personId?.toLong(), medicationId?.toLong(), doseAmount?.toDoubleOrNull(), doseUnit, takenAt?.toString())
+private fun Location.toDomain() = LocationDto(id = id.toLong(), name = name, description = description)
+private fun HouseholdInvitation.toDomain() = HouseholdInvitationDto(id = id.toLong(), email = email, role = membershipRole.value, status = if (pending) "pending" else "accepted", expiresAt = expiresAt.toString())
+private fun Capabilities.toDomain() = CapabilitiesDto(apiVersion = apiVersion.value, format = format.value)
+private fun AiMedicationSuggestion.toDomain(): AiSuggestionDto {
+    val dose = doses.firstOrNull()
+    return AiSuggestionDto(
+        title = medication.name ?: "Suggested Medication",
+        text = medication.description ?: "AI Medication Suggestion",
+        doseCycle = dose?.defaultDoseCycle?.value
+    )
+}
+private fun MedicationLookupResult.toDomain() = MedicationLookupResultDto(id = null, name = name ?: display, category = category, description = description)
+private fun HealthEvent.toDomain() = HealthEventDto(id = id.toLong(), eventKind = eventKind.value, severity = severity?.value, title = title, notes = notes, occurredAt = startedOn.toString())
+private fun HouseholdAdminSettings.toDomain() = HouseholdAdminSettingsDto(subscriptionPlan = subscriptionPlan.value, operational = true)
