@@ -5,17 +5,22 @@ module Api
     class ScheduleSerializer
       include DecimalSerialization
 
-      def initialize(schedule)
+      def initialize(schedule, can_manage: nil)
         @schedule = schedule
+        @can_manage = can_manage
       end
 
       def as_json(*)
-        schedule_data.merge(dosing_data).merge(pause_data)
+        schedule_data.merge(dosing_data).merge(pause_data).merge(permission_data)
       end
 
       private
 
-      attr_reader :schedule
+      attr_reader :schedule, :can_manage
+
+      def permission_data
+        can_manage.nil? ? {} : { can_manage: }
+      end
 
       def pause_data
         return {} unless schedule.association(:medication_pause_periods).loaded?

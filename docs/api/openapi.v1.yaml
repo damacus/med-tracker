@@ -5117,6 +5117,7 @@ components:
         - end_date
         - active
         - paused
+        - can_manage
         - notes
         - updated_at
         - max_daily_doses
@@ -5158,6 +5159,8 @@ components:
         active:
           type: boolean
         paused:
+          type: boolean
+        can_manage:
           type: boolean
         notes:
           type: string
@@ -5384,6 +5387,7 @@ components:
         - dose_unit
         - active
         - paused
+        - can_manage
         - dose_cycle
         - administration_kind
         - notes
@@ -5414,6 +5418,8 @@ components:
         active:
           type: boolean
         paused:
+          type: boolean
+        can_manage:
           type: boolean
         dose_cycle:
           type: string

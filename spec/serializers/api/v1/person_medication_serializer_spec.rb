@@ -46,6 +46,13 @@ RSpec.describe Api::V1::PersonMedicationSerializer do
     expect(json[:paused]).to be true
   end
 
+  it 'serialises whether the caller can manage the assignment' do
+    person_medication = build_stubbed(:person_medication)
+
+    expect(described_class.new(person_medication, can_manage: false).as_json[:can_manage]).to be false
+    expect(described_class.new(person_medication, can_manage: true).as_json[:can_manage]).to be true
+  end
+
   it 'serialises missing optional association and dose values as nil' do
     updated_at = Time.zone.parse('2026-07-07 12:00:00')
     json = described_class.new(missing_association_person_medication(updated_at)).as_json

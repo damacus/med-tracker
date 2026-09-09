@@ -5,7 +5,10 @@ module Api
     class PersonMedicationsController < BaseController
       def index
         authorize PersonMedication
-        render_collection(policy_scope(PersonMedication), serializer: PersonMedicationSerializer, includes: source_preloads)
+        render_collection(
+          policy_scope(PersonMedication), serializer: PersonMedicationSerializer, includes: source_preloads,
+                                          serializer_options: method(:source_serializer_options)
+        )
       end
 
       def show
@@ -13,7 +16,7 @@ module Api
                                             params.expect(:id))
         authorize person_medication
 
-        render_resource(person_medication, serializer: PersonMedicationSerializer)
+        render_source(person_medication)
       end
 
       def create
@@ -26,7 +29,7 @@ module Api
 
         return render_validation_errors(person_medication) unless person_medication.save
 
-        render_resource(person_medication.reload, serializer: PersonMedicationSerializer, status: :created)
+        render_source(person_medication.reload, status: :created)
       end
 
       def update
@@ -40,7 +43,7 @@ module Api
 
         return render_validation_errors(person_medication) unless person_medication.update(attributes)
 
-        render_resource(person_medication.reload, serializer: PersonMedicationSerializer)
+        render_source(person_medication.reload)
       end
 
       def pause
@@ -59,7 +62,7 @@ module Api
           person_medication: person_medication,
           direction: params.expect(:direction)
         )
-        render_resource(person_medication, serializer: PersonMedicationSerializer)
+        render_source(person_medication)
       end
 
       private
@@ -82,7 +85,18 @@ module Api
         person_medication.public_send(method_name)
         person_medication.association(:medication_pause_periods).reset
         ActiveRecord::Associations::Preloader.new(records: [person_medication], associations: source_preloads).call
-        render_resource(person_medication, serializer: PersonMedicationSerializer)
+        render_source(person_medication)
+      end
+
+      def render_source(person_medication, status: :ok)
+        render_resource(
+          person_medication, serializer: PersonMedicationSerializer, status:,
+                             serializer_options: method(:source_serializer_options)
+        )
+      end
+
+      def source_serializer_options(person_medication)
+        { can_manage: policy(person_medication).update? }
       end
 
       def person_medication_params

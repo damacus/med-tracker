@@ -5,14 +5,17 @@ module Api
     class SchedulesController < BaseController
       def index
         authorize Schedule
-        render_collection(policy_scope(Schedule), serializer: ScheduleSerializer, includes: source_preloads)
+        render_collection(
+          policy_scope(Schedule), serializer: ScheduleSerializer, includes: source_preloads,
+                                  serializer_options: method(:source_serializer_options)
+        )
       end
 
       def show
         schedule = find_api_record(policy_scope(Schedule).includes(*source_preloads), params.expect(:id))
         authorize schedule
 
-        render_resource(schedule, serializer: ScheduleSerializer)
+        render_source(schedule)
       end
 
       def create
@@ -25,7 +28,7 @@ module Api
 
         return render_validation_errors(schedule) unless schedule.save
 
-        render_resource(schedule.reload, serializer: ScheduleSerializer, status: :created)
+        render_source(schedule.reload, status: :created)
       end
 
       def update
@@ -38,7 +41,7 @@ module Api
 
         return render_validation_errors(schedule) unless schedule.update(attributes)
 
-        render_resource(schedule.reload, serializer: ScheduleSerializer)
+        render_source(schedule.reload)
       end
 
       def pause
@@ -68,7 +71,16 @@ module Api
         schedule.public_send(method_name)
         schedule.association(:medication_pause_periods).reset
         ActiveRecord::Associations::Preloader.new(records: [schedule], associations: source_preloads).call
-        render_resource(schedule, serializer: ScheduleSerializer)
+        render_source(schedule)
+      end
+
+      def render_source(schedule, status: :ok)
+        render_resource(schedule, serializer: ScheduleSerializer, status:,
+                                  serializer_options: method(:source_serializer_options))
+      end
+
+      def source_serializer_options(schedule)
+        { can_manage: policy(schedule).update? }
       end
 
       def schedule_params

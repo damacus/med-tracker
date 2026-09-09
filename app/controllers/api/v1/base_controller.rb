@@ -153,19 +153,26 @@ module Api
           OauthGrant.lookup_by_access_token(token)
       end
 
-      def render_collection(scope, serializer:, includes: nil)
+      def render_collection(scope, serializer:, includes: nil, serializer_options: nil)
         records = apply_collection_filters(scope)
         paginated = paginate(records, includes:)
 
         render json: {
-          data: paginated[:records].map { |record| serializer.new(record).as_json },
+          data: paginated[:records].map do |record|
+            serialize_api_record(record, serializer:, serializer_options:)
+          end,
           meta: paginated[:meta]
         }
       end
 
-      def render_resource(record, serializer:, status: :ok)
+      def render_resource(record, serializer:, status: :ok, serializer_options: nil)
         response.set_header('ETag', api_etag(record))
-        render json: { data: serializer.new(record).as_json }, status: status
+        render json: { data: serialize_api_record(record, serializer:, serializer_options:) }, status: status
+      end
+
+      def serialize_api_record(record, serializer:, serializer_options:)
+        options = serializer_options.respond_to?(:call) ? serializer_options.call(record) : serializer_options
+        serializer.new(record, **(options || {})).as_json
       end
 
       def find_api_record(scope, identifier)

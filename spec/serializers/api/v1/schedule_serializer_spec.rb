@@ -59,6 +59,13 @@ RSpec.describe Api::V1::ScheduleSerializer do
     expect(json[:paused]).to be true
   end
 
+  it 'serialises whether the caller can manage the schedule' do
+    schedule = build_stubbed(:schedule)
+
+    expect(described_class.new(schedule, can_manage: false).as_json[:can_manage]).to be false
+    expect(described_class.new(schedule, can_manage: true).as_json[:can_manage]).to be true
+  end
+
   it 'serialises missing optional associations as nil portable IDs' do
     updated_at = Time.zone.parse('2026-07-07 12:00:00')
     json = described_class.new(missing_association_schedule(updated_at)).as_json
