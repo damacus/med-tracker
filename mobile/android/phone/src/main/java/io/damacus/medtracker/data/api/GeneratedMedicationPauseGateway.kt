@@ -12,7 +12,7 @@ import java.util.UUID
 class GeneratedMedicationPauseGateway(private val api: GeneratedMedTrackerApi = GeneratedMedTrackerApi()) : MedicationPauseGateway {
     override suspend fun supported(session: AppSession) = api.generated {
         val capability = CapabilitiesApi(api.apiBaseUrl(session.serverUrl), calls(session)).getCapabilities().data.medicationPausePeriods
-        capability?.supported == true && capability.effectiveTime.value == "server_acceptance" &&
+        capability.supported && capability.effectiveTime.value == "server_acceptance" &&
             capability.reasons.map { it.value }.containsAll(PauseReason.entries.map { it.value })
     }
 
@@ -26,10 +26,10 @@ class GeneratedMedicationPauseGateway(private val api: GeneratedMedTrackerApi = 
         val assignments = pages { page -> PersonMedicationsApi(base, calls).listPersonMedications(household, page, 100).let { it.data to it.meta } }
         schedules.map {
             PauseSource("schedule", it.portableId.toString(), it.personId.toLong(), medicines[it.medicationId]?.name ?: "Medicine", it.paused,
-                it.currentPausePeriod?.id?.toString(), people[it.personId]?.name.orEmpty(), it.active, it.currentPausePeriod?.reason?.value, it.currentPausePeriod?.note)
+                it.currentPausePeriod?.id?.toString(), people[it.personId]?.name.orEmpty(), it.active, it.currentPausePeriod?.reason?.value, it.currentPausePeriod?.note, it.canManage)
         } + assignments.map {
             PauseSource("person_medication", it.portableId.toString(), it.personId.toLong(), medicines[it.medicationId]?.name ?: "Medicine", it.paused,
-                it.currentPausePeriod?.id?.toString(), people[it.personId]?.name.orEmpty(), it.active, it.currentPausePeriod?.reason?.value, it.currentPausePeriod?.note)
+                it.currentPausePeriod?.id?.toString(), people[it.personId]?.name.orEmpty(), it.active, it.currentPausePeriod?.reason?.value, it.currentPausePeriod?.note, it.canManage)
         }
     }
 

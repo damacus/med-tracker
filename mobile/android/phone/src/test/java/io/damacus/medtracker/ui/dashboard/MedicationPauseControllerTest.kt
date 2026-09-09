@@ -142,7 +142,28 @@ class MedicationPauseControllerTest {
         assertTrue(controller.state.value.sources.single().active)
     }
 
-    private inner class FakeGateway(supported: Boolean = true, var paused: Boolean = false, val sourceType: String = "schedule") : MedicationPauseGateway {
+    @Test fun `read only sources keep history but reject pause and resume commands`() = runTest {
+        val gateway = FakeGateway(canManage = false)
+        val controller = MedicationPauseController(AppSession("https://example.test", null), gateway, backgroundScope, { true }, {})
+        controller.refresh(); runCurrent()
+        val active = controller.state.value.sources.single()
+
+        controller.edit(active)
+        assertNull(controller.state.value.editing)
+
+        gateway.paused = true
+        controller.refresh(); runCurrent()
+        val paused = controller.state.value.sources.single()
+        controller.resume(paused); runCurrent()
+        assertNull(controller.state.value.busySource)
+
+        controller.showHistory(paused); runCurrent()
+        assertEquals(paused, controller.state.value.historySource)
+        assertEquals(listOf(period), controller.state.value.history)
+        assertEquals(0, gateway.requests)
+    }
+
+    private inner class FakeGateway(supported: Boolean = true, var paused: Boolean = false, val sourceType: String = "schedule", val canManage: Boolean = true) : MedicationPauseGateway {
         val result = CompletableDeferred<ApiResult<PausePeriod>>()
         var capability: ApiResult<Boolean> = ApiResult.Success(supported)
         var requests = 0
@@ -154,7 +175,7 @@ class MedicationPauseControllerTest {
         override suspend fun sources(session: AppSession): ApiResult<List<PauseSource>> {
             sourceRequests++
             delayedSources?.let { return it.await() }
-            return ApiResult.Success(listOf(source.copy(type = sourceType, active = !paused, paused = paused, currentPauseId = if (paused) "period" else null)) + extraSources)
+            return ApiResult.Success(listOf(source.copy(type = sourceType, active = !paused, paused = paused, currentPauseId = if (paused) "period" else null, canManage = canManage)) + extraSources)
         }
         override suspend fun history(session: AppSession, source: PauseSource) = ApiResult.Success(listOf(period))
         override suspend fun pause(session: AppSession, source: PauseSource, reason: PauseReason, note: String, requestId: String): ApiResult<PausePeriod> {

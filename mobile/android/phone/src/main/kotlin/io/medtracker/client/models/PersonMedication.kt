@@ -33,6 +33,7 @@ import com.squareup.moshi.JsonClass
  * @param doseUnit 
  * @param active 
  * @param paused 
+ * @param canManage 
  * @param doseCycle 
  * @param administrationKind 
  * @param notes 
@@ -75,6 +76,9 @@ data class PersonMedication (
 
     @Json(name = "paused")
     val paused: kotlin.Boolean,
+
+    @Json(name = "can_manage")
+    val canManage: kotlin.Boolean,
 
     @Json(name = "dose_cycle")
     val doseCycle: PersonMedication.DoseCycle?,

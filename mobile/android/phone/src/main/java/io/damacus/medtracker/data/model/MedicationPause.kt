@@ -34,7 +34,8 @@ data class PauseSource(
     val personName: String = "",
     val active: Boolean = true,
     val currentReason: String? = null,
-    val currentNote: String? = null
+    val currentNote: String? = null,
+    val canManage: Boolean = true
 ) {
     val key get() = "$type:$id"
 }

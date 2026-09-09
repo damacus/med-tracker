@@ -28,7 +28,7 @@ fun MedicationPauseControls(state: MedicationPauseState, personId: Long?, contro
                     Text(source.name, style = MaterialTheme.typography.titleMedium)
                     Text(source.personName)
                     Row {
-                        TextButton(onClick = { controller.edit(source) }) { Text("Pause") }
+                        if (source.canManage) TextButton(onClick = { controller.edit(source) }) { Text("Pause") }
                         TextButton(onClick = { controller.showHistory(source) }) { Text("Pause history") }
                     }
                 }
@@ -44,8 +44,10 @@ fun MedicationPauseControls(state: MedicationPauseState, personId: Long?, contro
                         Text(source.personName)
                         PausedTreatmentDetails(source)
                         Row {
-                            TextButton(onClick = { controller.resume(source) }, enabled = source.currentPauseId != null && state.busySource == null) {
-                                Text(if (state.busySource == source.key) "Resuming…" else "Resume")
+                            if (source.canManage) {
+                                TextButton(onClick = { controller.resume(source) }, enabled = source.currentPauseId != null && state.busySource == null) {
+                                    Text(if (state.busySource == source.key) "Resuming…" else "Resume")
+                                }
                             }
                             TextButton(onClick = { controller.showHistory(source) }) { Text("Pause history") }
                         }
@@ -98,7 +100,7 @@ fun SchedulePauseActions(controller: MedicationPauseController, portableId: Stri
     if (!state.supported) return
     val source = state.sources.find { it.type == "schedule" && it.id == portableId && !it.paused } ?: return
     Row {
-        TextButton(onClick = { controller.edit(source) }) { Text("Pause") }
+        if (source.canManage) TextButton(onClick = { controller.edit(source) }) { Text("Pause") }
         TextButton(onClick = { controller.showHistory(source) }) { Text("Pause history") }
     }
 }

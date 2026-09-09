@@ -216,10 +216,10 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
     /**
      * enum for parameter version
      */
-     enum class VersionExportPortableHouseholdBundle(val value: kotlin.Int) {
-         @Json(name = "1") _1(1),
-         @Json(name = "2") _2(2),
-         @Json(name = "11184809") unknown_default_open_api(11184809);
+     enum class VersionExportPortableHouseholdBundle(val value: kotlin.String) {
+         @Json(name = "1") _1("1"),
+         @Json(name = "2") _2("2"),
+         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
 
         /**
          * Override [toString()] to avoid using the enum variable name as the value, and instead use
@@ -237,7 +237,7 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      * 
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
-     * @param version Select portable v2 to include medication pause history. (optional, default to Version._1)
+     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
      * @return PortableEnvelopeResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -271,7 +271,7 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      * 
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
-     * @param version Select portable v2 to include medication pause history. (optional, default to Version._1)
+     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
      * @return ApiResponse<PortableEnvelopeResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -291,7 +291,7 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
      *
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
-     * @param version Select portable v2 to include medication pause history. (optional, default to Version._1)
+     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
      * @return RequestConfig
      */
     fun exportPortableHouseholdBundleRequestConfig(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?) : RequestConfig<Unit> {
@@ -299,7 +299,7 @@ open class PortabilityApi(basePath: kotlin.String = defaultBasePath, client: Cal
         val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
             .apply {
                 if (version != null) {
-                    put("version", listOf(version.toString()))
+                    put("version", listOf(version.value))
                 }
             }
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()

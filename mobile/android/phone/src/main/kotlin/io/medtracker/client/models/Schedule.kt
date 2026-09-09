@@ -38,6 +38,7 @@ import com.squareup.moshi.JsonClass
  * @param endDate 
  * @param active 
  * @param paused 
+ * @param canManage 
  * @param notes 
  * @param updatedAt 
  * @param maxDailyDoses 
@@ -91,6 +92,9 @@ data class Schedule (
 
     @Json(name = "paused")
     val paused: kotlin.Boolean,
+
+    @Json(name = "can_manage")
+    val canManage: kotlin.Boolean,
 
     @Json(name = "notes")
     val notes: kotlin.String?,

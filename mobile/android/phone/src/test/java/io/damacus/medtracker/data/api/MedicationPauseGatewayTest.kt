@@ -19,7 +19,7 @@ class MedicationPauseGatewayTest {
             server.start()
             val meta = """"meta":{"page":1,"per_page":100,"total_count":1}"""
             repeat(2) { server.enqueue(MockResponse().setBody("""{"data":[],$meta}""")) }
-            val common = """"id":1,"portable_id":"$sourceId","person_id":1,"person_portable_id":"$sourceId","medication_id":1,"medication_portable_id":"$sourceId","dose_amount":"1","dose_unit":"tablet","active":false,"paused":true,"dose_cycle":"daily","updated_at":"2026-09-08T12:00:00Z","current_pause_period":$period"""
+            val common = """"id":1,"portable_id":"$sourceId","person_id":1,"person_portable_id":"$sourceId","medication_id":1,"medication_portable_id":"$sourceId","dose_amount":"1","dose_unit":"tablet","active":false,"paused":true,"can_manage":false,"dose_cycle":"daily","updated_at":"2026-09-08T12:00:00Z","current_pause_period":$period"""
             server.enqueue(MockResponse().setBody("""{"data":[{$common,"frequency":"daily","start_date":"2026-09-01","end_date":"2026-10-01","schedule_type":"daily","schedule_config":{}}],$meta}"""))
             server.enqueue(MockResponse().setBody("""{"data":[{$common,"administration_kind":"as_needed"}],$meta}"""))
             val gateway = GeneratedMedicationPauseGateway(GeneratedMedTrackerApi(OkHttpClient()))
@@ -34,6 +34,7 @@ class MedicationPauseGatewayTest {
                 assertTrue(it.paused)
                 assertFalse(it.active)
                 assertEquals(periodId, it.currentPauseId)
+                assertFalse(it.canManage)
             }
         }
     }

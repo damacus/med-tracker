@@ -2087,14 +2087,14 @@ paths:
       summary: Export an encrypted portable household bundle.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/portable_passphrase'
         - name: version
           in: query
+          description: Portable export format. Omit or use `1` for the original format; use `2` to include pause history.
           schema:
-            type: integer
-            enum: [1, 2]
-            default: 1
-          description: Select portable v2 to include medication pause history.
-        - $ref: '#/components/parameters/portable_passphrase'
+            type: string
+            enum: ['1', '2']
+            default: '1'
       responses:
         '200':
           description: Encrypted portable bundle.
@@ -5110,6 +5110,7 @@ components:
         - end_date
         - active
         - paused
+        - can_manage
         - notes
         - updated_at
         - max_daily_doses
@@ -5151,6 +5152,8 @@ components:
         active:
           type: boolean
         paused:
+          type: boolean
+        can_manage:
           type: boolean
         notes:
           type: string
@@ -5377,6 +5380,7 @@ components:
         - dose_unit
         - active
         - paused
+        - can_manage
         - dose_cycle
         - administration_kind
         - notes
@@ -5407,6 +5411,8 @@ components:
         active:
           type: boolean
         paused:
+          type: boolean
+        can_manage:
           type: boolean
         dose_cycle:
           type: string
@@ -5807,6 +5813,7 @@ components:
         - fhir
         - sync
         - client_tools
+        - medication_pause_periods
       properties:
         medication_pause_periods:
           $ref: '#/components/schemas/CapabilityMedicationPausePeriods'

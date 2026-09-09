@@ -67,4 +67,18 @@ class MedicationPauseUiTest {
         compose.onNodeWithText("Side effects").assertIsDisplayed()
         compose.onNodeWithText("Discuss at review").assertIsDisplayed()
     }
+
+    @Test fun readOnlyTreatmentKeepsHistoryButHidesMutations() {
+        val source = PauseSource("schedule", "id", 1, "Medicine", true, currentPauseId = "period", canManage = false)
+        val controller = MedicationPauseController(AppSession("https://example.test", null), GeneratedMedicationPauseGateway(), MainScope(), { true }, {})
+        compose.setContent {
+            MaterialTheme {
+                MedicationPauseControls(MedicationPauseState(supported = true, sources = listOf(source)), null, controller)
+            }
+        }
+
+        compose.onNodeWithText("Pause history").assertIsDisplayed()
+        compose.onNodeWithText("Resume").assertDoesNotExist()
+        compose.onNodeWithText("Pause").assertDoesNotExist()
+    }
 }

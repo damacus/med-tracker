@@ -29,6 +29,7 @@ import com.squareup.moshi.JsonClass
 /**
  * 
  *
+ * @param medicationPausePeriods 
  * @param format 
  * @param apiVersion 
  * @param authentication 
@@ -38,11 +39,13 @@ import com.squareup.moshi.JsonClass
  * @param fhir 
  * @param sync 
  * @param clientTools 
- * @param medicationPausePeriods 
  */
 
 
 data class Capabilities (
+
+    @Json(name = "medication_pause_periods")
+    val medicationPausePeriods: CapabilityMedicationPausePeriods,
 
     @Json(name = "format")
     val format: Capabilities.Format,
@@ -69,10 +72,7 @@ data class Capabilities (
     val sync: CapabilitySync,
 
     @Json(name = "client_tools")
-    val clientTools: CapabilityClientTools,
-
-    @Json(name = "medication_pause_periods")
-    val medicationPausePeriods: CapabilityMedicationPausePeriods? = null
+    val clientTools: CapabilityClientTools
 
 ) {
 
