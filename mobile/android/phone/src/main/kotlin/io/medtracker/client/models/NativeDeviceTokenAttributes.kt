@@ -24,6 +24,7 @@ import com.squareup.moshi.JsonClass
  *
  * @param deviceToken 
  * @param platform 
+ * @param apnsEnvironment APNs environment from the signed iOS entitlement. Omit for legacy clients.
  */
 
 
@@ -33,7 +34,11 @@ data class NativeDeviceTokenAttributes (
     val deviceToken: kotlin.String,
 
     @Json(name = "platform")
-    val platform: NativeDeviceTokenAttributes.Platform
+    val platform: NativeDeviceTokenAttributes.Platform,
+
+    /* APNs environment from the signed iOS entitlement. Omit for legacy clients. */
+    @Json(name = "apns_environment")
+    val apnsEnvironment: NativeDeviceTokenAttributes.ApnsEnvironment? = null
 
 ) {
 
@@ -46,6 +51,17 @@ data class NativeDeviceTokenAttributes (
     enum class Platform(val value: kotlin.String) {
         @Json(name = "ios") ios("ios"),
         @Json(name = "android") android("android"),
+        @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
+    }
+    /**
+     * APNs environment from the signed iOS entitlement. Omit for legacy clients.
+     *
+     * Values: sandbox,production,unknown_default_open_api
+     */
+    @JsonClass(generateAdapter = false)
+    enum class ApnsEnvironment(val value: kotlin.String) {
+        @Json(name = "sandbox") sandbox("sandbox"),
+        @Json(name = "production") production("production"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
 

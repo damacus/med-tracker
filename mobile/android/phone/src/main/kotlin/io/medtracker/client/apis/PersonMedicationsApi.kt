@@ -300,7 +300,7 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
     /**
      * PATCH /households/{household_id}/person_medications/{id}/pause
      * Pause a person medication assignment.
-     * 
+     * Use createMedicationPausePeriod. Retained for at least two minor releases and 90 days after the first released replacement. Legacy pause calls record reason_not_recorded.
      * @param householdId 
      * @param id 
      * @return PersonMedicationResponse
@@ -312,7 +312,9 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    @Deprecated(message = "This operation is deprecated.")
     fun pausePersonMedication(householdId: kotlin.Int, id: kotlin.String) : PersonMedicationResponse {
+        @Suppress("DEPRECATION")
         val localVarResponse = pausePersonMedicationWithHttpInfo(householdId = householdId, id = id)
 
         return when (localVarResponse.responseType) {
@@ -333,7 +335,7 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
     /**
      * PATCH /households/{household_id}/person_medications/{id}/pause
      * Pause a person medication assignment.
-     * 
+     * Use createMedicationPausePeriod. Retained for at least two minor releases and 90 days after the first released replacement. Legacy pause calls record reason_not_recorded.
      * @param householdId 
      * @param id 
      * @return ApiResponse<PersonMedicationResponse?>
@@ -342,7 +344,9 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
+    @Deprecated(message = "This operation is deprecated.")
     fun pausePersonMedicationWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<PersonMedicationResponse?> {
+        @Suppress("DEPRECATION")
         val localVariableConfig = pausePersonMedicationRequestConfig(householdId = householdId, id = id)
 
         return request<Unit, PersonMedicationResponse>(
@@ -357,6 +361,7 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
      * @param id 
      * @return RequestConfig
      */
+    @Deprecated(message = "This operation is deprecated.")
     fun pausePersonMedicationRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf()
@@ -540,7 +545,7 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
     /**
      * PATCH /households/{household_id}/person_medications/{id}/resume
      * Resume a person medication assignment.
-     * 
+     * Use resumeMedicationPausePeriod. Retained for at least two minor releases and 90 days after the first released replacement. Legacy pause calls record reason_not_recorded.
      * @param householdId 
      * @param id 
      * @return PersonMedicationResponse
@@ -552,7 +557,9 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    @Deprecated(message = "This operation is deprecated.")
     fun resumePersonMedication(householdId: kotlin.Int, id: kotlin.String) : PersonMedicationResponse {
+        @Suppress("DEPRECATION")
         val localVarResponse = resumePersonMedicationWithHttpInfo(householdId = householdId, id = id)
 
         return when (localVarResponse.responseType) {
@@ -573,7 +580,7 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
     /**
      * PATCH /households/{household_id}/person_medications/{id}/resume
      * Resume a person medication assignment.
-     * 
+     * Use resumeMedicationPausePeriod. Retained for at least two minor releases and 90 days after the first released replacement. Legacy pause calls record reason_not_recorded.
      * @param householdId 
      * @param id 
      * @return ApiResponse<PersonMedicationResponse?>
@@ -582,7 +589,9 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
+    @Deprecated(message = "This operation is deprecated.")
     fun resumePersonMedicationWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<PersonMedicationResponse?> {
+        @Suppress("DEPRECATION")
         val localVariableConfig = resumePersonMedicationRequestConfig(householdId = householdId, id = id)
 
         return request<Unit, PersonMedicationResponse>(
@@ -597,6 +606,7 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
      * @param id 
      * @return RequestConfig
      */
+    @Deprecated(message = "This operation is deprecated.")
     fun resumePersonMedicationRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf()

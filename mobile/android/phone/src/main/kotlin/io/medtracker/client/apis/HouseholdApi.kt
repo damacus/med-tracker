@@ -40,6 +40,9 @@ import io.medtracker.client.models.MedicationInventoryAdjustmentRequest
 import io.medtracker.client.models.MedicationLookupResponse
 import io.medtracker.client.models.MedicationLookupUnavailableResponse
 import io.medtracker.client.models.MedicationOrderDetailsRequest
+import io.medtracker.client.models.MedicationPausePeriodCollectionResponse
+import io.medtracker.client.models.MedicationPausePeriodCreateRequest
+import io.medtracker.client.models.MedicationPausePeriodResponse
 import io.medtracker.client.models.MedicationResponse
 import io.medtracker.client.models.MedicationTakeCollectionResponse
 import io.medtracker.client.models.MedicationTakeCreateRequest
@@ -402,6 +405,87 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
         return RequestConfig(
             method = RequestMethod.POST,
             path = "/households/{household_id}/medications".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/medication_pause_periods
+     * Pause a medication source with a reason.
+     * Requires manage access. The start is server acceptance time; client timestamps are ignored. An already open period is returned unchanged. No edit or backdating operation is provided.
+     * @param householdId 
+     * @param medicationPausePeriodCreateRequest 
+     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @return MedicationPausePeriodResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun createMedicationPausePeriod(householdId: kotlin.Int, medicationPausePeriodCreateRequest: MedicationPausePeriodCreateRequest, idempotencyKey: kotlin.String? = null) : MedicationPausePeriodResponse {
+        val localVarResponse = createMedicationPausePeriodWithHttpInfo(householdId = householdId, medicationPausePeriodCreateRequest = medicationPausePeriodCreateRequest, idempotencyKey = idempotencyKey)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationPausePeriodResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/medication_pause_periods
+     * Pause a medication source with a reason.
+     * Requires manage access. The start is server acceptance time; client timestamps are ignored. An already open period is returned unchanged. No edit or backdating operation is provided.
+     * @param householdId 
+     * @param medicationPausePeriodCreateRequest 
+     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @return ApiResponse<MedicationPausePeriodResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun createMedicationPausePeriodWithHttpInfo(householdId: kotlin.Int, medicationPausePeriodCreateRequest: MedicationPausePeriodCreateRequest, idempotencyKey: kotlin.String?) : ApiResponse<MedicationPausePeriodResponse?> {
+        val localVariableConfig = createMedicationPausePeriodRequestConfig(householdId = householdId, medicationPausePeriodCreateRequest = medicationPausePeriodCreateRequest, idempotencyKey = idempotencyKey)
+
+        return request<MedicationPausePeriodCreateRequest, MedicationPausePeriodResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation createMedicationPausePeriod
+     *
+     * @param householdId 
+     * @param medicationPausePeriodCreateRequest 
+     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @return RequestConfig
+     */
+    fun createMedicationPausePeriodRequestConfig(householdId: kotlin.Int, medicationPausePeriodCreateRequest: MedicationPausePeriodCreateRequest, idempotencyKey: kotlin.String?) : RequestConfig<MedicationPausePeriodCreateRequest> {
+        val localVariableBody = medicationPausePeriodCreateRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        idempotencyKey?.apply { localVariableHeaders["Idempotency-Key"] = this.toString() }
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/medication_pause_periods".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -1258,11 +1342,30 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     }
 
     /**
+     * enum for parameter version
+     */
+     enum class VersionExportPortableHouseholdBundle(val value: kotlin.String) {
+         @Json(name = "1") _1("1"),
+         @Json(name = "2") _2("2"),
+         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
+
+        /**
+         * Override [toString()] to avoid using the enum variable name as the value, and instead use
+         * the actual value defined in the API spec file.
+         *
+         * This solves a problem when the variable name and its value are different, and ensures that
+         * the client sends the correct enum values to the server always.
+         */
+        override fun toString(): kotlin.String = "$value"
+     }
+
+    /**
      * GET /households/{household_id}/portable_export
      * Export an encrypted portable household bundle.
      * 
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
+     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
      * @return PortableEnvelopeResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -1272,8 +1375,8 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun exportPortableHouseholdBundle(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String) : PortableEnvelopeResponse {
-        val localVarResponse = exportPortableHouseholdBundleWithHttpInfo(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase)
+    fun exportPortableHouseholdBundle(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle? = VersionExportPortableHouseholdBundle._1) : PortableEnvelopeResponse {
+        val localVarResponse = exportPortableHouseholdBundleWithHttpInfo(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase, version = version)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as PortableEnvelopeResponse
@@ -1296,14 +1399,15 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * 
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
+     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
      * @return ApiResponse<PortableEnvelopeResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun exportPortableHouseholdBundleWithHttpInfo(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String) : ApiResponse<PortableEnvelopeResponse?> {
-        val localVariableConfig = exportPortableHouseholdBundleRequestConfig(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase)
+    fun exportPortableHouseholdBundleWithHttpInfo(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?) : ApiResponse<PortableEnvelopeResponse?> {
+        val localVariableConfig = exportPortableHouseholdBundleRequestConfig(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase, version = version)
 
         return request<Unit, PortableEnvelopeResponse>(
             localVariableConfig
@@ -1315,11 +1419,17 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      *
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
+     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
      * @return RequestConfig
      */
-    fun exportPortableHouseholdBundleRequestConfig(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String) : RequestConfig<Unit> {
+    fun exportPortableHouseholdBundleRequestConfig(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?) : RequestConfig<Unit> {
         val localVariableBody = null
-        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
+            .apply {
+                if (version != null) {
+                    put("version", listOf(version.value))
+                }
+            }
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         xMedTrackerPortablePassphrase.apply { localVariableHeaders["X-MedTracker-Portable-Passphrase"] = this.toString() }
         localVariableHeaders["Accept"] = "application/json"
@@ -2693,6 +2803,123 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     }
 
     /**
+     * enum for parameter sourceType
+     */
+     enum class SourceTypeListMedicationPausePeriods(val value: kotlin.String) {
+         @Json(name = "schedule") schedule("schedule"),
+         @Json(name = "person_medication") person_medication("person_medication"),
+         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
+
+        /**
+         * Override [toString()] to avoid using the enum variable name as the value, and instead use
+         * the actual value defined in the API spec file.
+         *
+         * This solves a problem when the variable name and its value are different, and ensures that
+         * the client sends the correct enum values to the server always.
+         */
+        override fun toString(): kotlin.String = "$value"
+     }
+
+    /**
+     * GET /households/{household_id}/medication_pause_periods
+     * List visible medication pause history.
+     * Supply source_type and portable source_id together to select one source. Results include current and completed periods newest first by creation time, then ID, including history for retired sources. Retired sources cannot be paused or resumed.
+     * @param householdId 
+     * @param page  (optional, default to 1)
+     * @param perPage  (optional, default to 20)
+     * @param sourceType  (optional)
+     * @param sourceId  (optional)
+     * @return MedicationPausePeriodCollectionResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun listMedicationPausePeriods(householdId: kotlin.Int, page: kotlin.Int? = 1, perPage: kotlin.Int? = 20, sourceType: SourceTypeListMedicationPausePeriods? = null, sourceId: java.util.UUID? = null) : MedicationPausePeriodCollectionResponse {
+        val localVarResponse = listMedicationPausePeriodsWithHttpInfo(householdId = householdId, page = page, perPage = perPage, sourceType = sourceType, sourceId = sourceId)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationPausePeriodCollectionResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/medication_pause_periods
+     * List visible medication pause history.
+     * Supply source_type and portable source_id together to select one source. Results include current and completed periods newest first by creation time, then ID, including history for retired sources. Retired sources cannot be paused or resumed.
+     * @param householdId 
+     * @param page  (optional, default to 1)
+     * @param perPage  (optional, default to 20)
+     * @param sourceType  (optional)
+     * @param sourceId  (optional)
+     * @return ApiResponse<MedicationPausePeriodCollectionResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun listMedicationPausePeriodsWithHttpInfo(householdId: kotlin.Int, page: kotlin.Int?, perPage: kotlin.Int?, sourceType: SourceTypeListMedicationPausePeriods?, sourceId: java.util.UUID?) : ApiResponse<MedicationPausePeriodCollectionResponse?> {
+        val localVariableConfig = listMedicationPausePeriodsRequestConfig(householdId = householdId, page = page, perPage = perPage, sourceType = sourceType, sourceId = sourceId)
+
+        return request<Unit, MedicationPausePeriodCollectionResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation listMedicationPausePeriods
+     *
+     * @param householdId 
+     * @param page  (optional, default to 1)
+     * @param perPage  (optional, default to 20)
+     * @param sourceType  (optional)
+     * @param sourceId  (optional)
+     * @return RequestConfig
+     */
+    fun listMedicationPausePeriodsRequestConfig(householdId: kotlin.Int, page: kotlin.Int?, perPage: kotlin.Int?, sourceType: SourceTypeListMedicationPausePeriods?, sourceId: java.util.UUID?) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
+            .apply {
+                if (page != null) {
+                    put("page", listOf(page.toString()))
+                }
+                if (perPage != null) {
+                    put("per_page", listOf(perPage.toString()))
+                }
+                if (sourceType != null) {
+                    put("source_type", listOf(sourceType.value))
+                }
+                if (sourceId != null) {
+                    put("source_id", listOf(sourceId.toString()))
+                }
+            }
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/medication_pause_periods".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * GET /households/{household_id}/medication_takes
      * List visible medication takes.
      * 
@@ -3316,7 +3543,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/person_medications/{id}/pause
      * Pause a person medication assignment.
-     * 
+     * Use createMedicationPausePeriod. Retained for at least two minor releases and 90 days after the first released replacement. Legacy pause calls record reason_not_recorded.
      * @param householdId 
      * @param id 
      * @return PersonMedicationResponse
@@ -3328,7 +3555,9 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    @Deprecated(message = "This operation is deprecated.")
     fun pausePersonMedication(householdId: kotlin.Int, id: kotlin.String) : PersonMedicationResponse {
+        @Suppress("DEPRECATION")
         val localVarResponse = pausePersonMedicationWithHttpInfo(householdId = householdId, id = id)
 
         return when (localVarResponse.responseType) {
@@ -3349,7 +3578,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/person_medications/{id}/pause
      * Pause a person medication assignment.
-     * 
+     * Use createMedicationPausePeriod. Retained for at least two minor releases and 90 days after the first released replacement. Legacy pause calls record reason_not_recorded.
      * @param householdId 
      * @param id 
      * @return ApiResponse<PersonMedicationResponse?>
@@ -3358,7 +3587,9 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
+    @Deprecated(message = "This operation is deprecated.")
     fun pausePersonMedicationWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<PersonMedicationResponse?> {
+        @Suppress("DEPRECATION")
         val localVariableConfig = pausePersonMedicationRequestConfig(householdId = householdId, id = id)
 
         return request<Unit, PersonMedicationResponse>(
@@ -3373,6 +3604,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * @param id 
      * @return RequestConfig
      */
+    @Deprecated(message = "This operation is deprecated.")
     fun pausePersonMedicationRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf()
@@ -3392,7 +3624,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/schedules/{id}/pause
      * Pause a schedule.
-     * 
+     * Use createMedicationPausePeriod. Retained for at least two minor releases and 90 days after the first released replacement. Legacy pause calls record reason_not_recorded.
      * @param householdId 
      * @param id 
      * @return ScheduleResponse
@@ -3404,7 +3636,9 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    @Deprecated(message = "This operation is deprecated.")
     fun pauseSchedule(householdId: kotlin.Int, id: kotlin.String) : ScheduleResponse {
+        @Suppress("DEPRECATION")
         val localVarResponse = pauseScheduleWithHttpInfo(householdId = householdId, id = id)
 
         return when (localVarResponse.responseType) {
@@ -3425,7 +3659,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/schedules/{id}/pause
      * Pause a schedule.
-     * 
+     * Use createMedicationPausePeriod. Retained for at least two minor releases and 90 days after the first released replacement. Legacy pause calls record reason_not_recorded.
      * @param householdId 
      * @param id 
      * @return ApiResponse<ScheduleResponse?>
@@ -3434,7 +3668,9 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
+    @Deprecated(message = "This operation is deprecated.")
     fun pauseScheduleWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<ScheduleResponse?> {
+        @Suppress("DEPRECATION")
         val localVariableConfig = pauseScheduleRequestConfig(householdId = householdId, id = id)
 
         return request<Unit, ScheduleResponse>(
@@ -3449,6 +3685,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * @param id 
      * @return RequestConfig
      */
+    @Deprecated(message = "This operation is deprecated.")
     fun pauseScheduleRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf()
@@ -4043,9 +4280,93 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     }
 
     /**
+     * POST /households/{household_id}/medication_pause_periods/{id}/resume
+     * Resume the source for a recorded pause period.
+     * Requires manage access. Ends the addressed period at server acceptance time. Retrying a completed period returns it unchanged and cannot close a newer pause. The original reason, note and recording actor remain intact.
+     * @param householdId 
+     * @param id 
+     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @param ifMatch  (optional)
+     * @return MedicationPausePeriodResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun resumeMedicationPausePeriod(householdId: kotlin.Int, id: java.util.UUID, idempotencyKey: kotlin.String? = null, ifMatch: kotlin.String? = null) : MedicationPausePeriodResponse {
+        val localVarResponse = resumeMedicationPausePeriodWithHttpInfo(householdId = householdId, id = id, idempotencyKey = idempotencyKey, ifMatch = ifMatch)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationPausePeriodResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/medication_pause_periods/{id}/resume
+     * Resume the source for a recorded pause period.
+     * Requires manage access. Ends the addressed period at server acceptance time. Retrying a completed period returns it unchanged and cannot close a newer pause. The original reason, note and recording actor remain intact.
+     * @param householdId 
+     * @param id 
+     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @param ifMatch  (optional)
+     * @return ApiResponse<MedicationPausePeriodResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun resumeMedicationPausePeriodWithHttpInfo(householdId: kotlin.Int, id: java.util.UUID, idempotencyKey: kotlin.String?, ifMatch: kotlin.String?) : ApiResponse<MedicationPausePeriodResponse?> {
+        val localVariableConfig = resumeMedicationPausePeriodRequestConfig(householdId = householdId, id = id, idempotencyKey = idempotencyKey, ifMatch = ifMatch)
+
+        return request<Unit, MedicationPausePeriodResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation resumeMedicationPausePeriod
+     *
+     * @param householdId 
+     * @param id 
+     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @param ifMatch  (optional)
+     * @return RequestConfig
+     */
+    fun resumeMedicationPausePeriodRequestConfig(householdId: kotlin.Int, id: java.util.UUID, idempotencyKey: kotlin.String?, ifMatch: kotlin.String?) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        idempotencyKey?.apply { localVariableHeaders["Idempotency-Key"] = this.toString() }
+        ifMatch?.apply { localVariableHeaders["If-Match"] = this.toString() }
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/medication_pause_periods/{id}/resume".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * PATCH /households/{household_id}/person_medications/{id}/resume
      * Resume a person medication assignment.
-     * 
+     * Use resumeMedicationPausePeriod. Retained for at least two minor releases and 90 days after the first released replacement. Legacy pause calls record reason_not_recorded.
      * @param householdId 
      * @param id 
      * @return PersonMedicationResponse
@@ -4057,7 +4378,9 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    @Deprecated(message = "This operation is deprecated.")
     fun resumePersonMedication(householdId: kotlin.Int, id: kotlin.String) : PersonMedicationResponse {
+        @Suppress("DEPRECATION")
         val localVarResponse = resumePersonMedicationWithHttpInfo(householdId = householdId, id = id)
 
         return when (localVarResponse.responseType) {
@@ -4078,7 +4401,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/person_medications/{id}/resume
      * Resume a person medication assignment.
-     * 
+     * Use resumeMedicationPausePeriod. Retained for at least two minor releases and 90 days after the first released replacement. Legacy pause calls record reason_not_recorded.
      * @param householdId 
      * @param id 
      * @return ApiResponse<PersonMedicationResponse?>
@@ -4087,7 +4410,9 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
+    @Deprecated(message = "This operation is deprecated.")
     fun resumePersonMedicationWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<PersonMedicationResponse?> {
+        @Suppress("DEPRECATION")
         val localVariableConfig = resumePersonMedicationRequestConfig(householdId = householdId, id = id)
 
         return request<Unit, PersonMedicationResponse>(
@@ -4102,6 +4427,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * @param id 
      * @return RequestConfig
      */
+    @Deprecated(message = "This operation is deprecated.")
     fun resumePersonMedicationRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf()
@@ -4121,7 +4447,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/schedules/{id}/resume
      * Resume a schedule.
-     * 
+     * Use resumeMedicationPausePeriod. Retained for at least two minor releases and 90 days after the first released replacement. Legacy pause calls record reason_not_recorded.
      * @param householdId 
      * @param id 
      * @return ScheduleResponse
@@ -4133,7 +4459,9 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    @Deprecated(message = "This operation is deprecated.")
     fun resumeSchedule(householdId: kotlin.Int, id: kotlin.String) : ScheduleResponse {
+        @Suppress("DEPRECATION")
         val localVarResponse = resumeScheduleWithHttpInfo(householdId = householdId, id = id)
 
         return when (localVarResponse.responseType) {
@@ -4154,7 +4482,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/schedules/{id}/resume
      * Resume a schedule.
-     * 
+     * Use resumeMedicationPausePeriod. Retained for at least two minor releases and 90 days after the first released replacement. Legacy pause calls record reason_not_recorded.
      * @param householdId 
      * @param id 
      * @return ApiResponse<ScheduleResponse?>
@@ -4163,7 +4491,9 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
+    @Deprecated(message = "This operation is deprecated.")
     fun resumeScheduleWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<ScheduleResponse?> {
+        @Suppress("DEPRECATION")
         val localVariableConfig = resumeScheduleRequestConfig(householdId = householdId, id = id)
 
         return request<Unit, ScheduleResponse>(
@@ -4178,6 +4508,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * @param id 
      * @return RequestConfig
      */
+    @Deprecated(message = "This operation is deprecated.")
     fun resumeScheduleRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf()

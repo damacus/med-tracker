@@ -14,6 +14,25 @@ data class RefreshRequest(
     val refreshToken: String
 )
 
+data class HouseholdSelectionRequest(
+    val selectionToken: String,
+    val householdId: Long
+)
+
+data class HouseholdChoice(
+    val id: Long,
+    val name: String,
+    val role: String
+)
+
+sealed interface AuthenticationResult {
+    data class Session(val payload: SessionPayload) : AuthenticationResult
+    data class HouseholdSelection(
+        val selectionToken: String,
+        val households: List<HouseholdChoice>
+    ) : AuthenticationResult
+}
+
 @Serializable
 data class SessionPayload(
     val accessToken: String,

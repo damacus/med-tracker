@@ -1,6 +1,9 @@
 package io.damacus.medtracker.data.api
 
 import io.damacus.medtracker.data.model.HouseholdDto
+import io.damacus.medtracker.data.model.HouseholdChoice
+import io.damacus.medtracker.data.model.HouseholdSelectionRequest
+import io.damacus.medtracker.data.model.AuthenticationResult
 import io.damacus.medtracker.data.model.MedicationDto
 import io.damacus.medtracker.data.model.MedicationTakeDto
 import io.damacus.medtracker.data.model.OidcExchangeRequest
@@ -16,8 +19,17 @@ import io.medtracker.client.apis.MedicationsApi
 import io.medtracker.client.apis.PeopleApi
 import io.medtracker.client.apis.SchedulesApi
 import io.medtracker.client.infrastructure.ClientException
+import io.medtracker.client.infrastructure.ApiResponse
+import io.medtracker.client.infrastructure.ClientError
+import io.medtracker.client.infrastructure.Redirection
 import io.medtracker.client.infrastructure.ServerException
+import io.medtracker.client.infrastructure.ServerError
+import io.medtracker.client.infrastructure.Serializer
+import io.medtracker.client.infrastructure.Success
 import io.medtracker.client.models.AuthLoginData
+import io.medtracker.client.models.AuthLoginResponse
+import io.medtracker.client.models.AuthHouseholdSelectionRequest
+import io.medtracker.client.models.AuthHouseholdSelectionResponse
 import io.medtracker.client.models.AuthOidcExchangeRequest
 import io.medtracker.client.models.AuthRefreshRequest
 import io.medtracker.client.models.Medication
@@ -40,7 +52,8 @@ sealed class ApiResult<out T> {
 }
 
 interface MedTrackerApi {
-    suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest): ApiResult<SessionPayload>
+    suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest): ApiResult<AuthenticationResult>
+    suspend fun selectHousehold(baseUrl: String, request: HouseholdSelectionRequest): ApiResult<SessionPayload>
     suspend fun refresh(baseUrl: String, request: RefreshRequest): ApiResult<SessionPayload>
     suspend fun logout(baseUrl: String, accessToken: String): ApiResult<Unit>
     suspend fun getPeople(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<PersonDto>>
@@ -55,10 +68,25 @@ class GeneratedMedTrackerApi(
 ) : MedTrackerApi {
     private val unauthenticatedCalls = RequestAuthCallFactory(callFactory)
 
-    override suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest) = generated {
-        AuthenticationApi(apiBaseUrl(baseUrl), unauthenticatedCalls).exchangeOidcSession(
+    override suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest) = authenticationRequest {
+        MultiResponseAuthenticationApi(apiBaseUrl(baseUrl), unauthenticatedCalls).exchange(
             AuthOidcExchangeRequest(request.idToken, request.nonce, request.codeVerifier, request.deviceName, request.householdId?.toInt())
-        ).data.toSessionPayload()
+        )
+    }
+
+    override suspend fun selectHousehold(baseUrl: String, request: HouseholdSelectionRequest): ApiResult<SessionPayload> {
+        return when (val result = authenticationRequest {
+            MultiResponseAuthenticationApi(apiBaseUrl(baseUrl), unauthenticatedCalls).select(
+                AuthHouseholdSelectionRequest(request.selectionToken, request.householdId.toInt())
+            )
+        }) {
+            is ApiResult.Success -> when (val authentication = result.data) {
+                is AuthenticationResult.Session -> ApiResult.Success(authentication.payload)
+                is AuthenticationResult.HouseholdSelection -> ApiResult.Error("invalid_response", "Household selection was not completed")
+            }
+            is ApiResult.Error -> result
+            is ApiResult.NetworkError -> result
+        }
     }
 
     override suspend fun refresh(baseUrl: String, request: RefreshRequest) = generated {
@@ -114,6 +142,57 @@ class GeneratedMedTrackerApi(
     private fun ServerException.toResult() = ApiResult.Error("http_$statusCode", message.orEmpty(), statusCode)
     internal fun apiBaseUrl(baseUrl: String): String = "${baseUrl.trimEnd('/')}/api/v1"
 
+}
+
+private class MultiResponseAuthenticationApi(basePath: String, client: Call.Factory) : AuthenticationApi(basePath, client) {
+    fun exchange(requestBody: AuthOidcExchangeRequest): ApiResponse<Map<String, Any?>?> =
+        request<AuthOidcExchangeRequest, Map<String, Any?>>(exchangeOidcSessionRequestConfig(requestBody))
+
+    fun select(requestBody: AuthHouseholdSelectionRequest): ApiResponse<Map<String, Any?>?> =
+        request<AuthHouseholdSelectionRequest, Map<String, Any?>>(selectHouseholdRequestConfig(requestBody))
+}
+
+internal suspend fun authenticationRequest(
+    block: () -> ApiResponse<Map<String, Any?>?>
+): ApiResult<AuthenticationResult> = withContext(Dispatchers.IO) {
+    try {
+        decodeAuthenticationResponse(block())
+    } catch (error: ClientException) {
+        ApiResult.Error("http_${error.statusCode}", error.message.orEmpty(), error.statusCode)
+    } catch (error: ServerException) {
+        ApiResult.Error("http_${error.statusCode}", error.message.orEmpty(), error.statusCode)
+    } catch (error: IOException) {
+        ApiResult.NetworkError(error)
+    } catch (_: com.squareup.moshi.JsonDataException) {
+        ApiResult.Error("invalid_response", "Server returned an invalid authentication response")
+    }
+}
+
+internal fun decodeAuthenticationResponse(
+    response: ApiResponse<Map<String, Any?>?>
+): ApiResult<AuthenticationResult> = when (response) {
+    is Success -> {
+        if (response.statusCode == 202) {
+            val selection = requireNotNull(
+                Serializer.moshi.adapter(AuthHouseholdSelectionResponse::class.java).fromJsonValue(response.data)
+            ).data
+            ApiResult.Success(
+                AuthenticationResult.HouseholdSelection(
+                    selection.selectionToken,
+                    selection.households.map { HouseholdChoice(it.id.toLong(), it.name, it.role.value) }
+                )
+            )
+        } else {
+            val login = requireNotNull(
+                Serializer.moshi.adapter(AuthLoginResponse::class.java).fromJsonValue(response.data)
+            )
+            ApiResult.Success(AuthenticationResult.Session(login.data.toSessionPayload()))
+        }
+    }
+    is ClientError -> ApiResult.Error("http_${response.statusCode}", response.message.orEmpty(), response.statusCode)
+    is ServerError -> ApiResult.Error("http_${response.statusCode}", response.message.orEmpty(), response.statusCode)
+    is Redirection -> ApiResult.Error("http_${response.statusCode}", "Authentication was redirected", response.statusCode)
+    else -> ApiResult.Error("invalid_response", "Server returned an invalid authentication response", response.statusCode)
 }
 
 internal fun AuthLoginData.toSessionPayload() = SessionPayload(accessToken, accessTokenExpiresAt.toString(), refreshToken, refreshTokenExpiresAt.toString(), UserDto(me.id.toLong(), me.emailAddress, me.person.name, me.membershipRole?.value), household?.let { HouseholdDto(it.id.toLong(), it.name) })

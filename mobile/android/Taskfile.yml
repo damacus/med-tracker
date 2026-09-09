@@ -22,6 +22,16 @@ tasks:
     cmds:
       - ./gradlew :phone:testDebugUnitTest {{.CLI_ARGS}} --no-daemon
 
+  phone:ui-test:
+    desc: Run phone Compose tests on a connected emulator
+    cmds:
+      - ./gradlew :phone:connectedDebugAndroidTest {{.CLI_ARGS}} --no-daemon
+
+  phone:assemble:
+    desc: Assemble the phone debug APK
+    cmds:
+      - ./gradlew :phone:assembleDebug --no-daemon
+
   integration:canary:
     desc: Run the opt-in live canary integration test
     cmds:

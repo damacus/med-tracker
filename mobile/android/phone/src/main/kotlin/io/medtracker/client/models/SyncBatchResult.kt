@@ -56,25 +56,29 @@ data class SyncBatchResult (
     /**
      * 
      *
-     * Values: create,update,delete,unknown_default_open_api
+     * Values: create,update,delete,close,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class Action(val value: kotlin.String) {
         @Json(name = "create") create("create"),
         @Json(name = "update") update("update"),
         @Json(name = "delete") delete("delete"),
+        @Json(name = "close") close("close"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
     /**
      * 
      *
-     * Values: Medication,HealthEvent,MedicationTake,unknown_default_open_api
+     * Values: Medication,HealthEvent,MedicationTake,Schedule,PersonMedication,MedicationPausePeriod,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class RecordType(val value: kotlin.String) {
         @Json(name = "Medication") Medication("Medication"),
         @Json(name = "HealthEvent") HealthEvent("HealthEvent"),
         @Json(name = "MedicationTake") MedicationTake("MedicationTake"),
+        @Json(name = "Schedule") Schedule("Schedule"),
+        @Json(name = "PersonMedication") PersonMedication("PersonMedication"),
+        @Json(name = "MedicationPausePeriod") MedicationPausePeriod("MedicationPausePeriod"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
 

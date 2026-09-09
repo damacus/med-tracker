@@ -253,6 +253,30 @@ class DashboardSessionTest {
         assertTrue(api.logoutTokens.isEmpty())
     }
 
+    @Test fun `household selection completes authentication against the original server`() = runTest(dispatcher) {
+        val main = MainViewModel(sessions, api)
+        store.put("main", main)
+        val selection = AuthenticationResult.HouseholdSelection(
+            "selection-token",
+            listOf(HouseholdChoice(42, "Summer house", "member"))
+        )
+
+        main.authenticate("https://selected.example/") { ApiResult.Success(selection) }
+        runCurrent()
+        assertEquals(selection, main.uiState.value.householdSelection)
+
+        main.selectHousehold(42)
+        runCurrent()
+
+        assertEquals(
+            listOf(Triple("https://selected.example/", "selection-token", 42L)),
+            api.householdSelectionRequests
+        )
+        assertTrue(sessions.sessionState.value.isLoggedIn)
+        assertEquals(42L, sessions.sessionState.value.household?.id)
+        assertNull(main.uiState.value.householdSelection)
+    }
+
     private suspend fun kotlinx.coroutines.test.TestScope.assertLateLogoutIgnored(fail: Boolean) {
         signIn(1)
         val model = model()
@@ -328,6 +352,7 @@ class DashboardSessionTest {
         var delayDose = false
         var delayLogout = false
         val logoutTokens = mutableListOf<String>()
+        val householdSelectionRequests = mutableListOf<Triple<String, String, Long>>()
         var peopleJob: Job? = null
         var doseJob: Job? = null
         var peopleContinuation: Continuation<ApiResult<List<PersonDto>>>? = null
@@ -370,7 +395,17 @@ class DashboardSessionTest {
             logoutTokens.add(accessToken)
             return if (delayLogout) suspendCoroutine { logoutContinuation = it } else ApiResult.Success(Unit)
         }
-        override suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest): ApiResult<SessionPayload> = error("Not used")
+        override suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest): ApiResult<AuthenticationResult> = error("Not used")
+        override suspend fun selectHousehold(baseUrl: String, request: HouseholdSelectionRequest): ApiResult<SessionPayload> {
+            householdSelectionRequests.add(Triple(baseUrl, request.selectionToken, request.householdId))
+            return ApiResult.Success(
+                SessionPayload(
+                    "selected-token",
+                    refreshToken = "selected-refresh",
+                    household = HouseholdDto(request.householdId, "Summer house")
+                )
+            )
+        }
         override suspend fun refresh(baseUrl: String, request: RefreshRequest): ApiResult<SessionPayload> = error("Not used")
     }
 }

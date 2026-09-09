@@ -15,6 +15,8 @@
 
 package io.medtracker.client.models
 
+import io.medtracker.client.models.NullableMedicationPausePeriod
+import io.medtracker.client.models.ScheduleConfig
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -36,10 +38,14 @@ import com.squareup.moshi.JsonClass
  * @param endDate 
  * @param active 
  * @param paused 
+ * @param canManage 
  * @param notes 
  * @param updatedAt 
  * @param maxDailyDoses 
  * @param minHoursBetweenDoses 
+ * @param scheduleType 
+ * @param scheduleConfig 
+ * @param currentPausePeriod 
  */
 
 
@@ -87,6 +93,9 @@ data class Schedule (
     @Json(name = "paused")
     val paused: kotlin.Boolean,
 
+    @Json(name = "can_manage")
+    val canManage: kotlin.Boolean,
+
     @Json(name = "notes")
     val notes: kotlin.String?,
 
@@ -97,7 +106,16 @@ data class Schedule (
     val maxDailyDoses: kotlin.Int?,
 
     @Json(name = "min_hours_between_doses")
-    val minHoursBetweenDoses: kotlin.String?
+    val minHoursBetweenDoses: kotlin.String?,
+
+    @Json(name = "schedule_type")
+    val scheduleType: Schedule.ScheduleType,
+
+    @Json(name = "schedule_config")
+    val scheduleConfig: ScheduleConfig,
+
+    @Json(name = "current_pause_period")
+    val currentPausePeriod: NullableMedicationPausePeriod? = null
 
 ) {
 
@@ -111,6 +129,22 @@ data class Schedule (
         @Json(name = "daily") daily("daily"),
         @Json(name = "weekly") weekly("weekly"),
         @Json(name = "monthly") monthly("monthly"),
+        @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
+    }
+    /**
+     * 
+     *
+     * Values: daily,multiple_daily,weekly,specific_dates,prn,tapering,every_other_day,unknown_default_open_api
+     */
+    @JsonClass(generateAdapter = false)
+    enum class ScheduleType(val value: kotlin.String) {
+        @Json(name = "daily") daily("daily"),
+        @Json(name = "multiple_daily") multiple_daily("multiple_daily"),
+        @Json(name = "weekly") weekly("weekly"),
+        @Json(name = "specific_dates") specific_dates("specific_dates"),
+        @Json(name = "prn") prn("prn"),
+        @Json(name = "tapering") tapering("tapering"),
+        @Json(name = "every_other_day") every_other_day("every_other_day"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
 

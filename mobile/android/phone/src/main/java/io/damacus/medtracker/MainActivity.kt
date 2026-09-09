@@ -162,6 +162,7 @@ fun MedTrackerApp(
             AuthRoute(
                 isLoading = mainUiState.isLoading,
                 errorMessage = mainUiState.errorMessage,
+                householdSelection = mainUiState.householdSelection,
                 viewModel = mainViewModel,
                 onOidcSignIn = onOidcSignIn
             )

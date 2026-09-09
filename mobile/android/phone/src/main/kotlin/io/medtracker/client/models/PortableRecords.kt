@@ -31,6 +31,7 @@ import com.squareup.moshi.JsonClass
  * @param personMedications 
  * @param medicationTakes 
  * @param notificationPreferences 
+ * @param medicationPausePeriods 
  * @param healthEvents 
  */
 
@@ -60,6 +61,9 @@ data class PortableRecords (
 
     @Json(name = "notification_preferences")
     val notificationPreferences: kotlin.collections.List<PortableRecord>,
+
+    @Json(name = "medication_pause_periods")
+    val medicationPausePeriods: kotlin.collections.List<PortableRecord>? = null,
 
     @Json(name = "health_events")
     val healthEvents: kotlin.collections.List<PortableRecord>? = null

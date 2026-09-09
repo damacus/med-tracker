@@ -11,7 +11,8 @@ import io.damacus.medtracker.data.api.GeneratedMedTrackerApi
 import io.damacus.medtracker.data.api.MedTrackerApi
 import io.damacus.medtracker.BuildConfig
 import io.damacus.medtracker.data.model.OidcExchangeRequest
-import io.damacus.medtracker.data.model.SessionPayload
+import io.damacus.medtracker.data.model.AuthenticationResult
+import io.damacus.medtracker.data.model.HouseholdSelectionRequest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +23,9 @@ import kotlinx.coroutines.launch
 data class MainUiState(
     val isLoading: Boolean = false,
     val isLoggingOut: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val householdSelection: AuthenticationResult.HouseholdSelection? = null,
+    val selectionServerUrl: String? = null
 )
 
 class MainViewModel(
@@ -51,14 +54,28 @@ class MainViewModel(
 
     fun authenticate(
         serverUrl: String,
-        request: suspend (MedTrackerApi) -> ApiResult<SessionPayload>
+        request: suspend (MedTrackerApi) -> ApiResult<AuthenticationResult>
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             when (val result = request(apiClient)) {
                 is ApiResult.Success -> {
-                    sessionManager.saveSession(result.data, serverUrl)
-                    _uiState.update { it.copy(isLoading = false, errorMessage = null) }
+                    when (val authentication = result.data) {
+                        is AuthenticationResult.Session -> {
+                            sessionManager.saveSession(authentication.payload, serverUrl)
+                            _uiState.update { MainUiState() }
+                        }
+                        is AuthenticationResult.HouseholdSelection -> {
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    errorMessage = null,
+                                    householdSelection = authentication,
+                                    selectionServerUrl = serverUrl
+                                )
+                            }
+                        }
+                    }
                 }
                 is ApiResult.Error -> {
                     _uiState.update {
@@ -75,6 +92,31 @@ class MainViewModel(
                             errorMessage = "Network connection error: ${result.cause.localizedMessage ?: "Unable to connect to server"}"
                         )
                     }
+                }
+            }
+        }
+    }
+
+    fun selectHousehold(householdId: Long) {
+        val currentState = uiState.value
+        val selection = currentState.householdSelection ?: return
+        val serverUrl = currentState.selectionServerUrl ?: BuildConfig.SERVER_URL
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            when (val result = apiClient.selectHousehold(
+                serverUrl,
+                HouseholdSelectionRequest(selection.selectionToken, householdId)
+            )) {
+                is ApiResult.Success -> {
+                    sessionManager.saveSession(result.data, serverUrl)
+                    _uiState.value = MainUiState()
+                }
+                is ApiResult.Error -> _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
+                is ApiResult.NetworkError -> _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "Network connection error: ${result.cause.localizedMessage ?: "Unable to connect to server"}"
+                    )
                 }
             }
         }
@@ -99,9 +141,7 @@ class MainViewModel(
                 apiClient.logout(currentSession.serverUrl, token)
             } catch (error: CancellationException) {
                 throw error
-            } catch (_: Exception) {
-                Unit
-            }
+            } catch (_: Exception) {}
         }
     }
 
