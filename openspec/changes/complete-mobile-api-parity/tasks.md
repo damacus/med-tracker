@@ -47,10 +47,10 @@
 
 ## 8. Offline write parity
 
-- [ ] 8.1 Red: specify the advertised operation matrix and explicit online-only rejection with failing sync request tests.
+- [x] 8.1 Red: specify the advertised operation matrix and explicit online-only rejection with failing sync request tests.
 - [x] 8.2 Red-Green-Refactor: extend replay for care records and review changes through the same services, verifying ETags, current access and retained history.
 - [x] 8.3 Red-Green-Refactor: extend stock/inventory/order/removal and pause/resume/reorder replay, verifying duplicate prevention and same online domain validation.
-- [ ] 8.4 Red-Green-Refactor: prove multi-operation rollback including audit/feed state, deterministic responses and revocation after queueing with focused batch integration specs.
+- [x] 8.4 Red-Green-Refactor: prove multi-operation rollback including audit/feed state, deterministic responses and revocation after queueing with focused batch integration specs.
 - [ ] 8.5 Update capability/OpenAPI/generated contracts, run relevant client checks and focused Rails/Ruby gates, then publish and verify the final implementation stack layer.
 
 ## 9. Final verification and handoff

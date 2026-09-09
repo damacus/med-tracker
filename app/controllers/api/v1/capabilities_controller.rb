@@ -132,7 +132,9 @@ module Api
           etag_conflicts: true,
           change_feed: true,
           batch_mutations: true,
-          tombstones: true
+          tombstones: true,
+          operations: Api::Sync::OperationCatalog.as_json,
+          online_only_resources: Api::Sync::OperationCatalog::ONLINE_ONLY_RESOURCES
         }
       end
 

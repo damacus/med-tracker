@@ -299,8 +299,6 @@ module Api
         Api::RecordEtag.for(record)
       end
 
-      def authorize_api_replay! = nil
-
       def with_api_idempotency(&action)
         store = Api::IdempotencyStore.new(request: request, credential: current_api_session, household: current_household)
         unless store.active?
@@ -310,7 +308,7 @@ module Api
 
         result = store.with_reservation(response: response, &action)
         if result.replayed
-          authorize_api_replay! if result.record.response_status < 400
+          authorize_api_replay!(result.record)
           result.response_headers.each { |name, value| response.set_header(name, value) }
           response.set_header('Idempotency-Replayed', 'true')
           render json: result.record.response_body, status: result.record.response_status
@@ -319,6 +317,8 @@ module Api
                           code: 'idempotency_key_reused')
         end
       end
+
+      def authorize_api_replay!(_record) = nil
     end
   end
 end
