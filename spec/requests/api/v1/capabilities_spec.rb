@@ -14,6 +14,13 @@ RSpec.describe 'API v1 capabilities' do
     )
   end
 
+  it 'advertises stock removal history and stable submission identities' do
+    get api_v1_capabilities_path, as: :json
+    expect(response.parsed_body.dig('data', 'stock_removals')).to eq(
+      'actions' => %w[create index], 'submission_id_required' => true, 'max_page_size' => 100
+    )
+  end
+
   it 'publishes the supported API, auth, portability, sync, and client-tool contracts without auth' do
     get api_v1_capabilities_path, as: :json
 

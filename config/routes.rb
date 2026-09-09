@@ -39,6 +39,7 @@ Rails.application.routes.draw do
         resources :locations, only: %i[index show]
         resources :medications, only: %i[index show create update]
         resources :medications, only: [] do
+          resources :stock_removals, only: %i[index create]
           member do
             patch :adjust_inventory
             patch :mark_as_ordered

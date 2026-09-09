@@ -45,6 +45,7 @@ RSpec.describe 'Medication stock removals' do
 
   it 'rejects members without inventory management permission' do
     sign_in(users(:parent))
+    create(:person_medication, person: users(:parent).person, medication: medication)
     get "#{path}/new"
     expect(response).to redirect_to(root_path)
     post path, params: { stock_removal: attributes }

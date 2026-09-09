@@ -45,3 +45,23 @@ Writes require manage access to the source person. Start and end times are serve
 Schedule and direct-assignment reads add `current_pause_period` when pause context is loaded. It is null when there is no open pause. Historical reasons and notes are available through the history endpoint.
 
 The existing schedule and direct-assignment pause/resume operations are deprecated in favour of these operations. They remain compatible for at least two minor releases and 90 days after the first released replacement, as required by [the versioning policy](versioning.md). Old pause requests still accept an empty body and record `reason_not_recorded`. This is an unreleased deprecation notice; release notes must name the first released replacement and earliest removal date before the notice period begins.
+## Stock removal
+
+Inventory managers can create and list stock removals at
+`/households/{household_id}/medications/{medication_id}/stock_removals`.
+The medication path accepts its numeric or portable identity.
+
+Send `stock_removal` with a positive decimal-string `quantity`, a supported
+`reason` and a stable UUID `submission_id`. Optional fields are `note` and
+`dosage_id`, the numeric string for a tracked dosage stock source. The API
+uses the same stock validation, locking and audit transaction as the web.
+It does not create a medication take.
+
+Retry the same submission ID with the same facts to retrieve the original
+removal without another stock decrement. Changed facts are rejected.
+Permission is checked again before replaying an idempotency-cached response.
+
+History is newest first. Use `page` and `per_page` (maximum 100); the response
+includes pagination metadata, saved quantities, reason, note, time and the
+actor membership ID when retained. Read access requires the same inventory
+management permission as recording a removal.

@@ -671,6 +671,69 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/medications/{medication_id}/stock_removals:
+    parameters:
+      - $ref: '#/components/parameters/household_id'
+      - name: medication_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/ResourceIdentifier'
+    get:
+      operationId: listMedicationStockRemovals
+      tags: [Household, Medications]
+      summary: List stock removals in newest-first order.
+      description: Requires current household inventory-management permission.
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+      responses:
+        '200':
+          description: Bounded stock removal history.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockRemovalCollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    post:
+      operationId: createMedicationStockRemoval
+      tags: [Household, Medications]
+      summary: Remove tracked stock without recording a dose.
+      description: Replay the same submission_id and facts to return the original removal without another decrement. Changed facts are rejected. Current inventory-management permission is required even for cached requests.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockRemovalRequest'
+      responses:
+        '201':
+          description: Stock removal recorded or replayed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockRemovalResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/medications/{id}/adjust_inventory:
     patch:
       operationId: adjustMedicationInventory
@@ -6344,6 +6407,7 @@ components:
         - authentication
         - administration
         - dose_outcomes
+        - stock_removals
         - portable_formats
         - backups
         - fhir
@@ -6367,6 +6431,8 @@ components:
           $ref: '#/components/schemas/CapabilityAdministration'
         dose_outcomes:
           $ref: '#/components/schemas/CapabilityDoseOutcomes'
+        stock_removals:
+          $ref: '#/components/schemas/CapabilityStockRemovals'
         portable_formats:
           type: array
           uniqueItems: true
@@ -6384,6 +6450,106 @@ components:
           $ref: '#/components/schemas/CapabilitySync'
         client_tools:
           $ref: '#/components/schemas/CapabilityClientTools'
+    StockRemovalRequest:
+      type: object
+      additionalProperties: false
+      required: [stock_removal]
+      properties:
+        stock_removal:
+          type: object
+          additionalProperties: false
+          required: [quantity, reason, submission_id]
+          properties:
+            quantity:
+              type: string
+              pattern: '^[0-9]+(?:\.[0-9]{1,2})?$'
+              description: Positive quantity with at most two decimal places.
+            reason:
+              $ref: '#/components/schemas/StockRemovalReason'
+            note:
+              type: string
+              maxLength: 1000
+            dosage_id:
+              type: string
+              pattern: '^[1-9][0-9]*$'
+              description: Selected tracked dosage stock; omit for medication-level stock.
+            submission_id:
+              type: string
+              format: uuid
+              pattern: '^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$'
+    StockRemovalReason:
+      type: string
+      enum: [dropped, damaged, expired, discarded, lost, transferred_out, other]
+    StockRemoval:
+      type: object
+      additionalProperties: false
+      required: [id, medication_id, dosage_id, quantity, reason, note, submission_id, previous_quantity, remaining_quantity, unit, created_at, actor_membership_id]
+      properties:
+        id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        medication_id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        dosage_id:
+          type: string
+          nullable: true
+          pattern: '^[1-9][0-9]*$'
+        quantity:
+          $ref: '#/components/schemas/DecimalValue'
+        reason:
+          $ref: '#/components/schemas/StockRemovalReason'
+        note:
+          type: string
+        submission_id:
+          type: string
+          format: uuid
+        previous_quantity:
+          $ref: '#/components/schemas/DecimalValue'
+        remaining_quantity:
+          $ref: '#/components/schemas/DecimalValue'
+        unit:
+          type: string
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        actor_membership_id:
+          type: string
+          nullable: true
+          pattern: '^[1-9][0-9]*$'
+    StockRemovalResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/StockRemoval'
+    StockRemovalCollectionResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/StockRemoval'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    CapabilityStockRemovals:
+      type: object
+      additionalProperties: false
+      required: [actions, submission_id_required, max_page_size]
+      properties:
+        actions:
+          type: array
+          items:
+            type: string
+            enum: [create, index]
+        submission_id_required:
+          type: boolean
+        max_page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
     CapabilityDoseOutcomes:
       type: object
       additionalProperties: false

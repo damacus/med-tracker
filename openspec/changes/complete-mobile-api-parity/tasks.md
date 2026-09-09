@@ -20,8 +20,8 @@
 
 ## 4. Stock removal API
 
-- [ ] 4.1 Red: specify removal success, decimal validation, source access, insufficient stock, replay and rollback plus bounded history in request specs; observe failure through `task test TEST_FILE=<stock removal request spec>`.
-- [ ] 4.2 Green/Refactor: add shared-service API adapters, typed history and capability/OpenAPI entries; verify request specs and client contract checks pass.
+- [x] 4.1 Red: specify removal success, decimal validation, source access, insufficient stock, replay and rollback plus bounded history in request specs; observe failure through `task test TEST_FILE=<stock removal request spec>`.
+- [x] 4.2 Green/Refactor: add shared-service API adapters, typed history and capability/OpenAPI entries; verify request specs and client contract checks pass.
 - [ ] 4.3 Run applicable focused gates and publish the stock layer above the last dose layer; verify GitHub base/head and stack membership.
 
 ## 5. Location management API
