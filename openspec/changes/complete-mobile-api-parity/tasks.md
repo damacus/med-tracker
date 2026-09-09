@@ -55,7 +55,7 @@
 
 ## 9. Final verification and handoff
 
-Use focused checks per layer. Run the full Rails suite only for a justified integration gate or a regression that needs it, as requested on 2026-09-08.
+Delivery was consolidated into one PR on 2026-09-09 to avoid repeated stack CI runs. Preserve the original commits and release-please messages. Run the complete local `task test` suite before every push of the consolidated revision; focused checks do not replace this gate. The original stack checks below remain historical evidence.
 
 - [x] 9.1 Reconcile every capability scenario and existing dose-plan task against delivered tests and PRs; leave #2152 open until all requested work is delivered.
 - [x] 9.2 Verify all stack bases, pushed SHAs and applicable GitHub checks; record any unresolved blocker in #2152 and provide the stack URL without merging or deploying.
