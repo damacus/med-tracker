@@ -100,7 +100,7 @@ module FamilyDashboard
     def fetch_takes_for_sources
       schedule_ids = @all_schedules.values.flatten.map(&:id)
       pm_ids = @all_person_medications.values.flatten.map(&:id)
-      range = 30.days.ago..Time.current.end_of_day
+      range = take_preload_range
 
       MedicationTake.where(taken_at: range, schedule_id: schedule_ids)
                     .or(MedicationTake.where(taken_at: range, person_medication_id: pm_ids))
@@ -132,8 +132,6 @@ module FamilyDashboard
     def build_today_takes_by_person
       @people.index_with { |member| sort_takes(sources_for(member).flat_map { |source| todays_takes(source) }) }
     end
-
-    def outcome_query = @outcome_query ||= NotTakenQuery.new(schedules: @all_schedules.values.flatten)
 
     def aggregate_rows
       @people.each_with_object([]) do |member, rows|
@@ -177,7 +175,7 @@ module FamilyDashboard
         status: MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason || :upcoming,
         not_taken_count: current_not_taken_outcomes(source).size,
         overdue: routine_scheduled_at(source, takes.length)&.before?(Time.current) || false
-      }.merge(dose_progress_for(takes, expected_doses))
+      }.merge(dose_progress_for(routine_progress_takes(source, takes), expected_doses))
     end
 
     def recordable_person_ids

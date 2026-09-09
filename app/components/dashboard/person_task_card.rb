@@ -40,7 +40,7 @@ module Components
               m3_text(variant: :body_small) { t("dashboard.outcomes.reasons.#{outcome.reason}") }
             end
             m3_text(variant: :body_small) { outcome.note } if outcome.note.present?
-            render_correction_link(outcome) if @can_correct_outcomes
+            render_correction_link(outcome) if @can_correct_outcomes && outcome.source.is_a?(::Schedule)
           end
         end
       end

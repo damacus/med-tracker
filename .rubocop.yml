@@ -26,6 +26,8 @@ Style/FrozenStringLiteralComment:
     - "spec/requests/api/v1/sync_outcome_writes_spec.rb"
     - "spec/services/medication_administration/occurrence_projection_routine_spec.rb"
     - "spec/services/medication_administration/occurrence_resolver_routine_spec.rb"
+    - "spec/services/family_dashboard/schedule_query_routine_outcomes_spec.rb"
+    - "spec/system/routine_dose_outcomes_spec.rb"
     - "spec/requests/api/v1/sync_outcome_reads_spec.rb"
     - "app/controllers/dose_occurrences_controller.rb"
     - "app/components/dose_occurrences/edit_view.rb"

@@ -10,6 +10,22 @@ module FamilyDashboard
       outcomes.select { |outcome| outcome.position <= positions }
     end
 
+    def take_preload_range
+      [30.days.ago, Time.current.beginning_of_month].min..Time.current.end_of_day
+    end
+
+    def outcome_query
+      @outcome_query ||= NotTakenQuery.new(schedules: @all_schedules.values.flatten,
+                                           person_medications: @all_person_medications.values.flatten)
+    end
+
+    def routine_progress_takes(source, today_takes)
+      return today_takes if source.is_a?(Schedule)
+
+      window = source_cycle(source).range_for(Time.current)
+      source.medication_takes.select { |take| window.cover?(take.taken_at) }
+    end
+
     def dose_progress_for(takes, limit)
       { daily_dose_count: takes.size, daily_dose_limit: limit, today_takes: takes.sort_by(&:taken_at) }
     end
