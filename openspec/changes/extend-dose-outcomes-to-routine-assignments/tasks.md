@@ -5,8 +5,8 @@
 
 ## 2. Resolve Direct Routine Outcomes
 
-- [ ] 2.1 Red: specify shared taken/not-taken, correction, concurrency, stock, access, and isolation rules.
-- [ ] 2.2 Green: enable PersonMedication in the shared resolver without parallel domain logic.
+- [x] 2.1 Red: specify shared taken/not-taken, correction, concurrency, stock, access, and isolation rules.
+- [x] 2.2 Green: enable PersonMedication in the shared resolver without parallel domain logic.
 
 ## 3. Show Direct Routine Outcomes on the Dashboard
 
