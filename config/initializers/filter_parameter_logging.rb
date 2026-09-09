@@ -7,5 +7,6 @@
 # See the ActiveSupport::ParameterFilter documentation for supported notations and behaviors.
 Rails.application.config.filter_parameters += %i[
   passw passphrase email secret token _key crypt salt certificate otp ssn cvv cvc q query search
+  medication_review_prompt practitioner_name practitioner_role reviewed_on review_note
   authorization_code id_token access_token refresh_token device_token bundle payload ciphertext backup checksum stock_removal
 ]

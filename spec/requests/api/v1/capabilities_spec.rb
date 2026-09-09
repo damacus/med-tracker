@@ -29,6 +29,13 @@ RSpec.describe 'API v1 capabilities' do
     )
   end
 
+  it 'advertises bounded, versioned medication review operations' do
+    get api_v1_capabilities_path, as: :json
+    expect(response.parsed_body.dig('data', 'medication_reviews')).to eq(
+      'actions' => %w[index show update], 'version_required' => true, 'max_page_size' => 100
+    )
+  end
+
   it 'publishes the supported API, auth, portability, sync, and client-tool contracts without auth' do
     get api_v1_capabilities_path, as: :json
 

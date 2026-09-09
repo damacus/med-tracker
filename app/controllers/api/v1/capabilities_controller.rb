@@ -22,6 +22,7 @@ module Api
           dose_outcomes: dose_outcomes,
           stock_removals: stock_removals,
           location_management: location_management,
+          medication_reviews: medication_reviews,
           portable_formats: portable_formats,
           backups: backups,
           fhir: fhir,
@@ -71,6 +72,10 @@ module Api
           actions: %w[not_taken reopen take],
           replacement_requires_version: true
         }
+      end
+
+      def medication_reviews
+        { actions: %w[index show update], version_required: true, max_page_size: 100 }
       end
 
       def location_management
