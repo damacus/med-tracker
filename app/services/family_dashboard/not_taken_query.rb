@@ -7,6 +7,8 @@ module FamilyDashboard
 
     def for_source(source)
       outcomes_by_source.fetch(source_key(source), []).select do |outcome|
+        next false if source.is_a?(PersonMedication) && outcome.position > (source.max_daily_doses.presence || 1)
+
         outcome.window_starts_on == window_start(source)
       end
     end

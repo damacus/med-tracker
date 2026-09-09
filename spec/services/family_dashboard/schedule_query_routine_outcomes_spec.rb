@@ -43,6 +43,20 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
                            scheduled_at: nil, overdue: false)
   end
 
+  it 'retains obsolete monthly history without completing a new daily routine on the shared boundary' do
+    travel_to(Time.zone.local(2026, 9, 1, 12))
+    source.update!(dose_cycle: :monthly, max_daily_doses: 2)
+    outcome = source.medication_dose_occurrences.create!(window_starts_on: Date.current, position: 2,
+                                                         outcome: 'not_taken', reason: 'unwell',
+                                                         resolved_at: Time.current, resolved_by_membership: actor)
+    source.update!(dose_cycle: :daily, max_daily_doses: 1)
+
+    row = query.call.find { |task| task[:source] == source }
+
+    expect(row).to include(not_taken_count: 0, daily_dose_limit: 1)
+    expect(query.today_not_taken_by_person.fetch(source.person)).to include(outcome)
+  end
+
   it 'restores an outstanding routine task after reopening' do
     record_not_taken.update!(outcome: 'open', reason: nil, note: nil, resolved_at: nil, resolved_by_membership: nil)
     expect(query.call.pluck(:source)).to include(source)
