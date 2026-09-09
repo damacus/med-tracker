@@ -23,6 +23,14 @@ The final replay repair passed 65 focused examples. [CI run 34324970074](https:/
 
 Android's explicit OpenAPI pin in #2205 matches the root contract and records source revision `f7b1a177469137e24f698d9322bae0e9fc9cd234` and its checksum in `mobile/android/OPENAPI_PROVENANCE.md`. `task android:ci` passed the phone, Wear and protocol checks, lint, assembly, release security, Wear dependency boundary and generated-client drift checks. The pin uses the existing release/password client split. There is no imported iOS build root in this checkout; root Swift contract generation was verified without creating another iOS import.
 
+## Integration with the merged pause stack
+
+The stack was rebased onto `44137dc20103dbf43dfea8822d040933745ef9a5`, which includes #2150. Conflict resolutions retain pause history alongside dose outcomes in portable v2 exports, imports and sync snapshots. Both existing export selectors remain accepted. Cached pause and batch responses retain their current-authority checks, and the offline operation catalog includes pause-period create and close.
+
+The focused integration run covered 189 examples. After correcting the combined capability expectation, the final contract and regression selection passed 150 examples. RuboCop passed across 1,965 files. Android CI passed after regenerating the combined contract; the final capability enum refresh also passed client drift verification. Android provenance now records root contract revision `20db1ac3f94b34eb94e40a5efb0a95ebfd9367f6`.
+
+These are focused local checks. The earlier full-suite browser failure and the CI evidence above predate this rebase; fresh CI on the published branch heads remains the merge gate.
+
 ## Review boundaries
 
 - API and contract delivery is complete; new native screens are separate work.
