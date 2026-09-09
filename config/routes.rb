@@ -256,6 +256,7 @@ Rails.application.routes.draw do
 
       resources :schedules, except: [:index] do
         member do
+          get :pause_form
           patch :pause
           patch :resume
           post :take_medication
@@ -264,6 +265,7 @@ Rails.application.routes.draw do
 
       resources :person_medications, except: [:index] do
         member do
+          get :pause_form
           patch :pause
           patch :resume
           patch :reorder

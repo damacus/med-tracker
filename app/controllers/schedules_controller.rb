@@ -3,13 +3,14 @@
 class SchedulesController < ApplicationController
   include TimelineRefreshable
   include PersonViewable
+  include MedicationPauseContext
   include TakeMedicationGuardable
   include ScheduleResourceResolvable
   include MedicationWorkflowBackPathable
 
   before_action :redirect_direct_new_schedule, only: :new
   before_action :set_person, except: %i[index workflow start_workflow frequency_preview]
-  before_action :set_schedule, only: %i[edit update destroy pause resume take_medication]
+  before_action :set_schedule, only: %i[edit update destroy pause_form pause resume take_medication]
 
   def index
     authorize Schedule.new(person: schedule_index_person), :index?
@@ -76,9 +77,15 @@ class SchedulesController < ApplicationController
     render_schedule_destroy_success
   end
 
+  def pause_form
+    authorize @schedule, :update?
+    render_pause_form(@schedule)
+  end
+
   def pause
     authorize @schedule, :update?
-    @schedule.pause!
+    return unless pause_with_context?(@schedule)
+
     render_schedule_pause_success
   end
 
@@ -273,10 +280,11 @@ class SchedulesController < ApplicationController
 
   def render_schedule_active_state_success(notice)
     respond_to do |format|
-      format.html { redirect_to person_path(@person), notice: notice }
+      format.html { redirect_to person_path(@person), status: :see_other, notice: notice }
       format.turbo_stream do
         flash.now[:notice] = notice
         render turbo_stream: [
+          turbo_stream.update('modal', ''),
           turbo_stream.replace(tenant_dom_target("person_show_#{@person.id}"), person_show_view(@person.reload)),
           turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
         ]

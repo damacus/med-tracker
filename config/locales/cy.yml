@@ -2504,3 +2504,23 @@ cy:
       subtitle: Ar gyfer pwy mae'r feddyginiaeth hon?
       search_placeholder: Chwilio pobl…
       no_results: Ni chanfuwyd pobl.
+  medication_pauses:
+    title: "Seibio meddyginiaeth"
+    reason: "Rheswm"
+    note: "Nodyn (dewisol)"
+    choose_reason: "Dewiswch reswm"
+    submit: "Seibio"
+    cancel: "Canslo"
+    timing: "Mae’r saib yn dechrau pan gaiff ei gadw."
+    history: "Hanes seibiau"
+    start_unknown: "Dechrau anhysbys"
+    actor_unknown: "Person heb ei gofnodi"
+    started: "Seibiwyd: %{date} · %{actor}"
+    resumed: "Ailddechreuwyd: %{date} · %{actor}"
+    reasons:
+      out_of_supply: "Dim cyflenwad ar ôl"
+      temporarily_not_needed: "Dim angen dros dro"
+      clinician_advice: "Cyngor clinigwr"
+      side_effects: "Sgil-effeithiau"
+      other: "Arall"
+      reason_not_recorded: "Rheswm heb ei gofnodi"

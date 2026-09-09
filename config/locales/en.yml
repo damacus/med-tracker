@@ -2482,3 +2482,23 @@ en:
       search_placeholder: Search people…
       no_results: No people found.
     back: "← Back"
+  medication_pauses:
+    title: "Pause medication"
+    reason: "Reason"
+    note: "Note (optional)"
+    choose_reason: "Choose a reason"
+    submit: "Pause"
+    cancel: "Cancel"
+    timing: "The pause starts when it is saved."
+    history: "Pause history"
+    start_unknown: "Start unknown"
+    actor_unknown: "Person not recorded"
+    started: "Paused: %{date} · %{actor}"
+    resumed: "Resumed: %{date} · %{actor}"
+    reasons:
+      out_of_supply: "Out of supply"
+      temporarily_not_needed: "Temporarily not needed"
+      clinician_advice: "Clinician advice"
+      side_effects: "Side effects"
+      other: "Other"
+      reason_not_recorded: "Reason not recorded"

@@ -2513,3 +2513,23 @@ es:
           de horario.
         metric_label: Revisar
         metric_value: Horario
+  medication_pauses:
+    title: "Pausar medicamento"
+    reason: "Motivo"
+    note: "Nota (opcional)"
+    choose_reason: "Elige un motivo"
+    submit: "Pausar"
+    cancel: "Cancelar"
+    timing: "La pausa comienza cuando se guarda."
+    history: "Historial de pausas"
+    start_unknown: "Inicio desconocido"
+    actor_unknown: "Persona no registrada"
+    started: "Pausa: %{date} · %{actor}"
+    resumed: "Reanudación: %{date} · %{actor}"
+    reasons:
+      out_of_supply: "Sin existencias"
+      temporarily_not_needed: "No se necesita temporalmente"
+      clinician_advice: "Consejo clínico"
+      side_effects: "Efectos secundarios"
+      other: "Otro"
+      reason_not_recorded: "Motivo no registrado"

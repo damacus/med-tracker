@@ -3,11 +3,12 @@
 class PersonMedicationsController < ApplicationController
   include TimelineRefreshable
   include PersonViewable
+  include MedicationPauseContext
   include TakeMedicationGuardable
   include MedicationWorkflowBackPathable
 
   before_action :set_person
-  before_action :set_person_medication, only: %i[edit update destroy pause resume take_medication reorder]
+  before_action :set_person_medication, only: %i[edit update destroy pause_form pause resume take_medication reorder]
 
   def new
     prepare_new_person_medication
@@ -56,9 +57,15 @@ class PersonMedicationsController < ApplicationController
     render_person_medication_destroy_success
   end
 
+  def pause_form
+    authorize @person_medication, :update?
+    render_pause_form(@person_medication)
+  end
+
   def pause
     authorize @person_medication, :update?
-    @person_medication.pause!
+    return unless pause_with_context?(@person_medication)
+
     render_person_medication_pause_success
   end
 
@@ -228,10 +235,11 @@ class PersonMedicationsController < ApplicationController
 
   def render_person_medication_active_state_success(notice)
     respond_to do |format|
-      format.html { redirect_to person_path(@person), notice: notice }
+      format.html { redirect_to person_path(@person), status: :see_other, notice: notice }
       format.turbo_stream do
         flash.now[:notice] = notice
         render turbo_stream: [
+          turbo_stream.update('modal', ''),
           turbo_stream.replace(tenant_dom_target("person_show_#{@person.id}"), person_show_view(@person.reload)),
           turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
         ]

@@ -59,7 +59,7 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     rendered = render_person_medication_card(update: true)
 
     link = rendered.at_css("a[data-testid='edit-person-medication-#{person_medication.id}']")
-    pause_button = rendered.at_css("button[data-testid='pause-person-medication-#{person_medication.id}']")
+    pause_button = rendered.at_css("a[data-testid='pause-person-medication-#{person_medication.id}']")
 
     expect(link).not_to be_nil
     expect(link['role']).to eq('menuitem')
@@ -71,7 +71,7 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
   it 'renders pause action for manageable active assignments' do
     rendered = render_person_medication_card(update: true)
 
-    expect(rendered.at_css("button[data-testid='pause-person-medication-#{person_medication.id}']")).to be_present
+    expect(rendered.at_css("a[data-testid='pause-person-medication-#{person_medication.id}']")).to be_present
   end
 
   it 'stacks card actions on narrow screens and preserves secondary actions' do

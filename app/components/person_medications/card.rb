@@ -20,6 +20,9 @@ module Components
         ) do
           render HeaderComponent.new(person_medication: person_medication)
           render ContentComponent.new(person_medication: person_medication)
+          render Components::MedicationPauses::History.new(
+            periods: person_medication.association(:medication_pause_periods).target
+          )
           CardFooter(class: 'px-8 pb-8 pt-2') do
             render ActionsComponent.new(
               person_medication: person_medication,

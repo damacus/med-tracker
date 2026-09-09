@@ -55,17 +55,17 @@ module TimelineRefreshable
   end
 
   def update_medication_card_stream(source)
-    if source.is_a?(Schedule)
-      turbo_stream.replace(
-        tenant_dom_id(source),
-        Components::Schedules::Card.new(schedule: source, person: source.person, current_user: current_user)
-      )
-    else
-      turbo_stream.replace(
-        tenant_dom_id(source),
-        Components::PersonMedications::Card.new(person_medication: source, person: source.person, current_user: current_user)
-      )
-    end
+    ActiveRecord::Associations::Preloader.new(
+      records: [source],
+      associations: { medication_pause_periods: [{ recorded_by_membership: :person }, { resumed_by_membership: :person }] }
+    ).call
+
+    card = if source.is_a?(Schedule)
+             Components::Schedules::Card.new(schedule: source, person: source.person, current_user: current_user)
+           else
+             Components::PersonMedications::Card.new(person_medication: source, person: source.person, current_user: current_user)
+           end
+    turbo_stream.replace(tenant_dom_id(source), card)
   end
 
   def other_timeline_streams(taken_source, medication)
