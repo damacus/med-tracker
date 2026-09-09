@@ -22,6 +22,8 @@ module Api
           )
 
           render json: { data: token_payload(app_token).merge(token: raw_token) }, status: :created
+        rescue ActiveRecord::RecordInvalid => e
+          render_validation_errors(e.record)
         end
 
         def destroy

@@ -146,6 +146,22 @@ RSpec.describe 'API v1 household administration' do
     expect(ApiAppToken.find(app_token_id)).to be_revoked_at
   end
 
+  it 'returns validation errors without issuing a token when its name is blank' do
+    api_session.update!(oidc_mfa_verified: true, mfa_verified_at: Time.current)
+
+    expect do
+      post api_v1_household_admin_app_tokens_path(household_id),
+           params: { api_app_token: { name: ' ' } },
+           headers: headers,
+           as: :json
+    end.not_to change(ApiAppToken, :count)
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body.dig('error', 'code')).to eq('validation_failed')
+    expect(response.parsed_body.dig('error', 'errors', 'name')).to include("Name can't be blank")
+    expect(response.parsed_body).not_to have_key('data')
+  end
+
   it 'lists app tokens with nullable and revoked timestamps' do
     api_session.update!(oidc_mfa_verified: true, mfa_verified_at: Time.current)
     active_token, = ApiAppToken.issue_for(
