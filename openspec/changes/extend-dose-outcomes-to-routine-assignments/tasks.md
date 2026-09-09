@@ -32,8 +32,8 @@
 
 ## 5I. Interpret Direct Routine Outcomes in Insights
 
-- [ ] 5I.1 Red: specify that only unexplained direct routine misses affect insight patterns.
-- [ ] 5I.2 Green: extend only the affected insight context and detectors.
+- [x] 5I.1 Red: specify that only unexplained direct routine misses affect insight patterns.
+- [x] 5I.2 Green: extend only the affected insight context and detectors.
 
 ## 6. Accept Direct Routine Sources through the API
 

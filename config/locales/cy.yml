@@ -2410,6 +2410,12 @@ cy:
         metric_value:
           one: 1 diwrnod
           other: "%{count} diwrnod"
+      missed_routine_cycles:
+        title: "Cylchoedd rheolaidd a gollwyd"
+        summary: "Mae dosau wedi’u colli heb esboniad mewn %{count} cylch yn olynol."
+        detail: "Adolygwch y cofnodion dos rheolaidd ar gyfer y cylchoedd hyn."
+        metric_label: "Rhediad hiraf"
+        metric_value: "%{count} cylch"
       missed_dose_pattern:
         title: Patrwm dosau wedi'u methu
         summary:
