@@ -2,7 +2,7 @@
 
 module Reports
   class IndexQuery
-    Result = Data.define(:daily_data, :inventory_alerts)
+    Result = Data.define(:daily_data, :inventory_alerts, :cycle_summaries)
 
     attr_reader :people, :start_date, :end_date
 
@@ -15,7 +15,8 @@ module Reports
     def call
       Result.new(
         daily_data: daily_data,
-        inventory_alerts: inventory_alerts
+        inventory_alerts: inventory_alerts,
+        cycle_summaries: outcome_summary.cycle_summaries
       )
     end
 
