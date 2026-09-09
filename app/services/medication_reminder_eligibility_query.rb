@@ -67,7 +67,6 @@ class MedicationReminderEligibilityQuery
   def due_schedule?(schedule)
     return false if as_needed_schedule?(schedule)
     return false if configured_time_slots_for(schedule).blank?
-    return false if unlinked_schedule_take_count(schedule).positive?
     return false unless schedule.applies_on?(today)
 
     if scheduled_time.present?
@@ -173,7 +172,7 @@ class MedicationReminderEligibilityQuery
       slots.reject do |time, _index|
         occurrence = MedicationPausePeriods::IntervalProjection.occurrences_on(date: today, times: [time]).first
         occurrence.present? && pause_projection_for(schedule).paused_at?(occurrence)
-      end
+      end.map(&:first).each_with_index.to_a
     end
   end
 
