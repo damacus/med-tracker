@@ -10,15 +10,15 @@ class TenantContext
   class << self
     def with(account:, household:, membership: nil, request_id: nil)
       previous = current_attributes
+      previous_database = database_context
 
       ActiveRecord::Base.transaction(requires_new: true) do
         assign_current(account:, household:, membership:, request_id:)
         set_database_context(account:, household:, membership:)
         yield
-      ensure
-        clear_database_context
-        restore_current(previous)
       end
+    ensure
+      restore_context(previous, previous_database)
     end
 
     def set_household!(household)
@@ -32,6 +32,21 @@ class TenantContext
     end
 
     private
+
+    def database_context
+      values = ActiveRecord::Base.connection.select_rows(
+        ActiveRecord::Base.sanitize_sql_array(
+          ['SELECT current_setting(?, true), current_setting(?, true), current_setting(?, true)', *SETTING_NAMES.values]
+        )
+      ).first
+      SETTING_NAMES.keys.zip(values).to_h
+    end
+
+    def restore_context(attributes, database)
+      database&.each { |key, value| set_local(SETTING_NAMES.fetch(key), value) }
+    ensure
+      restore_current(attributes) if attributes
+    end
 
     def assign_current(account:, household:, membership:, request_id:)
       Current.account = account
@@ -60,10 +75,6 @@ class TenantContext
       set_local(SETTING_NAMES[:account], account&.id)
       set_local(SETTING_NAMES[:household], household&.id)
       set_local(SETTING_NAMES[:membership], membership&.id)
-    end
-
-    def clear_database_context
-      SETTING_NAMES.each_value { |setting_name| set_local(setting_name, nil) }
     end
 
     def set_local(setting_name, value)
