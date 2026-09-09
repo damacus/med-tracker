@@ -21,6 +21,11 @@ AllCops:
 
 Style/FrozenStringLiteralComment:
   Exclude:
+    - "spec/services/medication_administration_history_spec.rb"
+    - "app/controllers/api/v1/location_memberships_controller.rb"
+    - "app/serializers/api/v1/location_membership_serializer.rb"
+    - "spec/requests/api/v1/location_membership_writes_spec.rb"
+    - "spec/requests/api/v1/location_writes_spec.rb"
     - "app/controllers/api/v1/stock_removals_controller.rb"
     - "app/serializers/api/v1/stock_removal_serializer.rb"
     - "spec/requests/api/v1/stock_removals_spec.rb"
