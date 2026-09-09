@@ -73,6 +73,16 @@ RSpec.describe MedicationAdministration::PausePeriodService do
 
     it_behaves_like 'a pausable medication source'
 
+    it 'does not pause a source retired after it was loaded' do
+      source.update!(retired_at: Time.current)
+
+      expect { described_class.new(source:, membership:, reason: 'side_effects', note: nil, started_at:).call }
+        .to raise_error(ActiveRecord::RecordNotFound)
+      expect(source.reload).to be_active
+    ensure
+      source.update_column(:retired_at, nil)
+    end
+
     it 'rolls back a created period when the source update fails' do
       original_end_date = source.end_date
       source.end_date = source.start_date - 1.day

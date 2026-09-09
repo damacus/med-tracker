@@ -5814,6 +5814,7 @@ components:
         - fhir
         - sync
         - client_tools
+        - medication_pause_periods
       properties:
         medication_pause_periods:
           $ref: '#/components/schemas/CapabilityMedicationPausePeriods'

@@ -104,6 +104,17 @@ RSpec.describe MedicationAdministration::ResumePeriodService do
 
     it_behaves_like 'a resumable medication source'
 
+    it 'does not reactivate a source retired after it was loaded' do
+      period = create_open_period
+      source.update!(retired_at: Time.current)
+
+      expect { described_class.new(source:, membership:, ended_at:, period:).call }
+        .to raise_error(ActiveRecord::RecordNotFound)
+      expect(source.reload).to be_paused
+    ensure
+      source.update_column(:retired_at, nil)
+    end
+
     it 'rolls back a closed period when the source update fails' do
       period = create_open_period
       original_end_date = source.end_date
