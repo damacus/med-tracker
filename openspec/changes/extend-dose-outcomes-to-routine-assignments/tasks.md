@@ -10,8 +10,8 @@
 
 ## 3. Show Direct Routine Outcomes on the Dashboard
 
-- [ ] 3.1 Red: specify due, overdue, taken, not-taken, unexplained, and absent PRN rows.
-- [ ] 3.2 Green: update the direct-assignment dashboard branch and reuse standard rendering.
+- [x] 3.1 Red: specify due, overdue, taken, not-taken, unexplained, and absent PRN rows.
+- [x] 3.2 Green: update the direct-assignment dashboard branch and reuse standard rendering.
 
 ## 4. Stop Direct Routine Reminders
 
