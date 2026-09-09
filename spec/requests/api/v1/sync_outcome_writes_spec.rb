@@ -1,11 +1,10 @@
 require 'rails_helper'
 
-RSpec.describe 'API v1 queued dose outcomes' do
+RSpec.shared_examples 'queued outcome contract' do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :dosages, :schedules
 
   let(:login_data) { api_login(users(:admin)) }
   let(:headers) { api_auth_headers(login_data.fetch('access_token')) }
-  let(:source) { schedules(:john_movicol) }
 
   def household_id = login_data.dig('household', 'id')
 
@@ -14,7 +13,7 @@ RSpec.describe 'API v1 queued dose outcomes' do
       source: source.reload, start_date: Date.current, end_date: Date.current
     ).call.first.key
     { action: 'create', resource_type: 'medication_dose_occurrence', attributes: {
-      source_type: 'schedule', source_id: source.portable_id, occurrence_key: key,
+      source_type: MedicationDoseSource.new(source).type, source_id: source.portable_id, occurrence_key: key,
       outcome: 'not_taken', reason: 'unwell', note: 'Queued decision'
     } }
   end
@@ -90,7 +89,7 @@ RSpec.describe 'API v1 queued dose outcomes' do
     headers
     source.reload
     original_notes = source.notes
-    update = { action: 'update', resource_type: 'schedule', id: source.portable_id,
+    update = { action: 'update', resource_type: MedicationDoseSource.new(source).type, id: source.portable_id,
                if_match: Api::RecordEtag.for(source), attributes: { notes: 'Queued edit' } }
     operation = not_taken_operation
     operation[:attributes][:occurrence_key] = 'invalid'
@@ -145,5 +144,30 @@ RSpec.describe 'API v1 queued dose outcomes' do
     expect(response).to have_http_status(:unprocessable_content)
     expect(response.body).not_to include('private-invalid-reason', 'Queued decision')
     expect(source.medication_dose_occurrences).to be_empty
+  end
+end
+
+RSpec.describe 'API v1 queued dose outcomes' do
+  context 'with a formal schedule' do
+    let(:source) { schedules(:john_movicol) }
+
+    it_behaves_like 'queued outcome contract'
+  end
+
+  context 'with a routine assignment' do
+    let(:source) do
+      create(:person_medication, :routine, person: people(:john), medication: medications(:vitamin_c),
+                                           dose_cycle: :monthly, max_daily_doses: 1, created_at: 2.months.ago)
+    end
+
+    it_behaves_like 'queued outcome contract' do
+      it 'rejects a routine key after the source becomes as-needed' do
+        operation = not_taken_operation
+        source.update!(administration_kind: :as_needed)
+        submit([operation])
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(source.medication_dose_occurrences).to be_empty
+      end
+    end
   end
 end
