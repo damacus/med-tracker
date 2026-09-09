@@ -80,7 +80,8 @@ class MedicationReminderEligibilityQuery
     return false if taken_in_current_cycle?(person_medication)
     return false if pause_projection_for(person_medication).paused_at?(now)
 
-    taken_count_for_cycle(person_medication) < expected_person_medication_doses(person_medication)
+    resolved = taken_count_for_cycle(person_medication) + not_taken_routine_counts.fetch(person_medication.id, 0)
+    resolved < expected_person_medication_doses(person_medication)
   end
 
   def scheduled_occurrence_due?(schedule)
@@ -102,6 +103,25 @@ class MedicationReminderEligibilityQuery
 
   def expected_person_medication_doses(person_medication)
     person_medication.max_daily_doses.presence || 1
+  end
+
+  def routine_windows
+    @routine_windows ||= person_medications.to_h do |source|
+      [source.id, DoseCycle.new(source.dose_cycle).range_for(now).begin.to_date]
+    end
+  end
+
+  def not_taken_routine_counts
+    @not_taken_routine_counts ||= not_taken_routine_rows.filter_map do |id, date|
+      id if routine_windows[id] == date
+    end.tally
+  end
+
+  def not_taken_routine_rows
+    MedicationDoseOccurrence.where(
+      person_medication_id: routine_windows.keys, outcome: 'not_taken',
+      window_starts_on: (routine_windows.values.min || today)..today
+    ).pluck(:person_medication_id, :window_starts_on)
   end
 
   def taken_count_for_cycle(source)
