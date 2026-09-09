@@ -90,5 +90,5 @@
 
 ## 15B. Write Formal Outcomes through Sync Batches
 
-- [ ] 15B.1 Red: specify idempotent not-taken, ETag-protected reopen, and complete-batch rollback.
-- [ ] 15B.2 Green: add batch outcome operations through the shared resolver.
+- [x] 15B.1 Red: specify idempotent not-taken, ETag-protected reopen, and complete-batch rollback.
+- [x] 15B.2 Green: add batch outcome operations through the shared resolver.

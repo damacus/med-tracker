@@ -7254,6 +7254,7 @@ components:
             - medication
             - health_event
             - medication_take
+            - medication_dose_occurrence
             - schedule
             - person_medication
             - medication_pause_period
@@ -7272,10 +7273,11 @@ components:
             portable period id, if_match and empty attributes. No timestamps, update
             or delete are accepted for pause periods. Repeating close for a completed
             period cannot close a later pause.
+            Dose occurrence creates require source_type schedule, source_id, occurrence_key and outcome not_taken; optional reason and note record the decision. Updates require id, if_match and outcome open to reopen a decision. Dose occurrence deletion is unsupported.
           properties:
             occurrence_key:
               type: string
-              description: Optional opaque identity on medication_take creates; links the dose atomically to that occurrence.
+              description: Required on medication_dose_occurrence creates. Optional on medication_take creates to link the dose atomically to that occurrence.
             occurrence_etag:
               type: string
               description: Current outcome version, required when a queued take replaces a not-taken decision.
@@ -7324,6 +7326,7 @@ components:
             - Medication
             - HealthEvent
             - MedicationTake
+            - MedicationDoseOccurrence
             - Schedule
             - PersonMedication
             - MedicationPausePeriod

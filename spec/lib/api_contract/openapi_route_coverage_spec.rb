@@ -1582,6 +1582,19 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(described_class.schema_errors('SyncBatchRequest', request)).to be_empty
     end
 
+    it 'accepts queued dose outcome requests and their results' do
+      %w[create update].each do |action|
+        operation = { action: action, resource_type: 'medication_dose_occurrence', id: SecureRandom.uuid,
+                      if_match: 'version', attributes: { outcome: action == 'create' ? 'not_taken' : 'open' } }
+        result = { index: 0, action: action, record_type: 'MedicationDoseOccurrence',
+                   record_portable_id: SecureRandom.uuid, etag: 'version' }
+
+        expect(described_class.schema_errors('SyncBatchRequest', { batch: { operations: [operation] } })).to be_empty
+        expect(described_class.schema_errors('SyncBatchResponse', { data: { applied: true, results: [result] } }))
+          .to be_empty
+      end
+    end
+
     it 'accepts queued schedule and assignment requests and their results' do
       %w[schedule person_medication].each do |resource_type|
         %w[create update delete].each do |action|

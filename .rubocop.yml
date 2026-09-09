@@ -22,6 +22,8 @@ AllCops:
 Style/FrozenStringLiteralComment:
   Exclude:
     - "app/services/api/dose_outcome_sync_projection.rb"
+    - "app/services/api/sync/dose_outcome_operation.rb"
+    - "spec/requests/api/v1/sync_outcome_writes_spec.rb"
     - "spec/requests/api/v1/sync_outcome_reads_spec.rb"
     - "app/controllers/dose_occurrences_controller.rb"
     - "app/components/dose_occurrences/edit_view.rb"
