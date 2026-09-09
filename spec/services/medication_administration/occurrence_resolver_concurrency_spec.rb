@@ -4,7 +4,7 @@ require 'timeout'
 RSpec.describe MedicationAdministration::OccurrenceResolver do
   self.use_transactional_tests = false
 
-  fixtures :households, :accounts, :people, :users, :locations, :medications, :dosages, :schedules
+  fixtures :households, :accounts, :people, :users, :locations, :medications, :dosages, :schedules, :person_medications
 
   let(:source) { schedules(:john_movicol) }
   let(:membership) { accounts(:admin).household_memberships.find_by!(household: source.household) }
@@ -19,31 +19,45 @@ RSpec.describe MedicationAdministration::OccurrenceResolver do
   after do
     clear_outcomes
     source.medication.reload.update!(current_supply: initial_supply)
+    source.destroy! if source.is_a?(PersonMedication)
   end
 
-  it 'commits one of a competing take and not-taken decision' do
-    results = resolve_concurrently(%w[take unwell])
+  shared_examples 'concurrent outcome resolution' do
+    it 'commits one of a competing take and not-taken decision' do
+      results = resolve_concurrently(%w[take unwell])
 
-    expect(results.grep(MedicationDoseOccurrence).size).to eq(1)
-    expect(results.grep(described_class::Error).sole.code).to be_in(%w[already_resolved precondition_required])
-    expect(source.medication_dose_occurrences.count).to eq(1)
+      expect(results.grep(MedicationDoseOccurrence).size).to eq(1)
+      expect(results.grep(described_class::Error).sole.code).to be_in(%w[already_resolved precondition_required])
+      expect(source.medication_dose_occurrences.count).to eq(1)
+    end
+
+    it 'converges concurrent identical not-taken submissions on one audited outcome' do
+      rows = resolve_concurrently(%w[unwell unwell])
+
+      expect(rows).to all(be_a(MedicationDoseOccurrence))
+      expect(rows.map(&:id).uniq.size).to eq(1)
+      expect(source.medication_dose_occurrences.count).to eq(1)
+      expect(rows.first.versions.count).to eq(1)
+    end
+
+    it 'commits one of two competing reasons and rejects the other' do
+      results = resolve_concurrently(%w[unwell refused])
+
+      expect(results.grep(MedicationDoseOccurrence).size).to eq(1)
+      expect(results.grep(described_class::Error).map(&:code)).to eq(['already_resolved'])
+      expect(source.medication_dose_occurrences.count).to eq(1)
+    end
   end
 
-  it 'converges concurrent identical not-taken submissions on one audited outcome' do
-    rows = resolve_concurrently(%w[unwell unwell])
+  it_behaves_like 'concurrent outcome resolution'
 
-    expect(rows).to all(be_a(MedicationDoseOccurrence))
-    expect(rows.map(&:id).uniq.size).to eq(1)
-    expect(source.medication_dose_occurrences.count).to eq(1)
-    expect(rows.first.versions.count).to eq(1)
-  end
+  context 'with a direct routine assignment' do
+    let(:source) do
+      create(:person_medication, :routine, person: people(:john), medication: medications(:vitamin_c),
+                                           max_daily_doses: 1)
+    end
 
-  it 'commits one of two competing reasons and rejects the other' do
-    results = resolve_concurrently(%w[unwell refused])
-
-    expect(results.grep(MedicationDoseOccurrence).size).to eq(1)
-    expect(results.grep(described_class::Error).map(&:code)).to eq(['already_resolved'])
-    expect(source.medication_dose_occurrences.count).to eq(1)
+    it_behaves_like 'concurrent outcome resolution'
   end
 
   def resolve_concurrently(reasons)
@@ -83,7 +97,7 @@ RSpec.describe MedicationAdministration::OccurrenceResolver do
   end
 
   def resolve_in_connection(source_id, membership_id, key, reason)
-    current_source = Schedule.find(source_id)
+    current_source = source.class.find(source_id)
     actor = HouseholdMembership.find(membership_id)
     context = AuthorizationContext.new(account: actor.account, household: current_source.household, membership: actor)
     resolver = described_class.new(source: current_source, authorization: context)

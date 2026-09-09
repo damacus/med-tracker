@@ -46,11 +46,21 @@ module MedicationAdministration
 
       validate_take_version!(row.record, options)
       validate_actionable!(row)
-      unless taken_at.in_time_zone.to_date == row.window_starts_on
-        raise Error, 'Dose does not match the occurrence window'
-      end
+      raise Error, 'Dose does not match the occurrence window' unless matching_take_window?(row, taken_at)
 
       link_take(row, record_dose(taken_at: taken_at, **options))
+    end
+
+    def matching_take_window?(row, taken_at)
+      return taken_at.in_time_zone.to_date == row.window_starts_on if source.is_a?(Schedule)
+
+      window = DoseCycle.new(source.dose_cycle).range_for(row.window_starts_on.in_time_zone)
+      window.cover?(taken_at) && within_source_lifecycle?(taken_at)
+    end
+
+    def within_source_lifecycle?(taken_at)
+      taken_at >= source.created_at &&
+        (source.retired_at.nil? || taken_at < source.retired_at)
     end
 
     def record_dose(taken_at:, **options)
@@ -95,7 +105,7 @@ module MedicationAdministration
     end
 
     def matching_identity?(identity)
-      identity.is_a?(Array) && identity.size == 4 && identity[0] == 'schedule' &&
+      identity.is_a?(Array) && identity.size == 4 && identity[0] == MedicationDoseSource.new(source).type &&
         identity[1] == source.portable_id && identity[3].is_a?(Integer)
     end
 
