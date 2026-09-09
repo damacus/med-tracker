@@ -65,7 +65,6 @@ module RequestHelpers
     clear_2fa_for_account(account)
 
     post '/login', params: { email: account.email, password: 'password' }
-    follow_redirect! if response.redirect?
   end
 
   def default_request_household_slug

@@ -62,29 +62,31 @@ RSpec.describe 'Mobile UI audit' do
     [390, 1280].each do |width|
       page.current_window.resize_to(width, width == 390 ? 844 : 800)
 
-      %w[light dark].each do |appearance|
-        apply_appearance(appearance)
+      audited_ui_routes.each do |path, expected_path|
+        visit path
 
-        audited_ui_routes.each do |path, expected_path|
-          visit path
+        %w[light dark].each do |appearance|
+          apply_appearance(appearance)
 
           expect(page).to have_current_path(expected_path)
           expect(page).to have_css('body')
-          expect(page_horizontal_overflow).to be <= 1,
-                                              format(
-                                                'route=%<route>s width=%<width>s appearance=%<appearance>s ' \
-                                                'overflow=%<overflow>s diagnostics=%<diagnostics>s ' \
-                                                'route_elements=%<route_elements>s',
-                                                route: path,
-                                                width: width,
-                                                appearance: appearance,
-                                                overflow: page_horizontal_overflow,
-                                                diagnostics: overflowing_elements.inspect,
-                                                route_elements: route_overflow_diagnostics.inspect
-                                              )
-          expect(low_contrast_text).to be_empty,
+          overflow = page_horizontal_overflow
+          contrast_failures = low_contrast_text
+          expect(overflow).to be <= 1,
+                              format(
+                                'route=%<route>s width=%<width>s appearance=%<appearance>s ' \
+                                'overflow=%<overflow>s diagnostics=%<diagnostics>s ' \
+                                'route_elements=%<route_elements>s',
+                                route: path,
+                                width: width,
+                                appearance: appearance,
+                                overflow: overflow,
+                                diagnostics: (overflowing_elements.inspect if overflow > 1),
+                                route_elements: (route_overflow_diagnostics.inspect if overflow > 1)
+                              )
+          expect(contrast_failures).to be_empty,
                                        "route=#{path} width=#{width} appearance=#{appearance} " \
-                                       "contrast_failures=#{low_contrast_text.inspect}"
+                                       "contrast_failures=#{contrast_failures.inspect}"
         end
       end
     end
@@ -99,19 +101,21 @@ RSpec.describe 'Mobile UI audit' do
     [390, 1280].each do |width|
       page.current_window.resize_to(width, width == 390 ? 844 : 800)
 
-      %w[light dark].each do |appearance|
-        apply_appearance(appearance)
+      routes.each do |path|
+        visit path
 
-        routes.each do |path|
-          visit path
+        %w[light dark].each do |appearance|
+          apply_appearance(appearance)
 
           expect(page).to have_current_path(path)
-          expect(page_horizontal_overflow).to be <= 1,
-                                              "route=#{path} width=#{width} appearance=#{appearance} " \
-                                              "overflow=#{page_horizontal_overflow}"
-          expect(low_contrast_text).to be_empty,
+          overflow = page_horizontal_overflow
+          contrast_failures = low_contrast_text
+          expect(overflow).to be <= 1,
+                              "route=#{path} width=#{width} appearance=#{appearance} " \
+                              "overflow=#{overflow}"
+          expect(contrast_failures).to be_empty,
                                        "route=#{path} width=#{width} appearance=#{appearance} " \
-                                       "contrast_failures=#{low_contrast_text.inspect}"
+                                       "contrast_failures=#{contrast_failures.inspect}"
         end
       end
     end
@@ -124,11 +128,11 @@ RSpec.describe 'Mobile UI audit' do
     [390, 1280].each do |width|
       page.current_window.resize_to(width, width == 390 ? 844 : 800)
 
-      %w[light dark].each do |appearance|
-        apply_appearance(appearance)
+      paths.each do |path|
+        visit path
 
-        paths.each do |path|
-          visit path
+        %w[light dark].each do |appearance|
+          apply_appearance(appearance)
 
           expect(page).to have_current_path(path)
           expect(page).to have_css('body')
@@ -350,11 +354,20 @@ RSpec.describe 'Mobile UI audit' do
   end
 
   def apply_appearance(appearance)
-    visit root_path
-    page.execute_script(<<~JS)
-      localStorage.setItem("med-tracker-appearance", "#{appearance}");
-      document.documentElement.classList.toggle("dark", "#{appearance}" === "dark");
-      document.documentElement.dataset.appearance = "#{appearance}";
+    page.evaluate_script(<<~JS)
+      (() => {
+        if (!document.getElementById("audit-disable-motion")) {
+          const style = document.createElement("style");
+          style.id = "audit-disable-motion";
+          style.textContent = "*, *::before, *::after { transition: none !important; animation: none !important; }";
+          document.head.appendChild(style);
+        }
+        localStorage.setItem("med-tracker-appearance", "#{appearance}");
+        document.documentElement.classList.toggle("dark", "#{appearance}" === "dark");
+        document.documentElement.dataset.appearance = "#{appearance}";
+        return document.fonts.ready.then(() => new Promise(resolve =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))));
+      })()
     JS
   end
 

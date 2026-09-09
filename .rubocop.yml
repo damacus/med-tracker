@@ -21,6 +21,7 @@ AllCops:
 
 Style/FrozenStringLiteralComment:
   Exclude:
+    - "spec/requests/test_setup_spec.rb"
     - "app/services/api/sync/operation_catalog.rb"
     - "app/services/api/sync/replay_authorization.rb"
     - "spec/requests/api/v1/sync_replay_permissions_spec.rb"

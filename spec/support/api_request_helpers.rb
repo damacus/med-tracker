@@ -344,7 +344,7 @@ module ApiRequestHelpers
       connection = scope.klass.connection
       table_name = scope.klass.quoted_table_name
 
-      scope.pluck(:id).each do |id|
+      scope.where("#{table_name}.household_id IS DISTINCT FROM ?", household.id).pluck(:id).each do |id|
         connection.execute(<<~SQL.squish)
           UPDATE #{table_name}
           SET household_id = #{connection.quote(household.id)}

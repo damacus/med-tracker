@@ -84,6 +84,7 @@ RSpec.describe 'Reports' do
       end
 
       it 'renders a preserved filter error when the end date is before the start date' do
+        follow_redirect!
         person = people(:john)
 
         get reports_path, params: { start_date: '2026-02-01', end_date: '2026-01-01', person_id: person.id }
@@ -258,6 +259,7 @@ RSpec.describe 'Reports' do
     end
 
     it 'returns reversed export filters to the report form with one dedicated alert' do
+      follow_redirect!
       person = people(:john)
 
       get health_history_report_path,
