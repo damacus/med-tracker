@@ -31,6 +31,12 @@ The system SHALL persist an immutable inclusive window end when saving an occurr
 - **THEN** the saved outcome retains its original month-end boundary
 - **AND** a correction uses that saved window
 
+#### Scenario: Migrate a saved monthly outcome
+- **GIVEN** a saved monthly outcome has an administration later than the cycle's first day
+- **WHEN** a v2 bundle is exported and imported into another household
+- **THEN** the original cycle end and take linkage are preserved
+- **AND** replaying the unchanged bundle does not create another outcome or reduce stock
+
 ### Requirement: As-needed assignments never generate expected outcomes
 The system SHALL NOT create expected occurrences, not-taken actions, missed-dose escalation, or adherence penalties for an as-needed direct assignment.
 

@@ -30,7 +30,7 @@ The assignment's `created_at` date and optional `retired_at` bound valid windows
 
 A date range selects the existing cycle windows that intersect it. An assignment created partway through a cycle keeps that cycle's original start date as its identity, but cannot become due before creation. Creation and retirement bound the active part of the cycle when evaluating a full pause. Persisted outcomes and unlinked takes use the same cycle boundaries, including when a read starts midway through the cycle.
 
-Persist the inclusive `window_ends_on` when an outcome is first saved. The end date is immutable with the occurrence identity. A later dose-cycle edit must not change the saved outcome's window or the dates accepted for its correction. Backfill existing records within each household's tenant context. Keep the column nullable for existing bulk portable writers until their adapter is extended; ordinary record creation requires it.
+Persist the inclusive `window_ends_on` when an outcome is first saved. The end date is immutable with the occurrence identity. A later dose-cycle edit must not change the saved outcome's window or the dates accepted for its correction. Backfill existing records within each household's tenant context. Keep the column nullable during rolling upgrades; ordinary record creation requires it. Older portable rows derive the missing end from their source cycle on first import.
 
 Rejected alternatives:
 

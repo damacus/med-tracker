@@ -47,8 +47,8 @@
 
 ## 8. Accept Direct Routine Sources through Portable Data
 
-- [ ] 8.1 Red: specify one routine outcome round trip and as-needed rejection.
-- [ ] 8.2 Green: enable the source in existing portable validators, ordering, and documentation.
+- [x] 8.1 Red: specify one routine outcome round trip and as-needed rejection.
+- [x] 8.2 Green: enable the source in existing portable validators, ordering, and documentation.
 
 ## 9. Record Direct Routine Not-Taken Outcomes on the Web
 
