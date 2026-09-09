@@ -16,7 +16,7 @@
 - [x] 3.1 Red-Green-Refactor: implement bounded occurrence reads and not-taken/reopen/take adapters from existing tasks 8–9C, covering every mobile-dose-outcome-api scenario and the relevant admin/clinician/self/carer/parent/unauthorized cases with focused request specs.
 - [x] 3.2 Red-Green-Refactor: implement existing scheduled outcome tasks 10–15B for contracts, take sync linkage, portable-v2 round trip, web outcome/correction actions, sync reads and batch mutations; verify focused tests, contract generation and desktop/mobile browser evidence for visible changes.
 - [x] 3.3 Red-Green-Refactor: complete `extend-dose-outcomes-to-routine-assignments` in its declared order, verifying direct routine cycles and exclusion of as-needed sources across API, sync, portable data and existing consumers.
-- [ ] 3.4 Verify and publish each dose layer with `task rubocop`, focused changed-area specs, applicable generated-client checks and current GitHub PR metadata; mark corresponding existing-plan tasks only when proven complete.
+- [x] 3.4 Verify and publish each dose layer with `task rubocop`, focused changed-area specs, applicable generated-client checks and current GitHub PR metadata; mark corresponding existing-plan tasks only when proven complete.
 
 ## 4. Stock removal API
 
@@ -35,7 +35,7 @@
 
 - [x] 6.1 Red-Green-Refactor: expose filtered paginated review reads and audited ETag-protected review updates, verifying evidence immutability and person-policy scenarios.
 - [x] 6.2 Red-Green-Refactor: share health-history and medicine-review projections for typed JSON and protected PDF, verifying access, date bounds, download audit and renderer failures.
-- [ ] 6.3 Publish typed contracts after client checks and focused Rails/Ruby gates; verify the review and report layers follow the location layer in order.
+- [x] 6.3 Publish typed contracts after client checks and focused Rails/Ruby gates; verify the review and report layers follow the location layer in order.
 
 ## 7. Profile and invitation API
 
@@ -43,7 +43,7 @@
 - [x] 7.2 Red-Green-Refactor: add protected current-person avatar upload/read/removal; verify image validation, revoked access and attachment failure handling.
 - [x] 7.3 Red-Green-Refactor: add authenticated invitation acceptance using the existing acceptance transaction, verifying matching verified identity, replay, expiry, revocation and grant isolation.
 - [x] 7.4 Red-Green-Refactor: add fresh-authorized resend through the existing delivery workflow, testing old-token invalidation and denied stale MFA.
-- [ ] 7.5 Add typed contracts and capability metadata, run client and focused Rails/Ruby gates, then publish and verify the profile/invitation stack layer.
+- [x] 7.5 Add typed contracts and capability metadata, run client and focused Rails/Ruby gates, then publish and verify the profile/invitation stack layer.
 
 ## 8. Offline write parity
 
@@ -51,11 +51,11 @@
 - [x] 8.2 Red-Green-Refactor: extend replay for care records and review changes through the same services, verifying ETags, current access and retained history.
 - [x] 8.3 Red-Green-Refactor: extend stock/inventory/order/removal and pause/resume/reorder replay, verifying duplicate prevention and same online domain validation.
 - [x] 8.4 Red-Green-Refactor: prove multi-operation rollback including audit/feed state, deterministic responses and revocation after queueing with focused batch integration specs.
-- [ ] 8.5 Update capability/OpenAPI/generated contracts, run relevant client checks and focused Rails/Ruby gates, then publish and verify the final implementation stack layer.
+- [x] 8.5 Update capability/OpenAPI/generated contracts, run relevant client checks and focused Rails/Ruby gates, then publish and verify the final implementation stack layer.
 
 ## 9. Final verification and handoff
 
 Use focused checks per layer. Run the full Rails suite only for a justified integration gate or a regression that needs it, as requested on 2026-09-08.
 
-- [ ] 9.1 Reconcile every capability scenario and existing dose-plan task against delivered tests and PRs; leave #2152 open until all requested work is delivered.
-- [ ] 9.2 Verify all stack bases, pushed SHAs and applicable GitHub checks; record any unresolved blocker in #2152 and provide the stack URL without merging or deploying.
+- [x] 9.1 Reconcile every capability scenario and existing dose-plan task against delivered tests and PRs; leave #2152 open until all requested work is delivered.
+- [x] 9.2 Verify all stack bases, pushed SHAs and applicable GitHub checks; record any unresolved blocker in #2152 and provide the stack URL without merging or deploying.
