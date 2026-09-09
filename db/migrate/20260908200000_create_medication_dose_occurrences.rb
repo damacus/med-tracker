@@ -24,7 +24,7 @@ class CreateMedicationDoseOccurrences < ActiveRecord::Migration[8.1]
   end
 
   def down
-    drop_table :medication_dose_occurrences
+    raise ActiveRecord::IrreversibleMigration, 'Recorded clinical dose outcomes must be retained'
   end
 
   private
