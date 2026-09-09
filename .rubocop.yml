@@ -21,6 +21,13 @@ AllCops:
 
 Style/FrozenStringLiteralComment:
   Exclude:
+    - "app/services/medication_review_report_query.rb"
+    - "app/controllers/api/v1/medication_review_reports_controller.rb"
+    - "spec/requests/api/v1/medication_review_reports_spec.rb"
+    - "app/controllers/concerns/api/v1/report_rendering.rb"
+    - "app/controllers/api/v1/health_history_reports_controller.rb"
+    - "app/serializers/api/v1/health_history_report_serializer.rb"
+    - "spec/requests/api/v1/protected_reports_spec.rb"
     - "app/services/medication_review_prompt_query.rb"
     - "app/services/medication_reviews/update_prompt.rb"
     - "app/serializers/api/v1/medication_review_prompt_serializer.rb"

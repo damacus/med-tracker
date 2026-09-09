@@ -34,8 +34,8 @@
 ## 6. Review and report API
 
 - [x] 6.1 Red-Green-Refactor: expose filtered paginated review reads and audited ETag-protected review updates, verifying evidence immutability and person-policy scenarios.
-- [ ] 6.2 Red-Green-Refactor: share health-history and medicine-review projections for typed JSON and protected PDF, verifying access, date bounds, download audit and renderer failures.
-- [ ] 6.3 Publish typed contracts after client checks and focused Rails/Ruby gates; verify the review/report PR targets the location layer.
+- [x] 6.2 Red-Green-Refactor: share health-history and medicine-review projections for typed JSON and protected PDF, verifying access, date bounds, download audit and renderer failures.
+- [ ] 6.3 Publish typed contracts after client checks and focused Rails/Ruby gates; verify the review and report layers follow the location layer in order.
 
 ## 7. Profile and invitation API
 

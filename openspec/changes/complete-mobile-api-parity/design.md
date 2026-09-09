@@ -51,3 +51,12 @@ Each endpoint has a stable operation ID, typed request/response/error schemas, s
 ## Migration Plan
 
 Add and verify outcome storage first without exposing writes. Complete each domain dependency and consumer before enabling API capability flags. Subsequent routes and schemas are additive. Retain occurrence/audit rows on rollback; never reverse by dropping clinical history. Publish each validated layer to the stack and hand off for separate merge/deployment review.
+
+### Report contract details
+
+JSON report reads and `.pdf` downloads have separate operation IDs so native
+generators retain correct response types. Health history uses the existing
+GP query and its date bound. Medicine-review reports remain current queue
+snapshots with the web status filter; date filters are rejected rather than
+silently applied to a different review date. Both require a selected person
+and record successful downloads before sending the response.

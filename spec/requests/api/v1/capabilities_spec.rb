@@ -36,6 +36,14 @@ RSpec.describe 'API v1 capabilities' do
     )
   end
 
+  it 'advertises protected JSON and PDF report exports' do
+    get api_v1_capabilities_path, as: :json
+    expect(response.parsed_body.dig('data', 'reports')).to eq(
+      'formats' => %w[json pdf], 'health_history' => true, 'medication_reviews' => true,
+      'selected_person_required' => true, 'health_history_max_span_days' => 366
+    )
+  end
+
   it 'publishes the supported API, auth, portability, sync, and client-tool contracts without auth' do
     get api_v1_capabilities_path, as: :json
 
