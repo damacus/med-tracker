@@ -102,6 +102,52 @@ RSpec.describe 'API v1 queued care records' do
     expect(prompt.reload).to have_attributes(status: 'not_relevant', evidence_text: evidence)
   end
 
+  it 'replays a review update using its server identifier without repeating the audit' do
+    household_id
+    person = people(:john)
+    warfarin = person.household.medications.create!(name: 'Warfarin 1mg tablets', location: locations(:home),
+                                                    dose_amount: 1, dose_unit: 'tablet')
+    [warfarin, medications(:ibuprofen)].each do |medication|
+      create(:person_medication, household: person.household, person: person, medication: medication)
+    end
+    MedicationReviewPromptSync.new(people: Person.where(id: person.id)).call
+    prompt = MedicationReviewPrompt.where(person: person).sole
+    change = mutation(prompt, 'medication_review_prompt', attributes: { status: 'not_relevant' })
+    key_headers = headers.merge('Idempotency-Key' => SecureRandom.uuid)
+    post_batch(change, request_headers: key_headers)
+    expect(response).to have_http_status(:created)
+    original = response.parsed_body
+    expect { post_batch(change, request_headers: key_headers) }
+      .not_to(change { SecurityAuditEvent.where(event_type: 'medication_review_prompt.updated').count })
+    expect(response).to have_http_status(:created)
+    expect(response.parsed_body).to eq(original)
+    expect(response.headers['Idempotency-Replayed']).to eq('true')
+  end
+
+  it 'preserves shared review version errors and rolls back earlier writes' do
+    household_id
+    person = people(:john)
+    warfarin = person.household.medications.create!(name: 'Warfarin 1mg tablets', location: locations(:home),
+                                                    dose_amount: 1, dose_unit: 'tablet')
+    [warfarin, medications(:ibuprofen)].each do |medication|
+      create(:person_medication, household: person.household, person: person, medication: medication)
+    end
+    MedicationReviewPromptSync.new(people: Person.where(id: person.id)).call
+    prompt = MedicationReviewPrompt.where(person: person).sole
+    updater = instance_double(MedicationReviews::UpdatePrompt)
+    allow(MedicationReviews::UpdatePrompt).to receive(:new).and_return(updater)
+    { 'conflict' => ['sync_conflict', :conflict],
+      'precondition_required' => ['precondition_required', :precondition_required] }.each do |code, (api_code, status)|
+      allow(updater).to receive(:call).and_raise(MedicationReviews::UpdatePrompt::VersionError.new(code))
+      post_batch({ resource_type: 'location', action: 'create', attributes: { name: 'Review rollback' } },
+                 mutation(prompt, 'medication_review_prompt', attributes: { status: 'not_relevant' }))
+      expect(response).to have_http_status(status)
+      expect(response.parsed_body.dig('error', 'code')).to eq(api_code)
+      expect(Location.where(name: 'Review rollback')).not_to exist
+      expect(prompt.reload.status).to eq('needs_review')
+    end
+  end
+
   it 'rolls back earlier care records and their audit and feed effects on a later conflict' do
     household_id
     operation = mutation(people(:john), 'person', attributes: { name: 'Must roll back' }).merge(if_match: 'stale')

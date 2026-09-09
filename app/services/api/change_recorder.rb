@@ -66,6 +66,7 @@ module Api
     end
 
     def outcome_metadata(record)
+      return { person_portable_id: record.person.portable_id } if record.is_a?(HealthEvent)
       return {} unless record.is_a?(MedicationDoseOccurrence)
 
       { person_portable_id: record.source.person.portable_id }

@@ -8185,7 +8185,18 @@ components:
         - change_feed
         - batch_mutations
         - tombstones
+        - operations
+        - online_only_resources
       properties:
+        operations:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncOperationCapability'
+        online_only_resources:
+          type: array
+          items:
+            type: string
+            enum: [account, profile, avatar, invitation, household_membership, person_access_grant, location_membership, report, api_session, api_app_token]
         portable_ids:
           type: boolean
           description: Whether portable identifiers are supported.
@@ -8214,6 +8225,19 @@ components:
         tombstones:
           type: boolean
           description: Whether tombstones are supported.
+    SyncOperationCapability:
+      type: object
+      additionalProperties: false
+      required: [resource_type, actions]
+      properties:
+        resource_type:
+          type: string
+          enum: [medication_take, medication_dose_occurrence, medication, medication_dosage_option, person, health_event, location, medication_review_prompt, schedule, person_medication]
+        actions:
+          type: array
+          items:
+            type: string
+            enum: [create, update, delete, adjust_inventory, mark_as_ordered, mark_as_received, remove_stock, pause, resume, reorder]
     CapabilityClientTools:
       type: object
       additionalProperties: false
