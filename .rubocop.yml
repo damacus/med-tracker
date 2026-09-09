@@ -21,6 +21,9 @@ AllCops:
 
 Style/FrozenStringLiteralComment:
   Exclude:
+    - "app/controllers/api/v1/profile_avatars_controller.rb"
+    - "app/services/profiles/avatar.rb"
+    - "spec/requests/api/v1/profile_avatars_spec.rb"
     - "app/controllers/api/v1/profiles_controller.rb"
     - "app/services/profiles/update.rb"
     - "app/serializers/api/v1/profile_serializer.rb"

@@ -19,6 +19,13 @@ or `mobile_shortcuts`. Person and account changes save in one transaction.
 Unknown fields, including email and roles, are rejected. These operations are
 online only. Current person permissions are checked before cached retries.
 
+`PUT /households/{household_id}/profile/avatar` accepts a multipart `avatar`
+file: PNG, JPEG or WebP, up to 5 MiB. `GET` on that path streams the image after
+checking current person access; `DELETE` removes the attachment. No public or
+presigned URL is returned. Invalid uploads and storage failures retain the
+existing image. Avatar requests run online and do not cache multipart responses
+under `Idempotency-Key`.
+
 ## Canonical addressing
 
 The document's first server URL is `/api/v1`. Path keys are relative to that

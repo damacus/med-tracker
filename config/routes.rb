@@ -36,6 +36,9 @@ Rails.application.routes.draw do
       scope 'households/:household_id', as: :household do
         resource :me, only: [:show], controller: 'me'
         resource :profile, only: %i[show update]
+        get 'profile/avatar', to: 'profile_avatars#show'
+        put 'profile/avatar', to: 'profile_avatars#update'
+        delete 'profile/avatar', to: 'profile_avatars#destroy'
         resources :people, only: %i[index show create update]
         resources :medication_review_prompts, only: %i[index show update]
         get 'reports/health_history', to: 'health_history_reports#show'
