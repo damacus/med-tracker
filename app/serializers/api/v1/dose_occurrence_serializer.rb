@@ -14,9 +14,15 @@ module Api
       attr_reader :occurrence
 
       def identity
-        { key: occurrence.key, source_type: 'schedule', source_id: occurrence.source.id,
-          source_portable_id: occurrence.source.portable_id, window_starts_on: occurrence.window_starts_on.iso8601,
-          position: occurrence.position, scheduled_at: occurrence.scheduled_at&.iso8601 }
+        source_identity.merge(key: occurrence.key, window_starts_on: occurrence.window_starts_on.iso8601,
+                              window_ends_on: occurrence.window_ends_on.iso8601, position: occurrence.position,
+                              scheduled_at: occurrence.scheduled_at&.iso8601)
+      end
+
+      def source_identity
+        source = occurrence.source
+        { source_type: MedicationDoseSource.new(source).type, source_id: source.id,
+          source_portable_id: source.portable_id }
       end
 
       def state

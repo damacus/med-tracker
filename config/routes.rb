@@ -59,6 +59,11 @@ Rails.application.routes.draw do
           end
         end
         resources :person_medications, only: %i[index show create update] do
+          resources :dose_occurrences, only: [:index] do
+            post :not_taken, on: :collection
+            patch :reopen, on: :collection
+            post :take, on: :collection
+          end
           member do
             patch :pause
             patch :resume

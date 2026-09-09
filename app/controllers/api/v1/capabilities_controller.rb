@@ -64,7 +64,7 @@ module Api
 
       def dose_outcomes
         {
-          source_types: ['schedule'],
+          source_types: %w[schedule person_medication],
           max_read_days: MedicationAdministration::OccurrenceProjection::MAX_DAYS,
           actions: %w[not_taken reopen take],
           replacement_requires_version: true
