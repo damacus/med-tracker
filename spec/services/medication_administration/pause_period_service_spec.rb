@@ -80,7 +80,7 @@ RSpec.describe MedicationAdministration::PausePeriodService do
         .to raise_error(ActiveRecord::RecordNotFound)
       expect(source.reload).to be_active
     ensure
-      source.update_column(:retired_at, nil)
+      source.update!(retired_at: nil)
     end
 
     it 'rolls back a created period when the source update fails' do

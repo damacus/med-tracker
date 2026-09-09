@@ -124,7 +124,7 @@ RSpec.describe MedicationAdministration::ResumePeriodService do
         .to raise_error(ActiveRecord::RecordNotFound)
       expect(source.reload).to be_paused
     ensure
-      source.update_column(:retired_at, nil)
+      source.update!(retired_at: nil)
     end
 
     it 'rolls back a closed period when the source update fails' do
