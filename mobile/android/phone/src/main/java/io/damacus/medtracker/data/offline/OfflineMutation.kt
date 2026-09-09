@@ -7,7 +7,9 @@ enum class MutationType {
     RECORD_NOT_TAKEN,
     RECORD_STOCK_REMOVAL,
     UPDATE_MEDICATION,
-    CREATE_SCHEDULE
+    CREATE_SCHEDULE,
+    PAUSE_SCHEDULE,
+    RESUME_SCHEDULE
 }
 
 data class OfflineMutation(

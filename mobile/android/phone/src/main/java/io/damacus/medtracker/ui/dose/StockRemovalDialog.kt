@@ -25,9 +25,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
 enum class StockRemovalReason(val label: String) {
+    DAMAGED("Damaged"),
+    DROPPED("Dropped / Spilled"),
     EXPIRED("Expired"),
-    SPILLED("Spilled / Damaged"),
     DISCARDED("Discarded"),
+    LOST("Lost"),
     OTHER("Other")
 }
 
@@ -38,7 +40,7 @@ fun StockRemovalDialog(
     onConfirmRemoval: (quantity: Double, reason: String) -> Unit
 ) {
     var quantityText by remember { mutableStateOf("1") }
-    var selectedReason by remember { mutableStateOf(StockRemovalReason.SPILLED) }
+    var selectedReason by remember { mutableStateOf(StockRemovalReason.DAMAGED) }
     var isError by remember { mutableStateOf(false) }
 
     AlertDialog(

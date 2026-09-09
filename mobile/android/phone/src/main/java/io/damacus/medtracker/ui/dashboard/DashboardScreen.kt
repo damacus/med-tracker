@@ -177,8 +177,21 @@ fun DashboardScreen(
                     TodaysScheduleSection(
                         scheduleItems = scheduleItems,
                         takingScheduleId = uiState.takingScheduleId,
-                        onRecordDose = onRecordDose
+                        onRecordDose = onRecordDose,
+                        pauseController = uiState.pauseController
                     )
+                }
+
+                uiState.pauseController?.let { controller ->
+                    item {
+                        val pauseState by controller.state.collectAsState()
+                        MedicationPauseControls(
+                            state = pauseState,
+                            personId = dashboard.selectedPersonId,
+                            controller = controller,
+                            displayedScheduleIds = scheduleItems.mapNotNull { it.schedule.portableId }.toSet()
+                        )
+                    }
                 }
 
                 // 5. Inventory & Stock Alerts Section (Full Width)
@@ -423,178 +436,6 @@ private data class NavigationItem(
     val icon: ImageVector,
     val isSelected: Boolean
 )
-
-<<<<<<< Updated upstream
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DashboardMainContent(
-    session: AppSession,
-    uiState: DashboardUiState,
-    isWideScreen: Boolean,
-    snackbarHostState: SnackbarHostState,
-    modifier: Modifier = Modifier,
-    onOpenDrawer: (() -> Unit)? = null,
-    onRefresh: () -> Unit,
-    onSelectPerson: (Long?) -> Unit,
-    onRecordDose: (ScheduleDto) -> Unit,
-    onNavigateToProfile: () -> Unit
-) {
-    Scaffold(
-        modifier = modifier,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            if (!isWideScreen) {
-                TopAppBar(
-                    title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = MedTrackerPrimary,
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = "M",
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "MedTracker",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { onOpenDrawer?.invoke() }) {
-                            Icon(imageVector = Icons.Default.Menu, contentDescription = "Menu")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = onRefresh) {
-                            Icon(imageVector = Icons.Default.Refresh, contentDescription = "Refresh")
-                        }
-                        IconButton(onClick = onNavigateToProfile) {
-                            Icon(imageVector = Icons.Default.Person, contentDescription = "Profile")
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background,
-                        titleContentColor = MaterialTheme.colorScheme.onBackground
-                    )
-                )
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { innerPadding ->
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = MedTrackerPrimary)
-            }
-        } else {
-            val dashboard = uiState.dashboardData
-            val scheduleItems = dashboard.displayScheduleItems
-            val user = session.user
-            val activePerson = dashboard.selectedPerson
-            val greetingName = activePerson?.name?.split(" ")?.firstOrNull()
-                ?: user?.name?.split(" ")?.firstOrNull()
-                ?: "Alex"
-
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                // 1. Demo Environment Notice Banner
-                item {
-                    DemoNoticeBanner()
-                }
-
-                // 2. Greeting & Top Action Buttons
-                item {
-                    GreetingHeader(
-                        greetingName = greetingName,
-                        onAddPerson = { /* Action handled */ },
-                        onAddMedication = { /* Action handled */ }
-                    )
-                }
-
-                // 3. Person Switcher Bar
-                item {
-                    PersonSwitcherBar(
-                        people = dashboard.people,
-                        selectedPerson = activePerson,
-                        userName = user?.name ?: "Alex Demo",
-                        onSelectPerson = onSelectPerson
-                    )
-                }
-
-                // 4. Metric Stat Cards Row
-                item {
-                    val totalDue = scheduleItems.count { it.isDueNow }
-                    val tasksCount = scheduleItems.size
-                    MetricStatsCardsRow(
-                        nextDueText = if (scheduleItems.isEmpty()) "None today" else "18:00",
-                        dueNowCount = totalDue,
-                        tasksLeftCount = tasksCount
-                    )
-                }
-
-                // 5. Two-column / Grid: Today's Schedule + Stock Inventory
-                item {
-                    ScheduleAndInventorySection(
-                        scheduleItems = scheduleItems,
-                        takingScheduleId = uiState.takingScheduleId,
-                        onRecordDose = onRecordDose,
-                        pauseController = uiState.pauseController
-                    )
-                }
-
-                uiState.pauseController?.let { controller ->
-                    item {
-                        val pauseState by controller.state.collectAsState()
-                        MedicationPauseControls(pauseState, dashboard.selectedPersonId, controller, scheduleItems.mapNotNull { it.schedule.portableId }.toSet())
-                    }
-                }
-
-                // 6. Smart Insights Card
-                item {
-                    SmartInsightsCard()
-                }
-
-                // 7. Version Footer
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "v0.5.20",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-=======
->>>>>>> Stashed changes
 @Composable
 private fun DemoNoticeBanner() {
     Surface(
@@ -940,30 +781,6 @@ private fun TodaysScheduleSection(
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
-<<<<<<< Updated upstream
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "No medications scheduled for today.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontStyle = FontStyle.Italic,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    scheduleItems.forEach { item ->
-                        ScheduleDoseItemRow(
-                            item = item,
-                            isTaking = takingScheduleId == item.schedule.id,
-                            onTakeClick = { onRecordDose(item.schedule) }
-                        )
-                        pauseController?.let { SchedulePauseActions(it, item.schedule.portableId) }
-                    }
-=======
                     Text(
                         text = "${scheduleItems.size} doses",
                         style = MaterialTheme.typography.labelSmall,
@@ -971,7 +788,6 @@ private fun TodaysScheduleSection(
                         color = MedTrackerPrimary,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
->>>>>>> Stashed changes
                 }
             }
         }
@@ -1018,6 +834,7 @@ private fun TodaysScheduleSection(
                         isTaking = takingScheduleId == item.schedule.id,
                         onTakeClick = { onRecordDose(item.schedule) }
                     )
+                    pauseController?.let { SchedulePauseActions(it, item.schedule.portableId) }
                 }
             }
         }

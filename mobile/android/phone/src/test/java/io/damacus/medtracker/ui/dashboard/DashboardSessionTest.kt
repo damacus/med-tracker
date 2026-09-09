@@ -5,10 +5,13 @@ import io.damacus.medtracker.data.CredentialStore
 import io.damacus.medtracker.data.SessionManager
 import io.damacus.medtracker.data.api.ApiResult
 import io.damacus.medtracker.data.api.MedTrackerApi
+import io.damacus.medtracker.data.model.AuthenticationResult
 import io.damacus.medtracker.data.model.CreateMedicationPayload
 import io.damacus.medtracker.data.model.CreateSchedulePayload
 import io.damacus.medtracker.data.model.DashboardData
+import io.damacus.medtracker.data.model.HouseholdChoice
 import io.damacus.medtracker.data.model.HouseholdDto
+import io.damacus.medtracker.data.model.HouseholdSelectionRequest
 import io.damacus.medtracker.data.model.HouseholdInvitationDto
 import io.damacus.medtracker.data.model.LocationDto
 import io.damacus.medtracker.data.model.MedicationDto
@@ -273,7 +276,6 @@ class DashboardSessionTest {
         assertTrue(api.logoutTokens.isEmpty())
     }
 
-<<<<<<< Updated upstream
     @Test fun `household selection completes authentication against the original server`() = runTest(dispatcher) {
         val main = MainViewModel(sessions, api)
         store.put("main", main)
@@ -299,9 +301,6 @@ class DashboardSessionTest {
     }
 
     private suspend fun kotlinx.coroutines.test.TestScope.assertLateLogoutIgnored(fail: Boolean) {
-=======
-    private fun kotlinx.coroutines.test.TestScope.assertLateLogoutIgnored(fail: Boolean) {
->>>>>>> Stashed changes
         signIn(1)
         val model = model()
         val main = MainViewModel(sessions, api)

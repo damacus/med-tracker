@@ -3,6 +3,7 @@ package io.damacus.medtracker.auth
 import io.damacus.medtracker.data.CredentialStore
 import io.damacus.medtracker.data.SessionManager
 import io.damacus.medtracker.data.api.ApiResult
+import io.damacus.medtracker.data.model.AuthenticationResult
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -89,7 +90,9 @@ class LoginIntegrationTest {
         val result = authenticator.authenticate(serverUrl, credentials)
         assertTrue("Expected ApiResult.Success but was $result", result is ApiResult.Success)
 
-        val payload = (result as ApiResult.Success).data
+        val authResult = (result as ApiResult.Success).data
+        assertTrue(authResult is AuthenticationResult.Session)
+        val payload = (authResult as AuthenticationResult.Session).payload
         assertEquals("mock-access-token", payload.accessToken)
         assertEquals("Jane Doe", payload.me?.name)
         assertEquals(42L, payload.household?.id)
@@ -159,7 +162,9 @@ class LoginIntegrationTest {
         val result = authenticator.authenticate(serverUrl, credentials)
         assertTrue("Expected ApiResult.Success for null membership_role but was $result", result is ApiResult.Success)
 
-        val payload = (result as ApiResult.Success).data
+        val authResult = (result as ApiResult.Success).data
+        assertTrue(authResult is AuthenticationResult.Session)
+        val payload = (authResult as AuthenticationResult.Session).payload
         assertEquals("Carer User", payload.me?.name)
         assertNull(payload.me?.role)
     }

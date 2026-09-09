@@ -92,6 +92,21 @@ class MedicationViewModelTest {
         assert(calledBack)
     }
 
+    @Test
+    fun recordStockRemovalCallsApiAndUpdatesMedicationState() = runTest(testDispatcher) {
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        var calledBack = false
+        viewModel.recordStockRemoval(medicationId = 1L, quantity = 2.0, reason = "damaged") {
+            calledBack = true
+        }
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("Stock updated for Paracetamol", state.successMessage)
+        assert(calledBack)
+    }
+
     private class FakeCredentialStore : CredentialStore {
         private var stored: String? = null
         override fun read(): String? = stored
@@ -130,7 +145,11 @@ class MedicationViewModelTest {
         override suspend fun getLocations(baseUrl: String, accessToken: String, householdId: Long) = error("Not used")
         override suspend fun getInvitations(baseUrl: String, accessToken: String, householdId: Long) = error("Not used")
         override suspend fun createInvitation(baseUrl: String, accessToken: String, householdId: Long, email: String, role: String) = error("Not used")
-        override suspend fun recordStockRemoval(baseUrl: String, accessToken: String, householdId: Long, request: RecordStockRemovalPayload) = error("Not used")
+        override suspend fun recordStockRemoval(baseUrl: String, accessToken: String, householdId: Long, request: RecordStockRemovalPayload): ApiResult<MedicationDto> {
+            val existing = medsList.find { it.id == request.medicationId } ?: return ApiResult.Error("not_found", "Not found")
+            val updated = existing.copy(currentSupply = (existing.currentSupply ?: 10.0) - request.quantity)
+            return ApiResult.Success(updated)
+        }
         override suspend fun createSchedule(baseUrl: String, accessToken: String, householdId: Long, request: CreateSchedulePayload) = error("Not used")
         override suspend fun pauseSchedule(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long) = error("Not used")
         override suspend fun resumeSchedule(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long) = error("Not used")

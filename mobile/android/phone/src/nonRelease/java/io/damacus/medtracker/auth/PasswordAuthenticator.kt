@@ -38,21 +38,7 @@ class GeneratedPasswordAuthenticator(
                     credentials.password,
                     credentials.deviceName
                 )
-<<<<<<< Updated upstream
             )
-=======
-            ).data
-            ApiResult.Success(data.toSessionPayload())
-        } catch (error: ClientException) {
-            ApiResult.Error("http_${error.statusCode}", error.message.orEmpty(), error.statusCode)
-        } catch (error: ServerException) {
-            ApiResult.Error("http_${error.statusCode}", error.message.orEmpty(), error.statusCode)
-        } catch (error: IOException) {
-            ApiResult.NetworkError(error)
-        } catch (error: Exception) {
-            ApiResult.Error("response_parse_error", error.localizedMessage ?: "Invalid response from server")
-        }
->>>>>>> Stashed changes
     }
 }
 

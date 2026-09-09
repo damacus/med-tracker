@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.damacus.medtracker.data.model.HouseholdAdminSettingsDto
+import io.damacus.medtracker.data.model.MedicationDto
 import io.damacus.medtracker.data.network.LiveNetworkMonitor
 import io.damacus.medtracker.data.network.NetworkMonitor
 import io.damacus.medtracker.data.offline.OfflineQueueRepository
@@ -66,6 +67,7 @@ import io.damacus.medtracker.ui.common.OfflineSyncBanner
 import io.damacus.medtracker.ui.dashboard.DashboardScreen
 import io.damacus.medtracker.ui.dashboard.DashboardViewModel
 import io.damacus.medtracker.ui.dashboard.SidebarNavigation
+import io.damacus.medtracker.ui.dose.StockRemovalDialog
 import io.damacus.medtracker.ui.healthevents.HealthEventFormDialog
 import io.damacus.medtracker.ui.healthevents.HealthEventsScreen
 import io.damacus.medtracker.ui.healthevents.HealthEventsViewModel
@@ -75,6 +77,7 @@ import io.damacus.medtracker.ui.household.InvitationDialog
 import io.damacus.medtracker.ui.location.LocationListScreen
 import io.damacus.medtracker.ui.lookup.MedicationLookupScreen
 import io.damacus.medtracker.ui.lookup.MedicationLookupViewModel
+import io.damacus.medtracker.ui.medication.MedicationDetailScreen
 import io.damacus.medtracker.ui.medication.MedicationFormScreen
 import io.damacus.medtracker.ui.medication.MedicationListScreen
 import io.damacus.medtracker.ui.medication.MedicationViewModel
@@ -253,6 +256,8 @@ fun MedTrackerApp(
     var currentDestination by remember(sessionRevision) { mutableStateOf(AppDestination.Dashboard) }
 
     var showAddMedicationForm by remember { mutableStateOf(false) }
+    var selectedMedication by remember { mutableStateOf<MedicationDto?>(null) }
+    var showStockRemovalDialog by remember { mutableStateOf(false) }
     var showAddScheduleForm by remember { mutableStateOf(false) }
     var showInviteDialog by remember { mutableStateOf(false) }
     var showHealthEventDialog by remember { mutableStateOf(false) }
@@ -419,11 +424,32 @@ fun MedTrackerApp(
                                                 }
                                             }
                                         )
+                                    } else if (selectedMedication != null) {
+                                        val currentMed = medUiState.medications.find { it.id == selectedMedication?.id } ?: selectedMedication!!
+                                        if (showStockRemovalDialog) {
+                                            StockRemovalDialog(
+                                                medicationName = currentMed.name,
+                                                onDismiss = { showStockRemovalDialog = false },
+                                                onConfirmRemoval = { qty, reason ->
+                                                    val medId = currentMed.id
+                                                    if (medId != null) {
+                                                        medicationViewModel.recordStockRemoval(medId, qty, reason) {
+                                                            showStockRemovalDialog = false
+                                                        }
+                                                    }
+                                                }
+                                            )
+                                        }
+                                        MedicationDetailScreen(
+                                            medication = currentMed,
+                                            onBackClick = { selectedMedication = null },
+                                            onAdjustStockClick = { showStockRemovalDialog = true }
+                                        )
                                     } else {
                                         MedicationListScreen(
                                             uiState = medUiState,
                                             onSearchChange = { medicationViewModel.updateSearchQuery(it) },
-                                            onMedicationClick = {},
+                                            onMedicationClick = { selectedMedication = it },
                                             onAddClick = { showAddMedicationForm = true }
                                         )
                                     }

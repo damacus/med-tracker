@@ -7,14 +7,11 @@ import io.damacus.medtracker.data.model.CreateSchedulePayload
 import io.damacus.medtracker.data.model.HealthEventDto
 import io.damacus.medtracker.data.model.HouseholdAdminSettingsDto
 import io.damacus.medtracker.data.model.HouseholdDto
-<<<<<<< Updated upstream
 import io.damacus.medtracker.data.model.HouseholdChoice
 import io.damacus.medtracker.data.model.HouseholdSelectionRequest
 import io.damacus.medtracker.data.model.AuthenticationResult
-=======
 import io.damacus.medtracker.data.model.HouseholdInvitationDto
 import io.damacus.medtracker.data.model.LocationDto
->>>>>>> Stashed changes
 import io.damacus.medtracker.data.model.MedicationDto
 import io.damacus.medtracker.data.model.MedicationLookupResultDto
 import io.damacus.medtracker.data.model.MedicationTakeDto
@@ -43,13 +40,10 @@ import io.medtracker.client.infrastructure.ApiResponse
 import io.medtracker.client.infrastructure.ClientError
 import io.medtracker.client.infrastructure.Redirection
 import io.medtracker.client.infrastructure.ServerException
-<<<<<<< Updated upstream
 import io.medtracker.client.infrastructure.ServerError
 import io.medtracker.client.infrastructure.Serializer
 import io.medtracker.client.infrastructure.Success
-=======
 import io.medtracker.client.models.AiMedicationSuggestion
->>>>>>> Stashed changes
 import io.medtracker.client.models.AuthLoginData
 import io.medtracker.client.models.AuthLoginResponse
 import io.medtracker.client.models.AuthHouseholdSelectionRequest
@@ -79,6 +73,9 @@ import io.medtracker.client.models.Person
 import io.medtracker.client.models.Schedule
 import io.medtracker.client.models.ScheduleCreateRequest
 import io.medtracker.client.models.ScheduleCreateRequestSchedule
+import io.medtracker.client.models.StockRemovalReason
+import io.medtracker.client.models.StockRemovalRequest
+import io.medtracker.client.models.StockRemovalRequestStockRemoval
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Call
@@ -94,13 +91,9 @@ sealed class ApiResult<out T> {
 }
 
 interface MedTrackerApi {
-<<<<<<< Updated upstream
-    suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest): ApiResult<AuthenticationResult>
-    suspend fun selectHousehold(baseUrl: String, request: HouseholdSelectionRequest): ApiResult<SessionPayload>
-=======
     suspend fun getCapabilities(baseUrl: String): ApiResult<CapabilitiesDto> = ApiResult.Success(CapabilitiesDto("v1", "medtracker.api.capabilities.v1"))
-    suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest): ApiResult<SessionPayload>
->>>>>>> Stashed changes
+    suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest): ApiResult<AuthenticationResult> = ApiResult.Error("not_implemented", "Not implemented")
+    suspend fun selectHousehold(baseUrl: String, request: HouseholdSelectionRequest): ApiResult<SessionPayload> = ApiResult.Error("not_implemented", "Not implemented")
     suspend fun refresh(baseUrl: String, request: RefreshRequest): ApiResult<SessionPayload>
     suspend fun logout(baseUrl: String, accessToken: String): ApiResult<Unit>
     suspend fun getPeople(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<PersonDto>>
@@ -123,22 +116,33 @@ interface MedTrackerApi {
     suspend fun getAdminSettings(baseUrl: String, accessToken: String, householdId: Long): ApiResult<HouseholdAdminSettingsDto> = ApiResult.Success(HouseholdAdminSettingsDto("free"))
 }
 
+private val configureNullSafeEnums: Unit = run {
+    io.medtracker.client.infrastructure.Serializer.moshiBuilder.add(object : com.squareup.moshi.JsonAdapter.Factory {
+        override fun create(type: java.lang.reflect.Type, annotations: Set<Annotation>, moshi: com.squareup.moshi.Moshi): com.squareup.moshi.JsonAdapter<*>? {
+            val rawType = com.squareup.moshi.Types.getRawType(type)
+            if (rawType.isEnum) {
+                return moshi.nextAdapter<Any>(this, type, annotations).nullSafe()
+            }
+            return null
+        }
+    })
+}
+
 class GeneratedMedTrackerApi(
     internal val callFactory: Call.Factory = HttpLoggingPolicy.client()
 ) : MedTrackerApi {
+    init {
+        configureNullSafeEnums
+    }
+
     private val unauthenticatedCalls = RequestAuthCallFactory(callFactory)
 
-<<<<<<< Updated upstream
-    override suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest) = authenticationRequest {
-        MultiResponseAuthenticationApi(apiBaseUrl(baseUrl), unauthenticatedCalls).exchange(
-=======
     override suspend fun getCapabilities(baseUrl: String) = generated {
         CapabilitiesApi(apiBaseUrl(baseUrl), unauthenticatedCalls).getCapabilities().data.toDomain()
     }
 
-    override suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest) = generated {
-        AuthenticationApi(apiBaseUrl(baseUrl), unauthenticatedCalls).exchangeOidcSession(
->>>>>>> Stashed changes
+    override suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest) = authenticationRequest {
+        MultiResponseAuthenticationApi(apiBaseUrl(baseUrl), unauthenticatedCalls).exchange(
             AuthOidcExchangeRequest(request.idToken, request.nonce, request.codeVerifier, request.deviceName, request.householdId?.toInt())
         )
     }
@@ -231,14 +235,25 @@ class GeneratedMedTrackerApi(
     }
 
     override suspend fun recordStockRemoval(baseUrl: String, accessToken: String, householdId: Long, request: RecordStockRemovalPayload) = authenticated(accessToken) { requestCalls ->
-        MedicationsApi(apiBaseUrl(baseUrl), requestCalls).adjustMedicationInventory(
+        val medicationsApi = MedicationsApi(apiBaseUrl(baseUrl), requestCalls)
+        val removalReason = try {
+            StockRemovalReason.valueOf(request.reason.lowercase())
+        } catch (_: Exception) {
+            StockRemovalReason.other
+        }
+        medicationsApi.createMedicationStockRemoval(
             householdId.toInt(),
             request.medicationId.toString(),
-            MedicationInventoryAdjustmentRequest(MedicationInventoryAdjustmentRequestAdjustment(
-                newQuantity = request.quantity.toString(),
-                reason = request.reason
-            ))
-        ).data.toDomain()
+            StockRemovalRequest(
+                StockRemovalRequestStockRemoval(
+                    quantity = String.format(java.util.Locale.US, "%.2f", request.quantity),
+                    reason = removalReason,
+                    submissionId = UUID.randomUUID(),
+                    note = request.reason
+                )
+            )
+        )
+        medicationsApi.getMedication(householdId.toInt(), request.medicationId.toString()).data.toDomain()
     }
 
     override suspend fun createSchedule(baseUrl: String, accessToken: String, householdId: Long, request: CreateSchedulePayload) = authenticated(accessToken) { requestCalls ->
@@ -338,10 +353,32 @@ internal suspend fun authenticationRequest(
         ApiResult.Error("http_${error.statusCode}", error.message.orEmpty(), error.statusCode)
     } catch (error: IOException) {
         ApiResult.NetworkError(error)
-    } catch (_: com.squareup.moshi.JsonDataException) {
-        ApiResult.Error("invalid_response", "Server returned an invalid authentication response")
+    } catch (e: com.squareup.moshi.JsonDataException) {
+        ApiResult.Error("invalid_response", e.message ?: "Server returned an invalid authentication response")
     }
 }
+
+private val authMoshi: com.squareup.moshi.Moshi = com.squareup.moshi.Moshi.Builder()
+    .add(io.medtracker.client.infrastructure.OffsetDateTimeAdapter())
+    .add(io.medtracker.client.infrastructure.LocalDateTimeAdapter())
+    .add(io.medtracker.client.infrastructure.LocalDateAdapter())
+    .add(io.medtracker.client.infrastructure.UUIDAdapter())
+    .add(io.medtracker.client.infrastructure.ByteArrayAdapter())
+    .add(io.medtracker.client.infrastructure.URIAdapter())
+    .add(io.medtracker.client.infrastructure.BigDecimalAdapter())
+    .add(io.medtracker.client.infrastructure.BigIntegerAdapter())
+    .add(object : com.squareup.moshi.JsonAdapter.Factory {
+        override fun create(type: java.lang.reflect.Type, annotations: Set<Annotation>, moshi: com.squareup.moshi.Moshi): com.squareup.moshi.JsonAdapter<*>? {
+            val rawType = com.squareup.moshi.Types.getRawType(type)
+            if (rawType.isEnum) {
+                return moshi.nextAdapter<Any>(this, type, annotations).nullSafe()
+            }
+            return null
+        }
+    })
+    .also { io.medtracker.client.infrastructure.SerializerHelper.addEnumUnknownDefaultCase(it) }
+    .add(com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory())
+    .build()
 
 internal fun decodeAuthenticationResponse(
     response: ApiResponse<Map<String, Any?>?>
@@ -349,7 +386,7 @@ internal fun decodeAuthenticationResponse(
     is Success -> {
         if (response.statusCode == 202) {
             val selection = requireNotNull(
-                Serializer.moshi.adapter(AuthHouseholdSelectionResponse::class.java).fromJsonValue(response.data)
+                authMoshi.adapter(AuthHouseholdSelectionResponse::class.java).fromJsonValue(response.data)
             ).data
             ApiResult.Success(
                 AuthenticationResult.HouseholdSelection(
@@ -359,7 +396,7 @@ internal fun decodeAuthenticationResponse(
             )
         } else {
             val login = requireNotNull(
-                Serializer.moshi.adapter(AuthLoginResponse::class.java).fromJsonValue(response.data)
+                authMoshi.adapter(AuthLoginResponse::class.java).fromJsonValue(response.data)
             )
             ApiResult.Success(AuthenticationResult.Session(login.data.toSessionPayload()))
         }
