@@ -1,7 +1,7 @@
 ## 1. Project Direct Routine Occurrences
 
-- [ ] 1.1 Red: specify DoseCycle-window identities, ordinals, lifecycle bounds, pause overlap, and as-needed exclusion.
-- [ ] 1.2 Green: enable PersonMedication in the shared projector without inventing scheduled times.
+- [x] 1.1 Red: specify DoseCycle-window identities, ordinals, lifecycle bounds, pause overlap, and as-needed exclusion.
+- [x] 1.2 Green: enable PersonMedication in the shared projector without inventing scheduled times.
 
 ## 2. Resolve Direct Routine Outcomes
 
