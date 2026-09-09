@@ -97,6 +97,22 @@ RSpec.describe MedicationAdministration::OccurrenceResolver do
     expect(source.medication.reload.current_supply).to eq(99)
   end
 
+  it 'resolves a new daily identity independently of an overlapping saved monthly outcome' do
+    source.update!(dose_cycle: :monthly)
+    monthly = not_taken
+    source.update!(dose_cycle: :daily)
+    daily = MedicationAdministration::OccurrenceProjection.new(
+      source: source.reload, start_date: Date.current, end_date: Date.current
+    ).call.find { |row| row.window_starts_on == Date.current && row.position == 1 }
+
+    result = resolver.call(key: daily.key, action: 'not_taken', reason: 'refused')
+
+    expect(result).to have_attributes(window_starts_on: Date.current, window_ends_on: Date.current, reason: 'refused')
+    expect(monthly.reload).to have_attributes(window_starts_on: Date.current.beginning_of_month,
+                                             window_ends_on: Date.current.end_of_month, reason: 'unwell')
+    expect(source.medication_dose_occurrences.count).to eq(2)
+  end
+
   it 'rejects a take before assignment creation even inside the same cycle' do
     source.update!(dose_cycle: :monthly, created_at: 1.day.ago)
     expect do
