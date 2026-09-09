@@ -83,6 +83,20 @@ RSpec.describe MedicationAdministration::OccurrenceResolver do
     expect(source.medication.reload.current_supply).to eq(100)
   end
 
+  it 'corrects a saved monthly outcome within its original window after a cycle change' do
+    source.update!(dose_cycle: :monthly)
+    key = key_for
+    record = not_taken
+    source.update!(dose_cycle: :daily)
+
+    result = resolver.take(key: key, taken_at: Time.current, client_uuid: SecureRandom.uuid,
+                           if_match: Api::RecordEtag.for(record))
+
+    expect(result).to be_taken
+    expect(result.window_ends_on).to eq(Date.current.end_of_month)
+    expect(source.medication.reload.current_supply).to eq(99)
+  end
+
   it 'rejects a take before assignment creation even inside the same cycle' do
     source.update!(dose_cycle: :monthly, created_at: 1.day.ago)
     expect do

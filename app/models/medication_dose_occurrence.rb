@@ -4,7 +4,9 @@ class MedicationDoseOccurrence < ApplicationRecord
 
   OUTCOMES = %w[open taken not_taken].freeze
   REASONS = %w[refused unwell asleep medicine_unavailable clinician_advice other].freeze
-  IDENTITY_ATTRIBUTES = %w[household_id schedule_id person_medication_id window_starts_on position scheduled_at].freeze
+  IDENTITY_ATTRIBUTES = %w[
+    household_id schedule_id person_medication_id window_starts_on window_ends_on position scheduled_at
+  ].freeze
 
   belongs_to :household
   belongs_to :schedule, optional: true, inverse_of: :medication_dose_occurrences
@@ -15,8 +17,12 @@ class MedicationDoseOccurrence < ApplicationRecord
   has_paper_trail
 
   before_validation :assign_household
+  before_validation :assign_window_end, on: :create
 
   validates :window_starts_on, presence: true
+  validates :window_ends_on, presence: true, on: :create
+  validates :window_ends_on, comparison: { greater_than_or_equal_to: :window_starts_on },
+                             if: -> { window_starts_on.present? && window_ends_on.present? }
   validates :position, numericality: { only_integer: true, greater_than: 0 }
   validates :outcome, inclusion: { in: OUTCOMES }
   validates :reason, inclusion: { in: REASONS }, allow_nil: true
@@ -38,6 +44,16 @@ class MedicationDoseOccurrence < ApplicationRecord
   def not_taken? = outcome == 'not_taken'
 
   private
+
+  def assign_window_end
+    return if window_ends_on.present? || window_starts_on.blank? || source.blank?
+
+    self.window_ends_on = schedule ? window_starts_on : routine_window_end
+  end
+
+  def routine_window_end
+    DoseCycle.new(person_medication.dose_cycle).range_for(window_starts_on.in_time_zone).end.to_date
+  end
 
   def assign_household
     self.household ||= source&.household

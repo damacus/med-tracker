@@ -18,6 +18,11 @@
 - [x] 4.1 Red: specify shared reminder suppression and continued as-needed exclusion.
 - [x] 4.2 Green: update the direct-assignment reminder branch.
 
+## 4W. Preserve Saved Cycle Boundaries
+
+- [x] 4W.1 Red: specify immutable cycle ends, ordered dates, and tenant-isolated historical backfill.
+- [x] 4W.2 Green: snapshot cycle ends and use them when projecting and correcting saved outcomes.
+
 ## 5R. Report Direct Routine Outcomes
 
 - [ ] 5R.1 Red: specify direct routine history and report categories without changing PRN treatment.

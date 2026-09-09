@@ -54,7 +54,7 @@ module MedicationAdministration
     def matching_take_window?(row, taken_at)
       return taken_at.in_time_zone.to_date == row.window_starts_on if source.is_a?(Schedule)
 
-      window = DoseCycle.new(source.dose_cycle).range_for(row.window_starts_on.in_time_zone)
+      window = row.window_starts_on.in_time_zone...(row.window_ends_on + 1).in_time_zone
       window.cover?(taken_at) && within_source_lifecycle?(taken_at)
     end
 
