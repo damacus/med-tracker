@@ -45,6 +45,30 @@ RSpec.describe 'API v1 routine dose occurrences' do
     expect(source.medication.reload.current_supply).to eq(stock)
   end
 
+  it 'returns the new daily outcome and its own version when a saved monthly window overlaps' do
+    travel_to(Time.zone.local(2026, 9, 9, 12)) do
+      source.update!(dose_cycle: :monthly)
+      submit_not_taken
+      expect(response).to have_http_status(:ok)
+      monthly = source.medication_dose_occurrences.sole
+      source.update!(dose_cycle: :daily)
+      daily = MedicationAdministration::OccurrenceProjection.new(
+        source: source.reload, start_date: Date.current, end_date: Date.current
+      ).call.find { |row| row.window_starts_on == Date.current }
+      headers['Idempotency-Key'] = SecureRandom.uuid
+
+      submit_not_taken(key: daily.key)
+
+      expect(response).to have_http_status(:ok)
+      record = source.medication_dose_occurrences.find_by!(window_starts_on: Date.current)
+      expect(response.parsed_body.fetch('data')).to include('key' => daily.key,
+                                                           'window_starts_on' => Date.current.iso8601,
+                                                           'etag' => Api::RecordEtag.for(record))
+      expect(response.headers['ETag']).to eq(Api::RecordEtag.for(record))
+      expect(monthly.reload.window_starts_on).to eq(Date.current.beginning_of_month)
+    end
+  end
+
   it 'reopens an outcome only with its current version' do
     submit_not_taken
     etag = response.headers['ETag']
