@@ -65,6 +65,30 @@ RSpec.describe 'API v1 offline replay authority' do
     expect(response.parsed_body['data']).to be_nil
   end
 
+  it 'rechecks medicine visibility before returning a cached creation' do
+    grant
+    change = { resource_type: 'medication', action: 'create', attributes: {
+      name: 'Queued medicine', current_supply: '10', dose_amount: '1', dose_unit: 'tablet',
+      location_id: locations(:home).portable_id
+    } }
+    post_batch(change)
+    expect(response).to have_http_status(:created)
+    medicine = Medication.find_by!(portable_id: response.parsed_body.dig('data', 'results', 0, 'record_portable_id'))
+    post_batch(change)
+    expect(response).to have_http_status(:created)
+    expect(response.headers['Idempotency-Replayed']).to eq('true')
+    private_person = Person.create!(household_id: household_id, name: 'Private adult',
+                                    date_of_birth: 40.years.ago.to_date, person_type: :adult)
+    create(:schedule, household_id: household_id, person: private_person, medication: medicine)
+    get api_v1_household_medication_path(household_id, medicine), headers: headers, as: :json
+    expect(response).to have_http_status(:not_found)
+
+    post_batch(change)
+
+    expect(response).to have_http_status(:forbidden)
+    expect(response.parsed_body['data']).to be_nil
+  end
+
   it 'rechecks current grant strength before returning a cached assignment action' do
     grant
     change = operation(schedules(:john_paracetamol), 'schedule', action: 'pause')

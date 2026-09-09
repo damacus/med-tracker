@@ -27,7 +27,9 @@ module Api
         resource_class = RESOURCE_CLASSES.fetch(operation[:resource_type])
         record = find_result(resource_class, operation, result)
         Pundit.authorize(context, record, policy_action(operation[:action]))
-        Pundit.authorize(context, record, :show?) if operation[:action] == 'create' && record.is_a?(Person)
+        return unless operation[:action] == 'create'
+
+        Pundit.authorize(context, record, :show?) if record.is_a?(Person) || record.is_a?(Medication)
       end
 
       def find_result(resource_class, operation, result)
