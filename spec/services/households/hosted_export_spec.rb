@@ -43,6 +43,7 @@ RSpec.describe Households::HostedExport do
       'medication_portable_ids' => [medication.portable_id]
     )
     expect(payload.dig('records', 'people').sole.fetch('location_portable_ids')).to include(location.portable_id)
+    expect(payload.dig('records', 'dose_occurrences').sole).to include('note' => 'Hosted export decision')
   end
 
   it 'restores the retained pause collection from the hosted archive without changing its outer format' do
@@ -93,10 +94,18 @@ RSpec.describe Households::HostedExport do
     location = create(:location, household: household)
     person.location_memberships.create!(household: household, location: location)
     medication = create(:medication, household: household, location: location)
+    create_export_outcome(person, medication)
     event = HealthEvent.create!(household: household, person: person, event_kind: :suspected_side_effect,
                                 title: 'Hosted export reaction', started_on: Date.current)
     HealthEventMedication.create!(household: household, health_event: event, medication: medication)
     [person, location, medication, event]
+  end
+
+  def create_export_outcome(person, medication)
+    schedule = create(:schedule, household: household, person: person, medication: medication, frequency: 'Daily')
+    schedule.medication_dose_occurrences.create!(window_starts_on: Date.current, position: 1, outcome: 'not_taken',
+                                                 note: 'Hosted export decision', resolved_at: Time.current,
+                                                 resolved_by_membership: membership)
   end
 
   def attach_avatar(target_household, bytes, filename)
