@@ -173,6 +173,18 @@ RSpec.describe MedicationReminderEligibilityQuery do
         expect(build_query.medication_names).not_to include(source.medication.display_name)
       end
 
+      %w[daily weekly monthly].each do |cycle|
+        it "keeps the second #{cycle} position eligible after the first take" do
+          source = create(:person_medication, :routine, person: person, dose_cycle: cycle, max_daily_doses: 2)
+          create(:medication_take, :for_person_medication, person_medication: source, taken_at: now - 1.hour)
+
+          expect(build_query.medication_names).to include(source.medication.display_name)
+          window = DoseCycle.new(cycle).range_for(now).begin.to_date
+          record_not_taken(source, position: 2, window_starts_on: window)
+          expect(build_query.medication_names).not_to include(source.medication.display_name)
+        end
+      end
+
       it 'restores eligibility when a routine decision is reopened' do
         source = create(:person_medication, :routine, person: person, max_daily_doses: 1)
         outcome = record_not_taken(source)
