@@ -11,6 +11,26 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
   let(:query) { described_class.new([jane, child]) }
 
   describe '#call' do
+    it 'keeps a current dose visible when an obsolete saved position no longer counts towards completion' do
+      travel_to(Time.current.change(hour: 21, min: 0, sec: 0)) do
+        person = create(:person)
+        schedule = create(:schedule, person: person, schedule_type: :multiple_daily, frequency: 'Daily',
+                                     schedule_config: { 'times' => %w[08:00 12:00 20:00] },
+                                     max_daily_doses: 3, start_date: Date.yesterday, end_date: Date.tomorrow)
+        membership = schedule.household.household_memberships.create!(account: accounts(:admin), role: :owner)
+        schedule.medication_dose_occurrences.create!(window_starts_on: Date.current, position: 3,
+                                                     scheduled_at: Time.current.change(hour: 20), outcome: 'not_taken',
+                                                     reason: 'unwell', resolved_at: Time.current,
+                                                     resolved_by_membership: membership)
+        schedule.update!(schedule_config: { 'times' => %w[08:00 12:00] }, max_daily_doses: 2)
+        create(:medication_take, :for_schedule, schedule: schedule, taken_at: Time.current.change(hour: 8))
+
+        row = described_class.new([person]).call.find { |dose| dose[:source] == schedule }
+
+        expect(row).to include(scheduled_at: Time.current.change(hour: 12), overdue: true, not_taken_count: 0)
+      end
+    end
+
     def count_source_queries(&)
       counts = Hash.new(0)
 
