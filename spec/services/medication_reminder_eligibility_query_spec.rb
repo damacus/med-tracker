@@ -43,6 +43,23 @@ RSpec.describe MedicationReminderEligibilityQuery do
   end
 
   describe '#medication_names' do
+    it 'allocates a legacy take to the earliest unresolved slot and keeps later reminders' do
+      schedule = schedule_with_times(times: %w[08:00 12:00 20:00], takes: [now.change(hour: 9)])
+      record_not_taken(schedule)
+
+      expect(build_query(scheduled_time: '12:00').medication_names).to be_empty
+      expect(build_query(scheduled_time: '20:00').medication_names).to include(schedule.medication_name)
+      expect(build_query.configured_times).to contain_exactly('20:00')
+    end
+
+    it 'keeps the evening reminder after an unlinked morning take' do
+      schedule = schedule_with_times(times: %w[08:00 20:00], takes: [now.change(hour: 8)])
+
+      expect(build_query(scheduled_time: '08:00').medication_names).to be_empty
+      expect(build_query(scheduled_time: '20:00').medication_names).to include(schedule.medication_name)
+      expect(build_query.configured_times).to contain_exactly('20:00')
+    end
+
     it 'excludes a not-taken occurrence from due and missed-dose reminders' do
       schedule = daily_schedule
       record_not_taken(schedule)
