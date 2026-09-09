@@ -445,6 +445,111 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/profile/avatar:
+    get:
+      operationId: downloadCurrentAvatar
+      tags: [Household, People]
+      summary: Download the protected current-person avatar.
+      description: Online only. Every request checks current person access. Multipart writes are not response-cached by Idempotency-Key.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Download the protected current-person avatar.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/no_store'
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '503':
+          $ref: '#/components/responses/AvatarUnavailable'
+    put:
+      operationId: uploadCurrentAvatar
+      tags: [Household, People]
+      summary: Upload a PNG, JPEG or WebP image of at most 5 MiB.
+      description: Online only. Every request checks current person access. Multipart writes are not response-cached by Idempotency-Key.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [avatar]
+              properties:
+                avatar:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Upload a PNG, JPEG or WebP image of at most 5 MiB.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/no_store'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdProfileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '503':
+          $ref: '#/components/responses/AvatarUnavailable'
+    delete:
+      operationId: deleteCurrentAvatar
+      tags: [Household, People]
+      summary: Remove the current-person avatar.
+      description: Online only. Every request checks current person access. Multipart writes are not response-cached by Idempotency-Key.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '204':
+          description: Remove the current-person avatar.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/no_store'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '503':
+          $ref: '#/components/responses/AvatarUnavailable'
   /households/{household_id}/profile:
     get:
       operationId: getHouseholdProfile
@@ -4137,6 +4242,12 @@ components:
         type: integer
         minimum: 1
   responses:
+    AvatarUnavailable:
+      description: Avatar storage is temporarily unavailable. A failed upload retains the existing attachment.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
     ReportUnavailable:
       description: The report could not be rendered or its download audit could not be saved.
       content:
@@ -5709,6 +5820,25 @@ components:
             enum: [show, update]
         online_only:
           type: boolean
+        avatar:
+          $ref: '#/components/schemas/CapabilityAvatar'
+    CapabilityAvatar:
+      type: object
+      additionalProperties: false
+      required: [actions, max_bytes, content_types]
+      properties:
+        actions:
+          type: array
+          items:
+            type: string
+            enum: [show, update, destroy]
+        max_bytes:
+          type: integer
+        content_types:
+          type: array
+          items:
+            type: string
+            enum: [image/png, image/jpeg, image/webp]
     CapabilityReports:
       type: object
       additionalProperties: false

@@ -24,7 +24,7 @@ module Api
           location_management: location_management,
           medication_reviews: medication_reviews,
           reports: reports,
-          profile: { actions: %w[show update], online_only: true },
+          profile: profile,
           portable_formats: portable_formats,
           backups: backups,
           fhir: fhir,
@@ -79,6 +79,12 @@ module Api
       def reports
         { formats: %w[json pdf], health_history: true, medication_reviews: true,
           selected_person_required: true, health_history_max_span_days: Reports::GpDateRange::MAX_RANGE_DAYS }
+      end
+
+      def profile
+        { actions: %w[show update], online_only: true,
+          avatar: { actions: %w[show update destroy], max_bytes: 5.megabytes,
+                    content_types: %w[image/png image/jpeg image/webp] } }
       end
 
       def medication_reviews
