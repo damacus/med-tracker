@@ -38,7 +38,7 @@ module Components
       attr_reader :source, :attributes, :error, :modal
 
       def render_form
-        form_with(url: pause_path, method: :patch, class: 'space-y-6', data: { turbo_frame: '_top' }) do
+        form_with(url: pause_path, method: :patch, class: 'space-y-6', data: form_data) do
           Alert(variant: :destructive, role: :alert, id: 'pause-error') { plain error } if error
           FormField do
             FormFieldLabel(for: 'pause-reason') { t('medication_pauses.reason') }
@@ -68,6 +68,10 @@ module Components
             Button(type: :submit) { t('medication_pauses.submit') }
           end
         end
+      end
+
+      def form_data
+        modal ? {} : { turbo: false }
       end
 
       def pause_path

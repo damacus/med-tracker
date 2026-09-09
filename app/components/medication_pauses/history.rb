@@ -12,12 +12,13 @@ module Components
         div(class: 'px-8 pb-6 space-y-3') do
           active = periods.find { |period| period.ended_at.nil? }
           render_period(active) if active
+          completed_periods = periods.select(&:ended_at)
           details(class: 'rounded-xl border border-border p-3') do
             summary(class: 'cursor-pointer font-medium focus-visible:ring-2 focus-visible:ring-primary') do
               t('medication_pauses.history')
             end
             ol(class: 'space-y-4 pt-3') do
-              periods.each { |period| li { render_period(period) } }
+              completed_periods.each { |period| li { render_period(period) } }
             end
           end
         end
