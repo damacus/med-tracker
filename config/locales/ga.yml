@@ -2114,6 +2114,12 @@ ga:
         metric_value:
           one: 1 lá
           other: "%{count} lá"
+      missed_routine_cycles:
+        title: "Timthriallta rialta caillte"
+        summary: "Tá dáileoga caillte gan mhíniú i %{count} timthriall as a chéile."
+        detail: "Athbhreithnigh taifid na ndáileog rialta do na timthriallta seo."
+        metric_label: "An tsraith is faide"
+        metric_value: "%{count} timthriall"
       missed_dose_pattern:
         title: Patrún dáileoga caillte
         summary:
