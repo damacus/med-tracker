@@ -36,7 +36,7 @@ module Api
 
         private
 
-        def authorize_api_replay!
+        def authorize_pause_replay!
           operations.each do |operation|
             next unless operation[:resource_type] == 'medication_pause_period'
 
@@ -46,9 +46,18 @@ module Api
 
         def with_api_idempotency(&)
           operations.each do |operation|
+            Api::Sync::OperationCatalog.validate!(operation)
             outcome_operation.authorize_operation!(operation) if outcome_operation?(operation)
           end
           super
+        end
+
+        def authorize_api_replay!(record)
+          return unless record.response_status.between?(200, 299)
+
+          authorize_pause_replay!
+          Api::Sync::ReplayAuthorization.new(authorization: pundit_user, household: current_household)
+                                        .call(operations: operations, results: record.response_body.dig('data', 'results'))
         end
 
         def outcome_operation?(operation)

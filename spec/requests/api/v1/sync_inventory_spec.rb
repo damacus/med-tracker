@@ -107,6 +107,22 @@ RSpec.describe 'API v1 queued inventory' do
     expect([PaperTrail::Version, ApiChangeEvent].map(&:count)).to eq(counts)
   end
 
+  it 'refuses deletion of medicine with retained administration history' do
+    household_id
+    medicine = schedules(:john_paracetamol).medication
+    post_batch(mutation('delete', record: medicine))
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(Medication.exists?(medicine.id)).to be(true)
+  end
+
+  it 'refuses a valid decimal removal when there is insufficient stock' do
+    medication.update!(current_supply: 1)
+    post_batch(mutation('remove_stock', { quantity: '2', reason: 'dropped', submission_id: SecureRandom.uuid }))
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(medication.reload.current_supply).to eq(1)
+    expect(RemoveMedicationStockService.history(medication)).to be_empty
+  end
+
   it 'preserves the online distinction between ordering visible medicine and changing its stock' do
     household_id
     actor = api_login(users(:jane), household_id: household_id)

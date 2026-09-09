@@ -53,7 +53,9 @@ module Api
 
       private
 
-      def authorize_api_replay!
+      def authorize_api_replay!(record)
+        return unless record.response_status.between?(200, 299)
+
         source = replay_source
         raise ActiveRecord::RecordNotFound if source.retired_at.present?
 

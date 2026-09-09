@@ -67,7 +67,9 @@ module Api
 
       private
 
-      def authorize_api_replay!
+      def authorize_api_replay!(record)
+        return unless record.response_status.between?(200, 299)
+
         return super unless %w[pause resume].include?(action_name)
 
         source = find_api_record(policy_scope(PersonMedication), params.expect(:id))

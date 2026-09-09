@@ -57,6 +57,18 @@ RSpec.shared_examples 'queued outcome contract' do
     expect(record.reload.reason).to eq('unwell')
   end
 
+  it 'replays a cached outcome batch without duplicating the decision' do
+    change = not_taken_operation
+    key_headers = headers.merge('Idempotency-Key' => SecureRandom.uuid)
+    submit([change], request_headers: key_headers)
+    expect(response).to have_http_status(:created)
+    original = response.parsed_body
+    expect { submit([change], request_headers: key_headers) }.not_to change(MedicationDoseOccurrence, :count)
+    expect(response).to have_http_status(:created)
+    expect(response.parsed_body).to eq(original)
+    expect(response.headers['Idempotency-Replayed']).to eq('true')
+  end
+
   it 'replays an omitted reason sent as an empty string' do
     operation = not_taken_operation
     operation[:attributes][:reason] = ''

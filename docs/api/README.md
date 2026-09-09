@@ -47,6 +47,16 @@ not expose the replacement token. If queueing fails, the old token remains valid
 
 ## Queued care records
 
+Capabilities expose `sync.operations`, the supported resource/action pairs, and
+`sync.online_only_resources`. Unsupported pairs return
+`sync_operation_unsupported` before any writes. Profile, avatar, invitation,
+membership, access, location-person membership and report operations stay online.
+
+Successful cached batch responses recheck current authority for every result.
+Retired assignments retain their normal person-policy checks. Deleted health
+events use the person reference in their tombstone; older tombstones without that
+reference cannot authorise replay. Revoked access never returns the saved result.
+
 Sync batches support person create/update, health-event create/update/delete,
 location create/update/delete and medication-review update. Mutable operations
 require `if_match` with the latest ETag. Person creation uses the online grant
