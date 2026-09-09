@@ -28,6 +28,8 @@ The stable direct-assignment identity is source plus the local start date of the
 
 The assignment's `created_at` date and optional `retired_at` bound valid windows. Recorded pause periods exclude overlapping windows under the same interval rule used for schedules. No occurrence can be backdated before creation, after retirement, during a full pause window, or into the future.
 
+A date range selects the existing cycle windows that intersect it. An assignment created partway through a cycle keeps that cycle's original start date as its identity, but cannot become due before creation. Creation and retirement bound the active part of the cycle when evaluating a full pause. Persisted outcomes and unlinked takes use the same cycle boundaries, including when a read starts midway through the cycle.
+
 Rejected alternatives:
 
 - Inventing a midnight due time would misrepresent the regimen.

@@ -6,7 +6,12 @@ module MedicationAdministration
       :key, :source, :window_starts_on, :position, :scheduled_at, :record, :now, :expected, :legacy_take
     ) do
       def outcome = legacy_take ? 'taken' : record&.outcome || 'open'
-      def due? = (scheduled_at || window_starts_on.in_time_zone) <= now
+
+      def due?
+        (scheduled_at || window_starts_on.in_time_zone) <= now &&
+          (source.is_a?(Schedule) || source.created_at <= now)
+      end
+
       def expected? = expected
     end
 
@@ -25,7 +30,9 @@ module MedicationAdministration
       @now = now
       @preloaded = preloaded
       validate_range!
-      raise ArgumentError, 'Unsupported occurrence source' unless source.is_a?(Schedule)
+      @source_type = MedicationDoseSource.new(source).type
+      @start_date = window_start(start_date)
+      @end_date = window_finish(end_date) - 1
     end
 
     def call
@@ -35,7 +42,19 @@ module MedicationAdministration
 
     private
 
-    attr_reader :source, :start_date, :end_date, :now
+    attr_reader :source, :start_date, :end_date, :now, :source_type
+
+    def routine_source? = source_type == 'person_medication'
+
+    def window_start(date)
+      routine_source? ? DoseCycle.new(source.dose_cycle).range_for(date.in_time_zone).begin.to_date : date
+    end
+
+    def window_finish(date)
+      return date + 1 unless routine_source?
+
+      DoseCycle.new(source.dose_cycle).range_for(date.in_time_zone).end.to_date + 1
+    end
 
     def merged_rows
       rows = derived_rows.index_by { |row| [row.window_starts_on, row.position] }
@@ -55,9 +74,27 @@ module MedicationAdministration
 
     def derived_rows
       return [] if as_needed?
+      return routine_rows if routine_source?
       return [] if !source.active && pause_periods.empty?
 
       (start_date..end_date).flat_map { |date| eligible_date?(date) ? rows_on(date) : [] }
+    end
+
+    def routine_rows
+      return [] unless routine_history_available?
+
+      (start_date..end_date).map { |date| window_start(date) }.uniq.flat_map do |date|
+        eligible_routine_window?(date) ? untimed_rows(date) : []
+      end
+    end
+
+    def routine_history_available?
+      source.active || source.retired_at.present? || pause_periods.any?
+    end
+
+    def eligible_routine_window?(date)
+      window_finish(date) > source.created_at.to_date &&
+        (source.retired_at.nil? || date < source.retired_at.to_date)
     end
 
     def eligible_date?(date)
@@ -69,6 +106,8 @@ module MedicationAdministration
     end
 
     def as_needed?
+      return source.as_needed? if routine_source?
+
       source.schedule_type_prn? || source.frequency.to_s.casecmp('as needed').zero? ||
         source.schedule_config.to_h['as_needed'] == true
     end
@@ -87,12 +126,12 @@ module MedicationAdministration
     def untimed_rows(date)
       return [] if fully_paused?(date)
 
-      Array.new(source.expected_doses_on(date)) { |index| occurrence(date, index + 1, nil) }
+      count = routine_source? ? source.max_daily_doses.presence || 1 : source.expected_doses_on(date)
+      Array.new(count) { |index| occurrence(date, index + 1, nil) }
     end
 
     def fully_paused?(date)
-      cursor = date.in_time_zone
-      finish = (date + 1).in_time_zone
+      cursor, finish = active_window_bounds(date)
       sorted_pause_periods.each do |period|
         starts_at = period.started_at || period.created_at
         next if starts_at > cursor
@@ -101,6 +140,14 @@ module MedicationAdministration
         return true if cursor >= finish
       end
       false
+    end
+
+    def active_window_bounds(date)
+      first = date.in_time_zone
+      finish = window_finish(date).in_time_zone
+      return [first, finish] unless routine_source?
+
+      [[first, source.created_at].max, [finish, source.retired_at].compact.min]
     end
 
     def sorted_pause_periods
@@ -116,7 +163,7 @@ module MedicationAdministration
     def persisted_outcomes
       if @preloaded
         return @preloaded.outcomes.select do |record|
-          record.schedule_id == source.id && (start_date..end_date).cover?(record.window_starts_on)
+          matches_source?(record) && (start_date..end_date).cover?(record.window_starts_on)
         end
       end
 
@@ -124,7 +171,7 @@ module MedicationAdministration
     end
 
     def allocate_legacy_takes(rows)
-      takes_by_date = legacy_takes.group_by { |take| take.taken_at.to_date }
+      takes_by_date = legacy_takes.group_by { |take| window_start(take.taken_at.in_time_zone.to_date) }
       rows.map do |row|
         next row unless row.expected? && row.outcome == 'open'
 
@@ -151,12 +198,16 @@ module MedicationAdministration
     end
 
     def preloaded_take_in_range?(take)
-      take.schedule_id == source.id && (start_date..end_date).cover?(take.taken_at.in_time_zone.to_date)
+      matches_source?(take) && (start_date..end_date).cover?(take.taken_at.in_time_zone.to_date)
+    end
+
+    def matches_source?(record)
+      record.public_send("#{source_type}_id") == source.id
     end
 
     def occurrence(date, position, scheduled_at, record: nil)
       Occurrence.new(
-        key: self.class.verifier.generate(['schedule', source.portable_id, date.iso8601, position]),
+        key: self.class.verifier.generate([source_type, source.portable_id, date.iso8601, position]),
         source: source, window_starts_on: date, position: position, scheduled_at: scheduled_at,
         record: record, now: now, expected: true, legacy_take: nil
       )
