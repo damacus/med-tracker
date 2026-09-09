@@ -39,6 +39,12 @@ mismatched invitations and existing membership conflicts return the same
 without recreating revoked grants. The API does not issue a new credential;
 use the existing household-selection login flow for the new household.
 
+`POST /households/{household_id}/admin/invitations/{id}/resend` requires current
+administrator authority and fresh MFA on the session. It rotates the token and
+queues the existing invitation email. Cached retries recheck authority and
+freshness without sending duplicate mail. The response reports `queued`; it does
+not expose the replacement token. If queueing fails, the old token remains valid.
+
 ## Canonical addressing
 
 The document's first server URL is `/api/v1`. Path keys are relative to that

@@ -109,6 +109,7 @@ Rails.application.routes.draw do
           resource :settings, only: %i[show update], controller: 'settings'
           resources :memberships, only: %i[index update destroy]
           resources :invitations, only: %i[index create destroy]
+          post 'invitations/:id/resend', to: 'invitation_resends#create'
           resources :person_access_grants, only: %i[index create destroy]
           resources :app_tokens, only: %i[index create destroy]
           resources :audit_logs, only: %i[index]

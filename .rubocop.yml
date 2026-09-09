@@ -21,6 +21,9 @@ AllCops:
 
 Style/FrozenStringLiteralComment:
   Exclude:
+    - "app/controllers/api/v1/admin/invitation_resends_controller.rb"
+    - "app/services/household_invitations/resend.rb"
+    - "spec/requests/api/v1/invitation_resend_spec.rb"
     - "app/controllers/api/v1/invitation_acceptances_controller.rb"
     - "app/services/household_invitations/accept.rb"
     - "app/services/household_invitations/create_membership.rb"
