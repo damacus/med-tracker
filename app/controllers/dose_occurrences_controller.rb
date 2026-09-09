@@ -68,7 +68,7 @@ class DoseOccurrencesController < ApplicationController
   def outcome_key
     MedicationAdministration::OccurrenceProjection.new(
       source: @source, start_date: @outcome.window_starts_on, end_date: @outcome.window_starts_on
-    ).call.find { |row| row.position == @outcome.position }.key
+    ).call.find { |row| row.record == @outcome }.key
   end
 
   def render_correction(error: nil, status: :ok)

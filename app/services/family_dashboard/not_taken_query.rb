@@ -6,7 +6,9 @@ module FamilyDashboard
     end
 
     def for_source(source)
-      outcomes_by_source.fetch(source_key(source), [])
+      outcomes_by_source.fetch(source_key(source), []).select do |outcome|
+        outcome.window_starts_on == window_start(source)
+      end
     end
 
     def by_person(people)
@@ -18,16 +20,15 @@ module FamilyDashboard
 
     def outcomes_by_source
       @outcomes_by_source ||= records.includes(schedule: :medication, person_medication: :medication)
-                                     .select { |outcome| outcome.window_starts_on == window_start(outcome.source) }
                                      .group_by { |outcome| source_key(outcome.source) }
     end
 
     def records
-      earliest_window = @person_medications.map { |source| window_start(source) }.min || Date.current
       MedicationDoseOccurrence.where(outcome: 'not_taken').where(
         schedule_id: @schedules.map(&:id), window_starts_on: Date.current
       ).or(MedicationDoseOccurrence.where(outcome: 'not_taken', person_medication_id: @person_medications.map(&:id),
-                                          window_starts_on: earliest_window..Date.current))
+                                          window_starts_on: ..Date.current)
+                                    .where('COALESCE(window_ends_on, window_starts_on) >= ?', Date.current))
     end
 
     def window_start(source)
