@@ -7,12 +7,13 @@ module PortableData
 
     class Error < StandardError; end
 
-    def initialize(household:, membership:, passphrase:, person_ids: nil, request: nil)
+    def initialize(household:, membership:, passphrase:, person_ids: nil, **options)
       @household = household
       @membership = membership
       @passphrase = passphrase
       @person_ids = Array(person_ids).compact_blank
-      @request = request
+      @request = options[:request]
+      @people_scope = options[:people_scope]
     end
 
     def call(version: 1, format: FORMAT)
@@ -99,7 +100,7 @@ module PortableData
 
     def people
       @people ||= begin
-        scope = household.people.where(id: manageable_person_ids).order(:id)
+        scope = household.people.where(id: @people_scope || manageable_person_ids).order(:id)
         person_ids.present? ? scope.where(id: person_ids) : scope
       end
     end

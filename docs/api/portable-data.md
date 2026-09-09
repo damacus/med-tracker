@@ -159,6 +159,10 @@ Start with `GET /sync/snapshot`. Store its cursor and each record ETag. Use the 
 
 Send local writes to `POST /sync/batches`. Update and delete operations need the latest ETag in `if_match`. Medication-take creation uses `client_uuid` for idempotency. A stale ETag returns a sync conflict, and the complete batch rolls back.
 
+Sync snapshots include persisted `dose_occurrences` in the v2 format and use current person-level view grants for person records and their sources. Reads do not create projected open occurrences.
+
+Changes with `record_type: MedicationDoseOccurrence` include a `record` field containing the current portable outcome and its ETag. Several events for one outcome can carry the same latest state. Outcome events and deletion markers are filtered by current access to the person. Clinical reasons and notes appear only in the authorised record payload, not in event metadata. Refresh the snapshot after access changes.
+
 ### Queued schedules and medication assignments
 
 The batch endpoint accepts `create`, `update`, and `delete` for `schedule` and `person_medication`. The caller needs manage access to the person. Every referenced person, medicine and dosage option must be visible in the active household.

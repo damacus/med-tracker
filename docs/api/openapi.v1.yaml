@@ -7166,6 +7166,10 @@ components:
         - occurred_at
         - metadata
       properties:
+        record:
+          description: Current saved outcome for MedicationDoseOccurrence changes. Other record types omit this field.
+          allOf:
+            - $ref: '#/components/schemas/PortableDoseOccurrence'
         id:
           $ref: '#/components/schemas/NumericId'
         record_type:

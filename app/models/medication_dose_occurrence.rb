@@ -1,5 +1,6 @@
 class MedicationDoseOccurrence < ApplicationRecord
   include PortableIdentifiable
+  include SyncTrackable
 
   OUTCOMES = %w[open taken not_taken].freeze
   REASONS = %w[refused unwell asleep medicine_unavailable clinician_advice other].freeze
