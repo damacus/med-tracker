@@ -60,3 +60,17 @@ GP query and its date bound. Medicine-review reports remain current queue
 snapshots with the web status filter; date filters are rejected rather than
 silently applied to a different review date. Both require a selected person
 and record successful downloads before sending the response.
+
+### Profile identity and invitation acceptance
+
+The profile API uses the selected membership's person and checks its account
+link. Joining another household creates a separate household person. The
+account's original person remains its oldest profile; assigning a later profile
+must not replace the canonical association used by login and `/me`.
+
+Acceptance requires a verified user session, a matching email and the current
+token digest. It checks these again under the invitation lock, shares web signup
+membership and grant creation, and rolls back all writes together. Replays check
+current membership state and never recreate revoked grants. App tokens remain
+scoped to their existing household. Nested tenant contexts restore exact prior
+database settings, including after database errors.

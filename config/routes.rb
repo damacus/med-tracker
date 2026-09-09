@@ -33,6 +33,8 @@ Rails.application.routes.draw do
         delete :logout, to: 'sessions#destroy'
       end
 
+      post 'invitations/accept', to: 'invitation_acceptances#create'
+
       scope 'households/:household_id', as: :household do
         resource :me, only: [:show], controller: 'me'
         resource :profile, only: %i[show update]
