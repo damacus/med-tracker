@@ -3,15 +3,11 @@ package io.damacus.medtracker.auth
 import io.damacus.medtracker.data.api.ApiResult
 import io.damacus.medtracker.data.api.HttpLoggingPolicy
 import io.damacus.medtracker.data.api.RequestAuthCallFactory
-import io.damacus.medtracker.data.api.toSessionPayload
-import io.damacus.medtracker.data.model.SessionPayload
-import io.medtracker.client.infrastructure.ClientException
-import io.medtracker.client.infrastructure.ServerException
+import io.damacus.medtracker.data.api.authenticationRequest
+import io.damacus.medtracker.data.model.AuthenticationResult
+import io.medtracker.client.infrastructure.ApiResponse
 import io.medtracker.client.models.AuthLoginRequest
 import io.medtracker.password.client.apis.AuthenticationApi
-import java.io.IOException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import okhttp3.Call
 
 data class PasswordCredentials(
@@ -21,7 +17,7 @@ data class PasswordCredentials(
 )
 
 interface PasswordAuthenticator {
-    suspend fun authenticate(serverUrl: String, credentials: PasswordCredentials): ApiResult<SessionPayload>
+    suspend fun authenticate(serverUrl: String, credentials: PasswordCredentials): ApiResult<AuthenticationResult>
 }
 
 class GeneratedPasswordAuthenticator(
@@ -32,25 +28,21 @@ class GeneratedPasswordAuthenticator(
     override suspend fun authenticate(
         serverUrl: String,
         credentials: PasswordCredentials
-    ): ApiResult<SessionPayload> = withContext(Dispatchers.IO) {
-        try {
-            val data = AuthenticationApi(
-                "${serverUrl.trimEnd('/')}/api/v1",
-                unauthenticatedCalls
-            ).createLoginSession(
+    ): ApiResult<AuthenticationResult> = authenticationRequest {
+        MultiResponsePasswordApi(
+            "${serverUrl.trimEnd('/')}/api/v1",
+            unauthenticatedCalls
+        ).login(
                 AuthLoginRequest(
                     credentials.email,
                     credentials.password,
                     credentials.deviceName
                 )
-            ).data
-            ApiResult.Success(data.toSessionPayload())
-        } catch (error: ClientException) {
-            ApiResult.Error("http_${error.statusCode}", error.message.orEmpty(), error.statusCode)
-        } catch (error: ServerException) {
-            ApiResult.Error("http_${error.statusCode}", error.message.orEmpty(), error.statusCode)
-        } catch (error: IOException) {
-            ApiResult.NetworkError(error)
-        }
+            )
     }
+}
+
+private class MultiResponsePasswordApi(basePath: String, client: Call.Factory) : AuthenticationApi(basePath, client) {
+    fun login(requestBody: AuthLoginRequest): ApiResponse<Map<String, Any?>?> =
+        request<AuthLoginRequest, Map<String, Any?>>(createLoginSessionRequestConfig(requestBody))
 }
