@@ -63,6 +63,20 @@ Creating a person changes access grants and can invalidate the current session's
 permission version. Re-authenticate before replay when the server returns 401;
 the same account can recover the saved batch response with the original key.
 
+## Queued inventory
+
+Medication batches accept `create`, `update`, guarded `delete`,
+`adjust_inventory`, `mark_as_ordered`, `mark_as_received` and `remove_stock`.
+Dosage options use `medication_dosage_option` with `create` or `update`.
+These writes use the same permitted fields and stock/order services as online
+requests. Related records must belong to the current household.
+
+Updates, deletes, stock counts, orders and receipts require `if_match`.
+`remove_stock` instead requires a unique `submission_id` with the same decimal
+quantity, reason and optional dosage ID used by the online removal endpoint.
+Reusing that submission cannot subtract stock twice. Removal changes inventory
+and records a stock-removal event; it does not record a clinical dose.
+
 ## Canonical addressing
 
 The document's first server URL is `/api/v1`. Path keys are relative to that

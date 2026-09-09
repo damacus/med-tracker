@@ -102,6 +102,8 @@ module Api
           reject_numeric_contract_values!(%w[
                                             id source_id person_id medication_id source_dosage_option_id dose_amount
                                             current_supply reorder_threshold min_hours_between_doses amount
+                                            medication_ids location_id quantity new_quantity dosage_id
+                                            default_min_hours_between_doses
                                           ])
           params.expect(batch: [{ operations: [[:action, :resource_type, :id, :if_match, { attributes: {} }]] }])
                 .fetch(:operations)
@@ -112,6 +114,9 @@ module Api
             return apply_medication_pause_period_operation(operation, index)
           end
 
+          if Api::Sync::InventoryOperation::RESOURCE_CLASSES.key?(operation[:resource_type])
+            return apply_inventory_operation(operation, index)
+          end
           if Api::Sync::CareRecordOperation::RESOURCE_CLASSES.key?(operation[:resource_type])
             return apply_care_operation(operation, index)
           end
@@ -127,16 +132,9 @@ module Api
 
           reject_medication_take_mutation!(operation, index)
 
-          case operation.fetch(:action)
-          when 'create'
-            create_record(operation, index)
-          when 'update'
-            update_record(operation, index)
-          when 'delete'
-            delete_record(operation, index)
-          else
-            raise BatchError, "operation #{index} action is unsupported"
-          end
+          return create_record(operation, index) if operation.fetch(:action) == 'create'
+
+          raise BatchError, "operation #{index} action is unsupported"
         end
 
         def apply_medication_pause_period_operation(operation, index)
@@ -154,6 +152,15 @@ module Api
           result = { index: index, action: operation[:action], record_type: record.class.name, record_id: record.id.to_s }
           result[:record_portable_id] = record.portable_id if record.respond_to?(:portable_id)
           operation[:action] == 'delete' ? result : result.merge(etag: api_etag(record))
+        end
+
+        def apply_inventory_operation(operation, index)
+          record = Api::Sync::InventoryOperation.new(authorization: pundit_user, household: current_household)
+                                                .call(operation: operation)
+          result = batch_result(record, index, operation[:action])
+          operation[:action] == 'delete' ? result : result.merge(etag: api_etag(record))
+        rescue Api::Sync::InventoryOperation::Error => e
+          raise BatchError.new("operation #{index} #{e.message}", code: e.code, status: e.status)
         end
 
         def apply_assignment_operation(operation, index)
@@ -234,38 +241,6 @@ module Api
           )
         end
 
-        def update_record(operation, index)
-          record = find_batch_record(operation)
-          authorize record, :update?
-          record.with_lock do
-            validate_precondition!(record, operation, index)
-            attributes = permitted_attributes_for(record, operation.fetch(:attributes, {}))
-            raise BatchError, "operation #{index} attributes are invalid" unless record.update(attributes)
-
-            batch_result(record, index, 'update').merge(etag: api_etag(record))
-          end
-        end
-
-        def delete_record(operation, index)
-          record = find_batch_record(operation)
-          authorize record, :destroy?
-          record.with_lock do
-            validate_precondition!(record, operation, index)
-            ensure_deletable!(record, index)
-            result = batch_result(record, index, 'delete')
-            record.destroy!
-            result
-          end
-        end
-
-        def validate_precondition!(record, operation, index)
-          expected = operation[:if_match].to_s
-          raise PreconditionRequired, "operation #{index} if_match is required" if expected.blank?
-          return if ActiveSupport::SecurityUtils.secure_compare(expected, api_etag(record))
-
-          raise SyncConflict, "operation #{index} record has changed since it was last read"
-        end
-
         def batch_result(record, index, action)
           {
             index: index,
@@ -273,32 +248,6 @@ module Api
             record_type: record.class.name,
             record_portable_id: record.portable_id
           }
-        end
-
-        def ensure_deletable!(record, index)
-          return unless MedicationAdministrationHistory.exists_for?(record)
-
-          raise BatchError, "operation #{index} delete conflicts with retained administration history"
-        end
-
-        def find_batch_record(operation)
-          scope = batch_scope(operation.fetch(:resource_type))
-          find_api_record(scope, operation.fetch(:id))
-        rescue KeyError
-          raise BatchError, 'operation resource_type and id are required'
-        end
-
-        def batch_scope(resource_type)
-          case resource_type
-          when 'medication'
-            policy_scope(Medication)
-          else
-            raise BatchError, "resource_type #{resource_type} is unsupported"
-          end
-        end
-
-        def permitted_attributes_for(_record, attributes)
-          attributes.to_h.slice('name', 'friendly_name', 'current_supply', 'reorder_threshold')
         end
       end
     end
