@@ -111,16 +111,19 @@ class MedicationReminderEligibilityQuery
   end
 
   def not_taken_routine_counts
-    @not_taken_routine_counts ||= not_taken_routine_rows.filter_map do |id, date|
-      id if routine_windows[id] == date
-    end.tally
+    @not_taken_routine_counts ||= begin
+      limits = person_medications.to_h { |source| [source.id, expected_person_medication_doses(source)] }
+      not_taken_routine_rows.filter_map do |id, date, position|
+        id if routine_windows[id] == date && position <= limits.fetch(id)
+      end.tally
+    end
   end
 
   def not_taken_routine_rows
     MedicationDoseOccurrence.where(
       person_medication_id: routine_windows.keys, outcome: 'not_taken',
       window_starts_on: (routine_windows.values.min || today)..today
-    ).pluck(:person_medication_id, :window_starts_on)
+    ).pluck(:person_medication_id, :window_starts_on, :position)
   end
 
   def taken_count_for_cycle(source)

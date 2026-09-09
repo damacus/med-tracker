@@ -9,6 +9,18 @@ RSpec.describe MedicationReminderEligibilityQuery do
 
   before { travel_to(now) }
 
+  context 'when a routine cycle changes on a shared boundary' do
+    let(:now) { Time.zone.local(2026, 9, 1, 12) }
+
+    it 'does not count an obsolete monthly position against the new daily limit' do
+      source = create(:person_medication, :routine, person: person, dose_cycle: :monthly, max_daily_doses: 2)
+      record_not_taken(source, position: 2)
+      source.update!(dose_cycle: :daily, max_daily_doses: 1)
+
+      expect(build_query.medication_names).to include(source.medication.display_name)
+    end
+  end
+
   def build_query(scheduled_time: nil, at: now)
     described_class.new(person: person, scheduled_time: scheduled_time, now: at)
   end
