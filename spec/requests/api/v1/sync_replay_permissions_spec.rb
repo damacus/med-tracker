@@ -30,6 +30,7 @@ RSpec.describe 'API v1 offline replay authority' do
     matrix = sync.fetch('operations').to_h { |row| [row.fetch('resource_type'), row.fetch('actions')] }
     expect(matrix).to eq(
       'medication_take' => %w[create], 'medication_dose_occurrence' => %w[create update],
+      'medication_pause_period' => %w[create close],
       'medication' => %w[create update delete adjust_inventory mark_as_ordered mark_as_received remove_stock],
       'medication_dosage_option' => %w[create update], 'person' => %w[create update],
       'health_event' => %w[create update delete], 'location' => %w[create update delete],
