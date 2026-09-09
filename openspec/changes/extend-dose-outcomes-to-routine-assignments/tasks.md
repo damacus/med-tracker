@@ -57,5 +57,5 @@
 
 ## 10. Correct Direct Routine Outcomes on the Web
 
-- [ ] 10.1 Red: specify audited reopen and replacement without changing PRN behaviour.
-- [ ] 10.2 Green: reuse the formal correction component and enable the PersonMedication action.
+- [x] 10.1 Red: specify audited reopen and replacement without changing PRN behaviour.
+- [x] 10.2 Green: reuse the formal correction component and enable the PersonMedication action.
