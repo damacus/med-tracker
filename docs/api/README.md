@@ -45,6 +45,24 @@ queues the existing invitation email. Cached retries recheck authority and
 freshness without sending duplicate mail. The response reports `queued`; it does
 not expose the replacement token. If queueing fails, the old token remains valid.
 
+## Queued care records
+
+Sync batches support person create/update, health-event create/update/delete,
+location create/update/delete and medication-review update. Mutable operations
+require `if_match` with the latest ETag. Person creation uses the online grant
+workflow; location deletion preserves administration history; review updates
+preserve evidence and record the existing audit event. A failed operation rolls
+back the entire batch, including grants, audit records and change-feed entries.
+
+Care results include a string `record_id`. People, health events and locations
+also return `record_portable_id`. Review snapshots use their server ID because
+they do not have portable IDs. Reuse an `Idempotency-Key` to recover a lost batch
+response without repeating creation.
+
+Creating a person changes access grants and can invalidate the current session's
+permission version. Re-authenticate before replay when the server returns 401;
+the same account can recover the saved batch response with the original key.
+
 ## Canonical addressing
 
 The document's first server URL is `/api/v1`. Path keys are relative to that

@@ -18,6 +18,7 @@ module Api
         class SyncConflict < BatchError; end
 
         rescue_from Api::Sync::DoseOutcomeOperation::Error, with: :render_outcome_error
+        rescue_from Api::Sync::CareRecordOperation::Error, with: :render_outcome_error
 
         def create
           results = Households::LifecycleCutoffLock.with(household: current_household) do
@@ -111,6 +112,10 @@ module Api
             return apply_medication_pause_period_operation(operation, index)
           end
 
+          if Api::Sync::CareRecordOperation::RESOURCE_CLASSES.key?(operation[:resource_type])
+            return apply_care_operation(operation, index)
+          end
+
           if outcome_operation?(operation)
             record = outcome_operation.call(operation: operation)
             return batch_result(record, index, operation[:action]).merge(etag: api_etag(record))
@@ -141,6 +146,14 @@ module Api
           )
         rescue Api::Sync::MedicationPausePeriodOperation::Error => e
           raise BatchError.new("operation #{index} #{e.message}", code: e.code, status: e.status)
+        end
+
+        def apply_care_operation(operation, index)
+          record = Api::Sync::CareRecordOperation.new(authorization: pundit_user, household: current_household,
+                                                      request: request).call(operation: operation)
+          result = { index: index, action: operation[:action], record_type: record.class.name, record_id: record.id.to_s }
+          result[:record_portable_id] = record.portable_id if record.respond_to?(:portable_id)
+          operation[:action] == 'delete' ? result : result.merge(etag: api_etag(record))
         end
 
         def apply_assignment_operation(operation, index)
@@ -263,7 +276,6 @@ module Api
         end
 
         def ensure_deletable!(record, index)
-          return unless record.is_a?(Medication)
           return unless MedicationAdministrationHistory.exists_for?(record)
 
           raise BatchError, "operation #{index} delete conflicts with retained administration history"
@@ -280,22 +292,13 @@ module Api
           case resource_type
           when 'medication'
             policy_scope(Medication)
-          when 'health_event'
-            policy_scope(HealthEvent)
           else
             raise BatchError, "resource_type #{resource_type} is unsupported"
           end
         end
 
-        def permitted_attributes_for(record, attributes)
-          case record
-          when Medication
-            attributes.to_h.slice('name', 'friendly_name', 'current_supply', 'reorder_threshold')
-          when HealthEvent
-            attributes.to_h.slice('title', 'notes', 'severity', 'ended_on')
-          else
-            {}
-          end
+        def permitted_attributes_for(_record, attributes)
+          attributes.to_h.slice('name', 'friendly_name', 'current_supply', 'reorder_threshold')
         end
       end
     end

@@ -9113,6 +9113,9 @@ components:
             - schedule
             - person_medication
             - medication_pause_period
+            - person
+            - location
+            - medication_review_prompt
         id:
           $ref: '#/components/schemas/ResourceIdentifier'
         if_match:
@@ -9163,7 +9166,6 @@ components:
         - index
         - action
         - record_type
-        - record_portable_id
       properties:
         index:
           type: integer
@@ -9185,6 +9187,12 @@ components:
             - Schedule
             - PersonMedication
             - MedicationPausePeriod
+            - Person
+            - Location
+            - MedicationReviewPrompt
+        record_id:
+          type: string
+          description: Server record ID. Review results use this identifier because review snapshots do not have portable IDs.
         record_portable_id:
           $ref: '#/components/schemas/PortableId'
         etag:
