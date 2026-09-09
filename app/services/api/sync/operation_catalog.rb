@@ -4,6 +4,7 @@ module Api
       OPERATIONS = {
         'medication_take' => %w[create],
         'medication_dose_occurrence' => %w[create update],
+        'medication_pause_period' => %w[create close],
         'medication' => %w[create update delete adjust_inventory mark_as_ordered mark_as_received remove_stock],
         'medication_dosage_option' => %w[create update],
         'person' => %w[create update],

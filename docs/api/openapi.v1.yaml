@@ -8232,12 +8232,12 @@ components:
       properties:
         resource_type:
           type: string
-          enum: [medication_take, medication_dose_occurrence, medication, medication_dosage_option, person, health_event, location, medication_review_prompt, schedule, person_medication]
+          enum: [medication_take, medication_dose_occurrence, medication_pause_period, medication, medication_dosage_option, person, health_event, location, medication_review_prompt, schedule, person_medication]
         actions:
           type: array
           items:
             type: string
-            enum: [create, update, delete, adjust_inventory, mark_as_ordered, mark_as_received, remove_stock, pause, resume, reorder]
+            enum: [create, update, delete, close, adjust_inventory, mark_as_ordered, mark_as_received, remove_stock, pause, resume, reorder]
     CapabilityClientTools:
       type: object
       additionalProperties: false
