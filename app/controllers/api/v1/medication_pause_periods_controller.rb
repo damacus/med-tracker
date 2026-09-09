@@ -10,6 +10,9 @@ module Api
       rescue_from ActiveRecord::RecordInvalid do |exception|
         render_validation_errors(exception.record)
       end
+      rescue_from MedicationAdministration::ResumePeriodService::StalePrecondition do
+        render_conflict('Record has changed since it was last read')
+      end
 
       def index
         scope = visible_periods
@@ -40,10 +43,10 @@ module Api
         raise ActiveRecord::RecordNotFound if source.retired_at.present?
 
         authorize source, :update?
-        return unless fresh_api_record?(period)
 
         period = MedicationAdministration::ResumePeriodService.new(
-          source:, membership: current_membership, ended_at: Time.current, period:
+          source:, membership: current_membership, ended_at: Time.current, period:,
+          expected_etag: request.headers['If-Match'].to_s
         ).call
         render_period(period)
       end

@@ -63,6 +63,18 @@ RSpec.describe MedicationAdministration::ResumePeriodService do
       expect(newer.reload.ended_at).to be_nil
     end
 
+    it 'rejects a stale precondition after reloading the period under the source lock' do
+      period = create_open_period
+      expected_etag = Api::RecordEtag.for(period)
+      period.update!(note: 'Changed concurrently')
+
+      service = described_class.new(source:, membership:, ended_at:, period:, expected_etag:)
+
+      expect { service.call }.to raise_error(described_class::StalePrecondition)
+      expect(period.reload.ended_at).to be_nil
+      expect(source.reload).to be_paused
+    end
+
     it 'closes one period when callers resume concurrently' do
       period = create_open_period
 
