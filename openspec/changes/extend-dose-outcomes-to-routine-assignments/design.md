@@ -30,6 +30,8 @@ The assignment's `created_at` date and optional `retired_at` bound valid windows
 
 A date range selects the existing cycle windows that intersect it. An assignment created partway through a cycle keeps that cycle's original start date as its identity, but cannot become due before creation. Creation and retirement bound the active part of the cycle when evaluating a full pause. Persisted outcomes and unlinked takes use the same cycle boundaries, including when a read starts midway through the cycle.
 
+Persist the inclusive `window_ends_on` when an outcome is first saved. The end date is immutable with the occurrence identity. A later dose-cycle edit must not change the saved outcome's window or the dates accepted for its correction. Backfill existing records within each household's tenant context. Keep the column nullable for existing bulk portable writers until their adapter is extended; ordinary record creation requires it.
+
 Rejected alternatives:
 
 - Inventing a midnight due time would misrepresent the regimen.
@@ -62,7 +64,7 @@ Add the not-taken action and correction state to the existing direct routine das
 ## Migration Plan
 
 1. Require the complete `record-scheduled-dose-outcomes` change.
-2. Enable direct routine source validation and occurrence derivation without changing the database schema.
+2. Enable direct routine source validation and occurrence derivation, then add and backfill immutable cycle-end snapshots.
 3. Extend dashboard, reminder, report, history, API, sync, and portable adapters through the shared projection.
 4. Advertise `person_medication` as a supported occurrence source and regenerate clients.
 

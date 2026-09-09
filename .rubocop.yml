@@ -73,6 +73,8 @@ Style/FrozenStringLiteralComment:
     - "app/models/medication_dose_occurrence.rb"
     - "spec/models/medication_dose_occurrence_spec.rb"
     - "spec/lib/pdf_text_extractor_spec.rb"
+    - "spec/models/medication_dose_occurrence_window_spec.rb"
+    - "spec/migrations/add_window_end_to_medication_dose_occurrences_spec.rb"
     - "app/components/medications/stock_removal_view.rb"
     - "app/controllers/medication_stock_removals_controller.rb"
     - "app/services/remove_medication_stock_service.rb"
@@ -119,6 +121,7 @@ Rails/OutputSafety:
 Rails/SkipsModelValidations:
   Exclude:
     - "spec/models/medication_dose_occurrence_spec.rb"
+    - "spec/migrations/add_window_end_to_medication_dose_occurrences_spec.rb"
 
 RSpec/ExampleLength:
   Max: 15
