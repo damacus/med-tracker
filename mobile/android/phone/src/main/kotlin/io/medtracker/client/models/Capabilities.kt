@@ -19,8 +19,15 @@ import io.medtracker.client.models.CapabilityAdministration
 import io.medtracker.client.models.CapabilityAuthentication
 import io.medtracker.client.models.CapabilityBackups
 import io.medtracker.client.models.CapabilityClientTools
+import io.medtracker.client.models.CapabilityDoseOutcomes
 import io.medtracker.client.models.CapabilityFhir
+import io.medtracker.client.models.CapabilityInvitations
+import io.medtracker.client.models.CapabilityLocationManagement
 import io.medtracker.client.models.CapabilityMedicationPausePeriods
+import io.medtracker.client.models.CapabilityMedicationReviews
+import io.medtracker.client.models.CapabilityProfile
+import io.medtracker.client.models.CapabilityReports
+import io.medtracker.client.models.CapabilityStockRemovals
 import io.medtracker.client.models.CapabilitySync
 
 import com.squareup.moshi.Json
@@ -34,11 +41,18 @@ import com.squareup.moshi.JsonClass
  * @param apiVersion 
  * @param authentication 
  * @param administration 
+ * @param doseOutcomes 
+ * @param stockRemovals 
+ * @param locationManagement 
+ * @param medicationReviews 
+ * @param reports 
  * @param portableFormats 
  * @param backups 
  * @param fhir 
  * @param sync 
  * @param clientTools 
+ * @param invitations 
+ * @param profile 
  */
 
 
@@ -59,6 +73,21 @@ data class Capabilities (
     @Json(name = "administration")
     val administration: CapabilityAdministration,
 
+    @Json(name = "dose_outcomes")
+    val doseOutcomes: CapabilityDoseOutcomes,
+
+    @Json(name = "stock_removals")
+    val stockRemovals: CapabilityStockRemovals,
+
+    @Json(name = "location_management")
+    val locationManagement: CapabilityLocationManagement,
+
+    @Json(name = "medication_reviews")
+    val medicationReviews: CapabilityMedicationReviews,
+
+    @Json(name = "reports")
+    val reports: CapabilityReports,
+
     @Json(name = "portable_formats")
     val portableFormats: kotlin.collections.Set<Capabilities.PortableFormats>,
 
@@ -72,7 +101,13 @@ data class Capabilities (
     val sync: CapabilitySync,
 
     @Json(name = "client_tools")
-    val clientTools: CapabilityClientTools
+    val clientTools: CapabilityClientTools,
+
+    @Json(name = "invitations")
+    val invitations: CapabilityInvitations? = null,
+
+    @Json(name = "profile")
+    val profile: CapabilityProfile? = null
 
 ) {
 

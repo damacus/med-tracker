@@ -15,6 +15,7 @@
 
 package io.medtracker.client.models
 
+import io.medtracker.client.models.SyncOperationCapability
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -22,6 +23,8 @@ import com.squareup.moshi.JsonClass
 /**
  * 
  *
+ * @param operations 
+ * @param onlineOnlyResources 
  * @param portableIds Whether portable identifiers are supported.
  * @param numericIds 
  * @param mobileSnapshot Whether mobile snapshots are supported.
@@ -35,6 +38,12 @@ import com.squareup.moshi.JsonClass
 
 
 data class CapabilitySync (
+
+    @Json(name = "operations")
+    val operations: kotlin.collections.List<SyncOperationCapability>,
+
+    @Json(name = "online_only_resources")
+    val onlineOnlyResources: kotlin.collections.List<CapabilitySync.OnlineOnlyResources>,
 
     /* Whether portable identifiers are supported. */
     @Json(name = "portable_ids")
@@ -73,6 +82,25 @@ data class CapabilitySync (
 
 ) {
 
+    /**
+     * 
+     *
+     * Values: account,profile,avatar,invitation,household_membership,person_access_grant,location_membership,report,api_session,api_app_token,unknown_default_open_api
+     */
+    @JsonClass(generateAdapter = false)
+    enum class OnlineOnlyResources(val value: kotlin.String) {
+        @Json(name = "account") account("account"),
+        @Json(name = "profile") profile("profile"),
+        @Json(name = "avatar") avatar("avatar"),
+        @Json(name = "invitation") invitation("invitation"),
+        @Json(name = "household_membership") household_membership("household_membership"),
+        @Json(name = "person_access_grant") person_access_grant("person_access_grant"),
+        @Json(name = "location_membership") location_membership("location_membership"),
+        @Json(name = "report") report("report"),
+        @Json(name = "api_session") api_session("api_session"),
+        @Json(name = "api_app_token") api_app_token("api_app_token"),
+        @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
+    }
     /**
      * 
      *
