@@ -9107,6 +9107,9 @@ components:
             - mark_as_ordered
             - mark_as_received
             - remove_stock
+            - pause
+            - resume
+            - reorder
         resource_type:
           type: string
           enum:
@@ -9186,6 +9189,9 @@ components:
             - mark_as_ordered
             - mark_as_received
             - remove_stock
+            - pause
+            - resume
+            - reorder
         record_type:
           type: string
           enum:

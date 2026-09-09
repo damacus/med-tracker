@@ -128,7 +128,7 @@ RSpec.describe 'API v1 queued schedules and assignments' do
 
       it 'rejects updates to retired records and unsupported actions' do
         operation = mutation(record, resource_type)
-        post_batch(operation.merge(action: 'pause'))
+        post_batch(operation.merge(action: 'replace'))
         expect(response).to have_http_status(:unprocessable_content)
         expect(response.parsed_body.dig('error', 'code')).to eq('sync_operation_unsupported')
 
@@ -166,6 +166,7 @@ RSpec.describe 'API v1 queued schedules and assignments' do
 
       it 'requires manage access for creation and removal, not just visibility' do
         attributes = creation_attributes(resource_type)
+        attributes[:medication_id] = schedules(:john_paracetamol).medication.portable_id
         actor_session = actor_access(:doctor, people(:john), :view)
         post_batch({ action: 'create', resource_type: resource_type, attributes: attributes },
                    request_headers: actor_session.fetch(:headers))
