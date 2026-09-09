@@ -50,9 +50,7 @@ module PortableData
       export_payload(include_health_events: include_health_events, format: V2_FORMAT)
     end
 
-    def mobile_v2_payload
-      v2_payload(include_health_events: true)
-    end
+    def mobile_v2_payload = v2_payload(include_health_events: true)
 
     def household_payload
       export_payload(include_health_events: true, scope: 'household', format: V2_FORMAT)
