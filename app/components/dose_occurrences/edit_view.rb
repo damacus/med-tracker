@@ -16,7 +16,7 @@ module Components
           div(class: 'space-y-2') do
             m3_text(variant: :title_medium) { @source.person.name }
             m3_text(variant: :body_large) { @source.medication.display_name }
-            m3_text { @outcome.window_starts_on.iso8601 }
+            m3_text { window_label }
           end
           div(role: 'alert', class: 'rounded-shape-md bg-error-container p-4') { @error } if @error
           if @outcome.not_taken?
@@ -33,6 +33,25 @@ module Components
       end
 
       private
+
+      def window_label
+        return @outcome.window_starts_on.iso8601 if @outcome.window_ends_on == @outcome.window_starts_on
+
+        t('dose_outcomes.cycle_slot', position: @outcome.position, start_date: @outcome.window_starts_on.iso8601,
+                                      end_date: @outcome.window_ends_on.iso8601)
+      end
+
+      def correction_path
+        return schedule_dose_occurrence_path(@source, @outcome) if @source.is_a?(::Schedule)
+
+        person_medication_dose_occurrence_path(@source, @outcome)
+      end
+
+      def default_taken_at
+        return unless Date.current.between?(@outcome.window_starts_on, @outcome.window_ends_on)
+
+        Time.current.strftime('%Y-%m-%dT%H:%M')
+      end
 
       def render_decision
         div(class: 'space-y-1') do
@@ -60,7 +79,7 @@ module Components
       end
 
       def correction_form(resolution)
-        form_with(url: schedule_dose_occurrence_path(@source, @outcome), method: :patch,
+        form_with(url: correction_path, method: :patch,
                   class: 'space-y-4 rounded-shape-xl border border-border p-4', data: { turbo_frame: '_top' }) do
           input(type: :hidden, name: 'dose_occurrence[resolution]', value: resolution)
           input(type: :hidden, name: 'dose_occurrence[etag]', value: Api::RecordEtag.for(@outcome))
@@ -73,7 +92,7 @@ module Components
           render RubyUI::FormFieldLabel.new(for: 'correction_taken_at') { t('dose_outcomes.taken_at') }
           m3_input(type: 'datetime-local', id: 'correction_taken_at', name: 'dose_occurrence[taken_at]',
                    required: true, max: Time.current.strftime('%Y-%m-%dT%H:%M'),
-                   value: @outcome.window_starts_on.today? ? Time.current.strftime('%Y-%m-%dT%H:%M') : nil)
+                   value: default_taken_at)
         end
       end
 
