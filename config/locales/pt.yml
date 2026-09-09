@@ -1802,6 +1802,12 @@ pt:
         metric_value:
           one: 1 dia
           other: "%{count} dias"
+      missed_routine_cycles:
+        title: "Ciclos de rotina perdidos"
+        summary: "Há doses perdidas sem explicação em %{count} ciclos consecutivos."
+        detail: "Reveja os registos de doses de rotina destes ciclos."
+        metric_label: "Maior sequência"
+        metric_value: "%{count} ciclos"
       missed_dose_pattern:
         title: Padrão de doses em falta
         summary:

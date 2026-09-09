@@ -2,7 +2,7 @@
 
 module SmartInsights
   class Context
-    delegate :daily_data, :inventory_alerts, to: :report_data
+    delegate :daily_data, :inventory_alerts, :cycle_summaries, to: :report_data
 
     attr_reader :people, :start_date, :end_date
 
@@ -42,11 +42,12 @@ module SmartInsights
     end
 
     def expected_events
-      daily_data.sum { |day| day[:expected] }
+      daily_data.sum { |day| day[:expected] } + cycle_summaries.sum { |cycle| cycle[:expected] }
     end
 
     def logged_events
-      daily_data.sum { |day| day[:actual] + day.fetch(:not_taken, 0) } + prn_takes.count
+      daily_data.sum { |day| day[:actual] + day.fetch(:not_taken, 0) } +
+        cycle_summaries.sum { |cycle| cycle[:actual] + cycle[:not_taken] } + prn_takes.count
     end
 
     def enough_evidence?

@@ -2486,6 +2486,12 @@ es:
         metric_value:
           one: 1 día
           other: "%{count} días"
+      missed_routine_cycles:
+        title: "Ciclos habituales omitidos"
+        summary: "Hay dosis omitidas sin explicación en %{count} ciclos consecutivos."
+        detail: "Revise los registros de dosis habituales de estos ciclos."
+        metric_label: "Racha más larga"
+        metric_value: "%{count} ciclos"
       missed_dose_pattern:
         title: Patrón de dosis omitidas
         summary:

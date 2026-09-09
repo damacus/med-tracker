@@ -24,4 +24,14 @@ RSpec.describe 'Viewing routine dose reports', :browser do
       end
     end
   end
+
+  it 'shows an insight for repeated unexplained completed routine cycles' do
+    create(:person_medication, :routine, person: people(:john), dose_cycle: :weekly,
+                                         max_daily_doses: 2, created_at: 2.months.ago)
+    page.current_window.resize_to(390, 844)
+    visit reports_path(start_date: 6.weeks.ago.to_date, end_date: Date.current)
+
+    expect(page).to have_text('Missed routine cycles')
+    expect(page).to have_text('Review the routine dose records for these cycles.')
+  end
 end

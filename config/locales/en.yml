@@ -1808,6 +1808,12 @@ en:
         metric_value:
           one: 1 day
           other: "%{count} days"
+      missed_routine_cycles:
+        title: "Missed routine cycles"
+        summary: "%{count} consecutive cycles have unexplained missed doses."
+        detail: "Review the routine dose records for these cycles."
+        metric_label: "Longest run"
+        metric_value: "%{count} cycles"
       missed_dose_pattern:
         title: Missed-dose pattern
         summary:
