@@ -13,7 +13,7 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
   describe '#call' do
     it 'keeps a current dose visible when an obsolete saved position no longer counts towards completion' do
       travel_to(Time.current.change(hour: 21, min: 0, sec: 0)) do
-        person = create(:person)
+        person = create(:person, household: create(:household))
         schedule = create(:schedule, person: person, schedule_type: :multiple_daily, frequency: 'Daily',
                                      schedule_config: { 'times' => %w[08:00 12:00 20:00] },
                                      max_daily_doses: 3, start_date: Date.yesterday, end_date: Date.tomorrow)
