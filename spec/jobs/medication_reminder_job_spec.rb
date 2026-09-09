@@ -144,7 +144,7 @@ RSpec.describe MedicationReminderJob do
     expect(PushNotificationService).not_to have_received(:send_to_account)
   end
 
-  it 'does not send later scheduled-time reminders after the medication was taken today' do
+  it 'sends a later scheduled-time reminder when only the earlier dose was taken' do
     schedule = create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
                                  frequency: 'Twice daily', schedule_type: :multiple_daily,
                                  schedule_config: { 'times' => %w[07:15 19:45] })
@@ -154,7 +154,7 @@ RSpec.describe MedicationReminderJob do
       described_class.perform_now(household.id, person.id, :scheduled, '19:45')
     end
 
-    expect(PushNotificationService).not_to have_received(:send_to_account)
+    expect(PushNotificationService).to have_received(:send_to_account).once
   end
 
   it 'does not send scheduled-time reminders when the medication was taken today through a direct assignment' do
@@ -233,7 +233,7 @@ RSpec.describe MedicationReminderJob do
     end
   end
 
-  it 'does not send period reminders after a medication was taken today even when more doses are allowed' do
+  it 'sends a period reminder when a later configured dose remains unresolved' do
     schedule = create(:schedule, person: person, medication: medications(:ibuprofen), dosage: dosages(:ibuprofen_adult),
                                  frequency: 'Every 6 hours', schedule_type: :multiple_daily,
                                  schedule_config: { 'times' => %w[08:00 14:00 20:00] },
@@ -244,7 +244,7 @@ RSpec.describe MedicationReminderJob do
       described_class.perform_now(household.id, person.id, :afternoon)
     end
 
-    expect(PushNotificationService).not_to have_received(:send_to_account)
+    expect(PushNotificationService).to have_received(:send_to_account).once
   end
 
   it 'does not send period reminders when a direct medication was taken today through a schedule' do
