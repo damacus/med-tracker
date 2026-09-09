@@ -109,7 +109,7 @@ RSpec.describe MedicationAdministration::OccurrenceResolver do
 
     expect(result).to have_attributes(window_starts_on: Date.current, window_ends_on: Date.current, reason: 'refused')
     expect(monthly.reload).to have_attributes(window_starts_on: Date.current.beginning_of_month,
-                                             window_ends_on: Date.current.end_of_month, reason: 'unwell')
+                                              window_ends_on: Date.current.end_of_month, reason: 'unwell')
     expect(source.medication_dose_occurrences.count).to eq(2)
   end
 
