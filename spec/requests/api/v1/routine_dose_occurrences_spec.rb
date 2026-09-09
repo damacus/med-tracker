@@ -62,8 +62,8 @@ RSpec.describe 'API v1 routine dose occurrences' do
       expect(response).to have_http_status(:ok)
       record = source.medication_dose_occurrences.find_by!(window_starts_on: Date.current)
       expect(response.parsed_body.fetch('data')).to include('key' => daily.key,
-                                                           'window_starts_on' => Date.current.iso8601,
-                                                           'etag' => Api::RecordEtag.for(record))
+                                                            'window_starts_on' => Date.current.iso8601,
+                                                            'etag' => Api::RecordEtag.for(record))
       expect(response.headers['ETag']).to eq(Api::RecordEtag.for(record))
       expect(monthly.reload.window_starts_on).to eq(Date.current.beginning_of_month)
     end
