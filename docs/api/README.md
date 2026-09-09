@@ -8,6 +8,17 @@ mobile snapshots, sync, export, and import.
 The [API versioning policy](versioning.md) defines compatible changes,
 deprecation, stable generated names, and generated-client ownership.
 
+## Current profile
+
+`GET` and `PATCH /households/{household_id}/profile` read and update the
+membership person linked to the signed-in account. The existing `/me` response
+retains its identity contract. Profile identifiers are strings.
+
+Submit a `profile` object with `date_of_birth`, `time_zone`, `gravatar_enabled`
+or `mobile_shortcuts`. Person and account changes save in one transaction.
+Unknown fields, including email and roles, are rejected. These operations are
+online only. Current person permissions are checked before cached retries.
+
 ## Canonical addressing
 
 The document's first server URL is `/api/v1`. Path keys are relative to that

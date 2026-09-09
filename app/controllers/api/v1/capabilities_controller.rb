@@ -24,6 +24,7 @@ module Api
           location_management: location_management,
           medication_reviews: medication_reviews,
           reports: reports,
+          profile: { actions: %w[show update], online_only: true },
           portable_formats: portable_formats,
           backups: backups,
           fhir: fhir,
