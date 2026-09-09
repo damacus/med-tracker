@@ -445,6 +445,103 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/profile:
+    get:
+      operationId: getHouseholdProfile
+      tags: [Household, People]
+      summary: Read the current account preferences and household person profile.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Current profile. Only the membership person linked to this account is eligible.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/no_store'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdProfileResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      operationId: updateHouseholdProfile
+      tags: [Household, People]
+      summary: Atomically save non-security preferences and date of birth online.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [profile]
+              properties:
+                profile:
+                  $ref: '#/components/schemas/HouseholdProfileUpdate'
+      responses:
+        '200':
+          description: Saved profile. Invalid fields roll back all changes; email, credentials and roles are rejected.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/no_store'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdProfileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    put:
+      operationId: updateHouseholdProfileWithPut
+      tags: [Household, People]
+      summary: Atomically save non-security preferences and date of birth online.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [profile]
+              properties:
+                profile:
+                  $ref: '#/components/schemas/HouseholdProfileUpdate'
+      responses:
+        '200':
+          description: Saved profile. Invalid fields roll back all changes; email, credentials and roles are rejected.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/no_store'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdProfileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /households/{household_id}/reports/health_history:
     get:
       operationId: getHealthHistoryReport
@@ -5546,6 +5643,72 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/MedicationReviewReport'
+    HouseholdProfileUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        date_of_birth:
+          type: string
+          format: date
+        time_zone:
+          type: string
+          description: Rails-supported time zone; an empty string resets the default.
+        gravatar_enabled:
+          type: boolean
+        mobile_shortcuts:
+          type: array
+          minItems: 1
+          maxItems: 3
+          uniqueItems: true
+          items:
+            type: string
+            enum: [dashboard, inventory, locations, people, finder, medicine_reviews, reports, profile, administration]
+    HouseholdProfile:
+      type: object
+      additionalProperties: false
+      required: [person_id, account_id, date_of_birth, time_zone, gravatar_enabled, mobile_shortcuts, avatar_attached]
+      properties:
+        person_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        account_id:
+          $ref: '#/components/schemas/ResourceIdentifier'
+        avatar_attached:
+          type: boolean
+        date_of_birth:
+          type: string
+          format: date
+        time_zone:
+          type: string
+          description: Rails-supported time zone; an empty string resets the default.
+        gravatar_enabled:
+          type: boolean
+        mobile_shortcuts:
+          type: array
+          minItems: 1
+          maxItems: 3
+          uniqueItems: true
+          items:
+            type: string
+            enum: [dashboard, inventory, locations, people, finder, medicine_reviews, reports, profile, administration]
+    HouseholdProfileResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/HouseholdProfile'
+    CapabilityProfile:
+      type: object
+      additionalProperties: false
+      required: [actions, online_only]
+      properties:
+        actions:
+          type: array
+          items:
+            type: string
+            enum: [show, update]
+        online_only:
+          type: boolean
     CapabilityReports:
       type: object
       additionalProperties: false
@@ -7478,6 +7641,8 @@ components:
           $ref: '#/components/schemas/CapabilityLocationManagement'
         medication_reviews:
           $ref: '#/components/schemas/CapabilityMedicationReviews'
+        profile:
+          $ref: '#/components/schemas/CapabilityProfile'
         reports:
           $ref: '#/components/schemas/CapabilityReports'
         portable_formats:
