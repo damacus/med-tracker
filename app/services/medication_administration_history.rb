@@ -8,6 +8,8 @@ class MedicationAdministrationHistory
   end
 
   def exists?
+    return true if record.is_a?(Location) && MedicationTake.where(taken_from_location_id: record.id).exists?
+
     schedules, person_medications = administration_sources
     scheduled_takes = MedicationTake.where(schedule_id: schedules.select(:id))
     ad_hoc_takes = MedicationTake.where(person_medication_id: person_medications.select(:id))
