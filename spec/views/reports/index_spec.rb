@@ -103,8 +103,8 @@ RSpec.describe Views::Reports::Index do
 
   it 'renders the compliance stats' do
     rendered = render report_view
-    expect(rendered).to include('Overall Compliance')
-    expect(rendered).to include('Total Doses Logged')
+    expect(rendered).to include('Daily Compliance')
+    expect(rendered).to include('Daily Doses Logged')
   end
 
   it 'renders the adherence timeline' do

@@ -3,7 +3,7 @@
 module Reports
   class HealthHistoryQuery
     Result = Data.define(:people, :medication_takes, :suspected_side_effects, :notable_illnesses, :illness_patterns,
-                         :not_taken_outcomes, :daily_outcomes)
+                         :not_taken_outcomes, :daily_outcomes, :cycle_summaries)
     NotTakenEntry = Data.define(:person, :date, :scheduled_at, :medication_name, :reason, :note)
     MedicationTakeEntry = Data.define(:person, :taken_at, :medication_name, :dose_amount, :dose_unit, :source_type,
                                       :location_name) do
@@ -38,7 +38,8 @@ module Reports
         notable_illnesses: health_event_entries(illnesses),
         illness_patterns: HealthEvents::PatternSummary.new(events: illnesses).call,
         not_taken_outcomes: not_taken_entries,
-        daily_outcomes: daily_outcomes
+        daily_outcomes: daily_outcomes,
+        cycle_summaries: outcome_summary.cycle_summaries
       )
     end
 
@@ -127,6 +128,7 @@ module Reports
     end
 
     def source_type(source)
+      return :routine if source.is_a?(PersonMedication) && source.routine?
       return :as_needed if source.is_a?(PersonMedication)
       return :as_needed if source.respond_to?(:schedule_type_prn?) && source.schedule_type_prn?
 

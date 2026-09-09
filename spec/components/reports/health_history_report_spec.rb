@@ -90,8 +90,23 @@ RSpec.describe Components::Reports::HealthHistoryReport, type: :component do
       notable_illnesses: [],
       illness_patterns: [],
       not_taken_outcomes: [],
-      daily_outcomes: []
+      daily_outcomes: [],
+      cycle_summaries: []
     )
+  end
+
+  it 'renders longer routine cycles separately with their full date window' do
+    source = create(:person_medication, :routine, dose_cycle: :monthly)
+    result = empty_result.with(cycle_summaries: [
+                                 { source: source, window_starts_on: start_date, window_ends_on: end_date,
+                                   expected: 2, actual: 1, not_taken: 0, unexplained_missed: 0 }
+                               ])
+    rendered = Nokogiri::HTML5(described_class.new(result: result).call)
+
+    expect(rendered.css('.health-history-cycles-table').text).to include(
+      source.person.name, source.medication.display_name, '2026-02-01', '2026-02-28'
+    )
+    expect(rendered.text).to include('Routine dose cycles', 'A cycle is not missed until it ends.')
   end
 
   def populated_result(person_name: 'Alex Smith', notes: 'Started after evening dose')

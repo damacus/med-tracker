@@ -2258,6 +2258,10 @@ es:
       pdf_unavailable: No se ha podido preparar el PDF. Inténtelo de nuevo.
       preparing_pdf: Preparando PDF...
     health_history:
+      cycles:
+        title: Ciclos de dosis habituales
+        description: Un ciclo no se considera omitido hasta que termina.
+        window: Periodo del ciclo
       outcomes:
         title: Resultados de las dosis
         not_taken: No tomadas
@@ -2276,6 +2280,7 @@ es:
       ongoing_from: En curso desde %{started_on}
       event_date_range: "%{started_on} a %{ended_on}"
       sources:
+        routine: Habitual
         scheduled: Programado
         as_needed: Según necesidad/directo
       medication_takes:
@@ -2424,8 +2429,8 @@ es:
         description: Medicamentos tomados hoy, agrupados por persona.
         empty: No se han tomado medicamentos hoy.
       summary:
-        overall_compliance: Adherencia general
-        total_doses_logged: Dosis registradas en total
+        overall_compliance: Adherencia diaria
+        total_doses_logged: Dosis diarias registradas
         evidence_reviewed: Evidencia revisada
         excellent: Excelente
         needs_attention: Necesita atención

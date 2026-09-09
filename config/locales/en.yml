@@ -1594,8 +1594,8 @@ en:
         description: Medications taken today, grouped by person.
         empty: No medications taken today.
       summary:
-        overall_compliance: Overall Compliance
-        total_doses_logged: Total Doses Logged
+        overall_compliance: Daily Compliance
+        total_doses_logged: Daily Doses Logged
         evidence_reviewed: Evidence Reviewed
         excellent: Excellent
         needs_attention: Needs attention
@@ -1625,6 +1625,10 @@ en:
             We recommend ordering a refill this afternoon.
       actionable_insight: Actionable insight
     health_history:
+      cycles:
+        title: Routine dose cycles
+        description: A cycle is not missed until it ends.
+        window: Cycle window
       outcomes:
         title: Dose outcomes
         not_taken: Not taken
@@ -1643,6 +1647,7 @@ en:
       ongoing_from: "Ongoing since %{started_on}"
       event_date_range: "%{started_on} to %{ended_on}"
       sources:
+        routine: Routine
         scheduled: Scheduled
         as_needed: As-needed/direct
       medication_takes:

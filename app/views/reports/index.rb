@@ -71,6 +71,7 @@ module Views
 
       def initialize(daily_data:, smart_insights:, start_date:, end_date:, **options)
         @daily_data = daily_data
+        @cycle_summaries = options.fetch(:cycle_summaries, [])
         @smart_insights = smart_insights
         @start_date = start_date
         @end_date = end_date
@@ -88,6 +89,7 @@ module Views
           render_today_section if @daily_data
           render_summary_card if @daily_data
           render_compliance_section if @daily_data
+          render Components::Reports::RoutineCycles.new(cycles: @cycle_summaries) if @daily_data
           render_gp_health_history_form unless @daily_data
           render_insights_grid if @daily_data
         end
@@ -262,12 +264,10 @@ module Views
       def render_smart_insight_card(insight)
         render_insight_card(
           InsightCard.new(
-            title: insight.title,
-            value: insight.summary,
+            title: insight.title, value: insight.summary,
             description: insight.detail,
             icon_class: insight_icon(insight),
-            text_color: insight_text_color(insight),
-            icon_background_class: insight_icon_background(insight)
+            text_color: insight_text_color(insight), icon_background_class: insight_icon_background(insight)
           )
         )
       end
