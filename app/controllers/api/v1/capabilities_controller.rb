@@ -21,6 +21,7 @@ module Api
                                       effective_time: 'server_acceptance' },
           dose_outcomes: dose_outcomes,
           stock_removals: stock_removals,
+          location_management: location_management,
           portable_formats: portable_formats,
           backups: backups,
           fhir: fhir,
@@ -70,6 +71,11 @@ module Api
           actions: %w[not_taken reopen take],
           replacement_requires_version: true
         }
+      end
+
+      def location_management
+        { actions: %w[create update destroy], version_required: true,
+          person_memberships: %w[create destroy], memberships_online_only: true }
       end
 
       def stock_removals

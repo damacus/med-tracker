@@ -36,7 +36,9 @@ Rails.application.routes.draw do
       scope 'households/:household_id', as: :household do
         resource :me, only: [:show], controller: 'me'
         resources :people, only: %i[index show create update]
-        resources :locations, only: %i[index show]
+        resources :locations, only: %i[index show create update destroy] do
+          resources :location_memberships, only: %i[create destroy]
+        end
         resources :medications, only: %i[index show create update]
         resources :medications, only: [] do
           resources :stock_removals, only: %i[index create]

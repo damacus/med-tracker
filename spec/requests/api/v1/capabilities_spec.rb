@@ -21,6 +21,14 @@ RSpec.describe 'API v1 capabilities' do
     )
   end
 
+  it 'advertises location writes and online membership management' do
+    get api_v1_capabilities_path, as: :json
+    expect(response.parsed_body.dig('data', 'location_management')).to eq(
+      'actions' => %w[create update destroy], 'version_required' => true,
+      'person_memberships' => %w[create destroy], 'memberships_online_only' => true
+    )
+  end
+
   it 'publishes the supported API, auth, portability, sync, and client-tool contracts without auth' do
     get api_v1_capabilities_path, as: :json
 

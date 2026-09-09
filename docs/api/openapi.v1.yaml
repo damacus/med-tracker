@@ -470,6 +470,42 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimited'
+    post:
+      operationId: createLocation
+      tags: [Household, Locations]
+      summary: Create household storage.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationCreateRequest'
+      responses:
+        '201':
+          description: Create household storage.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/locations/{id}:
     get:
       operationId: getLocation
@@ -496,6 +532,199 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    patch:
+      operationId: updateLocation
+      tags: [Household, Locations]
+      summary: Update household storage with its current version.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationUpdateRequest'
+      responses:
+        '200':
+          description: Update household storage with its current version.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    delete:
+      operationId: deleteLocation
+      tags: [Household, Locations]
+      summary: Delete storage only when retained history permits it.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Delete storage only when retained history permits it.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    put:
+      operationId: updateLocationWithPut
+      tags: [Household, Locations]
+      summary: Update household storage with its current version.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/resource_id'
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationUpdateRequest'
+      responses:
+        '200':
+          description: Update household storage with its current version.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/locations/{location_id}/location_memberships:
+    post:
+      operationId: createLocationMembership
+      tags: [Household, Locations]
+      summary: Assign a managed person to a location or replay the existing assignment.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: location_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ResourceIdentifier'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationMembershipRequest'
+      responses:
+        '201':
+          description: Assign a managed person to a location or replay the existing assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationMembershipResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/locations/{location_id}/location_memberships/{id}:
+    delete:
+      operationId: deleteLocationMembership
+      tags: [Household, Locations]
+      summary: Remove a managed person from the selected location.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[1-9][0-9]*$'
+        - name: location_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ResourceIdentifier'
+      responses:
+        '204':
+          description: Remove a managed person from the selected location.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimited'
   /households/{household_id}/medications:
@@ -4775,6 +5004,96 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/Me'
+    LocationCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [location]
+      properties:
+        location:
+          type: object
+          additionalProperties: false
+          required: [name]
+          properties:
+            name:
+              type: string
+              minLength: 1
+            description:
+              type: string
+              nullable: true
+    LocationUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [location]
+      properties:
+        location:
+          type: object
+          additionalProperties: false
+          minProperties: 1
+          properties:
+            name:
+              type: string
+              minLength: 1
+            description:
+              type: string
+              nullable: true
+    LocationMembershipRequest:
+      type: object
+      additionalProperties: false
+      required: [location_membership]
+      properties:
+        location_membership:
+          type: object
+          additionalProperties: false
+          required: [person_id]
+          properties:
+            person_id:
+              $ref: '#/components/schemas/ResourceIdentifier'
+    LocationMembership:
+      type: object
+      additionalProperties: false
+      required: [id, location_id, location_portable_id, person_id, person_portable_id, created_at]
+      properties:
+        id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        location_id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        location_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        person_id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        person_portable_id:
+          $ref: '#/components/schemas/PortableId'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    LocationMembershipResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/LocationMembership'
+    CapabilityLocationManagement:
+      type: object
+      additionalProperties: false
+      required: [actions, version_required, person_memberships, memberships_online_only]
+      properties:
+        actions:
+          type: array
+          items:
+            type: string
+            enum: [create, update, destroy]
+        version_required:
+          type: boolean
+        person_memberships:
+          type: array
+          items:
+            type: string
+            enum: [create, destroy]
+        memberships_online_only:
+          type: boolean
     Location:
       type: object
       additionalProperties: false
@@ -6408,6 +6727,7 @@ components:
         - administration
         - dose_outcomes
         - stock_removals
+        - location_management
         - portable_formats
         - backups
         - fhir
@@ -6433,6 +6753,8 @@ components:
           $ref: '#/components/schemas/CapabilityDoseOutcomes'
         stock_removals:
           $ref: '#/components/schemas/CapabilityStockRemovals'
+        location_management:
+          $ref: '#/components/schemas/CapabilityLocationManagement'
         portable_formats:
           type: array
           uniqueItems: true
