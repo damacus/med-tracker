@@ -118,6 +118,23 @@ RSpec.describe MedicationDoseOccurrence do
   end
 
   describe 'retained identity and history' do
+    it 'refuses migration rollback so saved clinical outcomes remain available' do
+      load Rails.root.join('db/migrate/20260908200000_create_medication_dose_occurrences.rb') unless
+        defined?(CreateMedicationDoseOccurrences)
+      resolve_not_taken
+      occurrence.save!
+
+      ActiveRecord::Base.transaction(requires_new: true) do
+        ActiveRecord::Base.connection.execute('SET LOCAL ROLE med_tracker_owner')
+        expect { CreateMedicationDoseOccurrences.new.down }.to raise_error(ActiveRecord::IrreversibleMigration)
+        ActiveRecord::Base.connection.execute('RESET ROLE')
+      end
+
+      expect(occurrence.reload).to have_attributes(outcome: 'not_taken', reason: 'refused')
+    ensure
+      ActiveRecord::Base.connection.execute('RESET ROLE')
+    end
+
     it 'retains the former not-taken context in audit history when reopened' do
       resolve_not_taken
       occurrence.save!
