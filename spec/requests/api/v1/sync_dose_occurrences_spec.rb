@@ -1,12 +1,11 @@
 require 'rails_helper'
 
-RSpec.describe 'API v1 queued occurrence takes' do
+RSpec.shared_examples 'queued occurrence take contract' do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :dosages, :schedules
 
   let(:login_data) { api_login(users(:admin)) }
   let(:household_id) { login_data.dig('household', 'id') }
   let(:headers) { api_auth_headers(login_data.fetch('access_token')) }
-  let(:source) { schedules(:john_movicol) }
   let(:client_uuid) { SecureRandom.uuid }
 
   def occurrence_key
@@ -17,7 +16,7 @@ RSpec.describe 'API v1 queued occurrence takes' do
 
   def take_operation(key: occurrence_key)
     { action: 'create', resource_type: 'medication_take', attributes: {
-      client_uuid: client_uuid, source_type: 'schedule', source_id: source.portable_id,
+      client_uuid: client_uuid, source_type: MedicationDoseSource.new(source).type, source_id: source.portable_id,
       taken_at: Time.current.iso8601, occurrence_key: key
     } }
   end
@@ -47,7 +46,7 @@ RSpec.describe 'API v1 queued occurrence takes' do
     headers
     source.reload
     original_notes = source.notes
-    update = { action: 'update', resource_type: 'schedule', id: source.portable_id,
+    update = { action: 'update', resource_type: MedicationDoseSource.new(source).type, id: source.portable_id,
                if_match: Api::RecordEtag.for(source), attributes: { notes: 'Queued edit' } }
     expect { submit([update, take_operation(key: 'invalid-identity')]) }.not_to change(MedicationTake, :count)
     expect(response).to have_http_status(:unprocessable_content)
@@ -105,5 +104,31 @@ RSpec.describe 'API v1 queued occurrence takes' do
     end
     expect { submit([operation]) }.not_to change(MedicationTake, :count)
     expect(response).to have_http_status(:forbidden)
+  end
+end
+
+RSpec.describe 'API v1 queued occurrence takes' do
+  context 'with a formal schedule' do
+    let(:source) { schedules(:john_movicol) }
+
+    it_behaves_like 'queued occurrence take contract'
+  end
+
+  context 'with a routine assignment' do
+    let(:source) do
+      create(:person_medication, :routine, person: people(:john), medication: medications(:vitamin_c),
+                                           dose_cycle: :daily, max_daily_doses: 1, created_at: 2.months.ago)
+    end
+
+    it_behaves_like 'queued occurrence take contract' do
+      it 'replays a monthly administration taken after the cycle start' do
+        source.update!(dose_cycle: :monthly)
+        operation = take_operation
+        submit([operation])
+        expect(response).to have_http_status(:created)
+        submit([operation])
+        expect(response).to have_http_status(:created)
+      end
+    end
   end
 end

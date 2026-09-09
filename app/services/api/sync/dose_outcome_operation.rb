@@ -44,9 +44,7 @@ module Api
         attributes = operation.fetch(:attributes, {})
         case [operation[:action], attributes[:outcome]]
         when %w[create not_taken]
-          raise Error, 'Source is invalid' unless attributes[:source_type] == 'schedule'
-
-          [find_source(attributes[:source_id]), nil]
+          [find_source(attributes[:source_id], attributes[:source_type]), nil]
         when %w[update open]
           saved_context(operation[:id])
         else
@@ -56,9 +54,8 @@ module Api
 
       def saved_context(identifier)
         record = locator.find(MedicationDoseOccurrence.where(household: @household), identifier)
-        raise ActiveRecord::RecordNotFound unless record.schedule_id
-
-        [find_source(record.schedule_id.to_s), record]
+        type = record.schedule_id ? 'schedule' : 'person_medication'
+        [find_source(record.public_send("#{type}_id").to_s, type), record]
       end
 
       def resolution_attributes(operation, source, record)
@@ -69,8 +66,11 @@ module Api
           note: attributes[:note] }
       end
 
-      def find_source(identifier)
-        locator.find(policy_scope(Schedule).where(household: @household), identifier)
+      def find_source(identifier, type)
+        model = { 'schedule' => Schedule, 'person_medication' => PersonMedication }[type]
+        raise Error, 'Source is invalid' unless model
+
+        locator.find(policy_scope(model).where(household: @household), identifier)
       end
 
       def locator
