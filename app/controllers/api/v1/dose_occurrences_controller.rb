@@ -8,7 +8,7 @@ module Api
       rescue_from ActiveRecord::RecordInvalid, with: :render_invalid_outcome
 
       def index
-        source = find_api_record(policy_scope(Schedule), params.expect(:schedule_id))
+        source = occurrence_source
         authorize source, :show?
         rows = MedicationAdministration::OccurrenceProjection.new(
           source: source, start_date: occurrence_date(:start_date), end_date: occurrence_date(:end_date)
@@ -55,7 +55,14 @@ module Api
       end
 
       def occurrence_source
-        @occurrence_source ||= find_api_record(policy_scope(Schedule), params.expect(:schedule_id))
+        @occurrence_source ||= begin
+          model, identifier = if request.path_parameters.key?(:person_medication_id)
+                                [PersonMedication, :person_medication_id]
+                              else
+                                [Schedule, :schedule_id]
+                              end
+          find_api_record(policy_scope(model), params.expect(identifier))
+        end
       end
 
       def occurrence_resolver

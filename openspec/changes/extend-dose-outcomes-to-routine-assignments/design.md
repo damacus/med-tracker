@@ -50,7 +50,7 @@ Smart Insights includes cycle expectations and recorded resolutions in its exist
 
 ### Reuse authorization and interoperability shapes
 
-Resolve authorization through the `PersonMedication` person's existing view, record, and manage policy checks. The API occurrence response uses the existing source discriminator with `person_medication`; all operation IDs and outcome schemas stay stable.
+Resolve authorization through the `PersonMedication` person's existing view, record, and manage policy checks. The API occurrence response uses the existing source discriminator with `person_medication` and includes its inclusive cycle end. Keep all existing operation IDs stable. Add source-specific person-medication routes and operation IDs that reuse the existing controller actions and shared outcome schemas, because schedule and person-medication IDs identify different resources.
 
 Sync, portable v2, audit, and generated clients already understand the shared occurrence record. Extend validation and import preflight to allow direct routine source references. Capability metadata needs no second client feature flag if the scheduled-outcome capability explicitly advertises supported source types; add `person_medication` to that advertised list.
 
