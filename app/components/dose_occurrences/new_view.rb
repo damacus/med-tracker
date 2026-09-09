@@ -30,7 +30,7 @@ module Components
       private
 
       def render_form
-        form_with(url: schedule_dose_occurrences_path(@source), method: :post,
+        form_with(url: collection_path, method: :post,
                   class: 'space-y-5', data: { turbo_frame: '_top' }) do
           render_dose_field
           render_reason_field
@@ -43,13 +43,26 @@ module Components
         field('dose', t('dose_outcomes.dose')) do
           m3_select(id: 'outcome_dose', name: 'dose_occurrence[key]') do
             @occurrences.each do |row|
-              option(value: row.key) do
-                time = row.scheduled_at&.strftime('%H:%M') || t('dashboard.routine.anytime')
-                t('dose_outcomes.slot', position: row.position, date: row.window_starts_on.iso8601, time: time)
-              end
+              option(value: row.key) { slot_label(row) }
             end
           end
         end
+      end
+
+      def collection_path
+        return schedule_dose_occurrences_path(@source) if @source.is_a?(::Schedule)
+
+        person_medication_dose_occurrences_path(@source)
+      end
+
+      def slot_label(row)
+        if row.window_ends_on > row.window_starts_on
+          return t('dose_outcomes.cycle_slot', position: row.position, start_date: row.window_starts_on.iso8601,
+                                               end_date: row.window_ends_on.iso8601)
+        end
+
+        time = row.scheduled_at&.strftime('%H:%M') || t('dashboard.routine.anytime')
+        t('dose_outcomes.slot', position: row.position, date: row.window_starts_on.iso8601, time: time)
       end
 
       def render_reason_field

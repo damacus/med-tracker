@@ -81,7 +81,12 @@ class DoseOccurrencesController < ApplicationController
   end
 
   def set_source
-    @source = policy_scope(Schedule).includes(:person, :medication).find(params.expect(:schedule_id))
+    model, identifier = if request.path_parameters.key?(:person_medication_id)
+                          [PersonMedication, :person_medication_id]
+                        else
+                          [Schedule, :schedule_id]
+                        end
+    @source = policy_scope(model).includes(:person, :medication).find(params.expect(identifier))
     authorize @source, :take_medication?
   end
 

@@ -14,7 +14,7 @@
 ## 3. Dose outcome API and routine sources
 
 - [x] 3.1 Red-Green-Refactor: implement bounded occurrence reads and not-taken/reopen/take adapters from existing tasks 8–9C, covering every mobile-dose-outcome-api scenario and the relevant admin/clinician/self/carer/parent/unauthorized cases with focused request specs.
-- [ ] 3.2 Red-Green-Refactor: implement existing scheduled outcome tasks 10–15B for contracts, take sync linkage, portable-v2 round trip, web outcome/correction actions, sync reads and batch mutations; verify focused tests, contract generation and desktop/mobile browser evidence for visible changes.
+- [x] 3.2 Red-Green-Refactor: implement existing scheduled outcome tasks 10–15B for contracts, take sync linkage, portable-v2 round trip, web outcome/correction actions, sync reads and batch mutations; verify focused tests, contract generation and desktop/mobile browser evidence for visible changes.
 - [ ] 3.3 Red-Green-Refactor: complete `extend-dose-outcomes-to-routine-assignments` in its declared order, verifying direct routine cycles and exclusion of as-needed sources across API, sync, portable data and existing consumers.
 - [ ] 3.4 Verify and publish each dose layer with `task rubocop`, focused changed-area specs, applicable generated-client checks and current GitHub PR metadata; mark corresponding existing-plan tasks only when proven complete.
 

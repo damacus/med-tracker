@@ -2574,6 +2574,7 @@ pt:
     saved: "Dose registada como não tomada."
     invalid: "Não foi possível atualizar a dose. Verifique os dados e tente novamente."
     slot: "Dose %{position} · %{date} · %{time}"
+    cycle_slot: "Dose %{position} · %{start_date} a %{end_date}"
     correct: "Corrigir decisão"
     correction_title: "Corrigir decisão sobre a dose"
     reopen: "Reabrir dose"

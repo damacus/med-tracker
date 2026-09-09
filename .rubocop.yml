@@ -82,6 +82,8 @@ Style/FrozenStringLiteralComment:
     - "spec/services/smart_insights/detectors/missed_routine_cycles_spec.rb"
     - "spec/requests/api/v1/routine_dose_occurrences_spec.rb"
     - "spec/services/portable_data/importer_routine_outcomes_spec.rb"
+    - "spec/requests/routine_dose_occurrences_spec.rb"
+    - "spec/system/web_routine_dose_outcomes_spec.rb"
     - "spec/migrations/add_window_end_to_medication_dose_occurrences_spec.rb"
     - "app/components/medications/stock_removal_view.rb"
     - "app/controllers/medication_stock_removals_controller.rb"

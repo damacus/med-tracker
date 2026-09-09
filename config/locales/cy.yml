@@ -2567,6 +2567,7 @@ cy:
     saved: "Cofnodwyd na chymerwyd y dos."
     invalid: "Ni ellid diweddaru’r dos. Gwiriwch y manylion a rhowch gynnig arall arni."
     slot: "Dos %{position} · %{date} · %{time}"
+    cycle_slot: "Dos %{position} · %{start_date} i %{end_date}"
     correct: "Cywiro’r penderfyniad"
     correction_title: "Cywiro penderfyniad dos"
     reopen: "Ailagor y dos"

@@ -2577,6 +2577,7 @@ ga:
     saved: "Taifeadadh nár tógadh an dáileog."
     invalid: "Níorbh fhéidir an dáileog a nuashonrú. Seiceáil na sonraí agus bain triail eile as."
     slot: "Dáileog %{position} · %{date} · %{time}"
+    cycle_slot: "Dáileog %{position} · %{start_date} go %{end_date}"
     correct: "Ceartaigh an cinneadh"
     correction_title: "Ceartaigh cinneadh na dáileoige"
     reopen: "Athoscail an dáileog"
