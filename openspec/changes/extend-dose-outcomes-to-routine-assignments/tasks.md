@@ -15,8 +15,8 @@
 
 ## 4. Stop Direct Routine Reminders
 
-- [ ] 4.1 Red: specify shared reminder suppression and continued as-needed exclusion.
-- [ ] 4.2 Green: update the direct-assignment reminder branch.
+- [x] 4.1 Red: specify shared reminder suppression and continued as-needed exclusion.
+- [x] 4.2 Green: update the direct-assignment reminder branch.
 
 ## 5R. Report Direct Routine Outcomes
 

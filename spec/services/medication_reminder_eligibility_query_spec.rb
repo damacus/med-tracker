@@ -155,6 +155,39 @@ RSpec.describe MedicationReminderEligibilityQuery do
     end
 
     context 'with routine person_medications' do
+      %w[daily weekly monthly].each do |cycle|
+        it "excludes a not-taken decision in the current #{cycle} window" do
+          source = create(:person_medication, :routine, person: person, dose_cycle: cycle, max_daily_doses: 1)
+          window = DoseCycle.new(cycle).range_for(now).begin.to_date
+          record_not_taken(source, window_starts_on: window)
+
+          expect(build_query.medication_names).not_to include(source.medication.display_name)
+        end
+      end
+
+      it 'keeps unresolved routine positions eligible until the whole cycle is resolved' do
+        source = create(:person_medication, :routine, person: person, max_daily_doses: 2)
+        record_not_taken(source)
+        expect(build_query.medication_names).to include(source.medication.display_name)
+        record_not_taken(source, position: 2)
+        expect(build_query.medication_names).not_to include(source.medication.display_name)
+      end
+
+      it 'restores eligibility when a routine decision is reopened' do
+        source = create(:person_medication, :routine, person: person, max_daily_doses: 1)
+        outcome = record_not_taken(source)
+        expect(build_query.medication_names).not_to include(source.medication.display_name)
+        outcome.update!(outcome: 'open', reason: nil, resolved_at: nil, resolved_by_membership: nil)
+        expect(build_query.medication_names).to include(source.medication.display_name)
+      end
+
+      it 'does not suppress the current cycle because of a previous cycle decision' do
+        source = create(:person_medication, :routine, person: person, dose_cycle: :weekly, max_daily_doses: 1)
+        window = DoseCycle.new('weekly').range_for(1.week.ago).begin.to_date
+        record_not_taken(source, window_starts_on: window)
+        expect(build_query.medication_names).to include(source.medication.display_name)
+      end
+
       it 'includes medications from routine person_medications not yet taken today' do
         medication = create(:medication)
         create(:person_medication, :routine, person: person, medication: medication, max_daily_doses: 1)
@@ -285,11 +318,12 @@ RSpec.describe MedicationReminderEligibilityQuery do
     )
   end
 
-  def record_not_taken(source)
+  def record_not_taken(source, position: 1, window_starts_on: today)
     account = Account.create!(email: "outcome-reminder-#{SecureRandom.hex(4)}@example.test", status: :verified)
     membership = source.household.household_memberships.create!(account: account, role: :member, status: :active)
     source.medication_dose_occurrences.create!(
-      window_starts_on: today, position: 1, scheduled_at: now.change(hour: 8),
+      window_starts_on: window_starts_on, position: position,
+      scheduled_at: source.is_a?(Schedule) ? now.change(hour: 8) : nil,
       outcome: 'not_taken', reason: 'unwell', resolved_at: now, resolved_by_membership: membership
     )
   end
