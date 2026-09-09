@@ -131,6 +131,33 @@ RSpec.describe PortableData::Importer do
     expect(destination.people).to be_empty
   end
 
+  it 'rejects reuse of one take across incoming occurrence positions in dry run and apply' do
+    payload = exported_payload
+    duplicate = payload.dig('records', 'dose_occurrences').last.merge('portable_id' => SecureRandom.uuid, 'position' => 3)
+    payload['records']['dose_occurrences'] << duplicate
+
+    [true, false].each do |dry_run|
+      result = restore(payload, dry_run: dry_run)
+      expect(result.errors.join).to include('take is already linked')
+      expect(result).not_to be_applied
+    end
+    expect(destination.people).to be_empty
+  end
+
+  it 'rejects linking an existing take to a different incoming occurrence' do
+    payload = exported_payload
+    expect(restore(payload)).to be_applied
+    duplicate = payload.dig('records', 'dose_occurrences').last.merge('portable_id' => SecureRandom.uuid, 'position' => 3)
+    payload['records'] = { 'dose_occurrences' => [duplicate] }
+
+    [true, false].each do |dry_run|
+      result = restore(payload, dry_run: dry_run)
+      expect(result.errors.join).to include('take is already linked')
+      expect(result).not_to be_applied
+    end
+    expect(MedicationDoseOccurrence.where(household: destination).count).to eq(2)
+  end
+
   it 'rejects a take linked to a different occurrence window' do
     payload = exported_payload
     payload.dig('records', 'dose_occurrences').last['window_starts_on'] = Date.yesterday.iso8601

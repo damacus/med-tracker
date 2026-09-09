@@ -11,6 +11,7 @@ module PortableData
     def errors
       @existing = existing_records
       @identities = @existing.values.index_by { |record| identity(DoseOccurrenceSerializer.new(record).as_json) }
+      @take_links = existing_take_links
       @seen = Set.new
       @rows.each_with_index.filter_map do |row, index|
         error = row_error(row)
@@ -37,6 +38,7 @@ module PortableData
     def row_error(row)
       return 'has invalid outcome fields' unless DoseOccurrenceImportValidator.new(row).valid?
       return 'has a duplicate occurrence' unless @seen.add?(identity(row))
+      return 'take is already linked to another occurrence' if conflicting_take_link?(row)
 
       record = @existing[row[:portable_id]] || @identities[identity(row)]
       return unless record && (record.portable_id != row[:portable_id] || self.class.conflicting?(record, row))
@@ -48,7 +50,29 @@ module PortableData
       scope = MedicationDoseOccurrence.where(household: @household)
       matching = scope.where(portable_id: @rows.pluck(:portable_id))
                       .or(scope.where(window_starts_on: @rows.pluck(:window_starts_on)))
+                      .or(scope.where(medication_take_id: referenced_takes.select(:id)))
       matching.includes(:schedule, :person_medication, :medication_take).index_by(&:portable_id)
+    end
+
+    def referenced_takes
+      MedicationTake.where(household: @household, portable_id: @rows.pluck(:medication_take_portable_id))
+    end
+
+    def existing_take_links
+      @existing.values.filter_map do |record|
+        next unless record.medication_take
+
+        [record.medication_take.portable_id, identity(DoseOccurrenceSerializer.new(record).as_json)]
+      end.to_h
+    end
+
+    def conflicting_take_link?(row)
+      take_id = row[:medication_take_portable_id]
+      return false if take_id.blank?
+
+      linked_identity = @take_links[take_id]
+      @take_links[take_id] ||= identity(row)
+      linked_identity.present? && linked_identity != identity(row)
     end
 
     def identity(row)
