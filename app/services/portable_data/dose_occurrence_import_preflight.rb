@@ -40,10 +40,12 @@ module PortableData
       return 'has a duplicate occurrence' unless @seen.add?(identity(row))
       return 'take is already linked to another occurrence' if conflicting_take_link?(row)
 
-      record = @existing[row[:portable_id]] || @identities[identity(row)]
-      return unless record && (record.portable_id != row[:portable_id] || self.class.conflicting?(record, row))
+      'conflicts with existing history' if history_conflict?(row)
+    end
 
-      'conflicts with existing history'
+    def history_conflict?(row)
+      record = @existing[row[:portable_id]] || @identities[identity(row)]
+      record && (record.portable_id != row[:portable_id] || self.class.conflicting?(record, row))
     end
 
     def existing_records

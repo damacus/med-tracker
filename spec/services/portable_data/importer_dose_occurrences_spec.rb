@@ -133,7 +133,8 @@ RSpec.describe PortableData::Importer do
 
   it 'rejects reuse of one take across incoming occurrence positions in dry run and apply' do
     payload = exported_payload
-    duplicate = payload.dig('records', 'dose_occurrences').last.merge('portable_id' => SecureRandom.uuid, 'position' => 3)
+    duplicate = payload.dig('records', 'dose_occurrences').last.merge('portable_id' => SecureRandom.uuid,
+                                                                      'position' => 3)
     payload['records']['dose_occurrences'] << duplicate
 
     [true, false].each do |dry_run|
@@ -147,7 +148,8 @@ RSpec.describe PortableData::Importer do
   it 'rejects linking an existing take to a different incoming occurrence' do
     payload = exported_payload
     expect(restore(payload)).to be_applied
-    duplicate = payload.dig('records', 'dose_occurrences').last.merge('portable_id' => SecureRandom.uuid, 'position' => 3)
+    duplicate = payload.dig('records', 'dose_occurrences').last.merge('portable_id' => SecureRandom.uuid,
+                                                                      'position' => 3)
     payload['records'] = { 'dose_occurrences' => [duplicate] }
 
     [true, false].each do |dry_run|
