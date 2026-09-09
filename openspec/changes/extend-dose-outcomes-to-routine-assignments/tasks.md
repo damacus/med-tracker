@@ -52,8 +52,8 @@
 
 ## 9. Record Direct Routine Not-Taken Outcomes on the Web
 
-- [ ] 9.1 Red: specify source-neutral reason/note, access, validation, and accessible confirmation.
-- [ ] 9.2 Green: reuse the formal not-taken component and enable the PersonMedication action.
+- [x] 9.1 Red: specify source-neutral reason/note, access, validation, and accessible confirmation.
+- [x] 9.2 Green: reuse the formal not-taken component and enable the PersonMedication action.
 
 ## 10. Correct Direct Routine Outcomes on the Web
 
