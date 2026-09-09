@@ -51,6 +51,15 @@ RSpec.describe Reports::DoseOccurrenceQuery do
     expect(count_queries { query }).to eq(baseline)
   end
 
+  it 'keeps database query counts stable across mixed source kinds' do
+    source
+    create(:person_medication, :routine, person: person, created_at: date.in_time_zone)
+    baseline = count_queries { query }
+    create(:person_medication, :routine, person: person, dose_cycle: :monthly, created_at: date.in_time_zone)
+
+    expect(count_queries { query }).to eq(baseline)
+  end
+
   def count_queries(&)
     count = 0
     subscriber = lambda do |*arguments|

@@ -170,11 +170,17 @@ module MedicationAdministration
     def persisted_outcomes
       if @preloaded
         return @preloaded.outcomes.select do |record|
-          matches_source?(record) && (start_date..end_date).cover?(record.window_starts_on)
+          matches_source?(record) && saved_window_overlaps?(record)
         end
       end
 
-      @persisted_outcomes ||= source.medication_dose_occurrences.where(window_starts_on: start_date..end_date).to_a
+      @persisted_outcomes ||= source.medication_dose_occurrences
+                                    .where(window_starts_on: ..end_date)
+                                    .where('COALESCE(window_ends_on, window_starts_on) >= ?', start_date).to_a
+    end
+
+    def saved_window_overlaps?(record)
+      record.window_starts_on <= end_date && (record.window_ends_on || record.window_starts_on) >= start_date
     end
 
     def allocate_legacy_takes(rows)

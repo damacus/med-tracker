@@ -44,6 +44,8 @@ Add the direct routine source adapter to the shared occurrence query. Dashboard,
 
 Existing unlinked direct-assignment takes are allocated deterministically inside their dose-cycle window, using the same non-persistent legacy rule as formal schedules. A new linked take continues through `MedicationAdministration::RecordDose` and the shared resolver, so stock and immutable history remain unchanged.
 
+Reports include daily routine assignments in daily totals. Weekly and monthly assignments have separate cycle summaries with inclusive start/end dates, expected, taken, not-taken, and unexplained counts. An open untimed position becomes unexplained only after its cycle ends. Actual administration history retains its original timestamp. Report paging deduplicates intersecting cycle identities, and saved windows remain visible when the report starts partway through them.
+
 ### Reuse authorization and interoperability shapes
 
 Resolve authorization through the `PersonMedication` person's existing view, record, and manage policy checks. The API occurrence response uses the existing source discriminator with `person_medication`; all operation IDs and outcome schemas stay stable.
