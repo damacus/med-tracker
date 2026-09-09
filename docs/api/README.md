@@ -77,6 +77,17 @@ quantity, reason and optional dosage ID used by the online removal endpoint.
 Reusing that submission cannot subtract stock twice. Removal changes inventory
 and records a stock-removal event; it does not record a clinical dose.
 
+## Queued assignment actions
+
+Schedules and direct assignments support `pause` and `resume` in addition to
+create/update and retirement through `delete`. Direct assignments also support
+`reorder` with `direction: up` or `direction: down`. These actions require the
+current `if_match` ETag and management access. Retired sources cannot resume.
+
+A pause accepts a reason and note and records its period at server replay time;
+resume closes that period through the existing workflow. Reuse the same batch
+key after losing a response to avoid repeating pause or reorder actions.
+
 ## Canonical addressing
 
 The document's first server URL is `/api/v1`. Path keys are relative to that

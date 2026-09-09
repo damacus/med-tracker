@@ -21,6 +21,7 @@ AllCops:
 
 Style/FrozenStringLiteralComment:
   Exclude:
+    - "spec/requests/api/v1/sync_assignment_actions_spec.rb"
     - "app/services/api/sync/inventory_operation.rb"
     - "spec/requests/api/v1/sync_inventory_spec.rb"
     - "app/services/api/sync/care_record_operation.rb"

@@ -29,7 +29,7 @@ module Api
         resource_class = RESOURCE_CLASSES.fetch(operation.fetch(:resource_type))
         case operation.fetch(:action)
         when 'create' then create_record(resource_class, operation)
-        when 'update', 'delete' then change_record(resource_class, operation)
+        when 'update', 'delete', 'pause', 'resume', 'reorder' then change_record(resource_class, operation)
         else
           raise Error.new('action is unsupported', code: 'sync_operation_unsupported')
         end
@@ -73,14 +73,38 @@ module Api
       end
 
       def apply_change(record, operation)
-        if operation[:action] == 'delete'
+        case operation[:action]
+        when 'delete'
           record.retire!
           record.record_sync_deletion!
+        when 'pause'
+          pause_record(record, operation)
+        when 'resume'
+          record.resume!(membership: @authorization.membership)
+        when 'reorder'
+          reorder_record(record, operation)
         else
           attributes = permitted_attributes(record.class, operation).except('person_id')
           assign_attributes(record, attributes)
           record.save!
         end
+      end
+
+      def pause_record(record, operation)
+        attributes = operation.fetch(:attributes, {})
+        record.pause!(reason: attributes[:reason].presence || MedicationPausePeriod::LEGACY_REASON,
+                      note: attributes[:note], membership: @authorization.membership)
+      end
+
+      def reorder_record(record, operation)
+        unless record.is_a?(PersonMedication)
+          raise Error.new('action is unsupported', code: 'sync_operation_unsupported')
+        end
+
+        direction = operation.dig(:attributes, :direction)
+        raise Error, 'direction must be up or down' unless %w[up down].include?(direction)
+
+        PersonMedicationReorderService.new.call(person_medication: record, direction: direction)
       end
 
       def permitted_attributes(resource_class, operation)
