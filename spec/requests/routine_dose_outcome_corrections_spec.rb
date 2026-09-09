@@ -48,14 +48,15 @@ RSpec.describe 'Web routine dose outcome corrections' do
 
     link = response.parsed_body.at_css("a[href='#{edit_person_medication_dose_occurrence_path(source, outcome)}']")
     expect(link).to be_present
-    expect(FamilyDashboard::NotTakenQuery.new(schedules: [], person_medications: [source]).for_source(source)).to be_empty
+    expect(FamilyDashboard::NotTakenQuery.new(schedules: [],
+                                              person_medications: [source]).for_source(source)).to be_empty
   end
 
   it 'corrects a later daily outcome without changing the overlapping monthly decision' do
     source.update!(dose_cycle: :daily)
     daily = source.medication_dose_occurrences.create!(window_starts_on: Date.current, position: 1,
-                                                       outcome: 'not_taken', reason: 'refused', resolved_at: Time.current,
-                                                       resolved_by_membership: actor)
+                                                       outcome: 'not_taken', reason: 'refused',
+                                                       resolved_at: Time.current, resolved_by_membership: actor)
 
     patch person_medication_dose_occurrence_path(source, daily),
           params: { dose_occurrence: { resolution: 'reopen', etag: Api::RecordEtag.for(daily) } }
