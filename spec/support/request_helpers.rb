@@ -37,6 +37,7 @@ module RequestHelpers
     schedules_path schedule_path schedules_workflow_path start_schedules_workflow_path
     schedules_frequency_preview_path schedule_medication_takes_path
     new_person_medication_dose_occurrence_path person_medication_dose_occurrences_path
+    edit_person_medication_dose_occurrence_path person_medication_dose_occurrence_path
     new_schedule_dose_occurrence_path schedule_dose_occurrences_path
     edit_schedule_dose_occurrence_path schedule_dose_occurrence_path
     search_path

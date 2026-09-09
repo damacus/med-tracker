@@ -40,13 +40,18 @@ module Components
               m3_text(variant: :body_small) { t("dashboard.outcomes.reasons.#{outcome.reason}") }
             end
             m3_text(variant: :body_small) { outcome.note } if outcome.note.present?
-            render_correction_link(outcome) if @can_correct_outcomes && outcome.source.is_a?(::Schedule)
+            render_correction_link(outcome) if @can_correct_outcomes
           end
         end
       end
 
       def render_correction_link(outcome)
-        m3_link(href: edit_schedule_dose_occurrence_path(outcome.source, outcome), variant: :text,
+        path = if outcome.source.is_a?(::Schedule)
+                 edit_schedule_dose_occurrence_path(outcome.source, outcome)
+               else
+                 edit_person_medication_dose_occurrence_path(outcome.source, outcome)
+               end
+        m3_link(href: path, variant: :text,
                 data: { turbo_frame: '_top' }) { t('dose_outcomes.correct') }
       end
 
