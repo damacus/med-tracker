@@ -22,13 +22,13 @@
 
 - [x] 4.1 Red: specify removal success, decimal validation, source access, insufficient stock, replay and rollback plus bounded history in request specs; observe failure through `task test TEST_FILE=<stock removal request spec>`.
 - [x] 4.2 Green/Refactor: add shared-service API adapters, typed history and capability/OpenAPI entries; verify request specs and client contract checks pass.
-- [ ] 4.3 Run applicable focused gates and publish the stock layer above the last dose layer; verify GitHub base/head and stack membership.
+- [x] 4.3 Run applicable focused gates and publish the stock layer above the last dose layer; verify GitHub base/head and stack membership.
 
 ## 5. Location management API
 
-- [ ] 5.1 Red: specify create/edit/delete, ETag conflicts, retained history, portable IDs, cross-household and role access in location request specs; observe focused failures.
-- [ ] 5.2 Green/Refactor: add location writes using shared policies and model guards; verify all location scenarios through focused specs.
-- [ ] 5.3 Red-Green-Refactor: add authorized person membership create/delete with duplicate replay and access tests, and verify portable IDs and household constraints.
+- [x] 5.1 Red: specify create/edit/delete, ETag conflicts, retained history, portable IDs, cross-household and role access in location request specs; observe focused failures.
+- [x] 5.2 Green/Refactor: add location writes using shared policies and model guards; verify all location scenarios through focused specs.
+- [x] 5.3 Red-Green-Refactor: add authorized person membership create/delete with duplicate replay and access tests, and verify portable IDs and household constraints.
 - [ ] 5.4 Add typed contracts/capabilities, run relevant client checks, `task rubocop` and focused Rails specs, then publish and verify the location stack layer.
 
 ## 6. Review and report API

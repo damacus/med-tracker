@@ -65,3 +65,19 @@ History is newest first. Use `page` and `per_page` (maximum 100); the response
 includes pagination metadata, saved quantities, reason, note, time and the
 actor membership ID when retained. Read access requires the same inventory
 management permission as recording a removal.
+
+## Location management
+
+Household managers can create locations and edit or delete them using the
+location's current `ETag` in `If-Match`. A missing version returns 428; a
+stale version returns 409. Deletion retains both actual administrations and
+saved dose decisions. Numeric and portable location identities are accepted.
+
+Create person-location assignments at
+`/households/{household_id}/locations/{location_id}/location_memberships`
+with `location_membership.person_id` as a numeric or portable person identity.
+Repeating the same assignment returns the existing membership. Delete using
+the returned membership ID below that collection. These actions require
+location-management permission and manage access to the selected person,
+including on cached replay. Membership changes remain online-only because
+they affect visibility.
