@@ -148,11 +148,16 @@ module Components
 
       def render_not_taken_action(row)
         source = row[:source]
-        return unless source.is_a?(::Schedule) && row[:status] != :taken
+        return if row[:status] == :taken
         return if row[:scheduled_at] && row[:scheduled_at] > Time.current
         return unless row[:can_record_outcome]
 
-        m3_link(href: new_schedule_dose_occurrence_path(source), variant: :text,
+        path = if source.is_a?(::Schedule)
+                 new_schedule_dose_occurrence_path(source)
+               else
+                 new_person_medication_dose_occurrence_path(source)
+               end
+        m3_link(href: path, variant: :text,
                 data: { turbo_frame: '_top' }) { t('dashboard.outcomes.not_taken') }
       end
 

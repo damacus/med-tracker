@@ -259,6 +259,10 @@ Rails.application.routes.draw do
       resources :dose_occurrences, only: %i[new create edit update]
     end
 
+    resources :person_medications, only: [] do
+      resources :dose_occurrences, only: %i[new create]
+    end
+
     get 'people/:person_id/avatar', to: 'people/avatars#show', as: :person_avatar
     resources :people do
       member do

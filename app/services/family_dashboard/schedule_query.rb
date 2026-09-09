@@ -169,7 +169,7 @@ module FamilyDashboard
       {
         person: person,
         source: source,
-        can_record_outcome: recordable_schedule?(source, person),
+        can_record_outcome: recordable_person?(person),
         scheduled_at: routine_scheduled_at(source, takes.length),
         taken_at: nil,
         status: MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason || :upcoming,
@@ -186,8 +186,8 @@ module FamilyDashboard
                                      person_id: @person_ids, access_level: %w[record manage]).pluck(:person_id)
     end
 
-    def recordable_schedule?(source, person)
-      source.is_a?(Schedule) && @recordable_person_ids.include?(person.id)
+    def recordable_person?(person)
+      @recordable_person_ids.include?(person.id)
     end
 
     def generate_as_needed_rows_for(source, person)
