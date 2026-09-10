@@ -9,14 +9,24 @@ RSpec.describe 'API v1 auth sessions' do
   let(:account) { user.person.account }
   let(:oidc_issuer) { 'https://issuer.example.test' }
   let(:oidc_client_id) { 'medtracker-mobile-test' }
-  let(:oidc_client_secret) { 'oidc-test-secret' }
 
   before do
     allow(ENV).to receive(:fetch).and_call_original
     allow(ENV).to receive(:fetch).with('OIDC_ISSUER_URL', nil).and_return(oidc_issuer)
     allow(ENV).to receive(:fetch).with('OIDC_MOBILE_CLIENT_ID', nil).and_return(oidc_client_id)
     allow(ENV).to receive(:fetch).with('OIDC_CLIENT_ID', nil).and_return(oidc_client_id)
-    allow(ENV).to receive(:fetch).with('OIDC_CLIENT_SECRET', nil).and_return(oidc_client_secret)
+    stub_request(:get, "#{oidc_issuer}/.well-known/openid-configuration")
+      .to_return(
+        status: 200,
+        body: { issuer: oidc_issuer, jwks_uri: "#{oidc_issuer}/oauth/v2/keys" }.to_json,
+        headers: { 'Content-Type' => 'application/json' }
+      )
+    stub_request(:get, "#{oidc_issuer}/oauth/v2/keys")
+      .to_return(
+        status: 200,
+        body: JWT::JWK::Set.new(oidc_jwk).export.to_json,
+        headers: { 'Content-Type' => 'application/json' }
+      )
   end
 
   describe 'POST /api/v1/auth/login' do
@@ -340,6 +350,45 @@ RSpec.describe 'API v1 auth sessions' do
       expect(response.parsed_body.dig('data', 'refresh_token')).to be_present
       expect(response.parsed_body.dig('data', 'me', 'email_address')).to eq(user.email_address)
       expect(ApiSession.order(:id).last.device_name).to eq('RSpec Mobile')
+    end
+
+    it 'rejects a token signed with the confidential web client secret' do
+      token = JWT.encode(
+        {
+          iss: oidc_issuer,
+          aud: oidc_client_id,
+          exp: 15.minutes.from_now.to_i,
+          iat: Time.current.to_i,
+          sub: 'jane-oidc-sub',
+          nonce: 'symmetric-token'
+        },
+        'oidc-test-secret',
+        'HS256'
+      )
+
+      post api_v1_auth_oidc_exchange_path,
+           params: {
+             id_token: token,
+             nonce: 'symmetric-token',
+             code_verifier: 'pkce-verifier'
+           },
+           as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'does not use the confidential web client as the mobile audience' do
+      allow(ENV).to receive(:fetch).with('OIDC_MOBILE_CLIENT_ID', nil).and_return(nil)
+
+      post api_v1_auth_oidc_exchange_path,
+           params: {
+             id_token: oidc_token(sub: 'jane-oidc-sub', nonce: 'missing-mobile-client'),
+             nonce: 'missing-mobile-client',
+             code_verifier: 'pkce-verifier'
+           },
+           as: :json
+
+      expect(response).to have_http_status(:unauthorized)
     end
 
     it 'binds OIDC exchange to a requested household membership' do
@@ -742,8 +791,17 @@ RSpec.describe 'API v1 auth sessions' do
         nonce: nonce,
         amr: overrides[:amr]
       }.compact,
-      oidc_client_secret,
-      'HS256'
+      oidc_signing_key,
+      'RS256',
+      kid: oidc_jwk[:kid]
     )
+  end
+
+  def oidc_signing_key
+    @oidc_signing_key ||= OpenSSL::PKey::RSA.generate(2048)
+  end
+
+  def oidc_jwk
+    @oidc_jwk ||= JWT::JWK.new(oidc_signing_key, kid: 'oidc-test-key', use: 'sig', alg: 'RS256')
   end
 end

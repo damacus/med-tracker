@@ -84,9 +84,10 @@ module Api
     def decode_claims
       payload, = JWT.decode(
         params[:id_token].to_s,
-        client_secret,
+        nil,
         true,
-        algorithm: 'HS256',
+        algorithms: ['RS256'],
+        jwks: Api::OidcJwks.new(issuer: issuer),
         iss: issuer,
         verify_iss: true,
         aud: audience,
@@ -94,7 +95,7 @@ module Api
         verify_expiration: true
       )
       payload
-    rescue JWT::DecodeError => e
+    rescue JWT::DecodeError, Api::OidcJwks::Error => e
       raise Error, e.message
     end
 
@@ -150,13 +151,8 @@ module Api
 
     def audience
       ENV.fetch('OIDC_MOBILE_CLIENT_ID', nil).presence ||
-        ENV.fetch('OIDC_CLIENT_ID', nil).presence ||
-        Rails.application.credentials.dig(:oidc, :client_id).to_s
-    end
-
-    def client_secret
-      ENV.fetch('OIDC_CLIENT_SECRET', nil).presence ||
-        Rails.application.credentials.dig(:oidc, :client_secret).to_s
+        Rails.application.credentials.dig(:oidc, :mobile_client_id).to_s.presence ||
+        raise(Error, 'OIDC mobile client is not configured')
     end
 
     def audit_context(account, membership)
