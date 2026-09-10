@@ -30,4 +30,34 @@ class CompanionProtocolTest {
             .forEach { assertEquals(it, DecodedStatus.Malformed, CompanionProtocol.decode(it.toByteArray())) }
         assertEquals(DecodedStatus.Malformed, CompanionProtocol.decode(ByteArray(4097)))
     }
+
+    @Test fun `schedule protocol encodes and decodes people and medications`() {
+        assertEquals("/medtracker/companion/schedule", ScheduleProtocol.PATH)
+        val schedule = CompanionSchedule(
+            publishedAt = 1000L,
+            people = listOf(
+                PersonData("p-1", "Self", 0),
+                PersonData("p-2", "Maya", 1)
+            ),
+            medications = listOf(
+                MedicationData("m-1", "p-1", "Paracetamol", "500mg", "as_needed"),
+                MedicationData("m-2", "p-2", "Amoxicillin", "250mg", "due_now", "10:00 AM")
+            )
+        )
+        val bytes = ScheduleProtocol.encode(schedule)
+        val decoded = ScheduleProtocol.decode(bytes)
+        assertEquals(schedule, decoded)
+        assertNull(ScheduleProtocol.decode(ByteArray(32769)))
+        assertNull(ScheduleProtocol.decode("invalid json".toByteArray()))
+    }
+
+    @Test fun `dose protocol encodes and decodes dose take records`() {
+        assertEquals("/medtracker/doses/taken/", DoseProtocol.PATH_PREFIX)
+        val record = TakenDoseRecord("evt-123", "p-2", "m-2", 2000L, "250mg")
+        val bytes = DoseProtocol.encode(record)
+        val decoded = DoseProtocol.decode(bytes)
+        assertEquals(record, decoded)
+        assertNull(DoseProtocol.decode(ByteArray(4097)))
+        assertNull(DoseProtocol.decode("invalid json".toByteArray()))
+    }
 }

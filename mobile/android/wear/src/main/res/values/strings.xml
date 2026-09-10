@@ -6,4 +6,15 @@
     <string name="incompatible">Incompatible phone app. Update MedTracker on both devices.</string>
     <string name="signed_out">Phone connected. Sign in on your phone.</string>
     <string name="ready">Phone connected. Ready.</string>
+    <string name="next_dose">NEXT DOSE</string>
+    <string name="take_now">Take Now</string>
+    <string name="select_person">Select Person</string>
+    <string name="medications">Medications</string>
+    <string name="dose_recorded">Dose Recorded!</string>
+    <string name="synced_to_phone">Synced to phone</string>
+    <string name="saved_offline">Saved offline • Syncs when connected</string>
+    <string name="due_now">Due now</string>
+    <string name="as_needed">As needed</string>
+    <string name="cancel">Cancel</string>
+    <string name="no_medications">No active medications</string>
 </resources>

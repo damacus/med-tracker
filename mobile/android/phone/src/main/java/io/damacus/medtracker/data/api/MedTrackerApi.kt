@@ -41,7 +41,6 @@ import io.medtracker.client.infrastructure.ClientError
 import io.medtracker.client.infrastructure.Redirection
 import io.medtracker.client.infrastructure.ServerException
 import io.medtracker.client.infrastructure.ServerError
-import io.medtracker.client.infrastructure.Serializer
 import io.medtracker.client.infrastructure.Success
 import io.medtracker.client.models.AiMedicationSuggestion
 import io.medtracker.client.models.AuthLoginData
@@ -63,8 +62,6 @@ import io.medtracker.client.models.Location
 import io.medtracker.client.models.Medication
 import io.medtracker.client.models.MedicationCreateAttributes
 import io.medtracker.client.models.MedicationCreateRequest
-import io.medtracker.client.models.MedicationInventoryAdjustmentRequest
-import io.medtracker.client.models.MedicationInventoryAdjustmentRequestAdjustment
 import io.medtracker.client.models.MedicationLookupResult
 import io.medtracker.client.models.MedicationTake
 import io.medtracker.client.models.MedicationTakeCreateRequest
@@ -410,7 +407,8 @@ internal fun decodeAuthenticationResponse(
 internal fun AuthLoginData.toSessionPayload() = SessionPayload(accessToken, accessTokenExpiresAt.toString(), refreshToken, refreshTokenExpiresAt.toString(), UserDto(me.id.toLong(), me.emailAddress, me.person.name, me.membershipRole?.value), household?.let { HouseholdDto(it.id.toLong(), it.name) })
 private fun AuthRefreshData.toSessionPayload() = SessionPayload(accessToken, accessTokenExpiresAt.toString(), refreshToken, refreshTokenExpiresAt.toString(), household = household?.let { HouseholdDto(it.id.toLong(), it.name) })
 private fun Person.toDomain() = PersonDto(id.toLong(), portableId.toString(), name, email, dateOfBirth?.toString(), personType.value, age, hasCapacity)
-private fun Medication.toDomain() = MedicationDto(id.toLong(), portableId.toString(), name, displayName, category, description, doseAmount?.toDoubleOrNull(), doseUnit, currentSupply?.toDoubleOrNull(), reorderThreshold?.toDoubleOrNull(), reorderStatus?.value, lowStock, outOfStock)
+private fun Medication.toDomain() = MedicationDto(id.toLong(), portableId.toString(), name, displayName, category, description, doseAmount?.toDoubleOrNull(), doseUnit, currentSupply?.toDoubleOrNull(),
+	reorderThreshold.toDoubleOrNull(), reorderStatus?.value, lowStock, outOfStock)
 private fun Schedule.toDomain() = ScheduleDto(id.toLong(), portableId.toString(), personId.toLong(), personPortableId.toString(), medicationId.toLong(), medicationPortableId.toString(), doseAmount.toDoubleOrNull(), doseUnit, frequency, doseCycle?.value, startDate.toString(), endDate.toString(), active, paused, notes, maxDailyDoses, minHoursBetweenDoses?.toDoubleOrNull())
 private fun MedicationTake.toDomain() = MedicationTakeDto(id.toLong(), portableId.toString(), clientUuid?.toString(), scheduleId?.toLong(), personMedicationId?.toLong(), personId?.toLong(), medicationId?.toLong(), doseAmount?.toDoubleOrNull(), doseUnit, takenAt?.toString())
 private fun Location.toDomain() = LocationDto(id = id.toLong(), name = name, description = description)
