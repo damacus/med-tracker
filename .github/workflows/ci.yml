@@ -27,6 +27,7 @@ jobs:
       android: ${{ steps.filter.outputs.android }}
       api_clients: ${{ steps.filter.outputs.api_clients }}
       policy: ${{ steps.filter.outputs.policy }}
+      lighthouse: ${{ steps.filter.outputs.lighthouse }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -204,8 +205,12 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: [ubuntu-latest]
-    name: RSpec Tests (Models, Policies, Controllers, Components)
+    name: RSpec Tests (Models, Policies, Controllers, Components) - Shard ${{ matrix.shard }}/2
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
 
     services:
       postgres:
@@ -227,7 +232,8 @@ jobs:
       DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
       RAILS_ENV: test
       COVERAGE: true
-      SIMPLECOV_COMMAND_NAME: rspec-non-system
+      SIMPLECOV_SHARD: true
+      SIMPLECOV_COMMAND_NAME: rspec-non-system-shard-${{ matrix.shard }}
 
     steps:
       - name: Checkout code
@@ -245,16 +251,69 @@ jobs:
       - name: Precompile assets
         run: bundle exec rails assets:precompile
 
-      - name: Run non-browser tests
-        run: bundle exec rspec --format RSpec::Github::Formatter --tag ~browser
+      - name: Build non-browser example manifest
+        run: COVERAGE=false bundle exec rspec --tag ~browser --dry-run --format json --out tmp/non-browser-examples.json
+
+      - name: Run non-browser tests (shard ${{ matrix.shard }}/2)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ci/non_browser_shards.mjs \
+            --input tmp/non-browser-examples.json \
+            --timings scripts/ci/non_browser_timings.json \
+            --shards 2 \
+            --shard ${{ matrix.shard }} > tmp/non-browser-shard-${{ matrix.shard }}.txt
+          mapfile -t non_browser_files < tmp/non-browser-shard-${{ matrix.shard }}.txt
+          if [ ${#non_browser_files[@]} -gt 0 ]; then
+            bundle exec rspec --format RSpec::Github::Formatter --tag ~browser "${non_browser_files[@]}"
+          else
+            echo "No non-browser files for shard ${{ matrix.shard }}"
+          fi
 
       - name: Upload SimpleCov coverage report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: simplecov-non-system
-          path: coverage
-          if-no-files-found: ignore
+          name: simplecov-non-system-${{ matrix.shard }}
+          path: coverage/.resultset.json
+          include-hidden-files: true
+          if-no-files-found: error
+
+  coverage:
+    needs: test_non_system
+    if: ${{ needs.test_non_system.result == 'success' }}
+    runs-on: [ubuntu-latest]
+    name: Collated SimpleCov Coverage
+    timeout-minutes: 10
+
+    env:
+      RAILS_ENV: test
+      COVERAGE: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0.6"
+          bundler-cache: true
+
+      - name: Download SimpleCov shard 1
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: simplecov-non-system-1
+          path: coverage/shard-1
+
+      - name: Download SimpleCov shard 2
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: simplecov-non-system-2
+          path: coverage/shard-2
+
+      - name: Collate SimpleCov reports
+        run: bundle exec ruby scripts/ci/collate_simplecov.rb coverage/shard-1/.resultset.json coverage/shard-2/.resultset.json
 
   test_system:
     needs: changes
@@ -321,27 +380,27 @@ jobs:
       - name: Precompile assets
         run: bundle exec rails assets:precompile
 
+      - name: Build browser example manifest
+        run: bundle exec rspec --tag browser --dry-run --format json --out tmp/browser-examples.json
+
       - name: Run browser tests (shard ${{ matrix.shard }}/2)
         shell: bash
         run: |
+          set -euo pipefail
           # Get all spec files and split tagged browser examples for this shard
-          mapfile -t file_array < <(find spec -name '*_spec.rb' | sort)
-          total_shards=2
-          shard=${{ matrix.shard }}
-
           # Split files across shards using modulo
-          shard_files=()
-          for i in "${!file_array[@]}"; do
-            if (( (i % total_shards) + 1 == shard )); then
-              shard_files+=("${file_array[$i]}")
-            fi
-          done
+          node scripts/ci/browser_shards.mjs \
+            --input tmp/browser-examples.json \
+            --timings scripts/ci/browser_timings.json \
+            --shards 2 \
+            --shard ${{ matrix.shard }} > tmp/browser-shard-${{ matrix.shard }}.txt
+          mapfile -t browser_examples < tmp/browser-shard-${{ matrix.shard }}.txt
 
-          if [ ${#shard_files[@]} -gt 0 ]; then
-            echo "Running tests for shard $shard: ${shard_files[*]}"
-            bundle exec rspec --tag browser --format RSpec::Github::Formatter --format documentation "${shard_files[@]}"
+          if [ ${#browser_examples[@]} -gt 0 ]; then
+            echo "Running ${#browser_examples[@]} examples for shard ${{ matrix.shard }}"
+            bundle exec rspec --format RSpec::Github::Formatter --format documentation "${browser_examples[@]}"
           else
-            echo "No files for this shard"
+            echo "No browser examples for shard ${{ matrix.shard }}"
           fi
 
       - name: Upload Capybara failure screenshots
@@ -429,9 +488,8 @@ jobs:
   lighthouse:
     runs-on: [ubuntu-latest]
     name: Lighthouse Mobile Audit
-    continue-on-error: true
-    needs: [changes, test_non_system]
-    if: ${{ needs.changes.outputs.app == 'true' }}
+    needs: changes
+    if: ${{ needs.changes.outputs.lighthouse == 'true' }}
     timeout-minutes: 15
 
     services:
@@ -541,12 +599,14 @@ jobs:
       - client_tools
       - docs_check
       - test_non_system
+      - coverage
       - test_system
       - production_image_medication_search
       - android
       - api_clients
       - policy_check
       - markdown_check
+      - lighthouse
     runs-on: [ubuntu-latest]
     name: CI Success
     steps:
