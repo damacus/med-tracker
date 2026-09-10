@@ -66,8 +66,10 @@ Every internal Compose task requires an `ENVIRONMENT` value. Public task files
 pass that value when they call `internal:*` tasks.
 
 `internal:run` starts a temporary service container through the worktree's
-Compose lock, so pass the complete command once. The root Taskfile uses
-`run: once`, which can deduplicate repeated calls to the same internal task.
+Compose lock, so pass the complete command once. The root Taskfile defaults to
+`run: once`, while `internal:run` uses `run: when_changed`: distinct environment,
+service, command, and Docker-argument values execute, while identical calls can
+still be deduplicated.
 
 ## Add a public command
 

@@ -42,6 +42,8 @@ RSpec.describe 'Dashboard', :browser do
     Schedule.where(person: person).delete_all
     PersonMedication.where(person: person).delete_all
     medication.update!(current_supply: 3)
+    as_needed_medication = medications(:ibuprofen)
+    as_needed_medication.update!(current_supply: 3)
     schedule = Schedule.create!(
       person: person,
       medication: medication,
@@ -52,6 +54,14 @@ RSpec.describe 'Dashboard', :browser do
       end_date: Time.zone.today + 30.days,
       max_daily_doses: 1,
       schedule_config: { 'times' => ['09:00'] }
+    )
+    as_needed_person_medication = PersonMedication.create!(
+      person: person,
+      medication: as_needed_medication,
+      dose_amount: 1,
+      dose_unit: as_needed_medication.dose_unit,
+      administration_kind: :as_needed,
+      max_daily_doses: 1
     )
 
     travel_to(Time.zone.now.change(hour: 10, min: 0)) do
@@ -78,6 +88,13 @@ RSpec.describe 'Dashboard', :browser do
       expect(dashboard_metric_value('TASKS LEFT')).to eq('0')
       expect(page).to have_text('Routine tasks done today')
       expect(page).to have_css('[data-testid="dashboard-stock-meter"][aria-label="2 units left"]')
+      as_needed_details = find('[data-testid="dashboard-as-needed-person"]')
+      expect(as_needed_details).to have_text(/As needed/i)
+      as_needed_details.find('summary').click
+      expect(as_needed_details).to have_css(
+        "[data-testid='take-dose-personmedication_#{as_needed_person_medication.id}']"
+      )
+      expect(MedicationTake.find_by(person_medication: as_needed_person_medication)).to be_nil
       expect(medication.reload.current_supply).to eq(2)
     end
   end

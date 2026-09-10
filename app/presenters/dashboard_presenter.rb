@@ -88,11 +88,11 @@ class DashboardPresenter
   end
 
   def due_now_count
-    action_rows.count { |row| due_now_row?(row) }
+    routine_action_rows.count { |row| due_now_row?(row) }
   end
 
   def tasks_left_count
-    action_rows.count { |row| task_left_row?(row) }
+    routine_action_rows.count { |row| task_left_row?(row) }
   end
 
   def smart_insights
@@ -110,11 +110,11 @@ class DashboardPresenter
   private
 
   def next_due_time
-    action_rows.filter_map { |row| next_due_time_for(row) }.min
+    routine_action_rows.filter_map { |row| next_due_time_for(row) }.min
   end
 
-  def action_rows
-    @action_rows ||= routine_tasks_by_person.values.flatten + as_needed_by_person.values.flatten
+  def routine_action_rows
+    @routine_action_rows ||= routine_tasks_by_person.values.flatten
   end
 
   def due_now_row?(row)

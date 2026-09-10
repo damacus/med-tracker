@@ -25,6 +25,7 @@ tasks:
   run:
     desc: Run arbitrary command in Docker container
     internal: true
+    run: when_changed
     requires:
       vars: [ENVIRONMENT, COMMAND]
     vars:
