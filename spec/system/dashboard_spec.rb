@@ -221,7 +221,12 @@ RSpec.describe 'Dashboard', :browser do
       visit dashboard_path(dashboard_person_id: DashboardPresenter::ALL_FAMILY_PERSON_ID)
 
       find("[data-testid='take-dose-personmedication_#{person_medication.id}']").click
-      within("form[action='#{take_medication_person_person_medication_path(person, person_medication)}']") do
+      take_form = find(
+        "dialog[open] form[action='#{take_medication_person_person_medication_path(person, person_medication)}']",
+        visible: true,
+        wait: 10
+      )
+      within(take_form) do
         expect(page).to have_field(
           'dashboard_person_id',
           type: 'hidden',
@@ -236,7 +241,12 @@ RSpec.describe 'Dashboard', :browser do
         other_person,
         other_person_medication
       )
-      within("form[action='#{other_person_take_path}']") do
+      other_person_take_form = find(
+        "dialog[open] form[action='#{other_person_take_path}']",
+        visible: true,
+        wait: 10
+      )
+      within(other_person_take_form) do
         expect(page).to have_field(
           'dashboard_person_id',
           type: 'hidden',

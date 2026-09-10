@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'open3'
+require 'tmpdir'
 
 RSpec.describe 'Taskfiles' do
   it 'defines opt-in Portless tasks for dev and test' do
@@ -51,6 +53,62 @@ RSpec.describe 'Taskfiles' do
       'Test image med-tracker-web-test is missing',
       'Test preflight spec failed'
     )
+  end
+
+  it 'defines a self-contained Playwright dependency preflight task' do
+    expect(test_taskfile.dig('tasks', 'verify-dependencies', 'cmds', 0, 'task'))
+      .to eq(:'internal:run')
+    expect(test_taskfile.dig('tasks', 'verify-dependencies', 'cmds', 0, 'vars'))
+      .to eq(
+        'ENVIRONMENT' => 'test',
+        'COMMAND' => 'node scripts/test_dependency_verification.js'
+      )
+    expect(test_preflight_script).to include(
+      'task test:verify-dependencies',
+      'Test dependency preflight failed'
+    )
+  end
+
+  it 'maps every new dependency verifier path into the Rails CI suite' do
+    policy = JSON.parse(Rails.root.join('scripts/ci/policy.json').read)
+    rules = policy.fetch('rules').select do |rule|
+      Regexp.new(rule.fetch('pattern')).match?('scripts/test_dependency_verification.js')
+    end
+
+    expect(rules).to include(include('suites' => include('rails')))
+    expect(Regexp.new(rules.first.fetch('pattern'))).to match('scripts/test_capybara_browser.rb')
+  end
+
+  it 'refreshes stale mounted Playwright dependencies before proving Chromium launches' do
+    expect(test_dependency_verification_script).to include(
+      'package-lock.json',
+      'node_modules/.medtracker-package-lock.sha256',
+      'execFileSync',
+      '--ignore-scripts',
+      'chromium.launch'
+    )
+    expect(test_dependency_verification_script).not_to include('ln -s')
+    expect(test_capybara_browser_script).to include(
+      'Capybara::Playwright::Driver.new',
+      'driver.send(:browser)',
+      'Capybara Playwright launch preflight passed'
+    )
+  end
+
+  it 'executes the current dependency marker and Chromium launch checks' do
+    expect(run_dependency_verifier_case(:current)).to include('PASS current')
+  end
+
+  it 'executes the stale dependency refresh check' do
+    expect(run_dependency_verifier_case(:stale)).to include('PASS stale')
+  end
+
+  it 'reports a dependency refresh failure' do
+    expect(run_dependency_verifier_case(:refresh_failure)).to include('PASS refresh_failure')
+  end
+
+  it 'reports a Chromium launch failure' do
+    expect(run_dependency_verifier_case(:launch_failure)).to include('PASS launch_failure')
   end
 
   it 'runs RuboCop through the repository binstub' do
@@ -409,6 +467,26 @@ RSpec.describe 'Taskfiles' do
 
   def test_preflight_script
     Rails.root.join('scripts/test_preflight.fish').read
+  end
+
+  def test_dependency_verification_script
+    Rails.root.join('scripts/test_dependency_verification.js').read
+  end
+
+  def test_capybara_browser_script
+    Rails.root.join('scripts/test_capybara_browser.rb').read
+  end
+
+  def run_dependency_verifier_case(name)
+    stdout, stderr, status = Open3.capture3(
+      'node',
+      Rails.root.join('spec/support/test_dependency_verification_harness.js').to_s,
+      name.to_s,
+      chdir: Rails.root
+    )
+    raise "verifier case failed: #{stderr}#{stdout}" unless status.success?
+
+    stdout
   end
 
   def observability_characterization_script

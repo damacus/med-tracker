@@ -42,10 +42,15 @@ RSpec.describe 'Schedule dosage selection', :browser do
     login_as(admin)
     visit new_person_schedule_path(person)
 
-    find_by_id('medication_trigger').click
-    find('[role="option"]', text: 'Dose-less medication', wait: 10).click
+    medication_trigger = find_by_id('medication_trigger')
+    medication_trigger.click
 
-    expect(page).to have_text('No dose options are available for this medication.')
+    medication_list = find('[role="listbox"]', visible: true, wait: 10)
+    within(medication_list) do
+      find('[role="option"]', text: 'Dose-less medication', visible: true).click
+    end
+
+    expect(page).to have_text('No dose options are available for this medication.', wait: 10)
   end
 
   it 'returns to the person page when cancelling the full-page form' do
