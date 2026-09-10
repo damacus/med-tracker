@@ -71,7 +71,7 @@ class DashboardSessionTest {
         assertEquals(DashboardData(), model.uiState.value.dashboardData)
         assertTrue(api.peopleRequests.isEmpty())
 
-        signIn(1)
+        signIn(1L)
         runCurrent()
 
         assertEquals(listOf(1L), model.uiState.value.dashboardData.people.map { it.id })
@@ -80,10 +80,10 @@ class DashboardSessionTest {
     }
 
     @Test fun `logout clears data selection and messages before another account signs in`() = runTest(dispatcher) {
-        signIn(1)
+        signIn(1L)
         val model = model()
         runCurrent()
-        model.selectPerson(1)
+        model.selectPerson(1L)
         model.recordDose(model.uiState.value.dashboardData.schedules.single())
         runCurrent()
         assertNotNull(model.uiState.value.actionSuccessMessage)
@@ -94,7 +94,7 @@ class DashboardSessionTest {
         runCurrent()
 
         assertCleared(model.uiState.value)
-        signIn(2)
+        signIn(2L)
         assertCleared(model.uiState.value)
         runCurrent()
         assertEquals(listOf(2L), model.uiState.value.dashboardData.people.map { it.id })
@@ -103,7 +103,7 @@ class DashboardSessionTest {
     }
 
     @Test fun `account household server and new login each synchronously reset the session`() = runTest(dispatcher) {
-        signIn(1)
+        signIn(1L)
         val model = model()
         runCurrent()
         val identities = listOf(
@@ -124,17 +124,17 @@ class DashboardSessionTest {
     }
 
     @Test fun `late cancellation ignoring load cannot repopulate the next session`() = runTest(dispatcher) {
-        signIn(1)
+        signIn(1L)
         api.delayPeople = true
         val model = model()
         runCurrent()
         val oldLoad = api.peopleJob!!
-        signIn(2)
+        signIn(2L)
         assertTrue(oldLoad.isCancelled)
         runCurrent()
         val nextState = model.uiState.value
 
-        api.peopleContinuation!!.resume(ApiResult.Success(listOf(PersonDto(id = 1, name = "Old person"))))
+        api.peopleContinuation!!.resume(ApiResult.Success(listOf(PersonDto(id = 1L, name = "Old person"))))
         runCurrent()
 
         assertTrue(api.oldPeopleReturned)
@@ -143,7 +143,7 @@ class DashboardSessionTest {
     }
 
     @Test fun `late cancellation ignoring dose success cannot alter the next session`() = runTest(dispatcher) {
-        assertLateDoseIgnored(ApiResult.Success(MedicationTakeDto(id = 100, personId = 1)))
+        assertLateDoseIgnored(ApiResult.Success(MedicationTakeDto(id = 100L, personId = 1L)))
     }
 
     @Test fun `late cancellation ignoring dose error cannot alter the next session`() = runTest(dispatcher) {
@@ -155,30 +155,30 @@ class DashboardSessionTest {
     }
 
     @Test fun `render projection hides prior dashboard and profile before observers catch up`() = runTest(dispatcher) {
-        signIn(1)
+        signIn(1L)
         val model = model()
         runCurrent()
-        model.selectPerson(1)
+        model.selectPerson(1L)
         val previouslyCollectedState = model.uiState.value
         assertNotNull(previouslyCollectedState.dashboardData.selectedPerson)
 
         sessions.clearSession()
         assertCleared(previouslyCollectedState.forSession(sessions.sessionState.value))
-        signIn(2)
+        signIn(2L)
         assertCleared(previouslyCollectedState.forSession(sessions.sessionState.value))
         runCurrent()
         assertEquals(model.uiState.value, model.uiState.value.forSession(sessions.sessionState.value))
     }
 
     @Test fun `cleared view model cancels requests and releases its session observer`() = runTest(dispatcher) {
-        signIn(1)
+        signIn(1L)
         val model = model()
         api.delayPeople = true
         runCurrent()
         val oldLoad = api.peopleJob!!
         store.clear()
         val clearedState = model.uiState.value
-        signIn(2)
+        signIn(2L)
         api.peopleContinuation!!.resume(ApiResult.Success(emptyList()))
         runCurrent()
         assertTrue(oldLoad.isCancelled)
@@ -187,7 +187,7 @@ class DashboardSessionTest {
     }
 
     @Test fun `rapid sign out and identical sign in invalidate the old dose result`() = runTest(dispatcher) {
-        signIn(1)
+        signIn(1L)
         val model = model()
         runCurrent()
         val oldRevision = sessions.sessionState.value.revision
@@ -197,12 +197,12 @@ class DashboardSessionTest {
 
         sessions.clearSession()
         assertCleared(model.uiState.value)
-        signIn(1)
+        signIn(1L)
         assertNotEquals(oldRevision, sessions.sessionState.value.revision)
         assertCleared(model.uiState.value)
         runCurrent()
         val nextState = model.uiState.value
-        api.doseContinuation!!.resume(ApiResult.Success(MedicationTakeDto(id = 100)))
+        api.doseContinuation!!.resume(ApiResult.Success(MedicationTakeDto(id = 100L)))
         runCurrent()
 
         assertTrue(api.oldDoseReturned)
@@ -211,11 +211,11 @@ class DashboardSessionTest {
     }
 
     @Test fun `callbacks from an old screen cannot change or submit the new session`() = runTest(dispatcher) {
-        signIn(1)
+        signIn(1L)
         val model = model()
         runCurrent()
         val oldRevision = sessions.sessionState.value.revision
-        signIn(1, household = 2)
+        signIn(1L, household = 2L)
         runCurrent()
         val schedule = model.uiState.value.dashboardData.schedules.single()
         model.recordDose(schedule)
@@ -224,7 +224,7 @@ class DashboardSessionTest {
         val requests = api.peopleRequests.size
         val doses = api.doseRequests
 
-        model.selectPerson(1, oldRevision)
+        model.selectPerson(1L, oldRevision)
         model.clearMessages(oldRevision)
         model.refresh(oldRevision)
         model.recordDose(schedule, oldRevision)
@@ -236,14 +236,14 @@ class DashboardSessionTest {
     }
 
     @Test fun `cancelled refresh cannot clear a later session with a load error`() = runTest(dispatcher) {
-        signIn(1)
+        signIn(1L)
         val model = model()
         runCurrent()
         api.delayPeople = true
         model.refresh()
         runCurrent()
         assertTrue(model.uiState.value.isRefreshing)
-        signIn(2)
+        signIn(2L)
         runCurrent()
         val nextState = model.uiState.value
         api.peopleContinuation!!.resumeWith(Result.failure(IllegalStateException("Old load failure")))
@@ -262,11 +262,11 @@ class DashboardSessionTest {
     }
 
     @Test fun `logout callback from an old screen cannot sign out the current session`() = runTest(dispatcher) {
-        signIn(1)
+        signIn(1L)
         val oldRevision = sessions.sessionState.value.revision
         val main = MainViewModel(sessions, api)
         store.put("main", main)
-        signIn(2)
+        signIn(2L)
         val nextSession = sessions.sessionState.value
 
         main.logout(oldRevision)
@@ -281,14 +281,14 @@ class DashboardSessionTest {
         store.put("main", main)
         val selection = AuthenticationResult.HouseholdSelection(
             "selection-token",
-            listOf(HouseholdChoice(42, "Summer house", "member"))
+            listOf(HouseholdChoice(42L, "Summer house", "member"))
         )
 
         main.authenticate("https://selected.example/") { ApiResult.Success(selection) }
         runCurrent()
         assertEquals(selection, main.uiState.value.householdSelection)
 
-        main.selectHousehold(42)
+        main.selectHousehold(42L)
         runCurrent()
 
         assertEquals(
@@ -300,8 +300,8 @@ class DashboardSessionTest {
         assertNull(main.uiState.value.householdSelection)
     }
 
-    private suspend fun kotlinx.coroutines.test.TestScope.assertLateLogoutIgnored(fail: Boolean) {
-        signIn(1)
+    private fun kotlinx.coroutines.test.TestScope.assertLateLogoutIgnored(fail: Boolean) {
+        signIn(1L)
         val model = model()
         val main = MainViewModel(sessions, api)
         store.put("main", main)
@@ -312,7 +312,7 @@ class DashboardSessionTest {
         assertFalse(sessions.sessionState.value.isLoggedIn)
         assertCleared(model.uiState.value)
 
-        signIn(2)
+        signIn(2L)
         runCurrent()
         val nextSession = sessions.sessionState.value
         val nextDashboard = model.uiState.value
@@ -331,14 +331,14 @@ class DashboardSessionTest {
     }
 
     private fun kotlinx.coroutines.test.TestScope.assertLateDoseIgnored(result: ApiResult<MedicationTakeDto>) {
-        signIn(1)
+        signIn(1L)
         val model = model()
         runCurrent()
         api.delayDose = true
         model.recordDose(model.uiState.value.dashboardData.schedules.single())
         runCurrent()
         val oldDose = api.doseJob!!
-        signIn(2)
+        signIn(2L)
         assertTrue(oldDose.isCancelled)
         runCurrent()
         val nextState = model.uiState.value
@@ -354,7 +354,7 @@ class DashboardSessionTest {
 
     private fun model() = DashboardViewModel(sessions, api).also { store.put("dashboard", it) }
 
-    private fun signIn(account: Long, household: Long = 1, server: String = "https://one.example/") {
+    private fun signIn(account: Long, household: Long = 1L, server: String = "https://one.example/") {
         sessions.saveSession(
             SessionPayload("token-$account", refreshToken = "refresh-$account", me = UserDto(id = account), household = HouseholdDto(id = household)),
             server
@@ -411,7 +411,7 @@ class DashboardSessionTest {
                 oldDoseReturned = true
                 return result
             }
-            return ApiResult.Success(MedicationTakeDto(id = 99, scheduleId = request.sourceId.toLongOrNull() ?: 1L))
+            return ApiResult.Success(MedicationTakeDto(id = 99L, scheduleId = request.sourceId.toLongOrNull() ?: 1L))
         }
 
         override suspend fun logout(baseUrl: String, accessToken: String): ApiResult<Unit> {
@@ -433,11 +433,11 @@ class DashboardSessionTest {
         override suspend fun getLocations(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<LocationDto>> = ApiResult.Success(emptyList())
         override suspend fun getInvitations(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<HouseholdInvitationDto>> = ApiResult.Success(emptyList())
         override suspend fun createInvitation(baseUrl: String, accessToken: String, householdId: Long, email: String, role: String): ApiResult<HouseholdInvitationDto> = ApiResult.Success(
-	        HouseholdInvitationDto(1, email, role)
+            HouseholdInvitationDto(1L, email, role)
         )
-        override suspend fun createMedication(baseUrl: String, accessToken: String, householdId: Long, locationId: Int, request: CreateMedicationPayload): ApiResult<MedicationDto> = ApiResult.Success(MedicationDto(1, name = request.name))
+        override suspend fun createMedication(baseUrl: String, accessToken: String, householdId: Long, locationId: Int, request: CreateMedicationPayload): ApiResult<MedicationDto> = ApiResult.Success(MedicationDto(1L, name = request.name))
         override suspend fun recordStockRemoval(baseUrl: String, accessToken: String, householdId: Long, request: RecordStockRemovalPayload): ApiResult<MedicationDto> = ApiResult.Success(MedicationDto(request.medicationId, name = "Med"))
-        override suspend fun createSchedule(baseUrl: String, accessToken: String, householdId: Long, request: CreateSchedulePayload): ApiResult<ScheduleDto> = ApiResult.Success(ScheduleDto(1))
+        override suspend fun createSchedule(baseUrl: String, accessToken: String, householdId: Long, request: CreateSchedulePayload): ApiResult<ScheduleDto> = ApiResult.Success(ScheduleDto(1L))
         override suspend fun pauseSchedule(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long): ApiResult<ScheduleDto> = ApiResult.Success(ScheduleDto(scheduleId, paused = true))
         override suspend fun resumeSchedule(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long): ApiResult<ScheduleDto> = ApiResult.Success(ScheduleDto(scheduleId, paused = false))
     }
