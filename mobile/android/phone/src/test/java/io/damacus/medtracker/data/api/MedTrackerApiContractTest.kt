@@ -126,4 +126,16 @@ class MedTrackerApiContractTest {
         assertEquals("/api/v1/households/42/medications/15", getMedReq.path)
         assertEquals("GET", getMedReq.method)
     }
+
+    @Test fun generatedConvertsMoshiJsonDataExceptionToApiResultError() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody("""
+            {"data":{"format":"medtracker.api.capabilities.v1"}}
+        """.trimIndent()))
+
+        val result = api.getCapabilities(server.url("/").toString())
+
+        assertTrue(result is ApiResult.Error)
+        val error = result as ApiResult.Error
+        assertEquals("json_parse_error", error.code)
+    }
 }

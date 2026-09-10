@@ -317,9 +317,19 @@ class GeneratedMedTrackerApi(
     }
 
     internal suspend fun <T> generated(block: () -> T): ApiResult<T> = withContext(Dispatchers.IO) {
-        try { ApiResult.Success(block()) } catch (error: ClientException) { error.toResult() }
-        catch (error: ServerException) { error.toResult() } catch (error: IOException) { ApiResult.NetworkError(error) }
+        try {
+            ApiResult.Success(block())
+        } catch (error: ClientException) {
+            error.toResult()
+        } catch (error: ServerException) {
+            error.toResult()
+        } catch (error: IOException) {
+            ApiResult.NetworkError(error)
+        } catch (error: com.squareup.moshi.JsonDataException) {
+            ApiResult.Error("json_parse_error", error.message.orEmpty())
+        }
     }
+
 
     private suspend fun <T> authenticated(accessToken: String, block: (Call.Factory) -> T): ApiResult<T> = generated {
         block(RequestAuthCallFactory(callFactory, accessToken))

@@ -75,4 +75,16 @@ class MedicationPauseGatewayTest {
             }
         }
     }
+
+    @Test fun `supported handles malformed capabilities payload gracefully without throwing`() = runBlocking {
+        MockWebServer().use { server ->
+            server.start()
+            server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody("""{"data":{"format":"medtracker.api.capabilities.v1"}}"""))
+            val gateway = GeneratedMedicationPauseGateway(GeneratedMedTrackerApi(OkHttpClient()))
+            val session = AppSession(server.url("/").toString(), SessionPayload("token", refreshToken = "refresh", household = HouseholdDto(42)))
+            val result = gateway.supported(session)
+            assertTrue(result is ApiResult.Error)
+            assertEquals("json_parse_error", (result as ApiResult.Error).code)
+        }
+    }
 }
