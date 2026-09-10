@@ -26,6 +26,14 @@ RSpec.describe SimpleCov do
     expect(simplecov_config).to include('Kernel.exit SimpleCov::ExitCodes::MINIMUM_COVERAGE')
   end
 
+  it 'does not enforce partial coverage from a non-browser shard' do
+    expect(simplecov_config).to include("next if ENV['SIMPLECOV_SHARD'] == 'true'")
+    coverage_guard_index = simplecov_config.index("next unless ENV['COVERAGE'] == 'true'")
+    shard_guard_index = simplecov_config.index("next if ENV['SIMPLECOV_SHARD'] == 'true'")
+
+    expect(coverage_guard_index).to be < shard_guard_index
+  end
+
   it 'targets application code by default in RubyCritic' do
     rubycritic_task = taskfile.split("\n  rubycritic:\n", 2).last.split("\n  playwright:\n", 2).first
 

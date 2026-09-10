@@ -105,6 +105,7 @@ group :test do
   gem 'capybara'
   gem 'capybara-playwright-driver'
   gem 'factory_bot_rails'
+  gem 'playwright-ruby-client', '~> 1.62.0'
   gem 'pundit-matchers'
   gem 'rspec-rails'
   gem 'shoulda-matchers'

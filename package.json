@@ -1,6 +1,6 @@
 {
   "devDependencies": {
-    "playwright": "^1.61.0"
+    "playwright": "1.63.0"
   },
   "name": "app",
   "version": "1.0.0",
@@ -12,7 +12,7 @@
     "test": "test"
   },
   "dependencies": {
-    "playwright-core": "^1.61.0"
+    "playwright-core": "1.63.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
