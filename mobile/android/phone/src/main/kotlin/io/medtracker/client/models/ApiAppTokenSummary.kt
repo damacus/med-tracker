@@ -27,6 +27,7 @@ import com.squareup.moshi.JsonClass
  * @param lastUsedAt 
  * @param revokedAt 
  * @param permissionsVersion 
+ * @param expiresAt 
  */
 
 
@@ -45,7 +46,10 @@ data class ApiAppTokenSummary (
     val revokedAt: java.time.OffsetDateTime?,
 
     @Json(name = "permissions_version")
-    val permissionsVersion: kotlin.Int
+    val permissionsVersion: kotlin.Int,
+
+    @Json(name = "expires_at")
+    val expiresAt: java.time.OffsetDateTime
 
 ) {
 

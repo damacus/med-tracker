@@ -17,7 +17,7 @@ module Api
 
       def with_api_idempotency(&action)
         response.set_header('Cache-Control', 'no-store')
-        return render_forbidden unless current_api_session.is_a?(ApiSession)
+        return render_forbidden unless current_api_session.is_a?(ApiSession) || mobile_oauth_credential?
 
         action.call
       end

@@ -39,6 +39,7 @@ module Api
           methods: %w[bearer_session api_app_token],
           hosted_mobile: 'oidc_authorization_code_pkce',
           password_login: 'development_or_migration',
+          mobile_oauth: mobile_oauth,
           oidc_exchange: {
             supported: true,
             pkce_required: true,
@@ -49,10 +50,23 @@ module Api
         }
       end
 
+      def mobile_oauth
+        {
+          discovery_url: "#{request.base_url}/.well-known/oauth-authorization-server",
+          household_binding: 'account',
+          inactivity_timeout_days: AuthenticationLifetime.inactivity_days,
+          maximum_age_days: AuthenticationLifetime.maximum_age_days,
+          clients: OauthApplication.mobile.order(:client_id).map do |client|
+            { client_id: client.client_id, name: client.name,
+              redirect_uris: client.redirect_uri.split, scopes: client.scopes.split }
+          end
+        }
+      end
+
       def administration
         {
           household: true,
-          fresh_mfa_required: true,
+          fresh_mfa_required: false,
           app_tokens: true,
           audit_logs: true,
           invitations: true,

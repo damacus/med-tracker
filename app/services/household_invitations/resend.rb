@@ -1,8 +1,5 @@
 module HouseholdInvitations
   class Resend
-    class FreshAuthenticationRequired < StandardError
-    end
-
     class DeliveryError < StandardError
     end
 
@@ -34,9 +31,9 @@ module HouseholdInvitations
       Pundit.authorize(@authorization.with(membership: membership), @invitation, :resend?)
       authorize_household!
 
-      return if valid_session?(membership) && Api::FreshPrivilegedAction.new(credential: @credential).satisfied?
+      return if valid_session?(membership)
 
-      raise FreshAuthenticationRequired
+      raise Pundit::NotAuthorizedError
     end
 
     def authorize_household!
@@ -47,11 +44,19 @@ module HouseholdInvitations
     end
 
     def valid_session?(membership)
+      return valid_mobile_session?(membership) if @credential.is_a?(OauthGrant)
+
       return false unless @credential.is_a?(ApiSession)
 
       @credential.reload
       @credential.revoked_at.nil? && @credential.access_expires_at.future? && @credential.active_for_membership? &&
         @credential.household_membership_id == membership.id && @credential.account_id == membership.account_id
+    end
+
+    def valid_mobile_session?(membership)
+      @credential.reload
+      @credential.active_for_account? && @credential.expires_in.future? &&
+        @credential.account_id == membership.account_id
     end
 
     def record_resend!

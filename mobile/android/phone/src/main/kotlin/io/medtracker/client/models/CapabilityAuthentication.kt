@@ -15,6 +15,7 @@
 
 package io.medtracker.client.models
 
+import io.medtracker.client.models.CapabilityMobileOauth
 import io.medtracker.client.models.CapabilityOidcExchange
 
 import com.squareup.moshi.Json
@@ -27,6 +28,7 @@ import com.squareup.moshi.JsonClass
  * @param hostedMobile 
  * @param passwordLogin 
  * @param oidcExchange 
+ * @param mobileOauth 
  */
 
 
@@ -42,7 +44,10 @@ data class CapabilityAuthentication (
     val passwordLogin: CapabilityAuthentication.PasswordLogin,
 
     @Json(name = "oidc_exchange")
-    val oidcExchange: CapabilityOidcExchange
+    val oidcExchange: CapabilityOidcExchange,
+
+    @Json(name = "mobile_oauth")
+    val mobileOauth: CapabilityMobileOauth? = null
 
 ) {
 

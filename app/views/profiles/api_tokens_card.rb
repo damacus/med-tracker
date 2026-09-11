@@ -84,6 +84,9 @@ module Views
               p(class: 'mt-1 text-xs text-on-surface-variant') do
                 t('profiles.api_tokens.last_used_at', time: l(app_token.last_used_at, format: :short))
               end
+              p(class: 'mt-1 text-xs text-on-surface-variant') do
+                t('profiles.api_tokens.expires_at', time: l(app_token.expires_at, format: :long))
+              end
             end
             button_to(
               t('profiles.api_tokens.revoke'),

@@ -96,17 +96,7 @@ RSpec.describe 'API v1 household administration' do
     expect(audit_event.metadata).to include('target_membership_id' => membership.id, 'outcome' => 'rejected')
   end
 
-  it 'requires fresh privileged proof for admin mutations' do
-    patch api_v1_household_admin_settings_path(household_id),
-          params: { household: { name: 'API Admin Renamed Household' } },
-          headers: headers,
-          as: :json
-
-    expect(response).to have_http_status(:forbidden)
-    expect(response.parsed_body.dig('error', 'code')).to eq('fresh_privileged_action_required')
-
-    api_session.update!(oidc_mfa_verified: true, mfa_verified_at: Time.current)
-
+  it 'allows authorised admin mutations without additional MFA proof' do
     expect do
       patch api_v1_household_admin_settings_path(household_id),
             params: { household: { name: 'API Admin Renamed Household' } },
@@ -136,6 +126,7 @@ RSpec.describe 'API v1 household administration' do
     raw_token = response.parsed_body.dig('data', 'token')
     app_token_id = response.parsed_body.dig('data', 'id')
     expect(raw_token).to start_with(ApiAppToken::TOKEN_PREFIX)
+    expect(response.parsed_body.dig('data', 'expires_at')).to eq(ApiAppToken.find(app_token_id).expires_at.iso8601)
 
     security_metadata = SecurityAuditEvent.order(:created_at).last.metadata
     expect(security_metadata.to_json).not_to include(raw_token)
@@ -160,6 +151,25 @@ RSpec.describe 'API v1 household administration' do
     expect(response.parsed_body.dig('error', 'code')).to eq('validation_failed')
     expect(response.parsed_body.dig('error', 'errors', 'name')).to include("Name can't be blank")
     expect(response.parsed_body).not_to have_key('data')
+  end
+
+  it 'accepts a shorter requested token expiry and rejects unlimited or excessive lifetimes' do
+    deadline = 1.month.from_now.change(usec: 0)
+    post api_v1_household_admin_app_tokens_path(household_id),
+         params: { api_app_token: { name: 'Short-lived', expires_at: deadline.iso8601 } },
+         headers: headers, as: :json
+
+    expect(response).to have_http_status(:created)
+    expect(response.parsed_body.dig('data', 'expires_at')).to eq(deadline.iso8601)
+
+    [nil, 'forever', 13.months.from_now.iso8601].each do |expiry|
+      expect do
+        post api_v1_household_admin_app_tokens_path(household_id),
+             params: { api_app_token: { name: 'Invalid lifetime', expires_at: expiry } },
+             headers: headers, as: :json
+      end.not_to change(ApiAppToken, :count)
+      expect(response).to have_http_status(:unprocessable_content)
+    end
   end
 
   it 'lists app tokens with nullable and revoked timestamps' do

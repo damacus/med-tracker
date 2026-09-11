@@ -33,7 +33,7 @@ The root OpenAPI document remains authoritative, but each client checks in a pin
 
 ### Android release security is compile-time enforced
 
-Release exposes OIDC PKCE only and uses a fixed server configuration. Debug and staging alone may compile password login and server overrides. Tokens are encrypted with a key held by Android Keystore and encrypted bytes live under `noBackupFilesDir`; Android backup is disabled. Release logging is `NONE`; opt-in non-release logging is `BASIC` with sensitive headers redacted. A runtime flag alone was rejected because release binaries must not contain the password-login interface.
+The later `unify-mobile-login-with-rodauth` decision supersedes the fixed-server and staging-password UI requirements: all builds use browser-based Rodauth authorization-code PKCE with an editable instance URL and labelled presets. Tokens are encrypted with a key held by Android Keystore and encrypted bytes live under `noBackupFilesDir`; Android backup is disabled. Release logging is `NONE`; opt-in non-release logging is `BASIC` with sensitive headers redacted. Native password forms remain excluded from release binaries.
 
 ### Wear is a phone companion, not a second mobile client
 

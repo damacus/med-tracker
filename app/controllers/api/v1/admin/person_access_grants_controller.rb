@@ -4,8 +4,6 @@ module Api
   module V1
     module Admin
       class PersonAccessGrantsController < BaseController
-        before_action :require_fresh_privileged_action, only: %i[create destroy]
-
         def index
           grants = PersonAccessGrant.where(household: current_household).includes(:person, :household_membership)
                                     .order(:id)

@@ -90,6 +90,10 @@ import io.damacus.medtracker.ui.schedule.ScheduleViewModel
 import io.damacus.medtracker.ui.theme.MedTrackerPrimary
 import io.damacus.medtracker.ui.theme.MedTrackerTheme
 import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
+import io.damacus.medtracker.auth.MobileAuthDiscovery
+import io.damacus.medtracker.data.model.SessionPayload
+import net.openid.appauth.AuthState
 import net.openid.appauth.AuthorizationRequest
 import net.openid.appauth.AuthorizationResponse
 import net.openid.appauth.AuthorizationService
@@ -113,6 +117,9 @@ enum class AppDestination(val label: String) {
 class MainActivity : ComponentActivity() {
 
     private lateinit var authorizationService: AuthorizationService
+    private var pendingInstance: String? = null
+    private var pendingState: String? = null
+    private var pendingRevision: String? = null
     private val sessionManager by lazy { (application as MedTrackerApplication).sessionManager }
     private val offlineQueueRepository by lazy { OfflineQueueRepository() }
     private val networkMonitor by lazy { LiveNetworkMonitor(applicationContext) }
@@ -150,24 +157,37 @@ class MainActivity : ComponentActivity() {
     ) { result ->
         val data = result.data ?: Intent()
         val response = AuthorizationResponse.fromIntent(data)
-        if (response == null) {
-            mainViewModel.reportAuthenticationError("OIDC authorization did not complete")
+        val instance = pendingInstance
+        val revision = pendingRevision
+        if (response == null || instance == null || revision != sessionManager.sessionState.value.revision ||
+            response.state != pendingState || response.request.redirectUri.toString() != BuildConfig.OIDC_REDIRECT_URI) {
+            mainViewModel.reportAuthenticationError("Sign-in did not complete. Please try again.")
             return@registerForActivityResult
         }
+        pendingInstance = null
+        pendingState = null
         authorizationService.performTokenRequest(response.createTokenExchangeRequest()) { tokenResponse, error ->
-            val idToken = tokenResponse?.idToken
-            val nonce = response.request.nonce
-            val verifier = response.request.codeVerifier
-            if (idToken == null || nonce == null || verifier == null) {
-                mainViewModel.reportAuthenticationError(error?.errorDescription ?: "OIDC token exchange failed")
+            if (revision != sessionManager.sessionState.value.revision) return@performTokenRequest
+            val accessToken = tokenResponse?.accessToken
+            val refreshToken = tokenResponse?.refreshToken
+            if (accessToken == null || refreshToken == null || error != null) {
+                mainViewModel.reportAuthenticationError("Sign-in could not be completed. Please try again.")
             } else {
-                mainViewModel.exchangeOidc(idToken, nonce, verifier)
+                val state = AuthState(response, tokenResponse, null)
+                mainViewModel.completeMobileLogin(
+                    SessionPayload(accessToken = accessToken, refreshToken = refreshToken,
+                        accessTokenExpiresAt = tokenResponse.accessTokenExpirationTime?.let { java.time.Instant.ofEpochMilli(it).toString() },
+                        oauthState = state.jsonSerializeString()), instance
+                )
             }
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pendingInstance = savedInstanceState?.getString("mobileAuthInstance")
+        pendingState = savedInstanceState?.getString("mobileAuthState")
+        pendingRevision = savedInstanceState?.getString("mobileAuthRevision")
         enableEdgeToEdge()
         authorizationService = AuthorizationService(this)
 
@@ -193,24 +213,42 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("mobileAuthInstance", pendingInstance)
+        outState.putString("mobileAuthState", pendingState)
+        outState.putString("mobileAuthRevision", pendingRevision)
+        super.onSaveInstanceState(outState)
+    }
+
     override fun onDestroy() {
         authorizationService.dispose()
         super.onDestroy()
     }
 
-    private fun startOidcSignIn() {
-        val configuration = AuthorizationServiceConfiguration(
-            Uri.parse(BuildConfig.OIDC_AUTHORIZATION_ENDPOINT),
-            Uri.parse(BuildConfig.OIDC_TOKEN_ENDPOINT)
-        )
+    private fun startOidcSignIn(instanceUrl: String) {
+        val revision = sessionManager.sessionState.value.revision
+        lifecycleScope.launch {
+            val discovered = try {
+                MobileAuthDiscovery().fetch(instanceUrl, BuildConfig.OIDC_REDIRECT_URI)
+            } catch (error: kotlinx.coroutines.CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                mainViewModel.reportAuthenticationError("Unable to use this instance. Check its URL and mobile login configuration.")
+                return@launch
+            }
+            if (revision != sessionManager.sessionState.value.revision) return@launch
+            val configuration = AuthorizationServiceConfiguration(
+                Uri.parse(discovered.authorizationEndpoint), Uri.parse(discovered.tokenEndpoint)
+            )
         val verifier = CodeVerifierUtil.generateRandomCodeVerifier()
         val request = AuthorizationRequest.Builder(
             configuration,
-            BuildConfig.OIDC_CLIENT_ID,
+            discovered.clientId,
             ResponseTypeValues.CODE,
             Uri.parse(BuildConfig.OIDC_REDIRECT_URI)
         )
-            .setScope("openid profile email")
+            .setScope("medtracker offline_access")
+            .setAdditionalParameters(mapOf("response_mode" to "query"))
             .setCodeVerifier(
                 verifier,
                 CodeVerifierUtil.deriveCodeVerifierChallenge(verifier),
@@ -218,7 +256,11 @@ class MainActivity : ComponentActivity() {
             )
             .build()
 
-        authorizationResult.launch(authorizationService.getAuthorizationRequestIntent(request))
+            pendingInstance = discovered.serverUrl
+            pendingRevision = revision
+            pendingState = request.state
+            authorizationResult.launch(authorizationService.getAuthorizationRequestIntent(request))
+        }
     }
 }
 
@@ -236,7 +278,7 @@ fun MedTrackerApp(
     reportsViewModel: ReportsViewModel,
     networkMonitor: NetworkMonitor,
     offlineQueueRepository: OfflineQueueRepository,
-    onOidcSignIn: () -> Unit
+    onOidcSignIn: (String) -> Unit
 ) {
     val session by mainViewModel.sessionState.collectAsStateWithLifecycle()
     val mainUiState by mainViewModel.uiState.collectAsStateWithLifecycle()
@@ -274,10 +316,10 @@ fun MedTrackerApp(
     )
 
     Crossfade(
-        targetState = session.isLoggedIn,
+        targetState = session.isLoggedIn && session.household != null && mainUiState.householdSelection == null,
         label = "AuthCrossfade"
     ) { loggedIn ->
-        if (loggedIn && session.isLoggedIn) {
+        if (loggedIn && session.isLoggedIn && session.household != null && mainUiState.householdSelection == null) {
             ModalNavigationDrawer(
                 drawerState = drawerState,
                 drawerContent = {
@@ -347,6 +389,9 @@ fun MedTrackerApp(
                                 }
                             },
                             actions = {
+                                IconButton(onClick = { mainViewModel.showHouseholds() }) {
+                                    Icon(imageVector = Icons.Default.Home, contentDescription = "Switch household")
+                                }
                                 IconButton(onClick = { dashboardViewModel.refresh(sessionRevision) }) {
                                     Icon(imageVector = Icons.Default.Refresh, contentDescription = "Refresh")
                                 }

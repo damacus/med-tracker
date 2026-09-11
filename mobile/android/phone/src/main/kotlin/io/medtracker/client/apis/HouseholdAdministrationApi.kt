@@ -1188,7 +1188,7 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
     /**
      * POST /households/{household_id}/admin/invitations/{id}/resend
      * Rotate an invitation token and queue its replacement email.
-     * Online only. Requires current household administrator authority and fresh MFA on a user API session, including before idempotent replay. Accepted and revoked invitations cannot be resent. A delivery enqueue failure rolls back token rotation.
+     * Online only. Requires current household administrator authority and a valid user session, including before idempotent replay. Accepted and revoked invitations cannot be resent. A delivery enqueue failure rolls back token rotation.
      * @param householdId 
      * @param id 
      * @return InvitationResendResponse
@@ -1221,7 +1221,7 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
     /**
      * POST /households/{household_id}/admin/invitations/{id}/resend
      * Rotate an invitation token and queue its replacement email.
-     * Online only. Requires current household administrator authority and fresh MFA on a user API session, including before idempotent replay. Accepted and revoked invitations cannot be resent. A delivery enqueue failure rolls back token rotation.
+     * Online only. Requires current household administrator authority and a valid user session, including before idempotent replay. Accepted and revoked invitations cannot be resent. A delivery enqueue failure rolls back token rotation.
      * @param householdId 
      * @param id 
      * @return ApiResponse<InvitationResendResponse?>

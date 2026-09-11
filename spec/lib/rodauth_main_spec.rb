@@ -6,7 +6,7 @@ RSpec.describe RodauthMain do
   fixtures :people
 
   describe 'SMART OAuth provider' do
-    subject(:auth) { RodauthApp.rodauth.allocate }
+    subject(:auth) { RodauthApp.rodauth.new(RodauthApp.new(Rack::MockRequest.env_for('/token'))) }
 
     it 'requires PKCE and publishes the supported SMART scopes' do
       expect(auth.oauth_require_pkce).to be true

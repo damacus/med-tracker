@@ -6,7 +6,7 @@ The mobile exchange in [issue #1889](https://github.com/damacus/med-tracker/issu
 
 - First-party phones use MedTracker's Rodauth authorization-code flow with S256 PKCE in a platform browser authentication session. Rodauth delegates to the configured OIDC provider where appropriate, including Zitadel, or uses existing local authentication.
 - Preserve local and delegated login, optional MFA enrolment, available methods, admin tagging and role/person access policy.
-- Remove bespoke action-specific fresh-MFA gates from web and API administration. Use centrally configured interactive-session expiry instead; timeout values and idle versus absolute semantics remain under discussion. All login and session-expiry reauthentication goes through Rodauth.
+- Remove bespoke action-specific fresh-MFA gates from web and API administration. Use a central environment-configured interactive inactivity timeout, defaulting to 30 days, with no separate absolute deadline by default. All login and session-expiry reauthentication goes through Rodauth.
 - Issue account-level first-party mobile credentials. Resolve current household membership and action permissions on every household request; do not grant access merely because a household shares the instance.
 - Complete login without household selection. Let users list authorised households and switch within the app using the same credential; isolate cached records and queued actions by instance, account and household.
 - Preserve refresh rotation, device session visibility and revocation, account lockout, and authentication assurance through the new flow.

@@ -35,6 +35,7 @@ RSpec.describe 'Profile API tokens' do
     )
     expect(app_token.token_digest).to eq(ApiAppToken.digest(raw_token))
     expect(response.body).to include('CI deploy')
+    expect(response.body).to include("Expires: #{I18n.l(app_token.expires_at, format: :long)}")
 
     get profile_path(section: 'advanced')
 

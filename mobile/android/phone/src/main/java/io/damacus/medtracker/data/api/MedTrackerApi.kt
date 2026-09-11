@@ -91,6 +91,7 @@ sealed class ApiResult<out T> {
 }
 
 interface MedTrackerApi {
+    suspend fun getHouseholds(baseUrl: String, accessToken: String): ApiResult<List<HouseholdChoice>> = ApiResult.Error("not_implemented", "Not implemented")
     suspend fun getCapabilities(baseUrl: String): ApiResult<CapabilitiesDto> = ApiResult.Success(CapabilitiesDto("v1", "medtracker.api.capabilities.v1"))
     suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest): ApiResult<AuthenticationResult> = ApiResult.Error("not_implemented", "Not implemented")
     suspend fun selectHousehold(baseUrl: String, request: HouseholdSelectionRequest): ApiResult<SessionPayload> = ApiResult.Error("not_implemented", "Not implemented")
@@ -136,6 +137,12 @@ class GeneratedMedTrackerApi(
     }
 
     private val unauthenticatedCalls = RequestAuthCallFactory(callFactory)
+
+    override suspend fun getHouseholds(baseUrl: String, accessToken: String) = authenticated(accessToken) { requestCalls ->
+        AuthenticationApi(apiBaseUrl(baseUrl), requestCalls).listHouseholds().data.map {
+            HouseholdChoice(it.id.toLong(), it.name, it.role.value)
+        }
+    }
 
     override suspend fun getCapabilities(baseUrl: String) = generated {
         CapabilitiesApi(apiBaseUrl(baseUrl), unauthenticatedCalls).getCapabilities().data.toDomain()

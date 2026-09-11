@@ -44,7 +44,19 @@ All login and reauthentication after session expiry go through Rodauth. While th
 
 Removal inventory: API invitation create/revoke/resend, membership update/revoke, person-grant and app-token create/revoke, and settings updates; web platform writes, household-admin gating behind HOSTED_ADMIN_MFA_REQUIRED and ambiguous-grant review. Retire these bespoke freshness checks/flag and corresponding capabilities without removing permission checks.
 
-Current code configures web sessions for 30 minutes idle and 24 hours absolute, mobile access for 15 minutes with a 30-day refresh lifetime, and app tokens without time-based expiry. These observations do not prove the reported logout cause: trace remember-cookie and refresh/error handling. Separate interactive login lifetime from access-token lifetime: mobile access refresh can be silent while login remains valid. Refresh must respect any configured absolute login deadline. Define whether background refresh counts as activity for idle expiry. MCP app tokens represent delegated integration access rather than an interactive session and retain their existing restrictions; their expiry policy is a separate decision.
+The previous configuration specified 30 minutes idle and 24 hours absolute, but RodauthApp did not call the active-session check explicitly. The remember-cookie default was 14 days. These observations do not prove the reported live logout cause. Request tests now exercise inactivity, optional absolute age and remembered-login restoration. The agreed replacement defaults to 30 days idle with no absolute deadline; background token refresh alone does not renew activity. Mobile access-token expiry remains 15 minutes and refresh preserves the original authentication time. API/MCP app-token expiry is separate and fixed from issuance.
+
+### Implementation map
+
+- `AuthenticationLifetime` reads and validates the three lifetime environment settings. Rodauth active sessions and remember cookies use its interactive policy. Remember restoration retains the original creation time when an absolute deadline is configured.
+- `OauthApplication.client_kind` distinguishes registered public mobile clients from restricted integrations. `OauthGrant` has matching model and database constraints, with account authentication time and activity required for mobile grants and household/person/version required for integrations.
+- `RodauthMobileOauth` supplies account context to the installed OAuth library and checks eligibility during code redemption and refresh. The library retains ownership of S256 validation, code consumption and refresh rotation.
+- `Api::V1::BaseController` binds mobile requests to their currently authorised membership in the requested household. Existing restricted credentials retain their stored membership checks. Audit context starts after that binding; account-only requests use the existing global version-event ledger.
+- Account household listing, device-session listing/revocation and invitation acceptance do not select a household for mobile authentication. Invitation resend rechecks the current grant and membership inside its existing write locks.
+- `ApiAppToken` stores expiry, enforces the configured issuance ceiling, and persists reductions. The migration backfills from original creation time; startup also caps unused tokens. API responses and profile token management expose the deadline.
+- OAuth discovery uses the library metadata route. Capabilities list registered mobile public client IDs, exact callbacks and scopes, without secrets.
+
+Focused request checks cover local browser authorisation, S256 redemption/replay, refresh without activity renewal, independent device revocation, household-role changes, no operational households and invitation resend. Provider-backed SSO, native UI and complete rollout remain to be verified; passing these focused checks does not establish their results.
 
 ### Privacy and transaction boundaries
 
@@ -85,4 +97,6 @@ The user confirmed there are no active mobile clients. Replace the old flow dire
 
 ## Open Questions
 
-Before implementation, resolve global interactive-session timeout semantics/defaults and remember/background refresh behaviour. Twelve hours was an example, not an agreed default. These are blocking design decisions despite CLI artifact completeness. API/MCP application-token maximum age is settled at a configurable default of 12 calendar months. Exact callbacks and preset URLs remain deployment values. Optional MFA enrolment and admin tagging stay fixed; action-specific freshness is removed.
+Interactive sessions use `SESSION_INACTIVITY_TIMEOUT_DAYS`, a positive integer defaulting to 30. Normal authenticated use renews the inactivity window. Remembered web/PWA login and mobile refresh use the same policy. Background refresh alone does not count as user activity. `SESSION_MAX_AGE_DAYS` optionally sets an absolute deadline from authentication; its default of 0 disables that additional deadline. Invalid values fail configuration validation. Short-lived access-token expiry remains separate and refresh never resets the original authentication time.
+
+API/MCP application-token maximum age remains a separate configurable default of 12 calendar months. Exact callbacks and preset URLs remain deployment values. Optional MFA enrolment and admin tagging stay fixed; action-specific freshness is removed. No product decision remains before implementation.

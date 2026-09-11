@@ -6,7 +6,7 @@ class SupportAccessSession < ApplicationRecord
   belongs_to :platform_admin
   belongs_to :household
 
-  validates :reason, :mfa_verified_at, :starts_at, :expires_at, presence: true
+  validates :reason, :starts_at, :expires_at, presence: true
   validate :expires_after_start
   validate :household_operational, on: :create
 

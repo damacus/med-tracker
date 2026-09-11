@@ -40,7 +40,8 @@ data class SessionPayload(
     val refreshToken: String,
     val refreshTokenExpiresAt: String? = null,
     val me: UserDto? = null,
-    val household: HouseholdDto? = null
+    val household: HouseholdDto? = null,
+    val oauthState: String? = null
 )
 
 @Serializable

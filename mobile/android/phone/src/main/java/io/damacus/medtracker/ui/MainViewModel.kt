@@ -13,6 +13,8 @@ import io.damacus.medtracker.BuildConfig
 import io.damacus.medtracker.data.model.OidcExchangeRequest
 import io.damacus.medtracker.data.model.AuthenticationResult
 import io.damacus.medtracker.data.model.HouseholdSelectionRequest
+import io.damacus.medtracker.data.model.HouseholdDto
+import io.damacus.medtracker.data.model.SessionPayload
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +39,36 @@ class MainViewModel(
 
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+
+    init {
+        if (sessionState.value.sessionPayload?.oauthState != null && sessionState.value.household == null) showHouseholds()
+    }
+
+    fun completeMobileLogin(payload: SessionPayload, serverUrl: String) {
+        sessionManager.saveSession(payload.copy(household = null), serverUrl)
+        showHouseholds()
+    }
+
+    fun showHouseholds() {
+        val session = sessionState.value
+        val token = session.accessToken ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            val result = apiClient.getHouseholds(session.serverUrl, token)
+            if (sessionState.value.revision != session.revision) return@launch
+            when (result) {
+                is ApiResult.Success -> {
+                    _uiState.value = MainUiState(
+                        householdSelection = AuthenticationResult.HouseholdSelection("", result.data),
+                        selectionServerUrl = session.serverUrl
+                    )
+                    result.data.singleOrNull()?.let { selectHousehold(it.id) }
+                }
+                is ApiResult.Error -> reportAuthenticationError(result.message)
+                is ApiResult.NetworkError -> reportAuthenticationError("Unable to load households. Check your connection and retry.")
+            }
+        }
+    }
 
     fun exchangeOidc(idToken: String, nonce: String, codeVerifier: String) {
         authenticate(BuildConfig.SERVER_URL) { api ->
@@ -100,6 +132,14 @@ class MainViewModel(
     fun selectHousehold(householdId: Long) {
         val currentState = uiState.value
         val selection = currentState.householdSelection ?: return
+        if (selection.selectionToken.isEmpty() && sessionState.value.isLoggedIn) {
+            val household = selection.households.singleOrNull { it.id == householdId } ?: return
+            val session = sessionState.value
+            val payload = session.sessionPayload ?: return
+            sessionManager.saveSession(payload.copy(household = HouseholdDto(household.id, household.name)), session.serverUrl)
+            _uiState.value = MainUiState()
+            return
+        }
         val serverUrl = currentState.selectionServerUrl ?: BuildConfig.SERVER_URL
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }

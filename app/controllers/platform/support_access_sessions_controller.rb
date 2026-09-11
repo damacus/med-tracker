@@ -5,7 +5,8 @@ module Platform
     def create
       support_session = current_platform_admin.support_access_sessions.new(support_access_session_params)
       authorize support_session
-      support_session.mfa_verified_at = privileged_action_mfa_verified_at
+      verified_at = session[:privileged_action_mfa_verified_at]
+      support_session.mfa_verified_at = Time.zone.at(verified_at) if verified_at
       support_session.request_id = request.request_id
       support_session.ip = request.remote_ip
 
