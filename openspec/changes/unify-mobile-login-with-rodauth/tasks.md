@@ -1,7 +1,7 @@
 ## 1. Confirm integration boundaries
 
 - [ ] 1.1 Trace current Rails household resolution, Rodauth OAuth grant/refresh hooks and API session consumers; record a concrete change map in design.md and verify it covers both new mobile and existing restricted credentials.
-- [ ] 1.2 Inventory native callback registrations, supported client versions and active mobile-monorepo-remediation overlap; deliver a rollout compatibility matrix and reconcile conflicting Android requirements without changing MFA policy.
+- [ ] 1.2 Confirm native callback registrations and canary/demo preset URLs; reconcile mobile-monorepo-remediation's fixed-server restriction with instance selection and verify the revised Android contract preserves existing MFA policy.
 - [ ] 1.3 Run `task test:preflight` before Rails implementation and verify the test environment is usable; use repository task definitions for all later focused checks.
 
 ## 2. Account-level OAuth credentials
@@ -22,20 +22,20 @@
 
 ## 4. Mobile contract and Android flow
 
-- [ ] 4.1 Update root OpenAPI and capability tests for account-level login, household listing and supported authorization flows; verify schema and generated-contract checks through repository task wrappers and update Android's pinned copy.
-- [ ] 4.2 Add failing Android tests for MedTracker AppAuth endpoints, state/callback handling and browser login completion without a household; implement the new flow and verify Android unit/contract checks.
+- [ ] 4.1 Add failing discovery/capability tests for OAuth server metadata, public platform client configuration, account-level login and household listing; update root OpenAPI and verify schema/generated-contract checks through task wrappers, including Android's pinned copy.
+- [ ] 4.2 Add failing Android tests for editable instance URL, labelled canary/demo presets, validated discovery, cross-instance credential isolation, state/callback handling and browser login without a household; implement the flow and verify Android unit/contract checks.
 - [ ] 4.3 Add failing Android tests for zero/one/multiple household navigation and switching with the same credential; implement the UI and verify visible behaviour in the actual Android app.
 - [ ] 4.4 Add failing Android tests for late responses, account/instance changes, cache separation, original-household queued mutations and lost access; implement isolation and verify the relevant session, repository and sync tests.
 
 ## 5. Privacy, documentation and integrated verification
 
 - [ ] 5.1 Add failing redaction tests for authorization codes, verifiers and tokens in request/provider diagnostics and audits; implement filtering and verify authentication failures expose no credential material.
-- [ ] 5.2 Update docs/design.md, authentication ADRs and setup guides to match delivered behaviour and explicit legacy retirement criteria; verify `task docs:build`, OpenSpec strict validation and `git diff --check`.
+- [ ] 5.2 Update docs/design.md, authentication ADRs and setup guides to match discovery and direct replacement with no compatibility window; verify `task docs:build`, OpenSpec strict validation and `git diff --check`.
 - [ ] 5.3 Exercise browser/mobile sign-in against local-only and mixed local/Zitadel installations, including SSO reuse and configured password, passkey and MFA choices; record actual results and capture screenshots for visible UI changes without treating unavailable provider checks as passed.
 - [ ] 5.4 Run applicable full Rails, RuboCop, security and Android task checks after focused tests; record failures or environmental limits and require applicable gates to pass before pushing implementation.
 
 ## 6. Rollout and retirement
 
-- [ ] 6.1 Verify additive rollout and rollback on a representative environment, including old clients, existing restricted grants and new account grants; document evidence before changing deployed flow availability.
-- [ ] 6.2 After supported-client migration evidence meets the documented retirement criteria, remove the legacy ID-token exchange and obsolete first-party selection path with failing retirement/compatibility tests first; verify remaining clients and truthful capabilities.
+- [ ] 6.1 Verify coherent server/client rollout and rollback on a representative environment, including existing restricted grants and new account grants; document evidence before changing deployed flow availability.
+- [ ] 6.2 Remove the legacy ID-token exchange and obsolete first-party selection path in this delivery with failing retirement tests first; verify new clients, unrelated integrations and truthful capabilities without a legacy compatibility window.
 - [ ] 6.3 Update issue #1889 with delivered protocol and verification evidence, reconcile its original household-independent acceptance criteria with this proposal, and close only when required delivery is complete; verify issue state and remaining platform follow-up links.

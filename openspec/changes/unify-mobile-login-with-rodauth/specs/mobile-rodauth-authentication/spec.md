@@ -53,13 +53,31 @@ Mobile credentials SHALL retain refresh rotation and replay protection, device s
 - **WHEN** SSO or refresh issues a new mobile credential
 - **THEN** sensitive-action checks use the verified original authentication evidence and do not treat token issuance time as fresh MFA
 
-### Requirement: Truthful and private migration
-Capabilities and API documentation SHALL advertise only available flows. Supported clients SHALL have a documented migration path before the legacy exchange is retired. Codes, verifiers and tokens SHALL be excluded from logs, traces and audit data.
+### Requirement: Instance URL discovery
+Mobile applications SHALL support a user-selected instance URL and labelled canary/demo presets. From that URL they SHALL discover the installation's authorization endpoints and public platform client configuration without requiring users to enter provider URLs or secrets.
 
-#### Scenario: Staged migration
-- **GIVEN** legacy and new clients coexist during the documented compatibility window
-- **WHEN** each discovers authentication capabilities
-- **THEN** the response accurately describes supported behaviour without claiming PKCE verification for the legacy ID-token exchange
+#### Scenario: Discover a configured instance
+- **GIVEN** the user enters a supported instance URL or selects a preset
+- **WHEN** the app prepares sign-in
+- **THEN** it loads that instance's authorization metadata and platform client configuration and starts installation-owned login
+
+#### Scenario: Reject inconsistent discovery
+- **GIVEN** an instance returns unsupported or inconsistent issuer/endpoints
+- **WHEN** the app validates discovery
+- **THEN** it displays a connection error without sending existing credentials to a different instance
+
+#### Scenario: Change instance
+- **GIVEN** the phone is signed into instance A
+- **WHEN** the user selects instance B
+- **THEN** authentication state is isolated and A's credentials are never reused for B
+
+### Requirement: Direct replacement and private diagnostics
+Capabilities and API documentation SHALL advertise only available flows. The obsolete first-party ID-token exchange and selection-grant flow SHALL be removed in this delivery without a client compatibility period, because no active mobile clients require migration. Existing restricted integrations SHALL remain supported. Codes, verifiers and tokens SHALL be excluded from logs, traces and audit data.
+
+#### Scenario: Old mobile exchange removed
+- **GIVEN** the new authentication flow is delivered
+- **WHEN** a caller attempts the retired mobile ID-token exchange
+- **THEN** it cannot issue a credential and discovery advertises only the replacement flow
 
 #### Scenario: Failed authentication diagnostics
 - **GIVEN** an authentication request contains secrets and an invalid provider response
