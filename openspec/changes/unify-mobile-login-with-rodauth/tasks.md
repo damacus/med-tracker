@@ -1,5 +1,7 @@
 ## 1. Confirm integration boundaries
 
+- [ ] 1.0 Resolve global interactive expiry defaults/semantics, remember/background refresh behaviour and integration-token expiry; update design/spec scenarios with agreed values before implementation and reproduce the reported logout path with diagnostic evidence.
+
 - [ ] 1.1 Trace current Rails household resolution, Rodauth OAuth grant/refresh hooks and API session consumers; record a concrete change map in design.md and verify it covers both new mobile and existing restricted credentials.
 - [ ] 1.2 Confirm native callback registrations and canary/demo preset URLs; reconcile mobile-monorepo-remediation's fixed-server restriction with instance selection and verify the revised Android contract preserves existing MFA policy.
 - [ ] 1.3 Run `task test:preflight` before Rails implementation and verify the test environment is usable; use repository task definitions for all later focused checks.
@@ -9,8 +11,8 @@
 - [ ] 2.1 Add failing model/database tests for explicit first-party account grants and still-required membership/person fields on restricted grants; implement minimal persistence invariants and verify focused model specs.
 - [ ] 2.2 Add failing authorization request tests for local-only and mixed local/delegated sign-in with no household selection, including zero memberships; integrate first-party Rodauth authorization and verify focused request specs.
 - [ ] 2.3 Add failing request tests for valid S256 redemption, missing/wrong verifier, client/redirect mismatch, expiry, replay, concurrent redemption and persistence failure; configure library-managed redemption and verify those cases plus existing SMART/FHIR authorization specs.
-- [ ] 2.4 Add failing tests for preserved local/delegated authentication context, original authentication time, malformed provider claims and unchanged optional MFA/admin policy; implement evidence propagation and verify focused authentication and privileged-action specs.
-- [ ] 2.5 Add failing tests for Rodauth-only fresh verification, account/session binding, cancellation, callback replay and reauthorised action resumption; implement verification handoff and verify local/delegated flows, original-household context and idempotency.
+- [ ] 2.4 Add failing tests removing bespoke freshness gates across API administration, invitation resend, web household administration and platform writes; preserve role/person checks and configured login MFA, and verify permitted/forbidden actions without a 15-minute freshness requirement.
+- [ ] 2.5 After session-policy decisions, add failing tests for central expiry, silent refresh, Rodauth-only reauthentication, account/session binding, cancellation and resumption; verify refresh boundaries, original-household context and idempotency, and preserve validated upstream identity evidence.
 - [ ] 2.6 Add failing tests for account lockout, refresh rotation/replay, per-device session listing and individual revocation; adapt the API credential/session boundary and verify both mobile OAuth and legacy session cases.
 
 ## 3. Household authorisation on every request

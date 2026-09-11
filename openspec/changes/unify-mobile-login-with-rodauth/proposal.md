@@ -5,8 +5,8 @@ The mobile exchange in [issue #1889](https://github.com/damacus/med-tracker/issu
 ## What Changes
 
 - First-party phones use MedTracker's Rodauth authorization-code flow with S256 PKCE in a platform browser authentication session. Rodauth delegates to the configured OIDC provider where appropriate, including Zitadel, or uses existing local authentication.
-- Preserve installations offering both local and delegated login, optional MFA enrolment, available MFA methods, admin tagging and existing access policy.
-- Route fresh verification through Rodauth as well as initial login. Phones never authenticate directly against an upstream provider; Rodauth owns delegation and returns verified context to the mobile session.
+- Preserve local and delegated login, optional MFA enrolment, available methods, admin tagging and role/person access policy.
+- Remove bespoke action-specific fresh-MFA gates from web and API administration. Use centrally configured interactive-session expiry instead; timeout values and idle versus absolute semantics remain under discussion. All login and session-expiry reauthentication goes through Rodauth.
 - Issue account-level first-party mobile credentials. Resolve current household membership and action permissions on every household request; do not grant access merely because a household shares the instance.
 - Complete login without household selection. Let users list authorised households and switch within the app using the same credential; isolate cached records and queued actions by instance, account and household.
 - Preserve refresh rotation, device session visibility and revocation, account lockout, and authentication assurance through the new flow.
@@ -14,7 +14,7 @@ The mobile exchange in [issue #1889](https://github.com/damacus/med-tracker/issu
 - **BREAKING**: Replace the custom ID-token exchange and first-party household-bound login responses directly. There are no active mobile clients to migrate, so no compatibility window or dual-flow support is required. Remove obsolete behaviour and misleading capabilities in this delivery.
 - Update API documentation, authentication ADRs and native client contracts to describe implemented behaviour only.
 
-Non-goals: changing login or MFA policy; granting every account access to every household; broadening existing SMART/FHIR or application-token permissions; implementing native provider-specific passkey screens; migrating identity-provider credentials; changing provider-wide logout; importing the iOS project.
+Non-goals: changing offered login methods or optional MFA enrolment; granting every account access to every household; broadening existing SMART/FHIR or application-token permissions; implementing native provider-specific passkey screens; migrating identity-provider credentials; changing provider-wide logout; importing the iOS project. Removing action-specific MFA freshness is explicitly in scope.
 
 ## Capabilities
 

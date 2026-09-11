@@ -51,20 +51,30 @@ Mobile credentials SHALL retain refresh rotation and replay protection, device s
 #### Scenario: Authentication freshness
 - **GIVEN** an earlier MFA-authenticated session
 - **WHEN** SSO or refresh issues a new mobile credential
-- **THEN** sensitive-action checks use the verified original authentication evidence and do not treat token issuance time as fresh MFA
+- **THEN** session-lifetime evaluation retains verified authentication history and does not treat token issuance time as fresh authentication
 
-### Requirement: Installation-owned fresh verification
-When an existing action requires stronger or fresher authentication evidence, the mobile application SHALL use the installation's authentication flow. It SHALL NOT authenticate directly against an upstream provider. Verification SHALL be bound to the initiating account and device session and SHALL NOT broaden action permissions.
+### Requirement: Session-level authentication without action freshness gates
+An authorised action within a valid interactive session SHALL NOT require separate action-specific fresh MFA. Web and API administration SHALL remove bespoke freshness gates while retaining configured login MFA and permission checks. Interactive expiry SHALL be governed centrally and reauthentication SHALL use Rodauth, bound to the initiating account and device session.
 
-#### Scenario: Resume a protected action
-- **GIVEN** an authorised action lacks the authentication evidence required by existing policy
-- **WHEN** the user completes verification through the installation's local or delegated flow
+#### Scenario: Resume after session expiry
+- **GIVEN** a pending action whose interactive session has expired
+- **WHEN** the user completes authentication through the installation's local or delegated flow
 - **THEN** the correct mobile session receives verified context and the action is reauthorised before resuming with its original household and idempotency identity
 
 #### Scenario: Cancelled or mismatched verification
 - **GIVEN** a pending verification attempt for account A
 - **WHEN** verification is cancelled, fails, or completes as account B
 - **THEN** account A's session is not upgraded and the pending action remains unperformed
+
+#### Scenario: Valid session needs no fresh MFA
+- **GIVEN** a user completed configured login and their session is still valid
+- **WHEN** they perform an administration action allowed by current permissions
+- **THEN** the action is not blocked because MFA was absent under optional enrolment or occurred more than 15 minutes ago
+
+#### Scenario: Permissions remain enforced
+- **GIVEN** a valid session without permission for an action
+- **WHEN** the action is attempted
+- **THEN** it is denied regardless of MFA status or timing
 
 ### Requirement: Instance URL discovery
 Mobile applications SHALL support a user-selected instance URL and labelled canary/demo presets. From that URL they SHALL discover the installation's authorization endpoints and public platform client configuration without requiring users to enter provider URLs or secrets.
