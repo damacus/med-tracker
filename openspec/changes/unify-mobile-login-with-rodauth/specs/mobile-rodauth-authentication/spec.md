@@ -53,6 +53,19 @@ Mobile credentials SHALL retain refresh rotation and replay protection, device s
 - **WHEN** SSO or refresh issues a new mobile credential
 - **THEN** sensitive-action checks use the verified original authentication evidence and do not treat token issuance time as fresh MFA
 
+### Requirement: Installation-owned fresh verification
+When an existing action requires stronger or fresher authentication evidence, the mobile application SHALL use the installation's authentication flow. It SHALL NOT authenticate directly against an upstream provider. Verification SHALL be bound to the initiating account and device session and SHALL NOT broaden action permissions.
+
+#### Scenario: Resume a protected action
+- **GIVEN** an authorised action lacks the authentication evidence required by existing policy
+- **WHEN** the user completes verification through the installation's local or delegated flow
+- **THEN** the correct mobile session receives verified context and the action is reauthorised before resuming with its original household and idempotency identity
+
+#### Scenario: Cancelled or mismatched verification
+- **GIVEN** a pending verification attempt for account A
+- **WHEN** verification is cancelled, fails, or completes as account B
+- **THEN** account A's session is not upgraded and the pending action remains unperformed
+
 ### Requirement: Instance URL discovery
 Mobile applications SHALL support a user-selected instance URL and labelled canary/demo presets. From that URL they SHALL discover the installation's authorization endpoints and public platform client configuration without requiring users to enter provider URLs or secrets.
 

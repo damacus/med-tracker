@@ -6,6 +6,7 @@ The mobile exchange in [issue #1889](https://github.com/damacus/med-tracker/issu
 
 - First-party phones use MedTracker's Rodauth authorization-code flow with S256 PKCE in a platform browser authentication session. Rodauth delegates to the configured OIDC provider where appropriate, including Zitadel, or uses existing local authentication.
 - Preserve installations offering both local and delegated login, optional MFA enrolment, available MFA methods, admin tagging and existing access policy.
+- Route fresh verification through Rodauth as well as initial login. Phones never authenticate directly against an upstream provider; Rodauth owns delegation and returns verified context to the mobile session.
 - Issue account-level first-party mobile credentials. Resolve current household membership and action permissions on every household request; do not grant access merely because a household shares the instance.
 - Complete login without household selection. Let users list authorised households and switch within the app using the same credential; isolate cached records and queued actions by instance, account and household.
 - Preserve refresh rotation, device session visibility and revocation, account lockout, and authentication assurance through the new flow.
