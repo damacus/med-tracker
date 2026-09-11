@@ -11,7 +11,7 @@ The mobile exchange in [issue #1889](https://github.com/damacus/med-tracker/issu
 - Complete login without household selection. Let users list authorised households and switch within the app using the same credential; isolate cached records and queued actions by instance, account and household.
 - Preserve refresh rotation, device session visibility and revocation, account lockout, and authentication assurance through the new flow.
 - Phones accept an instance URL and discover its authorization configuration. Canary/demo presets provide instance URLs, not hard-coded provider endpoints.
-- Add an instance-configured maximum lifetime for API application tokens, enforced consistently by API and MCP access. Token use does not extend expiry; retain existing household and permission restrictions.
+- Add an instance-configured maximum lifetime for API application tokens, defaulting to 12 calendar months from issuance and enforced consistently by API and MCP access. Token use does not extend expiry; retain existing household and permission restrictions.
 - **BREAKING**: Replace the custom ID-token exchange and first-party household-bound login responses directly. There are no active mobile clients to migrate, so no compatibility window or dual-flow support is required. Remove obsolete behaviour and misleading capabilities in this delivery.
 - Update API documentation, authentication ADRs and native client contracts to describe implemented behaviour only.
 
