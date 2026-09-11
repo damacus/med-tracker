@@ -1,6 +1,6 @@
 ## 1. Confirm integration boundaries
 
-- [ ] 1.0 Resolve global interactive expiry defaults/semantics, remember/background refresh behaviour and integration-token expiry; update design/spec scenarios with agreed values before implementation and reproduce the reported logout path with diagnostic evidence.
+- [ ] 1.0 Resolve global interactive expiry defaults/semantics and remember/background refresh behaviour; update design/spec scenarios with agreed values before implementation and reproduce the reported logout path with diagnostic evidence. API/MCP maximum age is already agreed at a configurable default of 12 calendar months.
 
 - [ ] 1.1 Trace current Rails household resolution, Rodauth OAuth grant/refresh hooks and API session consumers; record a concrete change map in design.md and verify it covers both new mobile and existing restricted credentials.
 - [ ] 1.2 Confirm native callback registrations and canary/demo preset URLs; reconcile mobile-monorepo-remediation's fixed-server restriction with instance selection and verify the revised Android contract preserves existing MFA policy.
@@ -14,7 +14,7 @@
 - [ ] 2.4 Add failing tests removing bespoke freshness gates across API administration, invitation resend, web household administration and platform writes; preserve role/person checks and configured login MFA, and verify permitted/forbidden actions without a 15-minute freshness requirement.
 - [ ] 2.5 After session-policy decisions, add failing tests for central expiry, silent refresh, Rodauth-only reauthentication, account/session binding, cancellation and resumption; verify refresh boundaries, original-household context and idempotency, and preserve validated upstream identity evidence.
 - [ ] 2.6 Add failing tests for account lockout, refresh rotation/replay, per-device session listing and individual revocation; adapt the API credential/session boundary and verify both mobile OAuth and legacy session cases.
-- [ ] 2.7 Once the maximum-age default is agreed, add failing API/MCP tests for application-token expiry boundaries, requested durations, configuration changes, revocation and unchanged access restrictions; implement configured expiry and verify focused model/request/MCP specs.
+- [ ] 2.7 Add failing API/MCP tests for the 12-calendar-month default, expiry boundaries including leap-day issuance, requested durations, configuration changes, revocation and unchanged access restrictions; implement configured expiry and verify focused model/request/MCP specs.
 - [ ] 2.8 Add tests for existing unbounded-token backfill and expiry visibility in token management; verify expired credentials cannot be revived by increasing the maximum and document integration replacement without assuming no existing tokens.
 
 ## 3. Household authorisation on every request

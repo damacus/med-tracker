@@ -77,7 +77,12 @@ An authorised action within a valid interactive session SHALL NOT require separa
 - **THEN** it is denied regardless of MFA status or timing
 
 ### Requirement: Bounded integration-token lifetime
-API application tokens SHALL expire no later than the instance-configured maximum age, including tokens used through MCP. Usage SHALL NOT extend their lifetime. Expiry SHALL be visible in token management and SHALL NOT replace existing revocation, membership or permission checks.
+API application tokens SHALL expire no later than the instance-configured maximum age, including tokens used through MCP. The configured maximum SHALL default to 12 calendar months from issuance. Usage SHALL NOT extend their lifetime. Expiry SHALL be visible in token management and SHALL NOT replace existing revocation, membership or permission checks.
+
+#### Scenario: Default maximum age
+- **GIVEN** the instance uses the default token-age configuration
+- **WHEN** an API application token is issued without requesting a shorter lifetime
+- **THEN** it expires 12 calendar months after issuance and API/MCP authentication rejects it at or after that deadline
 
 #### Scenario: Configured maximum
 - **GIVEN** an instance has a positive configured maximum token age
