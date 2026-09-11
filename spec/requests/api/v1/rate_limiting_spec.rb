@@ -22,14 +22,10 @@ RSpec.describe 'API v1 rate limiting' do
 
   it 'returns JSON retry metadata for throttled API routes' do
     10.times do
-      post api_v1_auth_oidc_exchange_path,
-           params: { id_token: 'invalid', nonce: 'nonce', code_verifier: 'verifier' },
-           as: :json
+      get '/api/v1/households/1/data_exports/health_data', as: :json
     end
 
-    post api_v1_auth_oidc_exchange_path,
-         params: { id_token: 'invalid', nonce: 'nonce', code_verifier: 'verifier' },
-         as: :json
+    get '/api/v1/households/1/data_exports/health_data', as: :json
 
     expect(response).to have_http_status(:too_many_requests)
     expect(response.media_type).to eq('application/json')

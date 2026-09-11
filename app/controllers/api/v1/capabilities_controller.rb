@@ -36,17 +36,9 @@ module Api
 
       def authentication
         {
-          methods: %w[bearer_session api_app_token],
-          hosted_mobile: 'oidc_authorization_code_pkce',
-          password_login: 'development_or_migration',
-          mobile_oauth: mobile_oauth,
-          oidc_exchange: {
-            supported: true,
-            pkce_required: true,
-            household_selection: true,
-            session_listing: true,
-            session_revocation: true
-          }
+          methods: %w[oauth_bearer api_app_token],
+          hosted_mobile: 'rodauth_authorization_code_pkce',
+          mobile_oauth: mobile_oauth
         }
       end
 

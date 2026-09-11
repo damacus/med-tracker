@@ -8,6 +8,26 @@ mobile snapshots, sync, export, and import.
 The [API versioning policy](versioning.md) defines compatible changes,
 deprecation, stable generated names, and generated-client ownership.
 
+## Mobile authentication
+
+Phones start at a user-selected instance URL and load
+`/.well-known/oauth-authorization-server` plus `/api/v1/capabilities`.
+Registered public client settings are in `authentication.mobile_oauth`.
+Use the platform browser for Rodauth authorization code login with S256 PKCE;
+Rodauth handles local sign-in, configured MFA and delegated providers such as
+Zitadel. Redeem and refresh through the discovered token endpoint.
+
+The resulting credential identifies the account. `/auth/households` lists its
+currently authorised households. Household selection is navigation and does not
+exchange the token. `/auth/sessions` lists devices; deleting one session revokes
+that device. Requests under `/households/{household_id}` check current membership
+and person permissions. Restricted integration credentials retain their limits.
+
+The old `/auth/login`, `/auth/oidc_exchange`, `/auth/select_household` and
+`/auth/refresh` endpoints are removed. There are no active mobile clients to
+migrate. API/MCP integrations use app tokens with a configurable maximum age;
+see [authentication lifetimes](../two-factor-authentication.md).
+
 ## Current profile
 
 `GET` and `PATCH /households/{household_id}/profile` read and update the
@@ -29,7 +49,7 @@ under `Idempotency-Key`.
 ## Invitation acceptance
 
 `POST /invitations/accept` accepts a `token` for the verified account behind a
-user API session. Household app tokens and delegated OAuth grants cannot use
+user session, including a first-party mobile OAuth grant. Household app tokens and restricted integration OAuth grants cannot use
 this account-level operation. The invitation email must match the account.
 
 Acceptance creates the target-household person, membership and intended grants
@@ -37,7 +57,7 @@ in one transaction using the web signup grant workflow. Expired, revoked or
 mismatched invitations and existing membership conflicts return the same
 `invitation_unavailable` error. A retry returns the current active membership
 without recreating revoked grants. The API does not issue a new credential;
-use the existing household-selection login flow for the new household.
+reload `/auth/households` and use the same mobile account token for the new household.
 
 `POST /households/{household_id}/admin/invitations/{id}/resend` requires current
 administrator authority and a valid user session. It rotates the token and

@@ -1,6 +1,6 @@
 #!/usr/bin/env fish
 
-for variable_name in MEDTRACKER_CANARY_BASE_URL MEDTRACKER_CANARY_EMAIL MEDTRACKER_CANARY_PASSWORD
+for variable_name in MEDTRACKER_CANARY_BASE_URL MEDTRACKER_CANARY_TOKEN
     if not set -q $variable_name
         echo "$variable_name is required" >&2
         exit 2

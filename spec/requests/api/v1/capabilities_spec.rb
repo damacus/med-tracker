@@ -56,15 +56,9 @@ RSpec.describe 'API v1 capabilities' do
       'api_version' => 'v1',
       'portable_formats' => include('medtracker.portable.v1', 'medtracker.portable.encrypted.v1')
     )
-    expect(data.dig('authentication', 'methods')).to include('bearer_session', 'api_app_token')
-    expect(data.dig('authentication', 'hosted_mobile')).to eq('oidc_authorization_code_pkce')
-    expect(data.dig('authentication', 'oidc_exchange')).to include(
-      'supported' => true,
-      'pkce_required' => true,
-      'household_selection' => true,
-      'session_listing' => true,
-      'session_revocation' => true
-    )
+    expect(data.dig('authentication', 'methods')).to include('oauth_bearer', 'api_app_token')
+    expect(data.dig('authentication', 'hosted_mobile')).to eq('rodauth_authorization_code_pkce')
+    expect(data.fetch('authentication')).not_to include('oidc_exchange', 'password_login')
     expect(data).to include('administration' => include('household' => true, 'fresh_mfa_required' => false))
     expect(data.dig('sync', 'portable_ids')).to be(true)
     expect(data.dig('sync', 'numeric_ids')).to eq('backward_compatible')

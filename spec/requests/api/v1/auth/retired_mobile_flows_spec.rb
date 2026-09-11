@@ -3,11 +3,11 @@
 require 'rails_helper'
 
 RSpec.describe 'Retired native authentication flows' do
-  before { pending 'Legacy removal blocked by automatic approval review; see retirement-approval.md' }
-
   %w[login oidc_exchange select_household refresh].each do |action|
     it "does not route the old #{action} endpoint" do
-      expect(post: "/api/v1/auth/#{action}").not_to be_routable
+      expect do
+        Rails.application.routes.recognize_path("/api/v1/auth/#{action}", method: :post)
+      end.to raise_error(ActionController::RoutingError)
     end
   end
 

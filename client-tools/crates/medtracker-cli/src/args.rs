@@ -57,25 +57,14 @@ pub enum Command {
 #[derive(Debug, Subcommand)]
 pub enum AuthCommand {
     Login(LoginArgs),
-    Refresh(RefreshArgs),
     Logout,
     Status,
 }
 
 #[derive(Debug, Args)]
 pub struct LoginArgs {
-    #[arg(long, env = "MEDTRACKER_EMAIL")]
-    pub email: String,
-    #[arg(long, env = "MEDTRACKER_PASSWORD")]
-    pub password: String,
-    #[arg(long, default_value = "medtracker-cli")]
-    pub device_name: String,
-}
-
-#[derive(Debug, Args)]
-pub struct RefreshArgs {
-    #[arg(long, env = "MEDTRACKER_REFRESH_TOKEN")]
-    pub refresh_token: Option<String>,
+    #[arg(long, env = "MEDTRACKER_TOKEN", hide_env_values = true)]
+    pub token: String,
 }
 
 #[derive(Debug, Subcommand)]

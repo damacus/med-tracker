@@ -1,10 +1,6 @@
 package io.damacus.medtracker.data.api
 
-import io.damacus.medtracker.auth.GeneratedPasswordAuthenticator
-import io.damacus.medtracker.auth.PasswordCredentials
-import io.damacus.medtracker.data.model.OidcExchangeRequest
 import io.damacus.medtracker.data.model.RecordDosePayload
-import io.damacus.medtracker.data.model.RefreshRequest
 import io.medtracker.client.infrastructure.ApiClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +26,6 @@ class BearerIsolationTest {
     private val serverB = MockWebServer()
     private val client = OkHttpClient()
     private val api = GeneratedMedTrackerApi(client)
-    private val passwordAuthenticator = GeneratedPasswordAuthenticator(client)
 
     @Before fun setUp() {
         serverA.start()
@@ -40,29 +35,6 @@ class BearerIsolationTest {
     @After fun tearDown() {
         serverA.shutdown()
         serverB.shutdown()
-    }
-
-    @Test fun `new server password login completes without the stalled old logout bearer`() = withAmbientBearer {
-        val releaseLogout = holdResponse(serverA, 204)
-        val logout = async(Dispatchers.IO) { api.logout(serverA.url("/").toString(), "account-a-token") }
-        try {
-            val logoutRequest = requestFrom(serverA)
-            assertEquals("/api/v1/auth/logout", logoutRequest.path)
-            assertEquals(listOf("Bearer account-a-token"), logoutRequest.headers.values("Authorization"))
-            serverB.enqueue(unauthorized())
-
-            val login = async(Dispatchers.IO) {
-                passwordAuthenticator.authenticate(serverB.url("/").toString(), credentials())
-            }
-            val loginRequest = requestFrom(serverB)
-            assertTrue(login.await() is ApiResult.Error)
-            assertFalse(logout.isCompleted)
-            assertEquals("/api/v1/auth/login", loginRequest.path)
-            assertNull(loginRequest.getHeader("Authorization"))
-        } finally {
-            releaseLogout.countDown()
-            logout.await()
-        }
     }
 
     @Test fun `protected requests to different servers complete independently with only their own bearer`() = withAmbientBearer {
@@ -85,21 +57,9 @@ class BearerIsolationTest {
         }
     }
 
-    @Test fun `password login strips ambient generated bearer`() = withAmbientBearer {
+    @Test fun `capability discovery strips ambient generated bearer`() = withAmbientBearer {
         serverB.enqueue(unauthorized())
-        assertTrue(passwordAuthenticator.authenticate(serverB.url("/").toString(), credentials()) is ApiResult.Error)
-        assertNull(requestFrom(serverB).getHeader("Authorization"))
-    }
-
-    @Test fun `OIDC exchange strips ambient generated bearer`() = withAmbientBearer {
-        serverB.enqueue(unauthorized())
-        assertTrue(api.exchangeOidc(serverB.url("/").toString(), OidcExchangeRequest("id-token", "nonce", "verifier")) is ApiResult.Error)
-        assertNull(requestFrom(serverB).getHeader("Authorization"))
-    }
-
-    @Test fun `refresh strips ambient generated bearer`() = withAmbientBearer {
-        serverB.enqueue(unauthorized())
-        assertTrue(api.refresh(serverB.url("/").toString(), RefreshRequest("refresh-token")) is ApiResult.Error)
+        assertTrue(api.getCapabilities(serverB.url("/").toString()) is ApiResult.Error)
         assertNull(requestFrom(serverB).getHeader("Authorization"))
     }
 
@@ -158,5 +118,4 @@ class BearerIsolationTest {
         server.takeRequest(3, TimeUnit.SECONDS) ?: throw AssertionError("Expected an independent request before releasing the old response")
 
     private fun unauthorized() = MockResponse().setResponseCode(401).setBody("{\"error\":{}}")
-    private fun credentials() = PasswordCredentials("person@example.test", "test-password", "Wire test")
 }

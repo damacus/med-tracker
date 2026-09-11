@@ -8,7 +8,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import io.damacus.medtracker.auth.OidcAuthRoute
 import io.damacus.medtracker.auth.HouseholdSelectionRoute
-import io.damacus.medtracker.data.model.AuthenticationResult
+import io.damacus.medtracker.data.model.HouseholdSelection
 import io.damacus.medtracker.data.model.HouseholdChoice
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -31,9 +31,7 @@ class AuthenticationUiTest {
 
     @Test fun householdSelectionListsChoicesAndSelectsOne() {
         var selected: Long? = null
-        val selection = AuthenticationResult.HouseholdSelection(
-            "selection-token",
-            listOf(
+        val selection = HouseholdSelection(listOf(
                 HouseholdChoice(42, "Summer house", "member"),
                 HouseholdChoice(43, "Winter house", "member")
             )

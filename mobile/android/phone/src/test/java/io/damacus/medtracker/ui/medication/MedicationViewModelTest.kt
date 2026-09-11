@@ -8,10 +8,8 @@ import io.damacus.medtracker.data.model.CreateMedicationPayload
 import io.damacus.medtracker.data.model.CreateSchedulePayload
 import io.damacus.medtracker.data.model.HouseholdDto
 import io.damacus.medtracker.data.model.MedicationDto
-import io.damacus.medtracker.data.model.OidcExchangeRequest
 import io.damacus.medtracker.data.model.RecordDosePayload
 import io.damacus.medtracker.data.model.RecordStockRemovalPayload
-import io.damacus.medtracker.data.model.RefreshRequest
 import io.damacus.medtracker.data.model.SessionPayload
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -135,8 +133,7 @@ class MedicationViewModelTest {
             return ApiResult.Success(newMed)
         }
 
-        override suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest) = error("Not used")
-        override suspend fun refresh(baseUrl: String, request: RefreshRequest) = error("Not used")
+
         override suspend fun logout(baseUrl: String, accessToken: String) = error("Not used")
         override suspend fun getPeople(baseUrl: String, accessToken: String, householdId: Long) = error("Not used")
         override suspend fun getSchedules(baseUrl: String, accessToken: String, householdId: Long) = error("Not used")

@@ -11,11 +11,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import io.damacus.medtracker.data.model.AuthenticationResult
+import io.damacus.medtracker.data.model.HouseholdSelection
 
 @Composable
 fun HouseholdSelectionRoute(
-    selection: AuthenticationResult.HouseholdSelection,
+    selection: HouseholdSelection,
     isLoading: Boolean,
     errorMessage: String?,
     onRetry: () -> Unit = {},

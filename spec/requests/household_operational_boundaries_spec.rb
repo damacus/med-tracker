@@ -44,29 +44,6 @@ RSpec.describe 'Household operational boundaries' do
     end
   end
 
-  it 'does not issue or refresh API sessions for an unavailable household' do
-    login_data = api_login(user, household_id: household.id)
-
-    %i[held offboarded purged].each do |state|
-      household.update!(lifecycle_state: state)
-
-      expect do
-        post api_v1_auth_login_path,
-             params: { email: user.email_address, password: 'password', household_id: household.id },
-             as: :json
-      end.not_to change(ApiSession, :count)
-
-      expect(response).to have_http_status(:unauthorized)
-    end
-
-    household.update!(lifecycle_state: :held)
-    post api_v1_auth_refresh_path,
-         params: { refresh_token: login_data.fetch('refresh_token') },
-         as: :json
-
-    expect(response).to have_http_status(:unauthorized)
-  end
-
   it 'denies support mode for a held household' do
     platform_account = Account.create!(email: 'held-support@example.test', status: :verified)
     platform_person = household.people.create!(

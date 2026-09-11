@@ -42,9 +42,9 @@
 ## 6. Rollout and retirement
 
 - [ ] 6.1 Verify coherent server/client rollout and rollback on a representative environment, including existing restricted grants and new account grants; document evidence before changing deployed flow availability.
-- [ ] 6.2 Remove the legacy ID-token exchange and obsolete first-party selection path in this delivery with failing retirement tests first; verify new clients, unrelated integrations and truthful capabilities without a legacy compatibility window.
+- [x] 6.2 Remove the legacy ID-token exchange and obsolete first-party selection path in this delivery with failing retirement tests first; verify new clients, unrelated integrations and truthful capabilities without a legacy compatibility window.
 
-  Blocked by automatic approval review. The five retirement tests fail against
-  the retained routes/capabilities and are explicitly pending until the removal
-  in `retirement-approval.md` is approved. No legacy removal has been applied.
+  The user explicitly approved the scope in `retirement-approval.md`. All four
+  routes and their clients are removed. The five retirement tests are active;
+  the full Rails suite and Android and Rust checks pass. See `verification.md`.
 - [ ] 6.3 Update issue #1889 with delivered protocol and verification evidence, reconcile its original household-independent acceptance criteria with this proposal, and close only when required delivery is complete; verify issue state and remaining platform follow-up links.
