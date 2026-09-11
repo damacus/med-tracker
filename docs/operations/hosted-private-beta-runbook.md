@@ -330,7 +330,7 @@ database major version, backup or attachment storage system, encryption or Objec
 configuration, database roles or RLS policies, migration strategy, application image release
 process, tenant schema, audit chain/checkpoint format, or disaster-recovery platform. A failed
 backup, missed quarterly rehearsal, unverified evidence link, or any invalidation trigger keeps
-#1621 and the hosted launch gate open.
+[issue #1621](https://github.com/damacus/med-tracker/issues/1621) and the hosted launch gate open.
 
 ## Incident response
 
