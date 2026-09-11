@@ -133,8 +133,7 @@ RSpec.describe 'Mobile Rodauth authorization' do
     refresh_token = response.parsed_body.fetch('refresh_token')
     OauthGrant.last.update!(last_used_at: 31.days.ago)
 
-    post '/token', params: { grant_type: 'refresh_token', client_id: client.client_id,
-                             refresh_token: refresh_token }, as: :json
+    refresh(refresh_token)
 
     expect(response).to have_http_status(:bad_request)
     expect(response.parsed_body).not_to have_key('access_token')
@@ -188,25 +187,29 @@ RSpec.describe 'Mobile Rodauth authorization' do
     activity = grant.last_used_at
     authenticated_at = grant.authenticated_at
 
-    post '/token', params: { grant_type: 'refresh_token', client_id: client.client_id,
-                             refresh_token: old_refresh }, as: :json
+    refresh(old_refresh)
     expect(response).to have_http_status(:ok)
     expect(response.parsed_body.fetch('refresh_token')).not_to eq(old_refresh)
     expect(grant.reload).to have_attributes(last_used_at: activity, authenticated_at: authenticated_at)
-    post '/token', params: { grant_type: 'refresh_token', client_id: client.client_id,
-                             refresh_token: old_refresh }, as: :json
+    refresh(old_refresh)
     expect(response).to have_http_status(:bad_request)
   end
 
-  it 'rejects missing verifiers and mismatched callbacks without consuming a valid code' do
-    sign_in(user)
-    code = authorization_code
-    redeem(code, code_verifier: nil)
-    expect(response).to have_http_status(:bad_request)
-    redeem(code, redirect_uri: 'io.damacus.medtracker:/other')
-    expect(response).to have_http_status(:bad_request)
-    redeem(code)
-    expect(response).to have_http_status(:ok)
+  {
+    'missing verifier' => { code_verifier: nil },
+    'mismatched callback' => { redirect_uri: 'io.damacus.medtracker:/other' }
+  }.each do |invalid_parameter, overrides|
+    it "rejects a #{invalid_parameter} without consuming a valid code" do
+      sign_in(user)
+      code = authorization_code
+
+      redeem(code, **overrides)
+      expect(response).to have_http_status(:bad_request)
+      expect(response.parsed_body).not_to have_key('access_token')
+
+      redeem(code)
+      expect(response).to have_http_status(:ok)
+    end
   end
 
   it 'uses an account grant to resend invitations in the currently authorised household' do
@@ -264,5 +267,10 @@ RSpec.describe 'Mobile Rodauth authorization' do
     post '/token', params: { grant_type: 'authorization_code', client_id: client.client_id,
                              redirect_uri: client.redirect_uri, code: code, code_verifier: verifier }.merge(overrides),
                    as: :json
+  end
+
+  def refresh(refresh_token)
+    post '/token', params: { grant_type: 'refresh_token', client_id: client.client_id,
+                             refresh_token: refresh_token }, as: :json
   end
 end
