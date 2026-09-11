@@ -56,7 +56,7 @@ also passed.
 
 ## Retirement verification
 
-- The five retirement tests are active and pass. They check removal of all
+- The five retirement tests passed before cleanup. They checked removal of all
   four routes and truthful capability metadata.
 - The affected Rails request and contract checks passed: 143 examples.
 - The final route and account-session contract checks pass: 119 examples.
@@ -83,9 +83,23 @@ restoring the fixture payload fixes all three: the affected files pass with
 57 examples. The sync assertion and production sync behaviour are unchanged.
 
 The final full Rails run passes: 6,233 examples, zero failures and one existing
-pending test, in 12 minutes 4 seconds. All five retirement examples are active.
+pending test, in 12 minutes 4 seconds. All five retirement examples ran in that suite.
 Final RuboCop checks 1,966 files with no offences. Brakeman reports zero errors
 and zero security warnings. Documentation and strict OpenSpec validation pass.
+
+## Test cleanup
+
+At the user's request, the temporary retirement spec is removed after successful
+retirement. Its capability assertions already exist in the permanent capability
+spec. Android's duplicate source-text login check and repeated token assertion
+are removed; behaviour tests and release artifact checks remain. OAuth request
+tests share refresh request setup and independently check missing verifiers and
+mismatched callbacks without consuming a valid authorization code.
+
+Cleanup verification passes: 22 focused Rails examples, Android phone unit
+tests, RuboCop (1,965 files), documentation and strict OpenSpec validation.
+Only tests and these records changed; the full application suite result above
+remains the implementation checkpoint.
 
 ## Outstanding evidence and delivery
 

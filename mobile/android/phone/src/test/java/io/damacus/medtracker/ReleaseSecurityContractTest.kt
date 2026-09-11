@@ -62,19 +62,6 @@ class ReleaseSecurityContractTest {
     }
 
     @Test
-    fun allBuildsUseTheSameBrowserLoginAndInstanceSelection() {
-        val shared = File(androidRoot, "phone/src/main/java/io/damacus/medtracker/AuthRoute.kt").readText()
-        val screen = File(androidRoot, "phone/src/main/java/io/damacus/medtracker/auth/OidcAuthRoute.kt").readText()
-        assertTrue(shared.contains("OidcAuthRoute"))
-        assertFalse(shared.contains("PasswordAuthRoute"))
-        assertTrue(screen.contains("Instance URL"))
-        assertTrue(screen.contains("Canary / demo"))
-        listOf("debug", "staging", "release").forEach {
-            assertFalse(File(androidRoot, "phone/src/$it/java/io/damacus/medtracker/AuthRoute.kt").exists())
-        }
-    }
-
-    @Test
     fun credentialsUseKeystoreEncryptionAndNoBackupStorage() {
         val manifest = File(androidRoot, "phone/src/main/AndroidManifest.xml").readText()
         val sessionManager = File(
@@ -128,7 +115,6 @@ class ReleaseSecurityContractTest {
         assertTrue(integrationScript.contains(":phone:testStagingCanaryIntegrationUnitTest"))
         assertTrue(integrationScript.contains("-Pmedtracker.canaryIntegration=true"))
         assertTrue(integrationSource.contains("MEDTRACKER_CANARY_BASE_URL"))
-        assertTrue(integrationSource.contains("MEDTRACKER_CANARY_TOKEN"))
         assertTrue(integrationSource.contains("MEDTRACKER_CANARY_TOKEN"))
         assertTrue(integrationSource.contains("MobileAuthDiscovery"))
         assertFalse(integrationSource.contains("AuthenticationApi"))
