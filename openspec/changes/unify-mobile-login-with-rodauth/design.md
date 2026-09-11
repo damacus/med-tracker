@@ -58,6 +58,14 @@ Authorization codes are short-lived, single-use and bound to client, callback an
 - Existing capability and native pinning work overlaps → reconcile mobile-monorepo-remediation requirements/configuration during implementation without marking its unrelated work complete.
 - Upstream MFA claims differ → provider-specific claim mapping behind the OIDC boundary with fixtures and actual configured-provider verification.
 
+## Persistent access and integration-token expiry
+
+The Rails PWA uses browser sessions and Rodauth remember cookies, not the native API refresh-token path. RodauthApp calls load_memory and the configuration extends remember deadlines. A PWA is not inherently unable to renew access; diagnose the existing remembered-login, cookie and session-expiry handling before deciding it requires frequent sign-in. Native apps use silent access-token refresh while the interactive session remains valid.
+
+API application tokens, including MCP tokens, gain a centrally configured positive maximum age. Thirty and ninety days are examples; the default remains to be agreed. Store an expiry for each issued token no later than issuance plus the configured maximum, expose expiry in token-management responses/UI, and reject expired tokens across all accepting entry points. Usage must not slide or refresh expiry. Shorter requested expiry is allowed; longer or unlimited values are rejected. Apply any reduced instance maximum as an upper bound based on issuance, and never revive an expired token by increasing the setting. Keep revocation and membership restrictions independent of expiry.
+
+Persist shortened deadlines when reducing the maximum so a later configuration increase cannot revive credentials invalidated by the earlier reduction. Migration must also cover pre-existing app tokens with no expiry: backfill a bounded deadline from original issuance and the selected maximum, identify already-expired credentials and document replacement. The absence of active mobile clients is not evidence that no integration tokens exist. Replacement uses the existing authenticated token-management workflow; old app tokens cannot self-renew indefinitely. Token expiry is not a human MFA challenge.
+
 ## Instance discovery
 
 The phone needs only the chosen MedTracker instance URL. Provide an editable instance URL plus labelled canary/demo presets in distributed apps. This explicitly supersedes the active Android plan's fixed-server-only release constraint; it does not add native password forms. Changing instance clears active authentication state and keeps credentials and cached records isolated.

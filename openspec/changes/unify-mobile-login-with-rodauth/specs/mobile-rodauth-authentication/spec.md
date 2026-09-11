@@ -76,6 +76,29 @@ An authorised action within a valid interactive session SHALL NOT require separa
 - **WHEN** the action is attempted
 - **THEN** it is denied regardless of MFA status or timing
 
+### Requirement: Bounded integration-token lifetime
+API application tokens SHALL expire no later than the instance-configured maximum age, including tokens used through MCP. Usage SHALL NOT extend their lifetime. Expiry SHALL be visible in token management and SHALL NOT replace existing revocation, membership or permission checks.
+
+#### Scenario: Configured maximum
+- **GIVEN** an instance has a positive configured maximum token age
+- **WHEN** a user creates an API application token
+- **THEN** its expiry is no later than issuance plus that age and requests for unlimited or longer validity are rejected
+
+#### Scenario: Expired API and MCP access
+- **GIVEN** an application token has reached its expiry
+- **WHEN** it is used through the API or MCP
+- **THEN** authentication is rejected even if the token was recently used and its membership remains active
+
+#### Scenario: Existing unbounded tokens
+- **GIVEN** a pre-existing token has no expiry
+- **WHEN** the bounded-lifetime change is applied
+- **THEN** it receives a deadline based on original issuance and the configured maximum instead of remaining unlimited
+
+#### Scenario: Configuration changes
+- **GIVEN** a token has a stored expiry
+- **WHEN** the maximum lifetime is reduced or increased
+- **THEN** the reduced maximum caps validity from issuance and an increase does not extend the stored expiry or revive an expired credential
+
 ### Requirement: Instance URL discovery
 Mobile applications SHALL support a user-selected instance URL and labelled canary/demo presets. From that URL they SHALL discover the installation's authorization endpoints and public platform client configuration without requiring users to enter provider URLs or secrets.
 
