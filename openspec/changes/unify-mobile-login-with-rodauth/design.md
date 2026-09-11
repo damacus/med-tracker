@@ -16,6 +16,8 @@ Reject retaining direct mobile-to-provider token redemption as the final archite
 
 ### First-party OAuth grants identify accounts
 
+Token/session integration is queued for detailed verification after the authentication-context discussion. The library-managed approach below is the working design; do not mark its device-session and refresh integration as verified merely because planning artifacts exist.
+
 Use Rodauth-managed OAuth credentials for the new flow, with explicit first-party grant/application classification and mobile API scopes. Extend grant persistence and the API credential adapter to represent account-level mobile grants, including device name, last use, authentication context and revocation. Household/person binding remains mandatory for existing restricted grant kinds; do not interpret a missing membership as permission to access everything. Add conditional model and database invariants for each kind.
 
 Keep refresh rotation and replay protection in the OAuth library. Adapt existing device-session listing/revocation to the new credential type without issuing a second set of custom tokens. Separate OAuth client registration from each user's device session so revoking one device does not revoke the entire registered mobile application.
@@ -50,14 +52,23 @@ Authorization codes are short-lived, single-use and bound to client, callback an
 - Existing capability and native pinning work overlaps → reconcile mobile-monorepo-remediation requirements/configuration during implementation without marking its unrelated work complete.
 - Upstream MFA claims differ → provider-specific claim mapping behind the OIDC boundary with fixtures and actual configured-provider verification.
 
+## Instance discovery
+
+The phone needs only the chosen MedTracker instance URL. Provide an editable instance URL plus labelled canary/demo presets in distributed apps. This explicitly supersedes the active Android plan's fixed-server-only release constraint; it does not add native password forms. Changing instance clears active authentication state and keeps credentials and cached records isolated.
+
+Expose OAuth authorization-server metadata at `/.well-known/oauth-authorization-server` through the Rodauth library. Discover issuer, authorization/token/revocation endpoints, supported grants, scopes and S256. Do not claim to be an OpenID Provider solely to provide discovery; upstream OIDC delegation is a separate role. Use the existing public API capabilities endpoint for MedTracker-specific information, including the public first-party client ID for each supported platform. Pre-provision registered clients with exact allowed callbacks; metadata discovery does not itself register an app and no client secret is delivered to phones.
+
+Validate HTTPS, the expected issuer and the instance-owned endpoint contract before authorization. Bind callbacks, state, PKCE and credentials to the selected instance; reject inconsistent metadata without forwarding existing credentials. Show a useful error for an unsupported instance. Presets contain instance URLs only; exact preset URLs and callback identifiers remain deployment configuration.
+
 ## Migration Plan
 
-1. Add the new credential kind, invariants, authorization flow and account/household API handling additively. Keep existing grants restricted and legacy clients working during migration; correct unsupported PKCE claims immediately when updating discovery.
-2. Expose truthful flow/version capabilities and update the root OpenAPI schema, pinned Android contract and authentication ADRs. Publish the contract before migrating clients.
-3. Move Android to MedTracker authorization and account-level navigation. Verify local-only, mixed local/delegated and Zitadel SSO flows plus existing MFA choices. Specify iOS registration/contract without claiming iOS implementation.
-4. Inventory supported client versions, document the compatibility window and retirement criteria, then retire the old ID-token exchange and first-party selection-grant path after migration evidence. Update issue #1889's acceptance interpretation: Rodauth is now the authorization server that verifies PKCE; households are selected after login. Do not close the issue before delivery and verification.
-5. Rollback disables new-flow discovery and new issuance while preserving legacy behaviour and data. Do not restore false PKCE claims or reinterpret issued account grants as household grants. If a security rollback requires invalidation, revoke the new grant kind explicitly and require sign-in; do not silently widen legacy access.
+The user confirmed there are no active mobile clients. Replace the old flow directly without a compatibility window, version inventory or dual-protocol period.
+
+1. Implement new grant invariants, authorization discovery and account/household API handling while preserving existing restricted integration credentials.
+2. Update Android, the root OpenAPI schema, pinned contract and authentication documentation together. Remove the old ID-token exchange and obsolete first-party selection path; do not retain dead mobile compatibility code. Preserve local browser login and unrelated integrations.
+3. Verify local-only, mixed local/delegated and Zitadel SSO flows, instance selection/presets and existing MFA choices. Define the future iOS contract without claiming iOS implementation.
+4. Roll out the coherent server/client change. A rollback restores the previous release/schema as appropriate or disables new issuance; never reinterpret account grants as restricted grants or broaden legacy grants. Revoke incompatible test/new credentials when necessary and require sign-in. Do not close #1889 before delivery and verification.
 
 ## Open Questions
 
-Exact production Android/iOS callback identifiers, supported legacy-client versions and compatibility-window dates must be inventoried before rollout. These deployment values do not change the chosen protocol or authorisation model.
+Exact Android/iOS callback identifiers and canary/demo preset URLs must be confirmed before rollout. Authentication-context discussion comes next; detailed token/session integration verification follows it. Existing MFA enrolment and admin policy remain fixed.

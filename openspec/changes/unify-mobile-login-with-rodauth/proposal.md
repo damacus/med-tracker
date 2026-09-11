@@ -9,7 +9,8 @@ The mobile exchange in [issue #1889](https://github.com/damacus/med-tracker/issu
 - Issue account-level first-party mobile credentials. Resolve current household membership and action permissions on every household request; do not grant access merely because a household shares the instance.
 - Complete login without household selection. Let users list authorised households and switch within the app using the same credential; isolate cached records and queued actions by instance, account and household.
 - Preserve refresh rotation, device session visibility and revocation, account lockout, and authentication assurance through the new flow.
-- **BREAKING**: Replace first-party use of the custom ID-token exchange and household-bound login responses through a staged client/API migration. Remove misleading capabilities and retire obsolete exchange behaviour after supported clients migrate.
+- Phones accept an instance URL and discover its authorization configuration. Canary/demo presets provide instance URLs, not hard-coded provider endpoints.
+- **BREAKING**: Replace the custom ID-token exchange and first-party household-bound login responses directly. There are no active mobile clients to migrate, so no compatibility window or dual-flow support is required. Remove obsolete behaviour and misleading capabilities in this delivery.
 - Update API documentation, authentication ADRs and native client contracts to describe implemented behaviour only.
 
 Non-goals: changing login or MFA policy; granting every account access to every household; broadening existing SMART/FHIR or application-token permissions; implementing native provider-specific passkey screens; migrating identity-provider credentials; changing provider-wide logout; importing the iOS project.
@@ -18,7 +19,7 @@ Non-goals: changing login or MFA policy; granting every account access to every 
 
 ### New Capabilities
 
-- `mobile-rodauth-authentication`: Standard first-party mobile authorization through Rodauth with local or delegated sign-in, preserved session protections and staged migration.
+- `mobile-rodauth-authentication`: Standard first-party mobile authorization through Rodauth with instance discovery, local or delegated sign-in and preserved session protections.
 - `mobile-account-household-access`: Account-level mobile login with per-request household authorisation and safe household navigation.
 
 ### Modified Capabilities
