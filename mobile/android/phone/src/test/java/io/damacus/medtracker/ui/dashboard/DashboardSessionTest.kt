@@ -5,22 +5,19 @@ import io.damacus.medtracker.data.CredentialStore
 import io.damacus.medtracker.data.SessionManager
 import io.damacus.medtracker.data.api.ApiResult
 import io.damacus.medtracker.data.api.MedTrackerApi
-import io.damacus.medtracker.data.model.AuthenticationResult
+import io.damacus.medtracker.data.model.HouseholdSelection
 import io.damacus.medtracker.data.model.CreateMedicationPayload
 import io.damacus.medtracker.data.model.CreateSchedulePayload
 import io.damacus.medtracker.data.model.DashboardData
 import io.damacus.medtracker.data.model.HouseholdChoice
 import io.damacus.medtracker.data.model.HouseholdDto
-import io.damacus.medtracker.data.model.HouseholdSelectionRequest
 import io.damacus.medtracker.data.model.HouseholdInvitationDto
 import io.damacus.medtracker.data.model.LocationDto
 import io.damacus.medtracker.data.model.MedicationDto
 import io.damacus.medtracker.data.model.MedicationTakeDto
-import io.damacus.medtracker.data.model.OidcExchangeRequest
 import io.damacus.medtracker.data.model.PersonDto
 import io.damacus.medtracker.data.model.RecordDosePayload
 import io.damacus.medtracker.data.model.RecordStockRemovalPayload
-import io.damacus.medtracker.data.model.RefreshRequest
 import io.damacus.medtracker.data.model.ScheduleDto
 import io.damacus.medtracker.data.model.SessionPayload
 import io.damacus.medtracker.data.model.UserDto
@@ -276,30 +273,6 @@ class DashboardSessionTest {
         assertTrue(api.logoutTokens.isEmpty())
     }
 
-    @Test fun `household selection completes authentication against the original server`() = runTest(dispatcher) {
-        val main = MainViewModel(sessions, api)
-        store.put("main", main)
-        val selection = AuthenticationResult.HouseholdSelection(
-            "selection-token",
-            listOf(HouseholdChoice(42, "Summer house", "member"))
-        )
-
-        main.authenticate("https://selected.example/") { ApiResult.Success(selection) }
-        runCurrent()
-        assertEquals(selection, main.uiState.value.householdSelection)
-
-        main.selectHousehold(42)
-        runCurrent()
-
-        assertEquals(
-            listOf(Triple("https://selected.example/", "selection-token", 42L)),
-            api.householdSelectionRequests
-        )
-        assertTrue(sessions.sessionState.value.isLoggedIn)
-        assertEquals(42L, sessions.sessionState.value.household?.id)
-        assertNull(main.uiState.value.householdSelection)
-    }
-
     private suspend fun kotlinx.coroutines.test.TestScope.assertLateLogoutIgnored(fail: Boolean) {
         signIn(1)
         val model = model()
@@ -455,18 +428,8 @@ class DashboardSessionTest {
             logoutTokens.add(accessToken)
             return if (delayLogout) suspendCoroutine { logoutContinuation = it } else ApiResult.Success(Unit)
         }
-        override suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest): ApiResult<AuthenticationResult> = error("Not used")
-        override suspend fun selectHousehold(baseUrl: String, request: HouseholdSelectionRequest): ApiResult<SessionPayload> {
-            householdSelectionRequests.add(Triple(baseUrl, request.selectionToken, request.householdId))
-            return ApiResult.Success(
-                SessionPayload(
-                    "selected-token",
-                    refreshToken = "selected-refresh",
-                    household = HouseholdDto(request.householdId, "Summer house")
-                )
-            )
-        }
-        override suspend fun refresh(baseUrl: String, request: RefreshRequest): ApiResult<SessionPayload> = error("Not used")
+
+
         override suspend fun getLocations(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<LocationDto>> = ApiResult.Success(emptyList())
         override suspend fun getInvitations(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<HouseholdInvitationDto>> = ApiResult.Success(emptyList())
         override suspend fun createInvitation(baseUrl: String, accessToken: String, householdId: Long, email: String, role: String): ApiResult<HouseholdInvitationDto> = ApiResult.Success(

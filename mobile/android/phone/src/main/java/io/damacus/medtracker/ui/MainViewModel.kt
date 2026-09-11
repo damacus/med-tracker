@@ -10,9 +10,7 @@ import io.damacus.medtracker.data.api.ApiResult
 import io.damacus.medtracker.data.api.GeneratedMedTrackerApi
 import io.damacus.medtracker.data.api.MedTrackerApi
 import io.damacus.medtracker.BuildConfig
-import io.damacus.medtracker.data.model.OidcExchangeRequest
-import io.damacus.medtracker.data.model.AuthenticationResult
-import io.damacus.medtracker.data.model.HouseholdSelectionRequest
+import io.damacus.medtracker.data.model.HouseholdSelection
 import io.damacus.medtracker.data.model.HouseholdDto
 import io.damacus.medtracker.data.model.SessionPayload
 import kotlinx.coroutines.CancellationException
@@ -26,7 +24,7 @@ data class MainUiState(
     val isLoading: Boolean = false,
     val isLoggingOut: Boolean = false,
     val errorMessage: String? = null,
-    val householdSelection: AuthenticationResult.HouseholdSelection? = null,
+    val householdSelection: HouseholdSelection? = null,
     val selectionServerUrl: String? = null
 )
 
@@ -59,7 +57,7 @@ class MainViewModel(
             when (result) {
                 is ApiResult.Success -> {
                     _uiState.value = MainUiState(
-                        householdSelection = AuthenticationResult.HouseholdSelection("", result.data),
+                        householdSelection = HouseholdSelection(result.data),
                         selectionServerUrl = session.serverUrl
                     )
                     result.data.singleOrNull()?.let { selectHousehold(it.id) }
@@ -70,100 +68,14 @@ class MainViewModel(
         }
     }
 
-    fun exchangeOidc(idToken: String, nonce: String, codeVerifier: String) {
-        authenticate(BuildConfig.SERVER_URL) { api ->
-            api.exchangeOidc(
-                BuildConfig.SERVER_URL,
-                OidcExchangeRequest(
-                    idToken = idToken,
-                    nonce = nonce,
-                    codeVerifier = codeVerifier,
-                    deviceName = deviceName()
-                )
-            )
-        }
-    }
-
-    fun authenticate(
-        serverUrl: String,
-        request: suspend (MedTrackerApi) -> ApiResult<AuthenticationResult>
-    ) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            when (val result = request(apiClient)) {
-                is ApiResult.Success -> {
-                    when (val authentication = result.data) {
-                        is AuthenticationResult.Session -> {
-                            sessionManager.saveSession(authentication.payload, serverUrl)
-                            _uiState.update { MainUiState() }
-                        }
-                        is AuthenticationResult.HouseholdSelection -> {
-                            _uiState.update {
-                                it.copy(
-                                    isLoading = false,
-                                    errorMessage = null,
-                                    householdSelection = authentication,
-                                    selectionServerUrl = serverUrl
-                                )
-                            }
-                        }
-                    }
-                }
-                is ApiResult.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = result.message
-                        )
-                    }
-                }
-                is ApiResult.NetworkError -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = "Network connection error: ${result.cause.localizedMessage ?: "Unable to connect to server"}"
-                        )
-                    }
-                }
-            }
-        }
-    }
-
     fun selectHousehold(householdId: Long) {
-        val currentState = uiState.value
-        val selection = currentState.householdSelection ?: return
-        if (selection.selectionToken.isEmpty() && sessionState.value.isLoggedIn) {
-            val household = selection.households.singleOrNull { it.id == householdId } ?: return
-            val session = sessionState.value
-            val payload = session.sessionPayload ?: return
-            sessionManager.saveSession(payload.copy(household = HouseholdDto(household.id, household.name)), session.serverUrl)
-            _uiState.value = MainUiState()
-            return
-        }
-        val serverUrl = currentState.selectionServerUrl ?: BuildConfig.SERVER_URL
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            when (val result = apiClient.selectHousehold(
-                serverUrl,
-                HouseholdSelectionRequest(selection.selectionToken, householdId)
-            )) {
-                is ApiResult.Success -> {
-                    sessionManager.saveSession(result.data, serverUrl)
-                    _uiState.value = MainUiState()
-                }
-                is ApiResult.Error -> _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
-                is ApiResult.NetworkError -> _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = "Network connection error: ${result.cause.localizedMessage ?: "Unable to connect to server"}"
-                    )
-                }
-            }
-        }
+        val selection = uiState.value.householdSelection ?: return
+        val household = selection.households.singleOrNull { it.id == householdId } ?: return
+        val session = sessionState.value
+        val payload = session.sessionPayload ?: return
+        sessionManager.saveSession(payload.copy(household = HouseholdDto(household.id, household.name)), session.serverUrl)
+        _uiState.value = MainUiState()
     }
-
-    fun deviceName(): String =
-        "${Build.MANUFACTURER.replaceFirstChar { it.uppercase() }} ${Build.MODEL} (Android)"
 
     fun reportAuthenticationError(message: String) {
         _uiState.update { it.copy(isLoading = false, errorMessage = message) }

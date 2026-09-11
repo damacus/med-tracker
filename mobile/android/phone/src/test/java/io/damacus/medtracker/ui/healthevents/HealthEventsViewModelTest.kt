@@ -12,11 +12,9 @@ import io.damacus.medtracker.data.model.HouseholdInvitationDto
 import io.damacus.medtracker.data.model.LocationDto
 import io.damacus.medtracker.data.model.MedicationDto
 import io.damacus.medtracker.data.model.MedicationTakeDto
-import io.damacus.medtracker.data.model.OidcExchangeRequest
 import io.damacus.medtracker.data.model.PersonDto
 import io.damacus.medtracker.data.model.RecordDosePayload
 import io.damacus.medtracker.data.model.RecordStockRemovalPayload
-import io.damacus.medtracker.data.model.RefreshRequest
 import io.damacus.medtracker.data.model.ScheduleDto
 import io.damacus.medtracker.data.model.SessionPayload
 import io.damacus.medtracker.data.model.UserDto
@@ -77,8 +75,8 @@ class HealthEventsViewModelTest {
         override suspend fun getHealthEvents(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<HealthEventDto>> {
             return ApiResult.Success(listOf(HealthEventDto(id = 1L, eventKind = "suspected_side_effect", title = "Nausea", notes = "After dose")))
         }
-        override suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest) = ApiResult.Error("stub", "stub")
-        override suspend fun refresh(baseUrl: String, request: RefreshRequest) = ApiResult.Error("stub", "stub")
+
+
         override suspend fun logout(baseUrl: String, accessToken: String) = ApiResult.Success(Unit)
         override suspend fun getPeople(baseUrl: String, accessToken: String, householdId: Long) = ApiResult.Success(emptyList<PersonDto>())
         override suspend fun getMedications(baseUrl: String, accessToken: String, householdId: Long) = ApiResult.Success(emptyList<MedicationDto>())

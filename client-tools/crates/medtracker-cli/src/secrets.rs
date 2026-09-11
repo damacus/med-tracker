@@ -33,10 +33,3 @@ pub fn delete_access_token(profile: &str) -> Result<()> {
         Err(error) => Err(error).context("failed to delete token from OS keychain"),
     }
 }
-
-pub fn extract_access_token(value: &serde_json::Value) -> Option<&str> {
-    value
-        .pointer("/session/access_token")
-        .or_else(|| value.pointer("/access_token"))
-        .and_then(serde_json::Value::as_str)
-}

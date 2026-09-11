@@ -8,18 +8,15 @@ import io.damacus.medtracker.data.model.HealthEventDto
 import io.damacus.medtracker.data.model.HouseholdAdminSettingsDto
 import io.damacus.medtracker.data.model.HouseholdDto
 import io.damacus.medtracker.data.model.HouseholdChoice
-import io.damacus.medtracker.data.model.HouseholdSelectionRequest
-import io.damacus.medtracker.data.model.AuthenticationResult
+import io.damacus.medtracker.data.model.HouseholdSelection
 import io.damacus.medtracker.data.model.HouseholdInvitationDto
 import io.damacus.medtracker.data.model.LocationDto
 import io.damacus.medtracker.data.model.MedicationDto
 import io.damacus.medtracker.data.model.MedicationLookupResultDto
 import io.damacus.medtracker.data.model.MedicationTakeDto
-import io.damacus.medtracker.data.model.OidcExchangeRequest
 import io.damacus.medtracker.data.model.PersonDto
 import io.damacus.medtracker.data.model.RecordDosePayload
 import io.damacus.medtracker.data.model.RecordStockRemovalPayload
-import io.damacus.medtracker.data.model.RefreshRequest
 import io.damacus.medtracker.data.model.ScheduleDto
 import io.damacus.medtracker.data.model.SessionPayload
 import io.damacus.medtracker.data.model.UserDto
@@ -44,13 +41,6 @@ import io.medtracker.client.infrastructure.ServerError
 import io.medtracker.client.infrastructure.Serializer
 import io.medtracker.client.infrastructure.Success
 import io.medtracker.client.models.AiMedicationSuggestion
-import io.medtracker.client.models.AuthLoginData
-import io.medtracker.client.models.AuthLoginResponse
-import io.medtracker.client.models.AuthHouseholdSelectionRequest
-import io.medtracker.client.models.AuthHouseholdSelectionResponse
-import io.medtracker.client.models.AuthOidcExchangeRequest
-import io.medtracker.client.models.AuthRefreshData
-import io.medtracker.client.models.AuthRefreshRequest
 import io.medtracker.client.models.Capabilities
 import io.medtracker.client.models.HealthEvent
 import io.medtracker.client.models.HealthEventCreateRequest
@@ -93,9 +83,6 @@ sealed class ApiResult<out T> {
 interface MedTrackerApi {
     suspend fun getHouseholds(baseUrl: String, accessToken: String): ApiResult<List<HouseholdChoice>> = ApiResult.Error("not_implemented", "Not implemented")
     suspend fun getCapabilities(baseUrl: String): ApiResult<CapabilitiesDto> = ApiResult.Success(CapabilitiesDto("v1", "medtracker.api.capabilities.v1"))
-    suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest): ApiResult<AuthenticationResult> = ApiResult.Error("not_implemented", "Not implemented")
-    suspend fun selectHousehold(baseUrl: String, request: HouseholdSelectionRequest): ApiResult<SessionPayload> = ApiResult.Error("not_implemented", "Not implemented")
-    suspend fun refresh(baseUrl: String, request: RefreshRequest): ApiResult<SessionPayload>
     suspend fun logout(baseUrl: String, accessToken: String): ApiResult<Unit>
     suspend fun getPeople(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<PersonDto>>
     suspend fun getMedications(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<MedicationDto>>
@@ -146,31 +133,6 @@ class GeneratedMedTrackerApi(
 
     override suspend fun getCapabilities(baseUrl: String) = generated {
         CapabilitiesApi(apiBaseUrl(baseUrl), unauthenticatedCalls).getCapabilities().data.toDomain()
-    }
-
-    override suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest) = authenticationRequest {
-        MultiResponseAuthenticationApi(apiBaseUrl(baseUrl), unauthenticatedCalls).exchange(
-            AuthOidcExchangeRequest(request.idToken, request.nonce, request.codeVerifier, request.deviceName, request.householdId?.toInt())
-        )
-    }
-
-    override suspend fun selectHousehold(baseUrl: String, request: HouseholdSelectionRequest): ApiResult<SessionPayload> {
-        return when (val result = authenticationRequest {
-            MultiResponseAuthenticationApi(apiBaseUrl(baseUrl), unauthenticatedCalls).select(
-                AuthHouseholdSelectionRequest(request.selectionToken, request.householdId.toInt())
-            )
-        }) {
-            is ApiResult.Success -> when (val authentication = result.data) {
-                is AuthenticationResult.Session -> ApiResult.Success(authentication.payload)
-                is AuthenticationResult.HouseholdSelection -> ApiResult.Error("invalid_response", "Household selection was not completed")
-            }
-            is ApiResult.Error -> result
-            is ApiResult.NetworkError -> result
-        }
-    }
-
-    override suspend fun refresh(baseUrl: String, request: RefreshRequest) = generated {
-        AuthenticationApi(apiBaseUrl(baseUrl), unauthenticatedCalls).refreshSession(AuthRefreshRequest(request.refreshToken)).data.toSessionPayload()
     }
 
     override suspend fun logout(baseUrl: String, accessToken: String): ApiResult<Unit> =
@@ -341,81 +303,6 @@ class GeneratedMedTrackerApi(
 
 }
 
-private class MultiResponseAuthenticationApi(basePath: String, client: Call.Factory) : AuthenticationApi(basePath, client) {
-    fun exchange(requestBody: AuthOidcExchangeRequest): ApiResponse<Map<String, Any?>?> =
-        request<AuthOidcExchangeRequest, Map<String, Any?>>(exchangeOidcSessionRequestConfig(requestBody))
-
-    fun select(requestBody: AuthHouseholdSelectionRequest): ApiResponse<Map<String, Any?>?> =
-        request<AuthHouseholdSelectionRequest, Map<String, Any?>>(selectHouseholdRequestConfig(requestBody))
-}
-
-internal suspend fun authenticationRequest(
-    block: () -> ApiResponse<Map<String, Any?>?>
-): ApiResult<AuthenticationResult> = withContext(Dispatchers.IO) {
-    try {
-        decodeAuthenticationResponse(block())
-    } catch (error: ClientException) {
-        ApiResult.Error("http_${error.statusCode}", error.message.orEmpty(), error.statusCode)
-    } catch (error: ServerException) {
-        ApiResult.Error("http_${error.statusCode}", error.message.orEmpty(), error.statusCode)
-    } catch (error: IOException) {
-        ApiResult.NetworkError(error)
-    } catch (e: com.squareup.moshi.JsonDataException) {
-        ApiResult.Error("invalid_response", e.message ?: "Server returned an invalid authentication response")
-    }
-}
-
-private val authMoshi: com.squareup.moshi.Moshi = com.squareup.moshi.Moshi.Builder()
-    .add(io.medtracker.client.infrastructure.OffsetDateTimeAdapter())
-    .add(io.medtracker.client.infrastructure.LocalDateTimeAdapter())
-    .add(io.medtracker.client.infrastructure.LocalDateAdapter())
-    .add(io.medtracker.client.infrastructure.UUIDAdapter())
-    .add(io.medtracker.client.infrastructure.ByteArrayAdapter())
-    .add(io.medtracker.client.infrastructure.URIAdapter())
-    .add(io.medtracker.client.infrastructure.BigDecimalAdapter())
-    .add(io.medtracker.client.infrastructure.BigIntegerAdapter())
-    .add(object : com.squareup.moshi.JsonAdapter.Factory {
-        override fun create(type: java.lang.reflect.Type, annotations: Set<Annotation>, moshi: com.squareup.moshi.Moshi): com.squareup.moshi.JsonAdapter<*>? {
-            val rawType = com.squareup.moshi.Types.getRawType(type)
-            if (rawType.isEnum) {
-                return moshi.nextAdapter<Any>(this, type, annotations).nullSafe()
-            }
-            return null
-        }
-    })
-    .also { io.medtracker.client.infrastructure.SerializerHelper.addEnumUnknownDefaultCase(it) }
-    .add(com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory())
-    .build()
-
-internal fun decodeAuthenticationResponse(
-    response: ApiResponse<Map<String, Any?>?>
-): ApiResult<AuthenticationResult> = when (response) {
-    is Success -> {
-        if (response.statusCode == 202) {
-            val selection = requireNotNull(
-                authMoshi.adapter(AuthHouseholdSelectionResponse::class.java).fromJsonValue(response.data)
-            ).data
-            ApiResult.Success(
-                AuthenticationResult.HouseholdSelection(
-                    selection.selectionToken,
-                    selection.households.map { HouseholdChoice(it.id.toLong(), it.name, it.role.value) }
-                )
-            )
-        } else {
-            val login = requireNotNull(
-                authMoshi.adapter(AuthLoginResponse::class.java).fromJsonValue(response.data)
-            )
-            ApiResult.Success(AuthenticationResult.Session(login.data.toSessionPayload()))
-        }
-    }
-    is ClientError -> ApiResult.Error("http_${response.statusCode}", response.message.orEmpty(), response.statusCode)
-    is ServerError -> ApiResult.Error("http_${response.statusCode}", response.message.orEmpty(), response.statusCode)
-    is Redirection -> ApiResult.Error("http_${response.statusCode}", "Authentication was redirected", response.statusCode)
-    else -> ApiResult.Error("invalid_response", "Server returned an invalid authentication response", response.statusCode)
-}
-
-internal fun AuthLoginData.toSessionPayload() = SessionPayload(accessToken, accessTokenExpiresAt.toString(), refreshToken, refreshTokenExpiresAt.toString(), UserDto(me.id.toLong(), me.emailAddress, me.person.name, me.membershipRole?.value), household?.let { HouseholdDto(it.id.toLong(), it.name) })
-private fun AuthRefreshData.toSessionPayload() = SessionPayload(accessToken, accessTokenExpiresAt.toString(), refreshToken, refreshTokenExpiresAt.toString(), household = household?.let { HouseholdDto(it.id.toLong(), it.name) })
 private fun Person.toDomain() = PersonDto(id.toLong(), portableId.toString(), name, email, dateOfBirth?.toString(), personType.value, age, hasCapacity)
 private fun Medication.toDomain() = MedicationDto(id.toLong(), portableId.toString(), name, displayName, category, description, doseAmount?.toDoubleOrNull(), doseUnit, currentSupply?.toDoubleOrNull(), reorderThreshold?.toDoubleOrNull(), reorderStatus?.value, lowStock, outOfStock)
 private fun Schedule.toDomain() = ScheduleDto(id.toLong(), portableId.toString(), personId.toLong(), personPortableId.toString(), medicationId.toLong(), medicationPortableId.toString(), doseAmount.toDoubleOrNull(), doseUnit, frequency, doseCycle?.value, startDate.toString(), endDate.toString(), active, paused, notes, maxDailyDoses, minHoursBetweenDoses?.toDoubleOrNull())

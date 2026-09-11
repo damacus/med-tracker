@@ -9,10 +9,8 @@ import io.damacus.medtracker.data.model.CreateSchedulePayload
 import io.damacus.medtracker.data.model.HouseholdDto
 import io.damacus.medtracker.data.model.HouseholdInvitationDto
 import io.damacus.medtracker.data.model.LocationDto
-import io.damacus.medtracker.data.model.OidcExchangeRequest
 import io.damacus.medtracker.data.model.RecordDosePayload
 import io.damacus.medtracker.data.model.RecordStockRemovalPayload
-import io.damacus.medtracker.data.model.RefreshRequest
 import io.damacus.medtracker.data.model.SessionPayload
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -107,8 +105,7 @@ class HouseholdViewModelTest {
             return ApiResult.Success(newInv)
         }
 
-        override suspend fun exchangeOidc(baseUrl: String, request: OidcExchangeRequest) = error("Not used")
-        override suspend fun refresh(baseUrl: String, request: RefreshRequest) = error("Not used")
+
         override suspend fun logout(baseUrl: String, accessToken: String) = error("Not used")
         override suspend fun getPeople(baseUrl: String, accessToken: String, householdId: Long) = error("Not used")
         override suspend fun getMedications(baseUrl: String, accessToken: String, householdId: Long) = error("Not used")

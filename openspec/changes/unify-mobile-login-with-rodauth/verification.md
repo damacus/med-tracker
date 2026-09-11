@@ -2,8 +2,9 @@
 
 This change is not complete and has not been deployed. The new Rodauth mobile
 flow, central lifetime settings and removal of action-specific MFA freshness
-gates are implemented. Legacy mobile endpoint retirement is blocked by automatic
-approval review; see [the precise removal scope](retirement-approval.md).
+gates are implemented. The user approved legacy mobile endpoint retirement;
+see [the precise removal scope](retirement-approval.md). The four routes and
+their Android and Rust client calls are now removed.
 
 ## Configuration
 
@@ -41,7 +42,7 @@ the same account credential and resolves current permissions on each request.
 - Brakeman reports zero errors and zero security warnings.
 - Documentation builds and OpenSpec strict validation pass.
 
-The final full `task test` run passed: 6,275 examples, zero failures and six
+The preceding checkpoint's full `task test` run passed: 6,275 examples, zero failures and six
 pending, in 12 minutes 33 seconds. Five pending examples are the blocked
 retirement contract below; one was already pending. The previous full run had
 one inventory scanner visibility failure; all eight examples in that file and
@@ -53,12 +54,41 @@ release transport checks passed. The root generated-client determinism check,
 Android contract pin check, documentation build and OpenSpec strict validation
 also passed.
 
+## Retirement verification
+
+- The five retirement tests are active and pass. They check removal of all
+  four routes and truthful capability metadata.
+- The affected Rails request and contract checks passed: 143 examples.
+- The final route and account-session contract checks pass: 119 examples.
+- An additional failing schema test showed account-level session responses
+  incorrectly required a household identifier; that requirement is removed
+  from the root contract and Android's regenerated copy.
+- Android's combined CI task and emulator authentication UI tests pass.
+- Root API-client generation is deterministic against the retired contract.
+- Rust workspace tests and Clippy pass. CLI login accepts an API app token;
+  its help output hides environment token values. The old refresh command is
+  removed.
+- Release packaging validation remains intact. Automatic review rejected
+  removing those checks separately; removing them was unnecessary for retiring
+  the endpoints.
+- The opt-in canary check now accepts a browser-obtained token and checks
+  discovery plus household access. It has not run against the live provider
+  and does not establish interactive SSO behaviour.
+
+The first retirement full-suite run found three failures among 6,233 examples.
+Account cleanup still referenced the removed selection-grant model and therefore
+also skipped sync-record cleanup. The replacement test-session helper omitted a
+household slug used by notification tests. Removing the stale association and
+restoring the fixture payload fixes all three: the affected files pass with
+57 examples. The sync assertion and production sync behaviour are unchanged.
+
+The final full Rails run passes: 6,233 examples, zero failures and one existing
+pending test, in 12 minutes 4 seconds. All five retirement examples are active.
+Final RuboCop checks 1,966 files with no offences. Brakeman reports zero errors
+and zero security warnings. Documentation and strict OpenSpec validation pass.
+
 ## Outstanding evidence and delivery
 
-- Five route/capability retirement examples are explicitly pending because the
-  removal was rejected by automatic approval review. They failed against the
-  retained implementation before being marked pending. They are not evidence
-  that retirement works.
 - Provider-backed Zitadel/SSO, passkey and representative rollout/rollback
   checks have not run. No deployment or merge has occurred.
 - Desktop browser screenshots remain unavailable while the Mac is locked;

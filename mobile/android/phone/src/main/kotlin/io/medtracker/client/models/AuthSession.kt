@@ -24,11 +24,11 @@ import com.squareup.moshi.JsonClass
  *
  * @param id 
  * @param deviceName 
- * @param householdId 
  * @param lastUsedAt 
  * @param accessTokenExpiresAt 
  * @param refreshTokenExpiresAt 
  * @param createdAt 
+ * @param householdId 
  */
 
 
@@ -40,9 +40,6 @@ data class AuthSession (
     @Json(name = "device_name")
     val deviceName: kotlin.String?,
 
-    @Json(name = "household_id")
-    val householdId: kotlin.Int?,
-
     @Json(name = "last_used_at")
     val lastUsedAt: java.time.OffsetDateTime,
 
@@ -53,7 +50,10 @@ data class AuthSession (
     val refreshTokenExpiresAt: java.time.OffsetDateTime,
 
     @Json(name = "created_at")
-    val createdAt: java.time.OffsetDateTime
+    val createdAt: java.time.OffsetDateTime,
+
+    @Json(name = "household_id")
+    val householdId: kotlin.Int? = null
 
 ) {
 

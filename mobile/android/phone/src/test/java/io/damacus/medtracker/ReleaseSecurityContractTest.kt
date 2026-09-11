@@ -53,10 +53,9 @@ class ReleaseSecurityContractTest {
         assertFalse(releaseGeneratedApi.readText().contains("createLoginSession"))
         assertFalse(releaseGeneratedApi.readText().contains("/auth/login"))
         assertFalse(releaseLoginRequest.exists())
-        assertTrue(nonReleaseGeneratedApi.readText().contains("createLoginSession"))
-        assertTrue(nonReleaseGeneratedApi.readText().contains("/auth/login"))
-        assertTrue(nonReleaseLoginRequest.isFile)
-        assertTrue(
+        assertFalse(nonReleaseLoginRequest.exists())
+        assertFalse(nonReleaseGeneratedApi.exists())
+        assertFalse(
             File(androidRoot, "phone/src/main/kotlin/io/medtracker/client/models/CapabilityAuthentication.kt")
                 .readText().contains("password_login")
         )
@@ -129,9 +128,9 @@ class ReleaseSecurityContractTest {
         assertTrue(integrationScript.contains(":phone:testStagingCanaryIntegrationUnitTest"))
         assertTrue(integrationScript.contains("-Pmedtracker.canaryIntegration=true"))
         assertTrue(integrationSource.contains("MEDTRACKER_CANARY_BASE_URL"))
-        assertTrue(integrationSource.contains("MEDTRACKER_CANARY_EMAIL"))
-        assertTrue(integrationSource.contains("MEDTRACKER_CANARY_PASSWORD"))
-        assertTrue(integrationSource.contains("GeneratedPasswordAuthenticator"))
+        assertTrue(integrationSource.contains("MEDTRACKER_CANARY_TOKEN"))
+        assertTrue(integrationSource.contains("MEDTRACKER_CANARY_TOKEN"))
+        assertTrue(integrationSource.contains("MobileAuthDiscovery"))
         assertFalse(integrationSource.contains("AuthenticationApi"))
         assertFalse(integrationSource.contains("AuthLoginRequest"))
         assertFalse(integrationSource.contains("OkHttpClient"))
@@ -162,20 +161,20 @@ class ReleaseSecurityContractTest {
     }
 
     @Test
-    fun generatorMaintainsReleaseAndNonReleaseSurfacesDeterministically() {
+    fun generatorMaintainsOneSharedApiSurfaceDeterministically() {
         val update = File(androidRoot, "scripts/api-update.fish").readText()
         val check = File(androidRoot, "scripts/api-check.fish").readText()
         val manifest = File(androidRoot, "import-manifest.sha256").readText()
 
-        assertTrue(update.contains("openapi-generator-password-config.yaml"))
+        assertFalse(update.contains("openapi-generator-password-config.yaml"))
         assertTrue(update.contains("openapi-generator-release.ignore"))
-        assertTrue(update.contains("phone/src/nonRelease/kotlin"))
-        assertTrue(check.contains("openapi-generator-password-config.yaml"))
+        assertFalse(update.contains("phone/src/nonRelease/kotlin"))
+        assertFalse(check.contains("openapi-generator-password-config.yaml"))
         assertTrue(check.contains("openapi-generator-release.ignore"))
-        assertTrue(check.contains("phone/src/nonRelease/kotlin"))
-        assertTrue(manifest.contains("openapi-generator-password-config.yaml"))
+        assertFalse(check.contains("phone/src/nonRelease/kotlin"))
+        assertFalse(manifest.contains("openapi-generator-password-config.yaml"))
         assertTrue(manifest.contains("openapi-generator-release.ignore"))
-        assertTrue(manifest.contains("phone/src/nonRelease/kotlin"))
+        assertFalse(manifest.contains("phone/src/nonRelease/kotlin"))
     }
 
     @Test

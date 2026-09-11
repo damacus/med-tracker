@@ -8,20 +8,24 @@ module ApiRequestHelpers
   ].freeze
 
   module Auth
-    def api_login(user, password: 'password', device_name: 'RSpec iPhone', household_id: nil)
+    def api_login(user, device_name: 'RSpec iPhone', household_id: nil)
       household_id ||= ensure_api_household_for(user).id
-      login_params = {
-        email: user.email_address,
-        password: password,
-        device_name: device_name
+      membership = user.person.account.household_memberships.active.find_by!(household_id: household_id)
+      session, access_token, refresh_token = ApiSession.issue_for(
+        account: user.person.account, household_membership: membership, device_name: device_name
+      )
+      api_session_payload(session, access_token, refresh_token, membership)
+    end
+
+    def api_session_payload(session, access_token, refresh_token, membership)
+      {
+        'access_token' => access_token, 'refresh_token' => refresh_token,
+        'access_token_expires_at' => session.access_expires_at.iso8601,
+        'refresh_token_expires_at' => session.refresh_expires_at.iso8601,
+        'household' => {
+          'id' => membership.household_id, 'name' => membership.household.name, 'slug' => membership.household.slug
+        }
       }
-      login_params[:household_id] = household_id if household_id
-
-      post api_v1_auth_login_path,
-           params: login_params,
-           as: :json
-
-      response.parsed_body.fetch('data')
     end
 
     def api_auth_headers(access_token)

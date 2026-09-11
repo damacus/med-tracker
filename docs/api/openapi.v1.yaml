@@ -88,118 +88,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CapabilitiesResponse'
-  /auth/login:
-    post:
-      operationId: createLoginSession
-      tags:
-        - Public
-        - Authentication
-      summary: Exchange development or migration password credentials for API tokens.
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AuthLoginRequest'
-      responses:
-        '201':
-          description: API session created.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthLoginResponse'
-        '202':
-          description: Household selection is required before creating an API session.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthHouseholdSelectionResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-  /auth/refresh:
-    post:
-      operationId: refreshSession
-      tags:
-        - Account
-        - Authentication
-      summary: Rotate an API session refresh token.
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AuthRefreshRequest'
-      responses:
-        '200':
-          description: New access and refresh tokens.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthRefreshResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-  /auth/oidc_exchange:
-    post:
-      operationId: exchangeOidcSession
-      tags:
-        - Public
-        - Authentication
-      summary: Exchange a hosted OIDC ID token for an API session.
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AuthOidcExchangeRequest'
-      responses:
-        '201':
-          description: API session created.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthLoginResponse'
-        '202':
-          description: Household selection is required before creating an API session.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthHouseholdSelectionResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-  /auth/select_household:
-    post:
-      operationId: selectHousehold
-      tags:
-        - Public
-        - Authentication
-      summary: Consume a one-time household-selection grant and create a scoped API session.
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AuthHouseholdSelectionRequest'
-      responses:
-        '201':
-          description: API session created for the selected household.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthLoginResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/RateLimited'
   /auth/households:
     get:
       operationId: listHouseholds
@@ -5395,70 +5283,6 @@ components:
         title:
           type: string
           minLength: 1
-    AuthLoginRequest:
-      type: object
-      additionalProperties: false
-      required:
-        - email
-        - password
-      properties:
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-          minLength: 1
-        device_name:
-          type: string
-          nullable: true
-        household_id:
-          $ref: '#/components/schemas/NumericId'
-    AuthRefreshRequest:
-      type: object
-      additionalProperties: false
-      required:
-        - refresh_token
-      properties:
-        refresh_token:
-          type: string
-          minLength: 1
-    AuthOidcExchangeRequest:
-      type: object
-      additionalProperties: false
-      required:
-        - id_token
-        - nonce
-        - code_verifier
-      properties:
-        id_token:
-          type: string
-          minLength: 1
-        nonce:
-          type: string
-          minLength: 1
-        code_verifier:
-          type: string
-          minLength: 1
-        device_name:
-          type: string
-          nullable: true
-        household_id:
-          $ref: '#/components/schemas/NumericId'
-        provider:
-          type: string
-          minLength: 1
-    AuthHouseholdSelectionRequest:
-      type: object
-      additionalProperties: false
-      required:
-        - selection_token
-        - household_id
-      properties:
-        selection_token:
-          type: string
-          minLength: 1
-        household_id:
-          $ref: '#/components/schemas/NumericId'
     AuthHousehold:
       type: object
       nullable: true
@@ -5512,44 +5336,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AuthHouseholdMembership'
-    AuthHouseholdSelectionData:
-      type: object
-      additionalProperties: false
-      required:
-        - status
-        - selection_token
-        - selection_expires_at
-        - households
-      properties:
-        status:
-          type: string
-          enum:
-            - household_selection_required
-        selection_token:
-          type: string
-          minLength: 1
-        selection_expires_at:
-          $ref: '#/components/schemas/Timestamp'
-        households:
-          type: array
-          minItems: 2
-          items:
-            $ref: '#/components/schemas/AuthHouseholdMembership'
-    AuthHouseholdSelectionResponse:
-      type: object
-      additionalProperties: false
-      required:
-        - data
-      properties:
-        data:
-          $ref: '#/components/schemas/AuthHouseholdSelectionData'
     AuthSession:
       type: object
       additionalProperties: false
       required:
         - id
         - device_name
-        - household_id
         - last_used_at
         - access_token_expires_at
         - refresh_token_expires_at
@@ -5580,69 +5372,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AuthSession'
-    AuthRefreshData:
-      type: object
-      additionalProperties: false
-      required:
-        - access_token
-        - access_token_expires_at
-        - refresh_token
-        - refresh_token_expires_at
-        - household
-      properties:
-        access_token:
-          type: string
-          minLength: 1
-        access_token_expires_at:
-          $ref: '#/components/schemas/Timestamp'
-        refresh_token:
-          type: string
-          minLength: 1
-        refresh_token_expires_at:
-          $ref: '#/components/schemas/Timestamp'
-        household:
-          $ref: '#/components/schemas/AuthHousehold'
-    AuthRefreshResponse:
-      type: object
-      additionalProperties: false
-      required:
-        - data
-      properties:
-        data:
-          $ref: '#/components/schemas/AuthRefreshData'
-    AuthLoginData:
-      type: object
-      additionalProperties: false
-      required:
-        - access_token
-        - access_token_expires_at
-        - refresh_token
-        - refresh_token_expires_at
-        - household
-        - me
-      properties:
-        access_token:
-          type: string
-          minLength: 1
-        access_token_expires_at:
-          $ref: '#/components/schemas/Timestamp'
-        refresh_token:
-          type: string
-          minLength: 1
-        refresh_token_expires_at:
-          $ref: '#/components/schemas/Timestamp'
-        household:
-          $ref: '#/components/schemas/AuthHousehold'
-        me:
-          $ref: '#/components/schemas/Me'
-    AuthLoginResponse:
-      type: object
-      additionalProperties: false
-      required:
-        - data
-      properties:
-        data:
-          $ref: '#/components/schemas/AuthLoginData'
     MeAccount:
       type: object
       additionalProperties: false
@@ -8070,8 +7799,7 @@ components:
       required:
         - methods
         - hosted_mobile
-        - password_login
-        - oidc_exchange
+        - mobile_oauth
       properties:
         methods:
           type: array
@@ -8079,18 +7807,12 @@ components:
           items:
             type: string
             enum:
-              - bearer_session
+              - oauth_bearer
               - api_app_token
         hosted_mobile:
           type: string
           enum:
-            - oidc_authorization_code_pkce
-        password_login:
-          type: string
-          enum:
-            - development_or_migration
-        oidc_exchange:
-          $ref: '#/components/schemas/CapabilityOidcExchange'
+            - rodauth_authorization_code_pkce
         mobile_oauth:
           $ref: '#/components/schemas/CapabilityMobileOauth'
     CapabilityMobileOauth:
@@ -8133,31 +7855,6 @@ components:
           type: array
           items:
             type: string
-    CapabilityOidcExchange:
-      type: object
-      additionalProperties: false
-      required:
-        - supported
-        - pkce_required
-        - household_selection
-        - session_listing
-        - session_revocation
-      properties:
-        supported:
-          type: boolean
-          description: Whether OIDC exchange is supported.
-        pkce_required:
-          type: boolean
-          description: Whether PKCE is required.
-        household_selection:
-          type: boolean
-          description: Whether first-time household selection grants are supported.
-        session_listing:
-          type: boolean
-          description: Whether clients may list sessions.
-        session_revocation:
-          type: boolean
-          description: Whether clients may revoke sessions.
     CapabilityAdministration:
       type: object
       additionalProperties: false

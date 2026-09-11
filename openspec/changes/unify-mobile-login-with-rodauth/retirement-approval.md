@@ -1,10 +1,10 @@
-# Legacy mobile authentication removal awaiting approval
+# Approved legacy mobile authentication removal
 
-Automatic approval review rejected this part of the implementation. No removal
-from this document has been applied. The new Rodauth mobile flow and configurable
-lifetime changes are separate working-tree changes.
+The user explicitly approved this removal and reaffirmed that there are no
+active clients. The four endpoints and their client transports are now removed.
+The earlier automatic approval block is resolved for this scope.
 
-The proposed removal is limited to these old first-party endpoints:
+The removal covers these old first-party endpoints:
 
 | Endpoint | Replacement |
 | --- | --- |
@@ -33,6 +33,6 @@ The user stated there are no active mobile clients. If an old client does exist,
 these four removed endpoints will no longer work; it must use the new client.
 This is the intended direct replacement, with no compatibility period.
 
-The review rejection described the combined route, controller, helper and test
-removal as too broad and insufficiently authorised. Approval is needed to apply
-this explicit scope. Deployment and merging are not included.
+Deployment and merging are not included. Existing release packaging validation
+remains in place; removing that validation was separately rejected by automatic
+review and is not needed for endpoint retirement.

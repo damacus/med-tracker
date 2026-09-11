@@ -19,13 +19,7 @@ import java.io.IOException
 import okhttp3.Call
 import okhttp3.HttpUrl
 
-import io.medtracker.client.models.AuthHouseholdSelectionRequest
-import io.medtracker.client.models.AuthHouseholdSelectionResponse
-import io.medtracker.client.models.AuthLoginResponse
-import io.medtracker.client.models.AuthOidcExchangeRequest
 import io.medtracker.client.models.CapabilitiesResponse
-import io.medtracker.client.models.ErrorEnvelope
-import io.medtracker.client.models.RateLimitErrorEnvelope
 
 import com.squareup.moshi.Json
 
@@ -49,80 +43,6 @@ open class PublicApi(basePath: kotlin.String = defaultBasePath, client: Call.Fac
         val defaultBasePath: String by lazy {
             System.getProperties().getProperty(ApiClient.baseUrlKey, "/api/v1")
         }
-    }
-
-    /**
-     * POST /auth/oidc_exchange
-     * Exchange a hosted OIDC ID token for an API session.
-     * 
-     * @param authOidcExchangeRequest 
-     * @return AuthLoginResponse
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     * @throws UnsupportedOperationException If the API returns an informational or redirection response
-     * @throws ClientException If the API returns a client error response
-     * @throws ServerException If the API returns a server error response
-     */
-    @Suppress("UNCHECKED_CAST")
-    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun exchangeOidcSession(authOidcExchangeRequest: AuthOidcExchangeRequest) : AuthLoginResponse {
-        val localVarResponse = exchangeOidcSessionWithHttpInfo(authOidcExchangeRequest = authOidcExchangeRequest)
-
-        return when (localVarResponse.responseType) {
-            ResponseType.Success -> (localVarResponse as Success<*>).data as AuthLoginResponse
-            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
-            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
-            ResponseType.ClientError -> {
-                val localVarError = localVarResponse as ClientError<*>
-                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
-            }
-            ResponseType.ServerError -> {
-                val localVarError = localVarResponse as ServerError<*>
-                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
-            }
-        }
-    }
-
-    /**
-     * POST /auth/oidc_exchange
-     * Exchange a hosted OIDC ID token for an API session.
-     * 
-     * @param authOidcExchangeRequest 
-     * @return ApiResponse<AuthLoginResponse?>
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     */
-    @Suppress("UNCHECKED_CAST")
-    @Throws(IllegalStateException::class, IOException::class)
-    fun exchangeOidcSessionWithHttpInfo(authOidcExchangeRequest: AuthOidcExchangeRequest) : ApiResponse<AuthLoginResponse?> {
-        val localVariableConfig = exchangeOidcSessionRequestConfig(authOidcExchangeRequest = authOidcExchangeRequest)
-
-        return request<AuthOidcExchangeRequest, AuthLoginResponse>(
-            localVariableConfig
-        )
-    }
-
-    /**
-     * To obtain the request config of the operation exchangeOidcSession
-     *
-     * @param authOidcExchangeRequest 
-     * @return RequestConfig
-     */
-    fun exchangeOidcSessionRequestConfig(authOidcExchangeRequest: AuthOidcExchangeRequest) : RequestConfig<AuthOidcExchangeRequest> {
-        val localVariableBody = authOidcExchangeRequest
-        val localVariableQuery: MultiValueMap = mutableMapOf()
-        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
-        localVariableHeaders["Content-Type"] = "application/json"
-        localVariableHeaders["Accept"] = "application/json"
-
-        return RequestConfig(
-            method = RequestMethod.POST,
-            path = "/auth/oidc_exchange",
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = false,
-            body = localVariableBody
-        )
     }
 
     /**
@@ -188,80 +108,6 @@ open class PublicApi(basePath: kotlin.String = defaultBasePath, client: Call.Fac
         return RequestConfig(
             method = RequestMethod.GET,
             path = "/capabilities",
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = false,
-            body = localVariableBody
-        )
-    }
-
-    /**
-     * POST /auth/select_household
-     * Consume a one-time household-selection grant and create a scoped API session.
-     * 
-     * @param authHouseholdSelectionRequest 
-     * @return AuthLoginResponse
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     * @throws UnsupportedOperationException If the API returns an informational or redirection response
-     * @throws ClientException If the API returns a client error response
-     * @throws ServerException If the API returns a server error response
-     */
-    @Suppress("UNCHECKED_CAST")
-    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun selectHousehold(authHouseholdSelectionRequest: AuthHouseholdSelectionRequest) : AuthLoginResponse {
-        val localVarResponse = selectHouseholdWithHttpInfo(authHouseholdSelectionRequest = authHouseholdSelectionRequest)
-
-        return when (localVarResponse.responseType) {
-            ResponseType.Success -> (localVarResponse as Success<*>).data as AuthLoginResponse
-            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
-            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
-            ResponseType.ClientError -> {
-                val localVarError = localVarResponse as ClientError<*>
-                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
-            }
-            ResponseType.ServerError -> {
-                val localVarError = localVarResponse as ServerError<*>
-                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
-            }
-        }
-    }
-
-    /**
-     * POST /auth/select_household
-     * Consume a one-time household-selection grant and create a scoped API session.
-     * 
-     * @param authHouseholdSelectionRequest 
-     * @return ApiResponse<AuthLoginResponse?>
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     */
-    @Suppress("UNCHECKED_CAST")
-    @Throws(IllegalStateException::class, IOException::class)
-    fun selectHouseholdWithHttpInfo(authHouseholdSelectionRequest: AuthHouseholdSelectionRequest) : ApiResponse<AuthLoginResponse?> {
-        val localVariableConfig = selectHouseholdRequestConfig(authHouseholdSelectionRequest = authHouseholdSelectionRequest)
-
-        return request<AuthHouseholdSelectionRequest, AuthLoginResponse>(
-            localVariableConfig
-        )
-    }
-
-    /**
-     * To obtain the request config of the operation selectHousehold
-     *
-     * @param authHouseholdSelectionRequest 
-     * @return RequestConfig
-     */
-    fun selectHouseholdRequestConfig(authHouseholdSelectionRequest: AuthHouseholdSelectionRequest) : RequestConfig<AuthHouseholdSelectionRequest> {
-        val localVariableBody = authHouseholdSelectionRequest
-        val localVariableQuery: MultiValueMap = mutableMapOf()
-        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
-        localVariableHeaders["Content-Type"] = "application/json"
-        localVariableHeaders["Accept"] = "application/json"
-
-        return RequestConfig(
-            method = RequestMethod.POST,
-            path = "/auth/select_household",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = false,

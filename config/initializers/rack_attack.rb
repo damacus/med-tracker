@@ -29,22 +29,6 @@ module Rack
       req.params['email'].to_s.downcase.gsub(/\s+/, '') if req.path == '/reset-password-request' && req.post?
     end
 
-    throttle('api/auth/login/ip', limit: 10, period: 1.minute) do |req|
-      req.ip if req.path == '/api/v1/auth/login' && req.post?
-    end
-
-    throttle('api/auth/login/email', limit: 10, period: 1.minute) do |req|
-      req.params['email'].to_s.downcase.gsub(/\s+/, '') if req.path == '/api/v1/auth/login' && req.post?
-    end
-
-    throttle('api/auth/refresh/ip', limit: 30, period: 1.minute) do |req|
-      req.ip if req.path == '/api/v1/auth/refresh' && req.post?
-    end
-
-    throttle('api/auth/oidc_exchange/ip', limit: 10, period: 1.minute) do |req|
-      req.ip if req.path == '/api/v1/auth/oidc_exchange' && req.post?
-    end
-
     throttle('api/data_exports/ip', limit: 10, period: 1.minute) do |req|
       req.ip if req.get? && req.path.match?(%r{\A/api/v1/households/[^/]+/data_exports/})
     end

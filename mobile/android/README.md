@@ -45,6 +45,20 @@ task android:package:release
 
 `task android:release:validate` and the packaging command fail closed when a value is missing, empty, contains `invalid`, uses a non-HTTPS server or endpoint, or has a redirect scheme mismatch. Packaging also checks the produced dex files for the password-login request descriptor, generated operation, and `/auth/login` path.
 
-The release client intentionally retains the `password_login` capability metadata field and its enum because they describe server capability data. That inert metadata is not a password authentication interface. Release compilation excludes the generated `AuthLoginRequest` model and `createLoginSession` operation; the full generated password transport exists only in the shared non-release source set used by explicitly labelled debug and staging variants.
+All variants use the same editable instance URL and Rodauth browser sign-in.
+The phone discovers endpoints and public client configuration from the selected
+instance. The retained release packaging validation above still runs; its
+provider endpoint/client settings are no longer used by the sign-in journey.
+Callback registration must match the app's registered redirect URI.
 
-The live canary is also staging-only. It runs only through `task android:integration:canary`, requires its three `MEDTRACKER_CANARY_*` environment values, and supplies the explicit Gradle opt-in property. Ordinary `./gradlew test` and pull-request CI skip it even if canary environment values happen to exist.
+The obsolete `password_login` capability, generated password transport,
+ID-token exchange, selection grant and custom refresh operation are removed.
+There is one generated API surface for all variants. Household switching uses
+the account token and loads current authorised households.
+
+The live canary check is staging-only. It runs through
+`task android:integration:canary` with `MEDTRACKER_CANARY_BASE_URL` and
+`MEDTRACKER_CANARY_TOKEN`, a current token obtained through browser login.
+It verifies discovery and household access, not interactive SSO itself.
+The explicit Gradle opt-in is required. Ordinary tests and pull-request CI skip
+it even if those environment values exist.

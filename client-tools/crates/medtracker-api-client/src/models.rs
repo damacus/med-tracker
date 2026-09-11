@@ -7,18 +7,6 @@ pub struct DataEnvelope<T> {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct LoginRequest<'a> {
-    pub email: &'a str,
-    pub password: &'a str,
-    pub device_name: &'a str,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct RefreshRequest<'a> {
-    pub refresh_token: &'a str,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
 pub struct PortableImportRequest {
     pub data: Value,
     pub mode: PortableImportMode,

@@ -1,7 +1,7 @@
 package io.damacus.medtracker
 
-import io.damacus.medtracker.auth.GeneratedPasswordAuthenticator
-import io.damacus.medtracker.auth.PasswordCredentials
+import io.damacus.medtracker.auth.MobileAuthDiscovery
+import io.damacus.medtracker.data.api.GeneratedMedTrackerApi
 import io.damacus.medtracker.data.api.ApiResult
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
@@ -9,26 +9,13 @@ import org.junit.Test
 
 class CanaryLiveIntegrationTest {
     @Test
-    fun configuredAccountCanCreateASession() = runBlocking {
+    fun configuredMobileSessionCanDiscoverHouseholds() = runBlocking {
         val baseUrl = requiredEnvironment("MEDTRACKER_CANARY_BASE_URL")
-        val email = requiredEnvironment("MEDTRACKER_CANARY_EMAIL")
-        val password = requiredEnvironment("MEDTRACKER_CANARY_PASSWORD")
-        val response = GeneratedPasswordAuthenticator().authenticate(
-            baseUrl,
-            PasswordCredentials(
-                email = email,
-                password = password,
-                deviceName = "Android Staging Canary Integration"
-            )
-        )
-
-        when (response) {
-            is ApiResult.Success -> {
-                assertTrue(response.data.accessToken.isNotBlank())
-                assertTrue(response.data.refreshToken.isNotBlank())
-            }
-            else -> throw AssertionError("Canary authentication failed: $response")
-        }
+        val token = requiredEnvironment("MEDTRACKER_CANARY_TOKEN")
+        val configuration = MobileAuthDiscovery().fetch(baseUrl, "io.damacus.medtracker.staging:/oauth2redirect")
+        assertTrue(configuration.clientId == "io.damacus.medtracker.staging")
+        val response = GeneratedMedTrackerApi().getHouseholds(baseUrl, token)
+        assertTrue("Canary household discovery failed", response is ApiResult.Success)
     }
 
     private fun requiredEnvironment(name: String): String =

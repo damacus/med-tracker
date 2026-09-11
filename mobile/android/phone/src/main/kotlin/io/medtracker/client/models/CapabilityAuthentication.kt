@@ -16,7 +16,6 @@
 package io.medtracker.client.models
 
 import io.medtracker.client.models.CapabilityMobileOauth
-import io.medtracker.client.models.CapabilityOidcExchange
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -26,8 +25,6 @@ import com.squareup.moshi.JsonClass
  *
  * @param methods 
  * @param hostedMobile 
- * @param passwordLogin 
- * @param oidcExchange 
  * @param mobileOauth 
  */
 
@@ -40,46 +37,30 @@ data class CapabilityAuthentication (
     @Json(name = "hosted_mobile")
     val hostedMobile: CapabilityAuthentication.HostedMobile,
 
-    @Json(name = "password_login")
-    val passwordLogin: CapabilityAuthentication.PasswordLogin,
-
-    @Json(name = "oidc_exchange")
-    val oidcExchange: CapabilityOidcExchange,
-
     @Json(name = "mobile_oauth")
-    val mobileOauth: CapabilityMobileOauth? = null
+    val mobileOauth: CapabilityMobileOauth
 
 ) {
 
     /**
      * 
      *
-     * Values: bearer_session,api_app_token,unknown_default_open_api
+     * Values: oauth_bearer,api_app_token,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class Methods(val value: kotlin.String) {
-        @Json(name = "bearer_session") bearer_session("bearer_session"),
+        @Json(name = "oauth_bearer") oauth_bearer("oauth_bearer"),
         @Json(name = "api_app_token") api_app_token("api_app_token"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
     /**
      * 
      *
-     * Values: oidc_authorization_code_pkce,unknown_default_open_api
+     * Values: rodauth_authorization_code_pkce,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class HostedMobile(val value: kotlin.String) {
-        @Json(name = "oidc_authorization_code_pkce") oidc_authorization_code_pkce("oidc_authorization_code_pkce"),
-        @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
-    }
-    /**
-     * 
-     *
-     * Values: development_or_migration,unknown_default_open_api
-     */
-    @JsonClass(generateAdapter = false)
-    enum class PasswordLogin(val value: kotlin.String) {
-        @Json(name = "development_or_migration") development_or_migration("development_or_migration"),
+        @Json(name = "rodauth_authorization_code_pkce") rodauth_authorization_code_pkce("rodauth_authorization_code_pkce"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
 

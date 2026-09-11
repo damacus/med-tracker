@@ -10,9 +10,7 @@ use crate::args::{
 };
 use crate::config::save_profile;
 use crate::output::{format_api_error, print_value};
-use crate::secrets::{
-    delete_access_token, extract_access_token, load_access_token, store_access_token,
-};
+use crate::secrets::{delete_access_token, load_access_token, store_access_token};
 
 pub async fn run(cli: Cli) -> Result<()> {
     let token = load_access_token(&cli.profile)?;
@@ -76,28 +74,12 @@ async fn run_auth(
 ) -> Result<()> {
     match command {
         AuthCommand::Login(args) => {
-            let response = client
-                .login(&args.email, &args.password, &args.device_name)
-                .await
-                .map_err(format_api_error)?;
-            if let Some(token) = extract_access_token(&response) {
-                store_access_token(profile, token)?;
-            }
+            let authenticated =
+                ApiClient::new(base_url, Some(args.token.clone())).map_err(format_api_error)?;
+            authenticated.households().await.map_err(format_api_error)?;
+            store_access_token(profile, &args.token)?;
             let path = save_profile(profile, base_url)?;
             println!("authenticated profile={profile} config={}", path.display());
-        }
-        AuthCommand::Refresh(args) => {
-            let refresh_token = args.refresh_token.context(
-                "refresh token must be passed via --refresh-token or MEDTRACKER_REFRESH_TOKEN",
-            )?;
-            let response = client
-                .refresh(&refresh_token)
-                .await
-                .map_err(format_api_error)?;
-            if let Some(token) = extract_access_token(&response) {
-                store_access_token(profile, token)?;
-            }
-            println!("refreshed profile={profile}");
         }
         AuthCommand::Logout => {
             client.logout().await.map_err(format_api_error)?;
