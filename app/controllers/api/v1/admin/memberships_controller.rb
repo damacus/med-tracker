@@ -4,8 +4,6 @@ module Api
   module V1
     module Admin
       class MembershipsController < BaseController
-        before_action :require_fresh_privileged_action, only: %i[update destroy]
-
         def index
           memberships = current_household.household_memberships.includes(:account, :person).order(:id)
           render json: { data: memberships.map { |membership| membership_payload(membership) } }

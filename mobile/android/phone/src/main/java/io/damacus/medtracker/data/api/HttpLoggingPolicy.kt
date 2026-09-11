@@ -26,6 +26,7 @@ object HttpLoggingPolicy {
     }
 
     fun client(): OkHttpClient = OkHttpClient.Builder()
+        .apply { io.damacus.medtracker.auth.MobileSessionAuthentication.interceptor?.let { addInterceptor(it) } }
         .addInterceptor(
             interceptor(
                 isRelease = BuildConfig.IS_RELEASE_BUILD,

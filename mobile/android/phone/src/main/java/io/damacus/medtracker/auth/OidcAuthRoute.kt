@@ -24,7 +24,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -36,8 +42,9 @@ fun OidcAuthRoute(
     title: String,
     isLoading: Boolean,
     errorMessage: String?,
-    onOidcSignIn: () -> Unit
+    onOidcSignIn: (String) -> Unit
 ) {
+    var instanceUrl by rememberSaveable { mutableStateOf("") }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -122,9 +129,22 @@ fun OidcAuthRoute(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                Button(
-                    onClick = onOidcSignIn,
+                OutlinedTextField(
+                    value = instanceUrl,
+                    onValueChange = { instanceUrl = it },
+                    label = { Text("Instance URL") },
+                    placeholder = { Text("https://medtracker.example.com") },
+                    singleLine = true,
                     enabled = !isLoading,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                TextButton(onClick = { instanceUrl = "https://med-tracker-canary.damacus.io/" }, enabled = !isLoading) {
+                    Text("Canary / demo")
+                }
+
+                Button(
+                    onClick = { onOidcSignIn(instanceUrl.trim()) },
+                    enabled = !isLoading && instanceUrl.isNotBlank(),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
@@ -148,7 +168,7 @@ fun OidcAuthRoute(
                             )
                             Spacer(modifier = Modifier.size(8.dp))
                             Text(
-                                text = "Sign In with SSO / OIDC",
+                                text = "Sign in with MedTracker",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )

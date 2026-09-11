@@ -18,6 +18,8 @@ fun HouseholdSelectionRoute(
     selection: AuthenticationResult.HouseholdSelection,
     isLoading: Boolean,
     errorMessage: String?,
+    onRetry: () -> Unit = {},
+    onLogout: () -> Unit = {},
     onSelect: (Long) -> Unit
 ) {
     Column(
@@ -26,7 +28,7 @@ fun HouseholdSelectionRoute(
         verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
     ) {
         Text("Choose a household")
-        Text("Select the household you want to use for this session.")
+        Text(if (selection.households.isEmpty()) "You are signed in, but have no available households." else "Choose which household to view. Your login works across your households.")
         errorMessage?.let { Text(it) }
         selection.households.forEach { household ->
             Button(
@@ -37,5 +39,7 @@ fun HouseholdSelectionRoute(
                 Text(household.name)
             }
         }
+        Button(onClick = onRetry, enabled = !isLoading) { Text("Reload households") }
+        Button(onClick = onLogout, enabled = !isLoading) { Text("Sign out") }
     }
 }

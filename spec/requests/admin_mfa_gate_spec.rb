@@ -29,14 +29,13 @@ RSpec.describe 'Hosted admin MFA gate' do
     expect(response).to have_http_status(:ok), response.location.to_s
   end
 
-  it 'redirects hosted administrators without configured MFA to profile setup' do
+  it 'allows authorised administrators without optional MFA despite the retired hosted flag' do
     ENV['HOSTED_ADMIN_MFA_REQUIRED'] = 'true'
     sign_in(admin)
 
     get admin_root_path
 
-    expect(response).to redirect_to(profile_path)
-    expect(flash[:alert]).to include('Set up MFA or a passkey')
+    expect(response).to have_http_status(:ok)
   end
 
   it 'denies hosted non-administrators without requiring privileged MFA setup' do
@@ -49,15 +48,14 @@ RSpec.describe 'Hosted admin MFA gate' do
     expect(flash[:alert]).not_to include('Set up MFA or a passkey')
   end
 
-  it 'redirects hosted administrators with unverified local MFA to Rodauth verification' do
+  it 'does not add action verification when MFA is configured after login' do
     ENV['HOSTED_ADMIN_MFA_REQUIRED'] = 'true'
     sign_in(admin)
     AccountOtpKey.create!(id: account.id, key: 'test_otp_key_secret')
 
     get admin_root_path
 
-    expect(response).to redirect_to('/multifactor-auth')
-    expect(flash[:alert]).to include('Verify MFA or a passkey')
+    expect(response).to have_http_status(:ok)
   end
 
   it 'allows hosted administrators after local MFA verification' do
@@ -73,14 +71,14 @@ RSpec.describe 'Hosted admin MFA gate' do
     expect(response).to have_http_status(:ok)
   end
 
-  it 'rejects stale local MFA session evidence when no local MFA method remains configured' do
+  it 'does not require historical MFA evidence for an authorised action' do
     ENV['HOSTED_ADMIN_MFA_REQUIRED'] = 'true'
     sign_in(admin)
     allow(ApiAuthState).to receive(:web_session_mfa_method_present?).and_return(true)
 
     get admin_root_path
 
-    expect(response).to redirect_to(profile_path)
+    expect(response).to have_http_status(:ok)
   end
 
   it 'allows hosted administrators with upstream OIDC MFA proof' do

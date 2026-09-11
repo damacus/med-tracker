@@ -59,15 +59,15 @@ RSpec.describe 'Platform users' do
     expect(target_membership.reload).to be_owner
   end
 
-  it 'requires fresh privileged MFA before changing system administrator access' do
+  it 'allows a platform administrator to change access without additional MFA' do
     sign_in(platform_user)
 
     expect do
       patch platform_user_path(target_user), params: { platform_user: { system_administrator: '1' } }
-    end.not_to change(PlatformAdmin.active, :count)
+    end.to change(PlatformAdmin.active, :count).by(1)
 
-    expect(response).to redirect_to(profile_path)
-    expect(target_user.person.account.platform_admin).to be_nil
+    expect(response).to redirect_to(platform_users_path)
+    expect(target_user.person.account.platform_admin).to be_active
   end
 
   it 'denies household owners without system administrator access' do
@@ -100,39 +100,38 @@ RSpec.describe 'Platform users' do
     )
   end
 
-  it 'rejects owner promotion without fresh privileged MFA and audits the outcome' do
+  it 'allows owner promotion without optional MFA and audits the outcome' do
     membership = ensure_household_membership!(target_user.person.account, target_user.person, role: :member)
     sign_in(platform_user)
 
     expect do
       patch platform_promote_household_owner_path(membership.household, membership)
     end.to change {
-      SecurityAuditEvent.where(event_type: 'household_owner_promotion.rejected').count
+      SecurityAuditEvent.where(event_type: 'household_membership.role_updated').count
     }.by(1)
 
-    expect(response).to have_http_status(:see_other)
-    expect(membership.reload).to be_member
-    event = SecurityAuditEvent.where(event_type: 'household_owner_promotion.rejected').order(:id).last
+    expect(response).to redirect_to(platform_users_path)
+    expect(membership.reload).to be_owner
+    event = SecurityAuditEvent.where(event_type: 'household_membership.role_updated').order(:id).last
     expect(event.metadata).to include(
       'target_membership_id' => membership.id,
-      'outcome' => 'rejected',
-      'reason' => 'fresh_privileged_action_required'
+      'outcome' => 'success'
     )
   end
 
-  it 'rejects owner promotion when privileged MFA is stale' do
+  it 'allows owner promotion after the previous MFA freshness window' do
     membership = ensure_household_membership!(target_user.person.account, target_user.person, role: :member)
     sign_in(platform_user)
     authenticate_platform_totp(platform_user.person.account)
 
-    travel HostedPrivilegedActionMfa::PRIVILEGED_ACTION_MFA_TTL + 1.minute do
+    travel 16.minutes do
       patch platform_promote_household_owner_path(membership.household, membership)
     end
 
-    expect(response).to have_http_status(:see_other)
-    expect(membership.reload).to be_member
-    event = SecurityAuditEvent.where(event_type: 'household_owner_promotion.rejected').order(:id).last
-    expect(event.metadata).to include('reason' => 'fresh_privileged_action_required')
+    expect(response).to redirect_to(platform_users_path)
+    expect(membership.reload).to be_owner
+    event = SecurityAuditEvent.where(event_type: 'household_membership.role_updated').order(:id).last
+    expect(event.metadata).to include('outcome' => 'success')
   end
 
   it 'denies owner promotion to household owners without platform administration' do

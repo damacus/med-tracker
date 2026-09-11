@@ -76,6 +76,24 @@ An authorised action within a valid interactive session SHALL NOT require separa
 - **WHEN** the action is attempted
 - **THEN** it is denied regardless of MFA status or timing
 
+### Requirement: Configurable interactive lifetime
+Web/PWA and mobile interactive login SHALL default to a 30-day inactivity timeout configured through `SESSION_INACTIVITY_TIMEOUT_DAYS`. Normal authenticated use SHALL renew that window. Background refresh alone SHALL NOT renew user activity. `SESSION_MAX_AGE_DAYS` SHALL optionally impose an absolute deadline from authentication, with 0 disabling that deadline by default. Invalid configuration SHALL be rejected.
+
+#### Scenario: Continued normal use
+- **GIVEN** the default interactive lifetime configuration
+- **WHEN** a user continues authenticated use with gaps shorter than 30 days
+- **THEN** login remains valid without a separate forced-login deadline
+
+#### Scenario: Inactive login expires
+- **GIVEN** an interactive login has no user activity for the configured period
+- **WHEN** the client next uses or refreshes its credentials
+- **THEN** Rodauth login is required even if background refresh previously ran
+
+#### Scenario: Optional absolute deadline
+- **GIVEN** an installation configures a positive maximum login age
+- **WHEN** that age is reached
+- **THEN** remembered login and mobile refresh cannot extend the original authentication beyond that deadline
+
 ### Requirement: Bounded integration-token lifetime
 API application tokens SHALL expire no later than the instance-configured maximum age, including tokens used through MCP. The configured maximum SHALL default to 12 calendar months from issuance. Usage SHALL NOT extend their lifetime. Expiry SHALL be visible in token management and SHALL NOT replace existing revocation, membership or permission checks.
 

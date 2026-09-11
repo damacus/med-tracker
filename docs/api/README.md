@@ -40,9 +40,9 @@ without recreating revoked grants. The API does not issue a new credential;
 use the existing household-selection login flow for the new household.
 
 `POST /households/{household_id}/admin/invitations/{id}/resend` requires current
-administrator authority and fresh MFA on the session. It rotates the token and
+administrator authority and a valid user session. It rotates the token and
 queues the existing invitation email. Cached retries recheck authority and
-freshness without sending duplicate mail. The response reports `queued`; it does
+session validity without sending duplicate mail. The response reports `queued`; it does
 not expose the replacement token. If queueing fails, the old token remains valid.
 
 ## Queued care records

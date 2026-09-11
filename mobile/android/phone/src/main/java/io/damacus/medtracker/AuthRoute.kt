@@ -1,7 +1,7 @@
 package io.damacus.medtracker
 
 import androidx.compose.runtime.Composable
-import io.damacus.medtracker.auth.PasswordAuthRoute
+import io.damacus.medtracker.auth.OidcAuthRoute
 import io.damacus.medtracker.auth.HouseholdSelectionRoute
 import io.damacus.medtracker.data.model.AuthenticationResult
 import io.damacus.medtracker.ui.MainViewModel
@@ -12,16 +12,17 @@ fun AuthRoute(
     errorMessage: String?,
     householdSelection: AuthenticationResult.HouseholdSelection?,
     viewModel: MainViewModel,
-    onOidcSignIn: () -> Unit
+    onOidcSignIn: (String) -> Unit
 ) {
     if (householdSelection == null) {
-        PasswordAuthRoute(
-            buildLabel = "Debug",
+        OidcAuthRoute(
+            title = "Sign in securely with MedTracker",
             isLoading = isLoading,
             errorMessage = errorMessage,
-            viewModel = viewModel
+            onOidcSignIn = onOidcSignIn
         )
     } else {
-        HouseholdSelectionRoute(householdSelection, isLoading, errorMessage, viewModel::selectHousehold)
+        HouseholdSelectionRoute(householdSelection, isLoading, errorMessage,
+            onRetry = viewModel::showHouseholds, onLogout = { viewModel.logout() }, onSelect = viewModel::selectHousehold)
     }
 }

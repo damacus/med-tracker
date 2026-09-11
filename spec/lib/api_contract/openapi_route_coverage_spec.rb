@@ -746,7 +746,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       end
     end
 
-    it 'matches the household settings Rails payload and fresh-proof error' do
+    it 'matches household settings reads and writes without an extra MFA challenge' do
       login_data = api_login(users(:admin))
       household_id = login_data.dig('household', 'id')
       headers = api_auth_headers(login_data.fetch('access_token'))
@@ -759,8 +759,8 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       patch api_v1_household_admin_settings_path(household_id),
             params: { household: { name: 'Contract update' } }, headers:, as: :json
 
-      expect(response).to have_http_status(:forbidden)
-      expect(described_class.schema_errors('AdminWriteForbiddenErrorEnvelope', response.parsed_body)).to be_empty
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('HouseholdAdminSettingsResponse', response.parsed_body)).to be_empty
     end
 
     it 'rejects unsupported household settings request fields' do

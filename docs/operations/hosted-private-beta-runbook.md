@@ -25,7 +25,7 @@ Before onboarding another household, verify:
 - Migration/setup processes connect with the owner-capable migration role.
 - Existing pre-0.5 databases have completed the
   [pre-0.5 database upgrade](../pre-0-5-database-upgrade.md) bootstrap.
-- Hosted admin MFA enforcement is enabled with `HOSTED_ADMIN_MFA_REQUIRED=true`.
+- Interactive session limits follow the [central authentication policy](../two-factor-authentication.md); enrolled login MFA remains enforced.
 - `task rubocop`, `task test`, and `task brakeman` pass on the release branch.
 - The hosted hardening audit has no `NO-GO` rows.
 - Invite-only registration is pinned by environment or platform-admin policy.
@@ -128,15 +128,15 @@ service.
 Onboarding another household is not supported yet. Issue #1892 must provide an
 audited operator flow before this section can contain executable steps.
 
-The final flow must create the household under fresh-MFA platform authority and
+The final flow must create the household under authorised platform authority and
 send a single-use invitation to its first owner. It must then verify the new
 owner's household isolation before the household receives health data.
 
 ## Support access
 
-1. Platform admin signs in with MFA/passkey.
+1. Platform admin signs in through Rodauth, completing any enrolled MFA.
 2. Platform admin opens a support access session for one household and records a reason.
-3. The support session records actor account, target household, request id, IP, reason, MFA proof time, start time, and expiry.
+3. The support session records actor account, target household, request id, IP, reason, any available MFA proof time, start time, and expiry.
 4. The audit event records support-session start/end without raw health data or the free-text reason.
 5. Support mode is visually and technically distinct from household membership.
 6. Platform admin cannot browse health or medicine data outside an active support access session.

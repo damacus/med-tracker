@@ -7,20 +7,23 @@ class ApiAppToken < ApplicationRecord
   belongs_to :account
   belongs_to :household_membership
 
-  validates :name, :token_digest, :last_used_at, presence: true
+  validates :name, :token_digest, :last_used_at, :expires_at, presence: true
   validates :token_digest, uniqueness: true
   validate :household_membership_must_belong_to_account
+  validate :expiry_within_maximum, on: :create
 
   scope :active, -> { where(revoked_at: nil) }
 
   class << self
-    def issue_for(account:, household_membership:, name:, audit_context: nil)
+    def issue_for(account:, household_membership:, name:, audit_context: nil,
+                  expires_at: Time.current + AuthenticationLifetime.api_token_maximum_age_months.months)
       raw_token = build_token
       app_token = create!(
         account: account,
         household_membership: household_membership,
         permissions_version: household_membership.permissions_version,
         name: name,
+        expires_at: expires_at,
         token_digest: digest(raw_token),
         last_used_at: Time.current
       )
@@ -31,7 +34,13 @@ class ApiAppToken < ApplicationRecord
     end
 
     def lookup_by_token(token)
-      active.find_by(token_digest: digest(token))
+      app_token = active.find_by(token_digest: digest(token))
+      app_token if app_token&.unexpired?
+    end
+
+    def apply_maximum_age!
+      months = AuthenticationLifetime.api_token_maximum_age_months
+      where('expires_at > created_at + make_interval(months => ?)', months).find_each(&:cap_lifetime!)
     end
 
     def digest(token)
@@ -69,8 +78,23 @@ class ApiAppToken < ApplicationRecord
   def active_for_membership?
     return false if household_membership.blank?
 
-    revoked_at.nil? && household_membership.active? && household_membership.household&.operational? &&
+    revoked_at.nil? && unexpired? && household_membership.active? && household_membership.household&.operational? &&
       permissions_version == household_membership.permissions_version
+  end
+
+  def unexpired?
+    return false unless expires_at && created_at
+
+    maximum = created_at + AuthenticationLifetime.api_token_maximum_age_months.months
+    cap_lifetime! if persisted? && expires_at > maximum
+    expires_at > Time.current
+  end
+
+  def cap_lifetime!
+    with_lock do
+      maximum = created_at + AuthenticationLifetime.api_token_maximum_age_months.months
+      update!(expires_at: maximum) if expires_at > maximum
+    end
   end
 
   def revoke!(audit_context: nil, action: 'revoked')
@@ -85,6 +109,16 @@ class ApiAppToken < ApplicationRecord
   end
 
   private
+
+  def expiry_within_maximum
+    return unless expires_at
+
+    issued_at = created_at || Time.current
+    maximum = issued_at + AuthenticationLifetime.api_token_maximum_age_months.months
+    return if expires_at > issued_at && expires_at <= maximum
+
+    errors.add(:expires_at, 'must be after issuance and within the configured maximum age')
+  end
 
   def audit_metadata
     {

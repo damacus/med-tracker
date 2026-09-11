@@ -1629,6 +1629,7 @@ cy:
       create: Creu tocyn
       empty: Dim tocynnau API eto.
       last_used_at: 'Defnyddiwyd ddiwethaf: %{time}'
+      expires_at: 'Daw i ben: %{time}'
       revoke: Dirymu
       revoked: Tocyn API wedi'i ddirymu.
       locked: Mae eich cyfrif wedi'i gloi. Ni ellir newid tocynnau API ar hyn o bryd.

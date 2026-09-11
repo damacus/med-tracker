@@ -5,10 +5,6 @@ module Api
         rescue_from ActiveRecord::RecordInvalid do
           render_unprocessable('Invitation cannot be resent')
         end
-        rescue_from HouseholdInvitations::Resend::FreshAuthenticationRequired do
-          render_api_error(code: 'fresh_privileged_action_required', message: 'Fresh authentication is required',
-                           status: :forbidden)
-        end
         rescue_from HouseholdInvitations::Resend::DeliveryError do
           render_api_error(code: 'invitation_delivery_unavailable', message: 'Invitation delivery is temporarily unavailable',
                            status: :service_unavailable)
@@ -26,7 +22,6 @@ module Api
         def with_api_idempotency(&)
           response.set_header('Cache-Control', 'no-store')
           require_household_manager
-          require_fresh_privileged_action unless performed?
           return if performed?
 
           authorize invitation, :resend?

@@ -65,7 +65,7 @@ RSpec.describe 'API v1 capabilities' do
       'session_listing' => true,
       'session_revocation' => true
     )
-    expect(data).to include('administration' => include('household' => true, 'fresh_mfa_required' => true))
+    expect(data).to include('administration' => include('household' => true, 'fresh_mfa_required' => false))
     expect(data.dig('sync', 'portable_ids')).to be(true)
     expect(data.dig('sync', 'numeric_ids')).to eq('backward_compatible')
     expect(data.dig('sync', 'idempotency_keys')).to be(true)

@@ -70,6 +70,7 @@ module Api
       def valid_session?
         return false if @current_api_session.blank? || @current_api_session.revoked_at.present?
         return @current_api_session.access_expires_at.future? if @current_api_session.is_a?(ApiSession)
+        return @current_api_session.active_for_account? if mobile_oauth_credential?
         return @current_api_session.active_for_membership? if @current_api_session.is_a?(OauthGrant)
 
         @current_api_session.is_a?(ApiAppToken)
@@ -85,7 +86,11 @@ module Api
         @current_household = Household.find(params.expect(:household_id))
         return render_forbidden unless @current_household.operational?
 
-        @current_membership = @current_api_session.household_membership
+        @current_membership = if mobile_oauth_credential?
+                                current_account.household_memberships.active.find_by(household: @current_household)
+                              else
+                                @current_api_session.household_membership
+                              end
         return render_forbidden unless @current_membership&.active?
         return render_forbidden unless @current_membership.household_id == @current_household.id
 
@@ -96,6 +101,8 @@ module Api
       end
 
       def bind_api_session_context!
+        return @current_api_session.touch_last_used! if mobile_oauth_credential?
+
         @current_membership = @current_api_session.household_membership
         return render_unauthorized('Authentication required') unless @current_api_session.active_for_membership?
 
@@ -107,6 +114,13 @@ module Api
         TenantContext.set_household!(@current_household)
         TenantContext.set_membership!(@current_membership)
         @current_api_session.touch_last_used!
+      end
+
+      def mobile_oauth_credential?
+        @current_api_session.is_a?(OauthGrant) && @current_api_session.mobile?
+      end
+
+      def audit_api_request
         Audit::Context.start!(
           request: request,
           account: current_account,
@@ -114,9 +128,6 @@ module Api
           membership: @current_membership,
           credential: @current_api_session
         )
-      end
-
-      def audit_api_request
         yield
         record_api_request_event
       rescue StandardError
@@ -125,6 +136,8 @@ module Api
       end
 
       def record_api_request_event(outcome: nil)
+        return record_account_request_event(outcome) unless current_household
+
         status = response.status
         Audit::Event.record!(
           household: current_household,
@@ -137,6 +150,15 @@ module Api
             status: status
           }
         )
+      end
+
+      def record_account_request_event(outcome)
+        Audit::VersionEvent.record!(item_type: 'Account', item_id: current_account.id, event: 'api.request',
+                                    object: { http_method: request.request_method, controller: controller_path,
+                                              action: action_name, status: response.status,
+                                              outcome: outcome || (response.status < 400 ? 'success' : 'failure') },
+                                    context: { actor_account_id: current_account.id, request_id: request.request_id,
+                                               ip: request.remote_ip })
       end
 
       def bearer_token

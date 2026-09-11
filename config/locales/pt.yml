@@ -1918,6 +1918,7 @@ pt:
       create: Criar token
       empty: Ainda não existem tokens de API.
       last_used_at: 'Última utilização: %{time}'
+      expires_at: 'Expira: %{time}'
       revoke: Revogar
       revoked: Token de API revogado.
       locked: A sua conta está bloqueada. Os tokens de API não podem ser alterados agora.

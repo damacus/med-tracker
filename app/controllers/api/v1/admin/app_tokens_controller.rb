@@ -4,8 +4,6 @@ module Api
   module V1
     module Admin
       class AppTokensController < BaseController
-        before_action :require_fresh_privileged_action, only: %i[create destroy]
-
         def index
           tokens = current_account.api_app_tokens
                                   .where(household_membership: current_household.household_memberships)
@@ -18,7 +16,8 @@ module Api
             account: current_account,
             household_membership: current_membership,
             name: app_token_params[:name],
-            audit_context: audit_context
+            audit_context: audit_context,
+            **app_token_params.slice(:expires_at).to_h.symbolize_keys
           )
 
           render json: { data: token_payload(app_token).merge(token: raw_token) }, status: :created
@@ -37,7 +36,7 @@ module Api
         private
 
         def app_token_params
-          params.expect(api_app_token: [:name])
+          params.expect(api_app_token: %i[name expires_at])
         end
 
         def token_payload(token)
@@ -45,6 +44,7 @@ module Api
             id: token.id,
             name: token.name,
             last_used_at: token.last_used_at&.iso8601,
+            expires_at: token.expires_at.iso8601,
             revoked_at: token.revoked_at&.iso8601,
             permissions_version: token.permissions_version
           }

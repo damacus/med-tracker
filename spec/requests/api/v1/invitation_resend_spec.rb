@@ -38,15 +38,14 @@ RSpec.describe 'API v1 invitation resend' do
     expect(SecurityAuditEvent.where(event_type: 'api/admin/invitation/resent').count).to eq(1)
   end
 
-  it 'requires fresh MFA before replaying a successful response' do
+  it 'replays an authorised response without another MFA check or duplicate mail' do
     replay_headers = headers.merge('Idempotency-Key' => SecureRandom.uuid)
     post path, headers: replay_headers, as: :json
     expect(response).to have_http_status(:ok)
     digest = invitation.reload.token_digest
     session.update!(mfa_verified_at: 20.minutes.ago)
     expect { post path, headers: replay_headers, as: :json }.not_to have_enqueued_mail(InvitationMailer, :invite)
-    expect(response).to have_http_status(:forbidden)
-    expect(response.parsed_body.dig('error', 'code')).to eq('fresh_privileged_action_required')
+    expect(response).to have_http_status(:ok)
     expect(invitation.reload.token_digest).to eq(digest)
   end
 

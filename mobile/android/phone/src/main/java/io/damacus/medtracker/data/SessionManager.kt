@@ -47,8 +47,9 @@ class SessionManager(
     }
 
     private fun publishSession(session: AppSession) {
+        val contextChanged = _sessionState.value.revision != session.revision
         _sessionState.value = session
-        sessionObservers.toList().forEach { it(session) }
+        if (contextChanged) sessionObservers.toList().forEach { it(session) }
     }
 
     private fun loadSession(): AppSession = runCatching {
@@ -62,6 +63,16 @@ class SessionManager(
         val session = AppSession(serverUrl = cleanUrl, sessionPayload = payload)
         credentialStore.write(json.encodeToString(session))
         publishSession(session)
+    }
+
+    @Synchronized
+    fun updatePayload(expectedRevision: String, payload: SessionPayload): Boolean {
+        val current = _sessionState.value
+        if (current.revision != expectedRevision) return false
+        val updated = current.copy(sessionPayload = payload)
+        credentialStore.write(json.encodeToString(updated))
+        publishSession(updated)
+        return true
     }
 
     @Synchronized

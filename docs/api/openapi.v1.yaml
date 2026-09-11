@@ -450,7 +450,7 @@ paths:
       operationId: resendHouseholdInvitation
       tags: [Household administration, Invitations]
       summary: Rotate an invitation token and queue its replacement email.
-      description: Online only. Requires current household administrator authority and fresh MFA on a user API session, including before idempotent replay. Accepted and revoked invitations cannot be resent. A delivery enqueue failure rolls back token rotation.
+      description: Online only. Requires current household administrator authority and a valid user session, including before idempotent replay. Accepted and revoked invitations cannot be resent. A delivery enqueue failure rolls back token rotation.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/id'
@@ -4344,7 +4344,7 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
     AdminWriteForbidden:
-      description: The credential cannot manage the household, or fresh MFA or OIDC MFA proof is required.
+      description: The credential cannot manage the household.
       content:
         application/json:
           schema:
@@ -4785,6 +4785,7 @@ components:
         - last_used_at
         - revoked_at
         - permissions_version
+        - expires_at
       properties:
         id:
           $ref: '#/components/schemas/NumericId'
@@ -4798,6 +4799,9 @@ components:
         permissions_version:
           type: integer
           minimum: 0
+        expires_at:
+          type: string
+          format: date-time
     ApiAppTokenCollectionResponse:
       type: object
       additionalProperties: false
@@ -4817,6 +4821,10 @@ components:
         name:
           type: string
           minLength: 1
+        expires_at:
+          type: string
+          format: date-time
+          description: Optional shorter expiry. Must be after issuance and within API_APP_TOKEN_MAX_AGE_MONTHS, which defaults to 12 calendar months. Null and unlimited lifetimes are rejected.
     ApiAppTokenCreateRequest:
       type: object
       additionalProperties: false
@@ -4835,6 +4843,7 @@ components:
         - revoked_at
         - permissions_version
         - token
+        - expires_at
       properties:
         id:
           $ref: '#/components/schemas/NumericId'
@@ -4852,6 +4861,9 @@ components:
           type: string
           pattern: '^mt_app_'
           description: One-time bearer token. Store it securely because later responses omit it.
+        expires_at:
+          type: string
+          format: date-time
     ApiAppTokenCreateResponse:
       type: object
       additionalProperties: false
@@ -8079,6 +8091,48 @@ components:
             - development_or_migration
         oidc_exchange:
           $ref: '#/components/schemas/CapabilityOidcExchange'
+        mobile_oauth:
+          $ref: '#/components/schemas/CapabilityMobileOauth'
+    CapabilityMobileOauth:
+      type: object
+      additionalProperties: false
+      required: [discovery_url, household_binding, inactivity_timeout_days, maximum_age_days, clients]
+      properties:
+        discovery_url:
+          type: string
+          format: uri
+        household_binding:
+          type: string
+          enum: [account]
+        inactivity_timeout_days:
+          type: integer
+          minimum: 1
+        maximum_age_days:
+          type: integer
+          minimum: 0
+          description: Zero disables the optional absolute login deadline.
+        clients:
+          type: array
+          items:
+            $ref: '#/components/schemas/MobileOauthClient'
+    MobileOauthClient:
+      type: object
+      additionalProperties: false
+      required: [client_id, name, redirect_uris, scopes]
+      properties:
+        client_id:
+          type: string
+        name:
+          type: string
+        redirect_uris:
+          type: array
+          items:
+            type: string
+            format: uri
+        scopes:
+          type: array
+          items:
+            type: string
     CapabilityOidcExchange:
       type: object
       additionalProperties: false
@@ -8120,7 +8174,7 @@ components:
           description: Whether household administration is supported.
         fresh_mfa_required:
           type: boolean
-          description: Whether fresh MFA is required for writes.
+          description: False. Administration uses the current login and permissions without a separate MFA freshness deadline.
         app_tokens:
           type: boolean
           description: Whether API app tokens are supported.
@@ -8552,7 +8606,6 @@ components:
           type: string
           enum:
             - forbidden
-            - fresh_privileged_action_required
         message:
           type: string
           minLength: 1

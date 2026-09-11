@@ -1,7 +1,8 @@
 # Two-Factor Authentication
 
 MedTracker supports authenticator-app codes, passkeys, and recovery codes.
-Household owners and administrators must configure a second factor.
+Enrolment is optional, including for household owners and administrators.
+Once configured, Rodauth applies the account's sign-in requirements.
 
 ## Choose your methods
 
@@ -73,7 +74,31 @@ From there you can:
 - replace the recovery-code set.
 
 MedTracker asks for a password or fresh second-factor check before sensitive
-changes. Removing one method does not remove the others.
+credential changes. Removing one method does not remove the others.
+
+Household and platform administration use the current login and permissions.
+They do not impose an extra 15-minute MFA deadline.
+
+## Session lifetime
+
+Web and PWA sessions default to 30 days of inactivity. Normal authenticated
+use renews this window. Installations can set these environment variables and
+restart the application:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `SESSION_INACTIVITY_TIMEOUT_DAYS` | `30` | Positive whole days of inactivity before interactive sign-in expires. |
+| `SESSION_MAX_AGE_DAYS` | `0` | Optional absolute login age in days; `0` disables this additional deadline. |
+| `API_APP_TOKEN_MAX_AGE_MONTHS` | `12` | Positive whole calendar months from API/MCP token issuance. |
+
+Mobile OAuth sessions use the same interactive lifetime. Refreshing a mobile
+access token preserves the original login time and does not count as user
+activity. Expired or revoked logins must sign in through Rodauth again.
+
+API/MCP app tokens have a fixed expiry. Using a token does not extend it.
+Existing tokens receive an expiry measured from their original creation date.
+Reducing the configured maximum shortens existing tokens on application
+startup; increasing it later does not extend those stored deadlines.
 
 ## Recover access
 

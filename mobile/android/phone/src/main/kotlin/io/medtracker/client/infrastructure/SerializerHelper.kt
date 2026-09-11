@@ -72,6 +72,8 @@ object SerializerHelper {
                 .withUnknownFallback(io.medtracker.client.models.CapabilityMedicationPausePeriods.EffectiveTime.unknown_default_open_api))
             .add(io.medtracker.client.models.CapabilityMedicationReviews.Actions::class.java, EnumJsonAdapter.create(io.medtracker.client.models.CapabilityMedicationReviews.Actions::class.java)
                 .withUnknownFallback(io.medtracker.client.models.CapabilityMedicationReviews.Actions.unknown_default_open_api))
+            .add(io.medtracker.client.models.CapabilityMobileOauth.HouseholdBinding::class.java, EnumJsonAdapter.create(io.medtracker.client.models.CapabilityMobileOauth.HouseholdBinding::class.java)
+                .withUnknownFallback(io.medtracker.client.models.CapabilityMobileOauth.HouseholdBinding.unknown_default_open_api))
             .add(io.medtracker.client.models.CapabilityProfile.Actions::class.java, EnumJsonAdapter.create(io.medtracker.client.models.CapabilityProfile.Actions::class.java)
                 .withUnknownFallback(io.medtracker.client.models.CapabilityProfile.Actions.unknown_default_open_api))
             .add(io.medtracker.client.models.CapabilityReports.Formats::class.java, EnumJsonAdapter.create(io.medtracker.client.models.CapabilityReports.Formats::class.java)

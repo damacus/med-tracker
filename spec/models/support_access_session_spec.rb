@@ -3,14 +3,14 @@
 require 'rails_helper'
 
 RSpec.describe SupportAccessSession do
-  it 'requires a platform admin, target household, reason, and MFA timestamp' do
+  it 'requires a platform admin, target household and reason without requiring optional MFA' do
     session = described_class.new
 
     expect(session).not_to be_valid
     expect(session.errors[:platform_admin]).to include('must exist')
     expect(session.errors[:household]).to include('must exist')
     expect(session.errors[:reason]).to include("can't be blank")
-    expect(session.errors[:mfa_verified_at]).to include("can't be blank")
+    expect(session.errors[:mfa_verified_at]).to be_empty
   end
 
   it 'recognizes active support sessions within their time window' do

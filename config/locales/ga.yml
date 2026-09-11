@@ -1609,6 +1609,7 @@ ga:
       create: Cruthaigh comhartha
       empty: Níl aon chomharthaí API ann fós.
       last_used_at: 'Úsáideadh go deireanach: %{time}'
+      expires_at: 'Rachaidh in éag: %{time}'
       revoke: Cúlghair
       revoked: Cúlghaireadh an comhartha API.
       locked: Tá do chuntas glasáilte. Ní féidir comharthaí API a athrú anois.

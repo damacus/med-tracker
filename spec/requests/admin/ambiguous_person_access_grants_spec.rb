@@ -36,11 +36,10 @@ RSpec.describe 'Admin ambiguous person access grants' do
       expect(response.body).not_to include('queue-carer@example.test', 'date_of_birth', 'audit')
     end
 
-    it 'requires fresh MFA even when hosted admin MFA is disabled' do
+    it 'allows authorised review without additional MFA' do
       get admin_ambiguous_person_access_grants_path
 
-      expect(response).to redirect_to(profile_path)
-      expect(response.body).not_to include(queue_data.fetch(:grant).id.to_s)
+      expect(response).to have_http_status(:ok)
     end
 
     it 'does not send an unauthorized member to MFA setup' do

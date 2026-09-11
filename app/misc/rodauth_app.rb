@@ -4,6 +4,8 @@ class RodauthApp < Rodauth::Rails::App
   configure RodauthMain
 
   route do |r|
+    rodauth.load_oauth_server_metadata_route
+    rodauth.check_active_session
     rodauth.load_memory # autologin remembered users
 
     r.get 'webauthn-remove' do

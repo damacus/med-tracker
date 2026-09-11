@@ -15,9 +15,11 @@ class RodauthMain < Rodauth::Rails::Auth
            :webauthn, :webauthn_login, :webauthn_autofill,
            :oauth_pkce, :oauth_token_revocation
 
-    oauth_application_scopes OauthApplication::SUPPORTED_SCOPES
+    oauth_application_scopes (OauthApplication::SUPPORTED_SCOPES + OauthApplication::MOBILE_SCOPES).uniq
     oauth_access_token_expires_in 15.minutes.to_i
-    oauth_refresh_token_expires_in 30.days.to_i
+    oauth_refresh_token_expires_in do
+      mobile_oauth_application? ? AuthenticationLifetime.inactivity_days.days.to_i : 30.days.to_i
+    end
     oauth_refresh_token_protection_policy 'rotation'
     oauth_grants_token_hash_column :token_hash
     oauth_grants_refresh_token_hash_column :refresh_token_hash
@@ -108,7 +110,18 @@ class RodauthMain < Rodauth::Rails::Auth
       super(password) && password_complex_enough?(password)
     end
     auth_class_eval do
+      include RodauthMobileOauth
+
       public :password_hash
+
+      def active_remember_key_ds(id = account_id)
+        dataset = super
+        maximum_age = AuthenticationLifetime.maximum_age_days
+        return dataset unless maximum_age.positive?
+
+        dataset.where { created_at > Sequel.date_sub(Sequel::CURRENT_TIMESTAMP, days: maximum_age) }
+      end
+      private :active_remember_key_ds
 
       def supports_auth_method?(oauth_application, auth_method)
         method_column = oauth_applications_token_endpoint_auth_method_column
@@ -120,6 +133,8 @@ class RodauthMain < Rodauth::Rails::Auth
       private :supports_auth_method?
 
       def resource_owner_params
+        return mobile_resource_owner_params if mobile_oauth_application?
+
         membership = Account.find(account_id).first_active_household_membership
         super.merge(
           household_membership_id: membership.id,
@@ -131,6 +146,8 @@ class RodauthMain < Rodauth::Rails::Auth
       end
 
       def authorize_page_lead(name:)
+        return super if mobile_oauth_application?
+
         membership = Account.find(account_id).first_active_household_membership
         household_name = ERB::Util.html_escape(membership.household.name)
         person_name = ERB::Util.html_escape(membership.person.name)
@@ -150,6 +167,8 @@ class RodauthMain < Rodauth::Rails::Auth
       end
 
       def record_smart_oauth_event(event_type, grant)
+        return record_mobile_oauth_event(event_type, grant) if grant[:client_kind] == 'mobile'
+
         membership = HouseholdMembership.find(grant.fetch(:household_membership_id))
         Audit::Event.record!(
           household_id: membership.household_id,
@@ -351,6 +370,21 @@ class RodauthMain < Rodauth::Rails::Auth
 
     # Extend user's remember period when remembered via a cookie
     extend_remember_deadline? true
+    remember_deadline_interval { { days: AuthenticationLifetime.inactivity_days } }
+    remember_period { remember_deadline_interval }
+    add_remember_key do
+      super()
+      remember_key_ds.where(remember_key_column => remember_key_value, created_at: nil)
+                     .update(created_at: Time.current)
+    end
+    before_load_memory do
+      @remembered_login_created_at = active_remember_key_ds.get(:created_at)
+    end
+    active_sessions_insert_hash do
+      attributes = super()
+      attributes[:created_at] = @remembered_login_created_at if @remembered_login_created_at
+      attributes
+    end
 
     # Configure tables to use account_id instead of id (matches our migration)
     remember_id_column :account_id
@@ -366,10 +400,18 @@ class RodauthMain < Rodauth::Rails::Auth
     account_lockouts_deadline_interval(minutes: 30)
 
     # Track active sessions for session management
-    # Session expires after 30 minutes of inactivity
-    session_inactivity_deadline 30.minutes.to_i
-    # Session expires after 24 hours regardless of activity
-    session_lifetime_deadline 24.hours.to_i
+    # Session expires after the configured period of inactivity
+    session_inactivity_deadline { AuthenticationLifetime.inactivity_days.days.to_i }
+    # An absolute session deadline is optional
+    session_lifetime_deadline do
+      days = AuthenticationLifetime.maximum_age_days
+      days.days.to_i if days.positive?
+    end
+    active_sessions_redirect { login_path }
+    no_longer_active_session do
+      forget_login
+      super()
+    end
 
     # TOTP issuer name shown in authenticator apps
     otp_issuer 'MedTracker'
@@ -713,6 +755,7 @@ class RodauthMain < Rodauth::Rails::Auth
     # Current.user is set in ApplicationController before_action instead of here
 
     # Redirect to dashboard after successful login
+    login_return_to_requested_location? { request.path == authorize_path }
     login_redirect do
       account = Account.find_by(id: account_id)
       household = TenantContext.with(account: account, household: nil) { account&.first_active_household } if account

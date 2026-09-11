@@ -1979,6 +1979,7 @@ en:
       create: Create token
       empty: No API tokens yet.
       last_used_at: 'Last used: %{time}'
+      expires_at: 'Expires: %{time}'
       revoke: Revoke
       revoked: API token revoked.
       locked: Your account is locked. API tokens cannot be changed right now.
