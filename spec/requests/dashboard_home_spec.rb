@@ -29,6 +29,23 @@ RSpec.describe 'Dashboard home rendering' do
   end
 
   describe 'GET /households/:household_slug/dashboard' do
+    [nil, 'time_first', 'family_lanes', 'calm_focus'].each do |variant|
+      it "loads stock once for the complete #{variant || 'default'} dashboard and its dose dialogs" do
+        household, membership = household_membership_for(users(:jane))
+        person = grant_person(household, membership, users(:jane).person, access_level: :manage)
+        person.account.update!(dashboard_variant: variant)
+        create_dashboard_stock_sources(household, person)
+        sign_in(users(:jane))
+
+        queries = dashboard_stock_queries(household)
+        stock_inputs = response.parsed_body.css('input[name="medication_take[taken_from_medication_id]"]')
+
+        expect(response).to have_http_status(:ok)
+        expect(stock_inputs).not_to be_empty
+        expect(queries.length).to eq(1)
+      end
+    end
+
     it 'uses the existing dashboard when no experiment is selected' do
       household, = household_membership_for(users(:jane))
       account = users(:jane).person.account
@@ -105,6 +122,29 @@ RSpec.describe 'Dashboard home rendering' do
     membership.update!(role: :member, status: :active)
 
     [household, membership]
+  end
+
+  def create_dashboard_stock_sources(household, person)
+    location = household.locations.find_or_create_by!(name: 'Home')
+    3.times do |index|
+      medication = household.medications.create!(name: "Batched stock #{index}", location: location,
+                                                 dose_amount: 500, dose_unit: 'mg', current_supply: 50)
+      create_schedule(household, person, medication)
+    end
+  end
+
+  def dashboard_stock_queries(household)
+    queries = []
+    subscriber = lambda do |_name, _start, _finish, _id, payload|
+      next if payload[:cached] || payload[:name] == 'SCHEMA'
+
+      queries << payload[:sql] if payload[:sql].include?('FROM "medications"') &&
+                                  payload[:sql].include?('JOIN "locations"')
+    end
+    ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record') do
+      get "/households/#{household.slug}/dashboard"
+    end
+    queries
   end
 
   def grant_person(household, membership, person, access_level: :view)
