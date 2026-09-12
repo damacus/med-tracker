@@ -891,6 +891,7 @@ DEPENDENCIES
   paper_trail
   pg (>= 1.1)
   phlex-rails
+  playwright-ruby-client (~> 1.62.0)
   premailer-rails
   propshaft
   puma (>= 5.0)

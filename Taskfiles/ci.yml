@@ -23,3 +23,5 @@ tasks:
       - node --check scripts/ci/classify.mjs
       - node --check scripts/ci/gate.mjs
       - node --check scripts/ci/markdown.mjs
+      - node --check scripts/ci/non_browser_shards.mjs
+      - ruby -c scripts/ci/collate_simplecov.rb

@@ -45,7 +45,7 @@ tasks:
   assemble:
     desc: Assemble phone and Wear debug, staging, and release APKs
     cmds:
-      - ./gradlew :phone:assembleDebug :phone:assembleStaging :phone:assembleRelease :wear:assembleDebug :wear:assembleStaging :wear:assembleRelease --no-daemon --stacktrace
+      - ./gradlew :phone:assembleDebug :phone:assembleStaging :phone:assembleRelease :wear:assembleDebug :wear:assembleStaging :wear:assembleRelease --no-daemon --max-workers=1 --stacktrace
 
   wear:boundary:
     desc: Verify Wear source, runtime dependencies, and packaged permission boundaries

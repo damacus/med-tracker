@@ -27,7 +27,8 @@ RSpec.describe TestLaneMetadata do
   end
 
   it 'runs tagged browser examples from the complete spec tree in CI' do
-    expect(ci_workflow).to include("find spec -name '*_spec.rb'")
+    expect(ci_workflow).to include('bundle exec rspec --tag browser --dry-run --format json')
+    expect(ci_workflow).to include('scripts/ci/browser_shards.mjs')
     expect(ci_workflow).to include('bundle exec rspec --tag browser')
     expect(ci_workflow).to include('bundle exec rspec --format RSpec::Github::Formatter --tag ~browser')
   end

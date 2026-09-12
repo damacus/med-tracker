@@ -69,8 +69,10 @@ specific file:
 task playwright TEST_FILE=spec/system/dashboard_spec.rb
 ```
 
-CI runs non-browser examples separately from two browser-test shards. Failure
-screenshots and HTML are uploaded as CI artefacts.
+CI runs non-browser examples in two measured file shards and browser examples in
+two browser-test shards. Failure screenshots and HTML are uploaded as CI
+artefacts. SimpleCov results are collated from both non-browser shards before
+the unchanged coverage gates are enforced.
 
 ## Linting
 

@@ -10,6 +10,7 @@ RSpec.describe 'Two-Factor Soft Enforcement' do
     clear_2fa_for_account(user.person.account)
 
     login_as(user)
+    browser_membership.update!(role: :owner)
     visit profile_path
 
     expect(page).to have_text('For enhanced security, please set up two-factor authentication')
