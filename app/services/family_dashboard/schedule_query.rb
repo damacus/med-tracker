@@ -18,9 +18,7 @@ module FamilyDashboard
       @current_user = current_user
     end
 
-    def call
-      result.routine_tasks
-    end
+    def call = result.routine_tasks
 
     def can_correct_outcomes?(person)
       result
@@ -29,9 +27,7 @@ module FamilyDashboard
 
     private
 
-    def result
-      @result ||= build_result
-    end
+    def result = @result ||= build_result
 
     def build_result
       # 1. Fetch all active schedules and person_medications for these people first
@@ -93,8 +89,11 @@ module FamilyDashboard
       associate_takes_to_sources(all_sources, takes_by_source)
     end
 
-    def all_sources
-      @all_schedules.values.flatten + @all_person_medications.values.flatten
+    def all_sources = @all_schedules.values.flatten + @all_person_medications.values.flatten
+
+    def stock_resolvers
+      @stock_resolvers ||= MedicationStockSourceResolver.new(user: current_user, source: all_sources.first)
+                                                        .preload(all_sources)
     end
 
     def fetch_takes_for_sources
@@ -166,13 +165,15 @@ module FamilyDashboard
     end
 
     def build_upcoming_row(source, person, takes, expected_doses)
+      resolver = stock_resolvers.fetch(source)
       {
         person: person,
         source: source,
         can_record_outcome: recordable_person?(person),
+        stock_source_resolver: resolver,
         scheduled_at: routine_scheduled_at(source, takes.length),
         taken_at: nil,
-        status: MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason || :upcoming,
+        status: resolver.blocked_reason || :upcoming,
         not_taken_count: current_not_taken_outcomes(source).size,
         overdue: routine_scheduled_at(source, takes.length)&.before?(Time.current) || false
       }.merge(dose_progress_for(routine_progress_takes(source, takes), expected_doses))
@@ -199,13 +200,14 @@ module FamilyDashboard
         person: person,
         source: source,
         scheduled_at: as_needed_scheduled_at(source, status),
+        stock_source_resolver: stock_resolvers.fetch(source),
         taken_at: nil,
         status: status
       }.merge(dose_progress_for(takes, daily_dose_limit_for(source)))]
     end
 
     def as_needed_status_for(source)
-      blocked_reason = MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason
+      blocked_reason = stock_resolvers.fetch(source).blocked_reason
       return :available if blocked_reason.blank?
       return :max_reached if blocked_reason == :cooldown && daily_limit_reached?(source)
 
