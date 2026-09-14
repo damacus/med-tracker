@@ -10,7 +10,7 @@ SimpleCov.configure do
   # baseline 2026-06-09 after the coverage+mutation pass: line 90.3% /
   # branch 75.24%, rounded down. Raise these as coverage improves; never lower
   # without a recorded reason. Only enforced when COVERAGE=true (CI's non-system job).
-  minimum_coverage line: 90, branch: 75
+  minimum_coverage line: 90, branch: 75 unless ENV['SIMPLECOV_SHARD'] == 'true'
 
   skip '/spec/'
   skip '/config/'
@@ -43,6 +43,7 @@ SimpleCov.configure do
 
     result.format!
     next unless ENV['COVERAGE'] == 'true'
+    next if ENV['SIMPLECOV_SHARD'] == 'true'
 
     api_group = result.groups.fetch('API')
     api_total = api_group.total_branches.to_i

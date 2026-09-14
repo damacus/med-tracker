@@ -17,7 +17,7 @@ test('UI changes select Lighthouse while model changes select only Rails', () =>
   assert.equal(model.lighthouse, false);
 });
 
-for (const [suite, job] of [['lighthouse', 'lighthouse'], ['rails', 'test_non_system']]) {
+for (const [suite, job] of [['lighthouse', 'lighthouse'], ['rails', 'test_non_system'], ['rails', 'coverage']]) {
   test(`${suite} succeeds when every selected job succeeds`, () => {
     assert.deepEqual(evaluate(needsFor(suite)), []);
   });
@@ -25,7 +25,7 @@ for (const [suite, job] of [['lighthouse', 'lighthouse'], ['rails', 'test_non_sy
   for (const result of ['failure', 'cancelled', 'skipped', undefined]) {
     test(`${suite} fails closed when ${job} is ${result ?? 'missing'}`, () => {
       const needs = needsFor(suite);
-      if (result) needs[job].result = result;
+      if (result) needs[job] = { result };
       else delete needs[job];
       assert.ok(evaluate(needs).some(error => error.includes(job)));
     });
