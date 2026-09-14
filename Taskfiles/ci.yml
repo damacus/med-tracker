@@ -2,12 +2,9 @@ version: "3"
 
 tasks:
   test:
-    desc: Test CI workflow and coverage contracts
+    desc: Test CI scripts with Node, without Rails or Docker
     cmds:
-      - task: :internal:run
-        vars:
-          ENVIRONMENT: test
-          COMMAND: 'bundle exec rspec spec/config/non_browser_ci_spec.rb spec/config/simple_cov_spec.rb spec/config/ci_runtime_lanes_spec.rb'
+      - node --test "scripts/ci/tests/*.test.mjs"
 
   classify:
     desc: Select mandatory CI suites from the changed paths
@@ -31,3 +28,4 @@ tasks:
       - node --check scripts/ci/classify.mjs
       - node --check scripts/ci/gate.mjs
       - node --check scripts/ci/markdown.mjs
+      - task: test

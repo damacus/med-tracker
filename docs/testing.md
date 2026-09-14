@@ -74,8 +74,10 @@ same process. New specs run automatically without entries in a timing file.
 Browser examples run in two browser-test shards. Failure screenshots, HTML and
 coverage results are uploaded as CI artefacts.
 
-Run `task ci:test` to check the workflow and coverage contracts in Docker, and
-`task ci:check` to lint the workflows and CI scripts.
+RSpec tests application behaviour. CI script tests live in `scripts/ci/tests/`
+and run with Node's built-in test runner through `task ci:test`, without Rails,
+a database, Docker or an npm install. `task ci:check` runs workflow lint, script
+syntax checks and these tests in the CI Workflow Check job.
 
 ## Linting
 
