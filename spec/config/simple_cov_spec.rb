@@ -2,6 +2,8 @@
 
 require 'rails_helper'
 require 'simplecov'
+require 'open3'
+require 'tmpdir'
 
 RSpec.describe SimpleCov do
   let(:simplecov_config) { Rails.root.join('.simplecov').read }
@@ -26,12 +28,23 @@ RSpec.describe SimpleCov do
     expect(simplecov_config).to include('Kernel.exit SimpleCov::ExitCodes::MINIMUM_COVERAGE')
   end
 
-  it 'does not enforce partial coverage from a non-browser shard' do
-    expect(simplecov_config).to include("next if ENV['SIMPLECOV_SHARD'] == 'true'")
-    coverage_guard_index = simplecov_config.index("next unless ENV['COVERAGE'] == 'true'")
-    shard_guard_index = simplecov_config.index("next if ENV['SIMPLECOV_SHARD'] == 'true'")
+  it 'enforces coverage without a shard bypass' do
+    expect(simplecov_config).not_to include('SIMPLECOV_SHARD')
+  end
 
-    expect(coverage_guard_index).to be < shard_guard_index
+  it 'passes a fully covered run with coverage enabled' do
+    _output, error, status = run_coverage('choose(true); choose(false)')
+
+    expect(status).to be_success
+    expect(error).to include('100.00%')
+    expect(error).not_to include('below')
+  end
+
+  it 'fails an incomplete run against the line, branch, and API gates' do
+    _output, error, status = run_coverage('choose(true)')
+
+    expect(status).not_to be_success
+    expect(error).to include('Line coverage', 'Branch coverage', 'API branch coverage')
   end
 
   it 'targets application code by default in RubyCritic' do
@@ -85,5 +98,21 @@ RSpec.describe SimpleCov do
 
   def lighthouse_job
     ci_workflow.split("\n  lighthouse:\n", 2).last
+  end
+
+  def run_coverage(invocation)
+    Dir.mktmpdir('ci-coverage') do |directory|
+      source = File.join(directory, 'app/controllers/api/example.rb')
+      FileUtils.mkdir_p(File.dirname(source))
+      File.write(source, "def choose(value)\n  if value\n    :yes\n  else\n    :no\n  end\nend\n#{invocation}\n")
+      script = <<~RUBY
+        require 'simplecov'
+        SimpleCov.root #{directory.inspect}
+        load #{Rails.root.join('.simplecov').to_s.inspect}
+        SimpleCov.start
+        load #{source.inspect}
+      RUBY
+      Open3.capture3({ 'COVERAGE' => 'true' }, 'bundle', 'exec', 'ruby', '-e', script)
+    end
   end
 end

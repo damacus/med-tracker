@@ -69,10 +69,13 @@ specific file:
 task playwright TEST_FILE=spec/system/dashboard_spec.rb
 ```
 
-CI runs non-browser examples in two measured file shards and browser examples in
-two browser-test shards. Failure screenshots and HTML are uploaded as CI
-artefacts. SimpleCov results are collated from both non-browser shards before
-the unchanged coverage gates are enforced.
+CI runs the complete non-browser suite in one job and enforces coverage in the
+same process. New specs run automatically without entries in a timing file.
+Browser examples run in two browser-test shards. Failure screenshots, HTML and
+coverage results are uploaded as CI artefacts.
+
+Run `task ci:test` to check the workflow and coverage contracts in Docker, and
+`task ci:check` to lint the workflows and CI scripts.
 
 ## Linting
 

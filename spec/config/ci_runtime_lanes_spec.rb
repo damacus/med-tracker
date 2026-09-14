@@ -108,14 +108,15 @@ RSpec.describe CiRuntimeLanes do
     expect(outcomes[:unselected]).to eq([])
   end
 
-  it 'requires collated coverage to succeed when Rails tests are selected' do
+  it 'requires the non-browser test and coverage job to succeed when Rails tests are selected' do
     outcomes = {
       failure: coverage_gate_errors('failure'),
       cancelled: coverage_gate_errors('cancelled'),
       missing: coverage_gate_errors(nil)
     }
 
-    expect(outcomes.values).to all(satisfy { |errors| errors.any? { |error| error.include?('coverage') } })
+    expect(outcomes.values).to all(satisfy { |errors| errors.any? { |error| error.include?('test_non_system') } })
+    expect(coverage_gate_errors('success')).to be_empty
   end
 
   it 'classifies representative UI and non-UI paths through the executable classifier' do
@@ -180,7 +181,8 @@ RSpec.describe CiRuntimeLanes do
     needs = gate_needs('success', true)
     needs['changes']['outputs']['rails'] = 'true'
     policy.fetch('jobs').fetch('rails').each { |job| needs[job] = { 'result' => 'success' } }
-    result ? needs['coverage'] = { 'result' => result } : needs.delete('coverage')
+    needs.delete('coverage')
+    result ? needs['test_non_system'] = { 'result' => result } : needs.delete('test_non_system')
 
     evaluate_gate(needs)
   end
