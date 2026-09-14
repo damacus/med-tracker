@@ -1,6 +1,20 @@
 version: "3"
 
 tasks:
+  test:
+    desc: Test CI scripts with Node, without Rails or Docker
+    cmds:
+      - node --test "scripts/ci/tests/*.test.mjs"
+
+  coverage:test:
+    desc: Verify coverage collation without loading Rails or RSpec
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: tools-test
+          COMMAND: bundle exec ruby scripts/ci/tests/coverage.rb
+
   classify:
     desc: Select mandatory CI suites from the changed paths
     cmds:
@@ -23,5 +37,4 @@ tasks:
       - node --check scripts/ci/classify.mjs
       - node --check scripts/ci/gate.mjs
       - node --check scripts/ci/markdown.mjs
-      - node --check scripts/ci/non_browser_shards.mjs
-      - ruby -c scripts/ci/collate_simplecov.rb
+      - task: test

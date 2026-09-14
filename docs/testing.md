@@ -69,10 +69,24 @@ specific file:
 task playwright TEST_FILE=spec/system/dashboard_spec.rb
 ```
 
-CI runs non-browser examples in two measured file shards and browser examples in
-two browser-test shards. Failure screenshots and HTML are uploaded as CI
-artefacts. SimpleCov results are collated from both non-browser shards before
-the unchanged coverage gates are enforced.
+CI runs non-browser specs in two parallel file shards and browser examples in
+two parallel example shards. Both use `scripts/ci/shard.mjs`. Historical timing
+files are optional balancing hints: new specs need no timing entry, missing or
+invalid durations use the mean of available timings, and without a timing file
+items receive equal weights. Each non-browser file stays intact in one shard.
+
+The coverage job combines both non-browser results and enforces the unchanged
+coverage thresholds. It fails if either result is missing or duplicated. Failure
+screenshots, HTML and coverage results are uploaded as CI artefacts.
+
+RSpec tests application behaviour. CI script tests live in `scripts/ci/tests/`
+and run with Node's built-in test runner through `task ci:test`, without Rails,
+a database, Docker or an npm install. `task ci:check` runs workflow lint, script
+syntax checks and these tests in the CI Workflow Check job.
+
+`task ci:coverage:test` checks coverage collation with a standalone Ruby script
+in the tools container, without loading Rails or RSpec. The coverage job runs
+the same script before checking the application results.
 
 ## Linting
 

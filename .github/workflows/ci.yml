@@ -59,6 +59,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
       - uses: actions/setup-go@v7
         with:
           go-version: '1.27.1'
@@ -205,7 +208,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: [ubuntu-latest]
-    name: RSpec Tests (Models, Policies, Controllers, Components) - Shard ${{ matrix.shard }}/2
+    name: RSpec Tests - Shard ${{ matrix.shard }}/2
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -245,6 +248,11 @@ jobs:
           ruby-version: "4.0.6"
           bundler-cache: true
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
       - name: Set up database
         run: bundle exec rails db:migrate
 
@@ -258,20 +266,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/ci/non_browser_shards.mjs \
+          node scripts/ci/shard.mjs --kind files \
             --input tmp/non-browser-examples.json \
             --timings scripts/ci/non_browser_timings.json \
             --shards 2 \
             --shard ${{ matrix.shard }} > tmp/non-browser-shard-${{ matrix.shard }}.txt
           mapfile -t non_browser_files < tmp/non-browser-shard-${{ matrix.shard }}.txt
-          if [ ${#non_browser_files[@]} -gt 0 ]; then
-            bundle exec rspec --format RSpec::Github::Formatter --tag ~browser "${non_browser_files[@]}"
-          else
-            echo "No non-browser files for shard ${{ matrix.shard }}"
-          fi
+          test "${#non_browser_files[@]}" -gt 0
+          bundle exec rspec --format RSpec::Github::Formatter --tag ~browser "${non_browser_files[@]}"
 
       - name: Upload SimpleCov coverage report
-        if: always()
+        if: ${{ !cancelled() && hashFiles('coverage/.resultset.json') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: simplecov-non-system-${{ matrix.shard }}
@@ -311,6 +316,9 @@ jobs:
         with:
           name: simplecov-non-system-2
           path: coverage/shard-2
+
+      - name: Verify coverage failure handling
+        run: bundle exec ruby scripts/ci/tests/coverage.rb
 
       - name: Collate SimpleCov reports
         run: bundle exec ruby scripts/ci/collate_simplecov.rb coverage/shard-1/.resultset.json coverage/shard-2/.resultset.json
@@ -389,19 +397,14 @@ jobs:
           set -euo pipefail
           # Get all spec files and split tagged browser examples for this shard
           # Split files across shards using modulo
-          node scripts/ci/browser_shards.mjs \
+          node scripts/ci/shard.mjs --kind examples \
             --input tmp/browser-examples.json \
             --timings scripts/ci/browser_timings.json \
             --shards 2 \
             --shard ${{ matrix.shard }} > tmp/browser-shard-${{ matrix.shard }}.txt
           mapfile -t browser_examples < tmp/browser-shard-${{ matrix.shard }}.txt
-
-          if [ ${#browser_examples[@]} -gt 0 ]; then
-            echo "Running ${#browser_examples[@]} examples for shard ${{ matrix.shard }}"
-            bundle exec rspec --format RSpec::Github::Formatter --format documentation "${browser_examples[@]}"
-          else
-            echo "No browser examples for shard ${{ matrix.shard }}"
-          fi
+          test "${#browser_examples[@]}" -gt 0
+          bundle exec rspec --format RSpec::Github::Formatter --format documentation "${browser_examples[@]}"
 
       - name: Upload Capybara failure screenshots
         if: failure()
