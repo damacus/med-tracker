@@ -245,7 +245,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "4.0.6"
+          ruby-version: "4.0.7"
           bundler-cache: true
 
       - name: Set up Node.js
@@ -302,7 +302,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "4.0.6"
+          ruby-version: "4.0.7"
           bundler-cache: true
 
       - name: Download SimpleCov shard 1
@@ -361,7 +361,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "4.0.6"
+          ruby-version: "4.0.7"
           bundler-cache: true
 
       - name: Set up Node.js
@@ -474,7 +474,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "4.0.6"
+          ruby-version: "4.0.7"
           bundler-cache: true
 
       - name: Set up database
@@ -523,7 +523,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "4.0.6"
+          ruby-version: "4.0.7"
           bundler-cache: true
 
       - name: Set up Node.js
