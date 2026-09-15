@@ -1,4 +1,4 @@
-FROM rubylang/ruby:4.0.6-resolute AS base
+FROM rubylang/ruby:4.0.7-resolute AS base
 WORKDIR /app
 
 ARG UID=1000
