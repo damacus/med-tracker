@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.5.29](https://github.com/damacus/med-tracker/compare/v0.5.28...v0.5.29) (2026-09-17)
+
+
+### Features
+
+* **auth:** add configurable Rodauth mobile login ([10bd896](https://github.com/damacus/med-tracker/commit/10bd896b4b22d571f9b338e08455266aadd7d319))
+* **skill:** separate judgement from verification ([1013ddb](https://github.com/damacus/med-tracker/commit/1013ddb5abd2a21d801800eabd80df84a5e1907b))
+
+
+### Bug Fixes
+
+* **admin-users:** select the visible membership role ([5f2c184](https://github.com/damacus/med-tracker/commit/5f2c184b560b4412a55004e3026dcbc58514751f))
+* **ai:** reject unsupported Azure configuration ([0c0e0a3](https://github.com/damacus/med-tracker/commit/0c0e0a31c23e05ca5cfdfd7f798db905fc95ec81))
+* **android:** bound APK packaging workers ([26ec3b3](https://github.com/damacus/med-tracker/commit/26ec3b361b6c689a5f41c8cf7f5baa9b4c601268))
+* **api:** return app token validation errors ([97d2c65](https://github.com/damacus/med-tracker/commit/97d2c653172b586d29b2912c2c1c89f904052c6f))
+* batch dashboard and inventory queries ([8828122](https://github.com/damacus/med-tracker/commit/8828122312d0fbb1ec78b3defbf9f979ff5b9e5a))
+* **ci:** harden runtime and validation lanes ([#2228](https://github.com/damacus/med-tracker/issues/2228)) ([26ec3b3](https://github.com/damacus/med-tracker/commit/26ec3b361b6c689a5f41c8cf7f5baa9b4c601268))
+* **ci:** keep sharding without mandatory timing entries ([#2242](https://github.com/damacus/med-tracker/issues/2242)) ([5f75af7](https://github.com/damacus/med-tracker/commit/5f75af7ae1ac87414b5259eba78616cdaa53aa32))
+* **ci:** require UI-scoped Lighthouse validation ([26ec3b3](https://github.com/damacus/med-tracker/commit/26ec3b361b6c689a5f41c8cf7f5baa9b4c601268))
+* **dashboard:** wait for the direct-dose dialog ([5f2c184](https://github.com/damacus/med-tracker/commit/5f2c184b560b4412a55004e3026dcbc58514751f))
+* **deps:** update dependency androidx.compose:compose-bom to v2026.09.00 ([#2110](https://github.com/damacus/med-tracker/issues/2110)) ([422a08a](https://github.com/damacus/med-tracker/commit/422a08a3109671990bb1d59bf8f9de87e5dd9b62))
+* **historical-dose:** wait for the trigger-owned dialog ([5f2c184](https://github.com/damacus/med-tracker/commit/5f2c184b560b4412a55004e3026dcbc58514751f))
+* **mobile:** resolve conflict markers, stock removal API flow, and null enum deserialization ([#2220](https://github.com/damacus/med-tracker/issues/2220)) ([9ab2fbf](https://github.com/damacus/med-tracker/commit/9ab2fbfd81db135b7510d8c16a81bbb433bc7dd4))
+* **mobile:** Various changes for Andrdoi mobile app ([#2211](https://github.com/damacus/med-tracker/issues/2211)) ([21fad78](https://github.com/damacus/med-tracker/commit/21fad781bcfc4c43b47d2e24b5c9fd0f2b02bc1e))
+* **playwright:** align the Ruby client and browser runtime ([26ec3b3](https://github.com/damacus/med-tracker/commit/26ec3b361b6c689a5f41c8cf7f5baa9b4c601268))
+* **schedules:** wait for the open medication combobox ([5f2c184](https://github.com/damacus/med-tracker/commit/5f2c184b560b4412a55004e3026dcbc58514751f))
+* **test:** refresh mounted Playwright dependencies ([5f2c184](https://github.com/damacus/med-tracker/commit/5f2c184b560b4412a55004e3026dcbc58514751f))
+* **test:** stabilise browser workflows and Playwright preflight ([#2223](https://github.com/damacus/med-tracker/issues/2223)) ([5f2c184](https://github.com/damacus/med-tracker/commit/5f2c184b560b4412a55004e3026dcbc58514751f))
+
+
+### Performance Improvements
+
+* **ci:** balance browser examples from measured timings ([26ec3b3](https://github.com/damacus/med-tracker/commit/26ec3b361b6c689a5f41c8cf7f5baa9b4c601268))
+* **ci:** balance non-browser tests and collate coverage ([26ec3b3](https://github.com/damacus/med-tracker/commit/26ec3b361b6c689a5f41c8cf7f5baa9b4c601268))
+* **test:** reduce audit-log rate-limit workload ([26ec3b3](https://github.com/damacus/med-tracker/commit/26ec3b361b6c689a5f41c8cf7f5baa9b4c601268))
+* **test:** remove redundant suite work ([#2213](https://github.com/damacus/med-tracker/issues/2213)) ([279b09b](https://github.com/damacus/med-tracker/commit/279b09b4ca042dcad86090dc84781787593dea59))
+
 ## [0.5.28](https://github.com/damacus/med-tracker/compare/v0.5.27...v0.5.28) (2026-09-09)
 
 
