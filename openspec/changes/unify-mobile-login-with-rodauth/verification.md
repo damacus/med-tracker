@@ -1,5 +1,11 @@
 # Implementation checkpoint
 
+The follow-on #1889 acceptance work is tracked in
+[mobile-authorization-code-pkce](../mobile-authorization-code-pkce/verification.md).
+It tests the merged flow, adds mobile-only S256 enforcement after a failing
+request test, and corrects the older ADR/setup descriptions. Its partial local
+results do not complete this change's live-provider or rollout acceptance.
+
 This change is not complete and has not been deployed. The new Rodauth mobile
 flow, central lifetime settings and removal of action-specific MFA freshness
 gates are implemented. The user approved legacy mobile endpoint retirement;

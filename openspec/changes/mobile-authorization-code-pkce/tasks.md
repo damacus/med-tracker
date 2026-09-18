@@ -2,13 +2,13 @@
 
 ## 1. Establish the remaining acceptance baseline
 
-- [ ] 1.1 Refresh main and map each requirement in `specs/mobile-authorization-failure-safety/spec.md` to existing request/model/Android tests and parent-change tasks. Record existing passes separately from missing evidence; verify no removed endpoint or obsolete PR is used as the implementation target.
-- [ ] 1.2 Inspect the locked OAuth/OIDC library hooks and transaction boundaries; run `task test:preflight` before any Rails implementation and `task test TEST_FILE=spec/requests/mobile_oauth_authorization_spec.rb` for the starting behaviour. Record environment failures without marking them passed.
+- [x] 1.1 Refresh main and map each requirement in `specs/mobile-authorization-failure-safety/spec.md` to existing request/model/Android tests and parent-change tasks. Record existing passes separately from missing evidence; verify no removed endpoint or obsolete PR is used as the implementation target.
+- [x] 1.2 Inspect the locked OAuth/OIDC library hooks and transaction boundaries; run `task test:preflight` before any Rails implementation and `task test TEST_FILE=spec/requests/mobile_oauth_authorization_spec.rb` for the starting behaviour. Record environment failures without marking them passed.
 
 ## 2. Red: prove security failures at public boundaries
 
-- [ ] 2.1 Extend existing mobile request tests for bound/single-use redemption: missing or non-S256 challenge, wrong client, expired code and the already-covered verifier/callback/replay cases. Run the focused request file and record which new cases fail; retain passing coverage without inventing a code change.
-- [ ] 2.2 Add synchronised independent-connection redemption race and grant-write failure cases for atomic issuance/safe retry. Verify actual API usability, grant state and issuance audit after concurrent requests, rollback and committed-response loss; run the focused request file without sleeps or mocked PKCE.
+- [x] 2.1 Extend existing mobile request tests for bound/single-use redemption: missing or non-S256 challenge, wrong client, expired code and the already-covered verifier/callback/replay cases. Run the focused request file and record which new cases fail; retain passing coverage without inventing a code change.
+- [x] 2.2 Add synchronised independent-connection redemption race and grant-write failure cases for atomic issuance/safe retry. Verify actual API usability, grant state and issuance audit after concurrent requests, rollback and committed-response loss; run the focused request file without sleeps or mocked PKCE.
 - [ ] 2.3 Add deterministic delegated-login rejection cases for issuer, audience, signature, expiry and nonce, plus Android callback state/instance/account mismatch and cancellation cases. Verify no grant or pending write is authorised using focused Rails files through `task test TEST_FILE=...` and `task android:phone:test`.
 - [ ] 2.4 Extend household/API tests for membership removal, concurrent contexts, cross-household record IDs, failed-write rollback and idempotency isolation. Verify returned records and audit context, plus unchanged restricted credentials with `task test TEST_FILE=spec/requests/smart_oauth_authorization_spec.rb` and the affected household request files.
 - [ ] 2.5 Extend private-diagnostics/discovery tests using synthetic sentinel credentials. Verify responses, logs, traces and audits omit secrets and discovery describes the replacement flow; run affected Rails request/privacy tests and `task android:phone:test`.
@@ -20,8 +20,8 @@
 
 ## 4. Documentation and integrated checks
 
-- [ ] 4.1 Reconcile ADR 0005, `docs/design.md`, setup guidance and parent acceptance records with the merged Rodauth flow. Check root OpenAPI/capabilities and update pinned contracts only where actually inconsistent; verify `task docs:build`, `task android:api:check`, strict OpenSpec validation and `git diff --check`.
-- [ ] 4.2 Run changed-area gates after focused checks: `task test`, `task rubocop` and `task brakeman` for Rails/Ruby changes; `task android:ci` and `task android:phone:ui-test` for Android changes. Record current results and preserve unrelated pending tests; do not claim prior runs verified new changes.
+- [x] 4.1 Reconcile ADR 0005, `docs/design.md`, setup guidance and parent acceptance records with the merged Rodauth flow. Check root OpenAPI/capabilities and update pinned contracts only where actually inconsistent; verify `task docs:build`, `task android:api:check`, strict OpenSpec validation and `git diff --check`.
+- [x] 4.2 Run changed-area gates after focused checks: `task test`, `task rubocop` and `task brakeman` for Rails/Ruby changes; `task android:ci` and `task android:phone:ui-test` for Android changes. Record current results and preserve unrelated pending tests; do not claim prior runs verified new changes.
 
 ## 5. Live evidence and issue completion
 
