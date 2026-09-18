@@ -16,6 +16,7 @@ class RodauthMain < Rodauth::Rails::Auth
            :oauth_pkce, :oauth_token_revocation
 
     oauth_application_scopes (OauthApplication::SUPPORTED_SCOPES + OauthApplication::MOBILE_SCOPES).uniq
+    oauth_pkce_allow_plain_method { !mobile_oauth_application? }
     oauth_access_token_expires_in 15.minutes.to_i
     oauth_refresh_token_expires_in do
       mobile_oauth_application? ? AuthenticationLifetime.inactivity_days.days.to_i : 30.days.to_i

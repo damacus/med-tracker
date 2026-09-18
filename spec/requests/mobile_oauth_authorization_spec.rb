@@ -97,10 +97,102 @@ RSpec.describe 'Mobile Rodauth authorization' do
     code = authorization_code
     redeem(code)
     expect(response).to have_http_status(:ok)
+    issued_hashes = OauthGrant.last.attributes.slice('token_hash', 'refresh_token_hash')
     redeem(code)
 
     expect(response).to have_http_status(:bad_request)
     expect(response.parsed_body).not_to have_key('access_token')
+    expect(OauthGrant.last.attributes.slice('token_hash', 'refresh_token_hash')).to eq(issued_hashes)
+  end
+
+  {
+    'missing challenge' => { code_challenge: nil },
+    'plain challenge' => { code_challenge: 'mobile-code-verifier-with-more-than-forty-three-characters',
+                           code_challenge_method: 'plain' }
+  }.each do |invalid_challenge, overrides|
+    it "rejects authorization with a #{invalid_challenge}" do
+      sign_in(user)
+
+      expect do
+        post '/authorize', params: authorization_params.merge(scope: client.scopes.split).merge(overrides)
+      end.not_to change(OauthGrant, :count)
+
+      expect(response).to have_http_status(:redirect)
+      expect(callback_values).to include('error' => 'invalid_request', 'state' => 'mobile-state')
+      expect(callback_values).not_to have_key('code')
+    end
+  end
+
+  it 'rejects a code issued to another registered mobile client' do
+    sign_in(user)
+    code = authorization_code
+    other_client = client.dup
+    other_client.update!(client_id: 'other-mobile-client')
+
+    redeem(code, client_id: other_client.client_id)
+
+    expect(response).to have_http_status(:bad_request)
+    expect(response.parsed_body).not_to have_key('access_token')
+    redeem(code)
+    expect(response).to have_http_status(:ok)
+  end
+
+  it 'rejects an expired authorization code' do
+    sign_in(user)
+    code = authorization_code
+    OauthGrant.last.update!(expires_in: 1.second.ago)
+
+    redeem(code)
+
+    expect(response).to have_http_status(:bad_request)
+    expect(response.parsed_body).not_to have_key('access_token')
+    expect(OauthGrant.last.token_hash).to be_nil
+  end
+
+  it 'rejects an existing mobile code with a plain challenge' do
+    sign_in(user)
+    code = authorization_code
+    grant = OauthGrant.last
+    grant.update!(code_challenge: verifier, code_challenge_method: 'plain')
+
+    redeem(code)
+
+    expect(response).to have_http_status(:bad_request)
+    expect(response.parsed_body).not_to have_key('access_token')
+    expect(grant.reload.token_hash).to be_nil
+  end
+
+  it 'filters credential inputs from failed token request diagnostics' do
+    redeem('synthetic-authorization-code', code_verifier: 'synthetic-secret-verifier')
+
+    expect(response).to have_http_status(:bad_request)
+    expect(request.filtered_parameters).to include('code' => '[FILTERED]', 'code_verifier' => '[FILTERED]')
+    expect(response.body).not_to include('synthetic-authorization-code', 'synthetic-secret-verifier')
+  end
+
+  it 'rolls back failed credential persistence before allowing one retry' do
+    sign_in(user)
+    code = authorization_code
+    grant = OauthGrant.last
+    connection = ActiveRecord::Base.connection
+    connection.execute('ALTER TABLE oauth_grants ADD CONSTRAINT test_token_write_failure ' \
+                       'CHECK (token_hash IS NULL) NOT VALID')
+    audit_count = PaperTrail::Version.count
+
+    expect { redeem(code) }.to raise_error(Sequel::CheckConstraintViolation)
+    expect(grant.reload).to have_attributes(code: code, token_hash: nil, refresh_token_hash: nil)
+    expect(PaperTrail::Version.count).to eq(audit_count)
+
+    connection.execute('ALTER TABLE oauth_grants DROP CONSTRAINT test_token_write_failure')
+    redeem(code)
+    expect(response).to have_http_status(:ok)
+    headers = { 'Authorization' => "Bearer #{response.parsed_body.fetch('access_token')}" }
+    get '/api/v1/auth/households', headers: headers, as: :json
+    expect(response).to have_http_status(:ok)
+    redeem(code)
+    expect(response).to have_http_status(:bad_request)
+  ensure
+    connection&.execute('ALTER TABLE oauth_grants DROP CONSTRAINT IF EXISTS test_token_write_failure')
   end
 
   it 'uses the same token for two households and applies each current role' do
@@ -125,6 +217,13 @@ RSpec.describe 'Mobile Rodauth authorization' do
     expect(response).to have_http_status(:forbidden)
     get "/api/v1/households/#{first.id}/admin/settings", headers: headers, as: :json
     expect(response).to have_http_status(:ok)
+
+    second_membership.update!(status: :revoked)
+    get "/api/v1/households/#{second.id}/admin/settings", headers: headers, as: :json
+    expect(response).to have_http_status(:forbidden)
+    expect(response.body).not_to include(second.name)
+    get "/api/v1/households/#{first.id}/admin/settings", headers: headers, as: :json
+    expect(response).to have_http_status(:ok)
   end
 
   it 'rejects refresh after the configured inactivity window' do
@@ -137,6 +236,27 @@ RSpec.describe 'Mobile Rodauth authorization' do
 
     expect(response).to have_http_status(:bad_request)
     expect(response.parsed_body).not_to have_key('access_token')
+  end
+
+  it 'does not resolve a person from another authorised household' do
+    sign_in(user)
+    redeem(authorization_code)
+    headers = { 'Authorization' => "Bearer #{response.parsed_body.fetch('access_token')}" }
+    first = user.person.household
+    second = Household.create!(name: 'Other authorised household', slug: 'other-authorised-household')
+    membership = second.household_memberships.create!(account: user.person.account, role: :owner, status: :active)
+    person = second.people.create!(name: 'Private other person', date_of_birth: 30.years.ago.to_date,
+                                   person_type: :adult, has_capacity: true)
+    PersonAccessGrant.create!(household: second, household_membership: membership, person: person,
+                              access_level: :view, relationship_type: :family_member)
+
+    get "/api/v1/households/#{first.id}/people/#{person.id}", headers: headers, as: :json
+
+    expect(response).to have_http_status(:not_found)
+    expect(response.body).not_to include(person.name)
+    get "/api/v1/households/#{second.id}/people/#{person.id}", headers: headers, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.dig('data', 'id')).to eq(person.id)
   end
 
   it 'lists households and independently revokes one device session' do
