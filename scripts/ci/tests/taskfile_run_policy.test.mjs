@@ -37,13 +37,15 @@ function taskSection(block, key) {
   return (end === -1 ? rest : rest.slice(0, end)).join('\n');
 }
 
-test('test:exec runs every internal:run call, including the caller command', () => {
+test('test:exec transports CMD through container env instead of the command line', () => {
   const output = dryRun('test:exec', 'CMD=pwd');
   const tailwind = output.indexOf('web-test rails tailwindcss:build');
-  const command = output.indexOf('web-test pwd');
+  const command = output.indexOf('web-test sh -c \'eval "$CMD"\'');
   assert.notEqual(tailwind, -1, 'expected the tailwind build container command');
-  assert.notEqual(command, -1, 'expected the CMD container command');
+  assert.notEqual(command, -1, 'expected the container to eval the transported CMD');
   assert.ok(command > tailwind, 'expected CMD to run after the tailwind build');
+  assert.match(output, /run --rm -e CMD web-test/, 'expected CMD to travel via docker run env');
+  assert.ok(!output.includes('web-test pwd'), 'CMD must not be interpolated onto the host command line');
   assert.ok(!output.includes('skipping execution'), output);
 });
 
@@ -69,6 +71,13 @@ test('household-lifecycle:hold forwards REASON through internal:run vars', () =>
   assert.ok(!/^    env:/m.test(block), 'task-level env: does not propagate through task: calls');
   assert.ok(block.includes("DOCKER_RUN_ARGS: '-e REASON'"), 'expected -e REASON forwarding');
   assert.ok(block.includes("REASON: '{{ .REASON }}'"), 'expected REASON passed via vars');
+});
+
+test('test:exec passes CMD to internal:run via vars and docker run env', () => {
+  const block = taskBlock(testTaskfile, 'exec');
+  assert.ok(block.includes("DOCKER_RUN_ARGS: '-e CMD'"), 'expected -e CMD forwarding');
+  assert.ok(block.includes("CMD: '{{ .CMD }}'"), 'expected CMD passed via vars');
+  assert.match(block, /COMMAND:.*eval/, 'expected the container command to eval CMD');
 });
 
 test('stop-all stops the dev, test, and prod profiles', () => {
