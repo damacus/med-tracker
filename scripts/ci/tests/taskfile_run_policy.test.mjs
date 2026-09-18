@@ -89,6 +89,66 @@ test('stop-all stops the dev, test, and prod profiles', () => {
   assert.ok(!output.includes('skipping execution'), output);
 });
 
+test('internal:run pre-starts the database inside the compose lock before one-off web runs', () => {
+  const output = dryRun('test');
+  const preUp = output.search(
+    /with_compose_lock\.rb "[^"]+" docker compose -p \S+ --profile test up -d --wait db-test/,
+  );
+  const webRun = output.search(/run --rm\s+web-test/);
+  assert.notEqual(preUp, -1, 'expected a lock-wrapped `up -d --wait db-test` pre-start command');
+  assert.notEqual(webRun, -1, 'expected the `run --rm web-test` command');
+  assert.ok(preUp < webRun, 'expected the db pre-start to run before the web run');
+  const lockKeys = [...output.matchAll(/with_compose_lock\.rb "([^"]+)"/g)].map(match => match[1]);
+  assert.ok(lockKeys.length >= 2, 'expected the pre-up and the run to both take the compose lock');
+  assert.equal(new Set(lockKeys).size, 1, 'pre-up and run must share one lock key');
+});
+
+test('SERVICE callers like rubocop skip the database pre-start', () => {
+  const output = dryRun('rubocop');
+  assert.match(output, /run --rm\s+tools-test/, 'expected the tools-test run command');
+  assert.ok(!/up -d/.test(output), 'SERVICE callers must not pre-start a database');
+});
+
+test('internal:run first cmd is the locked db pre-up gated on not .SERVICE', () => {
+  const cmds = taskSection(taskBlock(internalTaskfile, 'run'), 'cmds');
+  const lines = cmds.split('\n');
+  const firstIndex = lines.findIndex(line => /^\s+- /.test(line));
+  assert.notEqual(firstIndex, -1, 'expected a cmds entry');
+  const itemPattern = new RegExp(`^${lines[firstIndex].match(/^\s*/)[0]}- `);
+  const entry = [lines[firstIndex]];
+  for (const line of lines.slice(firstIndex + 1)) {
+    if (itemPattern.test(line)) break;
+    entry.push(line);
+  }
+  const firstCmd = entry.join(' ');
+  assert.ok(firstCmd.includes('{{ if not .SERVICE }}'), 'first cmd must be gated on `not .SERVICE`');
+  assert.ok(firstCmd.includes('with_compose_lock.rb'), 'first cmd must run inside the compose lock');
+  assert.ok(
+    firstCmd.includes('"{{ .COMPOSE_PROJECT }}-{{ .ENVIRONMENT }}"'),
+    'first cmd must use the shared compose lock key',
+  );
+  assert.ok(
+    firstCmd.includes('up -d --wait {{ .DB_SERVICE }}'),
+    'first cmd must pre-start and wait on DB_SERVICE',
+  );
+});
+
+test('test:exec keeps metacharacter CMD text off the host command line', () => {
+  const cmd = 'echo "a b" && exit 7';
+  const output = dryRun('test:exec', `CMD=${cmd}`);
+  assert.match(output, /run --rm\s+-e CMD\s+web-test/, 'expected CMD to travel via docker run env');
+  assert.match(output, /web-test sh -c 'eval "\$CMD"'/, 'expected the container to eval the transported CMD');
+  assert.ok(!output.includes(cmd), 'CMD text must not appear on the host command line');
+});
+
+test('test:exec tailwind run does not forward CMD', () => {
+  const output = dryRun('test:exec', 'CMD=pwd');
+  const runLines = output.split('\n').filter(line => /run --rm/.test(line));
+  assert.ok(runLines.length >= 2, 'expected the tailwind and CMD run lines');
+  assert.match(runLines[0], /web-test rails tailwindcss:build/, 'expected the first run to build tailwind');
+  assert.ok(!runLines[0].includes('-e CMD'), 'the tailwind run must not forward CMD');
+});
+
 test('test:assets-rebuild runs every internal:run call', () => {
   const output = dryRun('test:assets-rebuild');
   assert.match(output, /find public\/assets/, 'expected the asset cleanup command');
