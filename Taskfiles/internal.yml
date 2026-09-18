@@ -30,6 +30,13 @@ tasks:
       vars: [ENVIRONMENT, COMMAND]
     vars:
       WEB_SERVICE: '{{ .SERVICE | default (printf "web-%s" .ENVIRONMENT) }}'
+    # Callers pass these values through vars: and forward them into the
+    # container with -e NAME in DOCKER_RUN_ARGS; task-level env: on the
+    # caller does not propagate through task: calls.
+    env:
+      DESTINATION: '{{ .DESTINATION | default "" }}'
+      REASON: '{{ .REASON | default "" }}'
+      CMD: '{{ .CMD | default "" }}'
     cmds:
       - 'MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} ./scripts/with_compose_lock.rb
         "{{ .COMPOSE_PROJECT }}-{{ .ENVIRONMENT }}" docker compose -p {{ .COMPOSE_PROJECT }}

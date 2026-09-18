@@ -6,12 +6,35 @@ import test from 'node:test';
 
 const repoRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const internalTaskfile = fileURLToPath(new URL('../../../Taskfiles/internal.yml', import.meta.url));
+const rootTaskfile = fileURLToPath(new URL('../../../Taskfile.yml', import.meta.url));
+const testTaskfile = fileURLToPath(new URL('../../../Taskfiles/test.yml', import.meta.url));
 
 function dryRun(...args) {
   const result = spawnSync('task', ['--dry', '--verbose', ...args], { cwd: repoRoot, encoding: 'utf8' });
   const output = (result.stdout ?? '') + (result.stderr ?? '');
   assert.equal(result.status, 0, output);
   return output;
+}
+
+function taskBlock(filePath, taskName) {
+  const lines = readFileSync(filePath, 'utf8').split('\n');
+  const tasksStart = lines.findIndex(line => /^tasks:/.test(line));
+  assert.notEqual(tasksStart, -1, `${filePath} has no tasks: section`);
+  const namePattern = new RegExp(`^  ${taskName}:\\s*$`);
+  const start = lines.findIndex((line, index) => index > tasksStart && namePattern.test(line));
+  assert.notEqual(start, -1, `task "${taskName}" not found in ${filePath}`);
+  const rest = lines.slice(start + 1);
+  const end = rest.findIndex(line => /^ {0,2}\S/.test(line));
+  return (end === -1 ? rest : rest.slice(0, end)).join('\n');
+}
+
+function taskSection(block, key) {
+  const lines = block.split('\n');
+  const start = lines.findIndex(line => new RegExp(`^    ${key}:`).test(line));
+  assert.notEqual(start, -1, `expected a ${key}: section`);
+  const rest = lines.slice(start + 1);
+  const end = rest.findIndex(line => /^ {0,4}\S/.test(line));
+  return (end === -1 ? rest : rest.slice(0, end)).join('\n');
 }
 
 test('test:exec runs every internal:run call, including the caller command', () => {
@@ -22,6 +45,30 @@ test('test:exec runs every internal:run call, including the caller command', () 
   assert.notEqual(command, -1, 'expected the CMD container command');
   assert.ok(command > tailwind, 'expected CMD to run after the tailwind build');
   assert.ok(!output.includes('skipping execution'), output);
+});
+
+test('internal:run declares env passthroughs for vars-transported values', () => {
+  const env = taskSection(taskBlock(internalTaskfile, 'run'), 'env');
+  for (const name of ['DESTINATION', 'REASON', 'CMD']) {
+    assert.ok(
+      env.includes(`${name}: '{{ .${name} | default "" }}'`),
+      `internal:run env must default ${name} to ""`,
+    );
+  }
+});
+
+test('household-lifecycle:download forwards DESTINATION through internal:run vars', () => {
+  const block = taskBlock(rootTaskfile, 'household-lifecycle:download');
+  assert.ok(!/^    env:/m.test(block), 'task-level env: does not propagate through task: calls');
+  assert.ok(block.includes("DOCKER_RUN_ARGS: '-e DESTINATION'"), 'expected -e DESTINATION forwarding');
+  assert.ok(block.includes("DESTINATION: '{{ .DESTINATION }}'"), 'expected DESTINATION passed via vars');
+});
+
+test('household-lifecycle:hold forwards REASON through internal:run vars', () => {
+  const block = taskBlock(rootTaskfile, 'household-lifecycle:hold');
+  assert.ok(!/^    env:/m.test(block), 'task-level env: does not propagate through task: calls');
+  assert.ok(block.includes("DOCKER_RUN_ARGS: '-e REASON'"), 'expected -e REASON forwarding');
+  assert.ok(block.includes("REASON: '{{ .REASON }}'"), 'expected REASON passed via vars');
 });
 
 test('stop-all stops the dev, test, and prod profiles', () => {
