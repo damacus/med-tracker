@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_11_123000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -169,6 +169,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
   create_table "api_app_tokens", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
     t.bigint "household_membership_id", null: false
     t.datetime "last_used_at", null: false
     t.string "name", null: false
@@ -177,21 +178,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
     t.string "token_digest", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_api_app_tokens_on_account_id"
+    t.index ["expires_at"], name: "index_api_app_tokens_on_expires_at"
     t.index ["household_membership_id", "revoked_at"], name: "index_api_app_tokens_on_membership_and_revoked_at"
     t.index ["household_membership_id"], name: "index_api_app_tokens_on_household_membership_id"
     t.index ["token_digest"], name: "index_api_app_tokens_on_token_digest", unique: true
+    t.check_constraint "expires_at > created_at", name: "api_app_token_positive_lifetime"
   end
 
   create_table "api_change_events", force: :cascade do |t|
-    t.string "action", null: false
     t.bigint "account_id"
+    t.string "action", null: false
     t.datetime "created_at", null: false
     t.bigint "household_id", null: false
     t.bigint "household_membership_id"
     t.jsonb "metadata", default: {}, null: false
     t.datetime "occurred_at", null: false
-    t.string "record_portable_id"
     t.bigint "record_id", null: false
+    t.string "record_portable_id"
     t.string "record_type", null: false
     t.string "request_id"
     t.datetime "updated_at", null: false
@@ -280,8 +283,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
   end
 
   create_table "api_tombstones", force: :cascade do |t|
-    t.string "action", default: "delete", null: false
     t.bigint "account_id"
+    t.string "action", default: "delete", null: false
     t.datetime "created_at", null: false
     t.datetime "deleted_at", null: false
     t.bigint "household_id", null: false
@@ -456,28 +459,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
     t.index ["medication_id"], name: "index_dosages_one_child_default", unique: true, where: "(default_for_children = true)"
   end
 
-  create_table "health_events", force: :cascade do |t|
-    t.text "action_taken"
-    t.datetime "created_at", null: false
-    t.date "ended_on"
-    t.integer "event_kind", null: false
-    t.bigint "household_id", null: false
-    t.boolean "medical_help_sought", default: false, null: false
-    t.text "notes"
-    t.bigint "person_id", null: false
-    t.string "portable_id", default: -> { "gen_random_uuid()::text" }, null: false
-    t.integer "severity"
-    t.date "started_on", null: false
-    t.string "title", null: false
-    t.datetime "updated_at", null: false
-    t.index ["household_id", "portable_id"], name: "index_health_events_on_household_id_and_portable_id", unique: true
-    t.index ["household_id"], name: "index_health_events_on_household_id"
-    t.index ["id", "household_id"], name: "index_health_events_on_id_and_household_id", unique: true
-    t.index ["person_id", "event_kind", "started_on"], name: "index_health_events_on_person_id_and_event_kind_and_started_on"
-    t.index ["person_id", "started_on", "ended_on"], name: "index_health_events_on_person_id_and_started_on_and_ended_on"
-    t.index ["person_id"], name: "index_health_events_on_person_id"
-  end
-
   create_table "health_event_medications", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "health_event_id", null: false
@@ -492,19 +473,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
     t.index ["medication_id"], name: "index_health_event_medications_on_medication_id"
   end
 
-  create_table "household_invitation_grants", force: :cascade do |t|
-    t.string "access_level", null: false
+  create_table "health_events", force: :cascade do |t|
+    t.text "action_taken"
     t.datetime "created_at", null: false
-    t.datetime "expires_at"
+    t.date "ended_on"
+    t.integer "event_kind", null: false
     t.bigint "household_id", null: false
-    t.bigint "household_invitation_id", null: false
+    t.boolean "medical_help_sought", default: false, null: false
+    t.text "notes"
     t.bigint "person_id", null: false
-    t.string "relationship_type", null: false
+    t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
+    t.integer "severity"
+    t.date "started_on", null: false
+    t.string "title", null: false
     t.datetime "updated_at", null: false
-    t.index ["household_id"], name: "index_household_invitation_grants_on_household_id"
-    t.index ["household_invitation_id"], name: "index_household_invitation_grants_on_household_invitation_id"
-    t.index ["id", "household_id"], name: "index_household_invitation_grants_on_id_and_household_id", unique: true
-    t.index ["person_id"], name: "index_household_invitation_grants_on_person_id"
+    t.index ["household_id", "portable_id"], name: "index_health_events_on_household_id_and_portable_id", unique: true
+    t.index ["household_id"], name: "index_health_events_on_household_id"
+    t.index ["id", "household_id"], name: "index_health_events_on_id_and_household_id", unique: true
+    t.index ["person_id", "event_kind", "started_on"], name: "index_health_events_on_person_id_and_event_kind_and_started_on"
+    t.index ["person_id", "started_on", "ended_on"], name: "index_health_events_on_person_id_and_started_on_and_ended_on"
+    t.index ["person_id"], name: "index_health_events_on_person_id"
   end
 
   create_table "household_exports", force: :cascade do |t|
@@ -529,6 +517,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
     t.index ["household_id"], name: "index_household_exports_on_household_id"
     t.index ["id", "household_id"], name: "index_household_exports_on_id_and_household_id", unique: true
     t.index ["requested_by_account_id"], name: "index_household_exports_on_requested_by_account_id"
+  end
+
+  create_table "household_invitation_grants", force: :cascade do |t|
+    t.string "access_level", null: false
+    t.datetime "created_at", null: false
+    t.datetime "expires_at"
+    t.bigint "household_id", null: false
+    t.bigint "household_invitation_id", null: false
+    t.bigint "person_id", null: false
+    t.string "relationship_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["household_id"], name: "index_household_invitation_grants_on_household_id"
+    t.index ["household_invitation_id"], name: "index_household_invitation_grants_on_household_invitation_id"
+    t.index ["id", "household_id"], name: "index_household_invitation_grants_on_id_and_household_id", unique: true
+    t.index ["person_id"], name: "index_household_invitation_grants_on_person_id"
   end
 
   create_table "household_invitations", force: :cascade do |t|
@@ -647,36 +650,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
   end
 
   create_table "medication_dose_occurrences", force: :cascade do |t|
-    t.bigint "household_id", null: false
-    t.bigint "schedule_id"
-    t.bigint "person_medication_id"
-    t.bigint "medication_take_id"
-    t.bigint "resolved_by_membership_id"
-    t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
-    t.date "window_starts_on", null: false
-    t.date "window_ends_on"
-    t.integer "position", null: false
-    t.datetime "scheduled_at"
-    t.string "outcome", default: "open", null: false
-    t.string "reason"
-    t.text "note"
-    t.datetime "resolved_at"
     t.datetime "created_at", null: false
+    t.bigint "household_id", null: false
+    t.bigint "medication_take_id"
+    t.text "note"
+    t.string "outcome", default: "open", null: false
+    t.bigint "person_medication_id"
+    t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
+    t.integer "position", null: false
+    t.string "reason"
+    t.datetime "resolved_at"
+    t.bigint "resolved_by_membership_id"
+    t.bigint "schedule_id"
+    t.datetime "scheduled_at"
     t.datetime "updated_at", null: false
-    t.index ["household_id"], name: "index_medication_dose_occurrences_on_household_id"
-    t.index ["schedule_id"], name: "index_medication_dose_occurrences_on_schedule_id"
-    t.index ["person_medication_id"], name: "index_medication_dose_occurrences_on_person_medication_id"
-    t.index ["medication_take_id"], name: "index_medication_dose_occurrences_on_medication_take_id", unique: true
-    t.index ["resolved_by_membership_id"], name: "index_medication_dose_occurrences_on_resolved_by_membership_id"
-    t.index ["id", "household_id"], name: "index_medication_dose_occurrences_on_id_and_household_id", unique: true
+    t.date "window_ends_on"
+    t.date "window_starts_on", null: false
     t.index ["household_id", "portable_id"], name: "idx_dose_occurrences_household_portable_id", unique: true
-    t.index ["schedule_id", "window_starts_on", "position"], name: "idx_dose_occurrence_schedule_id_window", unique: true, where: "schedule_id IS NOT NULL"
-    t.index ["person_medication_id", "window_starts_on", "position"], name: "idx_dose_occurrence_person_medication_id_window", unique: true, where: "person_medication_id IS NOT NULL"
-    t.check_constraint "num_nonnulls(schedule_id, person_medication_id) = 1", name: "chk_dose_occurrences_exact_source"
-    t.check_constraint "position > 0", name: "chk_dose_occurrences_position"
-    t.check_constraint "(outcome = 'open' AND medication_take_id IS NULL AND reason IS NULL AND note IS NULL AND resolved_at IS NULL AND resolved_by_membership_id IS NULL) OR (outcome = 'not_taken' AND medication_take_id IS NULL AND resolved_at IS NOT NULL AND resolved_by_membership_id IS NOT NULL) OR (outcome = 'taken' AND medication_take_id IS NOT NULL AND reason IS NULL AND note IS NULL AND resolved_at IS NOT NULL AND resolved_by_membership_id IS NOT NULL)", name: "chk_dose_occurrences_state"
-    t.check_constraint "reason IS NULL OR reason IN ('refused', 'unwell', 'asleep', 'medicine_unavailable', 'clinician_advice', 'other')", name: "chk_dose_occurrences_reason"
+    t.index ["household_id"], name: "index_medication_dose_occurrences_on_household_id"
+    t.index ["id", "household_id"], name: "index_medication_dose_occurrences_on_id_and_household_id", unique: true
+    t.index ["medication_take_id"], name: "index_medication_dose_occurrences_on_medication_take_id", unique: true
+    t.index ["person_medication_id", "window_starts_on", "position"], name: "idx_dose_occurrence_person_medication_id_window", unique: true, where: "(person_medication_id IS NOT NULL)"
+    t.index ["person_medication_id"], name: "index_medication_dose_occurrences_on_person_medication_id"
+    t.index ["resolved_by_membership_id"], name: "index_medication_dose_occurrences_on_resolved_by_membership_id"
+    t.index ["schedule_id", "window_starts_on", "position"], name: "idx_dose_occurrence_schedule_id_window", unique: true, where: "(schedule_id IS NOT NULL)"
+    t.index ["schedule_id"], name: "index_medication_dose_occurrences_on_schedule_id"
+    t.check_constraint "\"position\" > 0", name: "chk_dose_occurrences_position"
     t.check_constraint "note IS NULL OR char_length(note) <= 2000", name: "chk_dose_occurrences_note"
+    t.check_constraint "num_nonnulls(schedule_id, person_medication_id) = 1", name: "chk_dose_occurrences_exact_source"
+    t.check_constraint "outcome::text = 'open'::text AND medication_take_id IS NULL AND reason IS NULL AND note IS NULL AND resolved_at IS NULL AND resolved_by_membership_id IS NULL OR outcome::text = 'not_taken'::text AND medication_take_id IS NULL AND resolved_at IS NOT NULL AND resolved_by_membership_id IS NOT NULL OR outcome::text = 'taken'::text AND medication_take_id IS NOT NULL AND reason IS NULL AND note IS NULL AND resolved_at IS NOT NULL AND resolved_by_membership_id IS NOT NULL", name: "chk_dose_occurrences_state"
+    t.check_constraint "reason IS NULL OR (reason::text = ANY (ARRAY['refused'::character varying, 'unwell'::character varying, 'asleep'::character varying, 'medicine_unavailable'::character varying, 'clinician_advice'::character varying, 'other'::character varying]::text[]))", name: "chk_dose_occurrences_reason"
     t.check_constraint "window_ends_on >= window_starts_on", name: "chk_dose_occurrences_window_order"
   end
 
@@ -806,7 +809,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
     t.bigint "taken_from_location_id"
     t.bigint "taken_from_medication_id"
     t.datetime "updated_at", null: false
-    t.check_constraint "num_nonnulls(schedule_id, person_medication_id) = 1", name: "chk_medication_takes_exactly_one_source"
     t.index ["client_uuid"], name: "index_medication_takes_on_client_uuid", unique: true, where: "(client_uuid IS NOT NULL)"
     t.index ["household_id", "portable_id"], name: "index_medication_takes_on_household_id_and_portable_id", unique: true
     t.index ["household_id"], name: "index_medication_takes_on_household_id"
@@ -816,6 +818,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
     t.index ["taken_at"], name: "index_medication_takes_on_taken_at"
     t.index ["taken_from_location_id"], name: "index_medication_takes_on_taken_from_location_id"
     t.index ["taken_from_medication_id"], name: "index_medication_takes_on_taken_from_medication_id"
+    t.check_constraint "num_nonnulls(schedule_id, person_medication_id) = 1", name: "chk_medication_takes_exactly_one_source"
   end
 
   create_table "medications", force: :cascade do |t|
@@ -832,15 +835,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
     t.string "dmd_system"
     t.float "dose_amount"
     t.string "dose_unit"
+    t.date "expected_arrival_on"
     t.date "expiry_date"
     t.string "friendly_name"
     t.bigint "household_id", null: false
     t.bigint "location_id", null: false
     t.string "name"
-    t.date "expected_arrival_on"
-    t.datetime "ordered_at"
     t.decimal "order_quantity", precision: 10, scale: 2
     t.string "order_supplier"
+    t.datetime "ordered_at"
     t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
     t.integer "reorder_status"
     t.decimal "reorder_threshold", precision: 10, scale: 2, default: "10.0", null: false
@@ -960,6 +963,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
     t.index ["code"], name: "index_nhs_dmd_trade_family_groups_on_code", unique: true
   end
 
+  create_table "notification_events", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "event_key", null: false
+    t.string "event_type", null: false
+    t.bigint "household_id", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.bigint "person_id"
+    t.datetime "sent_at"
+    t.string "skipped_reason"
+    t.datetime "updated_at", null: false
+    t.index ["event_type", "event_key"], name: "index_notification_events_on_event_type_and_event_key", unique: true
+    t.index ["household_id"], name: "index_notification_events_on_household_id"
+    t.index ["id", "household_id"], name: "index_notification_events_on_id_and_household_id", unique: true
+    t.index ["person_id"], name: "index_notification_events_on_person_id"
+    t.index ["sent_at"], name: "index_notification_events_on_sent_at"
+  end
+
   create_table "notification_preferences", force: :cascade do |t|
     t.time "afternoon_time", default: "2000-01-01 14:00:00"
     t.datetime "created_at", null: false
@@ -984,6 +1004,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
   create_table "oauth_applications", force: :cascade do |t|
     t.bigint "account_id"
     t.string "client_id", null: false
+    t.string "client_kind", default: "integration", null: false
     t.string "client_secret"
     t.string "client_secret_hash"
     t.datetime "created_at", null: false
@@ -994,22 +1015,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_oauth_applications_on_account_id"
     t.index ["client_id"], name: "index_oauth_applications_on_client_id", unique: true
-    t.check_constraint "(token_endpoint_auth_method = 'none' AND NULLIF(client_secret, '') IS NULL AND NULLIF(client_secret_hash, '') IS NULL) OR (token_endpoint_auth_method IN ('client_secret_basic', 'client_secret_post', 'client_secret_basic client_secret_post') AND (NULLIF(client_secret, '') IS NOT NULL OR NULLIF(client_secret_hash, '') IS NOT NULL))", name: "chk_oauth_applications_token_auth_method"
+    t.index ["id", "client_kind"], name: "index_oauth_applications_on_id_and_client_kind", unique: true
+    t.check_constraint "client_kind::text = ANY (ARRAY['integration'::character varying, 'mobile'::character varying]::text[])", name: "oauth_client_kind"
+    t.check_constraint "token_endpoint_auth_method::text = 'none'::text AND NULLIF(client_secret::text, ''::text) IS NULL AND NULLIF(client_secret_hash::text, ''::text) IS NULL OR (token_endpoint_auth_method::text = ANY (ARRAY['client_secret_basic'::character varying, 'client_secret_post'::character varying, 'client_secret_basic client_secret_post'::character varying]::text[])) AND (NULLIF(client_secret::text, ''::text) IS NOT NULL OR NULLIF(client_secret_hash::text, ''::text) IS NOT NULL)", name: "chk_oauth_applications_token_auth_method"
   end
 
   create_table "oauth_grants", force: :cascade do |t|
     t.string "access_type", default: "offline", null: false
     t.bigint "account_id", null: false
+    t.datetime "authenticated_at"
+    t.string "client_kind", default: "integration", null: false
     t.string "code"
     t.string "code_challenge"
     t.string "code_challenge_method"
     t.datetime "created_at", null: false
+    t.string "device_name"
     t.datetime "expires_in", null: false
-    t.bigint "household_membership_id", null: false
+    t.bigint "household_membership_id"
     t.datetime "last_used_at"
     t.bigint "oauth_application_id", null: false
-    t.integer "permissions_version", null: false
-    t.bigint "person_id", null: false
+    t.integer "permissions_version"
+    t.bigint "person_id"
     t.string "redirect_uri"
     t.string "refresh_token"
     t.string "refresh_token_hash"
@@ -1028,23 +1054,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
     t.index ["refresh_token_hash"], name: "index_oauth_grants_on_refresh_token_hash", unique: true
     t.index ["token"], name: "index_oauth_grants_on_token", unique: true
     t.index ["token_hash"], name: "index_oauth_grants_on_token_hash", unique: true
-  end
-
-  create_table "notification_events", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.string "event_key", null: false
-    t.string "event_type", null: false
-    t.bigint "household_id", null: false
-    t.jsonb "metadata", default: {}, null: false
-    t.bigint "person_id"
-    t.datetime "sent_at"
-    t.string "skipped_reason"
-    t.datetime "updated_at", null: false
-    t.index ["event_type", "event_key"], name: "index_notification_events_on_event_type_and_event_key", unique: true
-    t.index ["household_id"], name: "index_notification_events_on_household_id"
-    t.index ["id", "household_id"], name: "index_notification_events_on_id_and_household_id", unique: true
-    t.index ["person_id"], name: "index_notification_events_on_person_id"
-    t.index ["sent_at"], name: "index_notification_events_on_sent_at"
+    t.check_constraint "client_kind::text = 'integration'::text AND household_membership_id IS NOT NULL AND person_id IS NOT NULL AND permissions_version IS NOT NULL OR client_kind::text = 'mobile'::text AND household_membership_id IS NULL AND person_id IS NULL AND permissions_version IS NULL AND authenticated_at IS NOT NULL AND last_used_at IS NOT NULL", name: "oauth_grant_authority_boundary"
   end
 
   create_table "people", force: :cascade do |t|
@@ -1071,6 +1081,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
 
   create_table "person_access_grants", force: :cascade do |t|
     t.string "access_level", null: false
+    t.bigint "carer_relationship_id"
     t.datetime "created_at", null: false
     t.datetime "expires_at"
     t.bigint "granted_by_membership_id"
@@ -1081,7 +1092,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
     t.string "relationship_type", null: false
     t.datetime "revoked_at"
     t.datetime "updated_at", null: false
-    t.bigint "carer_relationship_id"
     t.index ["carer_relationship_id", "household_id"], name: "idx_person_access_grants_on_delegation_household"
     t.index ["granted_by_membership_id"], name: "index_person_access_grants_on_granted_by_membership_id"
     t.index ["household_id"], name: "index_person_access_grants_on_household_id"
@@ -1222,7 +1232,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
     t.datetime "expires_at", null: false
     t.bigint "household_id", null: false
     t.string "ip"
-    t.datetime "mfa_verified_at", null: false
+    t.datetime "mfa_verified_at"
     t.bigint "platform_admin_id", null: false
     t.text "reason", null: false
     t.string "request_id"
@@ -1345,33 +1355,33 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
   add_foreign_key "location_memberships", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_location_memberships_person_id_household"
   add_foreign_key "location_memberships", "people", deferrable: :deferred
   add_foreign_key "locations", "households"
-  add_foreign_key "medication_dose_occurrences", "households"
-  add_foreign_key "medication_dose_occurrences", "schedules"
-  add_foreign_key "medication_dose_occurrences", "person_medications"
-  add_foreign_key "medication_dose_occurrences", "medication_takes"
   add_foreign_key "medication_dose_occurrences", "household_memberships", column: "resolved_by_membership_id"
-  add_foreign_key "medication_dose_occurrences", "schedules", column: ["schedule_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dose_occurrence_schedule_id_household"
-  add_foreign_key "medication_dose_occurrences", "person_medications", column: ["person_medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dose_occurrence_person_medication_id_household"
-  add_foreign_key "medication_dose_occurrences", "medication_takes", column: ["medication_take_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dose_occurrence_medication_take_id_household"
   add_foreign_key "medication_dose_occurrences", "household_memberships", column: ["resolved_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dose_occurrence_resolved_by_membership_id_household"
+  add_foreign_key "medication_dose_occurrences", "households"
+  add_foreign_key "medication_dose_occurrences", "medication_takes"
+  add_foreign_key "medication_dose_occurrences", "medication_takes", column: ["medication_take_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dose_occurrence_medication_take_id_household"
+  add_foreign_key "medication_dose_occurrences", "person_medications"
+  add_foreign_key "medication_dose_occurrences", "person_medications", column: ["person_medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dose_occurrence_person_medication_id_household"
+  add_foreign_key "medication_dose_occurrences", "schedules"
+  add_foreign_key "medication_dose_occurrences", "schedules", column: ["schedule_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dose_occurrence_schedule_id_household"
   add_foreign_key "medication_pause_periods", "household_memberships", column: "recorded_by_membership_id"
   add_foreign_key "medication_pause_periods", "household_memberships", column: "resumed_by_membership_id"
-  add_foreign_key "medication_pause_periods", "household_memberships", column: ["recorded_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_med_pause_periods_recorded_actor_household", validate: false
-  add_foreign_key "medication_pause_periods", "household_memberships", column: ["resumed_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_med_pause_periods_resumed_actor_household", validate: false
+  add_foreign_key "medication_pause_periods", "household_memberships", column: ["recorded_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_med_pause_periods_recorded_actor_household"
+  add_foreign_key "medication_pause_periods", "household_memberships", column: ["resumed_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_med_pause_periods_resumed_actor_household"
   add_foreign_key "medication_pause_periods", "households"
   add_foreign_key "medication_pause_periods", "person_medications"
-  add_foreign_key "medication_pause_periods", "person_medications", column: ["person_medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_med_pause_periods_person_medication_household", validate: false
+  add_foreign_key "medication_pause_periods", "person_medications", column: ["person_medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_med_pause_periods_person_medication_household"
   add_foreign_key "medication_pause_periods", "schedules"
-  add_foreign_key "medication_pause_periods", "schedules", column: ["schedule_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_med_pause_periods_schedule_household", validate: false
+  add_foreign_key "medication_pause_periods", "schedules", column: ["schedule_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_med_pause_periods_schedule_household"
   add_foreign_key "medication_review_prompts", "household_memberships", column: "reviewed_by_membership_id", deferrable: :deferred
-  add_foreign_key "medication_review_prompts", "household_memberships", column: ["reviewed_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_review_prompts_reviewer_household", validate: false
+  add_foreign_key "medication_review_prompts", "household_memberships", column: ["reviewed_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_review_prompts_reviewer_household"
   add_foreign_key "medication_review_prompts", "households", deferrable: :deferred
   add_foreign_key "medication_review_prompts", "medication_review_evidence_records", column: "evidence_record_id", deferrable: :deferred
   add_foreign_key "medication_review_prompts", "medications", column: "interacting_medication_id", deferrable: :deferred
   add_foreign_key "medication_review_prompts", "medications", column: "primary_medication_id", deferrable: :deferred
-  add_foreign_key "medication_review_prompts", "medications", column: ["interacting_medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_review_prompts_interacting_medication_household", validate: false
-  add_foreign_key "medication_review_prompts", "medications", column: ["primary_medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_review_prompts_primary_medication_household", validate: false
-  add_foreign_key "medication_review_prompts", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_review_prompts_person_household", validate: false
+  add_foreign_key "medication_review_prompts", "medications", column: ["interacting_medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_review_prompts_interacting_medication_household"
+  add_foreign_key "medication_review_prompts", "medications", column: ["primary_medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_review_prompts_primary_medication_household"
+  add_foreign_key "medication_review_prompts", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_review_prompts_person_household"
   add_foreign_key "medication_review_prompts", "people", deferrable: :deferred
   add_foreign_key "medication_takes", "households"
   add_foreign_key "medication_takes", "locations", column: "taken_from_location_id"
@@ -1382,9 +1392,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
   add_foreign_key "medication_takes", "person_medications", deferrable: :deferred
   add_foreign_key "medication_takes", "schedules", column: ["schedule_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_medication_takes_schedule_id_household"
   add_foreign_key "medication_takes", "schedules", deferrable: :deferred
-  add_foreign_key "medications", "households"
   add_foreign_key "medications", "household_memberships", column: "created_by_membership_id"
   add_foreign_key "medications", "household_memberships", column: ["created_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_medications_created_by_membership_id_household"
+  add_foreign_key "medications", "households"
   add_foreign_key "medications", "locations", column: ["location_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_medications_location_id_household"
   add_foreign_key "medications", "locations", deferrable: :deferred
   add_foreign_key "native_device_tokens", "accounts"
@@ -1400,6 +1410,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
   add_foreign_key "oauth_grants", "accounts"
   add_foreign_key "oauth_grants", "household_memberships"
   add_foreign_key "oauth_grants", "oauth_applications"
+  add_foreign_key "oauth_grants", "oauth_applications", column: ["oauth_application_id", "client_kind"], primary_key: ["id", "client_kind"], name: "oauth_grant_application_kind"
   add_foreign_key "oauth_grants", "people"
   add_foreign_key "people", "accounts", deferrable: :deferred
   add_foreign_key "people", "households"
@@ -1433,363 +1444,4 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
   add_foreign_key "support_access_sessions", "platform_admins"
   add_foreign_key "users", "people", deferrable: :deferred
   add_foreign_key "versions", "households"
-
-  execute <<~SQL
-    CREATE SCHEMA IF NOT EXISTS med_tracker;
-
-    CREATE OR REPLACE FUNCTION med_tracker.current_account_id()
-    RETURNS bigint
-    LANGUAGE sql
-    STABLE
-    AS $$
-      SELECT NULLIF(current_setting('med_tracker.current_account_id', true), '')::bigint;
-    $$;
-
-    CREATE OR REPLACE FUNCTION med_tracker.current_household_id()
-    RETURNS bigint
-    LANGUAGE sql
-    STABLE
-    AS $$
-      SELECT NULLIF(current_setting('med_tracker.current_household_id', true), '')::bigint;
-    $$;
-
-    CREATE OR REPLACE FUNCTION med_tracker.current_membership_id()
-    RETURNS bigint
-    LANGUAGE sql
-    STABLE
-    AS $$
-      SELECT NULLIF(current_setting('med_tracker.current_membership_id', true), '')::bigint;
-    $$;
-
-    CREATE OR REPLACE FUNCTION med_tracker.current_invitation_token_digest()
-    RETURNS text
-    LANGUAGE sql
-    STABLE
-    AS $$
-      SELECT NULLIF(current_setting('med_tracker.current_invitation_token_digest', true), '');
-    $$;
-    DO $role_grant$
-    BEGIN
-      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'med_tracker_app') THEN
-        GRANT EXECUTE ON FUNCTION med_tracker.current_invitation_token_digest() TO med_tracker_app;
-      END IF;
-    END
-    $role_grant$;
-
-    CREATE OR REPLACE FUNCTION med_tracker.purge_medication_takes(p_household_id bigint)
-    RETURNS bigint
-    LANGUAGE plpgsql
-    SECURITY DEFINER
-    SET search_path = pg_catalog
-    AS $$
-    DECLARE
-      v_account_setting text := pg_catalog.current_setting('med_tracker.current_account_id', true);
-      v_household_setting text := pg_catalog.current_setting('med_tracker.current_household_id', true);
-      v_account_id bigint;
-      v_household_id bigint;
-      v_deleted_rows bigint;
-    BEGIN
-      IF v_household_setting IS NULL
-         OR v_household_setting !~ '^[0-9]+$' THEN
-        RAISE EXCEPTION USING
-          ERRCODE = 'MT104',
-          MESSAGE = 'household purge tenant context does not match target';
-      END IF;
-
-      BEGIN
-        v_household_id := v_household_setting::bigint;
-      EXCEPTION
-        WHEN numeric_value_out_of_range OR invalid_text_representation THEN
-          RAISE EXCEPTION USING
-            ERRCODE = 'MT104',
-            MESSAGE = 'household purge tenant context does not match target';
-      END;
-
-      IF v_household_id IS DISTINCT FROM p_household_id THEN
-        RAISE EXCEPTION USING
-          ERRCODE = 'MT104',
-          MESSAGE = 'household purge tenant context does not match target';
-      END IF;
-
-      IF v_account_setting IS NULL
-         OR v_account_setting !~ '^[0-9]+$' THEN
-        RAISE EXCEPTION USING
-          ERRCODE = 'MT105',
-          MESSAGE = 'household purge operator context is invalid';
-      END IF;
-
-      BEGIN
-        v_account_id := v_account_setting::bigint;
-      EXCEPTION
-        WHEN numeric_value_out_of_range OR invalid_text_representation THEN
-          RAISE EXCEPTION USING
-            ERRCODE = 'MT105',
-            MESSAGE = 'household purge operator context is invalid';
-      END;
-
-      IF NOT EXISTS (
-           SELECT 1
-           FROM public.platform_admins
-           WHERE account_id = v_account_id
-             AND status = 'active'
-         ) THEN
-        RAISE EXCEPTION USING
-          ERRCODE = 'MT105',
-          MESSAGE = 'household purge operator context is invalid';
-      END IF;
-
-      PERFORM 1
-      FROM public.households
-      WHERE id = p_household_id
-      FOR UPDATE;
-
-      IF NOT FOUND THEN
-        RAISE EXCEPTION USING
-          ERRCODE = 'MT101',
-          MESSAGE = 'household purge target is invalid';
-      END IF;
-
-      IF NOT EXISTS (
-        SELECT 1
-        FROM public.households
-        WHERE id = p_household_id
-          AND status = 'archived'
-          AND lifecycle_state = 'purging'
-          AND offboarded_at IS NOT NULL
-      ) THEN
-        RAISE EXCEPTION USING
-          ERRCODE = 'MT102',
-          MESSAGE = 'household purge lifecycle is invalid';
-      END IF;
-
-      IF EXISTS (
-        SELECT 1
-        FROM public.household_retention_holds
-        WHERE household_id = p_household_id
-          AND status = 'active'
-      ) THEN
-        RAISE EXCEPTION USING
-          ERRCODE = 'MT103',
-          MESSAGE = 'household purge retention hold is active';
-      END IF;
-
-      PERFORM pg_catalog.set_config(
-        'med_tracker.current_household_id',
-        p_household_id::text,
-        true
-      );
-      PERFORM pg_catalog.set_config(
-        'med_tracker.current_account_id',
-        v_account_setting,
-        true
-      );
-
-      DELETE FROM public.medication_takes
-      WHERE household_id = p_household_id;
-
-      GET DIAGNOSTICS v_deleted_rows = ROW_COUNT;
-
-      PERFORM pg_catalog.set_config(
-        'med_tracker.current_household_id',
-        coalesce(v_household_setting, ''),
-        true
-      );
-      PERFORM pg_catalog.set_config(
-        'med_tracker.current_account_id',
-        coalesce(v_account_setting, ''),
-        true
-      );
-
-      RETURN v_deleted_rows;
-    EXCEPTION
-      WHEN OTHERS THEN
-        PERFORM pg_catalog.set_config(
-          'med_tracker.current_household_id',
-          coalesce(v_household_setting, ''),
-          true
-        );
-        PERFORM pg_catalog.set_config(
-          'med_tracker.current_account_id',
-          coalesce(v_account_setting, ''),
-          true
-        );
-        RAISE;
-    END;
-    $$;
-
-    REVOKE ALL ON FUNCTION med_tracker.purge_medication_takes(bigint) FROM PUBLIC;
-    DO $purge_role_grant$
-    BEGIN
-      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'med_tracker_app') THEN
-        GRANT EXECUTE ON FUNCTION med_tracker.purge_medication_takes(bigint) TO med_tracker_app;
-      END IF;
-    END
-    $purge_role_grant$;
-  SQL
-
-  %w[
-    people
-    locations
-    location_memberships
-    medications
-    dosages
-    schedules
-    person_medications
-    medication_pause_periods
-    medication_dose_occurrences
-    medication_takes
-    notification_preferences
-    health_events
-    health_event_medications
-    notification_events
-    carer_relationships
-    household_memberships
-    person_access_grants
-    household_invitations
-    household_invitation_grants
-    api_change_events
-    api_idempotency_keys
-    api_tombstones
-    medication_review_prompts
-    security_audit_events
-    active_storage_attachments
-    household_exports
-    household_retention_holds
-  ].each do |table_name|
-    quoted_table = quote_table_name(table_name)
-    execute "ALTER TABLE #{quoted_table} ENABLE ROW LEVEL SECURITY;"
-    execute "ALTER TABLE #{quoted_table} FORCE ROW LEVEL SECURITY;"
-    execute "DROP POLICY IF EXISTS household_tenant_isolation ON #{quoted_table};"
-
-    if table_name == 'household_memberships'
-      execute <<~SQL
-        CREATE POLICY household_tenant_isolation ON #{quoted_table}
-        USING (
-          household_id = med_tracker.current_household_id()
-          OR account_id = med_tracker.current_account_id()
-        )
-        WITH CHECK (household_id = med_tracker.current_household_id());
-      SQL
-    elsif table_name == 'household_invitations'
-      execute <<~SQL
-        CREATE POLICY household_tenant_isolation ON #{quoted_table}
-        USING (
-          household_id = med_tracker.current_household_id()
-          OR (
-            token_digest = med_tracker.current_invitation_token_digest()
-            AND accepted_at IS NULL
-            AND revoked_at IS NULL
-            AND expires_at > CURRENT_TIMESTAMP
-          )
-        )
-        WITH CHECK (household_id = med_tracker.current_household_id());
-      SQL
-    else
-      execute <<~SQL
-        CREATE POLICY household_tenant_isolation ON #{quoted_table}
-        USING (household_id = med_tracker.current_household_id())
-        WITH CHECK (household_id = med_tracker.current_household_id());
-      SQL
-    end
-  end
-
-  execute <<~SQL
-    DO $people_account_login_lookup$
-    BEGIN
-      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'med_tracker_app') THEN
-        DROP POLICY IF EXISTS people_account_login_lookup ON people;
-        CREATE POLICY people_account_login_lookup ON people
-        FOR SELECT TO med_tracker_app
-        USING (account_id IS NOT NULL);
-      END IF;
-    END
-    $people_account_login_lookup$;
-  SQL
-
-  execute <<~SQL
-    DO $runtime_role_convergence$
-    DECLARE
-      app_object record;
-      object_type text;
-      login_role text := session_user;
-    BEGIN
-      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'med_tracker_owner')
-         AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'med_tracker_app') THEN
-        IF NOT pg_has_role(login_role, 'med_tracker_owner', 'member') THEN
-          EXECUTE format('GRANT med_tracker_owner TO %I', login_role);
-        END IF;
-
-        IF NOT pg_has_role(login_role, 'med_tracker_app', 'member') THEN
-          EXECUTE format('GRANT med_tracker_app TO %I', login_role);
-        END IF;
-
-        FOR app_object IN
-          SELECT c.relkind, n.nspname, c.relname
-          FROM pg_class c
-          JOIN pg_namespace n ON n.oid = c.relnamespace
-          WHERE n.nspname = 'public'
-            AND c.relkind IN ('r', 'p', 'v', 'm')
-        LOOP
-          object_type := CASE app_object.relkind
-                         WHEN 'v' THEN 'VIEW'
-                         WHEN 'm' THEN 'MATERIALIZED VIEW'
-                         ELSE 'TABLE'
-                         END;
-          EXECUTE format(
-            'ALTER %s %I.%I OWNER TO %I',
-            object_type,
-            app_object.nspname,
-            app_object.relname,
-            'med_tracker_owner'
-          );
-        END LOOP;
-
-        FOR app_object IN
-          SELECT p.oid::regprocedure AS signature
-          FROM pg_proc p
-          JOIN pg_namespace n ON n.oid = p.pronamespace
-          WHERE n.nspname = 'med_tracker'
-        LOOP
-          EXECUTE format('ALTER FUNCTION %s OWNER TO %I', app_object.signature, 'med_tracker_owner');
-        END LOOP;
-
-        EXECUTE format(
-          'GRANT CONNECT ON DATABASE %I TO med_tracker_owner, med_tracker_app',
-          current_database()
-        );
-        GRANT USAGE, CREATE ON SCHEMA public TO med_tracker_owner;
-        GRANT USAGE ON SCHEMA public TO med_tracker_app;
-        GRANT USAGE ON SCHEMA med_tracker TO med_tracker_owner, med_tracker_app;
-        GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO med_tracker_app;
-        GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO med_tracker_owner;
-        GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO med_tracker_app;
-        GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO med_tracker_owner;
-        GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA med_tracker TO med_tracker_owner, med_tracker_app;
-        ALTER DEFAULT PRIVILEGES FOR ROLE med_tracker_owner IN SCHEMA public
-          GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO med_tracker_app;
-        ALTER DEFAULT PRIVILEGES FOR ROLE med_tracker_owner IN SCHEMA public
-          GRANT USAGE, SELECT ON SEQUENCES TO med_tracker_app;
-        ALTER DEFAULT PRIVILEGES FOR ROLE med_tracker_owner IN SCHEMA med_tracker
-          GRANT EXECUTE ON FUNCTIONS TO med_tracker_app;
-      END IF;
-    END
-    $runtime_role_convergence$;
-  SQL
-
-  execute 'DROP POLICY IF EXISTS household_tenant_isolation ON versions;'
-  execute 'ALTER TABLE versions NO FORCE ROW LEVEL SECURITY;'
-  execute 'ALTER TABLE versions DISABLE ROW LEVEL SECURITY;'
-
-  execute <<~SQL
-    DO $audit_verifier_visibility$
-    BEGIN
-      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'med_tracker_audit_verifier') THEN
-        DROP POLICY IF EXISTS audit_verifier_complete_visibility ON security_audit_events;
-        CREATE POLICY audit_verifier_complete_visibility ON security_audit_events
-          FOR SELECT TO med_tracker_audit_verifier
-          USING (true);
-      END IF;
-    END
-    $audit_verifier_visibility$;
-  SQL
 end

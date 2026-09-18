@@ -1,0 +1,309 @@
+- generic [active] [ref=e162]:
+  - complementary [ref=e163]:
+    - link "M MedTracker" [ref=e165] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e166]: M
+      - generic [ref=e167]: MedTracker
+    - button "Open global search" [ref=e168]:
+      - generic [ref=e172]: Search
+      - generic [ref=e173]: Ctrl K
+    - navigation [ref=e174]:
+      - link [ref=e175] [cursor=pointer]:
+        - /url: /households/fixture-household/dashboard
+        - paragraph [ref=e180]: Dashboard
+      - link [ref=e181] [cursor=pointer]:
+        - /url: /households/fixture-household/medications
+        - paragraph [ref=e185]: Inventory
+      - link [ref=e186] [cursor=pointer]:
+        - /url: /households/fixture-household/locations
+        - paragraph [ref=e191]: Locations
+      - link [ref=e192] [cursor=pointer]:
+        - /url: /households/fixture-household/people
+        - paragraph [ref=e199]: People
+      - link [ref=e200] [cursor=pointer]:
+        - /url: /households/fixture-household/medication-finder
+        - paragraph [ref=e205]: Medication Finder
+      - link [ref=e206] [cursor=pointer]:
+        - /url: /households/fixture-household/medicine-reviews
+        - paragraph [ref=e211]: Medicine reviews
+      - link [ref=e212] [cursor=pointer]:
+        - /url: /households/fixture-household/reports
+        - paragraph [ref=e216]: Reports
+      - link [ref=e217] [cursor=pointer]:
+        - /url: /households/fixture-household/admin
+        - paragraph [ref=e222]: Administration
+    - generic [ref=e223]:
+      - link [ref=e224] [cursor=pointer]:
+        - /url: /households/fixture-household/profile
+        - generic "Admin Doe" [ref=e225]: AD
+        - generic [ref=e227]:
+          - paragraph [ref=e228]: Admin Doe
+          - paragraph [ref=e229]: Owner
+      - button "Sign Out" [ref=e231]:
+        - paragraph [ref=e236]: Sign Out
+  - main [ref=e237]:
+    - generic [ref=e239]:
+      - generic [ref=e240]:
+        - generic [ref=e241]:
+          - paragraph [ref=e242]: Manage People
+          - heading "People" [level=1] [ref=e243]
+        - link "New Person" [ref=e244] [cursor=pointer]:
+          - /url: /households/fixture-household/people/new
+      - generic [ref=e245]:
+        - generic [ref=e246]:
+          - generic [ref=e247]:
+            - generic "Child Patient" [ref=e249]: CP
+            - link [ref=e252] [cursor=pointer]:
+              - /url: /households/fixture-household/people/946774001
+              - heading "Child Patient" [level=2] [ref=e253]
+          - generic [ref=e255]:
+            - paragraph [ref=e256]:
+              - strong [ref=e257]: "Born:"
+              - text: September 06, 2021
+            - paragraph [ref=e258]:
+              - strong [ref=e259]: "Age:"
+              - text: "5"
+            - paragraph [ref=e260]:
+              - strong [ref=e261]: "Medications:"
+              - text: 1 active medication
+          - generic [ref=e262]:
+            - link "Add Medication" [ref=e263] [cursor=pointer]:
+              - /url: /households/fixture-household/people/946774001/add_medication
+            - link "View Medications" [ref=e265] [cursor=pointer]:
+              - /url: /households/fixture-household/people/946774001
+        - generic [ref=e266]:
+          - generic [ref=e267]:
+            - generic "Jane Doe" [ref=e269]: JD
+            - link [ref=e272] [cursor=pointer]:
+              - /url: /households/fixture-household/people/980204181
+              - heading "Jane Doe" [level=2] [ref=e273]
+          - generic [ref=e275]:
+            - paragraph [ref=e276]:
+              - strong [ref=e277]: "Born:"
+              - text: January 02, 1980
+            - paragraph [ref=e278]:
+              - strong [ref=e279]: "Age:"
+              - text: "46"
+            - paragraph [ref=e280]:
+              - strong [ref=e281]: "Medications:"
+              - text: 2 active medications
+          - generic [ref=e282]:
+            - link "Add Medication" [ref=e283] [cursor=pointer]:
+              - /url: /households/fixture-household/people/980204181/add_medication
+            - link "View Medications" [ref=e285] [cursor=pointer]:
+              - /url: /households/fixture-household/people/980204181
+        - generic [ref=e286]:
+          - generic [ref=e287]:
+            - generic "John Doe" [ref=e289]: JD
+            - link [ref=e292] [cursor=pointer]:
+              - /url: /households/fixture-household/people/830138774
+              - heading "John Doe" [level=2] [ref=e293]
+          - generic [ref=e295]:
+            - paragraph [ref=e296]:
+              - strong [ref=e297]: "Born:"
+              - text: January 01, 1980
+            - paragraph [ref=e298]:
+              - strong [ref=e299]: "Age:"
+              - text: "46"
+            - paragraph [ref=e300]:
+              - strong [ref=e301]: "Medications:"
+              - text: 4 active medications
+          - generic [ref=e302]:
+            - link "Add Medication" [ref=e303] [cursor=pointer]:
+              - /url: /households/fixture-household/people/830138774/add_medication
+            - link "View Medications" [ref=e305] [cursor=pointer]:
+              - /url: /households/fixture-household/people/830138774
+        - generic [ref=e306]:
+          - generic [ref=e307]:
+            - generic "Bob Smith" [ref=e309]: BS
+            - link [ref=e312] [cursor=pointer]:
+              - /url: /households/fixture-household/people/902541635
+              - heading "Bob Smith" [level=2] [ref=e313]
+          - generic [ref=e315]:
+            - paragraph [ref=e316]:
+              - strong [ref=e317]: "Born:"
+              - text: January 01, 1980
+            - paragraph [ref=e318]:
+              - strong [ref=e319]: "Age:"
+              - text: "46"
+            - paragraph [ref=e320]:
+              - strong [ref=e321]: "Medications:"
+              - text: 3 active medications
+          - generic [ref=e322]:
+            - link "Add Medication" [ref=e323] [cursor=pointer]:
+              - /url: /households/fixture-household/people/902541635/add_medication
+            - link "View Medications" [ref=e325] [cursor=pointer]:
+              - /url: /households/fixture-household/people/902541635
+        - generic [ref=e326]:
+          - generic [ref=e327]:
+            - generic "Dr. Jones" [ref=e329]: DJ
+            - link [ref=e332] [cursor=pointer]:
+              - /url: /households/fixture-household/people/685688462
+              - heading "Dr. Jones" [level=2] [ref=e333]
+          - generic [ref=e335]:
+            - paragraph [ref=e336]:
+              - strong [ref=e337]: "Born:"
+              - text: July 20, 1975
+            - paragraph [ref=e338]:
+              - strong [ref=e339]: "Age:"
+              - text: "51"
+            - paragraph [ref=e340]:
+              - strong [ref=e341]: "Medications:"
+              - text: No active medications
+          - link "Add Medication" [ref=e343] [cursor=pointer]:
+            - /url: /households/fixture-household/people/685688462/add_medication
+        - generic [ref=e344]:
+          - generic [ref=e345]:
+            - generic "Adult Patient" [ref=e347]: AP
+            - link [ref=e350] [cursor=pointer]:
+              - /url: /households/fixture-household/people/861049986
+              - heading "Adult Patient" [level=2] [ref=e351]
+          - generic [ref=e353]:
+            - paragraph [ref=e354]:
+              - strong [ref=e355]: "Born:"
+              - text: March 20, 1990
+            - paragraph [ref=e356]:
+              - strong [ref=e357]: "Age:"
+              - text: "36"
+            - paragraph [ref=e358]:
+              - strong [ref=e359]: "Medications:"
+              - text: 1 active medication
+          - generic [ref=e360]:
+            - link "Add Medication" [ref=e361] [cursor=pointer]:
+              - /url: /households/fixture-household/people/861049986/add_medication
+            - link "View Medications" [ref=e363] [cursor=pointer]:
+              - /url: /households/fixture-household/people/861049986
+        - generic [ref=e364]:
+          - generic [ref=e365]:
+            - generic "Admin Doe" [ref=e367]: AD
+            - link [ref=e370] [cursor=pointer]:
+              - /url: /households/fixture-household/people/135138680
+              - heading "Admin Doe" [level=2] [ref=e371]
+          - generic [ref=e373]:
+            - paragraph [ref=e374]:
+              - strong [ref=e375]: "Born:"
+              - text: January 01, 1980
+            - paragraph [ref=e376]:
+              - strong [ref=e377]: "Age:"
+              - text: "46"
+            - paragraph [ref=e378]:
+              - strong [ref=e379]: "Medications:"
+              - text: No active medications
+          - link "Add Medication" [ref=e381] [cursor=pointer]:
+            - /url: /households/fixture-household/people/135138680/add_medication
+        - generic [ref=e382]:
+          - generic [ref=e383]:
+            - generic "Damacus User" [ref=e385]: DU
+            - link [ref=e388] [cursor=pointer]:
+              - /url: /households/fixture-household/people/315658401
+              - heading "Damacus User" [level=2] [ref=e389]
+          - generic [ref=e391]:
+            - paragraph [ref=e392]:
+              - strong [ref=e393]: "Born:"
+              - text: May 15, 1985
+            - paragraph [ref=e394]:
+              - strong [ref=e395]: "Age:"
+              - text: "41"
+            - paragraph [ref=e396]:
+              - strong [ref=e397]: "Medications:"
+              - text: No active medications
+          - link "Add Medication" [ref=e399] [cursor=pointer]:
+            - /url: /households/fixture-household/people/315658401/add_medication
+        - generic [ref=e400]:
+          - generic [ref=e401]:
+            - generic "Parent Person" [ref=e403]: PP
+            - link [ref=e406] [cursor=pointer]:
+              - /url: /households/fixture-household/people/1003426481
+              - heading "Parent Person" [level=2] [ref=e407]
+          - generic [ref=e409]:
+            - paragraph [ref=e410]:
+              - strong [ref=e411]: "Born:"
+              - text: June 10, 1985
+            - paragraph [ref=e412]:
+              - strong [ref=e413]: "Age:"
+              - text: "41"
+            - paragraph [ref=e414]:
+              - strong [ref=e415]: "Medications:"
+              - text: No active medications
+          - link "Add Medication" [ref=e417] [cursor=pointer]:
+            - /url: /households/fixture-household/people/1003426481/add_medication
+        - generic [ref=e418]:
+          - generic [ref=e419]:
+            - generic "Nurse Smith" [ref=e421]: NS
+            - link [ref=e424] [cursor=pointer]:
+              - /url: /households/fixture-household/people/429651642
+              - heading "Nurse Smith" [level=2] [ref=e425]
+          - generic [ref=e427]:
+            - paragraph [ref=e428]:
+              - strong [ref=e429]: "Born:"
+              - text: March 15, 1985
+            - paragraph [ref=e430]:
+              - strong [ref=e431]: "Age:"
+              - text: "41"
+            - paragraph [ref=e432]:
+              - strong [ref=e433]: "Medications:"
+              - text: No active medications
+          - link "Add Medication" [ref=e435] [cursor=pointer]:
+            - /url: /households/fixture-household/people/429651642/add_medication
+        - generic [ref=e436]:
+          - generic [ref=e437]:
+            - generic "Child User" [ref=e439]: CU
+            - link [ref=e442] [cursor=pointer]:
+              - /url: /households/fixture-household/people/185249127
+              - heading "Child User" [level=2] [ref=e443]
+          - generic [ref=e445]:
+            - paragraph [ref=e446]:
+              - strong [ref=e447]: "Born:"
+              - text: September 06, 2016
+            - paragraph [ref=e448]:
+              - strong [ref=e449]: "Age:"
+              - text: "10"
+            - paragraph [ref=e450]:
+              - strong [ref=e451]: "Medications:"
+              - text: 1 active medication
+          - generic [ref=e452]:
+            - link "Add Medication" [ref=e453] [cursor=pointer]:
+              - /url: /households/fixture-household/people/185249127/add_medication
+            - link "View Medications" [ref=e455] [cursor=pointer]:
+              - /url: /households/fixture-household/people/185249127
+        - generic [ref=e456]:
+          - generic [ref=e457]:
+            - generic [ref=e458]:
+              - generic "One of Five" [ref=e459]: OOF
+              - generic [ref=e461]: Needs Carer
+            - link [ref=e463] [cursor=pointer]:
+              - /url: /households/fixture-household/people/980190962
+              - heading "One of Five" [level=2] [ref=e464]
+          - generic [ref=e466]:
+            - paragraph [ref=e467]:
+              - strong [ref=e468]: "Born:"
+              - text: January 01, 2025
+            - paragraph [ref=e469]:
+              - strong [ref=e470]: "Age:"
+              - text: "1"
+            - paragraph [ref=e471]:
+              - strong [ref=e472]: "Medications:"
+              - text: No active medications
+          - generic [ref=e473]:
+            - link "Add Medication" [ref=e474] [cursor=pointer]:
+              - /url: /households/fixture-household/people/980190962/add_medication
+            - link "Assign Carer" [ref=e476] [cursor=pointer]:
+              - /url: /households/fixture-household/admin/carer_relationships/new?patient_id=980190962
+        - generic [ref=e477]:
+          - generic [ref=e478]:
+            - generic "Carer Person" [ref=e480]: CP
+            - link [ref=e483] [cursor=pointer]:
+              - /url: /households/fixture-household/people/805166922
+              - heading "Carer Person" [level=2] [ref=e484]
+          - generic [ref=e486]:
+            - paragraph [ref=e487]:
+              - strong [ref=e488]: "Born:"
+              - text: August 25, 1982
+            - paragraph [ref=e489]:
+              - strong [ref=e490]: "Age:"
+              - text: "44"
+            - paragraph [ref=e491]:
+              - strong [ref=e492]: "Medications:"
+              - text: No active medications
+          - link "Add Medication" [ref=e494] [cursor=pointer]:
+            - /url: /households/fixture-household/people/805166922/add_medication

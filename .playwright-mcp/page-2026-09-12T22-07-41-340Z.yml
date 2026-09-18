@@ -1,0 +1,155 @@
+- generic [ref=e495]:
+  - complementary [ref=e496]:
+    - link "M MedTracker" [ref=e498] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e499]: M
+      - generic [ref=e500]: MedTracker
+    - button "Open global search" [ref=e501]:
+      - generic [ref=e505]: Search
+      - generic [ref=e506]: Ctrl K
+    - navigation [ref=e507]:
+      - link [ref=e508] [cursor=pointer]:
+        - /url: /households/fixture-household/dashboard
+        - paragraph [ref=e513]: Dashboard
+      - link [ref=e514] [cursor=pointer]:
+        - /url: /households/fixture-household/medications
+        - paragraph [ref=e518]: Inventory
+      - link [ref=e519] [cursor=pointer]:
+        - /url: /households/fixture-household/locations
+        - paragraph [ref=e524]: Locations
+      - link [ref=e525] [cursor=pointer]:
+        - /url: /households/fixture-household/people
+        - paragraph [ref=e532]: People
+      - link [ref=e533] [cursor=pointer]:
+        - /url: /households/fixture-household/medication-finder
+        - paragraph [ref=e538]: Medication Finder
+      - link [ref=e539] [cursor=pointer]:
+        - /url: /households/fixture-household/medicine-reviews
+        - paragraph [ref=e544]: Medicine reviews
+      - link [ref=e545] [cursor=pointer]:
+        - /url: /households/fixture-household/reports
+        - paragraph [ref=e549]: Reports
+      - link [ref=e550] [cursor=pointer]:
+        - /url: /households/fixture-household/admin
+        - paragraph [ref=e555]: Administration
+    - generic [ref=e556]:
+      - link [ref=e557] [cursor=pointer]:
+        - /url: /households/fixture-household/profile
+        - generic "Admin Doe" [ref=e558]: AD
+        - generic [ref=e560]:
+          - paragraph [ref=e561]: Admin Doe
+          - paragraph [ref=e562]: Owner
+      - button "Sign Out" [ref=e564]:
+        - paragraph [ref=e569]: Sign Out
+  - main [ref=e570]:
+    - generic [ref=e572]:
+      - generic [ref=e573]:
+        - generic [ref=e574]:
+          - generic "John Doe" [ref=e575]: JD
+          - generic [ref=e577]:
+            - generic [ref=e578]:
+              - heading "John Doe" [level=1] [ref=e579]
+              - generic [ref=e580]: Adult
+            - paragraph [ref=e581]: "Age: 46"
+        - generic [ref=e582]:
+          - link "Edit Person" [ref=e583] [cursor=pointer]:
+            - /url: /households/fixture-household/people/830138774/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fpeople%2F830138774
+          - link "Back" [ref=e584] [cursor=pointer]:
+            - /url: /households/fixture-household/people
+      - generic [ref=e585]:
+        - generic [ref=e587]:
+          - heading "Medications" [level=2] [ref=e589]
+          - generic [ref=e591]:
+            - generic [ref=e592]:
+              - generic [ref=e593]:
+                - generic [ref=e594]: 80 left
+                - generic [ref=e600]:
+                  - heading "Paracetamol" [level=3] [ref=e601]
+                  - paragraph [ref=e602]: 1000 mg • As needed
+              - generic [ref=e605]:
+                - generic [ref=e606]:
+                  - paragraph [ref=e607]: "Started:"
+                  - paragraph [ref=e608]: Sep 06, 2026
+                - generic [ref=e609]:
+                  - paragraph [ref=e610]: "Ends:"
+                  - paragraph [ref=e611]: Sep 06, 2027
+              - generic [ref=e613]:
+                - button "Log a past dose" [ref=e617]
+                - button "Actions" [ref=e622]
+            - generic [ref=e623]:
+              - generic [ref=e624]:
+                - generic [ref=e625]: 30 left
+                - generic [ref=e631]:
+                  - heading "Movicol Paediatric Plain" [level=3] [ref=e632]
+                  - paragraph [ref=e633]: 1 sachet • Once daily
+              - generic [ref=e636]:
+                - generic [ref=e637]:
+                  - paragraph [ref=e638]: "Started:"
+                  - paragraph [ref=e639]: Sep 06, 2026
+                - generic [ref=e640]:
+                  - paragraph [ref=e641]: "Ends:"
+                  - paragraph [ref=e642]: Sep 06, 2027
+              - generic [ref=e644]:
+                - button "Log a past dose" [ref=e648]
+                - button "Actions" [ref=e653]
+            - generic [ref=e654]:
+              - generic [ref=e655]:
+                - generic [ref=e656]: 80 left
+                - generic [ref=e662]:
+                  - heading "Paracetamol" [level=3] [ref=e663]
+                  - paragraph [ref=e664]: 1000 mg • Twice daily
+              - generic [ref=e667]:
+                - generic [ref=e668]:
+                  - paragraph [ref=e669]: "Started:"
+                  - paragraph [ref=e670]: Sep 06, 2026
+                - generic [ref=e671]:
+                  - paragraph [ref=e672]: "Ends:"
+                  - paragraph [ref=e673]: Sep 06, 2027
+              - generic [ref=e675]:
+                - button "Log a past dose" [ref=e679]
+                - generic [ref=e682]:
+                  - button "Actions" [active] [ref=e684]
+                  - generic [ref=e767]:
+                    - menuitem "Pause schedule" [ref=e768] [cursor=pointer]
+                    - menuitem "Edit" [ref=e773] [cursor=pointer]
+                    - menuitem "Delete" [ref=e780] [cursor=pointer]
+            - generic [ref=e685]:
+              - generic [ref=e686]:
+                - generic [ref=e687]: 40 left
+                - generic [ref=e698]:
+                  - heading "Vitamin D" [level=3] [ref=e699]
+                  - paragraph [ref=e700]: 1000 IU • As needed
+              - generic [ref=e702]:
+                - generic [ref=e703]:
+                  - paragraph [ref=e708]: "Notes:"
+                  - paragraph [ref=e709]: Take with breakfast
+                - generic [ref=e710]:
+                  - paragraph [ref=e715]: "Timing Restrictions:"
+                  - list [ref=e716]:
+                    - listitem [ref=e717]:
+                      - paragraph [ref=e719]: Maximum 1 dose per day
+              - generic [ref=e721]:
+                - button "Log a past dose" [ref=e725]
+                - button "Actions" [ref=e730]
+        - generic [ref=e731]:
+          - generic [ref=e732]:
+            - heading "Profile Overview" [level=2] [ref=e733]
+            - generic [ref=e734]:
+              - generic [ref=e740]:
+                - paragraph [ref=e741]: Date of Birth
+                - paragraph [ref=e742]: January 01, 1980
+              - generic [ref=e748]:
+                - paragraph [ref=e749]: Assigned User
+                - paragraph [ref=e750]: john.doe@example.com
+              - generic [ref=e755]:
+                - paragraph [ref=e756]: Capacity
+                - paragraph [ref=e757]: Has Capacity
+          - generic [ref=e759]:
+            - generic [ref=e760]:
+              - heading "Care Actions" [level=3] [ref=e761]
+              - paragraph [ref=e762]: Update medication plans and schedules.
+            - generic [ref=e763]:
+              - link "Add Medication" [ref=e764] [cursor=pointer]:
+                - /url: /households/fixture-household/people/830138774/add_medication
+              - link "Health events" [ref=e765] [cursor=pointer]:
+                - /url: /households/fixture-household/people/830138774/health_events

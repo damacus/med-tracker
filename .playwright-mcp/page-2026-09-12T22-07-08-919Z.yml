@@ -1,0 +1,88 @@
+- generic [active] [ref=e1]:
+  - complementary [ref=e2]:
+    - link "M MedTracker" [ref=e4] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e5]: M
+      - generic [ref=e6]: MedTracker
+    - button "Open global search" [ref=e7]:
+      - generic [ref=e11]: Search
+      - generic [ref=e12]: Ctrl K
+    - navigation [ref=e13]:
+      - link [ref=e14] [cursor=pointer]:
+        - /url: /households/fixture-household/dashboard
+        - paragraph [ref=e19]: Dashboard
+      - link [ref=e20] [cursor=pointer]:
+        - /url: /households/fixture-household/medications
+        - paragraph [ref=e24]: Inventory
+      - link [ref=e25] [cursor=pointer]:
+        - /url: /households/fixture-household/locations
+        - paragraph [ref=e30]: Locations
+      - link [ref=e31] [cursor=pointer]:
+        - /url: /households/fixture-household/people
+        - paragraph [ref=e38]: People
+      - link [ref=e39] [cursor=pointer]:
+        - /url: /households/fixture-household/medication-finder
+        - paragraph [ref=e44]: Medication Finder
+      - link [ref=e45] [cursor=pointer]:
+        - /url: /households/fixture-household/medicine-reviews
+        - paragraph [ref=e50]: Medicine reviews
+      - link [ref=e51] [cursor=pointer]:
+        - /url: /households/fixture-household/reports
+        - paragraph [ref=e55]: Reports
+      - link [ref=e56] [cursor=pointer]:
+        - /url: /households/fixture-household/admin
+        - paragraph [ref=e61]: Administration
+    - generic [ref=e62]:
+      - link [ref=e63] [cursor=pointer]:
+        - /url: /households/fixture-household/profile
+        - generic "Admin Doe" [ref=e64]: AD
+        - generic [ref=e66]:
+          - paragraph [ref=e67]: Admin Doe
+          - paragraph [ref=e68]: Owner
+      - button "Sign Out" [ref=e70]:
+        - paragraph [ref=e75]: Sign Out
+  - main [ref=e76]:
+    - generic [ref=e78]:
+      - generic [ref=e79]:
+        - generic [ref=e80]:
+          - paragraph [ref=e81]: Saturday, Sep 12
+          - heading "Good evening, Admin" [level=1] [ref=e82]
+        - generic [ref=e83]:
+          - link "Add Person" [ref=e84] [cursor=pointer]:
+            - /url: /households/fixture-household/people/new
+          - link "Add Medication" [ref=e85] [cursor=pointer]:
+            - /url: /households/fixture-household/add_medication
+      - navigation "Dashboard person" [ref=e89]:
+        - group [ref=e91]:
+          - generic "Admin Doe Change person" [ref=e92] [cursor=pointer]:
+            - generic [ref=e93]:
+              - generic [ref=e95]: AD
+              - generic [ref=e96]: Admin Doe
+            - generic [ref=e97]: Change person
+      - generic [ref=e102]:
+        - generic [ref=e105]:
+          - paragraph [ref=e107]: Next Due
+          - generic [ref=e112]: None today
+        - generic [ref=e116]:
+          - paragraph [ref=e118]: Due Now
+          - generic [ref=e122]: "0"
+        - generic [ref=e126]:
+          - paragraph [ref=e128]: Tasks Left
+          - generic [ref=e133]: "0"
+      - generic [ref=e135]:
+        - generic [ref=e137]:
+          - heading "Today's Schedule" [level=2] [ref=e139]
+          - paragraph [ref=e141]: No medications scheduled for today.
+        - generic [ref=e143]:
+          - heading "Stock Inventory" [level=2] [ref=e144]
+          - link "Order Refills" [ref=e147] [cursor=pointer]:
+            - /url: /households/fixture-household/medications
+        - generic [ref=e149]:
+          - heading "Smart Insights" [level=2] [ref=e150]
+          - generic [ref=e152]:
+            - heading "Learning your routine" [level=3] [ref=e156]
+            - paragraph [ref=e157]: Keep logging doses so MedTracker can spot real patterns.
+            - paragraph [ref=e158]: Smart Insights waits for enough evidence before calling anything a pattern.
+            - link "View Full Report" [ref=e160] [cursor=pointer]:
+              - /url: /households/fixture-household/reports#insights
+      - generic [ref=e161]: v0.5.28

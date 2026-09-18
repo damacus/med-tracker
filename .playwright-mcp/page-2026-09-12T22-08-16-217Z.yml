@@ -1,0 +1,336 @@
+- generic [active] [ref=e803]:
+  - complementary [ref=e804]:
+    - link "M MedTracker" [ref=e806] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e807]: M
+      - generic [ref=e808]: MedTracker
+    - button "Open global search" [ref=e809]:
+      - generic [ref=e813]: Search
+      - generic [ref=e814]: Ctrl K
+    - navigation [ref=e815]:
+      - link [ref=e816] [cursor=pointer]:
+        - /url: /households/fixture-household/dashboard
+        - paragraph [ref=e821]: Dashboard
+      - link [ref=e822] [cursor=pointer]:
+        - /url: /households/fixture-household/medications
+        - paragraph [ref=e826]: Inventory
+      - link [ref=e827] [cursor=pointer]:
+        - /url: /households/fixture-household/locations
+        - paragraph [ref=e832]: Locations
+      - link [ref=e833] [cursor=pointer]:
+        - /url: /households/fixture-household/people
+        - paragraph [ref=e840]: People
+      - link [ref=e841] [cursor=pointer]:
+        - /url: /households/fixture-household/medication-finder
+        - paragraph [ref=e846]: Medication Finder
+      - link [ref=e847] [cursor=pointer]:
+        - /url: /households/fixture-household/medicine-reviews
+        - paragraph [ref=e852]: Medicine reviews
+      - link [ref=e853] [cursor=pointer]:
+        - /url: /households/fixture-household/reports
+        - paragraph [ref=e857]: Reports
+      - link [ref=e858] [cursor=pointer]:
+        - /url: /households/fixture-household/admin
+        - paragraph [ref=e863]: Administration
+    - generic [ref=e864]:
+      - link [ref=e865] [cursor=pointer]:
+        - /url: /households/fixture-household/profile
+        - generic "Admin Doe" [ref=e866]: AD
+        - generic [ref=e868]:
+          - paragraph [ref=e869]: Admin Doe
+          - paragraph [ref=e870]: Owner
+      - button "Sign Out" [ref=e872]:
+        - paragraph [ref=e877]: Sign Out
+  - main [ref=e878]:
+    - generic [ref=e880]:
+      - generic [ref=e881]:
+        - generic [ref=e886]:
+          - paragraph [ref=e887]: Your Inventory
+          - heading "Medications" [level=1] [ref=e888]
+        - generic [ref=e889]:
+          - link "Stock check" [ref=e890] [cursor=pointer]:
+            - /url: /households/fixture-household/medications/stock_check
+          - button "Scan stock" [ref=e897]
+          - link "Add medication for someone" [ref=e902] [cursor=pointer]:
+            - /url: /households/fixture-household/add_medication?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications
+          - link "Add Medication" [ref=e906] [cursor=pointer]:
+            - /url: /households/fixture-household/medications/new
+      - generic [ref=e910]:
+        - generic [ref=e912]:
+          - generic [ref=e913]:
+            - text: Location
+            - combobox [ref=e914]:
+              - button "All locations" [ref=e915]
+          - generic [ref=e920]:
+            - text: Category
+            - combobox [ref=e921]:
+              - button "All" [ref=e922]
+        - generic [ref=e927]:
+          - generic [ref=e928]:
+            - generic [ref=e933]:
+              - heading "Aspirin" [level=2] [ref=e934]
+              - generic [ref=e935]: Home
+            - generic [ref=e936]:
+              - paragraph [ref=e937]: Aspirin is used to treat pain, reduce inflammation and lower fever. It can also be taken in low doses to help prevent heart attacks and strokes in high-risk patients.
+              - generic [ref=e939]:
+                - generic [ref=e940]:
+                  - generic [ref=e941]: Inventory Level
+                  - generic [ref=e942]: 25 units
+                - progressbar "Inventory Level" [ref=e943]
+            - generic [ref=e946]:
+              - link "View" [ref=e947] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/195534732
+              - link "Edit medication" [ref=e948] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/195534732/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications
+              - button "Restock" [ref=e954]
+              - button "Delete medication" [ref=e962]
+          - generic [ref=e966]:
+            - generic [ref=e971]:
+              - heading "Calpol Six Plus 250mg/5ml oral suspension (McNeil Products Ltd)" [level=2] [ref=e972]
+              - generic [ref=e973]: Home
+            - generic [ref=e974]:
+              - paragraph [ref=e975]: Calpol is a brand of children's medication that contains paracetamol. It is used to relieve pain and reduce fever in children.
+              - generic [ref=e977]:
+                - generic [ref=e978]:
+                  - generic [ref=e979]: Inventory Level
+                  - generic [ref=e980]: 35 ml
+                - progressbar "Inventory Level" [ref=e981]
+            - generic [ref=e984]:
+              - link "View" [ref=e985] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/412153946
+              - link "Edit medication" [ref=e986] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/412153946/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications
+              - button "Restock" [ref=e992]
+              - button "Delete medication" [ref=e1000]
+          - generic [ref=e1004]:
+            - generic [ref=e1009]:
+              - heading "Dapagliflozin" [level=2] [ref=e1010]
+              - generic [ref=e1011]: Home
+            - generic [ref=e1012]:
+              - paragraph [ref=e1013]: Dapagliflozin is used to treat type 2 diabetes. It works by helping the kidneys remove glucose from the body through urine, lowering blood sugar levels.
+              - generic [ref=e1015]:
+                - generic [ref=e1016]:
+                  - generic [ref=e1017]: Inventory Level
+                  - generic [ref=e1018]: 30 units
+                - progressbar "Inventory Level" [ref=e1019]
+            - generic [ref=e1022]:
+              - link "View" [ref=e1023] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/903830360
+              - link "Edit medication" [ref=e1024] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/903830360/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications
+              - button "Restock" [ref=e1030]
+              - button "Delete medication" [ref=e1038]
+          - generic [ref=e1042]:
+            - generic [ref=e1047]:
+              - heading "Duloxetine" [level=2] [ref=e1048]
+              - generic [ref=e1049]: Home
+            - generic [ref=e1050]:
+              - paragraph [ref=e1051]: Duloxetine is used to treat fibromyalgia, depression, anxiety, and nerve pain. It works by increasing the activity of serotonin and norepinephrine in the nervous system.
+              - generic [ref=e1053]:
+                - generic [ref=e1054]:
+                  - generic [ref=e1055]: Inventory Level
+                  - generic [ref=e1056]: 120 units
+                - progressbar "Inventory Level" [ref=e1057]
+            - generic [ref=e1060]:
+              - link "View" [ref=e1061] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/676765719
+              - link "Edit medication" [ref=e1062] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/676765719/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications
+              - button "Restock" [ref=e1068]
+              - button "Delete medication" [ref=e1076]
+          - generic [ref=e1080]:
+            - generic [ref=e1085]:
+              - heading "Gabapentin" [level=2] [ref=e1086]
+              - generic [ref=e1087]: Home
+            - generic [ref=e1088]:
+              - paragraph [ref=e1089]: Gabapentin is used to treat nerve pain and certain types of seizures. It works by affecting chemicals and nerves in the body that are involved in the cause of seizures and some types of pain.
+              - generic [ref=e1091]:
+                - generic [ref=e1092]:
+                  - generic [ref=e1093]: Inventory Level
+                  - generic [ref=e1094]: 90 units
+                - progressbar "Inventory Level" [ref=e1095]
+            - generic [ref=e1098]:
+              - link "View" [ref=e1099] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/677522433
+              - link "Edit medication" [ref=e1100] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/677522433/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications
+              - button "Restock" [ref=e1106]
+              - button "Delete medication" [ref=e1114]
+          - generic [ref=e1118]:
+            - generic [ref=e1123]:
+              - heading "Ibuprofen" [level=2] [ref=e1124]
+              - generic [ref=e1125]: Home
+            - generic [ref=e1126]:
+              - paragraph [ref=e1127]: Ibuprofen is a nonsteroidal anti-inflammatory drug (NSAID) used for treating pain, fever, and inflammation.
+              - generic [ref=e1129]:
+                - generic [ref=e1130]:
+                  - generic [ref=e1131]: Inventory Level
+                  - generic [ref=e1132]: 30 units
+                - progressbar "Inventory Level" [ref=e1133]
+            - generic [ref=e1136]:
+              - link "View" [ref=e1137] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/804800015
+              - link "Edit medication" [ref=e1138] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/804800015/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications
+              - button "Restock" [ref=e1144]
+              - button "Delete medication" [ref=e1152]
+          - generic [ref=e1156]:
+            - generic [ref=e1161]:
+              - heading "Mebeverine" [level=2] [ref=e1162]
+              - generic [ref=e1163]: Home
+            - generic [ref=e1164]:
+              - paragraph [ref=e1165]: Mebeverine is used to treat symptoms of irritable bowel syndrome (IBS), including stomach cramps, pain, and spasms. It works by relaxing the muscles in the wall of the gut.
+              - generic [ref=e1167]:
+                - generic [ref=e1168]:
+                  - generic [ref=e1169]: Inventory Level
+                  - generic [ref=e1170]: 60 units
+                - progressbar "Inventory Level" [ref=e1171]
+            - generic [ref=e1174]:
+              - link "View" [ref=e1175] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/370719359
+              - link "Edit medication" [ref=e1176] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/370719359/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications
+              - button "Restock" [ref=e1182]
+              - button "Delete medication" [ref=e1190]
+          - generic [ref=e1194]:
+            - generic [ref=e1199]:
+              - heading "Metformin" [level=2] [ref=e1200]
+              - generic [ref=e1201]: Home
+            - generic [ref=e1202]:
+              - paragraph [ref=e1203]: Metformin is used to treat type 2 diabetes. It helps control blood sugar levels and is often prescribed alongside diet and exercise changes.
+              - generic [ref=e1205]:
+                - generic [ref=e1206]:
+                  - generic [ref=e1207]: Inventory Level
+                  - generic [ref=e1208]: 60 units
+                - progressbar "Inventory Level" [ref=e1209]
+            - generic [ref=e1212]:
+              - link "View" [ref=e1213] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/298485942
+              - link "Edit medication" [ref=e1214] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/298485942/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications
+              - button "Restock" [ref=e1220]
+              - button "Delete medication" [ref=e1228]
+          - generic [ref=e1232]:
+            - generic [ref=e1237]:
+              - heading "Movicol Paediatric Plain" [level=2] [ref=e1238]
+              - generic [ref=e1239]: Home
+            - generic [ref=e1242]:
+              - generic [ref=e1243]:
+                - generic [ref=e1244]: Inventory Level
+                - generic [ref=e1245]: 30 units
+              - progressbar "Inventory Level" [ref=e1246]
+            - generic [ref=e1249]:
+              - link "View" [ref=e1250] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/316919121
+              - link "Edit medication" [ref=e1251] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/316919121/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications
+              - button "Restock" [ref=e1257]
+              - button "Delete medication" [ref=e1265]
+          - generic [ref=e1269]:
+            - generic [ref=e1274]:
+              - heading "Omeprazole" [level=2] [ref=e1275]
+              - generic [ref=e1276]: Home
+            - generic [ref=e1277]:
+              - paragraph [ref=e1278]: Omeprazole is a proton pump inhibitor (PPI) used to reduce the amount of acid produced in the stomach. It is used to treat acid reflux, heartburn, and stomach ulcers.
+              - generic [ref=e1280]:
+                - generic [ref=e1281]:
+                  - generic [ref=e1282]: Inventory Level
+                  - generic [ref=e1283]: 30 units
+                - progressbar "Inventory Level" [ref=e1284]
+            - generic [ref=e1287]:
+              - link "View" [ref=e1288] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/185114659
+              - link "Edit medication" [ref=e1289] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/185114659/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications
+              - button "Restock" [ref=e1295]
+              - button "Delete medication" [ref=e1303]
+          - generic [ref=e1307]:
+            - generic [ref=e1312]:
+              - heading "Paracetamol" [level=2] [ref=e1313]
+              - generic [ref=e1314]: Home
+            - generic [ref=e1315]:
+              - paragraph [ref=e1316]: Paracetamol is a common painkiller for treating aches and pains, as well as symptoms of colds and flu. It can also be used to reduce a high temperature and treat inflammation.
+              - generic [ref=e1318]:
+                - generic [ref=e1319]:
+                  - generic [ref=e1320]: Inventory Level
+                  - generic [ref=e1321]: 80 units
+                - progressbar "Inventory Level" [ref=e1322]
+            - generic [ref=e1325]:
+              - link "View" [ref=e1326] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/576052154
+              - link "Edit medication" [ref=e1327] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/576052154/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications
+              - button "Restock" [ref=e1333]
+              - button "Delete medication" [ref=e1341]
+          - generic [ref=e1345]:
+            - generic [ref=e1350]:
+              - heading "Simvastatin" [level=2] [ref=e1351]
+              - generic [ref=e1352]: Home
+            - generic [ref=e1353]:
+              - paragraph [ref=e1354]: Simvastatin is used to lower cholesterol and triglycerides in the blood. It helps reduce the risk of heart disease and cardiovascular events.
+              - generic [ref=e1356]:
+                - generic [ref=e1357]:
+                  - generic [ref=e1358]: Inventory Level
+                  - generic [ref=e1359]: 30 units
+                - progressbar "Inventory Level" [ref=e1360]
+            - generic [ref=e1363]:
+              - link "View" [ref=e1364] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/81061420
+              - link "Edit medication" [ref=e1365] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/81061420/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications
+              - button "Restock" [ref=e1371]
+              - button "Delete medication" [ref=e1379]
+          - generic [ref=e1383]:
+            - generic [ref=e1388]:
+              - heading "Sitagliptin" [level=2] [ref=e1389]
+              - generic [ref=e1390]: Home
+            - generic [ref=e1391]:
+              - paragraph [ref=e1392]: Sitagliptin is used to treat type 2 diabetes. It works by increasing levels of natural substances that lower blood sugar when it is high, especially after meals.
+              - generic [ref=e1394]:
+                - generic [ref=e1395]:
+                  - generic [ref=e1396]: Inventory Level
+                  - generic [ref=e1397]: 30 units
+                - progressbar "Inventory Level" [ref=e1398]
+            - generic [ref=e1401]:
+              - link "View" [ref=e1402] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/323800207
+              - link "Edit medication" [ref=e1403] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/323800207/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications
+              - button "Restock" [ref=e1409]
+              - button "Delete medication" [ref=e1417]
+          - generic [ref=e1421]:
+            - generic [ref=e1426]:
+              - heading "Vitamin C" [level=2] [ref=e1427]
+              - generic [ref=e1428]: Home
+            - generic [ref=e1429]:
+              - paragraph [ref=e1430]: Vitamin C is an essential nutrient that supports immune function and acts as an antioxidant.
+              - generic [ref=e1432]:
+                - generic [ref=e1433]:
+                  - generic [ref=e1434]: Inventory Level
+                  - generic [ref=e1435]: 60 units
+                - progressbar "Inventory Level" [ref=e1436]
+            - generic [ref=e1439]:
+              - link "View" [ref=e1440] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/1036427651
+              - link "Edit medication" [ref=e1441] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/1036427651/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications
+              - button "Restock" [ref=e1447]
+              - button "Delete medication" [ref=e1455]
+          - generic [ref=e1459]:
+            - generic [ref=e1469]:
+              - heading "Vitamin D" [level=2] [ref=e1470]
+              - generic [ref=e1471]: Home
+            - generic [ref=e1472]:
+              - paragraph [ref=e1473]: Vitamin D helps regulate the amount of calcium and phosphate in the body. These nutrients are needed to keep bones, teeth and muscles healthy.
+              - generic [ref=e1475]:
+                - generic [ref=e1476]:
+                  - generic [ref=e1477]: Inventory Level
+                  - generic [ref=e1478]: 40 units
+                - progressbar "Inventory Level" [ref=e1479]
+            - generic [ref=e1482]:
+              - link "View" [ref=e1483] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/597832740
+              - link "Edit medication" [ref=e1484] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/597832740/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications
+              - button "Restock" [ref=e1490]
+              - button "Delete medication" [ref=e1498]

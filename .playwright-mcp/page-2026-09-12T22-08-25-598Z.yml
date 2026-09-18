@@ -1,0 +1,134 @@
+- generic [active] [ref=e1502]:
+  - complementary [ref=e1503]:
+    - link "M MedTracker" [ref=e1505] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e1506]: M
+      - generic [ref=e1507]: MedTracker
+    - button "Open global search" [ref=e1508]:
+      - generic [ref=e1512]: Search
+      - generic [ref=e1513]: Ctrl K
+    - navigation [ref=e1514]:
+      - link [ref=e1515] [cursor=pointer]:
+        - /url: /households/fixture-household/dashboard
+        - paragraph [ref=e1520]: Dashboard
+      - link [ref=e1521] [cursor=pointer]:
+        - /url: /households/fixture-household/medications
+        - paragraph [ref=e1525]: Inventory
+      - link [ref=e1526] [cursor=pointer]:
+        - /url: /households/fixture-household/locations
+        - paragraph [ref=e1531]: Locations
+      - link [ref=e1532] [cursor=pointer]:
+        - /url: /households/fixture-household/people
+        - paragraph [ref=e1539]: People
+      - link [ref=e1540] [cursor=pointer]:
+        - /url: /households/fixture-household/medication-finder
+        - paragraph [ref=e1545]: Medication Finder
+      - link [ref=e1546] [cursor=pointer]:
+        - /url: /households/fixture-household/medicine-reviews
+        - paragraph [ref=e1551]: Medicine reviews
+      - link [ref=e1552] [cursor=pointer]:
+        - /url: /households/fixture-household/reports
+        - paragraph [ref=e1556]: Reports
+      - link [ref=e1557] [cursor=pointer]:
+        - /url: /households/fixture-household/admin
+        - paragraph [ref=e1562]: Administration
+    - generic [ref=e1563]:
+      - link [ref=e1564] [cursor=pointer]:
+        - /url: /households/fixture-household/profile
+        - generic "Admin Doe" [ref=e1565]: AD
+        - generic [ref=e1567]:
+          - paragraph [ref=e1568]: Admin Doe
+          - paragraph [ref=e1569]: Owner
+      - button "Sign Out" [ref=e1571]:
+        - paragraph [ref=e1576]: Sign Out
+  - main [ref=e1577]:
+    - generic [ref=e1579]:
+      - generic [ref=e1580]:
+        - generic [ref=e1585]:
+          - paragraph [ref=e1586]: Medication Profile
+          - heading "Paracetamol" [level=1] [ref=e1587]
+          - paragraph [ref=e1592]: Home
+        - generic [ref=e1593]:
+          - link "Edit Details" [ref=e1594] [cursor=pointer]:
+            - /url: /households/fixture-household/medications/576052154/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications%2F576052154
+          - link "Inventory" [ref=e1598] [cursor=pointer]:
+            - /url: /households/fixture-household/medications
+      - generic [ref=e1599]:
+        - generic [ref=e1600]:
+          - generic [ref=e1601]:
+            - heading "Overview" [level=2] [ref=e1602]
+            - paragraph [ref=e1604]: Paracetamol is a common painkiller for treating aches and pains, as well as symptoms of colds and flu. It can also be used to reduce a high temperature and treat inflammation.
+          - generic [ref=e1605]:
+            - heading "Safety Warnings" [level=2] [ref=e1609]
+            - paragraph [ref=e1611]: Do not exceed the recommended dose. If symptoms persist for more than 3 days, consult your doctor. Contains paracetamol - do not use with other paracetamol-containing products.
+          - generic [ref=e1612]:
+            - generic [ref=e1613]:
+              - heading "Dosages" [level=3] [ref=e1614]
+              - link "Add Dosage" [ref=e1615] [cursor=pointer]:
+                - /url: /households/fixture-household/medications/576052154/edit?add_dosage=true&return_to=%2Fhouseholds%2Ffixture-household%2Fmedications%2F576052154
+            - generic [ref=e1616]:
+              - generic [ref=e1617]:
+                - generic [ref=e1618]:
+                  - generic [ref=e1619]:
+                    - generic [ref=e1620]: 250 mg
+                    - generic [ref=e1621]: Every 4-6 hours
+                  - generic [ref=e1622]: Max 4/cycle · Min 4.0h apart
+                - link "Edit" [ref=e1624] [cursor=pointer]:
+                  - /url: /households/fixture-household/medications/576052154/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications%2F576052154
+              - generic [ref=e1625]:
+                - generic [ref=e1626]:
+                  - generic [ref=e1627]:
+                    - generic [ref=e1628]: 500 mg
+                    - generic [ref=e1629]: As needed
+                  - generic [ref=e1630]: Max 4/cycle · Min 4.0h apart
+                - link "Edit" [ref=e1632] [cursor=pointer]:
+                  - /url: /households/fixture-household/medications/576052154/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications%2F576052154
+              - generic [ref=e1633]:
+                - generic [ref=e1634]:
+                  - generic [ref=e1635]:
+                    - generic [ref=e1636]: 1000 mg
+                    - generic [ref=e1637]: As needed
+                  - generic [ref=e1638]: Max 4/cycle · Min 4.0h apart
+                - link "Edit" [ref=e1640] [cursor=pointer]:
+                  - /url: /households/fixture-household/medications/576052154/edit?return_to=%2Fhouseholds%2Ffixture-household%2Fmedications%2F576052154
+        - generic [ref=e1641]:
+          - generic [ref=e1642]:
+            - heading "Inventory Status" [level=3] [ref=e1643]
+            - generic [ref=e1644]:
+              - generic [ref=e1645]:
+                - generic [ref=e1646]: "80"
+                - paragraph [ref=e1647]: units remaining
+              - generic [ref=e1648]:
+                - progressbar "Supply Level" [ref=e1649]
+                - generic [ref=e1651]:
+                  - generic [ref=e1652]: Supply Level
+                  - generic [ref=e1653]: reorder at 10.0
+              - generic [ref=e1654]:
+                - paragraph [ref=e1658]: Supply will be low in 5 days
+                - paragraph [ref=e1662]: Supply will be empty in 6 days
+          - generic [ref=e1663]:
+            - heading "Dose" [level=3] [ref=e1664]
+            - generic [ref=e1665]: 500.0mg
+            - generic [ref=e1677]:
+              - paragraph [ref=e1678]: Reorder At
+              - paragraph [ref=e1679]: 10 units
+          - generic [ref=e1680]:
+            - link "Schedule" [ref=e1681] [cursor=pointer]:
+              - /url: /households/fixture-household/add_medication?medication_id=576052154
+            - link "Log" [ref=e1684] [cursor=pointer]:
+              - /url: /households/fixture-household/medications/576052154/administration
+            - generic [ref=e1688]:
+              - generic [ref=e1689]:
+                - text: Supplier
+                - textbox "Supplier" [ref=e1690]
+              - generic [ref=e1691]:
+                - text: Quantity
+                - spinbutton "Quantity" [ref=e1692]
+              - generic [ref=e1693]:
+                - text: Expected arrival
+                - textbox "Expected arrival" [ref=e1694]
+              - button "Order" [ref=e1695]
+            - button "Restock" [ref=e1702]
+            - button "Adjust Inventory" [ref=e1712]
+            - link "Remove stock" [ref=e1717] [cursor=pointer]:
+              - /url: /households/fixture-household/medications/576052154/stock-removals/new
