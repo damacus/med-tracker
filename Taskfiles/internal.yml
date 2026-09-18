@@ -25,6 +25,7 @@ tasks:
   run:
     desc: Run arbitrary command in Docker container
     internal: true
+    run: always
     requires:
       vars: [ENVIRONMENT, COMMAND]
     vars:
@@ -42,6 +43,7 @@ tasks:
     desc: Build Docker images
     silent: false
     internal: true
+    run: always
     requires:
       vars: [ENVIRONMENT]
     vars:
@@ -59,6 +61,7 @@ tasks:
   up:
     desc: Start Docker containers
     internal: true
+    run: always
     requires:
       vars: [ENVIRONMENT]
     vars:
@@ -77,6 +80,7 @@ tasks:
   stop:
     desc: Stop and remove Docker containers
     internal: true
+    run: always
     requires:
       vars: [ENVIRONMENT]
     vars:
@@ -103,6 +107,7 @@ tasks:
   up-db:
     desc: Start database container only
     internal: true
+    run: always
     requires:
       vars: [ENVIRONMENT]
     vars:
@@ -114,6 +119,7 @@ tasks:
   db-migrate:
     desc: Run Rails migrations
     internal: true
+    run: always
     requires:
       vars: [ENVIRONMENT]
     vars:
@@ -127,6 +133,7 @@ tasks:
   logs:
     desc: Follow container logs
     internal: true
+    run: always
     requires:
       vars: [ENVIRONMENT]
     vars:
@@ -138,6 +145,7 @@ tasks:
   ps:
     desc: Get current status of Docker Compose Stack
     internal: true
+    run: always
     requires:
       vars: [ENVIRONMENT]
     vars:
@@ -154,6 +162,7 @@ tasks:
       Loads data from db/seeds.rb
       Example: task internal:seed ENVIRONMENT=test
     internal: true
+    run: always
     requires:
       vars: [ENVIRONMENT]
     cmds:
@@ -167,6 +176,7 @@ tasks:
   port:
     desc: Get port of running container
     internal: false
+    run: always
     requires:
       vars: [ENVIRONMENT]
     vars:
@@ -177,6 +187,7 @@ tasks:
   open-ui:
     desc: Open WebUI
     internal: true
+    run: always
     requires:
       vars: [ENVIRONMENT]
     cmds:
