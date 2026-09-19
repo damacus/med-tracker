@@ -1,8 +1,0 @@
-<% content_for :title, "New Person" %>
-
-<h1>New Person</h1>
-<%= render "form", person: @person %>
-
-<%= turbo_stream.replace "modal" do %>
-  <%= render Components::People::FormView.new(person: @person) %>
-<% end %>
