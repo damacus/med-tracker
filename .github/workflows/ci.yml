@@ -20,7 +20,6 @@ jobs:
     name: Classify Changes
     outputs:
       app: ${{ steps.filter.outputs.rails }}
-      rails: ${{ steps.filter.outputs.rails }}
       rust: ${{ steps.filter.outputs.rust }}
       docs: ${{ steps.filter.outputs.docs }}
       markdown: ${{ steps.filter.outputs.markdown }}
