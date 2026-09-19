@@ -1,3 +1,4 @@
+use serde::Serialize;
 use serde_json::Value;
 
 use crate::client::ApiClient;
@@ -46,6 +47,23 @@ impl ApiClient {
             household_id,
             kind.path_segment()
         ))
+        .await
+    }
+
+    pub async fn create_resource<B: Serialize + ?Sized>(
+        &self,
+        household_id: &str,
+        kind: ResourceKind,
+        body: &B,
+    ) -> Result<Value, ApiError> {
+        self.post_json_data(
+            &format!(
+                "/api/v1/households/{}/{}",
+                household_id,
+                kind.path_segment()
+            ),
+            body,
+        )
         .await
     }
 }
