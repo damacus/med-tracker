@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { classify, policy } from '../classify.mjs';
 import { evaluate } from '../gate.mjs';
@@ -9,6 +10,16 @@ function needsFor(suite) {
   for (const job of policy.jobs[suite]) jobs[job] = { result: 'success' };
   return { changes: { result: 'success', outputs }, ...jobs };
 }
+
+test('workflow exports every selection required by the gate', () => {
+  const workflow = readFileSync(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const outputBlock = workflow.match(/\n  changes:\n[\s\S]*?\n    outputs:\n(?<outputs>(?:      [^\n]+\n)+)    steps:/)?.groups?.outputs;
+  assert.ok(outputBlock, 'changes job outputs were not found');
+
+  const outputs = new Set([...outputBlock.matchAll(/^      ([a-z_]+):/gm)].map(match => match[1]));
+  const missingOutputs = Object.keys(policy.jobs).filter(suite => !outputs.has(suite));
+  assert.deepEqual(missingOutputs, []);
+});
 
 test('UI changes select Lighthouse while model changes select only Rails', () => {
   assert.equal(classify(['app/components/dashboard.rb']).selected.lighthouse, true);

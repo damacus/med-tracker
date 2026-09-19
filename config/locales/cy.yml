@@ -37,7 +37,6 @@ cy:
       changed_submission: "Defnyddiwyd y cyflwyniad hwn eisoes gyda manylion gwahanol."
   offline:
     record_access_required: Nid oes gennych ganiatâd i gofnodi'r dos hwn.
-  hello: Helo byd
   ruby_ui:
     common:
       close: Cau
@@ -1152,14 +1151,6 @@ cy:
       success:
         one: Diweddarwyd y cyflenwad sy'n weddill ar gyfer %{count} meddyginiaeth.
         other: Diweddarwyd y cyflenwad sy'n weddill ar gyfer %{count} meddyginiaethau.
-  passwords:
-    reset_sent: Anfonwyd cyfarwyddiadau ailosod cyfrinair (os oes defnyddiwr gyda'r
-      cyfeiriad e-bost hwnnw).
-    reset_success: Mae'r cyfrinair wedi'i ailosod.
-    mismatch: Nid oedd y cyfrineiriau'n cyfateb.
-    invalid_token: Mae'r ddolen ailosod cyfrinair yn annilys neu wedi dod i ben.
-    mailer:
-      subject: Ailosod eich cyfrinair
   people:
     created: Crëwyd y person yn llwyddiannus.
     updated: Diweddarwyd y person yn llwyddiannus.
@@ -1362,10 +1353,6 @@ cy:
     created: Ychwanegwyd y dos yn llwyddiannus.
     updated: Diweddarwyd y dos yn llwyddiannus.
     deleted: Tynnwyd y dos yn llwyddiannus.
-    new:
-      title: Ychwanegu Dos
-    edit:
-      title: Golygu Dos
     form:
       amount: Swm
       unit: Uned
@@ -1760,9 +1747,6 @@ cy:
     cannot_deactivate_self: Ni allwch ddadactifadu eich cyfrif eich hun.
     owner_deactivation_rejected: Dim ond perchennog cartref arall all ddadactifadu
       cyfrif perchennog tra bod defnyddiwr perchennog gweithredol arall yn parhau.
-  webauthn:
-    passkey_removed: Allwedd mynediad wedi'i dynnu'n llwyddiannus
-    passkey_registered: Allwedd mynediad wedi'i chofrestru'n llwyddiannus
   layouts:
     mailer:
       footer_notice: Anfonwyd yr e-bost hwn oherwydd bod gennych gyfrif gyda ni.
@@ -1906,7 +1890,6 @@ cy:
       email_placeholder: e.g., jane@example.com
     medications:
       inventory_management: Rheoli Rhestr Eiddo
-      dosage_and_supply: Dos a Chyflenwad
       name: Enw
       name_placeholder: e.e., Parasetamol
       friendly_name: Enw arddangos
@@ -2128,33 +2111,9 @@ cy:
       frequency: Amlder
       end_date: Dyddiad Gorffen
       actions: Gweithredoedd
-    person_schedule:
-      age: Oedran
-      dosage: Dos
-      frequency: Amlder
-      ends: Yn gorffen
-      out_of_stock: Allan o Stoc
-      on_cooldown: Ar seibiant
-      take_now: Cymerwch Nawr
-      delete_confirmation: Ydych chi'n sicr eich bod am ddileu'r amserlen hon ar gyfer
-        %{medication}? Ni all y weithred hon gael ei dadwneud.
-    schedule_card:
-      dosage: Dos
-      remaining_supply: Cyflenwad sy'n weddill
-      frequency: Amlder
-      ends: Yn gorffen
-    quick_stats:
-      title: Ystadegau Cyflym
-      people: Pobl
-      active_schedules: Amserlenni gweithredol
     delete_confirmation:
-      delete: Dileu
-      delete_schedule: Dileu Trwyddedriad?
-      are_you_sure: Ydych chi'n sicr eich bod am dileu %{medication} ar gyfer %{person}?
-        Ni all y weithred hon gael ei dadwneud.
       cancel: Canslo
     quick_actions:
-      title: Gweithredoedd Cyflym
       add_medication: Ychwanegu Meddyginiaeth
       add_person: Ychwanegu Person
   barcode_scanner:
@@ -2469,18 +2428,6 @@ cy:
         metric_label: Adolygu
         metric_value: Amserlen
   notification_settings:
-    title: Gosodiadau Hysbysiadau
-    description: Rheoli eich hysbysiadau atgoffa meddyginiaeth.
-    browser:
-      title: Hysbysiadau Porwr
-      status: Wrthi'n gwirio statws hysbysiadau...
-      enable: Galluogi Hysbysiadau
-      disable: Analluogi Hysbysiadau
-      test: Anfon Hysbysiad Prawf
-    reminders:
-      enable: Galluogi Atgoffa
-      description: Anfon atgofion meddyginiaeth ar amseroedd a drefnwyd.
-      title: Amseroedd Atgoffa
     categories:
       title: Categorïau Hysbysiadau
       dose_due_enabled:
@@ -2495,14 +2442,6 @@ cy:
       private_text_enabled:
         title: Cynnwys Hysbysiad Preifat
         description: Cuddio gwybodaeth sensitif fel enwau meddyginiaethau mewn hysbysiadau.
-    period_labels:
-      morning: Bore
-      afternoon: Prynhawn
-      evening: Noswaith
-      night: Nos
-    actions:
-      cancel: Canslo
-      save: Cadw Gosodiadau
   invitations:
     accept:
       title: Cwblhewch Eich Cyfrif

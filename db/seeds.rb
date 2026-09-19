@@ -4,6 +4,24 @@
 # development, test). The code here should be idempotent so that it can be executed at any point in every environment.
 # The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
 
+seeded_at = Time.current
+android_client_ids = %w[io.damacus.medtracker io.damacus.medtracker.debug io.damacus.medtracker.staging]
+OauthApplication.insert_all(
+  android_client_ids.map do |client_id|
+    {
+      name: 'MedTracker Android',
+      client_id:,
+      redirect_uri: "#{client_id}:/oauth2redirect",
+      scopes: 'medtracker offline_access',
+      client_kind: 'mobile',
+      token_endpoint_auth_method: 'none',
+      created_at: seeded_at,
+      updated_at: seeded_at
+    }
+  end,
+  unique_by: :index_oauth_applications_on_client_id
+)
+
 # Seed reference medicine data in all environments
 if Rails.env.local?
   PaperTrail.request(enabled: false) do

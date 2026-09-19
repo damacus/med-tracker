@@ -37,7 +37,6 @@ ga:
       changed_submission: "Úsáideadh an t-aighneacht seo cheana le sonraí éagsúla."
   offline:
     record_access_required: Níl cead agat an dáileog seo a thaifeadadh.
-  hello: Dia dhuit an domhan
   ruby_ui:
     common:
       close: Dún
@@ -1156,14 +1155,6 @@ ga:
       success:
         one: Nuashonraíodh an soláthar atá fágtha do %{count} leigheas.
         other: Nuashonraíodh an soláthar atá fágtha do %{count} leigheasanna.
-  passwords:
-    reset_sent: Seoladh treoracha athshocraithe focal faire (más ann do úsáideoir
-      leis an seoladh ríomhphoist sin).
-    reset_success: Athshocraíodh an focal faire.
-    mismatch: Níor tháinig na focail faire le chéile.
-    invalid_token: Tá an nasc athshocraithe focal faire neamhbhailí nó imithe as feidhm.
-    mailer:
-      subject: Athsocraigh do focal faire
   people:
     created: Cruthaíodh an duine go rathúil.
     updated: Nuashonraíodh an duine go rathúil.
@@ -1741,9 +1732,6 @@ ga:
     cannot_deactivate_self: Ní féidir leat do chuntas féin a dhíghníomhachtú.
     owner_deactivation_rejected: Ní féidir cuntais úinéara a dhíghníomhachtú ach
       ag úinéir teaghlaigh eile fad a fhanann úsáideoir úinéara gníomhach eile ann.
-  webauthn:
-    passkey_removed: Baineadh an eochair róchair go rathúil
-    passkey_registered: Cláraíodh an eochair róchair go rathúil
   layouts:
     mailer:
       footer_notice: Seoladh an ríomhphost seo toisc go bhfuil cuntas agat linn.
@@ -2179,7 +2167,6 @@ ga:
       email_placeholder: e.g., jane@example.com
     medications:
       inventory_management: Bainistíocht Stoc
-      dosage_and_supply: Dáileog & Soláthar
       name: Ainm
       name_placeholder: m.sh., Paracetamol
       friendly_name: Ainm taispeána
@@ -2386,10 +2373,6 @@ ga:
       next_dose: An Chéad Dháileog Eile
       due_today: Inniu
       no_upcoming_doses: Níl ceann ar bith inniu
-    quick_stats:
-      title: Staitisticí Tapa
-      people: Daoine
-      active_schedules: Sceidil ghníomhacha
     statuses:
       taken: Tógtha
       upcoming: Ag Teacht
@@ -2407,29 +2390,9 @@ ga:
       frequency: Minicíocht
       end_date: Dáta Deiridh
       actions: Gníomhartha
-    person_schedule:
-      age: Aois
-      dosage: Dáileog
-      frequency: Minicíocht
-      ends: Críochnaíonn
-      out_of_stock: As Stoc
-      on_cooldown: Ar Fhionraí
-      take_now: Tóg Anois
-      delete_confirmation: An bhfuil tú cinnte gur mhaith leat an sceideal seo do
-        %{medication} a scrios? Ní féidir an gníomh seo a chealú.
-    schedule_card:
-      dosage: Dáileog
-      remaining_supply: Soláthar Fágtha
-      frequency: Minicíocht
-      ends: Críochnaíonn
     delete_confirmation:
-      delete: Scrios
-      delete_schedule: Scrios Oideas Leigheasanna?
-      are_you_sure: An bhfuil tú cinnte gur mian leat %{medication} do %{person} a
-        scrios? Ní féidir an gníomh seo a chealú.
       cancel: Cealaigh
     quick_actions:
-      title: Gníomhartha Tapa
       add_medication: Cuir Leigheas Leis
       add_person: Cuir Duine Leis
   barcode_scanner:
@@ -2451,10 +2414,6 @@ ga:
     created: Cuireadh an dáileog leis go rathúil.
     updated: Nuashonraíodh an dáileog go rathúil.
     deleted: Baineadh an dáileog go rathúil.
-    new:
-      title: Cuir Dáileog Leis
-    edit:
-      title: Cuir Dáileog in Eagar
     form:
       amount: Méid
       unit: Aonad
@@ -2510,18 +2469,6 @@ ga:
     updated: Sábháladh socruithe fógra.
     update_failed: Theip ar shocruithe fógra a shábháil.
   notification_settings:
-    title: Socruithe Fógraí
-    description: Bainistigh do mheabhrúcháin leigheasanna.
-    browser:
-      title: Fógraí Brabhsálaí
-      status: Ag seiceáil stádas na bhfógraí...
-      enable: Cumasaigh Fógraí
-      disable: Díchumasaigh Fógraí
-      test: Seol Fógra Tástála
-    reminders:
-      enable: Cumasaigh Meabhrúcháin
-      description: Seol meabhrúcháin leigheasanna ag amanna sceidealta.
-      title: Amanna Meabhrúcháin
     categories:
       title: Catagóirí Fógraí
       dose_due_enabled:
@@ -2536,14 +2483,6 @@ ga:
       private_text_enabled:
         title: Ábhar Fógra Príobháideach
         description: Folaigh faisnéis íogair ar nós ainmneacha leigheasanna i bhfógraí.
-    period_labels:
-      morning: Maidin
-      afternoon: Tráthnóna
-      evening: Tráthnóna
-      night: Oíche
-    actions:
-      cancel: Cealaigh
-      save: Sábháil Socruithe
   medication_pauses:
     title: "Cuir cógas ar sos"
     reason: "Cúis"

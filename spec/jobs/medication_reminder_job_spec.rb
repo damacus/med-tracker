@@ -25,7 +25,7 @@ RSpec.describe MedicationReminderJob do
     create(:schedule, person: person, medication: medications(:ibuprofen), dosage: dosages(:ibuprofen_adult),
                       frequency: 'Once daily', schedule_type: :daily, schedule_config: { 'times' => ['19:45'] })
 
-    described_class.perform_now(household.id, person.id, :scheduled, '07:15')
+    perform_current_occurrence(:scheduled, '07:15')
 
     expect(PushNotificationService).to have_received(:send_to_account).with(
       person.account,
@@ -43,7 +43,7 @@ RSpec.describe MedicationReminderJob do
 
     Time.use_zone('Europe/London') do
       travel_to Time.zone.local(2026, 5, 12, 7, 15) do
-        2.times { described_class.perform_now(household.id, person.id, :scheduled, '07:15') }
+        2.times { described_class.perform_now(household.id, person.id, :scheduled, '07:15', Time.current) }
       end
     end
 
@@ -51,7 +51,7 @@ RSpec.describe MedicationReminderJob do
     expect(NotificationEvent.where(event_type: 'dose_due').count).to eq(1)
   end
 
-  it 'canonicalizes equivalent serialized three- and four-argument jobs' do
+  it 'uses the Active Job scheduled time when an explicit occurrence is absent' do
     person.notification_preference.update!(morning_time: '07:15:00')
     create_vitamin_schedule(
       time: '07:15', start_date: Date.new(2026, 5, 11), end_date: Date.new(2026, 6, 12)
@@ -59,7 +59,7 @@ RSpec.describe MedicationReminderJob do
 
     Time.use_zone('Europe/London') do
       intended_at = Time.zone.local(2026, 5, 12, 7, 15)
-      travel_to(intended_at) { perform_serialized_legacy_jobs(intended_at) }
+      travel_to(intended_at) { perform_serialized(scheduled_occurrence_job, intended_at) }
     end
 
     event = NotificationEvent.find_by!(event_type: 'dose_due')
@@ -68,7 +68,23 @@ RSpec.describe MedicationReminderJob do
     expect(event.metadata).to include('delivery_status' => 'delivery_unknown')
   end
 
-  context 'when a delivered serialized legacy job deadlocks' do
+  it 'does not infer a current-day occurrence when both occurrence sources are absent' do
+    person.notification_preference.update!(morning_time: '07:15:00')
+    create_vitamin_schedule(
+      time: '07:15', start_date: Date.new(2026, 5, 11), end_date: Date.new(2026, 6, 12)
+    )
+
+    Time.use_zone('Europe/London') do
+      travel_to Time.zone.local(2026, 5, 12, 7, 15) do
+        described_class.perform_now(household.id, person.id, :morning)
+      end
+    end
+
+    expect(PushNotificationService).not_to have_received(:send_to_account)
+    expect(NotificationEvent.where(event_type: 'dose_due')).to be_empty
+  end
+
+  context 'when delivery of an explicit occurrence deadlocks' do
     around do |example|
       original_queue_adapter = ActiveJob::Base.queue_adapter
       ActiveJob::Base.queue_adapter = :test
@@ -83,7 +99,7 @@ RSpec.describe MedicationReminderJob do
         time: '07:15', start_date: Date.new(2026, 5, 11), end_date: Date.new(2026, 6, 12)
       )
       deadlock_next_update
-      perform_deadlocked_legacy_retry
+      perform_deadlocked_retry
 
       event = NotificationEvent.find_by!(event_type: 'dose_due')
       expect(PushNotificationService).to have_received(:send_to_account).once
@@ -139,7 +155,7 @@ RSpec.describe MedicationReminderJob do
                                  schedule_config: { 'times' => ['07:15'] })
     create(:medication_take, :for_schedule, schedule: schedule, taken_at: Time.zone.today.noon)
 
-    described_class.perform_now(household.id, person.id, :scheduled, '07:15')
+    perform_current_occurrence(:scheduled, '07:15')
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
   end
@@ -151,7 +167,7 @@ RSpec.describe MedicationReminderJob do
     create(:medication_take, :for_schedule, schedule: schedule, taken_at: Time.zone.today.beginning_of_day + 8.hours)
 
     travel_to Time.zone.today.beginning_of_day + 19.hours + 45.minutes do
-      described_class.perform_now(household.id, person.id, :scheduled, '19:45')
+      perform_current_occurrence(:scheduled, '19:45')
     end
 
     expect(PushNotificationService).to have_received(:send_to_account).once
@@ -163,7 +179,7 @@ RSpec.describe MedicationReminderJob do
     take_person_medication(person_medication)
 
     travel_to Time.zone.today.beginning_of_day + 19.hours + 45.minutes do
-      described_class.perform_now(household.id, person.id, :scheduled, '19:45')
+      perform_current_occurrence(:scheduled, '19:45')
     end
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
@@ -173,7 +189,7 @@ RSpec.describe MedicationReminderJob do
     create(:schedule, person: person, medication: medications(:ibuprofen), dosage: dosages(:ibuprofen_adult),
                       schedule_type: :prn, frequency: 'As needed', schedule_config: { 'times' => ['07:15'] })
 
-    described_class.perform_now(household.id, person.id, :scheduled, '07:15')
+    perform_current_occurrence(:scheduled, '07:15')
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
   end
@@ -183,7 +199,7 @@ RSpec.describe MedicationReminderJob do
                       active: false, frequency: 'Once daily', schedule_type: :daily,
                       schedule_config: { 'times' => ['07:15'] })
 
-    described_class.perform_now(household.id, person.id, :scheduled, '07:15')
+    perform_current_occurrence(:scheduled, '07:15')
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
   end
@@ -211,7 +227,7 @@ RSpec.describe MedicationReminderJob do
                       frequency: 'Every 6-8 hours', schedule_type: :daily, schedule_config: {},
                       max_daily_doses: 3, min_hours_between_doses: 6)
 
-    described_class.perform_now(household.id, person.id, :afternoon)
+    perform_current_occurrence(:afternoon)
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
   end
@@ -224,7 +240,7 @@ RSpec.describe MedicationReminderJob do
     create(:person_medication, :as_needed, person: person, medication: medications(:paracetamol),
                                            dosage: dosages(:paracetamol_adult))
 
-    described_class.perform_now(household.id, person.id, :morning)
+    perform_current_occurrence(:morning)
 
     expect(PushNotificationService).to have_received(:send_to_account) do |_account, payload|
       expect(payload[:body]).to eq('Morning medications: Vitamin D')
@@ -241,7 +257,7 @@ RSpec.describe MedicationReminderJob do
     create(:medication_take, :for_schedule, schedule: schedule, taken_at: Time.zone.today.beginning_of_day + 8.hours)
 
     travel_to Time.zone.today.beginning_of_day + 14.hours do
-      described_class.perform_now(household.id, person.id, :afternoon)
+      perform_current_occurrence(:afternoon)
     end
 
     expect(PushNotificationService).to have_received(:send_to_account).once
@@ -253,7 +269,7 @@ RSpec.describe MedicationReminderJob do
     take_schedule(schedule)
 
     travel_to Time.zone.today.beginning_of_day + 14.hours do
-      described_class.perform_now(household.id, person.id, :afternoon)
+      perform_current_occurrence(:afternoon)
     end
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
@@ -266,7 +282,7 @@ RSpec.describe MedicationReminderJob do
                                  max_daily_doses: 1)
     create(:medication_take, :for_schedule, schedule: schedule, taken_at: Time.zone.today.noon)
 
-    described_class.perform_now(household.id, person.id, :morning)
+    perform_current_occurrence(:morning)
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
   end
@@ -275,7 +291,7 @@ RSpec.describe MedicationReminderJob do
     create(:person_medication, :routine, person: person, medication: medications(:vitamin_d),
                                          dosage: dosages(:vitamin_d_daily), active: false)
 
-    described_class.perform_now(household.id, person.id, :morning)
+    perform_current_occurrence(:morning)
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
   end
@@ -285,7 +301,7 @@ RSpec.describe MedicationReminderJob do
     create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
                       frequency: 'Once daily', schedule_type: :daily, schedule_config: { 'times' => ['07:15'] })
 
-    described_class.perform_now(household.id, person.id, :scheduled, '07:15')
+    perform_current_occurrence(:scheduled, '07:15')
 
     expect(PushNotificationService).to have_received(:send_to_account).with(
       person.account,
@@ -301,7 +317,7 @@ RSpec.describe MedicationReminderJob do
     create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
                       frequency: 'Once daily', schedule_type: :daily, schedule_config: { 'times' => ['07:15'] })
 
-    described_class.perform_now(household.id, person.id, :scheduled, '07:15')
+    perform_current_occurrence(:scheduled, '07:15')
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
   end
@@ -327,7 +343,7 @@ RSpec.describe MedicationReminderJob do
 
       %i[held offboarded purged].each do |state|
         household.update!(lifecycle_state: state)
-        described_class.perform_now(household.id, person.id, :scheduled, '07:15')
+        perform_current_occurrence(:scheduled, '07:15')
       end
 
       expect(TenantContext).not_to have_received(:with)
@@ -360,15 +376,7 @@ RSpec.describe MedicationReminderJob do
     )
   end
 
-  def perform_serialized_legacy_jobs(intended_at)
-    [legacy_period_job, legacy_scheduled_job].each { |job| perform_serialized(job, intended_at) }
-  end
-
-  def legacy_period_job
-    described_class.new(household.id, person.id, :morning)
-  end
-
-  def legacy_scheduled_job
+  def scheduled_occurrence_job
     described_class.new(household.id, person.id, :scheduled, '07:15')
   end
 
@@ -398,15 +406,24 @@ RSpec.describe MedicationReminderJob do
     end
   end
 
-  def perform_deadlocked_legacy_retry
+  def perform_deadlocked_retry
     Time.use_zone('Europe/London') do
       intended_at = Time.zone.local(2026, 5, 12, 7, 15)
       executed_at = intended_at + 45.minutes
       travel_to executed_at do
-        perform_serialized(legacy_scheduled_job, intended_at)
-        perform_enqueued_jobs(only: described_class, at: executed_at + 10.seconds)
+        execute_deadlocked_job_and_retry(intended_at, executed_at)
       end
     end
+  end
+
+  def execute_deadlocked_job_and_retry(intended_at, executed_at)
+    described_class.perform_later(household.id, person.id, :scheduled, '07:15', intended_at)
+    perform_enqueued_jobs(only: described_class)
+    perform_enqueued_jobs(only: described_class, at: executed_at + 10.seconds)
+  end
+
+  def perform_current_occurrence(period, scheduled_time = nil)
+    described_class.perform_now(household.id, person.id, period, scheduled_time, Time.current)
   end
 
   def create_routine_vitamin
