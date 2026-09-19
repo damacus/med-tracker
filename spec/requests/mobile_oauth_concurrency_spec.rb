@@ -33,7 +33,7 @@ RSpec.describe 'Concurrent mobile code redemption' do
     params = redemption_params
     grant.with_lock do
       2.times { workers << redemption_worker(params, ready) }
-      pids = 2.times.map { Timeout.timeout(10) { ready.pop } }
+      pids = Array.new(2) { Timeout.timeout(10) { ready.pop } }
       expect(pids.uniq.size).to eq(2)
       wait_for_blocked_requests(pids)
     end

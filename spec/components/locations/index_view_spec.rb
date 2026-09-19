@@ -22,7 +22,7 @@ RSpec.describe Components::Locations::IndexView, type: :component do
   it 'renders location card actions with shared touch targets', :aggregate_failures do
     rendered = render_locations_index
     action_elements = rendered.css('a, button').select do |element|
-      element.text.match?(/View/) || element['aria_label'].present?
+      element.text.include?('View') || element['aria_label'].present?
     end
     action_classes = action_elements.map { |element| element[:class].split }
 

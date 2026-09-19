@@ -85,7 +85,7 @@ RSpec.describe Views::Profiles::Show, type: :component do
     rendered = render_inline(described_class.new(presenter:))
     sheets = rendered.css('[data-controller="ruby-ui--sheet"]')
 
-    expect(sheets.map(&:text).map(&:squish)).to include(
+    expect(sheets.map { |sheet| sheet.text.squish }).to include(
       a_string_including('Profile photo'),
       a_string_including('Appearance')
     )
@@ -108,7 +108,7 @@ RSpec.describe Views::Profiles::Show, type: :component do
 
     expect(groups).not_to be_empty
     expect(groups.all? { |group| group.css('[role="radio"]').size == 2 }).to be(true)
-    expect(groups.map(&:text).map(&:squish)).to all(eq('OnOff'))
+    expect(groups.map { |group| group.text.squish }).to all(eq('OnOff'))
   end
 
   it 'keeps uncommon advanced tasks in nested expandable rows' do

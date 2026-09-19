@@ -150,7 +150,7 @@ class MedicationReminderEligibilityQuery
   end
 
   def reminder_source_medication_ids
-    (schedules + person_medications).map(&:medication_id).compact.uniq
+    (schedules + person_medications).filter_map(&:medication_id).uniq
   end
 
   def schedule_takes_for(medication_ids)

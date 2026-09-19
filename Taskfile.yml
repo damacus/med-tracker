@@ -323,6 +323,15 @@ tasks:
           SERVICE: tools-test
           COMMAND: 'bin/rubocop --force-exclusion {{ if eq .autocorrect "true" }}-A{{ end }}'
 
+  rubocop:test:
+    desc: Verify RuboCop performance checks and CI failure behaviour
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: tools-test
+          COMMAND: 'bundle exec rspec test/tooling/rubocop/cli_spec.rb'
+
   typecheck:
     desc: Run the advisory Sorbet check
     silent: true

@@ -36,11 +36,12 @@ module Components
         }
         available = (primary_navigation_items + [profile_navigation_item] + admin_navigation_items)
                     .index_by { |item| item[:path] }
+        label_keys = { dashboard: :home, inventory: :inventory, finder: :finder }
         routes.filter_map do |key, route|
           item = available[household_navigation_path(route)]
           next unless item
 
-          label_key = { dashboard: :home, inventory: :inventory, finder: :finder }[key]
+          label_key = label_keys[key]
           item.merge(key: key.to_s, label: label_key ? t("layouts.mobile_rail.#{label_key}") : item[:label])
         end
       end

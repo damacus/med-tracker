@@ -44,7 +44,7 @@ RSpec.describe PortableData::ImportedPersonAccessGranter do
 
   def concurrent_grants(records)
     start = Queue.new
-    threads = 2.times.map { grant_thread(records, start) }
+    threads = Array.new(2) { grant_thread(records, start) }
     2.times { start << true }
     threads.map { join_thread(it) }
   ensure

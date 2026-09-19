@@ -40,7 +40,7 @@ RSpec.describe RubyUI::AlertDialogContent, type: :component do
   end
 
   it 'does not render duplicate title and description ids across alert dialogs' do
-    contents = 2.times.map do
+    contents = Array.new(2) do
       title = RubyUI::AlertDialogTitle.new { 'Delete medication?' }.render_in(view_context)
       description = RubyUI::AlertDialogDescription.new { 'This cannot be undone.' }.render_in(view_context)
 

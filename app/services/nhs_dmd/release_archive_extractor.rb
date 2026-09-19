@@ -80,7 +80,7 @@ module NhsDmd
 
     def unsafe_name?(name)
       path = Pathname.new(name)
-      path.absolute? || path.each_filename.any? { |part| part == '..' }
+      path.absolute? || path.each_filename.any?('..')
     end
 
     def symlink_entry?(entry)

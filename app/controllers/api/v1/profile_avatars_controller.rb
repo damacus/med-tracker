@@ -25,10 +25,10 @@ module Api
 
       private
 
-      def with_api_idempotency(&action)
+      def with_api_idempotency
         response.set_header('Cache-Control', 'no-store')
         authorize profile_person, action_name == 'show' ? :show? : :update?
-        action.call
+        yield
       end
 
       def avatar_service

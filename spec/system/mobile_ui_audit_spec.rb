@@ -34,6 +34,8 @@ end
 RSpec.describe 'Mobile UI audit' do
   fixtures :all
 
+  let(:appearances) { %w[light dark] }
+
   before do
     login_as(users(:admin))
     page.current_window.resize_to(390, 844)
@@ -65,7 +67,7 @@ RSpec.describe 'Mobile UI audit' do
       audited_ui_routes.each do |path, expected_path|
         visit path
 
-        %w[light dark].each do |appearance|
+        appearances.each do |appearance|
           apply_appearance(appearance)
 
           expect(page).to have_current_path(expected_path)
@@ -104,7 +106,7 @@ RSpec.describe 'Mobile UI audit' do
       routes.each do |path|
         visit path
 
-        %w[light dark].each do |appearance|
+        appearances.each do |appearance|
           apply_appearance(appearance)
 
           expect(page).to have_current_path(path)
@@ -131,7 +133,7 @@ RSpec.describe 'Mobile UI audit' do
       paths.each do |path|
         visit path
 
-        %w[light dark].each do |appearance|
+        appearances.each do |appearance|
           apply_appearance(appearance)
 
           expect(page).to have_current_path(path)
@@ -158,8 +160,9 @@ RSpec.describe 'Mobile UI audit' do
     invitation = create(:household_invitation, email: 'accessibility-harness@example.org', membership_role: :member)
     create_account = "#{create_account_path}?invitation_token=#{CGI.escape(invitation.token)}"
 
+    widths = [1280, 390]
     [login_path, create_account].each do |path|
-      [1280, 390].each do |width|
+      widths.each do |width|
         page.current_window.resize_to(width, width == 390 ? 844 : 800)
         visit path
         assert_accessibility_contract

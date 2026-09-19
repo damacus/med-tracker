@@ -148,7 +148,7 @@ module Reports
     end
 
     def css_identifier_at(stylesheet, index)
-      identifier = String.new
+      identifier = +''
 
       while index < stylesheet.length
         character, next_index = css_identifier_character_at(stylesheet, index)

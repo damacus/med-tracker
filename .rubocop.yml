@@ -1,5 +1,6 @@
 ---
 plugins:
+  - rubocop-performance
   - rubocop-rspec
   - rubocop-rails
   - rubocop-capybara
@@ -8,6 +9,11 @@ plugins:
 
 AllCops:
   NewCops: enable
+  Preview: true
+  FailLevel: convention
+  inherit_mode:
+    override:
+      - Exclude
   Exclude:
     - "db/**/*"
     - "config/**/*"
@@ -206,6 +212,7 @@ RSpec/NestedGroups:
     - "spec/policies/**/*"
 
 Metrics/BlockLength:
+  Enabled: true
   Max: 100
   Exclude:
     - "test/system/playwright/**/*"
@@ -215,6 +222,7 @@ Metrics/BlockLength:
     - test
 
 Metrics/ClassLength:
+  Enabled: true
   Max: 200
   Exclude:
     - "test/system/playwright/**/*"
@@ -224,6 +232,7 @@ Metrics/ClassLength:
     - "app/controllers/**/*"
 
 Metrics/MethodLength:
+  Enabled: true
   Max: 15
   Exclude:
     - "test/system/playwright/**/*"
@@ -233,6 +242,7 @@ Metrics/MethodLength:
     - "app/controllers/**/*"
 
 Metrics/AbcSize:
+  Enabled: true
   Exclude:
     - "test/system/playwright/**/*"
     - "db/migrate/**/*"
@@ -241,6 +251,7 @@ Metrics/AbcSize:
     - "app/components/**/*"
 
 Metrics/CyclomaticComplexity:
+  Enabled: true
   Exclude:
     - "app/components/ruby_ui/**/*"
 
@@ -285,3 +296,57 @@ Naming/VariableNumber:
 Naming/MethodParameterName:
   Exclude:
     - "app/components/**/*"
+
+Metrics/ModuleLength:
+  Enabled: true
+
+Metrics/ParameterLists:
+  Enabled: true
+
+Layout/ArgumentAlignment:
+  EnforcedStyle: with_first_argument
+
+Layout/CaseIndentation:
+  EnforcedStyle: case
+
+Layout/EndAlignment:
+  EnforcedStyleAlignWith: keyword
+
+Layout/FirstArrayElementIndentation:
+  EnforcedStyle: special_inside_parentheses
+
+Layout/FirstHashElementIndentation:
+  EnforcedStyle: special_inside_parentheses
+
+Layout/MultilineMethodCallIndentation:
+  EnforcedStyle: aligned
+
+Layout/MultilineOperationIndentation:
+  EnforcedStyle: aligned
+
+Layout/ParameterAlignment:
+  EnforcedStyle: with_first_parameter
+
+Style/Alias:
+  EnforcedStyle: prefer_alias
+
+Style/EmptyMethod:
+  EnforcedStyle: compact
+
+Style/RescueStandardError:
+  EnforcedStyle: explicit
+
+Style/StringLiterals:
+  EnforcedStyle: single_quotes
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: single_quotes
+
+Style/SymbolArray:
+  EnforcedStyle: percent
+
+Style/TernaryParentheses:
+  EnforcedStyle: require_no_parentheses
+
+Style/WordArray:
+  EnforcedStyle: percent

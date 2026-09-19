@@ -26,13 +26,13 @@ module NhsDmdStubs
   private
 
   def stub_nhs_dmd_error(query, status, error)
-    stub_request(:get, %r{#{NhsDmd::Client::BASE_URL}/ValueSet/\$expand})
+    stub_request(:get, %r{#{NhsDmd::Client::BASE_URL}/ValueSet/\$expand}o)
       .with(query: hash_including('filter' => query))
       .to_return(status: status, body: { error: error }.to_json)
   end
 
   def stub_nhs_dmd_value_set(value_set, query, results)
-    stub_request(:get, %r{#{NhsDmd::Client::BASE_URL}/ValueSet/\$expand})
+    stub_request(:get, %r{#{NhsDmd::Client::BASE_URL}/ValueSet/\$expand}o)
       .with(query: hash_including('url' => value_set, 'filter' => query))
       .to_return(
         status: 200,

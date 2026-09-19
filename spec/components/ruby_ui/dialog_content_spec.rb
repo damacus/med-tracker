@@ -50,7 +50,7 @@ RSpec.describe RubyUI::DialogContent, type: :component do
   end
 
   it 'does not render duplicate title and description ids across dialogs' do
-    contents = 2.times.map do
+    contents = Array.new(2) do
       title = RubyUI::DialogTitle.new { 'Record dose' }.render_in(view_context)
       description = RubyUI::DialogDescription.new { 'Confirm the dose details.' }.render_in(view_context)
 

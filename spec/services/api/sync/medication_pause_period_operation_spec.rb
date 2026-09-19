@@ -24,7 +24,7 @@ RSpec.describe Api::Sync::MedicationPausePeriodOperation do
   it 'reports exactly one concurrent pause as a replay' do
     ready = Queue.new
     start = Queue.new
-    workers = 2.times.map { operation_thread(ready, start) }
+    workers = Array.new(2) { operation_thread(ready, start) }
     2.times { Timeout.timeout(10) { ready.pop } }
     2.times { start << true }
     results = workers.map { join_thread(it) }

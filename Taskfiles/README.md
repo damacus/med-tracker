@@ -35,6 +35,7 @@ task test
 task test TEST_FILE=spec/models/person_spec.rb
 task test:preflight
 task rubocop
+task rubocop:test
 task brakeman
 ```
 
@@ -54,6 +55,12 @@ task openspec:validate
 `task dev:rebuild`, `task test:rebuild`, and `task prod:rebuild` delete the
 selected environment's database volumes. Use them only when a clean database is
 required.
+
+RuboCop runs with the Performance plugin and preview behaviour for the next
+major release. The project explicitly keeps its quote and indentation styles,
+selected complexity limits, and file exclusions. Convention offences still fail
+CI. Use `task rubocop:test` to check that performance findings and style failures
+remain enforced when RuboCop or its configuration changes.
 
 ## Compose isolation
 

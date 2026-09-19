@@ -15,11 +15,11 @@ module Api
 
       private
 
-      def with_api_idempotency(&action)
+      def with_api_idempotency
         response.set_header('Cache-Control', 'no-store')
         return render_forbidden unless current_api_session.is_a?(ApiSession) || mobile_oauth_credential?
 
-        action.call
+        yield
       end
     end
   end

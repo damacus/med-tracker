@@ -30,8 +30,7 @@ module Reports
     def inventory_alerts
       alerts = Schedule.active.where(person_id: person_ids)
                        .includes(:medication)
-                       .map { |schedule| inventory_alert_for(schedule) }
-                       .compact
+                       .filter_map { |schedule| inventory_alert_for(schedule) }
 
       alerts.select { |alert| alert[:days_left] < 14 }
             .sort_by { |alert| alert[:days_left] }

@@ -144,6 +144,9 @@ jobs:
       - name: Lint code for consistent style
         run: bin/rubocop -f github
 
+      - name: Verify lint failure behaviour
+        run: bundle exec rspec test/tooling/rubocop/cli_spec.rb
+
   client_tools:
     needs: changes
     if: ${{ needs.changes.outputs.rust == 'true' }}

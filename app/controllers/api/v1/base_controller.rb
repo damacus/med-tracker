@@ -321,14 +321,14 @@ module Api
         Api::RecordEtag.for(record)
       end
 
-      def with_api_idempotency(&action)
+      def with_api_idempotency(&)
         store = Api::IdempotencyStore.new(request: request, credential: current_api_session, household: current_household)
         unless store.active?
-          action.call
+          yield
           return
         end
 
-        result = store.with_reservation(response: response, &action)
+        result = store.with_reservation(response: response, &)
         if result.replayed
           authorize_api_replay!(result.record)
           result.response_headers.each { |name, value| response.set_header(name, value) }

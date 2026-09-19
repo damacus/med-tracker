@@ -12,17 +12,17 @@ module Views
 
       private
 
-      def page_layout(&block)
+      def page_layout(&)
         if view_context.request.headers['Turbo-Frame'] == 'modal'
           turbo_frame_tag 'modal' do
             render ::Components::Modal.new(title: @page_title || title) do
-              div(class: 'p-4') { block.call }
+              div(class: 'p-4', &)
             end
           end
         else
           div(class: PAGE_CLASSES) do
             decorative_glow
-            div(class: CONTENT_WRAPPER_CLASSES, &block)
+            div(class: CONTENT_WRAPPER_CLASSES, &)
           end
         end
       end
@@ -68,7 +68,7 @@ module Views
           end
 
           m3_card_content(class: 'space-y-6 p-8 md:p-10') do
-            block.call if block_given?
+            yield if block_given?
           end
         end
       end

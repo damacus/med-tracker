@@ -169,7 +169,7 @@ RSpec.describe HostedRestore::Rehearsal do
 
     expect { writer.write(writer_evidence) }.to raise_error(IOError, 'simulated second write failure')
     expect(output).not_to exist
-    expect(durable_root.children.map(&:basename).map(&:to_s)).to be_empty
+    expect(durable_root.children.map { |child| child.basename.to_s }).to be_empty
   end
 
   it 'requires a durable-root-contained output and rejects temporary and symlink escapes' do
