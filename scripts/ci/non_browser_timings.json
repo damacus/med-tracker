@@ -166,7 +166,6 @@
   "./spec/domain/dose_timing_policy_spec.rb": 0.08352279499999998,
   "./spec/domain/schedule_frequency_phrase_spec.rb": 0.0072678330000000005,
   "./spec/features/authentication/invite_only_signup_spec.rb": 0.442455209,
-  "./spec/features/authentication/omniauth_auto_link_spec.rb": 0.001435583,
   "./spec/features/authentication/passkey_registration_spec.rb": 1.220967585,
   "./spec/features/authentication/signup_verification_spec.rb": 1.0872407499999999,
   "./spec/features/authentication_spec.rb": 0.953754624,
