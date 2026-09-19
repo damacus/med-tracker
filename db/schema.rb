@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_19_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_19_131000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -904,7 +904,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_130000) do
     t.bigint "archive_byte_size"
     t.string "archive_checksum"
     t.string "archive_key"
-    t.string "archive_path"
     t.string "archive_service_name"
     t.datetime "completed_at"
     t.datetime "created_at", null: false

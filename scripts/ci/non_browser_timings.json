@@ -665,7 +665,6 @@
   "./spec/services/medication_timeline_query_spec.rb": 0.17114916800000002,
   "./spec/services/medication_trade_family_resolver_spec.rb": 0.210498123,
   "./spec/services/medication_workflow_people_query_spec.rb": 0.041804832,
-  "./spec/services/nhs_dmd/archive_migration_spec.rb": 0.018915790999999998,
   "./spec/services/nhs_dmd/archive_store_spec.rb": 0.062326709,
   "./spec/services/nhs_dmd/barcode_import_spec.rb": 0.010590208,
   "./spec/services/nhs_dmd/barcode_lookup_spec.rb": 0.040073041,

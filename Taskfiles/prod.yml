@@ -133,14 +133,6 @@ tasks:
           ENVIRONMENT: prod
           COMMAND: 'env DATABASE_ROLE=med_tracker_owner STORAGE_MIGRATION_ACTION=retirement_eligibility STORAGE_MIGRATION_RUN_ID="{{ .RUN_ID }}" STORAGE_MIGRATION_SOURCE="{{ .SOURCE }}" STORAGE_MIGRATION_DESTINATION="{{ .DESTINATION }}" STORAGE_MIGRATION_PHASE="{{ .PHASE }}" STORAGE_MIGRATION_LIVE_SOURCE_DEPENDENCY="{{ .LIVE_SOURCE_DEPENDENCY }}" rails storage:migration'
 
-  storage-convert-nhs-dmd-archives:
-    desc: Convert or report every live path-backed NHS dm+d archive
-    cmds:
-      - task: :internal:run
-        vars:
-          ENVIRONMENT: prod
-          COMMAND: 'env DATABASE_ROLE=med_tracker_owner NHS_DMD_ARCHIVE_SERVICE="{{ .SERVICE }}" NHS_DMD_ARCHIVE_APPLY="{{ .APPLY }}" rails storage:convert_nhs_dmd_archives'
-
   up:
     desc: Start production server (local validation)
     summary: |
