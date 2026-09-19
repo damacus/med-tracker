@@ -22,7 +22,7 @@ RSpec.describe 'AUTH: OmniAuth Auto Linking', type: :system do
     email = existing_account.email
 
     # Verify no identities exist yet
-    expect(AccountIdentity.where(account_id: existing_account.id).count).to eq(0)
+    expect(identity_count(account_id: existing_account.id)).to eq(0)
 
     # Mock the OmniAuth response
     OmniAuth.config.mock_auth[:oidc] = OmniAuth::AuthHash.new(
@@ -42,6 +42,16 @@ RSpec.describe 'AUTH: OmniAuth Auto Linking', type: :system do
     expect(page).to have_current_path(%r{\A/households/[^/]+/dashboard\z})
 
     # Should have created an identity linked to the existing account
-    expect(AccountIdentity.where(account_id: existing_account.id, provider: 'oidc', uid: '12345').count).to eq(1)
+    expect(identity_count(account_id: existing_account.id, provider: 'oidc', uid: '12345')).to eq(1)
+  end
+
+  def identity_count(account_id:, provider: nil, uid: nil)
+    conditions = { account_id:, provider:, uid: }.compact
+    quoted_conditions = conditions.map do |column, value|
+      "#{column} = #{ActiveRecord::Base.connection.quote(value)}"
+    end
+    sql = "SELECT COUNT(*) FROM account_identities WHERE #{quoted_conditions.join(' AND ')}"
+
+    ActiveRecord::Base.connection.select_value(sql)
   end
 end

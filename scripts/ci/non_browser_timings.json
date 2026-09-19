@@ -231,8 +231,6 @@
   "./spec/lib/otel/database_connection_pool_metrics_spec.rb": 0.008122834,
   "./spec/lib/otel/exception_recorder_spec.rb": 0.003620416,
   "./spec/lib/otel/sensitive_data_scrubbing_spec.rb": 0.002782792,
-  "./spec/lib/otel/span_sanitizer_spec.rb": 0.020318119,
-  "./spec/lib/otel/span_sanitizing_processor_spec.rb": 0.006929456,
   "./spec/lib/pdf_text_extractor_spec.rb": 0.013894251,
   "./spec/lib/production_storage_configuration_spec.rb": 0.00485525,
   "./spec/lib/production_storage_spec.rb": 0.021285956999999998,
