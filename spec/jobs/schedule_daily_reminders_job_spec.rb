@@ -333,7 +333,7 @@ RSpec.describe ScheduleDailyRemindersJob do
   end
 
   def expect_collision_delivery
-    MedicationReminderJob.perform_now(household.id, person.id, :morning)
+    MedicationReminderJob.perform_now(household.id, person.id, :morning, nil, Time.current)
     expect(PushNotificationService).to have_received(:send_to_account).with(
       person.account,
       hash_including(body: 'Morning medications: Vitamin D, Paracetamol')

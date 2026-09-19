@@ -78,7 +78,7 @@ RSpec.describe MedicationReminderJob do
         Time.use_zone('Europe/London') do
           ready << true
           Timeout.timeout(10) { start.pop }
-          described_class.perform_now(household.id, person.id, :scheduled, '07:15')
+          described_class.perform_now(household.id, person.id, :scheduled, '07:15', Time.current)
         end
       end
     end

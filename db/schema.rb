@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_19_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -241,17 +241,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_020000) do
     t.index ["expires_at"], name: "index_api_idempotency_keys_on_expires_at"
     t.index ["household_id", "key"], name: "index_api_idempotency_keys_on_household_id_and_key", unique: true
     t.index ["household_id"], name: "index_api_idempotency_keys_on_household_id"
-  end
-
-  create_table "api_oidc_nonces", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.string "issuer", null: false
-    t.string "nonce", null: false
-    t.string "subject", null: false
-    t.datetime "updated_at", null: false
-    t.datetime "used_at", null: false
-    t.index ["issuer", "subject", "nonce"], name: "index_api_oidc_nonces_on_issuer_and_subject_and_nonce", unique: true
-    t.index ["used_at"], name: "index_api_oidc_nonces_on_used_at"
   end
 
   create_table "api_sessions", force: :cascade do |t|
