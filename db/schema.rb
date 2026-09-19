@@ -169,6 +169,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_130000) do
   create_table "api_app_tokens", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
     t.bigint "household_membership_id", null: false
     t.datetime "last_used_at", null: false
     t.string "name", null: false
@@ -177,9 +178,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_130000) do
     t.string "token_digest", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_api_app_tokens_on_account_id"
+    t.index ["expires_at"], name: "index_api_app_tokens_on_expires_at"
     t.index ["household_membership_id", "revoked_at"], name: "index_api_app_tokens_on_membership_and_revoked_at"
     t.index ["household_membership_id"], name: "index_api_app_tokens_on_household_membership_id"
     t.index ["token_digest"], name: "index_api_app_tokens_on_token_digest", unique: true
+    t.check_constraint "expires_at > created_at", name: "api_app_token_positive_lifetime"
   end
 
   create_table "api_change_events", force: :cascade do |t|
@@ -973,6 +976,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_130000) do
   create_table "oauth_applications", force: :cascade do |t|
     t.bigint "account_id"
     t.string "client_id", null: false
+    t.string "client_kind", default: "integration", null: false
     t.string "client_secret"
     t.string "client_secret_hash"
     t.datetime "created_at", null: false
@@ -983,22 +987,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_130000) do
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_oauth_applications_on_account_id"
     t.index ["client_id"], name: "index_oauth_applications_on_client_id", unique: true
+    t.index ["id", "client_kind"], name: "index_oauth_applications_on_id_and_client_kind", unique: true
+    t.check_constraint "client_kind::text = ANY (ARRAY['integration'::character varying, 'mobile'::character varying]::text[])", name: "oauth_client_kind"
     t.check_constraint "(token_endpoint_auth_method = 'none' AND NULLIF(client_secret, '') IS NULL AND NULLIF(client_secret_hash, '') IS NULL) OR (token_endpoint_auth_method IN ('client_secret_basic', 'client_secret_post', 'client_secret_basic client_secret_post') AND (NULLIF(client_secret, '') IS NOT NULL OR NULLIF(client_secret_hash, '') IS NOT NULL))", name: "chk_oauth_applications_token_auth_method"
   end
 
   create_table "oauth_grants", force: :cascade do |t|
     t.string "access_type", default: "offline", null: false
     t.bigint "account_id", null: false
+    t.datetime "authenticated_at"
+    t.string "client_kind", default: "integration", null: false
     t.string "code"
     t.string "code_challenge"
     t.string "code_challenge_method"
     t.datetime "created_at", null: false
+    t.string "device_name"
     t.datetime "expires_in", null: false
-    t.bigint "household_membership_id", null: false
+    t.bigint "household_membership_id"
     t.datetime "last_used_at"
     t.bigint "oauth_application_id", null: false
-    t.integer "permissions_version", null: false
-    t.bigint "person_id", null: false
+    t.integer "permissions_version"
+    t.bigint "person_id"
     t.string "redirect_uri"
     t.string "refresh_token"
     t.string "refresh_token_hash"
@@ -1017,6 +1026,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_130000) do
     t.index ["refresh_token_hash"], name: "index_oauth_grants_on_refresh_token_hash", unique: true
     t.index ["token"], name: "index_oauth_grants_on_token", unique: true
     t.index ["token_hash"], name: "index_oauth_grants_on_token_hash", unique: true
+    t.check_constraint "client_kind::text = 'integration'::text AND household_membership_id IS NOT NULL AND person_id IS NOT NULL AND permissions_version IS NOT NULL OR client_kind::text = 'mobile'::text AND household_membership_id IS NULL AND person_id IS NULL AND permissions_version IS NULL AND authenticated_at IS NOT NULL AND last_used_at IS NOT NULL", name: "oauth_grant_authority_boundary"
   end
 
   create_table "notification_events", force: :cascade do |t|
@@ -1211,7 +1221,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_130000) do
     t.datetime "expires_at", null: false
     t.bigint "household_id", null: false
     t.string "ip"
-    t.datetime "mfa_verified_at", null: false
+    t.datetime "mfa_verified_at"
     t.bigint "platform_admin_id", null: false
     t.text "reason", null: false
     t.string "request_id"
@@ -1389,6 +1399,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_130000) do
   add_foreign_key "oauth_grants", "accounts"
   add_foreign_key "oauth_grants", "household_memberships"
   add_foreign_key "oauth_grants", "oauth_applications"
+  add_foreign_key "oauth_grants", "oauth_applications", column: ["oauth_application_id", "client_kind"], primary_key: ["id", "client_kind"], name: "oauth_grant_application_kind"
   add_foreign_key "oauth_grants", "people"
   add_foreign_key "people", "accounts", deferrable: :deferred
   add_foreign_key "people", "households"
