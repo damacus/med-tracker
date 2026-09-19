@@ -37,7 +37,6 @@ pt:
       changed_submission: "Este envio já foi utilizado com outros dados."
   offline:
     record_access_required: Não tem permissão para registar esta dose.
-  hello: Olá mundo
   ruby_ui:
     common:
       close: Fechar
@@ -1159,14 +1158,6 @@ pt:
       success:
         one: O fornecimento restante de %{count} medicamento foi atualizado.
         other: O fornecimento restante de %{count} medicamentos foi atualizado.
-  passwords:
-    reset_sent: Instruções de redefinição de palavra-passe enviadas (se existir um
-      utilizador com esse endereço de email).
-    reset_success: Palavra-passe redefinida.
-    mismatch: As palavras-passe não coincidem.
-    invalid_token: O link de redefinição de palavra-passe é inválido ou expirou.
-    mailer:
-      subject: Redefinir a sua palavra-passe
   people:
     created: Pessoa criada com sucesso.
     updated: Pessoa atualizada com sucesso.
@@ -2049,9 +2040,6 @@ pt:
     owner_deactivation_rejected: As contas de proprietário só podem ser desativadas
       por outro proprietário do agregado enquanto existir outro utilizador proprietário
       ativo.
-  webauthn:
-    passkey_removed: Chave de acesso removida com sucesso
-    passkey_registered: Chave de acesso registada com sucesso
   layouts:
     mailer:
       footer_notice: Este email foi enviado porque tem uma conta connosco.
@@ -2187,18 +2175,6 @@ pt:
       review_note: Nota da revisão
       save: Guardar registo da revisão
   notification_settings:
-    title: Definições de Notificação
-    description: Gira as notificações de lembrete da sua medicação.
-    browser:
-      title: Notificações do Navegador
-      status: A verificar o estado das notificações...
-      enable: Ativar notificações
-      disable: Desativar notificações
-      test: Enviar notificação de teste
-    reminders:
-      enable: Ativar lembretes
-      description: Enviar lembretes de medicação nos horários agendados.
-      title: Horários dos lembretes
     categories:
       title: Categorias de Notificação
       dose_due_enabled:
@@ -2213,14 +2189,6 @@ pt:
       private_text_enabled:
         title: Conteúdo de Notificação Privado
         description: Ocultar informações sensíveis como nomes de medicamentos nas notificações.
-    period_labels:
-      morning: Manhã
-      afternoon: Tarde
-      evening: Noite
-      night: Madrugada
-    actions:
-      cancel: Cancelar
-      save: Guardar definições
   invitations:
     accept:
       title: Concluir a sua conta
@@ -2250,10 +2218,6 @@ pt:
     created: Dose adicionada com sucesso.
     updated: Dose atualizada com sucesso.
     deleted: Dose removida com sucesso.
-    new:
-      title: Adicionar dose
-    edit:
-      title: Editar dose
     form:
       amount: Quantidade
       unit: Unidade
@@ -2290,7 +2254,6 @@ pt:
       email_placeholder: e.g., jane@example.com
     medications:
       inventory_management: Gestão de Inventário
-      dosage_and_supply: Dosagem e Fornecimento
       name: Nome
       name_placeholder: p. ex., Paracetamol
       friendly_name: Nome de apresentação
@@ -2513,32 +2476,8 @@ pt:
       end_date: Data de Fim
       actions: Ações
     delete_confirmation:
-      delete: Eliminar
-      delete_schedule: Eliminar Prescrição?
-      are_you_sure: Tem certeza de que deseja eliminar %{medication} para %{person}?
-        Esta ação não pode ser desfeita.
       cancel: Cancelar
-    person_schedule:
-      age: Idade
-      dosage: Dose
-      frequency: Frequência
-      ends: Termina
-      out_of_stock: Sem stock
-      on_cooldown: Em espera
-      take_now: Tomar agora
-      delete_confirmation: Tem certeza de que deseja eliminar este horário para %{medication}?
-        Esta ação não pode ser desfeita.
-    schedule_card:
-      dosage: Dose
-      remaining_supply: Stock restante
-      frequency: Frequência
-      ends: Termina
-    quick_stats:
-      title: Estatísticas rápidas
-      people: Pessoas
-      active_schedules: Planos ativos
     quick_actions:
-      title: Ações Rápidas
       add_medication: Adicionar Medicamento
       add_person: Adicionar Pessoa
   medication_pauses:

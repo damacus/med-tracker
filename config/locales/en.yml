@@ -37,7 +37,6 @@ en:
       changed_submission: "This submission has already been used with different details."
   offline:
     record_access_required: You do not have permission to record this dose.
-  hello: Hello world
   app:
     name: MedTracker
   global_search:
@@ -1106,14 +1105,6 @@ en:
         low_in_days: Supply will be low in %{days} days
         empty_in_days: Supply will be empty in %{days} days
       location: Location
-  passwords:
-    reset_sent: Password reset instructions sent (if user with that email address
-      exists).
-    reset_success: Password has been reset.
-    mismatch: Passwords did not match.
-    invalid_token: Password reset link is invalid or has expired.
-    mailer:
-      subject: Reset your password
   people:
     created: Person was successfully created.
     updated: Person was successfully updated.
@@ -1314,10 +1305,6 @@ en:
     created: Dosage was successfully added.
     updated: Dosage was successfully updated.
     deleted: Dosage was successfully removed.
-    new:
-      title: Add Dosage
-    edit:
-      title: Edit Dosage
     form:
       amount: Amount
       unit: Unit
@@ -2050,9 +2037,6 @@ en:
     cannot_deactivate_self: You cannot deactivate your own account.
     owner_deactivation_rejected: Owner accounts can only be deactivated by another household
       owner while another active owner user remains.
-  webauthn:
-    passkey_removed: Passkey removed successfully
-    passkey_registered: Passkey registered successfully
   layouts:
     mailer:
       footer_notice: This email was sent because you have an account with us.
@@ -2188,18 +2172,6 @@ en:
       review_note: Review note
       save: Save review record
   notification_settings:
-    title: Notification Settings
-    description: Manage your medication reminder notifications.
-    browser:
-      title: Browser Notifications
-      status: Checking notification status...
-      enable: Enable Notifications
-      disable: Disable Notifications
-      test: Send Test Notification
-    reminders:
-      enable: Enable Reminders
-      description: Send medication reminders at scheduled times.
-      title: Reminder Times
     categories:
       title: Notification Categories
       dose_due_enabled:
@@ -2214,14 +2186,6 @@ en:
       private_text_enabled:
         title: Private Notification Content
         description: Hide sensitive information like medication names in notifications.
-    period_labels:
-      morning: Morning
-      afternoon: Afternoon
-      evening: Evening
-      night: Night
-    actions:
-      cancel: Cancel
-      save: Save Settings
   invitations:
     accept:
       title: Complete Your Account
@@ -2255,7 +2219,6 @@ en:
       email_placeholder: e.g., jane@example.com
     medications:
       inventory_management: Inventory Management
-      dosage_and_supply: Dosage & Supply
       name: Name
       name_placeholder: e.g., Paracetamol
       friendly_name: Display name
@@ -2477,32 +2440,8 @@ en:
       end_date: End Date
       actions: Actions
     delete_confirmation:
-      delete: Delete
-      delete_schedule: Delete Schedule?
-      are_you_sure: Are you sure you want to delete %{medication} for %{person}? This
-        action cannot be undone.
       cancel: Cancel
-    person_schedule:
-      age: Age
-      dosage: Dosage
-      frequency: Frequency
-      ends: Ends
-      out_of_stock: Out of Stock
-      on_cooldown: On Cooldown
-      take_now: Take Now
-      delete_confirmation: Are you sure you want to delete this schedule for %{medication}?
-        This action cannot be undone.
-    schedule_card:
-      dosage: Dosage
-      remaining_supply: Remaining Supply
-      frequency: Frequency
-      ends: Ends
-    quick_stats:
-      title: Quick stats
-      people: People
-      active_schedules: Active schedules
     quick_actions:
-      title: Quick Actions
       add_medication: Add Medication
       add_person: Add Person
   medication_workflow:
