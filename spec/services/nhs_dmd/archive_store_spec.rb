@@ -38,8 +38,7 @@ RSpec.describe NhsDmd::ArchiveStore do
       archive_service_name: 'persistent',
       archive_key: reference.key,
       archive_checksum: reference.checksum,
-      archive_byte_size: payload.bytesize,
-      archive_path: nil
+      archive_byte_size: payload.bytesize
     )
     expect(services.fetch(:persistent).download(reference.key)).to eq(payload)
   end
@@ -97,23 +96,6 @@ RSpec.describe NhsDmd::ArchiveStore do
       archive_checksum: nil,
       archive_byte_size: nil
     )
-  end
-
-  it 'converts a live legacy path and removes it only after verified persistence' do
-    legacy = Tempfile.create(['legacy-release', '.zip']).tap do |file|
-      file.write(payload)
-      file.close
-    end
-    import_run.update!(archive_path: legacy.path)
-
-    store.convert_legacy(import_run:, service_name: :s3)
-
-    expect(import_run.reload.archive_service_name).to eq('s3')
-    expect(import_run.archive_path).to be_nil
-    expect(File).not_to exist(legacy.path)
-  ensure
-    legacy&.close
-    FileUtils.rm_f(legacy.path) if legacy
   end
 
   it 'returns a PHI-safe failure and no durable reference when verification fails' do

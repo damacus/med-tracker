@@ -29,12 +29,52 @@ RSpec.describe 'Seeds' do
     expect(PaperTrail::Version.where(item_type: 'Location')).to exist
   end
 
+  it 'registers the Android clients through the normal seed path without replacing existing registrations' do
+    existing_client = create_existing_android_client
+
+    2.times { load Rails.root.join('db/seeds.rb') }
+
+    expect(existing_client.reload.name).to eq('Existing Android registration')
+    expect(android_clients.pluck(:client_id)).to match_array(android_client_ids)
+    expect(android_clients).to all(have_attributes(android_client_attributes))
+    expect(android_clients).to all(satisfy { |client| client.redirect_uri == "#{client.client_id}:/oauth2redirect" })
+  end
+
+  def android_client_attributes
+    {
+      client_kind: 'mobile',
+      token_endpoint_auth_method: 'none',
+      client_secret: nil,
+      client_secret_hash: nil,
+      scopes: 'medtracker offline_access'
+    }
+  end
+
   def verify_seeded_evidence
     connection = ActiveRecord::Base.connection
     connection.execute('SET ROLE med_tracker_audit_verifier')
     Audit::Verification::DatabaseVerifier.new.call
   ensure
     connection.execute('RESET ROLE')
+  end
+
+  def android_clients
+    OauthApplication.where(client_id: android_client_ids).order(:client_id)
+  end
+
+  def android_client_ids
+    %w[io.damacus.medtracker io.damacus.medtracker.debug io.damacus.medtracker.staging]
+  end
+
+  def create_existing_android_client
+    OauthApplication.create!(
+      name: 'Existing Android registration',
+      client_id: 'io.damacus.medtracker',
+      redirect_uri: 'io.damacus.medtracker:/oauth2redirect',
+      scopes: 'medtracker offline_access',
+      client_kind: 'mobile',
+      token_endpoint_auth_method: 'none'
+    )
   end
 
   def truncate_runtime_tables
