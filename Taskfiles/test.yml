@@ -59,7 +59,9 @@ tasks:
       - task: :internal:run
         vars:
           ENVIRONMENT: test
-          COMMAND: '{{ .CMD }}'
+          DOCKER_RUN_ARGS: '-e CMD'
+          CMD: '{{ .CMD }}'
+          COMMAND: "sh -c 'eval \"$CMD\"'"
 
   portless:
     desc: Start test server and register a Portless OIDC URL
