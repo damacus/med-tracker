@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.30](https://github.com/damacus/med-tracker/compare/v0.5.29...v0.5.30) (2026-09-19)
+
+
+### Bug Fixes
+
+* **auth:** require S256 for mobile sign-in ([#2262](https://github.com/damacus/med-tracker/issues/2262)) ([f32b9e0](https://github.com/damacus/med-tracker/commit/f32b9e0d929e92d3587457602e6510975d764d8c))
+
 ## [0.5.29](https://github.com/damacus/med-tracker/compare/v0.5.28...v0.5.29) (2026-09-17)
 
 
