@@ -208,7 +208,6 @@ RSpec/NestedGroups:
 Metrics/BlockLength:
   Max: 100
   Exclude:
-    - "test/system/playwright/**/*"
     - "spec/**/*_spec.rb"
     - "config/routes.rb"
   AllowedMethods:
@@ -217,8 +216,6 @@ Metrics/BlockLength:
 Metrics/ClassLength:
   Max: 200
   Exclude:
-    - "test/system/playwright/**/*"
-    - "test/**/*_test.rb"
     - "db/migrate/**/*"
     - "app/components/**/*"
     - "app/controllers/**/*"
@@ -226,7 +223,6 @@ Metrics/ClassLength:
 Metrics/MethodLength:
   Max: 15
   Exclude:
-    - "test/system/playwright/**/*"
     - "db/migrate/**/*"
     - "app/views/**/*"
     - "app/components/**/*"
@@ -234,7 +230,6 @@ Metrics/MethodLength:
 
 Metrics/AbcSize:
   Exclude:
-    - "test/system/playwright/**/*"
     - "db/migrate/**/*"
     - "app/controllers/**/*"
     - "app/models/**/*"
@@ -275,11 +270,6 @@ Style/HashLikeCase:
 Lint/MissingSuper:
   Exclude:
     - "app/components/**/*"
-
-# Allow variable numbers in test fixtures
-Naming/VariableNumber:
-  Exclude:
-    - "test/**/*"
 
 # Allow single-letter form parameter names (f) in components
 Naming/MethodParameterName:

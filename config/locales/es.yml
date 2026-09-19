@@ -37,7 +37,6 @@ es:
       changed_submission: "Este envío ya se utilizó con otros datos."
   offline:
     record_access_required: No tienes permiso para registrar esta dosis.
-  hello: Hola mundo
   ruby_ui:
     common:
       close: Cerrar
@@ -1158,14 +1157,6 @@ es:
       success:
         one: Se actualizó el suministro restante de %{count} medicamento.
         other: Se actualizó el suministro restante de %{count} medicamentos.
-  passwords:
-    reset_sent: Instrucciones de restablecimiento de contraseña enviadas (si existe
-      un usuario con esa dirección de correo electrónico).
-    reset_success: Contraseña restablecida.
-    mismatch: Las contraseñas no coinciden.
-    invalid_token: El enlace de restablecimiento de contraseña no es válido o ha caducado.
-    mailer:
-      subject: Restablecer su contraseña
   people:
     created: Persona creada correctamente.
     updated: Persona actualizada correctamente.
@@ -1740,9 +1731,6 @@ es:
     owner_deactivation_rejected: Las cuentas de propietario solo pueden ser desactivadas
       por otro propietario del hogar mientras quede otro usuario propietario activo.
     verified: La cuenta del usuario ha sido verificada manualmente.
-  webauthn:
-    passkey_removed: Clave de acceso eliminada correctamente
-    passkey_registered: Clave de acceso registrada correctamente
   layouts:
     mailer:
       footer_notice: Este correo electrónico fue enviado porque tienes una cuenta
@@ -1887,7 +1875,6 @@ es:
       email_placeholder: e.g., jane@example.com
     medications:
       inventory_management: Gestión de Inventario
-      dosage_and_supply: Dosis y Suministro
       name: Nombre
       name_placeholder: p. ej., Paracetamol
       friendly_name: Nombre para mostrar
@@ -2092,25 +2079,6 @@ es:
       no_upcoming_doses: Ninguna hoy
       next_dose: Próxima dosis
       due_today: Hoy
-    person_schedule:
-      age: Edad
-      dosage: Dosis
-      frequency: Frecuencia
-      ends: Finaliza
-      out_of_stock: Sin stock
-      on_cooldown: En enfriamiento
-      take_now: Tomar ahora
-      delete_confirmation: "¿Está seguro de que desea eliminar esta receta para %{medication}?
-        Esta acción no se puede deshacer."
-    schedule_card:
-      dosage: Dosis
-      remaining_supply: Suministro restante
-      frequency: Frecuencia
-      ends: Finaliza
-    quick_stats:
-      title: Estadísticas rápidas
-      people: Personas
-      active_schedules: Recetas activas
     statuses:
       taken: Tomado
       upcoming: Próximo
@@ -2129,13 +2097,8 @@ es:
       end_date: Fecha de Fin
       actions: Acciones
     delete_confirmation:
-      delete: Eliminar
-      delete_schedule: "¿Eliminar Prescripción?"
-      are_you_sure: "¿Está seguro de que desea eliminar %{medication} para %{person}?
-        Esta acción no se puede deshacer."
       cancel: Cancelar
     quick_actions:
-      title: Acciones Rápidas
       add_medication: Agregar Medicamento
       add_person: Agregar Persona
   barcode_scanner:
@@ -2157,10 +2120,6 @@ es:
     created: La dosis se añadió correctamente.
     updated: La dosis se actualizó correctamente.
     deleted: La dosis se eliminó correctamente.
-    new:
-      title: Añadir dosis
-    edit:
-      title: Editar dosis
     form:
       amount: Cantidad
       unit: Unidad
@@ -2216,18 +2175,6 @@ es:
     updated: La configuración de notificaciones se guardó.
     update_failed: No se pudo guardar la configuración de notificaciones.
   notification_settings:
-    title: Configuración de notificaciones
-    description: Gestiona las notificaciones recordatorias de tus medicamentos.
-    browser:
-      title: Notificaciones del navegador
-      status: Comprobando el estado de las notificaciones...
-      enable: Activar notificaciones
-      disable: Desactivar notificaciones
-      test: Enviar notificación de prueba
-    reminders:
-      enable: Activar recordatorios
-      description: Enviar recordatorios de medicamentos en los horarios programados.
-      title: Horarios de recordatorio
     categories:
       title: Categorías de notificaciones
       dose_due_enabled:
@@ -2242,14 +2189,6 @@ es:
       private_text_enabled:
         title: Contenido privado en notificaciones
         description: Oculta información sensible como nombres de medicamentos en las notificaciones.
-    period_labels:
-      morning: Mañana
-      afternoon: Tarde
-      evening: Atardecer
-      night: Noche
-    actions:
-      cancel: Cancelar
-      save: Guardar ajustes
   reports:
     invalid_date: Se ha proporcionado un formato de fecha no válido.
     end_before_start: La fecha de finalización debe ser igual o posterior a la fecha de inicio.
