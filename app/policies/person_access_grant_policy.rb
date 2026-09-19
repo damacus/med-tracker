@@ -7,6 +7,10 @@ class PersonAccessGrantPolicy < ApplicationPolicy
     same_household?(record) && (household_owner? || household_administrator?)
   end
 
+  def classify?
+    same_household?(record) && (household_owner? || household_administrator?)
+  end
+
   private
 
   def class_record?

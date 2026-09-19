@@ -11,6 +11,7 @@ module RequestHelpers
     admin_carer_relationships_path admin_carer_relationship_path new_admin_carer_relationship_path
     activate_admin_carer_relationship_path
     admin_ambiguous_person_access_grants_path
+    classify_admin_ambiguous_person_access_grant_path
     admin_people_path admin_audit_logs_path admin_audit_log_path admin_settings_path
     admin_household_path edit_admin_household_path
     locations_path location_path new_location_path edit_location_path

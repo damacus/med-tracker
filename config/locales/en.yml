@@ -169,7 +169,8 @@ en:
       cancelled: Invitation cancelled
       cannot_resend_accepted: Accepted invitations cannot be resent
       cannot_cancel_accepted: Accepted invitations cannot be cancelled
-      resend_failed: This invitation could not be resent. A pending invitation for
+      resend_failed:
+        This invitation could not be resent. A pending invitation for
         this email may already exist.
       index:
         title: Invitations
@@ -205,16 +206,19 @@ en:
         subtitle: Control who can create a new account.
         invite_only:
           label: Invite only
-          hint: When enabled, new accounts can only be created via invitation. Existing
+          hint:
+            When enabled, new accounts can only be created via invitation. Existing
             users can always log in, including via single sign-on.
       env_override:
         title: Controlled by environment variable
-        body: The %{var} environment variable is set to "%{value}". Remove it to manage
+        body:
+          The %{var} environment variable is set to "%{value}". Remove it to manage
           this setting here.
     households:
       updated: Household saved
       title: Household Settings
-      subtitle: Rename the current household and keep the household label recognizable
+      subtitle:
+        Rename the current household and keep the household label recognizable
         for everyone with access.
       name: Household name
       save: Save household
@@ -245,7 +249,8 @@ en:
         deactivate: Deactivate
         deactivate_dialog:
           title: Deactivate Relationship
-          confirm: Are you sure you want to deactivate the relationship between %{carer}
+          confirm:
+            Are you sure you want to deactivate the relationship between %{carer}
             and %{patient}?
           cancel: Cancel
           submit: Deactivate
@@ -271,6 +276,13 @@ en:
           created_at: Created
           expires_at: Expires
           revoked_at: Revoked
+          actions: Actions
+        actions:
+          reason: Reason
+          reason_placeholder: Why is this decision correct?
+          attach: Attach to relationship
+          manual: Confirm standalone
+          revoke: Revoke grant
         empty: No ambiguous access grants found.
         active: Active
         inactive: Inactive
@@ -283,6 +295,11 @@ en:
           previous: Previous
           next: Next
           label: Pagination
+      classify:
+        mfa_required: Multi-factor authentication is required to change grant authority.
+        attach_notice: Grant attributed to the compatible relationship.
+        manual_notice: Grant confirmed as independent authority.
+        revoke_notice: Grant revoked.
     users:
       unauthorized: You are not authorized to perform this action.
       missing_account: User does not have an account to verify.
@@ -323,8 +340,8 @@ en:
         system_access: System administrator
         system_administrator: System Administrator
         household_user: Household User
-        system_administrator_yes: 'Yes'
-        system_administrator_no: 'No'
+        system_administrator_yes: "Yes"
+        system_administrator_no: "No"
         activation: Activation
         verification: Verification
         actions: Actions
@@ -347,7 +364,8 @@ en:
         verified: Verified
         deactivate_dialog:
           title: Deactivate User Account
-          confirm: Are you sure you want to deactivate %{name}'s account? They will
+          confirm:
+            Are you sure you want to deactivate %{name}'s account? They will
             no longer be able to sign in.
           cancel: Cancel
           submit: Deactivate
@@ -369,7 +387,7 @@ en:
           event: Event
           user: User
           ip_address: IP Address
-          actions: ''
+          actions: ""
           view_details: View Details
         empty:
           no_logs: No audit logs found
@@ -508,12 +526,14 @@ en:
           view: View
     nhs_dmd_imports:
       title: Import NHS dm+d release
-      subtitle: Upload the latest NHS dm+d ZIP and import AMPP names with GTIN barcode
+      subtitle:
+        Upload the latest NHS dm+d ZIP and import AMPP names with GTIN barcode
         mappings.
       missing_file: Select an NHS dm+d release ZIP to import.
       already_running: An NHS dm+d import is already running. Please wait for it to finish.
-      created: 'Imported NHS dm+d release: %{imported} records imported, %{skipped}
-        skipped.'
+      created:
+        "Imported NHS dm+d release: %{imported} records imported, %{skipped}
+        skipped."
       started: NHS dm+d import started. Progress and logs will appear below.
       statuses:
         queued: Queued
@@ -571,7 +591,8 @@ en:
     privileged_mfa_required:
       setup: Set up MFA or a passkey before continuing.
       verify: Verify MFA or a passkey before continuing.
-    two_factor_required: For enhanced security, please set up two-factor authentication
+    two_factor_required:
+      For enhanced security, please set up two-factor authentication
       for your account.
   invitation_mailer:
     subject: Invitation to join MedTracker
@@ -586,35 +607,43 @@ en:
     verify_account:
       subject: Verify your MedTracker account
       title: Verify your email address
-      instruction: Thanks for creating your MedTracker account. Click the button below
+      instruction:
+        Thanks for creating your MedTracker account. Click the button below
         to verify your email address and complete your registration.
       button: Verify my account
-      notice: This link will expire. If you didn't create an account, you can safely
+      notice:
+        This link will expire. If you didn't create an account, you can safely
         ignore this email.
     reset_password:
       subject: Reset your MedTracker password
       title: Reset your password
-      instruction: We received a request to reset the password for your MedTracker
+      instruction:
+        We received a request to reset the password for your MedTracker
         account. Click the button below to choose a new password.
       button: Reset my password
-      notice: This link will expire. If you didn't request a password reset, you can
+      notice:
+        This link will expire. If you didn't request a password reset, you can
         safely ignore this email — your password will not be changed.
     unlock_account:
       subject: Unlock your MedTracker account
       title: Your account has been locked
-      instruction: Your MedTracker account has been temporarily locked due to multiple
+      instruction:
+        Your MedTracker account has been temporarily locked due to multiple
         failed login attempts. Click the button below to unlock your account and regain
         access.
       button: Unlock my account
-      notice: If you did not attempt to log in, please contact us immediately — someone
+      notice:
+        If you did not attempt to log in, please contact us immediately — someone
         may be trying to access your account.
     verify_login_change:
       subject: Confirm your new MedTracker login
       title: Confirm your new email address
-      instruction: You recently requested to change the email address for your MedTracker
+      instruction:
+        You recently requested to change the email address for your MedTracker
         account. Click the button below to confirm your new email address.
       button: Confirm new email address
-      notice: This link will expire. If you didn't request this change, please contact
+      notice:
+        This link will expire. If you didn't request this change, please contact
         us immediately as someone may have access to your account.
     views:
       create_account:
@@ -636,7 +665,8 @@ en:
       reset_password_request:
         page_subtitle: Reset your password to regain access to your account.
         card_title: Reset Password
-        card_description: Enter your email address and we'll send you a link to reset
+        card_description:
+          Enter your email address and we'll send you a link to reset
           your password.
         email_label: Email address
         email_placeholder: Enter your email address
@@ -656,13 +686,15 @@ en:
       verify_account:
         page_subtitle: Verify your account to complete registration.
         card_title: Verify Your Account
-        card_description: Click the button below to verify your email address and
+        card_description:
+          Click the button below to verify your email address and
           activate your account.
         submit: Verify Account
       verify_account_resend:
         page_subtitle: Resend your account verification email.
         card_title: Resend Verification Email
-        card_description: Enter your email address and we'll send you a new verification
+        card_description:
+          Enter your email address and we'll send you a new verification
           link.
         email_label: Email address
         email_placeholder: Enter your email address
@@ -680,7 +712,8 @@ en:
         page_title: Set Up Two-Factor Authentication
         page_subtitle: Scan the QR code with your authenticator app to enable 2FA.
         card_title: Authenticator Setup
-        card_description: Use an authenticator app like Google Authenticator, Authy,
+        card_description:
+          Use an authenticator app like Google Authenticator, Authy,
           or 1Password to scan the QR code below.
         qr_hint: Scan this QR code with your authenticator app
         manual_entry_summary: Can't scan? Enter the code manually
@@ -709,17 +742,21 @@ en:
       two_factor_manage:
         page_title_configured: Manage Two-Factor Authentication
         page_title_unconfigured: Set Up Two-Factor Authentication
-        page_subtitle_configured: Manage your authentication methods or add additional
+        page_subtitle_configured:
+          Manage your authentication methods or add additional
           security.
-        page_subtitle_unconfigured: Choose a method to secure your account with two-factor
+        page_subtitle_unconfigured:
+          Choose a method to secure your account with two-factor
           authentication.
         card_title: Authentication Methods
-        card_description: Choose how you want to verify your identity when signing
+        card_description:
+          Choose how you want to verify your identity when signing
           in.
         status_enabled: Enabled
         methods:
           passkeys_title: Passkeys
-          passkeys_description: Use biometrics or a security key for passwordless
+          passkeys_description:
+            Use biometrics or a security key for passwordless
             login.
           passkeys_setup: Set up passkey
           passkeys_manage: Manage passkeys
@@ -728,27 +765,32 @@ en:
           totp_setup: Set up authenticator
           totp_manage: Disable TOTP
           recovery_codes_title: Recovery Codes
-          recovery_codes_description: Backup codes for when you lose access to your
+          recovery_codes_description:
+            Backup codes for when you lose access to your
             device.
           recovery_codes_setup: View recovery codes
       recovery_codes:
         page_title: Recovery codes
-        page_subtitle: Keep backup access available if your authenticator or passkey
+        page_subtitle:
+          Keep backup access available if your authenticator or passkey
           is unavailable.
         card_title: View recovery codes
         card_description: Confirm your password to view or generate backup codes.
         safety_title: Backup access
-        safety_description: Recovery codes are single-use backup keys. Store them
+        safety_description:
+          Recovery codes are single-use backup keys. Store them
           in a password manager or another secure place.
         password_placeholder: Enter your password
       add_recovery_codes:
         page_title: Recovery codes
         page_subtitle: Save these codes before closing this page.
         card_title: Your recovery codes
-        card_description: Use one code when you cannot access your usual two-factor
+        card_description:
+          Use one code when you cannot access your usual two-factor
           method.
         notice_title: Store these codes somewhere safe.
-        notice_description: Each code works once. Anyone with a code can complete
+        notice_description:
+          Each code works once. Anyone with a code can complete
           sign-in for your account.
         copy_to_clipboard: Copy to clipboard
         password_placeholder: Enter your password to add replacement codes
@@ -756,7 +798,8 @@ en:
         card_title: Recovery code
         card_description: Enter a backup code to finish signing in.
         info_title: Backup verification
-        info_description: Use one of your saved recovery codes. Each code can only
+        info_description:
+          Use one of your saved recovery codes. Each code can only
           be used once.
       webauthn_auth:
         page_title: Use your passkey
@@ -767,10 +810,12 @@ en:
         page_title: Set Up Passkey Authentication
         page_subtitle: Add a passkey for fast, secure passwordless login.
         card_title: Register a Passkey
-        card_description: Passkeys use your device's biometrics or security key for
+        card_description:
+          Passkeys use your device's biometrics or security key for
           secure, passwordless authentication.
         info_title: What are passkeys?
-        info_description: Passkeys are a secure replacement for passwords. They use
+        info_description:
+          Passkeys are a secure replacement for passwords. They use
           your device's built-in security (like Face ID, Touch ID, or Windows Hello)
           to verify your identity.
         nickname_label: Passkey name
@@ -784,7 +829,8 @@ en:
         page_title: Remove Passkey
         page_subtitle: Confirm your password to remove this passkey.
         card_title: Remove passkey
-        card_description: This action cannot be undone. You will not be able to sign
+        card_description:
+          This action cannot be undone. You will not be able to sign
           in with this passkey anymore.
         password_label: Password
         password_placeholder: Enter your password
@@ -813,7 +859,8 @@ en:
       view: View
       delete_dialog:
         title: Delete Location
-        confirm: Are you sure you want to delete %{name}? This will also delete all
+        confirm:
+          Are you sure you want to delete %{name}? This will also delete all
           medications at this location.
         cancel: Cancel
         submit: Delete
@@ -851,18 +898,22 @@ en:
     finder:
       nhs_directory: NHS Directory
       title: Medication Finder
-      subtitle: Search NHS dm+d and supported product sources to add medication or
+      subtitle:
+        Search NHS dm+d and supported product sources to add medication or
         restock existing inventory.
       placeholder: Search by name, category, or active ingredient...
       search_button: Search
       idle_heading: Ready to explore?
-      idle_text: Enter a medication name above to search thousands of verified records
+      idle_text:
+        Enter a medication name above to search thousands of verified records
         in the NHS database.
       loading: Searching NHS dm+d database...
       unavailable_title: Search unavailable
-      unavailable_message: Unable to connect to the medication database. Please try
+      unavailable_message:
+        Unable to connect to the medication database. Please try
         again.
-      review_guidance_unavailable: Medication review information is temporarily unavailable.
+      review_guidance_unavailable:
+        Medication review information is temporarily unavailable.
         Search results may not include interaction guidance.
       no_results_title: No medications found
       no_results_message: Try searching with different terms or check the spelling.
@@ -912,7 +963,8 @@ en:
       related_medications_current_supply: Current supply
       update_stock: Update stock
       confirm_restock: Confirm you wish to add %{quantity} units to %{medication}.
-      confirm_restock_without_quantity: Confirm how many units you wish to add to
+      confirm_restock_without_quantity:
+        Confirm how many units you wish to add to
         %{medication}.
       restock_quantity: Quantity to add
       restock_submit: Confirm restock
@@ -920,7 +972,8 @@ en:
       result_count:
         one: '%{count} result for "%{query}"'
         other: '%{count} results for "%{query}"'
-      coming_soon: This feature is coming soon! We'll integrate with a medication
+      coming_soon:
+        This feature is coming soon! We'll integrate with a medication
         database API to provide detailed information about medications.
     created: Medication was successfully created.
     updated: Medication was successfully updated.
@@ -1013,7 +1066,8 @@ en:
     adjust_inventory_modal:
       adjust_inventory: Adjust Inventory
       title: Adjust Inventory for %{medication}
-      description: Set the exact current quantity, for example when onboarding a partially
+      description:
+        Set the exact current quantity, for example when onboarding a partially
         used pack.
       current_quantity: Current quantity
       units: units
@@ -1027,7 +1081,8 @@ en:
       scheduled: Scheduled plan
       as_needed: As-needed medication
       empty_title: No active medication plans
-      empty_description: This inventory item is not currently linked to a record you
+      empty_description:
+        This inventory item is not currently linked to a record you
         can administer.
     form:
       new_title: Add a New Medication
@@ -1041,7 +1096,8 @@ en:
       add_medication: Add Medication
       scan_stock: Scan stock
       empty_title: No medications yet
-      empty_description: Add your first medication to start tracking inventory and
+      empty_description:
+        Add your first medication to start tracking inventory and
         dosage.
       all: All
       view: View
@@ -1057,7 +1113,8 @@ en:
         cancel: Cancel
     inventory_scan_modal:
       title: Scan stock
-      description: Scan a medication box, enter the quantity supplied, and add it
+      description:
+        Scan a medication box, enter the quantity supplied, and add it
         to the matching inventory item.
       barcode: Barcode
       quantity: Quantity
@@ -1070,7 +1127,7 @@ en:
       overview: Overview
       nhs_guidance_title: NHS medicine guidance
       nhs_guidance_link: View full NHS guidance
-      nhs_guidance_source: 'Source: %{source}'
+      nhs_guidance_source: "Source: %{source}"
       nhs_guidance_reviewed_on: Last reviewed %{date}
       no_description: No description provided.
       safety_warnings: Safety Warnings
@@ -1107,7 +1164,8 @@ en:
         empty_in_days: Supply will be empty in %{days} days
       location: Location
   passwords:
-    reset_sent: Password reset instructions sent (if user with that email address
+    reset_sent:
+      Password reset instructions sent (if user with that email address
       exists).
     reset_success: Password has been reset.
     mismatch: Passwords did not match.
@@ -1131,8 +1189,8 @@ en:
       manage_parents: Manage parents
       health_events: Health events
       back: Back
-      born: 'Born:'
-      age: 'Age:'
+      born: "Born:"
+      age: "Age:"
       schedules_heading: Schedules
       medications_heading: Medications
       no_schedules: No schedules yet.
@@ -1181,7 +1239,7 @@ en:
       person_type: Person Type
       select_person_type: Select person type
       has_capacity: Has capacity to manage own medication
-      note: 'Note:'
+      note: "Note:"
       capacity_hint: A person without capacity must have at least one carer assigned.
       capacity_hint_assign_carer: Please assign a carer before removing capacity.
       save: Save
@@ -1189,9 +1247,9 @@ en:
       create: Create Person
       update: Update Person
     card:
-      born: 'Born:'
-      age: 'Age:'
-      medications: 'Medications:'
+      born: "Born:"
+      age: "Age:"
+      medications: "Medications:"
       no_active_medications: No active medications
       needs_carer: Needs Carer
       view_medications: View Medications
@@ -1204,7 +1262,8 @@ en:
     paused: Medication paused.
     resumed: Medication resumed.
     medication_taken: Medication taken successfully.
-    invalid_dose_configured: Invalid dose configured. Update the medication dose before
+    invalid_dose_configured:
+      Invalid dose configured. Update the medication dose before
       taking.
     modal:
       new_title: Add Medication for %{person}
@@ -1212,8 +1271,8 @@ en:
       subtitle: Add a routine or as-needed medication
     card:
       paused: Paused
-      notes: 'Notes:'
-      timing_restrictions: 'Timing Restrictions:'
+      notes: "Notes:"
+      timing_restrictions: "Timing Restrictions:"
       max_doses:
         daily:
           one: Maximum 1 dose per day
@@ -1227,7 +1286,7 @@ en:
       wait_hours:
         one: Wait at least 1 hour between doses
         other: Wait at least %{count} hours between doses
-      next_dose_available: 'Next dose available in:'
+      next_dose_available: "Next dose available in:"
       todays_doses: Today's Doses
       no_doses_today: No doses taken today
       take: Take
@@ -1245,14 +1304,15 @@ en:
       resume: Resume medication
       remove: Remove
       remove_medication: Remove Medication
-      remove_confirmation: Are you sure you want to remove %{medication}? This action
+      remove_confirmation:
+        Are you sure you want to remove %{medication}? This action
         cannot be undone.
     form:
       add_medication: Add Medication
       add_medication_for: Add Medication for %{person}
       edit_medication_for: Edit Medication for %{person}
       validation_errors:
-        one: '1 error prohibited this medication from being saved:'
+        one: "1 error prohibited this medication from being saved:"
         other: "%{count} errors prohibited this medication from being saved:"
       cancel: Cancel
       medication: Medication
@@ -1276,7 +1336,8 @@ en:
       default_dose_cycle: Daily
       dose_cycle_hint: Cycle reset period
       administration_kind: Medication type
-      administration_kind_hint: Routine tasks count against today; as-needed medication
+      administration_kind_hint:
+        Routine tasks count against today; as-needed medication
         only shows when it can be given.
       administration_kinds:
         routine:
@@ -1291,12 +1352,14 @@ en:
       next: Next
       workflow:
         choose_medication_title: Choose a medication
-        choose_medication_description: Start by choosing the medication you want to
+        choose_medication_description:
+          Start by choosing the medication you want to
           add.
         choose_dose_title: Choose the dose
         choose_dose_description: Choose the dose before you continue.
         add_guidance_title: Add optional guidance
-        add_guidance_description: Add any notes or dose limits you want to track with
+        add_guidance_description:
+          Add any notes or dose limits you want to track with
           this medication.
       add_medication_button: Add Medication
       save_changes_button: Save Changes
@@ -1344,7 +1407,8 @@ en:
     paused: Schedule paused.
     resumed: Schedule resumed.
     medication_taken: Medication taken successfully.
-    invalid_dose_configured: Invalid dose configured. Update the schedule dose before
+    invalid_dose_configured:
+      Invalid dose configured. Update the schedule dose before
       taking.
     modal:
       new_title: New Schedule for %{person}
@@ -1352,10 +1416,10 @@ en:
       subtitle: Add medication details and schedule
     card:
       paused: Paused
-      started: 'Started:'
-      ends: 'Ends:'
-      notes: 'Notes:'
-      next_dose_available: 'Next dose available in:'
+      started: "Started:"
+      ends: "Ends:"
+      notes: "Notes:"
+      next_dose_available: "Next dose available in:"
       todays_doses: Today's Doses
       no_doses_today: No doses taken today
       take: Take
@@ -1374,13 +1438,15 @@ en:
       resume: Resume schedule
       delete_dialog:
         title: Delete Schedule
-        confirm: Are you sure you want to delete the %{medication} schedule? This
+        confirm:
+          Are you sure you want to delete the %{medication} schedule? This
           action cannot be undone.
         cancel: Cancel
         submit: Delete
     form:
       choose_medication_title: Choose a medication
-      choose_medication_description: Selecting a medication will open the dose and
+      choose_medication_description:
+        Selecting a medication will open the dose and
         schedule details.
       medication: Medication
       change: Change
@@ -1388,10 +1454,12 @@ en:
       dose: Dose
       dosage: Dosage
       choose_one_dose: Choose one dose before entering schedule details.
-      no_dose_options: No dose options are available for this medication. Add a dosage
+      no_dose_options:
+        No dose options are available for this medication. Add a dosage
         before creating a schedule.
       schedule_details_title: Schedule details
-      schedule_details_description: Set timing and safety guidance after choosing
+      schedule_details_description:
+        Set timing and safety guidance after choosing
         a dose.
       select_medication_first: Select a medication first
       select_dosage: Select a dosage
@@ -1407,8 +1475,8 @@ en:
       min_hours_hint: Minimum time required between doses
       min_hours_placeholder: e.g., 6
       dose_cycle: Dose cycle
-      dose_cycle_hint: 'How often the dose cycle resets (default: daily)'
-      select_cycle: 'Select a cycle (default: daily)'
+      dose_cycle_hint: "How often the dose cycle resets (default: daily)"
+      select_cycle: "Select a cycle (default: daily)"
       notes: Notes
       notes_hint: Additional instructions or information
       notes_placeholder: Enter any additional notes or instructions...
@@ -1421,7 +1489,7 @@ en:
       frequency_up_to: Up to %{count} times per cycle
       frequency_at_least_hours: at least %{hours}h apart
     frequency_phrase:
-      preview_label: 'This means:'
+      preview_label: "This means:"
       cycles:
         day: day
         week: week
@@ -1496,7 +1564,8 @@ en:
       passkey_cta: Continue with Passkey
       passkey_not_supported: Passkeys are not supported in this browser.
       passkey_cancelled: Passkey sign-in was cancelled. Try again or use your password.
-      passkey_error: We could not sign you in with that passkey. Try again or use
+      passkey_error:
+        We could not sign you in with that passkey. Try again or use
         your password.
       oauth_continue: Continue with %{provider}
       oauth_sso: Login with %{provider} (SSO)
@@ -1508,14 +1577,14 @@ en:
       resend_verification: Resend verification email
   take_medications:
     cooldown: This dose is not available at this time.
-    out_of_stock: 'Cannot take medication: out of stock'
+    out_of_stock: "Cannot take medication: out of stock"
     success: Medication taken successfully.
     failure: Failed to record medication taken.
     json_success: Medication taken successfully.
     invalid_taken_at: Choose a valid dose time.
     future_taken_at: Dose time cannot be more than an hour in the future.
-    paused: 'Cannot take medication: paused'
-    overlapping_prescription_restriction: 'Cannot take medication: another active prescription for this medication sets a stricter timing limit.'
+    paused: "Cannot take medication: paused"
+    overlapping_prescription_restriction: "Cannot take medication: another active prescription for this medication sets a stricter timing limit."
   barcode_scanner:
     title: Scan Barcode
     start: Start Scanner
@@ -1616,12 +1685,15 @@ en:
         title: Inventory Alert
         out_of_stock: Out of Stock
         refill_pending: Refill Pending
-        description_zero: Your %{medication_name} supply is exhausted. Please order
+        description_zero:
+          Your %{medication_name} supply is exhausted. Please order
           an urgent refill.
         description:
-          one: Your %{medication_name} supply will be exhausted in %{count} day. We
+          one:
+            Your %{medication_name} supply will be exhausted in %{count} day. We
             recommend ordering a refill this afternoon.
-          other: Your %{medication_name} supply will be exhausted in %{count} days.
+          other:
+            Your %{medication_name} supply will be exhausted in %{count} days.
             We recommend ordering a refill this afternoon.
       actionable_insight: Actionable insight
     health_history:
@@ -1696,11 +1768,11 @@ en:
           medications: "Linked medicines: %{medications}"
         not_recorded: Not recorded
         none: None
-        'yes': 'Yes'
-        'no': 'No'
+        "yes": "Yes"
+        "no": "No"
       illness_patterns:
         title: Recorded illness patterns
-        summary: "%{count} \"%{title}\" episodes were recorded between %{first} and %{last}. The average interval between episode starts was %{interval} days."
+        summary: '%{count} "%{title}" episodes were recorded between %{first} and %{last}. The average interval between episode starts was %{interval} days.'
       disclaimer:
         title: Disclaimer
         entered_information: This report reflects information entered into MedTracker.
@@ -1795,7 +1867,8 @@ en:
     no_action:
       title: No pattern needs attention
       summary: Nothing unusual stands out in this report window.
-      detail: Your report still shows dose history and inventory so you can review
+      detail:
+        Your report still shows dose history and inventory so you can review
         the details.
     detectors:
       adherence_streak:
@@ -1848,7 +1921,8 @@ en:
         summary:
           one: 1 as-needed dose was logged in this window.
           other: "%{count} as-needed doses were logged in this window."
-        detail: Review these entries alongside routine doses to keep the full picture
+        detail:
+          Review these entries alongside routine doses to keep the full picture
           clear.
         metric_label: PRN logs
         metric_value:
@@ -1856,7 +1930,8 @@ en:
           other: "%{count} doses"
       schedule_hygiene:
         title: Schedule detail to review
-        summary: "%{medication_name} is set for multiple daily doses without specific
+        summary:
+          "%{medication_name} is set for multiple daily doses without specific
           times."
         detail: Adding times can make reminders, reporting, and timing insights clearer.
         metric_label: Review
@@ -1894,10 +1969,11 @@ en:
         data_backup_description: Download a copy of your medication and health records.
         experiments: Experiments
         experiments_description: Try new interface options before they ship.
-    email_change_requires_verification: Use the verified email change flow to update
+    email_change_requires_verification:
+      Use the verified email change flow to update
       your sign-in email.
     no_changes: No changes to save.
-    profile_update_failed: 'Failed to update profile: %{errors}'
+    profile_update_failed: "Failed to update profile: %{errors}"
     experiments:
       dashboard:
         title: Dashboard layout
@@ -1939,7 +2015,8 @@ en:
     show:
       eyebrow: Profile settings
       title: My Profile
-      description: Shape your account, safety preferences, and notification rhythm
+      description:
+        Shape your account, safety preferences, and notification rhythm
         from one calm control room.
       not_set: Not set
       stats:
@@ -1978,8 +2055,8 @@ en:
       name_label: Token name
       create: Create token
       empty: No API tokens yet.
-      last_used_at: 'Last used: %{time}'
-      expires_at: 'Expires: %{time}'
+      last_used_at: "Last used: %{time}"
+      expires_at: "Expires: %{time}"
       revoke: Revoke
       revoked: API token revoked.
       locked: Your account is locked. API tokens cannot be changed right now.
@@ -2013,7 +2090,8 @@ en:
       categories_description: Choose which notification types to receive
       managed_people:
         title: People you manage
-        description: Missed-dose alerts for children and dependent adults are included
+        description:
+          Missed-dose alerts for children and dependent adults are included
           automatically. Choose any adults you also want to follow.
         automatic: Included automatically
         notify_me: Notify me
@@ -2036,7 +2114,8 @@ en:
       title: Close Account
       description: Permanently delete your account and all associated data
       dialog_title: Are you absolutely sure?
-      dialog_description: This action cannot be undone. This will permanently delete
+      dialog_description:
+        This action cannot be undone. This will permanently delete
         your account and remove all your data from our servers.
       cancel_button: Cancel
       confirm_button: Yes, delete my account
@@ -2048,7 +2127,8 @@ en:
     activated: User account has been activated.
     verified: User account has been manually verified.
     cannot_deactivate_self: You cannot deactivate your own account.
-    owner_deactivation_rejected: Owner accounts can only be deactivated by another household
+    owner_deactivation_rejected:
+      Owner accounts can only be deactivated by another household
       owner while another active owner user remains.
   webauthn:
     passkey_removed: Passkey removed successfully
@@ -2241,7 +2321,8 @@ en:
     cards:
       medications:
         title: Medications
-        description: Manage your medication inventory, track stock levels, and view
+        description:
+          Manage your medication inventory, track stock levels, and view
           dosage information
       people:
         title: People
@@ -2260,7 +2341,8 @@ en:
       name_placeholder: e.g., Paracetamol
       friendly_name: Display name
       friendly_name_placeholder: Leave blank to use the full medication name
-      friendly_name_hint: Used in lists, schedules, and history. The full imported
+      friendly_name_hint:
+        Used in lists, schedules, and history. The full imported
         name is kept for reference.
       description: Description
       description_placeholder: What is this medication used for?
@@ -2296,7 +2378,8 @@ en:
           description: Tell us about this medication.
         dose:
           title: Dose and plan
-          description: Build the first medication plan by choosing who takes it, the
+          description:
+            Build the first medication plan by choosing who takes it, the
             dose, and the rhythm.
           person_title: Who will take this?
           person_description: Select the person or dependent this plan belongs
@@ -2352,7 +2435,7 @@ en:
           title: Supply setup
           description: Track how much you have in the pack and when to reorder.
       validation_errors:
-        one: '1 error prevented this medication from being saved:'
+        one: "1 error prevented this medication from being saved:"
         other: "%{count} errors prevented this medication from being saved:"
   dashboard:
     outcomes:
@@ -2414,8 +2497,8 @@ en:
       more_people: More people
     as_needed:
       title: As needed
-    overdue_alert: 'Overdue: %{medication} for %{person} (scheduled at %{time})'
-    out_of_stock_alert: 'Out of Stock: %{medication}. Cannot record doses for %{person}.'
+    overdue_alert: "Overdue: %{medication} for %{person} (scheduled at %{time})"
+    out_of_stock_alert: "Out of Stock: %{medication}. Cannot record doses for %{person}."
     no_active_schedules: No active schedules found
     add_schedules_hint: Add schedules to see them here
     dose_taken_at: "%{person} • Taken at %{time}"
@@ -2479,7 +2562,8 @@ en:
     delete_confirmation:
       delete: Delete
       delete_schedule: Delete Schedule?
-      are_you_sure: Are you sure you want to delete %{medication} for %{person}? This
+      are_you_sure:
+        Are you sure you want to delete %{medication} for %{person}? This
         action cannot be undone.
       cancel: Cancel
     person_schedule:
@@ -2490,7 +2574,8 @@ en:
       out_of_stock: Out of Stock
       on_cooldown: On Cooldown
       take_now: Take Now
-      delete_confirmation: Are you sure you want to delete this schedule for %{medication}?
+      delete_confirmation:
+        Are you sure you want to delete this schedule for %{medication}?
         This action cannot be undone.
     schedule_card:
       dosage: Dosage

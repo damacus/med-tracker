@@ -191,37 +191,45 @@ cy:
     verify_account:
       subject: Dilyswch eich cyfrif MedTracker
       title: Dilyswch eich cyfeiriad e-bost
-      instruction: Diolch am greu eich cyfrif MedTracker. Cliciwch y botwm isod i
+      instruction:
+        Diolch am greu eich cyfrif MedTracker. Cliciwch y botwm isod i
         ddilysu eich cyfeiriad e-bost a chwblhau eich cofrestriad.
       button: Dilysu fy nghyfrif
-      notice: Bydd y ddolen hon yn dod i ben. Os na wnaethoch greu cyfrif, gallwch
+      notice:
+        Bydd y ddolen hon yn dod i ben. Os na wnaethoch greu cyfrif, gallwch
         anwybyddu'r e-bost hwn yn ddiogel.
     reset_password:
       subject: Ailosod eich cyfrinair MedTracker
       title: Ailosod eich cyfrinair
-      instruction: Cawsom gais i ailosod y cyfrinair ar gyfer eich cyfrif MedTracker.
+      instruction:
+        Cawsom gais i ailosod y cyfrinair ar gyfer eich cyfrif MedTracker.
         Cliciwch y botwm isod i ddewis cyfrinair newydd.
       button: Ailosod fy nghyfrinair
-      notice: Bydd y ddolen hon yn dod i ben. Os na wnaethoch ofyn am ailosod cyfrinair,
+      notice:
+        Bydd y ddolen hon yn dod i ben. Os na wnaethoch ofyn am ailosod cyfrinair,
         gallwch anwybyddu'r e-bost hwn yn ddiogel — ni fydd eich cyfrinair yn cael
         ei newid.
     unlock_account:
       subject: Datgloi eich cyfrif MedTracker
       title: Mae eich cyfrif wedi'i gloi
-      instruction: Mae eich cyfrif MedTracker wedi'i gloi dros dro oherwydd sawl ymgais
+      instruction:
+        Mae eich cyfrif MedTracker wedi'i gloi dros dro oherwydd sawl ymgais
         aflwyddiannus i fewngofnodi. Cliciwch y botwm isod i ddatgloi eich cyfrif
         ac adennill mynediad.
       button: Datgloi fy nghyfrif
-      notice: Os na wnaethoch geisio mewngofnodi, cysylltwch â ni ar unwaith — efallai
+      notice:
+        Os na wnaethoch geisio mewngofnodi, cysylltwch â ni ar unwaith — efallai
         bod rhywun yn ceisio cyrchu eich cyfrif.
     verify_login_change:
       subject: Cadarnhewch eich mewngofnod MedTracker newydd
       title: Cadarnhewch eich cyfeiriad e-bost newydd
-      instruction: Yn ddiweddar gwnaethoch gais i newid y cyfeiriad e-bost ar gyfer
+      instruction:
+        Yn ddiweddar gwnaethoch gais i newid y cyfeiriad e-bost ar gyfer
         eich cyfrif MedTracker. Cliciwch y botwm isod i gadarnhau eich cyfeiriad e-bost
         newydd.
       button: Cadarnhau cyfeiriad e-bost newydd
-      notice: Bydd y ddolen hon yn dod i ben. Os na wnaethoch ofyn am y newid hwn,
+      notice:
+        Bydd y ddolen hon yn dod i ben. Os na wnaethoch ofyn am y newid hwn,
         cysylltwch â ni ar unwaith gan y gallai rhywun feddu ar fynediad i'ch cyfrif.
     views:
       create_account:
@@ -243,7 +251,8 @@ cy:
       reset_password_request:
         page_subtitle: Ailosodwch eich cyfrinair i adennill mynediad i'ch cyfrif.
         card_title: Ailosod Cyfrinair
-        card_description: Rhowch eich cyfeiriad e-bost a byddwn yn anfon dolen i ailosod
+        card_description:
+          Rhowch eich cyfeiriad e-bost a byddwn yn anfon dolen i ailosod
           eich cyfrinair.
         email_label: Cyfeiriad e-bost
         email_placeholder: Rhowch eich cyfeiriad e-bost
@@ -263,13 +272,15 @@ cy:
       verify_account:
         page_subtitle: Dilyswch eich cyfrif i gwblhau cofrestriad.
         card_title: Dilyswch Eich Cyfrif
-        card_description: Cliciwch y botwm isod i ddilysu eich e-bost a gweithredu
+        card_description:
+          Cliciwch y botwm isod i ddilysu eich e-bost a gweithredu
           eich cyfrif.
         submit: Dilysu Cyfrif
       verify_account_resend:
         page_subtitle: Anfon e-bost dilysu eich cyfrif eto.
         card_title: Anfon E-bost Dilysu Eto
-        card_description: Rhowch eich cyfeiriad e-bost a byddwn yn anfon dolen ddilysu
+        card_description:
+          Rhowch eich cyfeiriad e-bost a byddwn yn anfon dolen ddilysu
           newydd.
         email_label: Cyfeiriad e-bost
         email_placeholder: Rhowch eich cyfeiriad e-bost
@@ -287,7 +298,8 @@ cy:
         page_title: Sefydlu Dilysu Dau Ffactor
         page_subtitle: Sganiwch y cod QR gyda'ch ap dilysu i alluogi 2FA.
         card_title: Sefydlu Dilysydd
-        card_description: Defnyddiwch ap dilysu fel Google Authenticator, Authy, neu
+        card_description:
+          Defnyddiwch ap dilysu fel Google Authenticator, Authy, neu
           1Password i sganio'r cod QR isod.
         qr_hint: Sganiwch y cod QR hwn gyda'ch ap dilysu
         manual_entry_summary: Methu sganio? Rhowch y cod â llaw
@@ -316,16 +328,19 @@ cy:
       two_factor_manage:
         page_title_configured: Rheoli Dilysu Dau Ffactor
         page_title_unconfigured: Sefydlu Dilysu Dau Ffactor
-        page_subtitle_configured: Rheolwch eich dulliau dilysu neu ychwanegwch ddiogelwch
+        page_subtitle_configured:
+          Rheolwch eich dulliau dilysu neu ychwanegwch ddiogelwch
           ychwanegol.
-        page_subtitle_unconfigured: Dewiswch ddull i ddiogelu eich cyfrif gyda dilysu
+        page_subtitle_unconfigured:
+          Dewiswch ddull i ddiogelu eich cyfrif gyda dilysu
           dau ffactor.
         card_title: Dulliau Dilysu
         card_description: Dewiswch sut rydych am wirio eich hunaniaeth wrth fewngofnodi.
         status_enabled: Wedi'i alluogi
         methods:
           passkeys_title: Passkeys
-          passkeys_description: Defnyddiwch fiometreg neu allwedd ddiogelwch ar gyfer
+          passkeys_description:
+            Defnyddiwch fiometreg neu allwedd ddiogelwch ar gyfer
             mewngofnodi heb gyfrinair.
           passkeys_setup: Sefydlu passkey
           passkeys_manage: Rheoli passkeys
@@ -334,28 +349,34 @@ cy:
           totp_setup: Sefydlu dilysydd
           totp_manage: Analluogi TOTP
           recovery_codes_title: Codau Adfer
-          recovery_codes_description: Codau wrth gefn pan fyddwch yn colli mynediad
+          recovery_codes_description:
+            Codau wrth gefn pan fyddwch yn colli mynediad
             i'ch dyfais.
           recovery_codes_setup: Gweld codau adfer
       recovery_codes:
         page_title: Codau adfer
-        page_subtitle: Cadwch fynediad wrth gefn ar gael os nad yw eich dilysydd neu
+        page_subtitle:
+          Cadwch fynediad wrth gefn ar gael os nad yw eich dilysydd neu
           passkey ar gael.
         card_title: Gweld codau adfer
-        card_description: Cadarnhewch eich cyfrinair i weld neu gynhyrchu codau wrth
+        card_description:
+          Cadarnhewch eich cyfrinair i weld neu gynhyrchu codau wrth
           gefn.
         safety_title: Mynediad wrth gefn
-        safety_description: Mae codau adfer yn allweddi wrth gefn untro. Storiwch
+        safety_description:
+          Mae codau adfer yn allweddi wrth gefn untro. Storiwch
           nhw mewn rheolwr cyfrineiriau neu le diogel arall.
         password_placeholder: Rhowch eich cyfrinair
       add_recovery_codes:
         page_title: Codau adfer
         page_subtitle: Cadwch y codau hyn cyn cau'r dudalen hon.
         card_title: Eich codau adfer
-        card_description: Defnyddiwch un cod pan na allwch ddefnyddio eich dull dau
+        card_description:
+          Defnyddiwch un cod pan na allwch ddefnyddio eich dull dau
           ffactor arferol.
         notice_title: Storiwch y codau hyn rywle diogel.
-        notice_description: Mae pob cod yn gweithio unwaith. Gall unrhyw un sydd â
+        notice_description:
+          Mae pob cod yn gweithio unwaith. Gall unrhyw un sydd â
           chod gwblhau mewngofnodi ar gyfer eich cyfrif.
         copy_to_clipboard: Copïo i'r clipfwrdd
         password_placeholder: Rhowch eich cyfrinair i ychwanegu codau newydd
@@ -363,7 +384,8 @@ cy:
         card_title: Cod adfer
         card_description: Rhowch god wrth gefn i gwblhau mewngofnodi.
         info_title: Dilysiad wrth gefn
-        info_description: Defnyddiwch un o'ch codau adfer wedi'u cadw. Dim ond unwaith
+        info_description:
+          Defnyddiwch un o'ch codau adfer wedi'u cadw. Dim ond unwaith
           y gellir defnyddio pob cod.
       webauthn_auth:
         page_title: Defnyddiwch eich passkey
@@ -372,13 +394,16 @@ cy:
         card_description: Tapio parhau i ddefnyddio eich passkey ar gyfer dilysu.
       webauthn_setup:
         page_title: Sefydlu Dilysu Passkey
-        page_subtitle: Ychwanegwch passkey ar gyfer mewngofnodi cyflym a diogel heb
+        page_subtitle:
+          Ychwanegwch passkey ar gyfer mewngofnodi cyflym a diogel heb
           gyfrinair.
         card_title: Cofrestru Passkey
-        card_description: Mae passkeys yn defnyddio biometrig y ddyfais neu allwedd
+        card_description:
+          Mae passkeys yn defnyddio biometrig y ddyfais neu allwedd
           ddiogelwch ar gyfer dilysu diogel heb gyfrinair.
         info_title: Beth yw passkeys?
-        info_description: Mae passkeys yn ddisodliad diogel ar gyfer cyfrineiriau.
+        info_description:
+          Mae passkeys yn ddisodliad diogel ar gyfer cyfrineiriau.
           Maent yn defnyddio diogelwch adeiledig eich dyfais (fel Face ID, Touch ID,
           neu Windows Hello) i wirio eich hunaniaeth.
         nickname_label: Enw'r passkey
@@ -386,14 +411,16 @@ cy:
         nickname_hint: Defnyddiwch enw sy'n dweud lle mae'r passkey hwn wedi'i storio.
         current_password_label: Cyfrinair Presennol
         current_password_placeholder: Rhowch eich cyfrinair i gadarnhau
-        current_password_hint: Angenrheidiol i wirio eich hunaniaeth cyn ychwanegu
+        current_password_hint:
+          Angenrheidiol i wirio eich hunaniaeth cyn ychwanegu
           passkey
         submit: Cofrestru Passkey
       webauthn_remove:
         page_title: Dileu Passkey
         page_subtitle: Cadarnhewch eich cyfrinair i ddileu'r passkey hwn.
         card_title: Dileu passkey
-        card_description: Ni ellir dadwneud y weithred hon. Ni fyddwch yn gallu mewngofnodi
+        card_description:
+          Ni ellir dadwneud y weithred hon. Ni fyddwch yn gallu mewngofnodi
           gyda'r passkey hwn mwyach.
         password_label: Cyfrinair
         password_placeholder: Rhowch eich cyfrinair
@@ -425,7 +452,8 @@ cy:
       cancelled: Gwahoddiad wedi'i ganslo
       cannot_resend_accepted: Ni ellir ailanfon gwahoddiadau sydd wedi'u derbyn
       cannot_cancel_accepted: Ni ellir canslo gwahoddiadau sydd wedi'u derbyn
-      resend_failed: Ni ellid ailanfon y gwahoddiad hwn. Mae'n bosibl bod gwahoddiad
+      resend_failed:
+        Ni ellid ailanfon y gwahoddiad hwn. Mae'n bosibl bod gwahoddiad
         sy'n aros am yr e-bost hwn eisoes yn bodoli.
       index:
         title: Gwahoddiadau
@@ -441,7 +469,8 @@ cy:
           access_level: Mynediad dibynnydd
           select_access_level: Dewiswch lefel mynediad
           dependents: Dibynyddion presennol
-          dependents_hint: Dewiswch blant presennol neu oedolion dibynnol y dylai'r
+          dependents_hint:
+            Dewiswch blant presennol neu oedolion dibynnol y dylai'r
             rhiant neu'r gofalwr gwahoddedig hwn eu rheoli.
           submit: Anfon gwahoddiad
         status:
@@ -473,7 +502,8 @@ cy:
         deactivate: Dadactifadu
         deactivate_dialog:
           title: Dadactifadu Perthynas
-          confirm: Ydych chi'n sicr eich bod am ddadactifadu'r berthynas rhwng %{carer}
+          confirm:
+            Ydych chi'n sicr eich bod am ddadactifadu'r berthynas rhwng %{carer}
             a %{patient}?
           cancel: Canslo
           submit: Dadactifadu
@@ -499,6 +529,13 @@ cy:
           created_at: Crëwyd
           expires_at: Daw i ben
           revoked_at: Diddymwyd
+          actions: Gweithredoedd
+        actions:
+          reason: Rheswm
+          reason_placeholder: Pam mae'r penderfyniad hwn yn gywir?
+          attach: Atodi i berthynas
+          manual: Cadarnhau'n annibynnol
+          revoke: Dirymu grant
         empty: Ni chanfuwyd grantiau mynediad amwys.
         active: Gweithredol
         inactive: Anweithredol
@@ -511,6 +548,11 @@ cy:
           previous: Blaenorol
           next: Nesaf
           label: Tudaleniad
+      classify:
+        mfa_required: Mae angen dilysiad amlffactor i newid awdurdod grant.
+        attach_notice: Grant wedi'i atodi i'r berthynas gydnaws.
+        manual_notice: Grant wedi'i gadarnhau fel awdurdod annibynnol.
+        revoke_notice: Grant wedi'i ddirymu.
     users:
       unauthorized: Nid oes gennych awdurdod i gyflawni'r weithred hon.
       missing_account: Nid oes gan y defnyddiwr gyfrif i'w ddilysu.
@@ -575,7 +617,8 @@ cy:
         verified: Wedi'i ddilysu
         deactivate_dialog:
           title: Dadactifadu Cyfrif Defnyddiwr
-          confirm: Ydych chi'n sicr eich bod am ddadactifadu cyfrif %{name}? Ni fyddant
+          confirm:
+            Ydych chi'n sicr eich bod am ddadactifadu cyfrif %{name}? Ni fyddant
             yn gallu mewngofnodi mwyach.
           cancel: Canslo
           submit: Dadactifadu
@@ -736,8 +779,9 @@ cy:
           view: Gweld
     nhs_dmd_imports:
       already_running: Mae mewnforiad NHS dm+d eisoes yn rhedeg. Arhoswch iddo orffen.
-      created: 'Rhyddhad NHS dm+d wedi''i fewnforio: %{imported} cofnod wedi''i fewnforio,
-        %{skipped} wedi''u hepgor.'
+      created:
+        "Rhyddhad NHS dm+d wedi'i fewnforio: %{imported} cofnod wedi'i fewnforio,
+        %{skipped} wedi'u hepgor."
       form:
         cancel: Canslo
         help: Dewiswch ffeil ZIP rhyddhau NHS dm+d.
@@ -788,7 +832,8 @@ cy:
       updated: Gosodiadau wedi'u diweddaru'n llwyddiannus.
     membership_roles:
       invalid_role: Dewiswch rôl aelwyd ddilys.
-      owner_demotion_rejected: Dim ond perchnogion cartrefi sy'n gallu newid aelodaethau
+      owner_demotion_rejected:
+        Dim ond perchnogion cartrefi sy'n gallu newid aelodaethau
         perchnogion.
       owner_rejected: Mae hyrwyddo i berchennog yn gofyn am gymorth gweinyddwr
         platfform.
@@ -827,7 +872,8 @@ cy:
       setup: Gosodwch MFA neu allwedd fynediad cyn parhau.
       verify: Dilyswch MFA neu allwedd fynediad cyn parhau.
     session_expired: Daeth eich sesiwn i ben. Mewngofnodwch eto.
-    two_factor_required: Er mwy o ddiogelwch, gosodwch ddilysu dau ffactor ar gyfer
+    two_factor_required:
+      Er mwy o ddiogelwch, gosodwch ddilysu dau ffactor ar gyfer
       eich cyfrif.
   invitation_mailer:
     subject: Gwahoddiad i ymuno â MedTracker
@@ -856,7 +902,8 @@ cy:
       view: Gweld
       delete_dialog:
         title: Dileu Lleoliad
-        confirm: Ydych chi'n siŵr eich bod am ddileu %{name}? Bydd hyn hefyd yn dileu
+        confirm:
+          Ydych chi'n siŵr eich bod am ddileu %{name}? Bydd hyn hefyd yn dileu
           pob meddyginiaeth yn y lleoliad hwn.
         cancel: Canslo
         submit: Dileu
@@ -899,16 +946,20 @@ cy:
       placeholder: Chwilio yn ôl enw, categori, neu gynhwysyn gweithredol...
       search_button: Chwilio
       idle_heading: Yn barod i archwilio?
-      idle_text: Rhowch enw meddyginiaeth uchod i chwilio miloedd o gofnodion wedi'u
+      idle_text:
+        Rhowch enw meddyginiaeth uchod i chwilio miloedd o gofnodion wedi'u
         gwirio yn gronfa ddata'r GIG.
       loading: Wrthi'n chwilio cronfa ddata dm+d y GIG...
       unavailable_title: Chwiliad ddim ar gael
-      unavailable_message: Methu cysylltu â'r gronfa ddata meddyginiaethau. Rhowch
+      unavailable_message:
+        Methu cysylltu â'r gronfa ddata meddyginiaethau. Rhowch
         gynnig arall.
-      review_guidance_unavailable: Nid yw gwybodaeth adolygu meddyginiaeth ar gael
+      review_guidance_unavailable:
+        Nid yw gwybodaeth adolygu meddyginiaeth ar gael
         dros dro. Efallai na fydd canlyniadau chwilio yn cynnwys canllawiau rhyngweithio.
       no_results_title: Ni chanfuwyd meddyginiaethau
-      no_results_message: Ceisiwch chwilio gyda thelerau gwahanol neu gwiriwch yr
+      no_results_message:
+        Ceisiwch chwilio gyda thelerau gwahanol neu gwiriwch yr
         orgraff.
       results_title: Canlyniadau Chwilio
       source: Ffynhonnell
@@ -956,7 +1007,8 @@ cy:
       related_medications_current_supply: Cyflenwad presennol
       update_stock: Diweddaru stoc
       confirm_restock: Cadarnhewch eich bod am ychwanegu %{quantity} uned at %{medication}.
-      confirm_restock_without_quantity: Cadarnhewch faint o unedau rydych am eu hychwanegu
+      confirm_restock_without_quantity:
+        Cadarnhewch faint o unedau rydych am eu hychwanegu
         at %{medication}.
       restock_quantity: Nifer i'w ychwanegu
       restock_submit: Cadarnhau ailstocio
@@ -964,7 +1016,8 @@ cy:
       result_count:
         one: '%{count} canlyniad ar gyfer "%{query}"'
         other: '%{count} canlyniad ar gyfer "%{query}"'
-      coming_soon: Mae'r nodwedd hon yn dod yn fuan! Byddwn yn integreiddio â API
+      coming_soon:
+        Mae'r nodwedd hon yn dod yn fuan! Byddwn yn integreiddio â API
         cronfa ddata meddyginiaethau i ddarparu gwybodaeth fanwl am feddyginiaethau.
     created: Crëwyd y feddyginiaeth yn llwyddiannus.
     updated: Diweddarwyd y feddyginiaeth yn llwyddiannus.
@@ -980,7 +1033,8 @@ cy:
       choose_location: Dewis lleoliad
       choose_location_description: Dewiswch pa leoliad i ddidynnu'r dos hwn ohono.
       untracked_inventory: Heb ei olrhain
-      description: Cadarnhewch y person, y feddyginiaeth, yr amser a'r ffynhonnell
+      description:
+        Cadarnhewch y person, y feddyginiaeth, yr amser a'r ffynhonnell
         stocrestr.
       dose: Dos
       medication: Meddyginiaeth
@@ -1005,7 +1059,8 @@ cy:
       scheduled: Cynllun wedi'i drefnu
       as_needed: Meddyginiaeth yn ôl yr angen
       empty_title: Dim cynlluniau meddyginiaeth gweithredol
-      empty_description: Nid yw'r eitem rhestr hon wedi'i chysylltu ar hyn o bryd
+      empty_description:
+        Nid yw'r eitem rhestr hon wedi'i chysylltu ar hyn o bryd
         â chofnod y gallwch ei weinyddu.
     refill_modal:
       refill_inventory: Ail-stocio
@@ -1025,7 +1080,8 @@ cy:
       add_medication: Ychwanegu Meddyginiaeth
       scan_stock: Sganio stoc
       empty_title: Dim meddyginiaethau eto
-      empty_description: Ychwanegwch eich meddyginiaeth gyntaf i ddechrau olrhain
+      empty_description:
+        Ychwanegwch eich meddyginiaeth gyntaf i ddechrau olrhain
         y rhestr a'r dos.
       all: Pob un
       view: Gweld
@@ -1036,13 +1092,15 @@ cy:
       in_stock: Mewn Stoc
       delete_dialog:
         title: Dileu Meddyginiaeth
-        confirm: Ydych chi'n sicr eich bod am ddileu %{name}? Ni ellir dadwneud y
+        confirm:
+          Ydych chi'n sicr eich bod am ddileu %{name}? Ni ellir dadwneud y
           weithred hon.
         submit: Dileu
         cancel: Canslo
     inventory_scan_modal:
       title: Sganio stoc
-      description: Sganiwch flwch meddyginiaeth, nodwch y swm a gyflenwyd, a'i ychwanegu
+      description:
+        Sganiwch flwch meddyginiaeth, nodwch y swm a gyflenwyd, a'i ychwanegu
         at yr eitem rhestr sy'n cyfateb.
       barcode: Cod bar
       quantity: Nifer
@@ -1055,7 +1113,7 @@ cy:
       overview: Trosolwg
       nhs_guidance_title: Canllawiau meddyginiaeth y GIG
       nhs_guidance_link: Gweld canllawiau llawn y GIG
-      nhs_guidance_source: 'Ffynhonnell: %{source}'
+      nhs_guidance_source: "Ffynhonnell: %{source}"
       nhs_guidance_reviewed_on: Adolygwyd ddiwethaf %{date}
       no_description: Dim disgrifiad wedi'i ddarparu.
       safety_warnings: Rhybuddion Diogelwch
@@ -1094,7 +1152,8 @@ cy:
     adjust_inventory_modal:
       adjust_inventory: Addasu Stocrestr
       current_quantity: Nifer cyfredol
-      description: Gosod y nifer cywir presennol, er enghraifft wrth ymrestru pecyn
+      description:
+        Gosod y nifer cywir presennol, er enghraifft wrth ymrestru pecyn
         a ddefnyddiwyd yn rhannol.
       new_quantity: Nifer newydd
       reason: Rheswm (dewisol)
@@ -1153,7 +1212,8 @@ cy:
         one: Diweddarwyd y cyflenwad sy'n weddill ar gyfer %{count} meddyginiaeth.
         other: Diweddarwyd y cyflenwad sy'n weddill ar gyfer %{count} meddyginiaethau.
   passwords:
-    reset_sent: Anfonwyd cyfarwyddiadau ailosod cyfrinair (os oes defnyddiwr gyda'r
+    reset_sent:
+      Anfonwyd cyfarwyddiadau ailosod cyfrinair (os oes defnyddiwr gyda'r
       cyfeiriad e-bost hwnnw).
     reset_success: Mae'r cyfrinair wedi'i ailosod.
     mismatch: Nid oedd y cyfrineiriau'n cyfateb.
@@ -1180,8 +1240,8 @@ cy:
       manage_parents: Rheoli rhieni
       health_events: Digwyddiadau iechyd
       back: Yn ôl
-      born: 'Ganwyd:'
-      age: 'Oedran:'
+      born: "Ganwyd:"
+      age: "Oedran:"
       schedules_heading: Presgripsiynau
       medications_heading: Meddyginiaethau
       no_schedules: Dim presgripsiynau eto.
@@ -1219,7 +1279,7 @@ cy:
       person_type: Math o Berson
       select_person_type: Dewis math o berson
       has_capacity: Mae ganddo'r gallu i reoli ei feddyginiaeth ei hun
-      note: 'Nodyn:'
+      note: "Nodyn:"
       capacity_hint: Rhaid i berson heb allu gael o leiaf un gofalwr wedi'i aseinio.
       capacity_hint_assign_carer: Aseinwch ofalwr cyn tynnu gallu.
       save: Cadw
@@ -1227,9 +1287,9 @@ cy:
       create: Creu Person
       update: Diweddaru Person
     card:
-      born: 'Ganwyd:'
-      age: 'Oedran:'
-      medications: 'Meddyginiaethau:'
+      born: "Ganwyd:"
+      age: "Oedran:"
+      medications: "Meddyginiaethau:"
       no_active_medications: Dim meddyginiaethau gweithredol
       needs_carer: Angen Gofalwr
       view_medications: Gweld Meddyginiaethau
@@ -1250,7 +1310,8 @@ cy:
     paused: Oedwyd y feddyginiaeth.
     resumed: Ailddechreuwyd y feddyginiaeth.
     medication_taken: Cymerwyd y feddyginiaeth yn llwyddiannus.
-    invalid_dose_configured: Dos annilys wedi'i ffurfweddu. Diweddarwch ddos y feddyginiaeth
+    invalid_dose_configured:
+      Dos annilys wedi'i ffurfweddu. Diweddarwch ddos y feddyginiaeth
       cyn cymryd.
     modal:
       new_title: Ychwanegu Meddyginiaeth ar gyfer %{person}
@@ -1258,8 +1319,8 @@ cy:
       subtitle: Ychwanegu meddyginiaeth reolaidd neu yn ôl yr angen
     card:
       paused: Wedi'i oedi
-      notes: 'Nodiadau:'
-      timing_restrictions: 'Cyfyngiadau Amseru:'
+      notes: "Nodiadau:"
+      timing_restrictions: "Cyfyngiadau Amseru:"
       max_doses:
         daily:
           one: Uchafswm 1 dos y dydd
@@ -1273,7 +1334,7 @@ cy:
       wait_hours:
         one: Aros o leiaf 1 awr rhwng dosau
         other: Aros o leiaf %{count} awr rhwng dosau
-      next_dose_available: 'Dos nesaf ar gael mewn:'
+      next_dose_available: "Dos nesaf ar gael mewn:"
       todays_doses: Dosau Heddiw
       no_doses_today: Dim dosau wedi'u cymryd heddiw
       take: Cymryd
@@ -1291,14 +1352,15 @@ cy:
       edit: Golygu
       remove: Tynnu
       remove_medication: Tynnu Meddyginiaeth
-      remove_confirmation: Ydych chi'n sicr eich bod am dynnu %{medication}? Ni all
+      remove_confirmation:
+        Ydych chi'n sicr eich bod am dynnu %{medication}? Ni all
         y weithred hon gael ei dadwneud.
     form:
       add_medication: Ychwanegu Meddyginiaeth
       add_medication_for: Ychwanegu Meddyginiaeth ar gyfer %{person}
       edit_medication_for: Golygu Meddyginiaeth ar gyfer %{person}
       validation_errors:
-        one: '1 gwall wedi atal y feddyginiaeth hon rhag cael ei chadw:'
+        one: "1 gwall wedi atal y feddyginiaeth hon rhag cael ei chadw:"
         other: "%{count} gwall wedi atal y feddyginiaeth hon rhag cael ei chadw:"
       cancel: Canslo
       back: Yn ôl
@@ -1324,7 +1386,8 @@ cy:
       default_dose_cycle: Dyddiol
       dose_cycle_hint: Cyfnod ailosod cylch
       administration_kind: Math o feddyginiaeth
-      administration_kind_hint: Mae tasgau rheolaidd yn cyfrif ar gyfer heddiw; dim
+      administration_kind_hint:
+        Mae tasgau rheolaidd yn cyfrif ar gyfer heddiw; dim
         ond pan ellir ei rhoi y dangosir meddyginiaeth yn ôl yr angen.
       administration_kinds:
         routine:
@@ -1332,7 +1395,8 @@ cy:
           description: Tasg ddyddiol i'w chwblhau pan fydd y cylch yn ailosod
         as_needed:
           label: Yn ôl yr angen
-          description: Dim ond pan fydd symptomau neu gyfarwyddyd yn galw amdani y
+          description:
+            Dim ond pan fydd symptomau neu gyfarwyddyd yn galw amdani y
             caiff ei defnyddio
       no_options: Dim opsiynau.
       optional: Dewisol
@@ -1340,19 +1404,22 @@ cy:
       save_changes_button: Cadw Newidiadau
       workflow:
         choose_medication_title: Dewiswch feddyginiaeth
-        choose_medication_description: Dechreuwch trwy ddewis y feddyginiaeth rydych
+        choose_medication_description:
+          Dechreuwch trwy ddewis y feddyginiaeth rydych
           am ei hychwanegu.
         choose_dose_title: Dewiswch y dos
         choose_dose_description: Dewiswch y dos cyn i chi barhau.
         add_guidance_title: Ychwanegu arweiniad dewisol
-        add_guidance_description: Ychwanegwch unrhyw nodiadau neu derfynau dos yr
+        add_guidance_description:
+          Ychwanegwch unrhyw nodiadau neu derfynau dos yr
           hoffech eu holrhain gyda'r feddyginiaeth hon.
   medication_assignments:
     modal:
       subtitle: Ychwanegwch fanylion meddyginiaeth o'r rhagosodiadau sydd wedi'u cadw
     form:
       review_title: Adolygu
-      review_description: Gwiriwch y dos a ddewiswyd a'r rhagosodiadau meddyginiaeth sydd
+      review_description:
+        Gwiriwch y dos a ddewiswyd a'r rhagosodiadau meddyginiaeth sydd
         wedi'u cadw.
       frequency: Amlder
       plan_type: Math o gynllun
@@ -1374,7 +1441,8 @@ cy:
       frequency_placeholder: Unwaith y dydd
       description: Disgrifiad / nodiadau
       description_placeholder: Dewisol
-      scheduling_defaults: Rhagosodiadau amserlennu (wedi'u llenwi'n awtomatig wrth
+      scheduling_defaults:
+        Rhagosodiadau amserlennu (wedi'u llenwi'n awtomatig wrth
         greu amserlen)
       max_doses_per_cycle: Uchafswm dosau / cylch
       max_doses_placeholder: e.e., 4
@@ -1393,7 +1461,8 @@ cy:
     paused: Oedwyd y presgripsiwn.
     resumed: Ailddechreuwyd y presgripsiwn.
     medication_taken: Cymerwyd y feddyginiaeth yn llwyddiannus.
-    invalid_dose_configured: Dos annilys wedi'i ffurfweddu. Diweddarwch ddos y presgripsiwn
+    invalid_dose_configured:
+      Dos annilys wedi'i ffurfweddu. Diweddarwch ddos y presgripsiwn
       cyn cymryd.
     modal:
       new_title: Presgripsiwn Newydd ar gyfer %{person}
@@ -1401,10 +1470,10 @@ cy:
       subtitle: Ychwanegu manylion meddyginiaeth ac amserlen
     card:
       paused: Wedi'i oedi
-      started: 'Dechreuodd:'
-      ends: 'Yn gorffen:'
-      notes: 'Nodiadau:'
-      next_dose_available: 'Dos nesaf ar gael mewn:'
+      started: "Dechreuodd:"
+      ends: "Yn gorffen:"
+      notes: "Nodiadau:"
+      next_dose_available: "Dos nesaf ar gael mewn:"
       todays_doses: Dosau Heddiw
       no_doses_today: Dim dosau wedi'u cymryd heddiw
       take: Cymryd
@@ -1423,13 +1492,15 @@ cy:
       invalid_dose: Dos Annilys Wedi'i Ffurfweddu
       delete_dialog:
         title: Dileu Presgripsiwn
-        confirm: Ydych chi'n sicr eich bod am ddileu presgripsiwn %{medication}? Ni
+        confirm:
+          Ydych chi'n sicr eich bod am ddileu presgripsiwn %{medication}? Ni
           all y weithred hon gael ei dadwneud.
         cancel: Canslo
         submit: Dileu
     form:
       choose_medication_title: Dewiswch feddyginiaeth
-      choose_medication_description: Bydd dewis meddyginiaeth yn agor manylion y dos
+      choose_medication_description:
+        Bydd dewis meddyginiaeth yn agor manylion y dos
         a'r amserlen.
       medication: Meddyginiaeth
       change: Newid
@@ -1437,10 +1508,12 @@ cy:
       dose: Dos
       dosage: Dos
       choose_one_dose: Dewiswch un dos cyn rhoi manylion yr amserlen.
-      no_dose_options: Nid oes opsiynau dos ar gael ar gyfer y feddyginiaeth hon.
+      no_dose_options:
+        Nid oes opsiynau dos ar gael ar gyfer y feddyginiaeth hon.
         Ychwanegwch ddos cyn creu amserlen.
       schedule_details_title: Manylion yr amserlen
-      schedule_details_description: Gosodwch amseru ac arweiniad diogelwch ar ôl dewis
+      schedule_details_description:
+        Gosodwch amseru ac arweiniad diogelwch ar ôl dewis
         dos.
       select_medication_first: Dewiswch feddyginiaeth yn gyntaf
       select_dosage: Dewis dos
@@ -1456,8 +1529,8 @@ cy:
       min_hours_hint: Isafswm amser a benodir rhwng dosau
       min_hours_placeholder: e.e., 6
       dose_cycle: Cylch dos
-      dose_cycle_hint: 'Pa mor aml y mae''r cylch dos yn ailosod (rhagosod: dyddiol)'
-      select_cycle: 'Dewis cylch (rhagosod: dyddiol)'
+      dose_cycle_hint: "Pa mor aml y mae'r cylch dos yn ailosod (rhagosod: dyddiol)"
+      select_cycle: "Dewis cylch (rhagosod: dyddiol)"
       notes: Nodiadau
       notes_hint: Cyfarwyddiadau neu wybodaeth ychwanegol
       notes_placeholder: Rhowch unrhyw nodiadau neu gyfarwyddiadau ychwanegol...
@@ -1470,7 +1543,7 @@ cy:
       frequency_up_to: Hyd at %{count} gwaith y cylch
       frequency_at_least_hours: o leiaf %{hours} awr ar wahân
     frequency_phrase:
-      preview_label: 'Mae hyn yn golygu:'
+      preview_label: "Mae hyn yn golygu:"
       cycles:
         day: diwrnod
         week: wythnos
@@ -1505,7 +1578,8 @@ cy:
       none: "-"
     index:
       title: Amserlenni Gweithredol
-      subtitle: Amserlenni sy'n weithredol ar hyn o bryd ar gyfer pobl y gallwch eu
+      subtitle:
+        Amserlenni sy'n weithredol ar hyn o bryd ar gyfer pobl y gallwch eu
         cyrchu.
       start_date: Dyddiad Cychwyn
       empty: Dim presgripsiynau gweithredol wedi'u canfod.
@@ -1545,14 +1619,17 @@ cy:
       passkey_helper: Defnyddiwch Face ID, Touch ID, Windows Hello, neu allwedd ddiogelwch.
       passkey_cta: Parhau gyda Phasskey
       passkey_not_supported: Nid yw passkeys yn cael eu cefnogi yn y porwr hwn.
-      passkey_cancelled: Cafodd mewngofnodi gyda phasskey ei ganslo. Ceisiwch eto
+      passkey_cancelled:
+        Cafodd mewngofnodi gyda phasskey ei ganslo. Ceisiwch eto
         neu defnyddiwch eich cyfrinair.
-      passkey_error: Nid oedd modd eich mewngofnodi gyda'r passkey hwn. Ceisiwch eto
+      passkey_error:
+        Nid oedd modd eich mewngofnodi gyda'r passkey hwn. Ceisiwch eto
         neu defnyddiwch eich cyfrinair.
       oauth_continue: Parhau gyda %{provider}
       oauth_sso: Mewngofnodi gyda %{provider} (SSO)
       oauth_divider: neu
-      invite_only_oidc_notice: Mae mewngofnodi sengl wedi'i gadw ar gyfer cyfrifon
+      invite_only_oidc_notice:
+        Mae mewngofnodi sengl wedi'i gadw ar gyfer cyfrifon
         gwahoddedig.
       invite_only_oidc_cta: Parhau gyda %{provider}
       need_account: Angen cyfrif?
@@ -1560,14 +1637,14 @@ cy:
       resend_verification: Ailanfon e-bost dilysu
   take_medications:
     cooldown: Nid yw'r dos hwn ar gael ar hyn o bryd.
-    out_of_stock: 'Ni ellir cymryd y feddyginiaeth: dim stoc ar ôl'
+    out_of_stock: "Ni ellir cymryd y feddyginiaeth: dim stoc ar ôl"
     success: Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus.
     failure: Methwyd â chofnodi cymryd y feddyginiaeth.
     json_success: Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus.
     invalid_taken_at: Dewiswch amser dos dilys.
     future_taken_at: Ni all amser y dos fod fwy nag awr yn y dyfodol.
-    paused: 'Methu cymryd meddyginiaeth: wedi''i hoedi'
-    overlapping_prescription_restriction: 'Methu cymryd meddyginiaeth: mae presgripsiwn gweithredol arall ar gyfer y feddyginiaeth hon yn gosod terfyn amser llymach.'
+    paused: "Methu cymryd meddyginiaeth: wedi'i hoedi"
+    overlapping_prescription_restriction: "Methu cymryd meddyginiaeth: mae presgripsiwn gweithredol arall ar gyfer y feddyginiaeth hon yn gosod terfyn amser llymach."
   profiles:
     mobile_shortcuts:
       title: "Llwybrau byr y bar gwaelod"
@@ -1601,10 +1678,11 @@ cy:
         experiments: Arbrofion
         experiments_description: Rhowch gynnig ar opsiynau rhyngwyneb newydd cyn iddynt gael eu rhyddhau.
     updated: Diweddarwyd y proffil yn llwyddiannus.
-    email_change_requires_verification: Defnyddiwch y llif newid e-bost wedi'i ddilysu
+    email_change_requires_verification:
+      Defnyddiwch y llif newid e-bost wedi'i ddilysu
       i ddiweddaru eich e-bost mewngofnodi.
     no_changes: Dim newidiadau i'w cadw.
-    profile_update_failed: 'Methwyd â diweddaru''r proffil: %{errors}'
+    profile_update_failed: "Methwyd â diweddaru'r proffil: %{errors}"
     experiments:
       dashboard:
         title: Cynllun y dangosfwrdd
@@ -1628,15 +1706,16 @@ cy:
       name_label: Enw'r tocyn
       create: Creu tocyn
       empty: Dim tocynnau API eto.
-      last_used_at: 'Defnyddiwyd ddiwethaf: %{time}'
-      expires_at: 'Daw i ben: %{time}'
+      last_used_at: "Defnyddiwyd ddiwethaf: %{time}"
+      expires_at: "Daw i ben: %{time}"
       revoke: Dirymu
       revoked: Tocyn API wedi'i ddirymu.
       locked: Mae eich cyfrif wedi'i gloi. Ni ellir newid tocynnau API ar hyn o bryd.
       mfa_required: Cwblhewch ddilysiad dau ffactor cyn creu tocyn API.
     appearance:
       title: Ymddangosiad
-      description: Dewiswch sut mae MedTracker yn edrych ar draws sgriniau wedi'u
+      description:
+        Dewiswch sut mae MedTracker yn edrych ar draws sgriniau wedi'u
         mewngofnodi ac allgofnodedig.
       mode_label: Modd
       modes:
@@ -1660,7 +1739,8 @@ cy:
     show:
       eyebrow: Gosodiadau proffil
       title: Fy Mhroffil
-      description: Lluniwch eich cyfrif, eich dewisiadau diogelwch, a rhythm eich
+      description:
+        Lluniwch eich cyfrif, eich dewisiadau diogelwch, a rhythm eich
         hysbysiadau o un ystafell reoli dawel.
       not_set: Heb ei osod
       stats:
@@ -1688,10 +1768,12 @@ cy:
       title: Diogelwch Cyfrif
       description: Rheoli eich manylion mewngofnodi a'ch gosodiadau diogelwch
       change_email_title: Newid cyfeiriad e-bost
-      change_email_description: Diweddaru'r cyfeiriad e-bost rydych yn ei ddefnyddio
+      change_email_description:
+        Diweddaru'r cyfeiriad e-bost rydych yn ei ddefnyddio
         i fewngofnodi
       change_password_title: Newid cyfrinair
-      change_password_description: Diweddaru eich cyfrinair i gadw eich cyfrif yn
+      change_password_description:
+        Diweddaru eich cyfrinair i gadw eich cyfrif yn
         ddiogel
       change_button: Newid
     password_sheet:
@@ -1723,7 +1805,8 @@ cy:
       categories_description: Dewiswch pa fathau o hysbysiadau i'w derbyn
       managed_people:
         title: Pobl rydych chi'n eu rheoli
-        description: Mae rhybuddion dos a fethwyd ar gyfer plant ac oedolion dibynnol
+        description:
+          Mae rhybuddion dos a fethwyd ar gyfer plant ac oedolion dibynnol
           yn cael eu cynnwys yn awtomatig. Dewiswch unrhyw oedolion rydych hefyd am eu dilyn.
         automatic: Wedi'i gynnwys yn awtomatig
         notify_me: Rhoi gwybod i mi
@@ -1746,7 +1829,8 @@ cy:
       title: Cau Cyfrif
       description: Dileu eich cyfrif a'r holl ddata cysylltiedig yn barhaol
       dialog_title: Ydych chi'n hollol siŵr?
-      dialog_description: Ni ellir dadwneud y weithred hon. Bydd hyn yn dileu eich
+      dialog_description:
+        Ni ellir dadwneud y weithred hon. Bydd hyn yn dileu eich
         cyfrif yn barhaol ac yn tynnu'ch holl ddata o'n gweinyddwyr.
       cancel_button: Canslo
       confirm_button: Ie, dilëwch fy nghyfrif
@@ -1758,7 +1842,8 @@ cy:
     activated: Mae cyfrif y defnyddiwr wedi'i actifadu.
     verified: Mae cyfrif y defnyddiwr wedi'i wirio â llaw.
     cannot_deactivate_self: Ni allwch ddadactifadu eich cyfrif eich hun.
-    owner_deactivation_rejected: Dim ond perchennog cartref arall all ddadactifadu
+    owner_deactivation_rejected:
+      Dim ond perchennog cartref arall all ddadactifadu
       cyfrif perchennog tra bod defnyddiwr perchennog gweithredol arall yn parhau.
   webauthn:
     passkey_removed: Allwedd mynediad wedi'i dynnu'n llwyddiannus
@@ -1911,7 +1996,8 @@ cy:
       name_placeholder: e.e., Parasetamol
       friendly_name: Enw arddangos
       friendly_name_placeholder: Gadewch yn wag i ddefnyddio enw llawn y feddyginiaeth
-      friendly_name_hint: Defnyddir mewn rhestrau, amserlenni a hanes. Cedwir yr enw
+      friendly_name_hint:
+        Defnyddir mewn rhestrau, amserlenni a hanes. Cedwir yr enw
         mewnforio llawn er gwybodaeth.
       description: Disgrifiad
       description_placeholder: Ar gyfer beth mae'r feddyginiaeth hon yn cael ei defnyddio?
@@ -1949,7 +2035,8 @@ cy:
           description: Adeiladwch y cynllun meddyginiaeth cyntaf drwy ddewis pwy
             sy'n ei gymryd, y dos, a'r rhythm.
           person_title: Pwy fydd yn cymryd hwn?
-          person_description: Dewiswch y person neu'r dibynnydd mae'r cynllun hwn
+          person_description:
+            Dewiswch y person neu'r dibynnydd mae'r cynllun hwn
             ar ei gyfer.
           person_types:
             adult: Oedolyn
@@ -2002,7 +2089,7 @@ cy:
           title: Gosod cyflenwad
           description: Traciwch faint sydd gennych yn y pecyn a phryd i ail-archebu.
       validation_errors:
-        one: '1 gwall wedi atal y meddyginiaeth hon rhag cael ei chadw:'
+        one: "1 gwall wedi atal y meddyginiaeth hon rhag cael ei chadw:"
         other: "%{count} wall wedi atal y meddyginiaeth hon rhag cael ei chadw:"
       starting_supply: Nifer cychwynnol
   dashboard:
@@ -2065,9 +2152,10 @@ cy:
       more_people: Mwy o bobl
     as_needed:
       title: Yn ôl yr angen
-    overdue_alert: 'Hwyr: %{medication} ar gyfer %{person} (wedi''i drefnu am %{time})'
-    out_of_stock_alert: 'Allan o stoc: %{medication}. Ni ellir cofnodi dosau ar gyfer
-      %{person}.'
+    overdue_alert: "Hwyr: %{medication} ar gyfer %{person} (wedi'i drefnu am %{time})"
+    out_of_stock_alert:
+      "Allan o stoc: %{medication}. Ni ellir cofnodi dosau ar gyfer
+      %{person}."
     insights:
       title: Mewnwelediadau Clyfar
       view_report: Gweld yr adroddiad llawn
@@ -2136,7 +2224,8 @@ cy:
       out_of_stock: Allan o Stoc
       on_cooldown: Ar seibiant
       take_now: Cymerwch Nawr
-      delete_confirmation: Ydych chi'n sicr eich bod am ddileu'r amserlen hon ar gyfer
+      delete_confirmation:
+        Ydych chi'n sicr eich bod am ddileu'r amserlen hon ar gyfer
         %{medication}? Ni all y weithred hon gael ei dadwneud.
     schedule_card:
       dosage: Dos
@@ -2150,7 +2239,8 @@ cy:
     delete_confirmation:
       delete: Dileu
       delete_schedule: Dileu Trwyddedriad?
-      are_you_sure: Ydych chi'n sicr eich bod am dileu %{medication} ar gyfer %{person}?
+      are_you_sure:
+        Ydych chi'n sicr eich bod am dileu %{medication} ar gyfer %{person}?
         Ni all y weithred hon gael ei dadwneud.
       cancel: Canslo
     quick_actions:
@@ -2255,8 +2345,8 @@ cy:
           medications: "Meddyginiaethau cysylltiedig: %{medications}"
         not_recorded: Heb ei gofnodi
         none: Dim
-        'yes': 'Ie'
-        'no': 'Na'
+        "yes": "Ie"
+        "no": "Na"
       illness_patterns:
         title: Patrymau salwch a gofnodwyd
         summary: Cofnodwyd %{count} achos o "%{title}" rhwng %{first} a %{last}. Yr egwyl gyfartalog rhwng dechrau achosion oedd %{interval} diwrnod.
@@ -2377,12 +2467,15 @@ cy:
         title: Rhybudd Rhestr
         out_of_stock: Allan o Stoc
         refill_pending: Ail-lenwi ar y gweill
-        description_zero: Mae cyflenwad %{medication_name} wedi dod i ben. Archebwch
+        description_zero:
+          Mae cyflenwad %{medication_name} wedi dod i ben. Archebwch
           ail-lenwi brys.
         description:
-          one: Bydd cyflenwad %{medication_name} yn dod i ben mewn %{count} diwrnod.
+          one:
+            Bydd cyflenwad %{medication_name} yn dod i ben mewn %{count} diwrnod.
             Rydym yn argymell archebu ail-lenwi y prynhawn yma.
-          other: Bydd cyflenwad %{medication_name} yn dod i ben mewn %{count} diwrnod.
+          other:
+            Bydd cyflenwad %{medication_name} yn dod i ben mewn %{count} diwrnod.
             Rydym yn argymell archebu ail-lenwi y prynhawn yma.
       actionable_insight: Mewnwelediad gweithredadwy
   smart_insights:
@@ -2393,12 +2486,14 @@ cy:
     learning:
       title: Dysgu eich trefn
       summary: Parhewch i gofnodi dosau fel y gall MedTracker weld patrymau go iawn.
-      detail: Mae Smart Insights yn aros am ddigon o dystiolaeth cyn galw rhywbeth
+      detail:
+        Mae Smart Insights yn aros am ddigon o dystiolaeth cyn galw rhywbeth
         yn batrwm.
     no_action:
       title: Nid oes patrwm angen sylw
       summary: Nid oes dim anarferol yn sefyll allan yn y cyfnod adrodd hwn.
-      detail: Mae eich adroddiad yn dal i ddangos hanes dosau a rhestr stoc fel y
+      detail:
+        Mae eich adroddiad yn dal i ddangos hanes dosau a rhestr stoc fel y
         gallwch adolygu'r manylion.
     detectors:
       adherence_streak:
@@ -2429,9 +2524,11 @@ cy:
           other: "%{count} diwrnod"
       timing_consistency:
         title: Amseriad dosau cyson
-        summary: Roedd %{percentage}% o'r dosau wedi'u cofnodi yn agos at eu hamser
+        summary:
+          Roedd %{percentage}% o'r dosau wedi'u cofnodi yn agos at eu hamser
           trefnedig.
-        detail: Mae eich amseriad wedi'i gofnodi wedi bod yn sefydlog yn y cyfnod
+        detail:
+          Mae eich amseriad wedi'i gofnodi wedi bod yn sefydlog yn y cyfnod
           adrodd hwn.
         metric_label: Cofnodion ar amser
         metric_value:
@@ -2443,7 +2540,8 @@ cy:
         summary:
           one: Mae gan %{medication_name} tua 1 diwrnod o gyflenwad ar ôl.
           other: Mae gan %{medication_name} tua %{count} diwrnod o gyflenwad ar ôl.
-        detail: Gwiriwch gofnod stoc %{medication_name} a chynlluniwch yr ail-lenwi
+        detail:
+          Gwiriwch gofnod stoc %{medication_name} a chynlluniwch yr ail-lenwi
           nesaf.
         metric_label: Cyflenwad ar ôl
         metric_value:
@@ -2454,7 +2552,8 @@ cy:
         summary:
           one: Cofnodwyd 1 dos yn ôl yr angen yn y cyfnod hwn.
           other: Cofnodwyd %{count} dos yn ôl yr angen yn y cyfnod hwn.
-        detail: Adolygwch y cofnodion hyn ochr yn ochr â dosau rheolaidd i gadw'r
+        detail:
+          Adolygwch y cofnodion hyn ochr yn ochr â dosau rheolaidd i gadw'r
           darlun llawn yn glir.
         metric_label: Cofnodion PRN
         metric_value:
@@ -2462,9 +2561,11 @@ cy:
           other: "%{count} dos"
       schedule_hygiene:
         title: Manylyn amserlen i'w adolygu
-        summary: Mae %{medication_name} wedi'i osod ar gyfer sawl dos dyddiol heb
+        summary:
+          Mae %{medication_name} wedi'i osod ar gyfer sawl dos dyddiol heb
           amseroedd penodol.
-        detail: Gall ychwanegu amseroedd wneud atgoffwyr, adroddiadau a mewnwelediadau
+        detail:
+          Gall ychwanegu amseroedd wneud atgoffwyr, adroddiadau a mewnwelediadau
           amseriad yn gliriach.
         metric_label: Adolygu
         metric_value: Amserlen
@@ -2522,7 +2623,8 @@ cy:
     cards:
       medications:
         title: Meddyginiaethau
-        description: Rheoli eich rhestr feddyginiaeth, olrhain lefelau stoc, a gweld
+        description:
+          Rheoli eich rhestr feddyginiaeth, olrhain lefelau stoc, a gweld
           gwybodaeth dos
       people:
         title: Pobl

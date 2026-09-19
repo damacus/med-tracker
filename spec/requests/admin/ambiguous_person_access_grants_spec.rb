@@ -14,11 +14,11 @@ RSpec.describe 'Admin ambiguous person access grants' do
     account = Account.create!(email: 'queue-carer@example.test', status: :verified)
     membership = household.household_memberships.create!(account: account, person: carer,
                                                          role: :member, status: :active)
-    CarerRelationship.create!(household: household, carer: carer, patient: patient,
-                              relationship_type: :parent, active: true)
+    relationship = CarerRelationship.create!(household: household, carer: carer, patient: patient,
+                                             relationship_type: :parent, active: true)
     grant = PersonAccessGrant.create!(household: household, household_membership: membership, person: patient,
-                                      access_level: :manage, relationship_type: :professional)
-    { grant: grant, carer: carer, patient: patient }
+                                      access_level: :manage, relationship_type: :parent)
+    { grant: grant, carer: carer, patient: patient, relationship: relationship }
   end
 
   context 'when authenticated' do
@@ -49,6 +49,92 @@ RSpec.describe 'Admin ambiguous person access grants' do
 
       expect(response).to redirect_to(root_path)
       expect(flash[:alert]).not_to include('Set up MFA or a passkey')
+    end
+
+    describe 'classify' do
+      let(:classify_params) do
+        { decision: 'manual', reason: 'Confirmed as independent authority during review' }
+      end
+
+      def post_classify(grant, params)
+        post classify_admin_ambiguous_person_access_grant_path(grant), params: { classification: params }
+      end
+
+      it 'marks a grant as independent authority' do
+        allow(ApiAuthState).to receive(:web_session_mfa_satisfied?).and_return(true)
+        grant = queue_data.fetch(:grant)
+
+        post_classify(grant, classify_params)
+
+        expect(response).to redirect_to(admin_ambiguous_person_access_grants_path)
+        expect(grant.reload).to have_attributes(disposition: 'manual', carer_relationship_id: nil)
+        expect(grant.classification_reason).to eq(classify_params.fetch(:reason))
+      end
+
+      it 'attributes a grant to the compatible relationship' do
+        allow(ApiAuthState).to receive(:web_session_mfa_satisfied?).and_return(true)
+        grant = queue_data.fetch(:grant)
+        relationship = queue_data.fetch(:relationship)
+
+        post_classify(grant, classify_params.merge(decision: 'attach',
+                                                   carer_relationship_id: relationship.id))
+
+        expect(response).to redirect_to(admin_ambiguous_person_access_grants_path)
+        expect(grant.reload.carer_relationship_id).to eq(relationship.id)
+      end
+
+      it 'revokes a grant as a separate decision' do
+        allow(ApiAuthState).to receive(:web_session_mfa_satisfied?).and_return(true)
+        grant = queue_data.fetch(:grant)
+
+        post_classify(grant, classify_params.merge(decision: 'revoke'))
+
+        expect(response).to redirect_to(admin_ambiguous_person_access_grants_path)
+        expect(grant.reload.revoked_at).to be_present
+      end
+
+      it 'requires MFA before changing grant authority' do
+        allow(ApiAuthState).to receive(:web_session_mfa_satisfied?).and_return(false)
+        grant = queue_data.fetch(:grant)
+
+        post_classify(grant, classify_params)
+
+        expect(response).to redirect_to(admin_ambiguous_person_access_grants_path)
+        expect(flash[:alert]).to be_present
+        expect(grant.reload.disposition).to be_nil
+      end
+
+      it 'requires an operator reason' do
+        allow(ApiAuthState).to receive(:web_session_mfa_satisfied?).and_return(true)
+        grant = queue_data.fetch(:grant)
+
+        post_classify(grant, classify_params.merge(reason: ''))
+
+        expect(response).to redirect_to(admin_ambiguous_person_access_grants_path)
+        expect(flash[:alert]).to be_present
+        expect(grant.reload.disposition).to be_nil
+      end
+
+      it 'rejects a stale decision when the grant was already resolved' do
+        allow(ApiAuthState).to receive(:web_session_mfa_satisfied?).and_return(true)
+        grant = queue_data.fetch(:grant)
+        grant.update!(revoked_at: Time.current)
+
+        post_classify(grant, classify_params)
+
+        expect(response).to redirect_to(admin_ambiguous_person_access_grants_path)
+        expect(flash[:alert]).to be_present
+      end
+
+      it 'does not let an unauthorized member classify' do
+        sign_in(users(:jane))
+        grant = queue_data.fetch(:grant)
+
+        post_classify(grant, classify_params)
+
+        expect(response).to redirect_to(root_path)
+        expect(grant.reload.disposition).to be_nil
+      end
     end
   end
 

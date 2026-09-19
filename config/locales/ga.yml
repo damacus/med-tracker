@@ -208,7 +208,8 @@ ga:
       cancelled: Cuireadh cealaithe
       cannot_resend_accepted: Ní féidir cuirí a nglactar leo a athsheoladh
       cannot_cancel_accepted: Ní féidir cuirí a nglactar leo a chealú
-      resend_failed: Níorbh fhéidir an cuireadh seo a athsheoladh. Seans go bhfuil
+      resend_failed:
+        Níorbh fhéidir an cuireadh seo a athsheoladh. Seans go bhfuil
         cuireadh ar feitheamh don ríomhphost seo ann cheana féin.
       index:
         title: Cuirí
@@ -256,7 +257,8 @@ ga:
         deactivate: Díghníomhachtú
         deactivate_dialog:
           title: Díghníomhachtú Caidrimh
-          confirm: An bhfuil tú cinnte gur mian leat an caidreamh idir %{carer} agus
+          confirm:
+            An bhfuil tú cinnte gur mian leat an caidreamh idir %{carer} agus
             %{patient} a dhíghníomhachtú?
           cancel: Cealaigh
           submit: Díghníomhachtú
@@ -282,6 +284,13 @@ ga:
           created_at: Cruthaithe
           expires_at: Rachaidh in éag
           revoked_at: Cúlghairthe
+          actions: Gníomhartha
+        actions:
+          reason: Cúis
+          reason_placeholder: Cén fáth a bhfuil an cinneadh seo ceart?
+          attach: Ceangail leis an ngaol
+          manual: Deimhnigh neamhspleách
+          revoke: Cuir an deontas ar ceal
         empty: Níor aimsíodh deontais rochtana débhríocha.
         active: Gníomhach
         inactive: Neamhghníomhach
@@ -294,6 +303,11 @@ ga:
           previous: Roimhe Seo
           next: Ar Aghaidh
           label: Leathanachú
+      classify:
+        mfa_required: Teastaíonn fíordheimhniú ilfhachtóra chun údarás deontais a athrú.
+        attach_notice: Deontas ceangailte leis an ngaol comhoiriúnach.
+        manual_notice: Deontas deimhnithe mar údarás neamhspleách.
+        revoke_notice: Deontas curtha ar ceal.
     users:
       unauthorized: Níl údarás agat an gníomh seo a dhéanamh.
       missing_account: Níl cuntas ag an úsáideoir le fíorú.
@@ -358,7 +372,8 @@ ga:
         verified: Fíoraithe
         deactivate_dialog:
           title: Díghníomhachtú Cuntas Úsáideora
-          confirm: An bhfuil tú cinnte gur mian leat cuntas %{name} a dhíghníomhachtú?
+          confirm:
+            An bhfuil tú cinnte gur mian leat cuntas %{name} a dhíghníomhachtú?
             Ní bheidh siad in ann logáil isteach a thuilleadh.
           cancel: Cealaigh
           submit: Díghníomhachtú
@@ -519,8 +534,9 @@ ga:
           view: Féach
     nhs_dmd_imports:
       already_running: Tá iompórtáil NHS dm+d ar siúl cheana féin. Fan go gcríochnóidh sí.
-      created: 'Scaoileadh NHS dm+d iompórtáilte: %{imported} taifead iompórtáilte,
-        %{skipped} scipeáilte.'
+      created:
+        "Scaoileadh NHS dm+d iompórtáilte: %{imported} taifead iompórtáilte,
+        %{skipped} scipeáilte."
       form:
         cancel: Cealaigh
         help: Roghnaigh an comhad ZIP scaoilte NHS dm+d.
@@ -562,7 +578,8 @@ ga:
         subtitle: Rialú aigeann a fhéadfaidh rochtain a fháil ar an app.
         title: Rochtain
       env_override:
-        body: Tá an athróg timpeallachta %{var} socraithe go "%{value}". Bain í chun
+        body:
+          Tá an athróg timpeallachta %{var} socraithe go "%{value}". Bain í chun
           an socrú seo a bhainistiú anseo.
         title: Socruithe timpeallachta
       save: Sábháil socruithe
@@ -571,7 +588,8 @@ ga:
       updated: Socruithe nuashonraithe go rathúil.
     membership_roles:
       invalid_role: Roghnaigh ról teaghlaigh bailí.
-      owner_demotion_rejected: Ní féidir ach le húinéirí teaghlaigh ballraíochtaí
+      owner_demotion_rejected:
+        Ní féidir ach le húinéirí teaghlaigh ballraíochtaí
         úinéara a athrú.
       owner_rejected: Teastaíonn tacaíocht riarthóra ardáin chun ardú go húinéir.
       update_submit: Nuashonraigh ról teaghlaigh
@@ -609,7 +627,8 @@ ga:
       setup: Socraigh MFA nó eochair rochtana sula leanann tú ar aghaidh.
       verify: Dearbhaigh MFA nó eochair rochtana sula leanann tú ar aghaidh.
     session_expired: D'éag do sheisiún. Sínigh isteach arís.
-    two_factor_required: Le haghaidh slándála fheabhsaithe, socraigh fíorú dhá fhachtar
+    two_factor_required:
+      Le haghaidh slándála fheabhsaithe, socraigh fíorú dhá fhachtar
       do chuntas.
   invitation_mailer:
     subject: Cuirí le bheith páirteach i MedTracker
@@ -638,7 +657,8 @@ ga:
       view: Amharc
       delete_dialog:
         title: Scrios Suíomh
-        confirm: An bhfuil tú cinnte gur mian leat %{name} a scriosadh? Scriosfaidh
+        confirm:
+          An bhfuil tú cinnte gur mian leat %{name} a scriosadh? Scriosfaidh
           sé seo gach leigheas sa suíomh seo freisin.
         cancel: Cealaigh
         submit: Scrios
@@ -676,36 +696,44 @@ ga:
     verify_account:
       subject: Fíoraigh do chuntas MedTracker
       title: Fíoraigh do sheoladh ríomhphoist
-      instruction: Go raibh maith agat as do chuntas MedTracker a chruthú. Cliceáil
+      instruction:
+        Go raibh maith agat as do chuntas MedTracker a chruthú. Cliceáil
         an cnaipe thíos chun do sheoladh ríomhphoist a fhíorú agus do chlárú a chríochnú.
       button: Fíoraigh mo chuntas
-      notice: Rachaidh an nasc seo as feidhm. Mura chruthaigh tú cuntas, is féidir
+      notice:
+        Rachaidh an nasc seo as feidhm. Mura chruthaigh tú cuntas, is féidir
         leat neamhaird a dhéanamh den ríomhphost seo go sábháilte.
     reset_password:
       subject: Athshocraigh do phasfhocal MedTracker
       title: Athshocraigh do phasfhocal
-      instruction: Fuaireamar iarratas chun pasfhocal do chuntais MedTracker a athshocrú.
+      instruction:
+        Fuaireamar iarratas chun pasfhocal do chuntais MedTracker a athshocrú.
         Cliceáil an cnaipe thíos chun pasfhocal nua a roghnú.
       button: Athshocraigh mo phasfhocal
-      notice: Rachaidh an nasc seo as feidhm. Mura ndearna tú iarratas ar athshocrú
+      notice:
+        Rachaidh an nasc seo as feidhm. Mura ndearna tú iarratas ar athshocrú
         pasfhocail, is féidir leat neamhaird a dhéanamh den ríomhphost seo go sábháilte
         - ní athrófar do phasfhocal.
     unlock_account:
       subject: Díghlasáil do chuntas MedTracker
       title: Cuireadh do chuntas faoi ghlas
-      instruction: Cuireadh do chuntas MedTracker faoi ghlas go sealadach mar gheall
+      instruction:
+        Cuireadh do chuntas MedTracker faoi ghlas go sealadach mar gheall
         ar iarrachtaí logála isteach theipthe arís agus arís eile. Cliceáil an cnaipe
         thíos chun do chuntas a dhíghlasáil agus rochtain a fháil arís.
       button: Díghlasáil mo chuntas
-      notice: Mura ndearna tú iarracht logáil isteach, déan teagmháil linn láithreach
+      notice:
+        Mura ndearna tú iarracht logáil isteach, déan teagmháil linn láithreach
         - d'fhéadfadh duine a bheith ag iarraidh rochtain a fháil ar do chuntas.
     verify_login_change:
       subject: Deimhnigh do logáil isteach MedTracker nua
       title: Deimhnigh do sheoladh ríomhphoist nua
-      instruction: D'iarr tú le déanaí seoladh ríomhphoist do chuntais MedTracker
+      instruction:
+        D'iarr tú le déanaí seoladh ríomhphoist do chuntais MedTracker
         a athrú. Cliceáil an cnaipe thíos chun do sheoladh ríomhphoist nua a dheimhniú.
       button: Deimhnigh an seoladh ríomhphoist nua
-      notice: Rachaidh an nasc seo as feidhm. Mura ndearna tú an t-athrú seo a iarraidh,
+      notice:
+        Rachaidh an nasc seo as feidhm. Mura ndearna tú an t-athrú seo a iarraidh,
         déan teagmháil linn láithreach mar d'fhéadfadh rochtain a bheith ag duine
         ar do chuntas.
     views:
@@ -726,10 +754,12 @@ ga:
         existing_account: An bhfuil cuntas agat cheana?
         sign_in: Sínigh isteach i do chuntas
       reset_password_request:
-        page_subtitle: Athshocraigh do fhocal faire chun rochtain ar do chuntas a
+        page_subtitle:
+          Athshocraigh do fhocal faire chun rochtain ar do chuntas a
           fháil ar ais.
         card_title: Athshocraigh Focal Faire
-        card_description: Cuir do sheoladh ríomhphoist isteach agus seolfaimid nasc
+        card_description:
+          Cuir do sheoladh ríomhphoist isteach agus seolfaimid nasc
           chun do fhocal faire a athshocrú.
         email_label: Seoladh ríomhphoist
         email_placeholder: Cuir do sheoladh ríomhphoist isteach
@@ -742,7 +772,8 @@ ga:
         card_title: Socraigh Focal Faire Nua
         card_description: Cuir do fhocal faire nua isteach thíos.
         new_password_label: Focal Faire Nua
-        new_password_placeholder: Cuir do fhocal faire nua isteach (12 charachtar
+        new_password_placeholder:
+          Cuir do fhocal faire nua isteach (12 charachtar
           ar a laghad)
         confirm_password_label: Dearbhaigh Focal Faire Nua
         confirm_password_placeholder: Dearbhaigh do fhocal faire nua
@@ -750,13 +781,15 @@ ga:
       verify_account:
         page_subtitle: Fíoraigh do chuntas chun clárú a chríochnú.
         card_title: Fíoraigh Do Chuntas
-        card_description: Cliceáil an cnaipe thíos chun do ríomhphost a fhíorú agus
+        card_description:
+          Cliceáil an cnaipe thíos chun do ríomhphost a fhíorú agus
           do chuntas a ghníomhachtú.
         submit: Fíoraigh Cuntas
       verify_account_resend:
         page_subtitle: Seol ríomhphost fíoraithe do chuntais arís.
         card_title: Seol Ríomhphost Fíoraithe Arís
-        card_description: Cuir do sheoladh ríomhphoist isteach agus seolfaimid nasc
+        card_description:
+          Cuir do sheoladh ríomhphoist isteach agus seolfaimid nasc
           fíoraithe nua.
         email_label: Seoladh ríomhphoist
         email_placeholder: Cuir do sheoladh ríomhphoist isteach
@@ -774,7 +807,8 @@ ga:
         page_title: Socraigh Fíordheimhniú Dhá Fhachtóir
         page_subtitle: Scan an cód QR le d’aip fíordheimhnithe chun 2FA a chumasú.
         card_title: Socrú Fíordheimhnitheora
-        card_description: Úsáid aip fíordheimhnithe ar nós Google Authenticator, Authy,
+        card_description:
+          Úsáid aip fíordheimhnithe ar nós Google Authenticator, Authy,
           nó 1Password chun an cód QR thíos a scanadh.
         qr_hint: Scan an cód QR seo le d’aip fíordheimhnithe
         manual_entry_summary: Ní féidir scanadh? Cuir an cód isteach de láimh
@@ -792,7 +826,8 @@ ga:
         page_title: Díchumasaigh aip fíordheimhnitheora
         page_subtitle: Dearbhaigh do fhocal faire chun cóid ama-bhunaithe a mhúchadh.
         card_title: Múch cóid dhá fhachtóir
-        card_description: Is féidir leat d’aip fíordheimhnitheora a athchumasú am
+        card_description:
+          Is féidir leat d’aip fíordheimhnitheora a athchumasú am
           ar bith.
         password_label: Focal faire
         password_placeholder: Cuir do fhocal faire isteach
@@ -804,17 +839,21 @@ ga:
       two_factor_manage:
         page_title_configured: Bainistigh Fíordheimhniú Dhá Fhachtóir
         page_title_unconfigured: Socraigh Fíordheimhniú Dhá Fhachtóir
-        page_subtitle_configured: Bainistigh do mhodhanna fíordheimhnithe nó cuir
+        page_subtitle_configured:
+          Bainistigh do mhodhanna fíordheimhnithe nó cuir
           slándáil bhreise leis.
-        page_subtitle_unconfigured: Roghnaigh modh chun do chuntas a dhaingniú le
+        page_subtitle_unconfigured:
+          Roghnaigh modh chun do chuntas a dhaingniú le
           fíordheimhniú dhá fhachtóir.
         card_title: Modhanna Fíordheimhnithe
-        card_description: Roghnaigh conas ba mhaith leat d’aitheantas a fhíorú agus
+        card_description:
+          Roghnaigh conas ba mhaith leat d’aitheantas a fhíorú agus
           tú ag síniú isteach.
         status_enabled: Cumasaithe
         methods:
           passkeys_title: Passkeys
-          passkeys_description: Úsáid bithmhéadracht nó eochair shlándála chun síniú
+          passkeys_description:
+            Úsáid bithmhéadracht nó eochair shlándála chun síniú
             isteach gan focal faire.
           passkeys_setup: Socraigh passkey
           passkeys_manage: Bainistigh passkeys
@@ -823,52 +862,63 @@ ga:
           totp_setup: Socraigh fíordheimhnitheoir
           totp_manage: Díchumasaigh TOTP
           recovery_codes_title: Cóid Aisghabhála
-          recovery_codes_description: Cóid chúltaca nuair a chailleann tú rochtain
+          recovery_codes_description:
+            Cóid chúltaca nuair a chailleann tú rochtain
             ar do ghléas.
           recovery_codes_setup: Féach cóid aisghabhála
       recovery_codes:
         page_title: Cóid aisghabhála
-        page_subtitle: Coinnigh rochtain chúltaca ar fáil mura bhfuil d’fhíordheimhnitheoir
+        page_subtitle:
+          Coinnigh rochtain chúltaca ar fáil mura bhfuil d’fhíordheimhnitheoir
           nó passkey ar fáil.
         card_title: Féach cóid aisghabhála
-        card_description: Dearbhaigh d’fhocal faire chun cóid chúltaca a fheiceáil
+        card_description:
+          Dearbhaigh d’fhocal faire chun cóid chúltaca a fheiceáil
           nó a ghiniúint.
         safety_title: Rochtain chúltaca
-        safety_description: Is eochracha cúltaca aonúsáide iad cóid aisghabhála. Stóráil
+        safety_description:
+          Is eochracha cúltaca aonúsáide iad cóid aisghabhála. Stóráil
           iad i mbainisteoir focal faire nó in áit shlán eile.
         password_placeholder: Cuir d’fhocal faire isteach
       add_recovery_codes:
         page_title: Cóid aisghabhála
         page_subtitle: Sábháil na cóid seo sula ndúnann tú an leathanach seo.
         card_title: Do chóid aisghabhála
-        card_description: Úsáid cód amháin nuair nach féidir leat do ghnáthmhodh dhá
+        card_description:
+          Úsáid cód amháin nuair nach féidir leat do ghnáthmhodh dhá
           fhachtóir a úsáid.
         notice_title: Stóráil na cóid seo áit éigin slán.
-        notice_description: Oibríonn gach cód uair amháin. Is féidir le haon duine
+        notice_description:
+          Oibríonn gach cód uair amháin. Is féidir le haon duine
           a bhfuil cód aige síniú isteach a chríochnú do do chuntas.
         copy_to_clipboard: Cóipeáil chuig an ngearrthaisce
-        password_placeholder: Cuir d’fhocal faire isteach chun cóid athsholáthair
+        password_placeholder:
+          Cuir d’fhocal faire isteach chun cóid athsholáthair
           a chur leis
       recovery_auth:
         card_title: Cód aisghabhála
         card_description: Cuir cód cúltaca isteach chun síniú isteach a chríochnú.
         info_title: Fíorú cúltaca
-        info_description: Úsáid ceann de do chóid aisghabhála sábháilte. Ní féidir
+        info_description:
+          Úsáid ceann de do chóid aisghabhála sábháilte. Ní féidir
           gach cód a úsáid ach uair amháin.
       webauthn_auth:
         page_title: Úsáid do passkey
         page_subtitle: Dearbhaigh le bithmhéadracht do ghléis nó eochair shlándála.
         card_title: Fíordheimhniú passkey
-        card_description: Tapáil lean ar aghaidh chun do passkey a úsáid le haghaidh
+        card_description:
+          Tapáil lean ar aghaidh chun do passkey a úsáid le haghaidh
           fíoraithe.
       webauthn_setup:
         page_title: Socraigh Fíordheimhniú Passkey
         page_subtitle: Cuir passkey leis chun síniú isteach tapa, slán gan focal faire.
         card_title: Cláraigh Passkey
-        card_description: Úsáideann passkeys bithmhéadracht do ghléis nó eochair shlándála
+        card_description:
+          Úsáideann passkeys bithmhéadracht do ghléis nó eochair shlándála
           chun fíordheimhniú slán gan focal faire.
         info_title: Cad is passkeys ann?
-        info_description: Is ionad slán iad passkeys do phasfhocail. Úsáideann siad
+        info_description:
+          Is ionad slán iad passkeys do phasfhocail. Úsáideann siad
           slándáil ionsuite do ghléis (mar Face ID, Touch ID, nó Windows Hello) chun
           d’aitheantas a fhíorú.
         nickname_label: Ainm na passkey
@@ -876,14 +926,16 @@ ga:
         nickname_hint: Úsáid ainm a insíonn duit cá bhfuil an passkey seo stóráilte.
         current_password_label: Focal Faire Reatha
         current_password_placeholder: Cuir do fhocal faire isteach chun deimhniú
-        current_password_hint: Teastaíonn sé seo chun d’aitheantas a fhíorú sula gcuirtear
+        current_password_hint:
+          Teastaíonn sé seo chun d’aitheantas a fhíorú sula gcuirtear
           passkey leis
         submit: Cláraigh Passkey
       webauthn_remove:
         page_title: Bain Passkey
         page_subtitle: Dearbhaigh do fhocal faire chun an passkey seo a bhaint.
         card_title: Bain passkey
-        card_description: Ní féidir an gníomh seo a chealú. Ní bheidh tú in ann síniú
+        card_description:
+          Ní féidir an gníomh seo a chealú. Ní bheidh tú in ann síniú
           isteach leis an passkey seo a thuilleadh.
         password_label: Focal faire
         password_placeholder: Cuir do fhocal faire isteach
@@ -898,18 +950,22 @@ ga:
     finder:
       nhs_directory: Eolaire NHS
       title: Aimsitheoir Leigheas
-      subtitle: Cuardaigh NHS dm+d agus foinsí táirgí tacaithe chun leigheas a chur
+      subtitle:
+        Cuardaigh NHS dm+d agus foinsí táirgí tacaithe chun leigheas a chur
         leis nó stoc atá ann cheana a athlíonadh.
       placeholder: Cuardaigh de réir ainm, chatagóir, nó comhábhair ghníomhaigh...
       search_button: Cuardaigh
       idle_heading: Réidh le taiscéaladh?
-      idle_text: Cuir ainm leigheas thuas chun na mílte taifid fíoraí a chuardach
+      idle_text:
+        Cuir ainm leigheas thuas chun na mílte taifid fíoraí a chuardach
         sa bhunachar sonraí NHS.
       loading: Ag cuardach bunachar sonraí NHS dm+d...
       unavailable_title: Cuardach neamhfhaighte
-      unavailable_message: Ní féidir ceangal leis an mbunachar sonraí leigheas. Bain
+      unavailable_message:
+        Ní féidir ceangal leis an mbunachar sonraí leigheas. Bain
         triail eile as.
-      review_guidance_unavailable: Níl faisnéis athbhreithnithe cógais ar fáil go sealadach.
+      review_guidance_unavailable:
+        Níl faisnéis athbhreithnithe cógais ar fáil go sealadach.
         Seans nach mbeidh treoir idirghníomhaíochta sna torthaí cuardaigh.
       no_results_title: Níor aimsíodh aon leigheasanna
       no_results_message: Bain triail as téarmaí éagsúla nó seiceáil an litriú.
@@ -959,7 +1015,8 @@ ga:
       related_medications_current_supply: Soláthar reatha
       update_stock: Nuashonraigh stoc
       confirm_restock: Deimhnigh gur mian leat %{quantity} aonad a chur le %{medication}.
-      confirm_restock_without_quantity: Deimhnigh cé mhéad aonad is mian leat a chur
+      confirm_restock_without_quantity:
+        Deimhnigh cé mhéad aonad is mian leat a chur
         le %{medication}.
       restock_quantity: Cainníocht le cur leis
       restock_submit: Deimhnigh athstocáil
@@ -967,7 +1024,8 @@ ga:
       result_count:
         one: '%{count} toradh do "%{query}"'
         other: '%{count} torthaí do "%{query}"'
-      coming_soon: Tá an ghné seo ag teacht go luath! Comhdhlónóimid le API bunachair
+      coming_soon:
+        Tá an ghné seo ag teacht go luath! Comhdhlónóimid le API bunachair
         sonraí leigheas chun faisnéis mhionsonraithe a sholáthar faoi mhíochaine.
     created: Cruthaíodh an leigheas go rathúil.
     updated: Nuashonraíodh an leigheas go rathúil.
@@ -981,7 +1039,8 @@ ga:
     take_action:
       loading: Ag glacadh…
       choose_location: Roghnaigh suíomh
-      choose_location_description: Roghnaigh cén suíomh as a dtabharfar an dáileog
+      choose_location_description:
+        Roghnaigh cén suíomh as a dtabharfar an dáileog
         seo.
       untracked_inventory: Neamhrianaithe
       description: Deimhnigh an duine, an cógas, an t-am agus an fhoinse fardail.
@@ -1020,7 +1079,8 @@ ga:
       add_medication: Cuir Leigheas Leis
       scan_stock: Scan stoc
       empty_title: Níl aon leigheasanna fós
-      empty_description: Cuir do chéad leigheas leis chun tosú ag rianú stoc agus
+      empty_description:
+        Cuir do chéad leigheas leis chun tosú ag rianú stoc agus
         dáileog.
       all: Gach
       view: Amharc
@@ -1031,13 +1091,15 @@ ga:
       in_stock: I Stoc
       delete_dialog:
         title: Scrios Leigheas
-        confirm: An bhfuil tú cinnte gur mhaith leat %{name} a scriosadh? Ní féidir
+        confirm:
+          An bhfuil tú cinnte gur mhaith leat %{name} a scriosadh? Ní féidir
           an gníomh seo a chealú.
         submit: Scrios
         cancel: Cealaigh
     inventory_scan_modal:
       title: Scan stoc
-      description: Scan bosca leighis, cuir isteach an chainníocht a soláthraíodh,
+      description:
+        Scan bosca leighis, cuir isteach an chainníocht a soláthraíodh,
         agus cuir leis an mír fardail mheaitseáilte í.
       barcode: Barrachód
       quantity: Cainníocht
@@ -1050,7 +1112,7 @@ ga:
       overview: Forbhreathnú
       nhs_guidance_title: Treoir an NHS faoin leigheas
       nhs_guidance_link: Féach treoir iomlán an NHS
-      nhs_guidance_source: 'Foinse: %{source}'
+      nhs_guidance_source: "Foinse: %{source}"
       nhs_guidance_reviewed_on: Athbhreithnithe go deireanach %{date}
       no_description: Níor cuireadh aon tuairisc ar fáil.
       safety_warnings: Rabhaidh Sábháilteachta
@@ -1088,17 +1150,20 @@ ga:
       adjust_inventory: Coigeartáil Fardal
     administration:
       title: Taifead riaracháin do %{medication}
-      subtitle: Roghnaigh an duine agus an plean ar mhaith leat an dáileog seo a thaifeadadh
+      subtitle:
+        Roghnaigh an duine agus an plean ar mhaith leat an dáileog seo a thaifeadadh
         ina aghaidh.
       scheduled: Plean sceidealta
       as_needed: Leigheas de réir mar is gá
       empty_title: Níl aon phleananna leigheas gníomhacha
-      empty_description: Níl an mhír stoic seo nasctha faoi láthair le taifead ar
+      empty_description:
+        Níl an mhír stoic seo nasctha faoi láthair le taifead ar
         féidir leat a riar.
     adjust_inventory_modal:
       adjust_inventory: Coigeartáil Fardal
       current_quantity: Méid reatha
-      description: Socraigh an mhéid reatha cruinn, mar shampla nuair a bhíonn pacáiste
+      description:
+        Socraigh an mhéid reatha cruinn, mar shampla nuair a bhíonn pacáiste
         páirteach úsáidte á clárú.
       new_quantity: Méid nua
       reason: Fáth (roghnach)
@@ -1157,7 +1222,8 @@ ga:
         one: Nuashonraíodh an soláthar atá fágtha do %{count} leigheas.
         other: Nuashonraíodh an soláthar atá fágtha do %{count} leigheasanna.
   passwords:
-    reset_sent: Seoladh treoracha athshocraithe focal faire (más ann do úsáideoir
+    reset_sent:
+      Seoladh treoracha athshocraithe focal faire (más ann do úsáideoir
       leis an seoladh ríomhphoist sin).
     reset_success: Athshocraíodh an focal faire.
     mismatch: Níor tháinig na focail faire le chéile.
@@ -1172,7 +1238,8 @@ ga:
       title: Cuir Leigheas Leis
       subtitle: Conas a thógtar an leigheas seo?
       scheduled_title: Forordaithe / Sceidealta
-      scheduled_description: Tá dáileog shonrach, dáta tosaigh, agus sceideal seasta
+      scheduled_description:
+        Tá dáileog shonrach, dáta tosaigh, agus sceideal seasta
         aici
       otc_title: De réir mar is gá
       otc_description: Tógtar de réir mar is gá é gan sceideal seasta
@@ -1182,8 +1249,8 @@ ga:
       manage_parents: Bainistigh tuismitheoirí
       health_events: Imeachtaí sláinte
       back: Ar Ais
-      born: 'Rugtha:'
-      age: 'Aois:'
+      born: "Rugtha:"
+      age: "Aois:"
       schedules_heading: Oideas Leigheasanna
       medications_heading: Leigheasanna
       no_schedules: Níl aon oideas leigheasanna fós.
@@ -1232,8 +1299,9 @@ ga:
       person_type: Cineál Duine
       select_person_type: Roghnaigh cineál duine
       has_capacity: Tá cumas aige/aici a leigheas féin a bhainistiú
-      note: 'Nóta:'
-      capacity_hint: Caithfidh duine gan chumas cúramóir amháin ar a laghad a bheith
+      note: "Nóta:"
+      capacity_hint:
+        Caithfidh duine gan chumas cúramóir amháin ar a laghad a bheith
         sannta dó.
       capacity_hint_assign_carer: Sann cúramóir sula mbaintear an cumas.
       save: Sábháil
@@ -1241,9 +1309,9 @@ ga:
       create: Cruthaigh Duine
       update: Nuashonraigh Duine
     card:
-      born: 'Rugtha:'
-      age: 'Aois:'
-      medications: 'Leigheasanna:'
+      born: "Rugtha:"
+      age: "Aois:"
+      medications: "Leigheasanna:"
       no_active_medications: Níl aon leigheasanna gníomhacha
       needs_carer: Teastaíonn Cúramóir
       view_medications: Féach ar Leigheasanna
@@ -1256,7 +1324,8 @@ ga:
     paused: Cuireadh an leigheas ar sos.
     resumed: Atosaíodh an leigheas.
     medication_taken: Tógadh an leigheas go rathúil.
-    invalid_dose_configured: Tá dáileog neamhbhailí cumraithe. Nuashonraigh dáileog
+    invalid_dose_configured:
+      Tá dáileog neamhbhailí cumraithe. Nuashonraigh dáileog
       an leighis sula dtógtar í.
     modal:
       new_title: Cuir Leigheas Leis do %{person}
@@ -1264,8 +1333,8 @@ ga:
       subtitle: Cuir cógas rialta nó de réir mar is gá leis
     card:
       paused: Ar sos
-      notes: 'Nótaí:'
-      timing_restrictions: 'Srianta Ama:'
+      notes: "Nótaí:"
+      timing_restrictions: "Srianta Ama:"
       max_doses:
         daily:
           one: Uasmhéid 1 dáileog in aghaidh an lae
@@ -1279,7 +1348,7 @@ ga:
       wait_hours:
         one: Fan ar a laghad 1 uair an chloig idir dáileoga
         other: Fan ar a laghad %{count} uair an chloig idir dáileoga
-      next_dose_available: 'An chéad dáileog eile ar fáil i:'
+      next_dose_available: "An chéad dáileog eile ar fáil i:"
       todays_doses: Dáileoga an Lae Inniu
       no_doses_today: Níor tógadh aon dáileoga inniu
       take: Tóg
@@ -1297,15 +1366,16 @@ ga:
       edit: Cuir in Eagar
       remove: Bain
       remove_medication: Bain Leigheas
-      remove_confirmation: An bhfuil tú cinnte gur mian leat %{medication} a bhaint?
+      remove_confirmation:
+        An bhfuil tú cinnte gur mian leat %{medication} a bhaint?
         Ní féidir an gníomh seo a chealú.
     form:
       add_medication: Cuir Leigheas Leis
       add_medication_for: Cuir Leigheas Leis do %{person}
       edit_medication_for: Cuir Leigheas in Eagar do %{person}
       validation_errors:
-        one: 'Chuir 1 earráid cosc ar an leigheas a shábháil:'
-        other: 'Chuir %{count} earráid cosc ar an leigheas a shábháil:'
+        one: "Chuir 1 earráid cosc ar an leigheas a shábháil:"
+        other: "Chuir %{count} earráid cosc ar an leigheas a shábháil:"
       cancel: Cealaigh
       medication: Leigheas
       select_medication: Roghnaigh leigheas
@@ -1328,7 +1398,8 @@ ga:
       default_dose_cycle: Laethúil
       dose_cycle_hint: Tréimhse athshocraithe an timthrialla
       administration_kind: Cineál cógais
-      administration_kind_hint: Áirítear tascanna rialta don lá inniu; ní thaispeántar
+      administration_kind_hint:
+        Áirítear tascanna rialta don lá inniu; ní thaispeántar
         cógas de réir mar is gá ach nuair is féidir é a thabhairt.
       administration_kinds:
         routine:
@@ -1343,12 +1414,14 @@ ga:
       next: Ar Aghaidh
       workflow:
         choose_medication_title: Roghnaigh leigheas
-        choose_medication_description: Tosaigh trí roghnú an leighis is mian leat
+        choose_medication_description:
+          Tosaigh trí roghnú an leighis is mian leat
           a chur leis.
         choose_dose_title: Roghnaigh an dáileog
         choose_dose_description: Roghnaigh an dáileog sula leanann tú ar aghaidh.
         add_guidance_title: Cuir treoir roghnach leis
-        add_guidance_description: Cuir nótaí nó teorainneacha dáileoige leis ar mian
+        add_guidance_description:
+          Cuir nótaí nó teorainneacha dáileoige leis ar mian
           leat a rianú leis an leigheas seo.
       add_medication_button: Cuir Leigheas Leis
       save_changes_button: Sábháil Athruithe
@@ -1357,7 +1430,8 @@ ga:
       subtitle: Cuir sonraí leighis leis ó na réamhshocruithe sábháilte
     form:
       review_title: Athbhreithniú
-      review_description: Seiceáil an dáileog roghnaithe agus na réamhshocruithe leighis
+      review_description:
+        Seiceáil an dáileog roghnaithe agus na réamhshocruithe leighis
         sábháilte.
       frequency: Minicíocht
       plan_type: Cineál plean
@@ -1370,7 +1444,8 @@ ga:
     paused: Cuireadh an sceideal ar sos.
     resumed: Atosaíodh an sceideal.
     medication_taken: Tógadh an leigheas go rathúil.
-    invalid_dose_configured: Tá dáileog neamhbhailí cumraithe. Nuashonraigh dáileog
+    invalid_dose_configured:
+      Tá dáileog neamhbhailí cumraithe. Nuashonraigh dáileog
       an sceidil sula dtógtar í.
     modal:
       new_title: Sceideal Nua do %{person}
@@ -1378,10 +1453,10 @@ ga:
       subtitle: Cuir sonraí leigheas agus sceideal leis
     card:
       paused: Ar sos
-      started: 'Tosaíodh:'
-      ends: 'Críochnaíonn:'
-      notes: 'Nótaí:'
-      next_dose_available: 'An chéad dáileog eile ar fáil i:'
+      started: "Tosaíodh:"
+      ends: "Críochnaíonn:"
+      notes: "Nótaí:"
+      next_dose_available: "An chéad dáileog eile ar fáil i:"
       todays_doses: Dáileoga an Lae Inniu
       no_doses_today: Níor tógadh aon dáileoga inniu
       take: Tóg
@@ -1400,25 +1475,30 @@ ga:
       resume: Atosaigh an sceideal
       delete_dialog:
         title: Scrios Sceideal
-        confirm: An bhfuil tú cinnte gur mhaith leat an sceideal %{medication} a scrios?
+        confirm:
+          An bhfuil tú cinnte gur mhaith leat an sceideal %{medication} a scrios?
           Ní féidir an gníomh seo a chealú.
         cancel: Cealaigh
         submit: Scrios
     form:
       choose_medication_title: Roghnaigh leigheas
-      choose_medication_description: Má roghnaíonn tú leigheas, osclófar sonraí na
+      choose_medication_description:
+        Má roghnaíonn tú leigheas, osclófar sonraí na
         dáileoige agus an sceidil.
       medication: Leigheas
       change: Athraigh
       select_medication: Roghnaigh leigheas
       dose: Dáileog
       dosage: Dáileog
-      choose_one_dose: Roghnaigh ceann de na dáileoga sula dtéann tú ar aghaidh go
+      choose_one_dose:
+        Roghnaigh ceann de na dáileoga sula dtéann tú ar aghaidh go
         sonraí an sceidil.
-      no_dose_options: Níl aon roghanna dáileoige ar fáil don leigheas seo. Cuir dáileog
+      no_dose_options:
+        Níl aon roghanna dáileoige ar fáil don leigheas seo. Cuir dáileog
         leis sula gcruthaíonn tú sceideal.
       schedule_details_title: Sonraí sceidil
-      schedule_details_description: Socraigh amchlár agus treoir sábháilteachta tar
+      schedule_details_description:
+        Socraigh amchlár agus treoir sábháilteachta tar
         éis dáileog a roghnú.
       select_medication_first: Roghnaigh leigheas ar dtús
       select_dosage: Roghnaigh dáileog
@@ -1434,9 +1514,10 @@ ga:
       min_hours_hint: An t-am íosta a theastaíonn idir dáileoga
       min_hours_placeholder: m.sh., 6
       dose_cycle: Timthriall dáileoige
-      dose_cycle_hint: 'Cé chomh minic a athshocraítear timthriall na dáileoige (réamhshocrú:
-        laethúil)'
-      select_cycle: 'Roghnaigh timthriall (réamhshocrú: laethúil)'
+      dose_cycle_hint:
+        "Cé chomh minic a athshocraítear timthriall na dáileoige (réamhshocrú:
+        laethúil)"
+      select_cycle: "Roghnaigh timthriall (réamhshocrú: laethúil)"
       notes: Nótaí
       notes_hint: Treoracha nó eolas breise
       notes_placeholder: Cuir aon nótaí nó treoracha breise isteach...
@@ -1449,7 +1530,7 @@ ga:
       frequency_up_to: Suas le %{count} uair sa timthriall
       frequency_at_least_hours: ar a laghad %{hours}h óna chéile
     frequency_phrase:
-      preview_label: 'Ciallaíonn sé seo:'
+      preview_label: "Ciallaíonn sé seo:"
       cycles:
         day: lá
         week: seachtain
@@ -1484,7 +1565,8 @@ ga:
       none: "-"
     index:
       title: Sceidil Ghníomhacha
-      subtitle: Sceidil atá gníomhach faoi láthair do dhaoine a bhfuil rochtain agat
+      subtitle:
+        Sceidil atá gníomhach faoi láthair do dhaoine a bhfuil rochtain agat
         orthu.
       start_date: Dáta Tosaithe
       empty: Níor aimsíodh aon sceideal gníomhach.
@@ -1524,14 +1606,17 @@ ga:
       passkey_helper: Bain úsáid as Face ID, Touch ID, Windows Hello, nó eochair slándála.
       passkey_cta: Lean ar aghaidh le Passkey
       passkey_not_supported: Ní thacaítear le passkeys sa bhrabhsálaí seo.
-      passkey_cancelled: Cealaíodh síniú isteach le passkey. Bain triail eile as nó
+      passkey_cancelled:
+        Cealaíodh síniú isteach le passkey. Bain triail eile as nó
         úsáid do phasfhocal.
-      passkey_error: Níorbh fhéidir linn tú a shíniú isteach leis an passkey sin.
+      passkey_error:
+        Níorbh fhéidir linn tú a shíniú isteach leis an passkey sin.
         Bain triail eile as nó úsáid do phasfhocal.
       oauth_continue: Lean ar aghaidh le %{provider}
       oauth_sso: Logáil isteach le %{provider} (SSO)
       oauth_divider: nó
-      invite_only_oidc_notice: Tá síniú isteach aonair curtha in áirithe do chuntais
+      invite_only_oidc_notice:
+        Tá síniú isteach aonair curtha in áirithe do chuntais
         ar cuireadh dóibh.
       invite_only_oidc_cta: Lean ar aghaidh le %{provider}
       need_account: An gá le cuntas?
@@ -1539,15 +1624,16 @@ ga:
       resend_verification: Seol ríomhphost fíoraithe arís
   take_medications:
     cooldown: Níl an dáileog seo ar fáil faoi láthair.
-    out_of_stock: 'Ní féidir an cógas a ghlacadh: as stoc'
+    out_of_stock: "Ní féidir an cógas a ghlacadh: as stoc"
     success: Cláraíodh an leigheas tógtha go rathúil.
     failure: Theip ar chlárú an leighis tógtha.
     json_success: Cláraíodh an leigheas tógtha go rathúil.
     invalid_taken_at: Roghnaigh am dáileoige bailí.
-    future_taken_at: Ní féidir am na dáileoige a bheith níos mó ná uair an chloig
+    future_taken_at:
+      Ní féidir am na dáileoige a bheith níos mó ná uair an chloig
       sa todhchaí.
-    paused: 'Ní féidir an leigheas a thógáil: ar sos'
-    overlapping_prescription_restriction: 'Ní féidir an leigheas a thógáil: leagann oideas gníomhach eile don leigheas seo teorainn ama níos déine síos.'
+    paused: "Ní féidir an leigheas a thógáil: ar sos"
+    overlapping_prescription_restriction: "Ní féidir an leigheas a thógáil: leagann oideas gníomhach eile don leigheas seo teorainn ama níos déine síos."
   profiles:
     mobile_shortcuts:
       title: "Aicearraí an bharra íochtair"
@@ -1581,10 +1667,11 @@ ga:
         experiments: Turgnaimh
         experiments_description: Bain triail as roghanna comhéadain nua sula scaoiltear iad.
     updated: Nuashonraíodh an phróifíl go rathúil.
-    email_change_requires_verification: Úsáid an sreabhadh fíoraithe athraithe ríomhphoist
+    email_change_requires_verification:
+      Úsáid an sreabhadh fíoraithe athraithe ríomhphoist
       chun do ríomhphost sínithe isteach a nuashonrú.
     no_changes: Gan athruithe le sábháil.
-    profile_update_failed: 'Theip ar nuashonrú na próifíle: %{errors}'
+    profile_update_failed: "Theip ar nuashonrú na próifíle: %{errors}"
     experiments:
       dashboard:
         title: Leagan amach an dashboard
@@ -1608,15 +1695,16 @@ ga:
       name_label: Ainm an chomhartha
       create: Cruthaigh comhartha
       empty: Níl aon chomharthaí API ann fós.
-      last_used_at: 'Úsáideadh go deireanach: %{time}'
-      expires_at: 'Rachaidh in éag: %{time}'
+      last_used_at: "Úsáideadh go deireanach: %{time}"
+      expires_at: "Rachaidh in éag: %{time}"
       revoke: Cúlghair
       revoked: Cúlghaireadh an comhartha API.
       locked: Tá do chuntas glasáilte. Ní féidir comharthaí API a athrú anois.
       mfa_required: Críochnú fíordheimhniú dhá fhachtóir sula gcruthaítear comhartha API.
     appearance:
       title: Cuma
-      description: Roghnaigh conas a fheictear MedTracker ar scáileáin shínithe isteach
+      description:
+        Roghnaigh conas a fheictear MedTracker ar scáileáin shínithe isteach
         agus phoiblí.
       mode_label: Mód
       modes:
@@ -1640,7 +1728,8 @@ ga:
     show:
       eyebrow: Socruithe próifíle
       title: Mo Phróifíl
-      description: Múnlaigh do chuntas, do shocruithe sábháilteachta, agus do rithim
+      description:
+        Múnlaigh do chuntas, do shocruithe sábháilteachta, agus do rithim
         fógraí ó aon seomra rialaithe socair amháin.
       not_set: Gan socrú
       stats:
@@ -1668,10 +1757,12 @@ ga:
       title: Slándáil Chuntais
       description: Bainistigh do dhintiúir logála isteach agus do shocruithe slándála
       change_email_title: Athraigh an Seoladh Ríomhphoist
-      change_email_description: Nuashonraigh an seoladh ríomhphoist a úsáideann tú
+      change_email_description:
+        Nuashonraigh an seoladh ríomhphoist a úsáideann tú
         chun síniú isteach
       change_password_title: Athraigh an Pasfhocal
-      change_password_description: Nuashonraigh do phasfhocal chun do chuntas a choinneáil
+      change_password_description:
+        Nuashonraigh do phasfhocal chun do chuntas a choinneáil
         slán
       change_button: Athraigh
     password_sheet:
@@ -1699,12 +1790,14 @@ ga:
       enable_reminders: Cumasaigh meabhrúcháin
       enable_reminders_description: Seol fógraí ag na hamanna thíos
       reminder_times_title: Amanna meabhrúcháin
-      reminder_times_description: Socraigh cathain is mian leat meabhrúcháin a fháil
+      reminder_times_description:
+        Socraigh cathain is mian leat meabhrúcháin a fháil
         gach lá
       categories_description: Roghnaigh na cineálacha fógraí is mian leat a fháil
       managed_people:
         title: Daoine a bhainistíonn tú
-        description: Cuirtear foláirimh faoi dháileoga caillte do leanaí agus do dhaoine
+        description:
+          Cuirtear foláirimh faoi dháileoga caillte do leanaí agus do dhaoine
           fásta cleithiúnacha san áireamh go huathoibríoch. Roghnaigh aon duine fásta ar mhaith leat monatóireacht a dhéanamh air freisin.
         automatic: San áireamh go huathoibríoch
         notify_me: Cuir in iúl dom
@@ -1727,7 +1820,8 @@ ga:
       title: Dún Cuntas
       description: Scrios do chuntas agus na sonraí gaolmhara go buan
       dialog_title: An bhfuil tú lánchinnte?
-      dialog_description: Ní féidir an gníomh seo a chealú. Scriosfaidh sé do chuntas
+      dialog_description:
+        Ní féidir an gníomh seo a chealú. Scriosfaidh sé do chuntas
         go buan agus bainfear do chuid sonraí go léir ó na freastalaithe.
       cancel_button: Cealaigh
       confirm_button: Tá, scrios mo chuntas
@@ -1958,8 +2052,8 @@ ga:
           medications: "Cógais nasctha: %{medications}"
         not_recorded: Gan taifead
         none: Gan aon cheann
-        'yes': 'Tá'
-        'no': 'Níl'
+        "yes": "Tá"
+        "no": "Níl"
       illness_patterns:
         title: Patrúin tinnis taifeadta
         summary: Taifeadadh %{count} eachtra de "%{title}" idir %{first} agus %{last}. Ba é %{interval} lá an meán-eatramh idir tús na n-eachtraí.
@@ -2080,12 +2174,15 @@ ga:
         title: Foláireamh Stoc
         out_of_stock: As Stoc
         refill_pending: Athlíonadh ar Feitheamh
-        description_zero: Tá do sholáthar %{medication_name} ídithe. Ordú athlíonta
+        description_zero:
+          Tá do sholáthar %{medication_name} ídithe. Ordú athlíonta
           práinneach, le do thoil.
         description:
-          one: Beidh do sholáthar %{medication_name} ídithe i gceann %{count} lá.
+          one:
+            Beidh do sholáthar %{medication_name} ídithe i gceann %{count} lá.
             Molaimid athlíonadh a ordú tráthnóna inniu.
-          other: Beidh do sholáthar %{medication_name} ídithe i gceann %{count} lá.
+          other:
+            Beidh do sholáthar %{medication_name} ídithe i gceann %{count} lá.
             Molaimid athlíonadh a ordú tráthnóna inniu.
       actionable_insight: Léargas inbhainistithe
   smart_insights:
@@ -2095,14 +2192,17 @@ ga:
       other: "%{days} lá athbhreithnithe le %{events} imeacht leighis"
     learning:
       title: Ag foghlaim do ghnáthaimh
-      summary: Lean ort ag logáil dáileoga ionas gur féidir le MedTracker patrúin
+      summary:
+        Lean ort ag logáil dáileoga ionas gur féidir le MedTracker patrúin
         fhíora a aimsiú.
-      detail: Fanann Smart Insights le dóthain fianaise sula nglaonn sé patrún ar
+      detail:
+        Fanann Smart Insights le dóthain fianaise sula nglaonn sé patrún ar
         rud.
     no_action:
       title: Níl patrún ar bith ag teastáil aird
       summary: Ní sheasann aon rud neamhghnách amach sa tréimhse tuairisce seo.
-      detail: Taispeánann do thuairisc stair dáileog agus stoc fós ionas gur féidir
+      detail:
+        Taispeánann do thuairisc stair dáileog agus stoc fós ionas gur féidir
         leat na sonraí a athbhreithniú.
     detectors:
       adherence_streak:
@@ -2145,7 +2245,8 @@ ga:
         summary:
           one: Tá thart ar 1 lá soláthair fágtha ag %{medication_name}.
           other: Tá thart ar %{count} lá soláthair fágtha ag %{medication_name}.
-        detail: Seiceáil taifead stoic %{medication_name} agus pleanáil an chéad athlíonadh
+        detail:
+          Seiceáil taifead stoic %{medication_name} agus pleanáil an chéad athlíonadh
           eile.
         metric_label: Soláthar fágtha
         metric_value:
@@ -2156,7 +2257,8 @@ ga:
         summary:
           one: Logáladh 1 dáileog de réir mar is gá sa tréimhse seo.
           other: Logáladh %{count} dáileog de réir mar is gá sa tréimhse seo.
-        detail: Athbhreithnigh na hiontrálacha seo in éineacht le dáileoga rialta
+        detail:
+          Athbhreithnigh na hiontrálacha seo in éineacht le dáileoga rialta
           chun an pictiúr iomlán a choinneáil soiléir.
         metric_label: Logaí PRN
         metric_value:
@@ -2164,9 +2266,11 @@ ga:
           other: "%{count} dáileog"
       schedule_hygiene:
         title: Sonra sceidil le hathbhreithniú
-        summary: Tá %{medication_name} socraithe do roinnt dáileoga laethúla gan amanna
+        summary:
+          Tá %{medication_name} socraithe do roinnt dáileoga laethúla gan amanna
           sonracha.
-        detail: Is féidir le hamanna a chur leis meabhrúcháin, tuairiscí agus léargais
+        detail:
+          Is féidir le hamanna a chur leis meabhrúcháin, tuairiscí agus léargais
           ama a dhéanamh níos soiléire.
         metric_label: Athbhreithniú
         metric_value: Sceideal
@@ -2184,7 +2288,8 @@ ga:
       name_placeholder: m.sh., Paracetamol
       friendly_name: Ainm taispeána
       friendly_name_placeholder: Fág bán chun ainm iomlán an leighis a úsáid
-      friendly_name_hint: Úsáidtear i liostaí, sceidil agus stair. Coinnítear an t-ainm
+      friendly_name_hint:
+        Úsáidtear i liostaí, sceidil agus stair. Coinnítear an t-ainm
         iomlán iompórtáilte mar thagairt.
       description: Cur Síos
       description_placeholder: Cén úsáid a bhaintear as an gcógas seo?
@@ -2222,7 +2327,8 @@ ga:
           description: Tóg an chéad phlean cógais trí roghnú cé a ghlacann é, an
             dáileog, agus an rithim.
           person_title: Cé a ghlacfaidh é seo?
-          person_description: Roghnaigh an duine nó an cleithiúnaí lena mbaineann
+          person_description:
+            Roghnaigh an duine nó an cleithiúnaí lena mbaineann
             an plean seo.
           person_types:
             adult: Duine fásta
@@ -2277,8 +2383,8 @@ ga:
           title: Socrú soláthair
           description: Rianaigh cé mhéad atá sa phaca agus cathain le hathordú.
       validation_errors:
-        one: 'Chuir 1 earráid cosc ar an leigheas a shábháil:'
-        other: 'Chuir %{count} earráid cosc ar an leigheas a shábháil:'
+        one: "Chuir 1 earráid cosc ar an leigheas a shábháil:"
+        other: "Chuir %{count} earráid cosc ar an leigheas a shábháil:"
       starting_supply: Méid tosaigh
   dashboard:
     outcomes:
@@ -2340,9 +2446,10 @@ ga:
       more_people: Tuilleadh daoine
     as_needed:
       title: Glac de réir mar is gá
-    overdue_alert: 'Dul thar am: %{medication} do %{person} (sceidealaithe ag %{time})'
-    out_of_stock_alert: 'As Stoc: %{medication}. Ní féidir dáileoga a thaifeadadh
-      do %{person}.'
+    overdue_alert: "Dul thar am: %{medication} do %{person} (sceidealaithe ag %{time})"
+    out_of_stock_alert:
+      "As Stoc: %{medication}. Ní féidir dáileoga a thaifeadadh
+      do %{person}."
     no_active_schedules: Níor aimsíodh aon oideas leigheasanna gníomhacha
     add_schedules_hint: Cuir oideas leigheasanna leis chun iad a fheiceáil anseo
     dose_taken_at: "%{person} • Tógtha ag %{time}"
@@ -2415,7 +2522,8 @@ ga:
       out_of_stock: As Stoc
       on_cooldown: Ar Fhionraí
       take_now: Tóg Anois
-      delete_confirmation: An bhfuil tú cinnte gur mhaith leat an sceideal seo do
+      delete_confirmation:
+        An bhfuil tú cinnte gur mhaith leat an sceideal seo do
         %{medication} a scrios? Ní féidir an gníomh seo a chealú.
     schedule_card:
       dosage: Dáileog
@@ -2425,7 +2533,8 @@ ga:
     delete_confirmation:
       delete: Scrios
       delete_schedule: Scrios Oideas Leigheasanna?
-      are_you_sure: An bhfuil tú cinnte gur mian leat %{medication} do %{person} a
+      are_you_sure:
+        An bhfuil tú cinnte gur mian leat %{medication} do %{person} a
         scrios? Ní féidir an gníomh seo a chealú.
       cancel: Cealaigh
     quick_actions:
@@ -2463,7 +2572,8 @@ ga:
       frequency_placeholder: Uair sa lá
       description: Cur síos / nótaí
       description_placeholder: Roghnach
-      scheduling_defaults: Réamhshocruithe sceidealaithe (líonta go huathoibríoch
+      scheduling_defaults:
+        Réamhshocruithe sceidealaithe (líonta go huathoibríoch
         agus sceideal á chruthú)
       max_doses_per_cycle: Uasmhéid dáileog / timthriall
       max_doses_placeholder: m.sh., 4
@@ -2481,7 +2591,8 @@ ga:
     cards:
       medications:
         title: Leigheasanna
-        description: Bainistigh do stoc leigheasanna, coinnigh súil ar leibhéil stoic,
+        description:
+          Bainistigh do stoc leigheasanna, coinnigh súil ar leibhéil stoic,
           agus féach eolas dáileoige
       people:
         title: Daoine

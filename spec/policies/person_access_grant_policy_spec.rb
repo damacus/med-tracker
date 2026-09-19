@@ -15,6 +15,18 @@ RSpec.describe PersonAccessGrantPolicy, type: :policy do
     expect(described_class.new(member.fetch(:context), PersonAccessGrant).index?).to be(false)
   end
 
+  it 'allows only household owners and administrators to classify a grant' do
+    expect(described_class.new(owner.fetch(:context), grant).classify?).to be(true)
+    expect(described_class.new(administrator.fetch(:context), grant).classify?).to be(true)
+    expect(described_class.new(member.fetch(:context), grant).classify?).to be(false)
+  end
+
+  it 'denies classification of a grant outside the active household' do
+    foreign_grant = PersonAccessGrant.new(household: create(:household))
+
+    expect(described_class.new(owner.fetch(:context), foreign_grant).classify?).to be(false)
+  end
+
   it 'scopes owners and administrators to the active household' do
     foreign_household = create(:household)
 

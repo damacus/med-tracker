@@ -191,40 +191,49 @@ pt:
     verify_account:
       subject: Verifique a sua conta MedTracker
       title: Verifique o seu endereço de email
-      instruction: Obrigado por criar a sua conta MedTracker. Clique no botão abaixo
+      instruction:
+        Obrigado por criar a sua conta MedTracker. Clique no botão abaixo
         para verificar o seu endereço de email e concluir o seu registo.
       button: Verificar a minha conta
-      notice: Este link irá expirar. Se não criou uma conta, pode ignorar este email
+      notice:
+        Este link irá expirar. Se não criou uma conta, pode ignorar este email
         com segurança.
     reset_password:
       subject: Redefina a sua palavra-passe do MedTracker
       title: Redefina a sua palavra-passe
-      instruction: Recebemos um pedido para redefinir a palavra-passe da sua conta
+      instruction:
+        Recebemos um pedido para redefinir a palavra-passe da sua conta
         MedTracker. Clique no botão abaixo para escolher uma nova palavra-passe.
       button: Redefinir a minha palavra-passe
-      notice: Este link irá expirar. Se não solicitou a redefinição da palavra-passe,
+      notice:
+        Este link irá expirar. Se não solicitou a redefinição da palavra-passe,
         pode ignorar este email com segurança — a sua palavra-passe não será alterada.
     unlock_account:
       subject: Desbloqueie a sua conta do MedTracker
       title: A sua conta foi bloqueada
-      instruction: A sua conta MedTracker foi temporariamente bloqueada devido a várias
+      instruction:
+        A sua conta MedTracker foi temporariamente bloqueada devido a várias
         tentativas de início de sessão falhadas. Clique no botão abaixo para desbloquear
         a sua conta e recuperar o acesso.
       button: Desbloquear a minha conta
-      notice: Se não tentou iniciar sessão, contacte-nos imediatamente — alguém pode
+      notice:
+        Se não tentou iniciar sessão, contacte-nos imediatamente — alguém pode
         estar a tentar aceder à sua conta.
     verify_login_change:
       subject: Confirme o seu novo login do MedTracker
       title: Confirme o seu novo endereço de email
-      instruction: Solicitou recentemente a alteração do endereço de email da sua
+      instruction:
+        Solicitou recentemente a alteração do endereço de email da sua
         conta MedTracker. Clique no botão abaixo para confirmar o seu novo endereço
         de email.
       button: Confirmar novo endereço de email
-      notice: Este link irá expirar. Se não solicitou esta alteração, contacte-nos
+      notice:
+        Este link irá expirar. Se não solicitou esta alteração, contacte-nos
         imediatamente, pois alguém pode ter acesso à sua conta.
     views:
       create_account:
-        page_subtitle: Crie a sua conta para começar a acompanhar medicamentos em
+        page_subtitle:
+          Crie a sua conta para começar a acompanhar medicamentos em
           segurança.
         card_title: Criar Conta
         card_description: Preencha os seus dados para criar uma nova conta.
@@ -241,10 +250,12 @@ pt:
         existing_account: Já tem uma conta?
         sign_in: Iniciar sessão na sua conta
       reset_password_request:
-        page_subtitle: Redefina a sua palavra-passe para recuperar o acesso à sua
+        page_subtitle:
+          Redefina a sua palavra-passe para recuperar o acesso à sua
           conta.
         card_title: Redefinir Palavra-passe
-        card_description: Introduza o seu email e enviaremos um link para redefinir
+        card_description:
+          Introduza o seu email e enviaremos um link para redefinir
           a sua palavra-passe.
         email_label: Endereço de email
         email_placeholder: Introduza o seu email
@@ -264,7 +275,8 @@ pt:
       verify_account:
         page_subtitle: Verifique a sua conta para concluir o registo.
         card_title: Verifique a Sua Conta
-        card_description: Clique no botão abaixo para verificar o seu email e ativar
+        card_description:
+          Clique no botão abaixo para verificar o seu email e ativar
           a sua conta.
         submit: Verificar Conta
       verify_account_resend:
@@ -281,15 +293,18 @@ pt:
         page_title: Introduza o seu código de autenticação
         page_subtitle: Use o código da sua aplicação autenticadora para continuar.
         card_title: Código autenticador
-        card_description: Introduza o código de 6 dígitos para terminar o início de
+        card_description:
+          Introduza o código de 6 dígitos para terminar o início de
           sessão.
         code_placeholder: Introduza o código de 6 dígitos
       otp_setup:
         page_title: Configurar Autenticação de Dois Fatores
-        page_subtitle: Digitalize o código QR com a sua aplicação autenticadora para
+        page_subtitle:
+          Digitalize o código QR com a sua aplicação autenticadora para
           ativar 2FA.
         card_title: Configuração do Autenticador
-        card_description: Use uma aplicação autenticadora como Google Authenticator,
+        card_description:
+          Use uma aplicação autenticadora como Google Authenticator,
           Authy ou 1Password para digitalizar o código QR abaixo.
         qr_hint: Digitalize este código QR com a sua aplicação autenticadora
         manual_entry_summary: Não consegue digitalizar? Introduza o código manualmente
@@ -307,7 +322,8 @@ pt:
         page_title: Desativar aplicação autenticadora
         page_subtitle: Confirme a sua palavra-passe para desativar códigos temporários.
         card_title: Desativar códigos de dois fatores
-        card_description: Pode voltar a ativar a sua aplicação autenticadora a qualquer
+        card_description:
+          Pode voltar a ativar a sua aplicação autenticadora a qualquer
           momento.
         password_label: Palavra-passe
         password_placeholder: Introduza a sua palavra-passe
@@ -319,17 +335,21 @@ pt:
       two_factor_manage:
         page_title_configured: Gerir Autenticação de Dois Fatores
         page_title_unconfigured: Configurar Autenticação de Dois Fatores
-        page_subtitle_configured: Gira os seus métodos de autenticação ou adicione
+        page_subtitle_configured:
+          Gira os seus métodos de autenticação ou adicione
           segurança extra.
-        page_subtitle_unconfigured: Escolha um método para proteger a sua conta com
+        page_subtitle_unconfigured:
+          Escolha um método para proteger a sua conta com
           autenticação de dois fatores.
         card_title: Métodos de Autenticação
-        card_description: Escolha como quer verificar a sua identidade ao iniciar
+        card_description:
+          Escolha como quer verificar a sua identidade ao iniciar
           sessão.
         status_enabled: Ativado
         methods:
           passkeys_title: Passkeys
-          passkeys_description: Use biometria ou uma chave de segurança para iniciar
+          passkeys_description:
+            Use biometria ou uma chave de segurança para iniciar
             sessão sem palavra-passe.
           passkeys_setup: Configurar passkey
           passkeys_manage: Gerir passkeys
@@ -338,54 +358,67 @@ pt:
           totp_setup: Configurar autenticador
           totp_manage: Desativar TOTP
           recovery_codes_title: Códigos de Recuperação
-          recovery_codes_description: Códigos de backup para quando perder acesso
+          recovery_codes_description:
+            Códigos de backup para quando perder acesso
             ao seu dispositivo.
           recovery_codes_setup: Ver códigos de recuperação
       recovery_codes:
         page_title: Códigos de recuperação
-        page_subtitle: Mantenha acesso de backup disponível se o seu autenticador
+        page_subtitle:
+          Mantenha acesso de backup disponível se o seu autenticador
           ou passkey estiver indisponível.
         card_title: Ver códigos de recuperação
-        card_description: Confirme a sua palavra-passe para ver ou gerar códigos de
+        card_description:
+          Confirme a sua palavra-passe para ver ou gerar códigos de
           backup.
         safety_title: Acesso de backup
-        safety_description: Os códigos de recuperação são chaves de backup de utilização
+        safety_description:
+          Os códigos de recuperação são chaves de backup de utilização
           única. Guarde-os num gestor de palavras-passe ou noutro local seguro.
         password_placeholder: Introduza a sua palavra-passe
       add_recovery_codes:
         page_title: Códigos de recuperação
         page_subtitle: Guarde estes códigos antes de fechar esta página.
         card_title: Os seus códigos de recuperação
-        card_description: Use um código quando não conseguir aceder ao seu método
+        card_description:
+          Use um código quando não conseguir aceder ao seu método
           habitual de dois fatores.
         notice_title: Guarde estes códigos num local seguro.
-        notice_description: Cada código funciona uma vez. Qualquer pessoa com um código
+        notice_description:
+          Cada código funciona uma vez. Qualquer pessoa com um código
           pode concluir o início de sessão da sua conta.
         copy_to_clipboard: Copiar para a área de transferência
-        password_placeholder: Introduza a sua palavra-passe para adicionar códigos
+        password_placeholder:
+          Introduza a sua palavra-passe para adicionar códigos
           de substituição
       recovery_auth:
         card_title: Código de recuperação
-        card_description: Introduza um código de backup para concluir o início de
+        card_description:
+          Introduza um código de backup para concluir o início de
           sessão.
         info_title: Verificação de backup
-        info_description: Use um dos seus códigos de recuperação guardados. Cada código
+        info_description:
+          Use um dos seus códigos de recuperação guardados. Cada código
           só pode ser usado uma vez.
       webauthn_auth:
         page_title: Use a sua passkey
-        page_subtitle: Confirme com a biometria do seu dispositivo ou uma chave de
+        page_subtitle:
+          Confirme com a biometria do seu dispositivo ou uma chave de
           segurança.
         card_title: Autenticação por passkey
         card_description: Toque em continuar para usar a sua passkey na verificação.
       webauthn_setup:
         page_title: Configurar Autenticação por Passkey
-        page_subtitle: Adicione uma passkey para um início de sessão rápido e seguro
+        page_subtitle:
+          Adicione uma passkey para um início de sessão rápido e seguro
           sem palavra-passe.
         card_title: Registar uma Passkey
-        card_description: As passkeys usam a biometria do dispositivo ou uma chave
+        card_description:
+          As passkeys usam a biometria do dispositivo ou uma chave
           de segurança para autenticação segura sem palavra-passe.
         info_title: O que são passkeys?
-        info_description: As passkeys são um substituto seguro para palavras-passe.
+        info_description:
+          As passkeys são um substituto seguro para palavras-passe.
           Usam a segurança integrada do seu dispositivo (como Face ID, Touch ID ou
           Windows Hello) para verificar a sua identidade.
         nickname_label: Nome da passkey
@@ -393,14 +426,16 @@ pt:
         nickname_hint: Use um nome que indique onde esta passkey está guardada.
         current_password_label: Palavra-passe Atual
         current_password_placeholder: Introduza a sua palavra-passe para confirmar
-        current_password_hint: Necessário para verificar a sua identidade antes de
+        current_password_hint:
+          Necessário para verificar a sua identidade antes de
           adicionar uma passkey
         submit: Registar Passkey
       webauthn_remove:
         page_title: Remover Passkey
         page_subtitle: Confirme a sua palavra-passe para remover esta passkey.
         card_title: Remover passkey
-        card_description: Esta ação não pode ser desfeita. Já não poderá iniciar sessão
+        card_description:
+          Esta ação não pode ser desfeita. Já não poderá iniciar sessão
           com esta passkey.
         password_label: Palavra-passe
         password_placeholder: Introduza a sua palavra-passe
@@ -432,7 +467,8 @@ pt:
       cancelled: Convite cancelado
       cannot_resend_accepted: Convites aceitos não podem ser reenviados
       cannot_cancel_accepted: Convites aceitos não podem ser cancelados
-      resend_failed: Este convite não pôde ser reenviado. Já pode existir um convite
+      resend_failed:
+        Este convite não pôde ser reenviado. Já pode existir um convite
         pendente para este e-mail.
       index:
         title: Convites
@@ -448,7 +484,8 @@ pt:
           access_level: Acesso do dependente
           select_access_level: Selecione o nível de acesso
           dependents: Dependentes existentes
-          dependents_hint: Selecione crianças existentes ou adultos dependentes que
+          dependents_hint:
+            Selecione crianças existentes ou adultos dependentes que
             este pai/mãe ou cuidador convidado deve gerir.
           submit: Enviar convite
         status:
@@ -480,7 +517,8 @@ pt:
         deactivate: Desativar
         deactivate_dialog:
           title: Desativar Relação
-          confirm: Tem certeza de que deseja desativar a relação entre %{carer} e
+          confirm:
+            Tem certeza de que deseja desativar a relação entre %{carer} e
             %{patient}?
           cancel: Cancelar
           submit: Desativar
@@ -506,6 +544,13 @@ pt:
           created_at: Criada
           expires_at: Expira
           revoked_at: Revogada
+          actions: Ações
+        actions:
+          reason: Motivo
+          reason_placeholder: Por que esta decisão está correta?
+          attach: Vincular à relação
+          manual: Confirmar independente
+          revoke: Revogar concessão
         empty: Não foram encontradas concessões de acesso ambíguas.
         active: Ativa
         inactive: Inativa
@@ -518,6 +563,11 @@ pt:
           previous: Anterior
           next: Seguinte
           label: Paginação
+      classify:
+        mfa_required: É necessária autenticação multifator para alterar a autoridade da concessão.
+        attach_notice: Concessão vinculada à relação compatível.
+        manual_notice: Concessão confirmada como autoridade independente.
+        revoke_notice: Concessão revogada.
     users:
       unauthorized: Não está autorizado a realizar esta ação.
       missing_account: O utilizador não tem uma conta para verificar.
@@ -582,7 +632,8 @@ pt:
         verified: Verificado
         deactivate_dialog:
           title: Desativar Conta de Utilizador
-          confirm: Tem certeza de que deseja desativar a conta de %{name}? Eles não
+          confirm:
+            Tem certeza de que deseja desativar a conta de %{name}? Eles não
             poderão mais iniciar sessão.
           cancel: Cancelar
           submit: Desativar
@@ -743,8 +794,9 @@ pt:
           view: Ver
     nhs_dmd_imports:
       already_running: Já está em execução uma importação do NHS dm+d. Aguarde até terminar.
-      created: 'Versão NHS dm+d importada: %{imported} registos importados, %{skipped}
-        ignorados.'
+      created:
+        "Versão NHS dm+d importada: %{imported} registos importados, %{skipped}
+        ignorados."
       form:
         cancel: Cancelar
         help: Selecione o ficheiro ZIP de libertação do NHS dm+d.
@@ -786,7 +838,8 @@ pt:
         subtitle: Controlar quem pode aceder à aplicação.
         title: Acesso
       env_override:
-        body: A variável de ambiente %{var} está definida como "%{value}". Remova-a
+        body:
+          A variável de ambiente %{var} está definida como "%{value}". Remova-a
           para gerir esta definição aqui.
         title: Definições de ambiente
       save: Guardar definições
@@ -834,7 +887,8 @@ pt:
       setup: Configure MFA ou uma chave de acesso antes de continuar.
       verify: Verifique MFA ou uma chave de acesso antes de continuar.
     session_expired: A sua sessão expirou. Inicie sessão novamente.
-    two_factor_required: Para maior segurança, configure a autenticação de dois fatores
+    two_factor_required:
+      Para maior segurança, configure a autenticação de dois fatores
       para a sua conta.
   invitation_mailer:
     subject: Convite para aderir ao MedTracker
@@ -863,7 +917,8 @@ pt:
       view: Ver
       delete_dialog:
         title: Eliminar Localização
-        confirm: Tem a certeza que deseja eliminar %{name}? Isto também eliminará
+        confirm:
+          Tem a certeza que deseja eliminar %{name}? Isto também eliminará
           todos os medicamentos nesta localização.
         cancel: Cancelar
         submit: Eliminar
@@ -901,18 +956,22 @@ pt:
     finder:
       nhs_directory: Diretório NHS
       title: Pesquisador de Medicamentos
-      subtitle: Pesquise no NHS dm+d e em fontes de produtos suportadas para adicionar
+      subtitle:
+        Pesquise no NHS dm+d e em fontes de produtos suportadas para adicionar
         medicação ou reabastecer inventário existente.
       placeholder: Pesquisar por nome, categoria ou ingrediente ativo...
       search_button: Pesquisar
       idle_heading: Pronto para explorar?
-      idle_text: Introduza acima o nome de um medicamento para pesquisar milhares
+      idle_text:
+        Introduza acima o nome de um medicamento para pesquisar milhares
         de registos verificados na base de dados do NHS.
       loading: A pesquisar na base de dados NHS dm+d...
       unavailable_title: Pesquisa indisponível
-      unavailable_message: Não foi possível ligar à base de dados de medicamentos.
+      unavailable_message:
+        Não foi possível ligar à base de dados de medicamentos.
         Tente novamente.
-      review_guidance_unavailable: A informação sobre a revisão de medicamentos está
+      review_guidance_unavailable:
+        A informação sobre a revisão de medicamentos está
         temporariamente indisponível. Os resultados da pesquisa podem não incluir
         orientações sobre interações.
       no_results_title: Nenhum medicamento encontrado
@@ -963,7 +1022,8 @@ pt:
       related_medications_current_supply: Stock atual
       update_stock: Atualizar stock
       confirm_restock: Confirme que pretende adicionar %{quantity} unidades a %{medication}.
-      confirm_restock_without_quantity: Confirme quantas unidades pretende adicionar
+      confirm_restock_without_quantity:
+        Confirme quantas unidades pretende adicionar
         a %{medication}.
       restock_quantity: Quantidade a adicionar
       restock_submit: Confirmar reabastecimento
@@ -971,7 +1031,8 @@ pt:
       result_count:
         one: '%{count} resultado para "%{query}"'
         other: '%{count} resultados para "%{query}"'
-      coming_soon: Esta funcionalidade estará disponível em breve! Iremos integrar
+      coming_soon:
+        Esta funcionalidade estará disponível em breve! Iremos integrar
         com uma API de base de dados de medicamentos para fornecer informações detalhadas
         sobre os medicamentos.
     created: Medicamento criado com sucesso.
@@ -986,7 +1047,8 @@ pt:
     take_action:
       loading: A tomar…
       choose_location: Escolha a localização
-      choose_location_description: Selecione de que localização quer deduzir esta
+      choose_location_description:
+        Selecione de que localização quer deduzir esta
         dose.
       untracked_inventory: Não rastreado
       description: Confirme a pessoa, medicamento, hora e origem do inventário.
@@ -1013,7 +1075,8 @@ pt:
       scheduled: Plano agendado
       as_needed: Medicamento conforme necessário
       empty_title: Nenhum plano de medicação ativo
-      empty_description: Este item de inventário não está atualmente ligado a um registo
+      empty_description:
+        Este item de inventário não está atualmente ligado a um registo
         ao qual possa administrar.
     refill_modal:
       refill_inventory: Reabastecer
@@ -1033,7 +1096,8 @@ pt:
       add_medication: Adicionar Medicamento
       scan_stock: Digitalizar stock
       empty_title: Ainda não há medicamentos
-      empty_description: Adicione o seu primeiro medicamento para começar a acompanhar
+      empty_description:
+        Adicione o seu primeiro medicamento para começar a acompanhar
         o inventário e a dosagem.
       all: Todos
       view: Ver
@@ -1049,7 +1113,8 @@ pt:
         cancel: Cancelar
     inventory_scan_modal:
       title: Digitalizar stock
-      description: Digitalize uma caixa de medicamento, introduza a quantidade fornecida
+      description:
+        Digitalize uma caixa de medicamento, introduza a quantidade fornecida
         e adicione-a ao item de inventário correspondente.
       barcode: Código de barras
       quantity: Quantidade
@@ -1062,7 +1127,7 @@ pt:
       overview: Visão Geral
       nhs_guidance_title: Orientação do NHS sobre o medicamento
       nhs_guidance_link: Ver orientação completa do NHS
-      nhs_guidance_source: 'Fonte: %{source}'
+      nhs_guidance_source: "Fonte: %{source}"
       nhs_guidance_reviewed_on: Revisto pela última vez em %{date}
       no_description: Nenhuma descrição fornecida.
       safety_warnings: Avisos de Segurança
@@ -1101,7 +1166,8 @@ pt:
     adjust_inventory_modal:
       adjust_inventory: Ajustar Inventário
       current_quantity: Quantidade atual
-      description: Defina a quantidade exata atual, por exemplo, ao integrar um pack
+      description:
+        Defina a quantidade exata atual, por exemplo, ao integrar um pack
         parcialmente utilizado.
       new_quantity: Nova quantidade
       reason: Motivo (opcional)
@@ -1160,7 +1226,8 @@ pt:
         one: O fornecimento restante de %{count} medicamento foi atualizado.
         other: O fornecimento restante de %{count} medicamentos foi atualizado.
   passwords:
-    reset_sent: Instruções de redefinição de palavra-passe enviadas (se existir um
+    reset_sent:
+      Instruções de redefinição de palavra-passe enviadas (se existir um
       utilizador com esse endereço de email).
     reset_success: Palavra-passe redefinida.
     mismatch: As palavras-passe não coincidem.
@@ -1184,8 +1251,8 @@ pt:
       manage_parents: Gerir pais
       health_events: Eventos de saúde
       back: Voltar
-      born: 'Nascido:'
-      age: 'Idade:'
+      born: "Nascido:"
+      age: "Idade:"
       schedules_heading: Receitas
       medications_heading: Medicamentos
       no_schedules: Sem receitas ainda.
@@ -1234,7 +1301,7 @@ pt:
       person_type: Tipo de pessoa
       select_person_type: Selecionar tipo de pessoa
       has_capacity: Tem capacidade para gerir a própria medicação
-      note: 'Nota:'
+      note: "Nota:"
       capacity_hint: Uma pessoa sem capacidade tem de ter pelo menos um cuidador atribuído.
       capacity_hint_assign_carer: Atribua um cuidador antes de remover a capacidade.
       save: Guardar
@@ -1242,9 +1309,9 @@ pt:
       create: Criar Pessoa
       update: Atualizar Pessoa
     card:
-      born: 'Nascido:'
-      age: 'Idade:'
-      medications: 'Medicamentos:'
+      born: "Nascido:"
+      age: "Idade:"
+      medications: "Medicamentos:"
       no_active_medications: Sem medicamentos ativos
       needs_carer: Precisa de cuidador
       view_medications: Ver Medicamentos
@@ -1257,7 +1324,8 @@ pt:
     paused: Medicamento pausado.
     resumed: Medicamento retomado.
     medication_taken: Medicamento tomado com sucesso.
-    invalid_dose_configured: Dose inválida configurada. Atualize a dose do medicamento
+    invalid_dose_configured:
+      Dose inválida configurada. Atualize a dose do medicamento
       antes de administrar.
     modal:
       new_title: Adicionar Medicamento para %{person}
@@ -1265,8 +1333,8 @@ pt:
       subtitle: Adicionar uma medicação de rotina ou conforme necessário
     card:
       paused: Em pausa
-      notes: 'Notas:'
-      timing_restrictions: 'Restrições de Tempo:'
+      notes: "Notas:"
+      timing_restrictions: "Restrições de Tempo:"
       max_doses:
         daily:
           one: Máximo 1 dose por dia
@@ -1280,7 +1348,7 @@ pt:
       wait_hours:
         one: Esperar pelo menos 1 hora entre doses
         other: Esperar pelo menos %{count} horas entre doses
-      next_dose_available: 'Próxima dose disponível em:'
+      next_dose_available: "Próxima dose disponível em:"
       todays_doses: Doses de Hoje
       no_doses_today: Nenhuma dose tomada hoje
       take: Tomar
@@ -1298,14 +1366,15 @@ pt:
       edit: Editar
       remove: Remover
       remove_medication: Remover Medicamento
-      remove_confirmation: Tem certeza de que deseja remover %{medication}? Esta ação
+      remove_confirmation:
+        Tem certeza de que deseja remover %{medication}? Esta ação
         não pode ser desfeita.
     form:
       add_medication: Adicionar Medicamento
       add_medication_for: Adicionar Medicamento para %{person}
       edit_medication_for: Editar Medicamento para %{person}
       validation_errors:
-        one: '1 erro impediu que este medicamento fosse guardado:'
+        one: "1 erro impediu que este medicamento fosse guardado:"
         other: "%{count} erros impediram que este medicamento fosse guardado:"
       cancel: Cancelar
       medication: Medicamento
@@ -1329,7 +1398,8 @@ pt:
       default_dose_cycle: Diário
       dose_cycle_hint: Período de reinício do ciclo
       administration_kind: Tipo de medicação
-      administration_kind_hint: As tarefas de rotina contam para hoje; a medicação
+      administration_kind_hint:
+        As tarefas de rotina contam para hoje; a medicação
         conforme necessário só aparece quando pode ser administrada.
       administration_kinds:
         routine:
@@ -1344,12 +1414,14 @@ pt:
       next: Seguinte
       workflow:
         choose_medication_title: Escolha um medicamento
-        choose_medication_description: Comece por escolher o medicamento que quer
+        choose_medication_description:
+          Comece por escolher o medicamento que quer
           adicionar.
         choose_dose_title: Escolha a dose
         choose_dose_description: Escolha a dose antes de continuar.
         add_guidance_title: Adicionar orientação opcional
-        add_guidance_description: Adicione notas ou limites de dose que queira acompanhar
+        add_guidance_description:
+          Adicione notas ou limites de dose que queira acompanhar
           com este medicamento.
       add_medication_button: Adicionar Medicamento
       save_changes_button: Guardar Alterações
@@ -1358,7 +1430,8 @@ pt:
       subtitle: Adicione detalhes do medicamento a partir das predefinições guardadas
     form:
       review_title: Rever
-      review_description: Confirme a dose selecionada e as predefinições do medicamento
+      review_description:
+        Confirme a dose selecionada e as predefinições do medicamento
         guardadas.
       frequency: Frequência
       plan_type: Tipo de plano
@@ -1371,7 +1444,8 @@ pt:
     paused: Receita pausada.
     resumed: Receita retomada.
     medication_taken: Medicamento tomado com sucesso.
-    invalid_dose_configured: Dose inválida configurada. Atualize a dose da receita
+    invalid_dose_configured:
+      Dose inválida configurada. Atualize a dose da receita
       antes de administrar.
     modal:
       new_title: Nova Receita para %{person}
@@ -1379,10 +1453,10 @@ pt:
       subtitle: Adicione os detalhes da medicação e da receita
     card:
       paused: Em pausa
-      started: 'Iniciado:'
-      ends: 'Termina:'
-      notes: 'Notas:'
-      next_dose_available: 'Próxima dose disponível em:'
+      started: "Iniciado:"
+      ends: "Termina:"
+      notes: "Notas:"
+      next_dose_available: "Próxima dose disponível em:"
       todays_doses: Doses de Hoje
       no_doses_today: Nenhuma dose tomada hoje
       take: Tomar
@@ -1401,13 +1475,15 @@ pt:
       invalid_dose: Dose inválida configurada
       delete_dialog:
         title: Eliminar Receita
-        confirm: Tem certeza de que deseja eliminar a receita de %{medication}? Esta
+        confirm:
+          Tem certeza de que deseja eliminar a receita de %{medication}? Esta
           ação não pode ser desfeita.
         cancel: Cancelar
         submit: Eliminar
     form:
       choose_medication_title: Escolha um medicamento
-      choose_medication_description: Selecionar um medicamento abrirá os detalhes
+      choose_medication_description:
+        Selecionar um medicamento abrirá os detalhes
         da dose e da receita.
       medication: Medicamento
       change: Alterar
@@ -1415,10 +1491,12 @@ pt:
       dose: Dose
       dosage: Dosagem
       choose_one_dose: Escolha uma dose antes de introduzir os detalhes da receita.
-      no_dose_options: Não existem opções de dose para este medicamento. Adicione
+      no_dose_options:
+        Não existem opções de dose para este medicamento. Adicione
         uma dosagem antes de criar uma receita.
       schedule_details_title: Detalhes da receita
-      schedule_details_description: Defina a periodicidade e as orientações de segurança
+      schedule_details_description:
+        Defina a periodicidade e as orientações de segurança
         depois de escolher uma dose.
       select_medication_first: Selecione primeiro um medicamento
       select_dosage: Selecionar uma dosagem
@@ -1434,9 +1512,10 @@ pt:
       min_hours_hint: Tempo mínimo exigido entre doses
       min_hours_placeholder: p. ex., 6
       dose_cycle: Ciclo de dose
-      dose_cycle_hint: 'Com que frequência o ciclo de dose é reiniciado (predefinição:
-        diário)'
-      select_cycle: 'Selecionar um ciclo (predefinição: diário)'
+      dose_cycle_hint:
+        "Com que frequência o ciclo de dose é reiniciado (predefinição:
+        diário)"
+      select_cycle: "Selecionar um ciclo (predefinição: diário)"
       notes: Notas
       notes_hint: Instruções ou informações adicionais
       notes_placeholder: Introduza notas ou instruções adicionais...
@@ -1449,7 +1528,7 @@ pt:
       frequency_up_to: Até %{count} vezes por ciclo
       frequency_at_least_hours: com pelo menos %{hours}h de intervalo
     frequency_phrase:
-      preview_label: 'Isto significa:'
+      preview_label: "Isto significa:"
       cycles:
         day: dia
         week: semana
@@ -1523,14 +1602,17 @@ pt:
       passkey_helper: Use Face ID, Touch ID, Windows Hello ou uma chave de segurança.
       passkey_cta: Continuar com Passkey
       passkey_not_supported: As passkeys não são suportadas neste navegador.
-      passkey_cancelled: O início de sessão com passkey foi cancelado. Tente novamente
+      passkey_cancelled:
+        O início de sessão com passkey foi cancelado. Tente novamente
         ou use a sua palavra-passe.
-      passkey_error: Não foi possível iniciar sessão com essa passkey. Tente novamente
+      passkey_error:
+        Não foi possível iniciar sessão com essa passkey. Tente novamente
         ou use a sua palavra-passe.
       oauth_continue: Continuar com %{provider}
       oauth_sso: Iniciar sessão com %{provider} (SSO)
       oauth_divider: ou
-      invite_only_oidc_notice: O início de sessão único está reservado para contas
+      invite_only_oidc_notice:
+        O início de sessão único está reservado para contas
         convidadas.
       invite_only_oidc_cta: Continuar com %{provider}
       need_account: Precisa de uma conta?
@@ -1538,14 +1620,14 @@ pt:
       resend_verification: Reenviar email de verificação
   take_medications:
     cooldown: Esta dose não está disponível neste momento.
-    out_of_stock: 'Não é possível tomar o medicamento: sem stock'
+    out_of_stock: "Não é possível tomar o medicamento: sem stock"
     success: Toma de medicamento registada com sucesso.
     failure: Falha ao registar toma de medicamento.
     json_success: Toma de medicamento registada com sucesso.
     invalid_taken_at: Escolha uma hora de dose válida.
     future_taken_at: A hora da dose não pode ser mais de uma hora no futuro.
-    paused: 'Não é possível tomar o medicamento: está em pausa'
-    overlapping_prescription_restriction: 'Não é possível tomar o medicamento: outra receita ativa para este medicamento define um limite de tempo mais rigoroso.'
+    paused: "Não é possível tomar o medicamento: está em pausa"
+    overlapping_prescription_restriction: "Não é possível tomar o medicamento: outra receita ativa para este medicamento define um limite de tempo mais rigoroso."
   barcode_scanner:
     title: Ler Código de Barras
     start: Iniciar Leitor
@@ -1559,7 +1641,8 @@ pt:
       scanning: Aponte a câmara para um código de barras
       decoded: Código de barras lido com sucesso!
       denied: O acesso à câmara foi recusado. Utilize a introdução manual abaixo.
-      unavailable: Não foi encontrada nenhuma câmara. Utilize a introdução manual
+      unavailable:
+        Não foi encontrada nenhuma câmara. Utilize a introdução manual
         abaixo.
       error: Erro do leitor. Utilize a introdução manual abaixo.
   notification_preferences:
@@ -1645,8 +1728,8 @@ pt:
           medications: "Medicamentos associados: %{medications}"
         not_recorded: Não registado
         none: Nenhum
-        'yes': 'Sim'
-        'no': 'Não'
+        "yes": "Sim"
+        "no": "Não"
       illness_patterns:
         title: Padrões de doença registados
         summary: Foram registados %{count} episódios de "%{title}" entre %{first} e %{last}. O intervalo médio entre o início dos episódios foi de %{interval} dias.
@@ -1767,12 +1850,15 @@ pt:
         title: Alerta de inventário
         out_of_stock: Sem stock
         refill_pending: Reabastecimento pendente
-        description_zero: O seu stock de %{medication_name} acabou. Encomende um reabastecimento
+        description_zero:
+          O seu stock de %{medication_name} acabou. Encomende um reabastecimento
           urgente.
         description:
-          one: O seu stock de %{medication_name} esgotar-se-á dentro de %{count} dia.
+          one:
+            O seu stock de %{medication_name} esgotar-se-á dentro de %{count} dia.
             Recomendamos encomendar um reabastecimento esta tarde.
-          other: O seu stock de %{medication_name} esgotar-se-á dentro de %{count}
+          other:
+            O seu stock de %{medication_name} esgotar-se-á dentro de %{count}
             dias. Recomendamos encomendar um reabastecimento esta tarde.
       actionable_insight: Informação acionável
   smart_insights:
@@ -1782,14 +1868,17 @@ pt:
       other: "%{days} dias revistos com %{events} eventos de medicação"
     learning:
       title: A aprender a sua rotina
-      summary: Continue a registar doses para que o MedTracker possa detetar padrões
+      summary:
+        Continue a registar doses para que o MedTracker possa detetar padrões
         reais.
-      detail: O Smart Insights espera por evidência suficiente antes de chamar algo
+      detail:
+        O Smart Insights espera por evidência suficiente antes de chamar algo
         de padrão.
     no_action:
       title: Nenhum padrão precisa de atenção
       summary: Nada invulgar se destaca neste período do relatório.
-      detail: O relatório continua a mostrar o histórico de doses e o inventário para
+      detail:
+        O relatório continua a mostrar o histórico de doses e o inventário para
         rever os detalhes.
     detectors:
       adherence_streak:
@@ -1832,7 +1921,8 @@ pt:
         summary:
           one: "%{medication_name} tem cerca de 1 dia de stock."
           other: "%{medication_name} tem cerca de %{count} dias de stock."
-        detail: Verifique o registo de stock de %{medication_name} e planeie o próximo
+        detail:
+          Verifique o registo de stock de %{medication_name} e planeie o próximo
           reabastecimento.
         metric_label: Stock restante
         metric_value:
@@ -1843,7 +1933,8 @@ pt:
         summary:
           one: Foi registada 1 dose conforme necessário neste período.
           other: Foram registadas %{count} doses conforme necessário neste período.
-        detail: Reveja estas entradas juntamente com as doses de rotina para manter
+        detail:
+          Reveja estas entradas juntamente com as doses de rotina para manter
           uma visão completa.
         metric_label: Registos PRN
         metric_value:
@@ -1851,9 +1942,11 @@ pt:
           other: "%{count} doses"
       schedule_hygiene:
         title: Detalhe do horário para rever
-        summary: "%{medication_name} está definido para várias doses diárias sem horas
+        summary:
+          "%{medication_name} está definido para várias doses diárias sem horas
           específicas."
-        detail: Adicionar horas pode tornar lembretes, relatórios e informações de
+        detail:
+          Adicionar horas pode tornar lembretes, relatórios e informações de
           horário mais claros.
         metric_label: Rever
         metric_value: Horário
@@ -1890,10 +1983,11 @@ pt:
         experiments: Experiências
         experiments_description: Experimente novas opções da interface antes do lançamento.
     updated: Perfil atualizado com sucesso.
-    email_change_requires_verification: Use o fluxo verificado de alteração de email
+    email_change_requires_verification:
+      Use o fluxo verificado de alteração de email
       para atualizar o email de início de sessão.
     no_changes: Sem alterações a guardar.
-    profile_update_failed: 'Falha ao atualizar perfil: %{errors}'
+    profile_update_failed: "Falha ao atualizar perfil: %{errors}"
     experiments:
       dashboard:
         title: Layout do painel
@@ -1917,8 +2011,8 @@ pt:
       name_label: Nome do token
       create: Criar token
       empty: Ainda não existem tokens de API.
-      last_used_at: 'Última utilização: %{time}'
-      expires_at: 'Expira: %{time}'
+      last_used_at: "Última utilização: %{time}"
+      expires_at: "Expira: %{time}"
       revoke: Revogar
       revoked: Token de API revogado.
       locked: A sua conta está bloqueada. Os tokens de API não podem ser alterados agora.
@@ -1948,7 +2042,8 @@ pt:
     show:
       eyebrow: Definições do perfil
       title: O Meu Perfil
-      description: Molde a sua conta, preferências de segurança e ritmo de notificações
+      description:
+        Molde a sua conta, preferências de segurança e ritmo de notificações
         a partir de uma única consola calma.
       not_set: Não definido
       stats:
@@ -1976,10 +2071,12 @@ pt:
       title: Segurança da Conta
       description: Gira as suas credenciais de início de sessão e definições de segurança
       change_email_title: Alterar Endereço de Email
-      change_email_description: Atualize o endereço de email que usa para iniciar
+      change_email_description:
+        Atualize o endereço de email que usa para iniciar
         sessão
       change_password_title: Alterar Palavra-passe
-      change_password_description: Atualize a sua palavra-passe para manter a conta
+      change_password_description:
+        Atualize a sua palavra-passe para manter a conta
         segura
       change_button: Alterar
     password_sheet:
@@ -2011,7 +2108,8 @@ pt:
       categories_description: Escolha que tipos de notificação quer receber
       managed_people:
         title: Pessoas que gere
-        description: Os alertas de doses em falta para crianças e adultos dependentes
+        description:
+          Os alertas de doses em falta para crianças e adultos dependentes
           são incluídos automaticamente. Escolha os adultos que também pretende acompanhar.
         automatic: Incluído automaticamente
         notify_me: Notificar-me
@@ -2034,7 +2132,8 @@ pt:
       title: Encerrar Conta
       description: Eliminar permanentemente a sua conta e todos os dados associados
       dialog_title: Tem a certeza absoluta?
-      dialog_description: Esta ação não pode ser desfeita. Isto irá eliminar permanentemente
+      dialog_description:
+        Esta ação não pode ser desfeita. Isto irá eliminar permanentemente
         a sua conta e remover todos os seus dados dos nossos servidores.
       cancel_button: Cancelar
       confirm_button: Sim, eliminar a minha conta
@@ -2046,7 +2145,8 @@ pt:
     activated: Conta de utilizador ativada.
     verified: Conta de utilizador verificada manualmente.
     cannot_deactivate_self: Não pode desativar a sua própria conta.
-    owner_deactivation_rejected: As contas de proprietário só podem ser desativadas
+    owner_deactivation_rejected:
+      As contas de proprietário só podem ser desativadas
       por outro proprietário do agregado enquanto existir outro utilizador proprietário
       ativo.
   webauthn:
@@ -2240,11 +2340,13 @@ pt:
     cards:
       medications:
         title: Medicamentos
-        description: Gira o inventário da sua medicação, acompanhe os níveis de stock
+        description:
+          Gira o inventário da sua medicação, acompanhe os níveis de stock
           e veja informações de dosagem
       people:
         title: Pessoas
-        description: Gira pessoas e os respetivos horários, acompanhe os horários
+        description:
+          Gira pessoas e os respetivos horários, acompanhe os horários
           de medicação
   dosages:
     created: Dose adicionada com sucesso.
@@ -2262,7 +2364,8 @@ pt:
       frequency_placeholder: Uma vez por dia
       description: Descrição / notas
       description_placeholder: Opcional
-      scheduling_defaults: Predefinições de agendamento (preenchidas automaticamente
+      scheduling_defaults:
+        Predefinições de agendamento (preenchidas automaticamente
         ao criar uma receita)
       max_doses_per_cycle: Máx. de doses por ciclo
       max_doses_placeholder: p. ex., 4
@@ -2295,7 +2398,8 @@ pt:
       name_placeholder: p. ex., Paracetamol
       friendly_name: Nome de apresentação
       friendly_name_placeholder: Deixe em branco para usar o nome completo do medicamento
-      friendly_name_hint: Usado em listas, horários e histórico. O nome completo importado
+      friendly_name_hint:
+        Usado em listas, horários e histórico. O nome completo importado
         é mantido para referência.
       description: Descrição
       description_placeholder: Para que é utilizado este medicamento?
@@ -2330,7 +2434,8 @@ pt:
           description: Conte-nos sobre este medicamento.
         dose:
           title: Dose e plano
-          description: Crie o primeiro plano de medicação escolhendo quem toma, a
+          description:
+            Crie o primeiro plano de medicação escolhendo quem toma, a
             dose e o ritmo.
           person_title: Quem vai tomar isto?
           person_description: Selecione a pessoa ou dependente a que este plano
@@ -2386,7 +2491,7 @@ pt:
           title: Configuração de fornecimento
           description: Controle quanto existe na embalagem e quando deve reordenar.
       validation_errors:
-        one: '1 erro impediu que este medicamento fosse guardado:'
+        one: "1 erro impediu que este medicamento fosse guardado:"
         other: "%{count} erros impediram que este medicamento fosse guardado:"
       starting_supply: Quantidade inicial
   dashboard:
@@ -2449,9 +2554,10 @@ pt:
       more_people: Mais pessoas
     as_needed:
       title: Tomar conforme necessário
-    overdue_alert: 'Atrasado: %{medication} para %{person} (agendado às %{time})'
-    out_of_stock_alert: 'Sem stock: %{medication}. Não é possível registar doses para
-      %{person}.'
+    overdue_alert: "Atrasado: %{medication} para %{person} (agendado às %{time})"
+    out_of_stock_alert:
+      "Sem stock: %{medication}. Não é possível registar doses para
+      %{person}."
     no_active_schedules: Nenhuma prescrição ativa encontrada
     add_schedules_hint: Adicione prescrições para vê-las aqui
     dose_taken_at: "%{person} • Tomado às %{time}"
@@ -2515,7 +2621,8 @@ pt:
     delete_confirmation:
       delete: Eliminar
       delete_schedule: Eliminar Prescrição?
-      are_you_sure: Tem certeza de que deseja eliminar %{medication} para %{person}?
+      are_you_sure:
+        Tem certeza de que deseja eliminar %{medication} para %{person}?
         Esta ação não pode ser desfeita.
       cancel: Cancelar
     person_schedule:
@@ -2526,7 +2633,8 @@ pt:
       out_of_stock: Sem stock
       on_cooldown: Em espera
       take_now: Tomar agora
-      delete_confirmation: Tem certeza de que deseja eliminar este horário para %{medication}?
+      delete_confirmation:
+        Tem certeza de que deseja eliminar este horário para %{medication}?
         Esta ação não pode ser desfeita.
     schedule_card:
       dosage: Dose

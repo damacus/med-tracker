@@ -79,6 +79,20 @@ RSpec.describe CareDelegation::Revoke do
     expect(manual_grant.reload.revoked_at).to be_nil
   end
 
+  it 'deactivates when the unowned grant was classified as independent authority' do
+    manual_relationship, manual_grant = create_manual_delegation
+    manual_grant.update!(
+      disposition: 'manual',
+      classified_at: Time.current,
+      classified_by_membership: actor_membership,
+      classification_reason: 'confirmed as independent authority'
+    )
+
+    expect(described_class.new(relationship: manual_relationship).call).to eq(manual_relationship)
+    expect(manual_relationship.reload).not_to be_active
+    expect(manual_grant.reload).to have_attributes(revoked_at: nil, carer_relationship_id: nil)
+  end
+
   it 'revokes expired owned grants and releases the unrevoked uniqueness slot' do
     expiring_relationship = create_expiring_delegation
     patient_grant = expiring_relationship.person_access_grants.sole

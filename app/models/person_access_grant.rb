@@ -11,9 +11,11 @@ class PersonAccessGrant < ApplicationRecord
   belongs_to :household_membership
   belongs_to :person
   belongs_to :granted_by_membership, class_name: 'HouseholdMembership', optional: true
+  belongs_to :classified_by_membership, class_name: 'HouseholdMembership', optional: true
   belongs_to :carer_relationship, optional: true
 
   enum :access_level, { view: 'view', record: 'record', manage: 'manage' }, validate: true
+  enum :disposition, { manual: 'manual' }, validate: { allow_nil: true }
   enum :relationship_type,
        { self: 'self', parent: 'parent', family_member: 'family_member', carer: 'carer', professional: 'professional' },
        validate: true

@@ -55,6 +55,7 @@ module Components
               render(RubyUI::TableHead.new { t('admin.ambiguous_person_access_grants.index.table.created_at') })
               render(RubyUI::TableHead.new { t('admin.ambiguous_person_access_grants.index.table.expires_at') })
               render(RubyUI::TableHead.new { t('admin.ambiguous_person_access_grants.index.table.revoked_at') })
+              render(RubyUI::TableHead.new { t('admin.ambiguous_person_access_grants.index.table.actions') })
             end
           end
         end
@@ -63,7 +64,7 @@ module Components
           render RubyUI::TableBody.new do
             if grants.empty?
               render RubyUI::TableRow.new do
-                render RubyUI::TableCell.new(colspan: 9, class: 'py-8 text-center text-on-surface-variant') do
+                render RubyUI::TableCell.new(colspan: 10, class: 'py-8 text-center text-on-surface-variant') do
                   t('admin.ambiguous_person_access_grants.index.empty')
                 end
               end
@@ -84,6 +85,30 @@ module Components
             render(RubyUI::TableCell.new { format_timestamp(grant.created_at) })
             render(RubyUI::TableCell.new { format_timestamp(grant.expires_at) })
             render(RubyUI::TableCell.new { format_timestamp(grant.revoked_at) })
+            render(RubyUI::TableCell.new { render_actions(grant) })
+          end
+        end
+
+        def render_actions(grant)
+          form_with(url: classify_admin_ambiguous_person_access_grant_path(grant.household.slug, grant),
+                    method: :post, class: 'flex flex-col gap-2') do
+            input(type: :hidden, name: 'classification[carer_relationship_id]',
+                  value: grant[:compatible_relationship_id])
+            Input(type: :text, name: 'classification[reason]', required: true,
+                  placeholder: t('admin.ambiguous_person_access_grants.index.actions.reason_placeholder'),
+                  aria: { label: t('admin.ambiguous_person_access_grants.index.actions.reason') })
+            div(class: 'flex flex-wrap gap-1') do
+              action_button('attach', :outline)
+              action_button('manual', :secondary)
+              action_button('revoke', :destructive)
+            end
+          end
+        end
+
+        def action_button(decision, variant)
+          Button(type: :submit, name: 'classification[decision]', value: decision,
+                 variant: variant, size: :sm) do
+            t("admin.ambiguous_person_access_grants.index.actions.#{decision}")
           end
         end
 

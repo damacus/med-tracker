@@ -50,10 +50,10 @@ module Admin
     def call
       scope
         .merge(PersonAccessGrant.active)
-        .where(carer_relationship_id: nil)
+        .where(carer_relationship_id: nil, disposition: nil)
         .joins(household_membership_join)
         .joins(compatible_relationship_join)
-        .includes(:person, household_membership: :person)
+        .includes(:person, :household, household_membership: :person)
         .select(select_columns)
         .distinct
         .order(created_at: :desc, id: :desc)

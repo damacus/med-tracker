@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_11_123000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_18_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -1082,7 +1082,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_11_123000) do
   create_table "person_access_grants", force: :cascade do |t|
     t.string "access_level", null: false
     t.bigint "carer_relationship_id"
+    t.string "classification_reason"
+    t.datetime "classified_at"
+    t.bigint "classified_by_membership_id"
     t.datetime "created_at", null: false
+    t.string "disposition"
     t.datetime "expires_at"
     t.bigint "granted_by_membership_id"
     t.bigint "household_id", null: false
@@ -1093,6 +1097,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_11_123000) do
     t.datetime "revoked_at"
     t.datetime "updated_at", null: false
     t.index ["carer_relationship_id", "household_id"], name: "idx_person_access_grants_on_delegation_household"
+    t.index ["classified_by_membership_id"], name: "index_person_access_grants_on_classified_by_membership_id"
     t.index ["granted_by_membership_id"], name: "index_person_access_grants_on_granted_by_membership_id"
     t.index ["household_id"], name: "index_person_access_grants_on_household_id"
     t.index ["household_membership_id", "person_id"], name: "idx_on_household_membership_id_person_id_6ddc5a2882", unique: true, where: "(revoked_at IS NULL)"
@@ -1416,7 +1421,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_11_123000) do
   add_foreign_key "people", "households"
   add_foreign_key "person_access_grants", "carer_relationships", column: ["carer_relationship_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_person_access_grants_carer_relationship_household"
   add_foreign_key "person_access_grants", "household_memberships"
+  add_foreign_key "person_access_grants", "household_memberships", column: "classified_by_membership_id"
   add_foreign_key "person_access_grants", "household_memberships", column: "granted_by_membership_id"
+  add_foreign_key "person_access_grants", "household_memberships", column: ["classified_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_person_access_grants_classified_by_membership_household"
   add_foreign_key "person_access_grants", "household_memberships", column: ["granted_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_person_access_grants_granted_by_membership_id_household"
   add_foreign_key "person_access_grants", "household_memberships", column: ["household_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_person_access_grants_household_membership_id_household"
   add_foreign_key "person_access_grants", "households"

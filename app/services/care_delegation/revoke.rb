@@ -38,7 +38,7 @@ module CareDelegation
       membership = relationship.household.household_memberships.find_by(person: relationship.carer)
       return unless membership
 
-      unowned_grants = membership.person_access_grants.active
+      unowned_grants = membership.person_access_grants.active.where(disposition: nil)
       return unless unowned_grants.exists?(person: relationship.patient, carer_relationship: nil)
 
       raise AmbiguousGrant, 'an active unowned grant still authorizes this patient'
