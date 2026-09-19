@@ -87,7 +87,7 @@ RSpec.describe SupportAccessSessions::ExpiryProcessor do
   end
 
   def concurrent_expiry_results
-    2.times.map do
+    Array.new(2) do
       Thread.new { described_class.new.send(:expire, support_session) }
     end.map(&:value)
   end

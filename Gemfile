@@ -134,7 +134,9 @@ group :tools do
   gem 'rubocop-factory_bot', require: false
 
   gem 'rspec-github', require: false
+  gem 'rubocop', '>= 1.91', '< 3', require: false
   gem 'rubocop-capybara'
+  gem 'rubocop-performance', require: false
   gem 'rubocop-rails'
   gem 'rubocop-rspec'
   gem 'rubocop-rspec_rails'

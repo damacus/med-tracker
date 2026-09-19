@@ -5,6 +5,7 @@ RSpec.describe 'Medication pause context' do
 
   let(:person) { people(:child_user_person) }
 
+  unsupported_reasons = [nil, '', 'reason_not_recorded', 'invalid']
   %w[schedule routine as_needed].each do |kind|
     context "with a #{kind} source" do
       let!(:source) do
@@ -56,7 +57,7 @@ RSpec.describe 'Medication pause context' do
         expect(source.reload).not_to be_paused
       end
 
-      [nil, '', 'reason_not_recorded', 'invalid'].each do |reason|
+      unsupported_reasons.each do |reason|
         it "rejects unsupported reason #{reason.inspect} and preserves the note" do
           patch pause_path, params: { pause_period: { reason: reason, note: 'Awaiting delivery' } }
 

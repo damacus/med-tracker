@@ -121,7 +121,7 @@ module DemoReset
 
     def database_hosts_valid?
       hosts = Array(targets.database_host)
-      expected.database_host.present? && hosts.any? && hosts.all? { |host| host == expected.database_host }
+      expected.database_host.present? && hosts.any? && hosts.all?(expected.database_host)
     end
 
     def target_matches?(actual, expected_value)

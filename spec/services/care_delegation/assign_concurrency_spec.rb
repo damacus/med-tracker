@@ -57,16 +57,16 @@ RSpec.describe CareDelegation::Assign do
 
   def build_assignment_threads(records, queues, connection_pool)
     ready, start, results = queues
-    2.times.map { assignment_thread(records, ready, start, results, connection_pool) }
+    Array.new(2) { assignment_thread(records, ready, start, results, connection_pool) }
   end
 
   def run_assignment_threads(threads, queues)
     ready, start, results = queues
-    readiness = 2.times.map { wait_for_queue(ready, 'assignment workers') }
+    readiness = Array.new(2) { wait_for_queue(ready, 'assignment workers') }
     raise_worker_setup_error(readiness)
     2.times { start << true }
     threads.each { join_thread(it) }
-    2.times.map { wait_for_queue(results, 'assignment results') }
+    Array.new(2) { wait_for_queue(results, 'assignment results') }
   end
 
   def raise_worker_setup_error(readiness)

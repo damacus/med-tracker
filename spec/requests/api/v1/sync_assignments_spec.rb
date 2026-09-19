@@ -8,6 +8,7 @@ RSpec.describe 'API v1 queued schedules and assignments' do
   let(:household_id) { login_data.dig('household', 'id') }
   let(:headers) { api_auth_headers(login_data.fetch('access_token')) }
 
+  delegated_actors = %i[doctor carer parent]
   %w[schedule person_medication].each do |resource_type|
     context "with #{resource_type}" do
       let(:record) { assignment_record(resource_type) }
@@ -234,7 +235,7 @@ RSpec.describe 'API v1 queued schedules and assignments' do
         expect(pause.reload.attributes).to eq(original)
       end
 
-      %i[doctor carer parent].each do |actor|
+      delegated_actors.each do |actor|
         it "requires manage access for #{actor} to change an assignment" do
           operation = mutation(record, resource_type)
           actor_session = actor_access(actor, record.person, :record)

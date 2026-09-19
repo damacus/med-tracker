@@ -571,8 +571,9 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
     end
 
     it 'models ETag preconditions on every controller that enforces stale-write conflicts' do
+      methods = %w[patch put]
       described_class::PRECONDITION_PATHS.each do |path|
-        %w[patch put].each do |method|
+        methods.each do |method|
           operation = described_class.operation(path, method)
 
           expect(operation.fetch('parameters')).to include({ '$ref' => '#/components/parameters/if_match' })
@@ -944,7 +945,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
 
     it 'matches the bounded descending Rails security audit event feed without leaking diagnostics' do
       household_id, headers = manager_api_context
-      rows = 101.times.map { |index| contract_security_audit_event(household_id, index) }
+      rows = Array.new(101) { |index| contract_security_audit_event(household_id, index) }
       rows.each { |row| SecurityAuditEvent.create!(row) }
 
       get api_v1_household_admin_audit_logs_path(household_id), headers:, as: :json
@@ -1520,8 +1521,9 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
     end
 
     it 'accepts queued schedule and assignment requests and their results' do
+      actions = %w[create update delete]
       %w[schedule person_medication].each do |resource_type|
-        %w[create update delete].each do |action|
+        actions.each do |action|
           operation = { action: action, resource_type: resource_type, id: SecureRandom.uuid, if_match: 'version' }
           result = { index: 0, action: action, record_type: resource_type.classify,
                      record_portable_id: SecureRandom.uuid }

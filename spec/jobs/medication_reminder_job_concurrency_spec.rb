@@ -64,7 +64,7 @@ RSpec.describe MedicationReminderJob do
   def perform_concurrently
     ready = Queue.new
     start = Queue.new
-    threads = 2.times.map { reminder_thread(ready, start) }
+    threads = Array.new(2) { reminder_thread(ready, start) }
     2.times { Timeout.timeout(10) { ready.pop } }
     2.times { start << true }
     threads.each { join_thread(it) }

@@ -268,10 +268,11 @@ RSpec.describe 'Mobile overflow handling' do
   it 'contains long translated mobile shortcut labels at phone widths', :js do
     users(:admin).person.account.update!(mobile_shortcuts: %w[finder medicine_reviews administration])
 
+    widths = [320, 390]
     %i[en pt cy].each do |locale|
       allow(I18n).to receive(:locale).and_return(locale)
 
-      [320, 390].each do |width|
+      widths.each do |width|
         page.current_window.resize_to(width, 844)
         visit dashboard_path
 
@@ -412,10 +413,11 @@ RSpec.describe 'Mobile overflow handling' do
       }
     ]
 
+    appearances = %w[light dark]
     [320, 390, 768, 1280].each do |width|
       page.current_window.resize_to(width, width == 1280 ? 900 : 844)
 
-      %w[light dark].each do |appearance|
+      appearances.each do |appearance|
         apply_appearance(appearance)
         visit person_path(people(:john))
 

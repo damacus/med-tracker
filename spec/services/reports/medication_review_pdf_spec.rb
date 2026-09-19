@@ -82,7 +82,7 @@ RSpec.describe Reports::MedicationReviewPdf do
   end
 
   it 'repeats person identity without losing prompts on continuation pages' do
-    prompts = 8.times.map { |index| prompt(index:) }
+    prompts = Array.new(8) { |index| prompt(index:) }
     pdf = described_class.new(prompts:, generated_at:).render
     pages = pdf_page_texts(pdf)
     prompt_pages = pages.select { |page| page.include?('Evidence marker') }
@@ -90,7 +90,7 @@ RSpec.describe Reports::MedicationReviewPdf do
     expect(pages.size).to be > 1
     expect(prompt_pages.size).to be > 1
     expect(prompt_pages).to all(include('Alex Smith'))
-    expect(8.times.map { |index| pages.join(' ').scan("Evidence marker #{index}").size }).to all(eq(1))
+    expect(Array.new(8) { |index| pages.join(' ').scan("Evidence marker #{index}").size }).to all(eq(1))
   end
 
   def prompt(index: nil)

@@ -908,8 +908,10 @@ DEPENDENCIES
   rqrcode
   rspec-github
   rspec-rails
+  rubocop (>= 1.91, < 3)
   rubocop-capybara
   rubocop-factory_bot
+  rubocop-performance
   rubocop-rails
   rubocop-rails-omakase
   rubocop-rspec

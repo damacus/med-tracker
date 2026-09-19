@@ -115,7 +115,7 @@ RSpec.describe 'Medication Lookup', :browser, type: :system do
 
   it 'API unavailable shows error message' do
     # Stub search to return error status
-    stub_request(:get, %r{#{NhsDmd::Client::BASE_URL}/ValueSet/\$expand})
+    stub_request(:get, %r{#{NhsDmd::Client::BASE_URL}/ValueSet/\$expand}o)
       .to_return(status: 503, body: 'Service Unavailable')
 
     sign_in(admin)

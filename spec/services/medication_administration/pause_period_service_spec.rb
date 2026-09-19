@@ -111,7 +111,7 @@ RSpec.describe MedicationAdministration::PausePeriodService do
   def concurrent_pause_results
     ready = Queue.new
     start = Queue.new
-    threads = 2.times.map { pause_thread(ready, start) }
+    threads = Array.new(2) { pause_thread(ready, start) }
     2.times { Timeout.timeout(10) { ready.pop } }
     2.times { start << true }
     threads.map { join_thread(it) }

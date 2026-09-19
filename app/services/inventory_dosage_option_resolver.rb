@@ -30,14 +30,14 @@ class InventoryDosageOptionResolver
 
     return matching_inventory_record_by_id if source_dosage_option.medication_id == inventory.id
 
-    matches = tracked_inventory_dosage_records.select(&method(:matching_source_dosage_signature?))
+    matches = tracked_inventory_dosage_records.select { |record| matching_source_dosage_signature?(record) }
     matches.one? ? matches.first : nil
   end
 
   def resolved_from_source_snapshot
     return if source_dose_amount.blank? || source_dose_unit.blank?
 
-    matches = tracked_inventory_dosage_records.select(&method(:matching_source_snapshot?))
+    matches = tracked_inventory_dosage_records.select { |record| matching_source_snapshot?(record) }
     matches.one? ? matches.first : nil
   end
 

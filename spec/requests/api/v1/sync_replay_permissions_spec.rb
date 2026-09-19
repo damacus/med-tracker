@@ -43,9 +43,10 @@ RSpec.describe 'API v1 offline replay authority' do
 
   it 'rejects every online-only operation with the same code before any writes' do
     admin_headers = api_auth_headers(login.fetch('access_token'))
+    actions = %w[create update delete]
     %w[profile avatar invitation household_membership person_access_grant location_membership report
        unknown].each do |type|
-      %w[create update delete].each do |action|
+      actions.each do |action|
         post_batch({ resource_type: 'location', action: 'create', attributes: { name: 'Must roll back' } },
                    { resource_type: type, action: action }, request_headers: admin_headers)
         expect(response).to have_http_status(:unprocessable_content)

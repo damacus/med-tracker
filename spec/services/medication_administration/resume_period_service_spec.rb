@@ -162,7 +162,7 @@ RSpec.describe MedicationAdministration::ResumePeriodService do
   def concurrent_resume_results
     ready = Queue.new
     start = Queue.new
-    threads = 2.times.map { resume_thread(ready, start) }
+    threads = Array.new(2) { resume_thread(ready, start) }
     2.times { Timeout.timeout(10) { ready.pop } }
     2.times { start << true }
     threads.map { join_thread(it) }
