@@ -12,18 +12,18 @@ the workflow.
 `Taskfile.yml` defines repository-wide commands and includes the task files in
 this directory.
 
-| File | Scope |
-| --- | --- |
-| `internal.yml` | Shared Docker Compose operations |
-| `dev.yml` | Development services and data |
-| `test.yml` | Docker-backed test services |
-| `local.yml` | Host test commands with a local database |
-| `prod.yml` | Local production-image checks and operator wrappers |
-| `docs.yml` | Documentation build and preview |
-| `audit.yml` | Audit export and verification |
-| `lighthouse.yml` | Browser quality checks |
-| `openspec.yml` | OpenSpec validation and status |
-| `worktree.yml` | Worktree creation and cleanup |
+| File             | Scope                                               |
+|------------------|-----------------------------------------------------|
+| `internal.yml`   | Shared Docker Compose operations                    |
+| `dev.yml`        | Development services and data                       |
+| `test.yml`       | Docker-backed test services                         |
+| `local.yml`      | Host test commands with a local database            |
+| `prod.yml`       | Local production-image checks and operator wrappers |
+| `docs.yml`       | Documentation build and preview                     |
+| `audit.yml`      | Audit export and verification                       |
+| `lighthouse.yml` | Browser quality checks                              |
+| `openspec.yml`   | OpenSpec validation and status                      |
+| `worktree.yml`   | Worktree creation and cleanup                       |
 
 Keep user-facing commands in the file that owns their environment. Put shared
 Compose mechanics in `internal.yml`.
@@ -82,7 +82,7 @@ where deduplication would silently skip requested work.
 
 1. Choose the task file that owns the command's environment or purpose.
 2. Reuse an `internal:*` task for shared Compose work.
-3. Pass required values through `vars`, `env`, or both.
+3. Pass required values through `vars` — task-level `env` does not cross `task:` calls, so an `internal:*` callee can only forward into its container env values it received through `vars`.
 4. Add a short `desc` so the command appears clearly in `task -l`.
 5. Add a `summary` when the command needs usage examples or safety notes.
 
@@ -118,13 +118,13 @@ repository gates when executable task configuration changes.
 
 Common public variables include:
 
-| Variable | Use |
-| --- | --- |
-| `TEST_FILE` | Limit `task test` to a spec path |
-| `AUTOCORRECT` | Enable RuboCop correction |
-| `NO_CACHE` | Rebuild a selected image without Docker cache |
-| `COMPONENTS` | Select RubyUI families for comparison |
-| `OUTPUT` | Set an external RubyUI comparison directory |
+| Variable      | Use                                           |
+|---------------|-----------------------------------------------|
+| `TEST_FILE`   | Limit `task test` to a spec path              |
+| `AUTOCORRECT` | Enable RuboCop correction                     |
+| `NO_CACHE`    | Rebuild a selected image without Docker cache |
+| `COMPONENTS`  | Select RubyUI families for comparison         |
+| `OUTPUT`      | Set an external RubyUI comparison directory   |
 
 Each operator command can define additional required variables. Read its
 `summary` with `task --summary <task-name>` before use.
