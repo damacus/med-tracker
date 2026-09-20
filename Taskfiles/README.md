@@ -73,8 +73,10 @@ Every internal Compose task requires an `ENVIRONMENT` value. Public task files
 pass that value when they call `internal:*` tasks.
 
 `internal:run` starts a temporary service container through the worktree's
-Compose lock, so pass the complete command once. The root Taskfile uses
-`run: once`, which can deduplicate repeated calls to the same internal task.
+Compose lock, so pass the complete command once. The root Taskfile defaults to
+`run: once`, which would deduplicate repeated calls to the same task, so every
+internal helper declares `run: always`. These helpers are imperative operations
+where deduplication would silently skip requested work.
 
 ## Add a public command
 
@@ -134,6 +136,6 @@ Each operator command can define additional required variables. Read its
   `env` blocks.
 - If Docker uses an unexpected service or volume, confirm the selected profile
   and worktree before changing data.
-- If one wrapper needs several different container commands, define separate
-  public tasks instead of repeatedly calling `internal:run` during the same
-  execution.
+- A wrapper can call `internal:run` several times in one execution: internal
+  helpers declare `run: always`, so each call runs in order instead of being
+  deduplicated.
