@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.31](https://github.com/damacus/med-tracker/compare/v0.5.30...v0.5.31) (2026-09-20)
+
+
+### Bug Fixes
+
+* **tasks:** env transport through internal:run, container-eval CMD, db pre-start ([#2270](https://github.com/damacus/med-tracker/issues/2270)) ([3c0f7fc](https://github.com/damacus/med-tracker/commit/3c0f7fc1078fd43ce193cba1e9fe88bb792ce91a))
+* **tasks:** run every internal helper call instead of deduplicating ([#2268](https://github.com/damacus/med-tracker/issues/2268)) ([2732ca9](https://github.com/damacus/med-tracker/commit/2732ca9a030912031a919ba28ca32a855afba07c))
+
 ## [0.5.30](https://github.com/damacus/med-tracker/compare/v0.5.29...v0.5.30) (2026-09-19)
 
 
