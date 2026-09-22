@@ -31,6 +31,32 @@ RSpec.describe DemoBaseline::Loader do
     expect(ActiveStorage::Blob.count).to be_zero
   end
 
+  it 'restores only the known public mobile OAuth registrations', :aggregate_failures do
+    described_class.load!
+
+    expected_clients = [
+      ['io.damacus.medtracker', 'MedTracker Android', 'io.damacus.medtracker:/oauth2redirect'],
+      ['io.damacus.medtracker.debug', 'MedTracker Android', 'io.damacus.medtracker.debug:/oauth2redirect'],
+      ['io.damacus.medtracker.staging', 'MedTracker Android', 'io.damacus.medtracker.staging:/oauth2redirect'],
+      ['medtracker-ios-staging', 'MedTracker iOS Staging', 'io.damacus.medtracker.staging:/oauth2redirect']
+    ]
+    expect(OauthApplication.order(:client_id).pluck(:client_id, :name, :redirect_uri)).to eq(expected_clients)
+    public_attributes = {
+      client_kind: 'mobile', token_endpoint_auth_method: 'none', scopes: 'medtracker offline_access',
+      account_id: nil, client_secret: nil, client_secret_hash: nil
+    }
+    expect(OauthApplication.all).to all(have_attributes(public_attributes))
+    expect(OauthGrant.count).to be_zero
+  end
+
+  it 'rejects a baseline containing an extra OAuth client or grant' do
+    described_class.load!
+    OauthApplication.create!(name: 'Other', client_id: 'other', redirect_uri: 'https://example.test/callback',
+                             scopes: 'patient/*.rs', token_endpoint_auth_method: 'none')
+
+    expect { described_class.new.verify! }.to raise_error(DemoBaseline::Loader::InvalidBaselineError)
+  end
+
   it 'loads under the non-superuser owner role with forced row-level security', :aggregate_failures do
     ActiveRecord::Base.connection.execute('SET LOCAL ROLE med_tracker_owner')
 

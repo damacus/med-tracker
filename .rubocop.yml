@@ -27,6 +27,10 @@ AllCops:
 
 Style/FrozenStringLiteralComment:
   Exclude:
+    - "app/services/demo_baseline/public_mobile_clients.rb"
+    - "app/services/canary/mobile_client_registration.rb"
+    - "spec/services/canary/mobile_client_registration_spec.rb"
+    - "spec/tasks/rake/task_canary_register_mobile_clients_spec.rb"
     - "spec/requests/test_setup_spec.rb"
     - "app/services/api/sync/operation_catalog.rb"
     - "app/services/api/sync/replay_authorization.rb"
