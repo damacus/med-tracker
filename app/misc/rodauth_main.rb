@@ -408,7 +408,10 @@ class RodauthMain < Rodauth::Rails::Auth
       days = AuthenticationLifetime.maximum_age_days
       days.days.to_i if days.positive?
     end
-    active_sessions_redirect { login_path }
+    active_sessions_redirect do
+      set_session_return_to_path(login_redirect_session_key) if request.path == authorize_path
+      login_path
+    end
     no_longer_active_session do
       forget_login
       super()
