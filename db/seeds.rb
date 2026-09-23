@@ -49,6 +49,7 @@ if Rails.env.local?
       :medication_takes
     )
     FixtureHouseholdSetup.apply!
+    load Rails.root.join('db/seeds/seed_local_mobile_oauth_client.rb') if Rails.env.development?
 
     Rails.logger.debug 'Fixtures loaded successfully!'
     Rails.logger.debug "\nYou can now login with:"

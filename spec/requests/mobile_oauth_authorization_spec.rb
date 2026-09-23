@@ -136,6 +136,57 @@ RSpec.describe 'Mobile Rodauth authorization' do
     expect(response).to have_http_status(:ok)
   end
 
+  it 'accepts the rendered consent form with CSRF protection enabled' do
+    original_value = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = true
+    client.update!(client_id: 'medtracker-ios-staging',
+                   redirect_uri: 'io.damacus.medtracker.staging:/oauth2redirect')
+    ensure_api_household_for(user)
+
+    get '/authorize', params: authorization_params
+    expect(response).to redirect_to('/login')
+    get '/login'
+    login_token = response.parsed_body.at_css('form[action="/login"] input[name="authenticity_token"]')[:value]
+    login_params = { email: user.person.account.email, password: 'password', authenticity_token: login_token }
+    post '/login', params: login_params
+    follow_redirect!
+
+    form = response.parsed_body.at_css('form#authorize-form')
+    expect(form).to be_present
+    fields = form.css('input[name]').each_with_object({}) do |input, params|
+      next if input['type'] == 'submit'
+
+      name = input['name'].delete_suffix('[]')
+      value = input['value']
+      if input['name'].end_with?('[]')
+        (params[name] ||= []) << value
+      else
+        params[name] = value
+      end
+    end
+    expect(fields.fetch('authenticity_token')).to be_present
+    expect(fields).to include(
+      'response_type' => 'code', 'client_id' => client.client_id,
+      'redirect_uri' => client.redirect_uri, 'state' => 'mobile-state',
+      'code_challenge' => authorization_params.fetch(:code_challenge),
+      'code_challenge_method' => 'S256'
+    )
+    expect(fields.fetch('scope')).to match_array(%w[medtracker offline_access])
+
+    post form['action'], params: fields
+    expect(response.location).to start_with(client.redirect_uri)
+    values = callback_values
+    expect(values).to include('state' => 'mobile-state', 'code' => a_string_matching(/\A.+\z/))
+    redeem(values.fetch('code'))
+    expect(response).to have_http_status(:ok), response.body
+    token = response.parsed_body.fetch('access_token')
+    get '/api/v1/auth/households', headers: { 'Authorization' => "Bearer #{token}" }, as: :json
+    expect(response).to have_http_status(:ok), response.body
+    expect(response.parsed_body.fetch('account_id')).to eq(user.person.account.id)
+  ensure
+    ActionController::Base.allow_forgery_protection = original_value
+  end
+
   it 'requires an enrolled second factor before issuing a mobile authorization code' do
     ensure_api_household_for(user)
     secret = 'jbswy3dpehpk3pxp'
@@ -363,6 +414,7 @@ RSpec.describe 'Mobile Rodauth authorization' do
 
     get '/api/v1/auth/households', headers: headers, as: :json
     expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch('account_id')).to eq(user.person.account.id)
     expect(response.parsed_body.fetch('data')).to be_empty
     get '/api/v1/auth/sessions', headers: headers, as: :json
     expect(response).to have_http_status(:ok)

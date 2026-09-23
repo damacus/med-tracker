@@ -22,7 +22,7 @@ module Api
           return render_authentication_required unless api_credential
 
           memberships = operational_memberships(api_credential.account)
-          render json: { data: memberships.map do |membership|
+          render json: { account_id: api_credential.account.id, data: memberships.map do |membership|
             household_payload(membership.household).merge(role: membership.role, membership_id: membership.id)
           end }
         end
