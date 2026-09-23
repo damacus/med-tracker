@@ -65,6 +65,77 @@ RSpec.describe 'Mobile Rodauth authorization' do
     expect(response).to have_http_status(:ok)
   end
 
+  it 'resumes mobile authorization after an expired browser login' do
+    sign_in(user)
+    user.person.account.account_active_session_keys.sole.update!(last_use: 31.days.ago)
+
+    get '/authorize', params: authorization_params
+    expect(response).to redirect_to('/login')
+
+    post '/login', params: { email: user.person.account.email, password: 'password' }
+    expect(URI(response.location).path).to eq('/authorize')
+    expect(URI.decode_www_form(URI(response.location).query).to_h).to include(
+      'client_id' => client.client_id, 'redirect_uri' => client.redirect_uri, 'state' => 'mobile-state'
+    )
+    follow_redirect!
+    redeem(authorization_code)
+    expect(response).to have_http_status(:ok)
+  end
+
+  it 'resumes mobile authorization after a rejected login form' do
+    original_value = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = true
+
+    get '/authorize', params: authorization_params
+    expect(response).to redirect_to('/login')
+
+    post '/login', params: { email: user.person.account.email, password: 'password' }
+    expect(response).to redirect_to('/login')
+
+    get '/login'
+    token = response.parsed_body.at_css('form[action="/login"] input[name="authenticity_token"]')[:value]
+    post '/login', params: { email: user.person.account.email, password: 'password', authenticity_token: token }
+    expect(URI(response.location).path).to eq('/authorize')
+  ensure
+    ActionController::Base.allow_forgery_protection = original_value
+  end
+
+  ['https://example.test/authorize?state=foreign', '/profile?state=foreign'].each do |return_path|
+    it "does not restore #{return_path} after a rejected login form" do
+      original_value = ActionController::Base.allow_forgery_protection
+      ActionController::Base.allow_forgery_protection = true
+      ensure_api_household_for(user)
+
+      get '/login'
+      session[:login_redirect] = return_path
+      post '/login', params: { email: user.person.account.email, password: 'password' }
+      expect(response).to redirect_to('/login')
+
+      get '/login'
+      token = response.parsed_body.at_css('form[action="/login"] input[name="authenticity_token"]')[:value]
+      post '/login', params: { email: user.person.account.email, password: 'password', authenticity_token: token }
+      expect(URI(response.location).path).to eq('/households/fixture-household/dashboard')
+    ensure
+      ActionController::Base.allow_forgery_protection = original_value
+    end
+  end
+
+  it 'returns consent to the registered iOS staging callback' do
+    client.update!(client_id: 'medtracker-ios-staging',
+                   redirect_uri: 'io.damacus.medtracker.staging:/oauth2redirect')
+    ensure_api_household_for(user)
+    get '/authorize', params: authorization_params
+    post '/login', params: { email: user.person.account.email, password: 'password' }
+    follow_redirect!
+    expect(response.body).to include('authorize-form')
+
+    code = authorization_code
+    expect(response.location).to start_with('io.damacus.medtracker.staging:/oauth2redirect?')
+    expect(callback_values).to include('code' => code, 'state' => 'mobile-state')
+    redeem(code)
+    expect(response).to have_http_status(:ok)
+  end
+
   it 'requires an enrolled second factor before issuing a mobile authorization code' do
     ensure_api_household_for(user)
     secret = 'jbswy3dpehpk3pxp'
