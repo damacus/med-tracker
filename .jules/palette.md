@@ -14,3 +14,7 @@
 
 **Learning:** Form fields lacking `placeholder` attributes (such as the Medication form inputs) can cause user friction since it’s not immediately clear what expected format or type of data to provide, especially on larger, empty textareas like `warnings` or `description`. Adding placeholder text does not break existing test locators compared to changing ARIA labels.
 **Action:** When working with forms or input fields via `RubyUI::Input` or `RubyUI::Textarea`, add a corresponding translated placeholder where appropriate to guide users effectively without cluttering the UI with additional helper text.
+## 2024-05-18 - Admin pagination aria labels
+
+**Learning:** Replaced `span(class: 'sr-only')` nested in the active `Link` components with `aria_label` on the parent for the admin pagination controls (`app/components/admin/users/pagination.rb`). Also added `role: 'button'` and `aria_disabled: 'true'` with `aria_label` on the generic `span` fallback for disabled pagination states.
+**Action:** When standardizing pagination or navigation links, apply `aria_label` to the wrapper link components instead of using nested `sr-only` spans. For disabled states that fallback to non-interactive tags (e.g., `span`), ensure they explicitly declare `role: 'button'` and `aria_disabled: 'true'` to correctly communicate state to assistive technology.

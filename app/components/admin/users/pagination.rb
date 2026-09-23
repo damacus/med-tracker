@@ -92,14 +92,18 @@ module Components
               href: page_url(pagy_obj.previous),
               variant: :link,
               class: nav_button_class('rounded-l-md'),
+              aria_label: t('admin.users.pagination.previous'),
               data: { turbo_frame: 'admin-users-frame' }
             ) do
-              span(class: 'sr-only') { t('admin.users.pagination.previous') }
               plain '‹'
             end
           else
-            span(class: "#{nav_button_class('rounded-l-md')} opacity-50 cursor-not-allowed") do
-              span(class: 'sr-only') { t('admin.users.pagination.previous') }
+            span(
+              class: "#{nav_button_class('rounded-l-md')} opacity-50 cursor-not-allowed",
+              role: 'button',
+              aria_disabled: 'true',
+              aria_label: t('admin.users.pagination.previous')
+            ) do
               plain '‹'
             end
           end
@@ -111,14 +115,18 @@ module Components
               href: page_url(pagy_obj.next),
               variant: :link,
               class: nav_button_class('rounded-r-md'),
+              aria_label: t('admin.users.pagination.next'),
               data: { turbo_frame: 'admin-users-frame' }
             ) do
-              span(class: 'sr-only') { t('admin.users.pagination.next') }
               plain '›'
             end
           else
-            span(class: "#{nav_button_class('rounded-r-md')} opacity-50 cursor-not-allowed") do
-              span(class: 'sr-only') { t('admin.users.pagination.next') }
+            span(
+              class: "#{nav_button_class('rounded-r-md')} opacity-50 cursor-not-allowed",
+              role: 'button',
+              aria_disabled: 'true',
+              aria_label: t('admin.users.pagination.next')
+            ) do
               plain '›'
             end
           end
