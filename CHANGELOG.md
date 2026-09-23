@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.32](https://github.com/damacus/med-tracker/compare/v0.5.31...v0.5.32) (2026-09-23)
+
+
+### Bug Fixes
+
+* **auth:** resume mobile sign-in after expiry ([#2284](https://github.com/damacus/med-tracker/issues/2284)) ([821878f](https://github.com/damacus/med-tracker/commit/821878f534670dd93f15823eb98dfeb4e9596222))
+* **oauth:** restore canary public mobile clients ([#2281](https://github.com/damacus/med-tracker/issues/2281)) ([319550a](https://github.com/damacus/med-tracker/commit/319550ad0a720180d46d7e7fa85e3237957762e9))
+
 ## [0.5.31](https://github.com/damacus/med-tracker/compare/v0.5.30...v0.5.31) (2026-09-20)
 
 
