@@ -153,6 +153,29 @@ RSpec.describe 'Mobile Rodauth authorization' do
 
     form = response.parsed_body.at_css('form#authorize-form')
     expect(form).to be_present
+    expect(form['data-turbo']).to eq('false')
+    document = response.parsed_body
+    expect(document.at_css('body')['data-controller']).to be_nil
+    expect(document.at_css('[data-consent-brand]')).to be_present
+    expect(document.at_css('[data-consent-intro]')).to be_present
+    expect(document.at_css('[data-consent-intro] h1').text).to eq('Authorise access')
+    expect(document.at_css('[data-consent-intro]').text).to include(client.name)
+    expect(document.at_css('[data-consent-account]').text).to include(user.email_address)
+    expect(form.at_css('[data-consent-scopes] h2')).to be_present
+    expect(form.css('[data-consent-scope-row]')).not_to be_empty
+    form.css('[data-consent-scope-row]').each do |scope_row|
+      expect(scope_row['class']).to include('min-h-11')
+    end
+    medtracker_scope = form.at_css('[data-consent-scope="medtracker"]')
+    expect(medtracker_scope.at_css('input[type="checkbox"]')).to be_present
+    expect(medtracker_scope.at_css('label')).to be_present
+    expect(medtracker_scope.text).to include('MedTracker data')
+    offline_access_scope = form.at_css('[data-consent-scope="offline_access"]')
+    expect(offline_access_scope.text).to include('Stay signed in')
+    authorize_button = form.at_css('input[type="submit"]')
+    expect(authorize_button['class']).to include('min-h-11', 'focus-visible:ring-2')
+    cancel_link = form.at_css('[data-consent-cancel]')
+    expect(cancel_link['class']).to include('min-h-11', 'focus-visible:ring-2')
     fields = form.css('input[name]').each_with_object({}) do |input, params|
       next if input['type'] == 'submit'
 
