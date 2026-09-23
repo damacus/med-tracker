@@ -172,7 +172,7 @@ RSpec.describe 'Mobile Rodauth authorization' do
     expect(medtracker_scope.text).to include('MedTracker data')
     offline_access_scope = form.at_css('[data-consent-scope="offline_access"]')
     expect(offline_access_scope.text).to include('Stay signed in')
-    authorize_button = form.at_css('input[type="submit"]')
+    authorize_button = form.at_css('button[type="submit"]')
     expect(authorize_button['class']).to include('min-h-11', 'focus-visible:ring-2')
     cancel_link = form.at_css('[data-consent-cancel]')
     expect(cancel_link['class']).to include('min-h-11', 'focus-visible:ring-2')

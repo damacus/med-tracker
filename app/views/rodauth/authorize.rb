@@ -50,8 +50,8 @@ module Views
       end
 
       def authorization_form
-        form(method: 'post', action: rodauth.authorize_path, id: 'authorize-form',
-             class: 'space-y-6', role: 'form', data: { turbo: 'false' }) do
+        render RubyUI::Form.new(method: :post, action: rodauth.authorize_path, id: 'authorize-form',
+                                class: 'space-y-6', role: 'form', data_turbo: 'false') do
           authenticity_token_field
           consent_scopes
           authorization_fields
@@ -88,12 +88,14 @@ module Views
 
       def consent_actions
         div(class: 'flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end') do
-          a(href: cancel_url, data_consent_cancel: true,
-            class: 'inline-flex min-h-11 items-center justify-center rounded-xl border border-outline-variant px-5 text-base font-semibold text-foreground transition hover:bg-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2') do
+          render RubyUI::Link.new(href: cancel_url, variant: :outline, size: :lg, data_consent_cancel: true,
+                                  class: 'min-h-11 rounded-xl border-outline-variant px-5 font-semibold text-foreground hover:bg-surface-container-low focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2') do
             rodauth.oauth_cancel_button
           end
-          input(type: 'submit', class: 'min-h-11 cursor-pointer rounded-xl bg-teal-700 px-6 text-base font-bold text-white shadow-sm transition hover:bg-teal-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 dark:bg-teal-500 dark:text-slate-950 dark:hover:bg-teal-400',
-                value: rodauth.oauth_authorize_button)
+          render RubyUI::Button.new(type: :submit, variant: :primary, size: :lg,
+                                    class: 'min-h-11 cursor-pointer rounded-xl bg-teal-700 px-6 font-bold text-white shadow-sm hover:bg-teal-800 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 dark:bg-teal-500 dark:text-slate-950 dark:hover:bg-teal-400') do
+            rodauth.oauth_authorize_button
+          end
         end
       end
 
@@ -132,7 +134,8 @@ module Views
         params = { error: 'access_denied',
                    error_description: 'The resource owner or authorization server denied the request' }
         params[:state] = rodauth.param('state') if rodauth.param_or_nil('state')
-        "#{rodauth.redirect_uri}?#{URI.encode_www_form(params)}"
+        separator = rodauth.redirect_uri.include?('?') ? '&' : '?'
+        "#{rodauth.redirect_uri}#{separator}#{URI.encode_www_form(params)}"
       end
     end
   end

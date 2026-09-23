@@ -180,6 +180,19 @@ RSpec.describe 'SMART OAuth authorization' do
     )
   end
 
+  it 'preserves an existing callback query when consent is denied' do
+    callback = 'https://client.example/callback?tenant=7'
+    oauth_application.update!(redirect_uri: callback)
+
+    get '/authorize', params: authorization_params.merge(redirect_uri: callback)
+
+    cancel_link = response.parsed_body.at_css('a[data-consent-cancel]')
+    denial_uri = URI.parse(cancel_link['href'])
+    expect(URI.decode_www_form(denial_uri.query).to_h).to include(
+      'tenant' => '7', 'error' => 'access_denied', 'state' => 'opaque-state'
+    )
+  end
+
   def issue_tokens
     post '/token', params: {
       grant_type: 'authorization_code',
