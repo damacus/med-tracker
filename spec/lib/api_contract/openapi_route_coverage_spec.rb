@@ -1206,6 +1206,10 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(profile.fetch('responses').keys).to include('200', '401', '403', '404', '429')
     end
 
+    it 'requires the authenticated account in a household collection' do
+      expect(described_class.schema_errors('AuthHouseholdCollectionResponse', { 'data' => [] })).not_to be_empty
+    end
+
     it 'accepts account-level device sessions without a household binding' do
       payload = { data: [{ id: 1, device_name: 'Android', last_used_at: Time.current.iso8601,
                            access_token_expires_at: 15.minutes.from_now.iso8601,
@@ -1221,6 +1225,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       headers = api_auth_headers(login_data.fetch('access_token'))
 
       get api_v1_auth_households_path, headers:, as: :json
+      expect(response.parsed_body.fetch('account_id')).to eq(users(:admin).person.account.id)
       expect(described_class.schema_errors('AuthHouseholdCollectionResponse', response.parsed_body)).to be_empty
 
       get api_v1_auth_sessions_path, headers:, as: :json

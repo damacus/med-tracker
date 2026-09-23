@@ -5330,8 +5330,11 @@ components:
       type: object
       additionalProperties: false
       required:
+        - account_id
         - data
       properties:
+        account_id:
+          $ref: '#/components/schemas/NumericId'
         data:
           type: array
           items:

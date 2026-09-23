@@ -162,8 +162,35 @@ RSpec.describe 'SMART OAuth authorization' do
   it 'provides a denied-consent response preserving state' do
     get '/authorize', params: authorization_params
 
-    denial_url = response.parsed_body.at_css('a.btn-outline-danger')['href']
-    expect(denial_url).to include('error=access_denied', 'state=opaque-state')
+    cancel_link = response.parsed_body.at_css('a[data-consent-cancel]')
+    expect(cancel_link).to be_present
+    expect(cancel_link.text.strip).not_to be_empty
+
+    denial_uri = URI.parse(cancel_link['href'])
+    registered_uri = URI.parse(oauth_application.redirect_uri)
+    expect(denial_uri).to have_attributes(
+      scheme: registered_uri.scheme,
+      userinfo: registered_uri.userinfo,
+      host: registered_uri.host,
+      port: registered_uri.port,
+      path: registered_uri.path
+    )
+    expect(URI.decode_www_form(denial_uri.query).to_h).to include(
+      'error' => 'access_denied', 'state' => 'opaque-state'
+    )
+  end
+
+  it 'preserves an existing callback query when consent is denied' do
+    callback = 'https://client.example/callback?tenant=7'
+    oauth_application.update!(redirect_uri: callback)
+
+    get '/authorize', params: authorization_params.merge(redirect_uri: callback)
+
+    cancel_link = response.parsed_body.at_css('a[data-consent-cancel]')
+    denial_uri = URI.parse(cancel_link['href'])
+    expect(URI.decode_www_form(denial_uri.query).to_h).to include(
+      'tenant' => '7', 'error' => 'access_denied', 'state' => 'opaque-state'
+    )
   end
 
   def issue_tokens

@@ -35,7 +35,7 @@
     <%= javascript_include_tag "appearance_boot", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "hamburgers", "data-turbo-track": "reload" %>
-    <% app_shell = current_user.present? && request.path != "/login" %>
+    <% app_shell = current_user.present? && !%w[/login /authorize].include?(request.path) %>
     <% if app_shell %>
       <%= javascript_importmap_tags %>
     <% else %>

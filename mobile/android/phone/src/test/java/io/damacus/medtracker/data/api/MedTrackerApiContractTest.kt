@@ -26,7 +26,7 @@ class MedTrackerApiContractTest {
 
     @Test fun generatedAdapterListsHouseholdsWithTheAccountToken() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody("""
-            {"data":[{"id":42,"slug":"summer-house","name":"Summer house","role":"member","membership_id":7}]}
+            {"account_id":7,"data":[{"id":42,"slug":"summer-house","name":"Summer house","role":"member","membership_id":7}]}
         """.trimIndent()))
         val result = api.getHouseholds(server.url("/").toString(), "account-token")
         assertTrue(result is ApiResult.Success)
