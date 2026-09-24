@@ -27,5 +27,10 @@ switch $task_name
     case test:port
         echo 43017
     case 'contract:run*' contract:oauth
+        if test "$CONTRACT_FAKE_REMOVE_OWNER" = 1
+            set -l run_dir (cat $CONTRACT_FAKE_RUN_DIR_FILE)
+            echo '{"probe":true}' >$run_dir/fixture.json
+            command rm $run_dir/owner
+        end
         exit $CONTRACT_FAKE_RUN_STATUS
 end

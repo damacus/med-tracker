@@ -4,7 +4,11 @@ function cleanup_contract_run
     if not set -q contract_run_dir
         return 0
     end
-    if set -q contract_project; and test -f "$contract_run_dir/owner"
+    if set -q contract_project
+        if not test -f "$contract_run_dir/owner"
+            echo "Contract project cleanup blocked: ownership marker missing at $contract_run_dir/owner for $contract_project; run directory retained" >&2
+            return 1
+        end
         rtk task contract:cleanup CONTRACT_PROJECT=$contract_project CONTRACT_RUN_DIR=$contract_run_dir
         or begin
             set -l cleanup_status $status
