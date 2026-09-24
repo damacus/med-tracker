@@ -11,6 +11,7 @@ use url::{Host, Url};
 pub struct Fixture {
     pub access_token: String,
     pub account_id: i64,
+    pub primary_email: String,
     pub user_id: i64,
     pub household_id: i64,
     pub household_name: String,
@@ -69,6 +70,7 @@ impl Target {
         let client = Client::builder()
             .timeout(Duration::from_secs(10))
             .redirect(Policy::none())
+            .cookie_store(true)
             .no_proxy()
             .build()
             .expect("HTTP client");
@@ -77,6 +79,14 @@ impl Target {
 
     pub fn get(&self, path: &str, token: Option<&str>) -> Response {
         self.authorize(self.client.get(self.url(path)), token)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn get_html(&self, path: &str) -> Response {
+        self.client
+            .get(self.url(path))
+            .header("Accept", "text/html")
             .send()
             .expect("target must respond")
     }
@@ -104,6 +114,26 @@ impl Target {
             .post(self.url(path))
             .header("Accept", "application/json")
             .form(fields)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn post_html_form(&self, path: &str, fields: &[(String, String)]) -> Response {
+        self.require_local_write();
+        self.client
+            .post(self.url(path))
+            .header("Accept", "text/html")
+            .form(fields)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn post_json(&self, path: &str, body: &serde_json::Value) -> Response {
+        self.require_local_write();
+        self.client
+            .post(self.url(path))
+            .header("Accept", "application/json")
+            .json(body)
             .send()
             .expect("target must respond")
     }

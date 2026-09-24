@@ -1,5 +1,7 @@
 use medtracker_contract_tests::{fixture, Target};
+use scraper::{Html, Selector};
 use serde_json::Value;
+use url::Url;
 
 #[test]
 fn discovery_advertises_authorization_code_pkce_and_local_endpoints() {
@@ -58,7 +60,7 @@ fn unauthenticated_pkce_authorization_resumes_at_local_login() {
 }
 
 #[test]
-fn invalid_code_redemption_rejects_verifier_without_leaking_it() {
+fn invalid_code_redemption_does_not_leak_credentials() {
     let fixture = fixture();
     let code = "contract-nonexistent-authorization-code";
     let verifier = "contract-verifier-with-more-than-forty-three-characters";
@@ -77,6 +79,202 @@ fn invalid_code_redemption_rejects_verifier_without_leaking_it() {
     assert!(!body.contains("access_token"));
     assert!(!body.contains(code));
     assert!(!body.contains(verifier));
+}
+
+#[test]
+fn issued_code_enforces_pkce_and_supports_refresh_rotation_and_revocation() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let verifier = "contract-verifier-with-more-than-forty-three-characters";
+    let challenge = "sIEAmHTSAwOYncK3AzYmthevluqX_MuVU227zeLfBY0";
+    let state = "contract-issued-code-state";
+    let mut query = url::form_urlencoded::Serializer::new(String::new());
+    query
+        .append_pair("response_type", "code")
+        .append_pair("response_mode", "query")
+        .append_pair("client_id", &fixture.oauth_client_id)
+        .append_pair("redirect_uri", &fixture.oauth_redirect_uri)
+        .append_pair("scope", "medtracker offline_access")
+        .append_pair("state", state)
+        .append_pair("code_challenge", challenge)
+        .append_pair("code_challenge_method", "S256");
+    let authorize_path = format!("/authorize?{}", query.finish());
+
+    let response = target.get_html(&authorize_path);
+    assert_eq!(response.status().as_u16(), 302);
+    assert_eq!(response.headers()["location"], "/login");
+
+    let login = target.get_html("/login");
+    assert_eq!(login.status().as_u16(), 200);
+    let login_html = login.text().expect("login HTML");
+    let login_document = Html::parse_document(&login_html);
+    let login_token_selector =
+        Selector::parse("form[action='/login'] input[name='authenticity_token']").unwrap();
+    let login_token = login_document
+        .select(&login_token_selector)
+        .next()
+        .and_then(|input| input.value().attr("value"))
+        .expect("login CSRF token");
+    let login_fields = vec![
+        ("email".to_string(), fixture.primary_email.clone()),
+        ("password".to_string(), "password".to_string()),
+        ("authenticity_token".to_string(), login_token.to_string()),
+    ];
+    let login_response = target.post_html_form("/login", &login_fields);
+    assert_eq!(login_response.status().as_u16(), 302);
+    let consent_path = login_response.headers()["location"]
+        .to_str()
+        .expect("consent redirect")
+        .to_string();
+    assert!(consent_path.starts_with("/authorize?"));
+
+    let consent = target.get_html(&consent_path);
+    assert_eq!(consent.status().as_u16(), 200);
+    let consent_html = consent.text().expect("consent HTML");
+    let consent_document = Html::parse_document(&consent_html);
+    let consent_selector = Selector::parse("form#authorize-form").unwrap();
+    let form = consent_document
+        .select(&consent_selector)
+        .next()
+        .expect("authorization consent form");
+    let action = form.value().attr("action").expect("consent action");
+    let input_selector = Selector::parse("input[name]").unwrap();
+    let fields: Vec<(String, String)> = form
+        .select(&input_selector)
+        .filter(|input| input.value().attr("type") != Some("submit"))
+        .map(|input| {
+            (
+                input.value().attr("name").unwrap().to_string(),
+                input.value().attr("value").unwrap_or("").to_string(),
+            )
+        })
+        .collect();
+    assert!(fields
+        .iter()
+        .any(|(name, value)| name == "code_challenge" && value == challenge));
+    assert!(fields
+        .iter()
+        .any(|(name, value)| name == "scope[]" && value == "medtracker"));
+    assert!(fields
+        .iter()
+        .any(|(name, value)| name == "scope[]" && value == "offline_access"));
+    let approved = target.post_html_form(action, &fields);
+    assert_eq!(approved.status().as_u16(), 302);
+    let callback = Url::parse(
+        approved.headers()["location"]
+            .to_str()
+            .expect("native callback"),
+    )
+    .expect("callback URL");
+    assert!(callback
+        .as_str()
+        .starts_with(&format!("{}?", fixture.oauth_redirect_uri)));
+    let callback_query: std::collections::HashMap<_, _> =
+        callback.query_pairs().into_owned().collect();
+    assert_eq!(callback_query.get("state").map(String::as_str), Some(state));
+    let code = callback_query
+        .get("code")
+        .expect("issued authorization code");
+    assert!(!code.is_empty());
+
+    let wrong_verifier = "another-contract-verifier-with-more-than-forty-three-characters";
+    let rejected = target.post_form(
+        "/token",
+        &[
+            ("grant_type", "authorization_code"),
+            ("client_id", &fixture.oauth_client_id),
+            ("redirect_uri", &fixture.oauth_redirect_uri),
+            ("code", code),
+            ("code_verifier", wrong_verifier),
+        ],
+    );
+    assert_eq!(rejected.status().as_u16(), 400);
+    let rejected_body = rejected.text().expect("PKCE rejection body");
+    assert!(!rejected_body.contains("access_token"));
+    assert!(!rejected_body.contains(code));
+    assert!(!rejected_body.contains(wrong_verifier));
+
+    let redeemed = target.post_form(
+        "/token",
+        &[
+            ("grant_type", "authorization_code"),
+            ("client_id", &fixture.oauth_client_id),
+            ("redirect_uri", &fixture.oauth_redirect_uri),
+            ("code", code),
+            ("code_verifier", verifier),
+        ],
+    );
+    assert_eq!(redeemed.status().as_u16(), 200);
+    let tokens: Value = redeemed.json().expect("issued token JSON");
+    let access = tokens["access_token"].as_str().expect("access token");
+    let refresh = tokens["refresh_token"].as_str().expect("refresh token");
+    assert_eq!(
+        target
+            .get("/api/v1/auth/households", Some(access))
+            .status()
+            .as_u16(),
+        200
+    );
+
+    let rotated = target.post_form(
+        "/token",
+        &[
+            ("grant_type", "refresh_token"),
+            ("client_id", &fixture.oauth_client_id),
+            ("refresh_token", refresh),
+        ],
+    );
+    assert_eq!(rotated.status().as_u16(), 200);
+    let fresh_tokens: Value = rotated.json().expect("rotated token JSON");
+    let fresh_access = fresh_tokens["access_token"]
+        .as_str()
+        .expect("rotated access token");
+    let fresh_refresh = fresh_tokens["refresh_token"]
+        .as_str()
+        .expect("rotated refresh token");
+    assert_ne!(fresh_refresh, refresh);
+    assert_eq!(
+        target
+            .get("/api/v1/auth/households", Some(fresh_access))
+            .status()
+            .as_u16(),
+        200
+    );
+    let replay = target.post_form(
+        "/token",
+        &[
+            ("grant_type", "refresh_token"),
+            ("client_id", &fixture.oauth_client_id),
+            ("refresh_token", refresh),
+        ],
+    );
+    assert_eq!(replay.status().as_u16(), 400);
+
+    let revoked = Target::from_env().post_json(
+        "/revoke",
+        &serde_json::json!({
+            "client_id": fixture.oauth_client_id,
+            "token": fresh_access,
+            "token_type_hint": "access_token"
+        }),
+    );
+    assert_eq!(revoked.status().as_u16(), 200);
+    assert_eq!(
+        target
+            .get("/api/v1/auth/households", Some(fresh_access))
+            .status()
+            .as_u16(),
+        401
+    );
+    let revoked_refresh = target.post_form(
+        "/token",
+        &[
+            ("grant_type", "refresh_token"),
+            ("client_id", &fixture.oauth_client_id),
+            ("refresh_token", fresh_refresh),
+        ],
+    );
+    assert_eq!(revoked_refresh.status().as_u16(), 400);
 }
 
 #[test]
