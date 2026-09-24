@@ -90,6 +90,19 @@ fixture = ActiveRecord::Base.transaction do
   _delegated_session, delegated_access_token, = ApiSession.issue_for(
     account: delegated_account, household_membership: delegated_membership, device_name: 'contract-delegated'
   )
+  replay_account = Account.create!(email: "contract-replay-#{nonce}@example.test", status: :verified,
+                                   password_hash: RodauthApp.rodauth.allocate.password_hash('password'))
+  replay_person = household.people.create!(account: replay_account, name: "Contract replay #{nonce}",
+                                           date_of_birth: 30.years.ago.to_date, person_type: :adult, has_capacity: true)
+  User.create!(person: replay_person, email_address: replay_account.email, password: 'password', active: true)
+  replay_membership = household.household_memberships.create!(account: replay_account, person: replay_person,
+                                                              role: :member, status: :active)
+  replay_grant = PersonAccessGrant.create!(household: household, household_membership: replay_membership,
+                                          person: managed_person, access_level: :manage,
+                                          relationship_type: :carer, granted_by_membership: membership)
+  _replay_session, replay_access_token, = ApiSession.issue_for(
+    account: replay_account, household_membership: replay_membership, device_name: 'contract-replay'
+  )
   view_owner_account = Account.create!(email: "contract-view-owner-#{nonce}@example.test", status: :verified,
                                        password_hash: RodauthApp.rodauth.allocate.password_hash('password'))
   view_owner_person = household.people.create!(account: view_owner_account, name: "Contract view owner #{nonce}",
@@ -179,7 +192,7 @@ fixture = ActiveRecord::Base.transaction do
                                        taken_from_location: historical_location)
   hidden_take = MedicationTake.create!(household: household, schedule: hidden_schedule, taken_at: Time.current,
                                       dose_amount: '1', dose_unit: 'ml', taken_from_medication: hidden_medication,
-                                      taken_from_location: primary_location)
+                                      taken_from_location: primary_location, client_uuid: SecureRandom.uuid)
   foreign_take = MedicationTake.create!(household: foreign_household, schedule: foreign_schedule,
                                        taken_at: Time.current, dose_amount: '1', dose_unit: 'ml',
                                        taken_from_medication: foreign_medication,
@@ -291,6 +304,11 @@ fixture = ActiveRecord::Base.transaction do
                      scopes: 'medtracker offline_access', expires_in: 1.hour.from_now,
                      authenticated_at: Time.current, last_used_at: Time.current,
                      token_hash: OauthGrant.digest(care_access_token))
+  replay_mobile_access_token = "contract-replay-mobile-#{SecureRandom.urlsafe_base64(48)}"
+  OauthGrant.create!(account: replay_account, oauth_application: oauth_application, client_kind: :mobile,
+                     scopes: 'medtracker offline_access', expires_in: 1.hour.from_now,
+                     authenticated_at: Time.current, last_used_at: Time.current,
+                     token_hash: OauthGrant.digest(replay_mobile_access_token))
 
   {
     access_token: access_token,
@@ -324,6 +342,9 @@ fixture = ActiveRecord::Base.transaction do
     view_account_id: view_account.id,
     view_membership_id: view_membership.id,
     delegated_access_token: delegated_access_token,
+    replay_access_token: replay_access_token,
+    replay_mobile_access_token: replay_mobile_access_token,
+    replay_grant_id: replay_grant.id,
     view_owner_access_token: view_owner_access_token,
     care_access_token: care_access_token,
     grant_target_membership_id: grant_target_membership.id,

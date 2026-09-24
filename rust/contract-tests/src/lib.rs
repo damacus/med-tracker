@@ -40,6 +40,9 @@ pub struct Fixture {
     pub view_account_id: i64,
     pub view_membership_id: i64,
     pub delegated_access_token: String,
+    pub replay_access_token: String,
+    pub replay_mobile_access_token: String,
+    pub replay_grant_id: i64,
     pub view_owner_access_token: String,
     pub care_access_token: String,
     pub grant_target_membership_id: i64,
@@ -220,6 +223,21 @@ impl Target {
     ) -> Response {
         self.require_local_write();
         self.authorize(self.client.post(self.url(path)), Some(token))
+            .json(body)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn post_json_with_key(
+        &self,
+        path: &str,
+        token: &str,
+        key: &str,
+        body: &serde_json::Value,
+    ) -> Response {
+        self.require_local_write();
+        self.authorize(self.client.post(self.url(path)), Some(token))
+            .header("Idempotency-Key", key)
             .json(body)
             .send()
             .expect("target must respond")

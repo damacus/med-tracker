@@ -41,7 +41,18 @@ tasks:
       CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test sync --test oauth --test envelopes --no-fail-fast -- --test-threads=1
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test sync --test replay --test oauth --test envelopes --no-fail-fast -- --test-threads=1
+
+  run-replay:
+    desc: Run offline medication take and response replay contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test replay -- --test-threads=1
 
   run-sync:
     desc: Run sync snapshot and change-feed contract cases against a checked target and fixture
@@ -274,6 +285,11 @@ tasks:
     cmds:
       - fish rust/contract-tests/run.fish rails sync
 
+  replay-rails:
+    desc: Run offline medication take and response replay cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails replay
+
   sync-privacy-rails:
     desc: Demonstrate the currently failing Rails hidden-person feed case
     cmds:
@@ -329,3 +345,11 @@ tasks:
       CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
       - fish rust/contract-tests/run.fish rust sync
+
+  replay-rust:
+    desc: Run replay cases against a Rust URL after provisioning isolated fixtures
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust replay

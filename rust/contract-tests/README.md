@@ -25,6 +25,12 @@ and medication takes.
 Run `task contract:reviews-rails` for medication review prompt list, read and update cases.
 Run `task contract:care-rails` for people, person-grant, and location permission cases.
 Run `task contract:sync-rails` for sync v2, mobile v1, and change-feed cases.
+Run `task contract:replay-rails` for separate medication-take `client_uuid` and
+`Idempotency-Key` replay cases, including cached-success permission rechecks
+after an owner revokes the exact person grant. The disposable fixture includes
+a delegated mobile OAuth bearer credential that remains valid after the grant
+change; its older API session is expected to return 401 because the membership
+permission version changed.
 Run `task contract:sync-privacy-rails` to demonstrate the ignored hidden-person
 feed defect: Rails exposes a hidden health-event change and a hidden
 person-medication tombstone to a member without that person's grant. The probe
