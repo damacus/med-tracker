@@ -28,8 +28,43 @@ end
 
 fixture = ActiveRecord::Base.transaction do
   account, household, user = create_household(nonce, 'primary')
-  _foreign_account, foreign_household, = create_household(nonce, 'foreign')
+  foreign_account, foreign_household, = create_household(nonce, 'foreign')
   membership = account.household_memberships.find_by!(household: household)
+  managed_person = household.people.create!(name: "Contract managed #{nonce}", date_of_birth: 35.years.ago.to_date,
+                                            person_type: :adult, has_capacity: true)
+  hidden_person = household.people.create!(name: "Contract hidden #{nonce}", date_of_birth: 36.years.ago.to_date,
+                                           person_type: :adult, has_capacity: true)
+  PersonAccessGrant.create!(household: household, household_membership: membership, person: managed_person,
+                            access_level: :manage, relationship_type: :family_member,
+                            granted_by_membership: membership)
+  care_account = Account.create!(email: "contract-care-#{nonce}@example.test", status: :verified,
+                                 password_hash: RodauthApp.rodauth.allocate.password_hash('password'))
+  care_person = household.people.create!(account: care_account, name: "Contract carer #{nonce}",
+                                         date_of_birth: 33.years.ago.to_date, person_type: :adult, has_capacity: true)
+  User.create!(person: care_person, email_address: care_account.email, password: 'password', active: true)
+  care_membership = household.household_memberships.create!(account: care_account, person: care_person,
+                                                            role: :owner, status: :active)
+  PersonAccessGrant.create!(household: household, household_membership: care_membership, person: managed_person,
+                            access_level: :manage, relationship_type: :family_member,
+                            granted_by_membership: membership)
+  view_account = Account.create!(email: "contract-view-#{nonce}@example.test", status: :verified,
+                                 password_hash: RodauthApp.rodauth.allocate.password_hash('password'))
+  view_person = household.people.create!(account: view_account, name: "Contract viewer #{nonce}",
+                                         date_of_birth: 32.years.ago.to_date, person_type: :adult, has_capacity: true)
+  User.create!(person: view_person, email_address: view_account.email, password: 'password', active: true)
+  view_membership = household.household_memberships.create!(account: view_account, person: view_person,
+                                                            role: :member, status: :active)
+  PersonAccessGrant.create!(household: household, household_membership: view_membership, person: managed_person,
+                            access_level: :view, relationship_type: :carer,
+                            granted_by_membership: membership)
+  _view_session, view_access_token, = ApiSession.issue_for(
+    account: view_account, household_membership: view_membership, device_name: 'contract-view'
+  )
+  grant_target_account = Account.create!(email: "contract-grant-target-#{nonce}@example.test", status: :verified)
+  grant_target_membership = household.household_memberships.create!(account: grant_target_account, role: :member,
+                                                                    status: :active)
+  primary_location = Location.create!(household: household, name: "Contract shelf #{nonce}")
+  foreign_location = Location.create!(household: foreign_household, name: "Contract foreign shelf #{nonce}")
   session, access_token, = ApiSession.issue_for(
     account: account, household_membership: membership, device_name: 'contract-tests'
   )
@@ -53,9 +88,14 @@ fixture = ActiveRecord::Base.transaction do
 
   oauth_client_id = "contract-mobile-#{nonce}"
   oauth_redirect_uri = 'io.damacus.medtracker.contract:/oauth2redirect'
-  OauthApplication.create!(name: 'Contract mobile', client_id: oauth_client_id, client_kind: :mobile,
-                           redirect_uri: oauth_redirect_uri, scopes: 'medtracker offline_access',
-                           token_endpoint_auth_method: 'none')
+  oauth_application = OauthApplication.create!(name: 'Contract mobile', client_id: oauth_client_id, client_kind: :mobile,
+                                               redirect_uri: oauth_redirect_uri, scopes: 'medtracker offline_access',
+                                               token_endpoint_auth_method: 'none')
+  care_access_token = "contract-care-#{SecureRandom.urlsafe_base64(48)}"
+  OauthGrant.create!(account: care_account, oauth_application: oauth_application, client_kind: :mobile,
+                     scopes: 'medtracker offline_access', expires_in: 1.hour.from_now,
+                     authenticated_at: Time.current, last_used_at: Time.current,
+                     token_hash: OauthGrant.digest(care_access_token))
 
   {
     access_token: access_token,
@@ -73,7 +113,21 @@ fixture = ActiveRecord::Base.transaction do
     expired_access_token: expired_access_token,
     locked_access_token: locked_access_token,
     oauth_client_id: oauth_client_id,
-    oauth_redirect_uri: oauth_redirect_uri
+    oauth_redirect_uri: oauth_redirect_uri,
+    user_person_id: account.person.id,
+    managed_person_id: managed_person.id,
+    managed_person_portable_id: managed_person.portable_id,
+    hidden_person_id: hidden_person.id,
+    foreign_person_id: foreign_account.person.id,
+    foreign_person_portable_id: foreign_account.person.portable_id,
+    foreign_person_name: foreign_account.person.name,
+    view_access_token: view_access_token,
+    care_access_token: care_access_token,
+    grant_target_membership_id: grant_target_membership.id,
+    primary_location_id: primary_location.id,
+    primary_location_portable_id: primary_location.portable_id,
+    foreign_location_id: foreign_location.id,
+    foreign_location_name: foreign_location.name
   }
 end
 File.open(path, File::WRONLY | File::CREAT | File::EXCL, 0o600) do |file|
