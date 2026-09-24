@@ -202,17 +202,19 @@ fn assert_one_take_effect(
     medication_id: i64,
     before_stock: f64,
     cursor: &str,
-    take_id: &str,
+    client_uuid: &str,
     responses: &[BatchResponse; 2],
 ) {
+    let take_id = responses[0].body["data"]["results"][0]["record_portable_id"]
+        .as_str()
+        .expect("portable take ID");
     assert_eq!(stock(target, fixture, medication_id), before_stock - 1.25);
-    assert_eq!(
-        take_rows(target, fixture)
-            .iter()
-            .filter(|row| row["portable_id"] == take_id)
-            .count(),
-        1
-    );
+    let matching_takes: Vec<_> = take_rows(target, fixture)
+        .into_iter()
+        .filter(|row| row["client_uuid"] == client_uuid)
+        .collect();
+    assert_eq!(matching_takes.len(), 1);
+    assert_eq!(matching_takes[0]["portable_id"], take_id);
     assert_eq!(take_change_count(target, fixture, cursor, take_id), 1);
     for response in responses {
         assert_eq!(
@@ -404,11 +406,8 @@ fn concurrent_matching_request_keys_replay_one_response() {
     let (source_id, medication_id) = fresh_source(&target, &fixture);
     let cursor = feed_cursor(&target, &fixture);
     let before_stock = stock(&target, &fixture, medication_id);
-    let payload = batch_body(take_operation(
-        &source_id,
-        &uuid(&fixture, 7),
-        medication_id,
-    ));
+    let client_uuid = uuid(&fixture, 7);
+    let payload = batch_body(take_operation(&source_id, &client_uuid, medication_id));
     let key = uuid(&fixture, 8);
     let responses = concurrent_batches(
         &fixture,
@@ -433,14 +432,13 @@ fn concurrent_matching_request_keys_replay_one_response() {
     assert_eq!(responses[0].body, responses[1].body);
     let result = &responses[0].body["data"]["results"][0];
     assert_eq!(result["replayed"], false);
-    let take_id = result["record_portable_id"].as_str().unwrap();
     assert_one_take_effect(
         &target,
         &fixture,
         medication_id,
         before_stock,
         &cursor,
-        take_id,
+        &client_uuid,
         &responses,
     );
 }
@@ -452,11 +450,8 @@ fn concurrent_matching_client_uuids_create_one_take_without_a_shared_request_key
     let (source_id, medication_id) = fresh_source(&target, &fixture);
     let cursor = feed_cursor(&target, &fixture);
     let before_stock = stock(&target, &fixture, medication_id);
-    let payload = batch_body(take_operation(
-        &source_id,
-        &uuid(&fixture, 9),
-        medication_id,
-    ));
+    let client_uuid = uuid(&fixture, 9);
+    let payload = batch_body(take_operation(&source_id, &client_uuid, medication_id));
     let responses = concurrent_batches(
         &fixture,
         [(payload.clone(), Some(uuid(&fixture, 10))), (payload, None)],
@@ -489,14 +484,13 @@ fn concurrent_matching_client_uuids_create_one_take_without_a_shared_request_key
         results[1]["record_portable_id"]
     );
     assert_eq!(results[0]["etag"], results[1]["etag"]);
-    let take_id = results[0]["record_portable_id"].as_str().unwrap();
     assert_one_take_effect(
         &target,
         &fixture,
         medication_id,
         before_stock,
         &cursor,
-        take_id,
+        &client_uuid,
         &responses,
     );
 }
