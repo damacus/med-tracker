@@ -33,6 +33,7 @@ pub struct Fixture {
     pub foreign_person_portable_id: String,
     pub foreign_person_name: String,
     pub view_access_token: String,
+    pub delegated_access_token: String,
     pub view_owner_access_token: String,
     pub care_access_token: String,
     pub grant_target_membership_id: i64,

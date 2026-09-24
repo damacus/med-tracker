@@ -436,3 +436,179 @@ fn inventory_adjustment_and_reorder_transitions_retain_http_state_and_audit() {
             && event["metadata"]["status"] == 200
     }));
 }
+
+#[test]
+fn medication_filters_portable_ids_and_invalid_writes_preserve_state() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let base = medications_path(&fixture);
+    let (created, initial_tag) = create_medication(&target, &fixture, "Contract edge medicine");
+    let path = format!("{base}/{}", created["portable_id"].as_str().unwrap());
+
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(etag(&response), initial_tag);
+    assert_eq!(body(response)["data"], created);
+
+    let response = target.get(
+        &format!("{base}?updated_since=1970-01-01T00%3A00%3A00Z&per_page=100"),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    assert!(body(response)["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["id"] == created["id"]));
+    let response = target.get(
+        &format!("{base}?updated_since=2099-01-01T00%3A00%3A00Z"),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(body(response)["meta"]["total_count"], 0);
+    let response = target.get(
+        &format!("{base}?updated_since=invalid"),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(response.status().as_u16(), 422);
+
+    let response = target.patch_json_if_match(
+        &path,
+        &fixture.access_token,
+        &json!({"medication": {"name": "", "current_supply": "70"}}),
+        &initial_tag,
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert!(body(response)["error"]["errors"]["name"].is_array());
+    let response = target.patch_json(
+        &path,
+        &fixture.access_token,
+        &json!({"medication": {"location_id": fixture.foreign_location_id}}),
+    );
+    assert_eq!(response.status().as_u16(), 404);
+    let response = target.put_json_if_match(
+        &path,
+        &fixture.access_token,
+        &json!({"medication": {"name": "", "current_supply": "60"}}),
+        &initial_tag,
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(etag(&response), initial_tag);
+    assert_eq!(body(response)["data"], created);
+}
+
+#[test]
+fn stock_history_caps_pages_at_portable_medication_identity() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (medication, _) = create_medication(&target, &fixture, "Contract portable stock medicine");
+    let path = format!(
+        "{}/{}/stock_removals",
+        medications_path(&fixture),
+        medication["portable_id"].as_str().unwrap()
+    );
+    let response = target.post_json_authorized(
+        &path,
+        &fixture.access_token,
+        &json!({"stock_removal": {"quantity": "1.25", "reason": "dropped",
+            "submission_id": "a3000000-0000-4000-8000-000000000001"}}),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let removal = body(response)["data"].clone();
+    let response = target.get(
+        &format!("{path}?per_page=1000"),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let history = body(response);
+    assert_eq!(history["meta"]["per_page"], 100);
+    assert_eq!(history["meta"]["total_count"], 1);
+    assert_eq!(history["data"][0], removal);
+}
+
+#[test]
+fn reorder_actions_reject_invalid_quantities_and_foreign_records() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (medication, _) = create_medication(&target, &fixture, "Contract reorder edge medicine");
+    let path = format!("{}/{}", medications_path(&fixture), medication["id"]);
+    let response = target.patch_json(
+        &format!("{path}/mark_as_ordered"),
+        &fixture.access_token,
+        &json!({"order_details": {"quantity": 1.25}}),
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert_eq!(
+        body(response)["error"]["errors"]["quantity"][0],
+        "must be a string"
+    );
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(
+        body(response)["data"]["reorder_status"],
+        medication["reorder_status"]
+    );
+    let response = target.patch_json(
+        &format!("{path}/adjust_inventory"),
+        &fixture.access_token,
+        &json!({"adjustment": {"new_quantity": "invalid", "reason": "counted"}}),
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(
+        body(response)["data"]["current_supply"],
+        medication["current_supply"]
+    );
+
+    let foreign = format!(
+        "{}/{}",
+        medications_path(&fixture),
+        fixture.foreign_medication_id
+    );
+    for action in ["mark_as_ordered", "mark_as_received"] {
+        let response = target.patch_json(
+            &format!("{foreign}/{action}"),
+            &fixture.access_token,
+            &json!({}),
+        );
+        assert_eq!(response.status().as_u16(), 404);
+        assert!(!body(response)
+            .to_string()
+            .contains(&fixture.foreign_medication_name));
+    }
+}
+
+#[test]
+fn delegated_creator_can_read_unlinked_medication_without_exposing_it_to_other_members() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let base = medications_path(&fixture);
+    let response = target.post_json_authorized(
+        &base,
+        &fixture.delegated_access_token,
+        &json!({"medication": {"name": "Contract delegated medicine",
+            "location_id": fixture.primary_location_id, "dose_amount": "1.25", "dose_unit": "ml"}}),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let created = body(response)["data"].clone();
+    let path = format!("{base}/{}", created["portable_id"].as_str().unwrap());
+    let response = target.get(&path, Some(&fixture.delegated_access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(body(response)["data"], created);
+    let response = target.get(
+        &format!("{base}?per_page=100"),
+        Some(&fixture.delegated_access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    assert!(body(response)["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["id"] == created["id"]));
+    let response = target.get(&path, Some(&fixture.view_access_token));
+    assert_eq!(response.status().as_u16(), 404);
+    assert!(!body(response)
+        .to_string()
+        .contains("Contract delegated medicine"));
+}
