@@ -99,6 +99,10 @@ fixture = ActiveRecord::Base.transaction do
   managed_medication = Medication.create!(household: household, location: primary_location,
                                           name: "Contract managed medicine #{nonce}", dose_amount: '2',
                                           dose_unit: 'ml', current_supply: '50', reorder_threshold: '5')
+  managed_dosage = managed_medication.dosage_records.create!(amount: '1', unit: 'ml', frequency: 'daily',
+                                                             default_max_daily_doses: 4,
+                                                             default_min_hours_between_doses: '4',
+                                                             default_dose_cycle: :daily)
   hidden_medication = Medication.create!(household: household, location: primary_location,
                                          name: "Contract hidden medicine #{nonce}", dose_amount: '2',
                                          dose_unit: 'ml', current_supply: '50', reorder_threshold: '5')
@@ -136,6 +140,10 @@ fixture = ActiveRecord::Base.transaction do
   managed_schedule = Schedule.create!(household: household, person: managed_person, medication: managed_medication,
                                       dose_amount: '1', dose_unit: 'ml', frequency: 'Daily',
                                       start_date: '2026-02-25', end_date: '2099-12-31')
+  managed_health_event = HealthEvent.create!(household: household, person: managed_person, event_kind: :illness,
+                                            title: "Contract managed event #{nonce}", started_on: '2026-02-25')
+  HealthEventMedication.create!(household: household, health_event: managed_health_event,
+                                medication: managed_medication)
   historical_location = Location.create!(household: household, name: "Contract historical shelf #{nonce}")
   historical_medication = Medication.create!(household: household, location: historical_location,
                                              name: "Contract historical medicine #{nonce}", dose_amount: '1',
@@ -143,8 +151,8 @@ fixture = ActiveRecord::Base.transaction do
   historical_schedule = Schedule.create!(household: household, person: managed_person,
                                          medication: historical_medication, dose_amount: '1', dose_unit: 'ml',
                                          frequency: 'Daily', start_date: '2026-02-25', end_date: '2099-12-31')
-  historical_schedule.medication_dose_occurrences.create!(window_starts_on: Date.current, position: 1,
-                                                          outcome: 'open')
+  managed_occurrence = historical_schedule.medication_dose_occurrences.create!(window_starts_on: Date.current,
+                                                                               position: 1, outcome: 'open')
   hidden_schedule = Schedule.create!(household: household, person: hidden_person, medication: hidden_medication,
                                      dose_amount: '1', dose_unit: 'ml', frequency: 'Daily',
                                      start_date: '2026-02-25', end_date: '2099-12-31')
@@ -263,6 +271,7 @@ fixture = ActiveRecord::Base.transaction do
     managed_person_id: managed_person.id,
     managed_person_portable_id: managed_person.portable_id,
     hidden_person_id: hidden_person.id,
+    hidden_person_portable_id: hidden_person.portable_id,
     foreign_person_id: foreign_account.person.id,
     foreign_person_portable_id: foreign_account.person.portable_id,
     foreign_person_name: foreign_account.person.name,
@@ -278,7 +287,9 @@ fixture = ActiveRecord::Base.transaction do
     foreign_location_name: foreign_location.name,
     managed_medication_id: managed_medication.id,
     managed_medication_portable_id: managed_medication.portable_id,
+    managed_dosage_portable_id: managed_dosage.portable_id,
     hidden_medication_id: hidden_medication.id,
+    hidden_medication_portable_id: hidden_medication.portable_id,
     foreign_medication_id: foreign_medication.id,
     foreign_medication_portable_id: foreign_medication.portable_id,
     foreign_medication_name: foreign_medication.name,
@@ -293,6 +304,11 @@ fixture = ActiveRecord::Base.transaction do
     hidden_pause_period_id: hidden_pause_period.portable_id,
     foreign_pause_period_id: foreign_pause_period.portable_id,
     managed_schedule_id: managed_schedule.id,
+    managed_schedule_portable_id: managed_schedule.portable_id,
+    managed_occurrence_portable_id: managed_occurrence.portable_id,
+    managed_health_event_portable_id: managed_health_event.portable_id,
+    hidden_health_event_portable_id: hidden_health_event.portable_id,
+    foreign_health_event_portable_id: foreign_health_event.portable_id,
     hidden_schedule_id: hidden_schedule.id,
     foreign_schedule_id: foreign_schedule.id,
     foreign_dosage_id: foreign_dosage.id,

@@ -45,6 +45,8 @@ if test "$mode" = rails
         rtk task contract:run-reviews BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
     else if test "$argv[2]" = care
         rtk task contract:run-care BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+    else if test "$argv[2]" = sync
+        rtk task contract:run-sync BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
     else if test "$argv[2]" = dose-precision
         rtk task contract:run-dose-precision BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
     else if test "$argv[2]" = assignment-precision
@@ -63,5 +65,9 @@ if test "$mode" = rails
         rtk task contract:run BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
     end
 else
-    rtk task contract:run BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
+    if test "$argv[2]" = sync
+        rtk task contract:run-sync BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
+    else
+        rtk task contract:run BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
+    end
 end

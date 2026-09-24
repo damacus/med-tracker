@@ -22,6 +22,8 @@ Run `task contract:doses-rails` for schedule and direct-assignment dose outcomes
 and medication takes.
 Run `task contract:reviews-rails` for medication review prompt list, read and update cases.
 Run `task contract:care-rails` for people, person-grant, and location permission cases.
+Run `task contract:sync-rails` for sync v2 and mobile v1 snapshot cases.
+Run `task contract:sync-rust` to record their expected connection failures until the Rust API exists.
 Run `task contract:dose-precision-rails` to demonstrate the ignored
 expected-failing medication-take timestamp case: Rails accepts fractional
 seconds but returns `taken_at` at whole-second precision.
