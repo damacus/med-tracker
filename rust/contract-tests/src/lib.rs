@@ -25,6 +25,20 @@ pub struct Fixture {
     pub locked_access_token: String,
     pub oauth_client_id: String,
     pub oauth_redirect_uri: String,
+    pub user_person_id: i64,
+    pub managed_person_id: i64,
+    pub managed_person_portable_id: String,
+    pub hidden_person_id: i64,
+    pub foreign_person_id: i64,
+    pub foreign_person_portable_id: String,
+    pub foreign_person_name: String,
+    pub view_access_token: String,
+    pub care_access_token: String,
+    pub grant_target_membership_id: i64,
+    pub primary_location_id: i64,
+    pub primary_location_portable_id: String,
+    pub foreign_location_id: i64,
+    pub foreign_location_name: String,
 }
 
 pub struct Target {
@@ -138,10 +152,69 @@ impl Target {
             .expect("target must respond")
     }
 
+    pub fn post_json_authorized(
+        &self,
+        path: &str,
+        token: &str,
+        body: &serde_json::Value,
+    ) -> Response {
+        self.require_local_write();
+        self.authorize(self.client.post(self.url(path)), Some(token))
+            .json(body)
+            .send()
+            .expect("target must respond")
+    }
+
     pub fn patch_json(&self, path: &str, token: &str, body: &serde_json::Value) -> Response {
         self.require_local_write();
         self.authorize(self.client.patch(self.url(path)), Some(token))
             .json(body)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn patch_json_if_match(
+        &self,
+        path: &str,
+        token: &str,
+        body: &serde_json::Value,
+        etag: &str,
+    ) -> Response {
+        self.require_local_write();
+        self.authorize(self.client.patch(self.url(path)), Some(token))
+            .header("If-Match", etag)
+            .json(body)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn put_json_if_match(
+        &self,
+        path: &str,
+        token: &str,
+        body: &serde_json::Value,
+        etag: &str,
+    ) -> Response {
+        self.require_local_write();
+        self.authorize(self.client.put(self.url(path)), Some(token))
+            .header("If-Match", etag)
+            .json(body)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn put_json(&self, path: &str, token: &str, body: &serde_json::Value) -> Response {
+        self.require_local_write();
+        self.authorize(self.client.put(self.url(path)), Some(token))
+            .json(body)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn delete_if_match(&self, path: &str, token: &str, etag: &str) -> Response {
+        self.require_local_write();
+        self.authorize(self.client.delete(self.url(path)), Some(token))
+            .header("If-Match", etag)
             .send()
             .expect("target must respond")
     }
