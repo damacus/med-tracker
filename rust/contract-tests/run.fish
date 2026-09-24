@@ -53,6 +53,10 @@ if test "$mode" = rails
         rtk task contract:run-schedule-precision BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
     else if test "$argv[2]" = dosage-health-privacy
         rtk task contract:run-dosage-health-privacy BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+    else if test "$argv[2]" = dosage-health-default-validation
+        rtk task contract:run-dosage-health-default-validation BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+    else if test "$argv[2]" = health-event-kind-validation
+        rtk task contract:run-health-event-kind-validation BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
     else
         rtk task contract:run BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
     end

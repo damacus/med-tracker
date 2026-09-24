@@ -60,6 +60,19 @@ fixture = ActiveRecord::Base.transaction do
   _view_session, view_access_token, = ApiSession.issue_for(
     account: view_account, household_membership: view_membership, device_name: 'contract-view'
   )
+  delegated_account = Account.create!(email: "contract-delegated-#{nonce}@example.test", status: :verified,
+                                      password_hash: RodauthApp.rodauth.allocate.password_hash('password'))
+  delegated_person = household.people.create!(account: delegated_account, name: "Contract delegated #{nonce}",
+                                              date_of_birth: 32.years.ago.to_date, person_type: :adult,
+                                              has_capacity: true)
+  User.create!(person: delegated_person, email_address: delegated_account.email, password: 'password', active: true)
+  delegated_membership = household.household_memberships.create!(account: delegated_account, person: delegated_person,
+                                                                 role: :member, status: :active)
+  PersonAccessGrant.create!(household: household, household_membership: delegated_membership, person: managed_person,
+                            access_level: :manage, relationship_type: :carer, granted_by_membership: membership)
+  _delegated_session, delegated_access_token, = ApiSession.issue_for(
+    account: delegated_account, household_membership: delegated_membership, device_name: 'contract-delegated'
+  )
   view_owner_account = Account.create!(email: "contract-view-owner-#{nonce}@example.test", status: :verified,
                                        password_hash: RodauthApp.rodauth.allocate.password_hash('password'))
   view_owner_person = household.people.create!(account: view_owner_account, name: "Contract view owner #{nonce}",
@@ -232,6 +245,7 @@ fixture = ActiveRecord::Base.transaction do
     foreign_person_portable_id: foreign_account.person.portable_id,
     foreign_person_name: foreign_account.person.name,
     view_access_token: view_access_token,
+    delegated_access_token: delegated_access_token,
     view_owner_access_token: view_owner_access_token,
     care_access_token: care_access_token,
     grant_target_membership_id: grant_target_membership.id,
