@@ -185,6 +185,21 @@ impl Target {
             .expect("target must respond")
     }
 
+    pub fn post_json_if_match(
+        &self,
+        path: &str,
+        token: &str,
+        body: &serde_json::Value,
+        etag: &str,
+    ) -> Response {
+        self.require_local_write();
+        self.authorize(self.client.post(self.url(path)), Some(token))
+            .header("If-Match", etag)
+            .json(body)
+            .send()
+            .expect("target must respond")
+    }
+
     pub fn patch_json(&self, path: &str, token: &str, body: &serde_json::Value) -> Response {
         self.require_local_write();
         self.authorize(self.client.patch(self.url(path)), Some(token))
