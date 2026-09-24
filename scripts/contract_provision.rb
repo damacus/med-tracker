@@ -74,10 +74,19 @@ fixture = ActiveRecord::Base.transaction do
   foreign_medication = Medication.create!(household: foreign_household, location: foreign_location,
                                           name: "Contract foreign medicine #{nonce}", dose_amount: '2',
                                           dose_unit: 'ml', current_supply: '50', reorder_threshold: '5')
+  foreign_dosage = foreign_medication.dosage_records.create!(amount: '1', unit: 'ml', frequency: 'daily',
+                                                             default_max_daily_doses: 4,
+                                                             default_min_hours_between_doses: '4',
+                                                             default_dose_cycle: :daily)
   PersonMedication.create!(household: household, person: managed_person, medication: managed_medication,
                            administration_kind: :as_needed)
   PersonMedication.create!(household: household, person: hidden_person, medication: hidden_medication,
                            administration_kind: :as_needed)
+  hidden_health_event = HealthEvent.create!(household: household, person: hidden_person, event_kind: :illness,
+                                            title: "Contract hidden event #{nonce}", started_on: '2026-02-25')
+  foreign_health_event = HealthEvent.create!(household: foreign_household, person: foreign_account.person,
+                                             event_kind: :illness, title: "Contract foreign event #{nonce}",
+                                             started_on: '2026-02-25')
   session, access_token, = ApiSession.issue_for(
     account: account, household_membership: membership, device_name: 'contract-tests'
   )
@@ -144,7 +153,10 @@ fixture = ActiveRecord::Base.transaction do
     managed_medication_id: managed_medication.id,
     hidden_medication_id: hidden_medication.id,
     foreign_medication_id: foreign_medication.id,
-    foreign_medication_name: foreign_medication.name
+    foreign_medication_name: foreign_medication.name,
+    foreign_dosage_id: foreign_dosage.id,
+    hidden_health_event_id: hidden_health_event.id,
+    foreign_health_event_id: foreign_health_event.id
   }
 end
 File.open(path, File::WRONLY | File::CREAT | File::EXCL, 0o600) do |file|

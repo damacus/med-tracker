@@ -10,6 +10,13 @@ command runs, then removes that file. Contract records remain only in the
 disposable contract database until the test database volume is removed.
 Rack::Attack is enabled only for this contract test server so the 429 response
 can be observed over HTTP.
+The contract test environment raises only the global request-per-IP ceiling to
+3000 so the complete suite can finish in one five-minute window. The targeted
+data-export ceiling remains 10 per minute, and production keeps its 300-request
+global ceiling.
+
+Run `task contract:dosage-health-rails` for only the dosage-option and
+health-event black-box cases with the same isolated fixture setup.
 
 Run `task contract:oauth-rails` for only the OAuth black-box cases with the
 same isolated fixture and server setup.
