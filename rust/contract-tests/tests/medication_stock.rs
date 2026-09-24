@@ -13,6 +13,39 @@ fn etag(response: &Response) -> String {
         .to_owned()
 }
 
+fn request_id(response: &Response) -> String {
+    response.headers()["x-request-id"]
+        .to_str()
+        .expect("request ID")
+        .to_owned()
+}
+
+fn assert_audit(target: &Target, fixture: &Fixture, id: &str, action: &str, status: u16) {
+    let response = target.get(
+        &format!(
+            "/api/v1/households/{}/admin/audit_logs",
+            fixture.household_id
+        ),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let audit = body(response);
+    let events = audit["data"].as_array().unwrap();
+    assert!(events.len() <= 100);
+    let matching: Vec<_> = events
+        .iter()
+        .filter(|event| event["request_id"] == id)
+        .collect();
+    assert_eq!(matching.len(), 1, "one visible audit event for {id}");
+    assert_eq!(matching[0]["event_type"], "api.request");
+    assert_eq!(
+        matching[0]["metadata"]["http_method"],
+        if action == "create" { "POST" } else { "PATCH" }
+    );
+    assert_eq!(matching[0]["metadata"]["action"], action);
+    assert_eq!(matching[0]["metadata"]["status"], status);
+}
+
 fn assert_utc_second_timestamp(value: &Value) {
     let timestamp = value.as_str().expect("timestamp string");
     assert_eq!(timestamp.len(), 20);
@@ -232,6 +265,8 @@ fn stock_removal_keeps_decimal_history_and_rejects_changed_replays() {
     }});
     let response = target.post_json_authorized(&path, &fixture.access_token, &payload);
     assert_eq!(response.status().as_u16(), 201);
+    let first_request_id = request_id(&response);
+    assert_audit(&target, &fixture, &first_request_id, "create", 201);
     let first = body(response)["data"].clone();
     assert_eq!(first["quantity"], "1.25");
     assert_eq!(first["previous_quantity"], "80");
@@ -248,6 +283,8 @@ fn stock_removal_keeps_decimal_history_and_rejects_changed_replays() {
     assert_utc_second_timestamp(&first["created_at"]);
     let response = target.post_json_authorized(&path, &fixture.access_token, &payload);
     assert_eq!(response.status().as_u16(), 201);
+    let replay_request_id = request_id(&response);
+    assert_audit(&target, &fixture, &replay_request_id, "create", 201);
     assert_eq!(body(response)["data"], first);
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
@@ -282,6 +319,8 @@ fn stock_removal_keeps_decimal_history_and_rejects_changed_replays() {
         &json!({"stock_removal": {"quantity": "1", "reason": "dropped", "submission_id": "a1000000-0000-4000-8000-000000000004"}}),
     );
     assert_eq!(response.status().as_u16(), 201);
+    let second_request_id = request_id(&response);
+    assert_audit(&target, &fixture, &second_request_id, "create", 201);
     let second = body(response)["data"].clone();
     assert_eq!(second["previous_quantity"], "78.75");
     assert_eq!(second["remaining_quantity"], "77.75");
@@ -346,6 +385,14 @@ fn inventory_adjustment_and_reorder_transitions_retain_http_state_and_audit() {
         &json!({"adjustment": {"new_quantity": "15.12", "reason": "counted"}}),
     );
     assert_eq!(response.status().as_u16(), 200);
+    let adjust_request_id = request_id(&response);
+    assert_audit(
+        &target,
+        &fixture,
+        &adjust_request_id,
+        "adjust_inventory",
+        200,
+    );
     assert_eq!(body(response)["data"]["current_supply"], "15.12");
     let response = target.patch_json(
         &format!("{path}/adjust_inventory"),
@@ -370,6 +417,14 @@ fn inventory_adjustment_and_reorder_transitions_retain_http_state_and_audit() {
         &json!({"order_details": {"supplier": "Contract pharmacy", "quantity": "20.50", "expected_arrival_on": "2026-10-03"}}),
     );
     assert_eq!(response.status().as_u16(), 200);
+    let ordered_request_id = request_id(&response);
+    assert_audit(
+        &target,
+        &fixture,
+        &ordered_request_id,
+        "mark_as_ordered",
+        200,
+    );
     assert_eq!(body(response)["data"]["reorder_status"], "ordered");
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(body(response)["data"]["reorder_status"], "ordered");
@@ -409,6 +464,14 @@ fn inventory_adjustment_and_reorder_transitions_retain_http_state_and_audit() {
         &json!({}),
     );
     assert_eq!(response.status().as_u16(), 200);
+    let received_request_id = request_id(&response);
+    assert_audit(
+        &target,
+        &fixture,
+        &received_request_id,
+        "mark_as_received",
+        200,
+    );
     assert_eq!(body(response)["data"]["reorder_status"], "received");
     let hidden_path = format!(
         "{}/{}",
@@ -434,6 +497,61 @@ fn inventory_adjustment_and_reorder_transitions_retain_http_state_and_audit() {
             && event["metadata"]["controller"] == "api/v1/medications"
             && event["metadata"]["action"] == "adjust_inventory"
             && event["metadata"]["status"] == 200
+    }));
+}
+
+#[test]
+fn audit_list_retains_only_the_newest_hundred_request_events() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (medication, _) = create_medication(&target, &fixture, "Contract audit cap medicine");
+    let path = format!(
+        "{}/{}/adjust_inventory",
+        medications_path(&fixture),
+        medication["id"]
+    );
+    let mut request_ids = Vec::new();
+    for quantity in 20..=120 {
+        let response = target.patch_json(
+            &path,
+            &fixture.access_token,
+            &json!({"adjustment": {"new_quantity": quantity.to_string(), "reason": "counted"}}),
+        );
+        assert_eq!(response.status().as_u16(), 200);
+        request_ids.push(request_id(&response));
+        assert_eq!(
+            body(response)["data"]["current_supply"]
+                .as_str()
+                .unwrap()
+                .parse::<f64>()
+                .unwrap(),
+            f64::from(quantity)
+        );
+    }
+    let response = target.get(
+        &format!(
+            "/api/v1/households/{}/admin/audit_logs",
+            fixture.household_id
+        ),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let audit = body(response);
+    let events = audit["data"].as_array().unwrap();
+    assert_eq!(events.len(), 100);
+    let visible_ids: Vec<_> = events
+        .iter()
+        .map(|event| event["request_id"].as_str().unwrap())
+        .collect();
+    let expected_ids: Vec<_> = request_ids
+        .iter()
+        .rev()
+        .take(100)
+        .map(String::as_str)
+        .collect();
+    assert_eq!(visible_ids, expected_ids);
+    assert!(events.iter().all(|event| {
+        event["event_type"] == "api.request" && event["metadata"]["action"] == "adjust_inventory"
     }));
 }
 

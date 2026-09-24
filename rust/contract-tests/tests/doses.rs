@@ -137,6 +137,31 @@ fn take_snapshot(target: &Target, fixture: &Fixture) -> (u64, Vec<i64>) {
     (total, ids)
 }
 
+fn takes_for_medication(target: &Target, fixture: &Fixture, medication_id: i64) -> Vec<Value> {
+    let mut matches = Vec::new();
+    let mut page = 1;
+    loop {
+        let response = target.get(
+            &format!("{}?page={page}&per_page=100", takes_path(fixture)),
+            Some(&fixture.access_token),
+        );
+        assert_eq!(response.status().as_u16(), 200);
+        let collection = body(response);
+        let total = collection["meta"]["total_count"].as_u64().unwrap();
+        let rows = collection["data"].as_array().unwrap();
+        matches.extend(
+            rows.iter()
+                .filter(|row| row["medication_id"] == medication_id)
+                .cloned(),
+        );
+        if page * 100 >= total {
+            break;
+        }
+        page += 1;
+    }
+    matches
+}
+
 fn audit(
     target: &Target,
     fixture: &Fixture,
@@ -155,14 +180,19 @@ fn audit(
     );
     assert_eq!(response.status().as_u16(), 200);
     let value = body(response);
-    assert!(value["data"].as_array().unwrap().iter().any(|event| {
-        event["event_type"] == "api.request"
-            && event["request_id"] == id
-            && event["metadata"]["http_method"] == method
-            && event["metadata"]["action"] == action
-            && event["metadata"]["status"] == status
-            && event["metadata"]["controller"] == controller
-    }));
+    let events = value["data"].as_array().unwrap();
+    assert!(events.len() <= 100);
+    let matching: Vec<_> = events
+        .iter()
+        .filter(|event| event["request_id"] == id)
+        .collect();
+    assert_eq!(matching.len(), 1, "one visible audit event for {id}");
+    let event = matching[0];
+    assert_eq!(event["event_type"], "api.request");
+    assert_eq!(event["metadata"]["http_method"], method);
+    assert_eq!(event["metadata"]["action"], action);
+    assert_eq!(event["metadata"]["status"], status);
+    assert_eq!(event["metadata"]["controller"], controller);
 }
 
 fn create_medication(target: &Target, fixture: &Fixture) -> Value {
@@ -354,7 +384,17 @@ fn schedule_not_taken_reopens_with_a_current_version_and_retains_context() {
         &payload,
     );
     assert_eq!(response.status().as_u16(), 200);
+    let replay_request_id = request_id(&response);
     assert_eq!(etag(&response), tag);
+    audit(
+        &target,
+        &fixture,
+        &replay_request_id,
+        "POST",
+        "not_taken",
+        200,
+        "api/v1/dose_occurrences",
+    );
     let response = target.post_json_authorized(
         &format!("{path}/not_taken"),
         &fixture.access_token,
@@ -375,7 +415,17 @@ fn schedule_not_taken_reopens_with_a_current_version_and_retains_context() {
     assert_eq!(response.status().as_u16(), 403);
     let response = target.patch_json_if_match(&reopen, &fixture.access_token, &payload, &tag);
     assert_eq!(response.status().as_u16(), 200);
+    let reopen_request_id = request_id(&response);
     let reopened = body(response)["data"].clone();
+    audit(
+        &target,
+        &fixture,
+        &reopen_request_id,
+        "PATCH",
+        "reopen",
+        200,
+        "api/v1/dose_occurrences",
+    );
     assert_eq!(reopened["outcome"], "open");
     assert!(reopened["reason"].is_null());
     assert!(reopened["note"].is_null());
@@ -482,9 +532,19 @@ fn schedule_take_replaces_not_taken_once_and_stays_immutable() {
             response.text().unwrap()
         );
     }
+    let replay_request_id = request_id(&response);
     assert_eq!(
         body(response)["data"]["medication_take_id"],
         taken["medication_take_id"]
+    );
+    audit(
+        &target,
+        &fixture,
+        &replay_request_id,
+        "POST",
+        "take",
+        200,
+        "api/v1/dose_occurrences",
     );
     assert_eq!(
         stock(&target, &fixture, medication_id)
@@ -613,6 +673,24 @@ fn direct_assignment_outcome_reopens_then_records_one_take() {
     );
     assert_eq!(response.status().as_u16(), 200);
     let tag = etag(&response);
+    let not_taken_request_id = request_id(&response);
+    let not_taken = body(response)["data"].clone();
+    assert_eq!(not_taken["outcome"], "not_taken");
+    assert_eq!(not_taken["reason"], "unwell");
+    audit(
+        &target,
+        &fixture,
+        &not_taken_request_id,
+        "POST",
+        "not_taken",
+        200,
+        "api/v1/dose_occurrences",
+    );
+    assert_eq!(
+        rows(&target, &path, &fixture.view_access_token, &date)[0],
+        not_taken
+    );
+    assert!(takes_for_medication(&target, &fixture, medication_id).is_empty());
     assert_eq!(
         stock(&target, &fixture, medication_id)
             .parse::<f64>()
@@ -627,7 +705,17 @@ fn direct_assignment_outcome_reopens_then_records_one_take() {
     );
     assert_eq!(response.status().as_u16(), 200);
     let reopened_tag = etag(&response);
+    let reopen_request_id = request_id(&response);
     let reopened = body(response)["data"].clone();
+    audit(
+        &target,
+        &fixture,
+        &reopen_request_id,
+        "PATCH",
+        "reopen",
+        200,
+        "api/v1/dose_occurrences",
+    );
     assert_eq!(reopened["outcome"], "open");
     assert!(reopened["reason"].is_null());
     assert!(reopened["note"].is_null());
@@ -643,6 +731,7 @@ fn direct_assignment_outcome_reopens_then_records_one_take() {
             .unwrap(),
         before_stock
     );
+    assert!(takes_for_medication(&target, &fixture, medication_id).is_empty());
     let payload = json!({"dose_occurrence": {
         "key": key,
         "taken_at": taken_at,
@@ -658,8 +747,18 @@ fn direct_assignment_outcome_reopens_then_records_one_take() {
             response.text().unwrap()
         );
     }
+    let take_request_id = request_id(&response);
     let taken = body(response)["data"].clone();
     assert_eq!(taken["outcome"], "taken");
+    audit(
+        &target,
+        &fixture,
+        &take_request_id,
+        "POST",
+        "take",
+        200,
+        "api/v1/dose_occurrences",
+    );
     assert_eq!(
         stock(&target, &fixture, medication_id)
             .parse::<f64>()
@@ -669,9 +768,19 @@ fn direct_assignment_outcome_reopens_then_records_one_take() {
     let response =
         target.post_json_authorized(&format!("{path}/take"), &fixture.access_token, &payload);
     assert_eq!(response.status().as_u16(), 200);
+    let replay_request_id = request_id(&response);
     assert_eq!(
         body(response)["data"]["medication_take_id"],
         taken["medication_take_id"]
+    );
+    audit(
+        &target,
+        &fixture,
+        &replay_request_id,
+        "POST",
+        "take",
+        200,
+        "api/v1/dose_occurrences",
     );
     assert_eq!(
         stock(&target, &fixture, medication_id)
@@ -691,6 +800,63 @@ fn direct_assignment_outcome_reopens_then_records_one_take() {
     assert_eq!(take["person_medication_id"], id);
     assert_eq!(take["medication_id"], medication_id);
     assert_eq!(take["dose_amount"], "1.25");
+    assert_eq!(
+        takes_for_medication(&target, &fixture, medication_id),
+        vec![take]
+    );
+
+    let attempted = json!({"dose_occurrence": {"key": key, "reason": "unwell", "note": "private-clinical-text"}});
+    let response = target.post_json_authorized(
+        &format!("{path}/not_taken"),
+        &fixture.view_access_token,
+        &attempted,
+    );
+    assert_eq!(response.status().as_u16(), 403);
+    assert!(!body(response).to_string().contains("private-clinical-text"));
+    let response = target.patch_json_if_match(
+        &format!("{path}/reopen"),
+        &fixture.access_token,
+        &json!({"dose_occurrence": {"key": key}}),
+        taken["etag"].as_str().unwrap(),
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert!(!body(response).to_string().contains("private-clinical-text"));
+    for hidden_id in [fixture.hidden_assignment_id, fixture.foreign_assignment_id] {
+        let hidden_path = assignment_path(&fixture, hidden_id);
+        let response = target.get(
+            &format!("{hidden_path}?start_date={date}&end_date={date}"),
+            Some(&fixture.view_access_token),
+        );
+        assert_eq!(response.status().as_u16(), 404);
+        let response = target.post_json_authorized(
+            &format!("{hidden_path}/not_taken"),
+            &fixture.view_access_token,
+            &attempted,
+        );
+        assert_eq!(response.status().as_u16(), 404);
+        assert!(!body(response).to_string().contains("private-clinical-text"));
+    }
+    let response = target.post_json_authorized(
+        &format!("{path}/not_taken"),
+        &fixture.foreign_access_token,
+        &attempted,
+    );
+    assert_eq!(response.status().as_u16(), 403);
+    assert!(!body(response).to_string().contains("private-clinical-text"));
+    assert_eq!(
+        rows(&target, &path, &fixture.view_access_token, &date)[0],
+        taken
+    );
+    assert_eq!(
+        stock(&target, &fixture, medication_id)
+            .parse::<f64>()
+            .unwrap(),
+        before_stock - 1.25
+    );
+    assert_eq!(
+        takes_for_medication(&target, &fixture, medication_id).len(),
+        1
+    );
 }
 
 #[test]
@@ -747,13 +913,27 @@ fn medication_takes_create_filters_paginates_and_preserves_precision() {
     );
     let response = target.post_json_authorized(&path, &fixture.access_token, &payload);
     assert_eq!(response.status().as_u16(), 200);
+    let replay_request_id = request_id(&response);
     assert_eq!(etag(&response), tag);
     assert_eq!(body(response)["data"], take);
+    audit(
+        &target,
+        &fixture,
+        &replay_request_id,
+        "POST",
+        "create",
+        200,
+        "api/v1/medication_takes",
+    );
     assert_eq!(
         stock(&target, &fixture, medication_id)
             .parse::<f64>()
             .unwrap(),
         before_stock - 1.25
+    );
+    assert_eq!(
+        takes_for_medication(&target, &fixture, medication_id),
+        vec![take.clone()]
     );
 
     let (routine_id, routine_medication_id) = create_routine_assignment(&target, &fixture);
