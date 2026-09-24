@@ -60,6 +60,20 @@ fixture = ActiveRecord::Base.transaction do
   _view_session, view_access_token, = ApiSession.issue_for(
     account: view_account, household_membership: view_membership, device_name: 'contract-view'
   )
+  view_owner_account = Account.create!(email: "contract-view-owner-#{nonce}@example.test", status: :verified,
+                                       password_hash: RodauthApp.rodauth.allocate.password_hash('password'))
+  view_owner_person = household.people.create!(account: view_owner_account, name: "Contract view owner #{nonce}",
+                                               date_of_birth: 31.years.ago.to_date, person_type: :adult,
+                                               has_capacity: true)
+  User.create!(person: view_owner_person, email_address: view_owner_account.email, password: 'password', active: true)
+  view_owner_membership = household.household_memberships.create!(account: view_owner_account,
+                                                                  person: view_owner_person, role: :owner,
+                                                                  status: :active)
+  PersonAccessGrant.create!(household: household, household_membership: view_owner_membership, person: managed_person,
+                            access_level: :view, relationship_type: :carer, granted_by_membership: membership)
+  _view_owner_session, view_owner_access_token, = ApiSession.issue_for(
+    account: view_owner_account, household_membership: view_owner_membership, device_name: 'contract-view-owner'
+  )
   grant_target_account = Account.create!(email: "contract-grant-target-#{nonce}@example.test", status: :verified)
   grant_target_membership = household.household_memberships.create!(account: grant_target_account, role: :member,
                                                                     status: :active)
@@ -95,6 +109,15 @@ fixture = ActiveRecord::Base.transaction do
   managed_schedule = Schedule.create!(household: household, person: managed_person, medication: managed_medication,
                                       dose_amount: '1', dose_unit: 'ml', frequency: 'Daily',
                                       start_date: '2026-02-25', end_date: '2099-12-31')
+  historical_location = Location.create!(household: household, name: "Contract historical shelf #{nonce}")
+  historical_medication = Medication.create!(household: household, location: historical_location,
+                                             name: "Contract historical medicine #{nonce}", dose_amount: '1',
+                                             dose_unit: 'ml', current_supply: '5')
+  historical_schedule = Schedule.create!(household: household, person: managed_person,
+                                         medication: historical_medication, dose_amount: '1', dose_unit: 'ml',
+                                         frequency: 'Daily', start_date: '2026-02-25', end_date: '2099-12-31')
+  historical_schedule.medication_dose_occurrences.create!(window_starts_on: Date.current, position: 1,
+                                                          outcome: 'open')
   hidden_schedule = Schedule.create!(household: household, person: hidden_person, medication: hidden_medication,
                                      dose_amount: '1', dose_unit: 'ml', frequency: 'Daily',
                                      start_date: '2026-02-25', end_date: '2099-12-31')
@@ -209,10 +232,12 @@ fixture = ActiveRecord::Base.transaction do
     foreign_person_portable_id: foreign_account.person.portable_id,
     foreign_person_name: foreign_account.person.name,
     view_access_token: view_access_token,
+    view_owner_access_token: view_owner_access_token,
     care_access_token: care_access_token,
     grant_target_membership_id: grant_target_membership.id,
     primary_location_id: primary_location.id,
     primary_location_portable_id: primary_location.portable_id,
+    historical_location_portable_id: historical_location.portable_id,
     foreign_location_id: foreign_location.id,
     foreign_location_name: foreign_location.name,
     managed_medication_id: managed_medication.id,

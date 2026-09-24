@@ -228,6 +228,25 @@ fn person_access_grants_create_list_and_revoke_without_exposing_other_households
         .iter()
         .any(|grant| grant["id"] == grant_id));
 
+    let response = target.post_json_authorized(&base, &fixture.access_token, &payload);
+    assert_eq!(response.status().as_u16(), 422);
+    assert!(json_body(response)["error"]["errors"]["household_membership_id"].is_array());
+    let response = target.get(&base, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(
+        json_body(response)["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|grant| {
+                grant["household_membership_id"] == fixture.grant_target_membership_id
+                    && grant["person_id"] == fixture.managed_person_id
+                    && grant["revoked_at"].is_null()
+            })
+            .count(),
+        1
+    );
+
     let response = target.delete(&format!("{base}/{grant_id}"), Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 204);
     let response = target.get(&base, Some(&fixture.access_token));
@@ -512,4 +531,221 @@ fn location_membership_writes_require_manage_access_and_change_person_locations(
         .unwrap()
         .iter()
         .any(|id| id == fixture.primary_location_id));
+}
+
+#[test]
+fn dependent_creation_delegates_care_without_exposing_the_person_to_other_members() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let people = format!("/api/v1/households/{}/people", fixture.household_id);
+    let response = target.post_json_authorized(
+        &people,
+        &fixture.care_access_token,
+        &json!({"person": {
+            "name": "Contract delegated minor", "date_of_birth": "2015-01-01",
+            "person_type": "minor", "has_capacity": true
+        }}),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let dependent = json_body(response)["data"].clone();
+    let dependent_id = dependent["id"].as_i64().expect("dependent id");
+    assert_eq!(dependent["person_type"], "minor");
+    assert_eq!(dependent["has_capacity"], false);
+
+    let response = target.get(
+        &format!("{people}/{dependent_id}"),
+        Some(&fixture.care_access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(json_body(response)["data"]["id"], dependent_id);
+    let response = target.get(
+        &format!("{people}?per_page=100"),
+        Some(&fixture.care_access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    assert!(json_body(response)["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|row| row["id"] == dependent_id));
+
+    for token in [&fixture.access_token, &fixture.view_access_token] {
+        let response = target.get(&format!("{people}?per_page=100"), Some(token));
+        assert_eq!(response.status().as_u16(), 200);
+        assert!(!json_body(response)["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["id"] == dependent_id));
+        let response = target.get(&format!("{people}/{dependent_id}"), Some(token));
+        assert_eq!(response.status().as_u16(), 404);
+    }
+
+    let grants = format!(
+        "/api/v1/households/{}/admin/person_access_grants",
+        fixture.household_id
+    );
+    let response = target.get(&grants, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let body = json_body(response);
+    let grant = body["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["person_id"] == dependent_id)
+        .expect("delegated grant");
+    assert_eq!(grant["access_level"], "manage");
+    assert_eq!(grant["relationship_type"], "family_member");
+    let grant_id = grant["id"].as_i64().unwrap();
+    let response = target.delete(&format!("{grants}/{grant_id}"), Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 422);
+    assert!(json_body(response)["error"]["errors"]["base"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|error| error
+            == "Relationship-owned grants must be revoked through their carer relationship"));
+    let response = target.get(&grants, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let body = json_body(response);
+    let grant = body["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["id"] == grant_id)
+        .expect("retained grant");
+    assert!(grant["revoked_at"].is_null());
+}
+
+#[test]
+fn invalid_person_updates_and_view_only_writes_preserve_the_record() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let path = format!(
+        "/api/v1/households/{}/people/{}",
+        fixture.household_id, fixture.managed_person_id
+    );
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let original_name = json_body(response)["data"]["name"].clone();
+    for method in ["PATCH", "PUT"] {
+        let payload = json!({"person": {"name": ""}});
+        let response = if method == "PATCH" {
+            target.patch_json(&path, &fixture.access_token, &payload)
+        } else {
+            target.put_json(&path, &fixture.access_token, &payload)
+        };
+        assert_eq!(response.status().as_u16(), 422, "{method} invalid person");
+        assert!(json_body(response)["error"]["errors"]["name"].is_array());
+    }
+    let response = target.put_json(
+        &path,
+        &fixture.view_access_token,
+        &json!({"person": {"name": "Forbidden replacement"}}),
+    );
+    assert_eq!(response.status().as_u16(), 403);
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(json_body(response)["data"]["name"], original_name);
+}
+
+#[test]
+fn location_history_and_invalid_updates_preserve_the_location() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let historical = format!(
+        "/api/v1/households/{}/locations/{}",
+        fixture.household_id, fixture.historical_location_portable_id
+    );
+    let response = target.get(&historical, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let tag = etag(&response);
+    let original = json_body(response)["data"].clone();
+    let response = target.delete_if_match(&historical, &fixture.access_token, &tag);
+    assert_eq!(response.status().as_u16(), 422);
+    assert!(json_body(response)["error"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("administration history"));
+
+    for method in ["PATCH", "PUT"] {
+        let payload = json!({"location": {"name": ""}});
+        let response = if method == "PATCH" {
+            target.patch_json_if_match(&historical, &fixture.access_token, &payload, &tag)
+        } else {
+            target.put_json_if_match(&historical, &fixture.access_token, &payload, &tag)
+        };
+        assert_eq!(response.status().as_u16(), 422, "{method} invalid location");
+        assert!(json_body(response)["error"]["errors"]["name"].is_array());
+    }
+    let response = target.get(&historical, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(etag(&response), tag);
+    assert_eq!(json_body(response)["data"], original);
+}
+
+#[test]
+fn location_membership_deletion_checks_location_and_person_permissions() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let locations = format!("/api/v1/households/{}/locations", fixture.household_id);
+    let response = target.post_json_authorized(
+        &locations,
+        &fixture.access_token,
+        &json!({"location": {"name": "Contract scoped membership shelf"}}),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let location = json_body(response)["data"].clone();
+    let location_id = location["id"].as_i64().unwrap();
+    let location_portable_id = location["portable_id"].as_str().unwrap();
+    let actual = format!("{locations}/{location_portable_id}/location_memberships");
+    let response = target.post_json_authorized(
+        &actual,
+        &fixture.access_token,
+        &json!({"location_membership": {"person_id": fixture.managed_person_portable_id}}),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let membership_id = json_body(response)["data"]["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let wrong = format!(
+        "{locations}/{}/location_memberships/{membership_id}",
+        fixture.primary_location_portable_id
+    );
+    let response = target.delete(&wrong, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 404);
+    let response = target.delete(
+        &format!("{actual}/{membership_id}"),
+        Some(&fixture.view_access_token),
+    );
+    assert_eq!(response.status().as_u16(), 403);
+    let response = target.delete(
+        &format!("{actual}/{membership_id}"),
+        Some(&fixture.view_owner_access_token),
+    );
+    assert_eq!(response.status().as_u16(), 403);
+    let person = format!(
+        "/api/v1/households/{}/people/{}",
+        fixture.household_id, fixture.managed_person_id
+    );
+    let response = target.get(&person, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert!(json_body(response)["data"]["location_ids"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|id| id == location_id));
+    let response = target.delete(
+        &format!("{actual}/{membership_id}"),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(response.status().as_u16(), 204);
+    let response = target.get(&person, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert!(!json_body(response)["data"]["location_ids"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|id| id == location_id));
 }
