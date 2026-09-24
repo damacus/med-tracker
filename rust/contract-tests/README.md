@@ -24,10 +24,12 @@ Run `task contract:reviews-rails` for medication review prompt list, read and up
 Run `task contract:care-rails` for people, person-grant, and location permission cases.
 Run `task contract:sync-rails` for sync v2, mobile v1, and change-feed cases.
 Run `task contract:sync-privacy-rails` to demonstrate the ignored hidden-person
-feed defect: Rails exposes ordinary health-event changes and tombstones to a
-member without that person's grant. The test reports only whether each class
-was disclosed. The direct probe also checks a visible managed event and pause
-period, plus hidden pause exclusion, before asserting non-disclosure.
+feed defect: Rails exposes a hidden health-event change and a hidden
+person-medication tombstone to a member without that person's grant. The probe
+captures a snapshot cursor before the writes and deletes the assignment through
+the public sync batch route. It recursively checks response fields for hidden
+portable IDs and reports only disclosure booleans. It also checks a visible
+managed event and pause period, plus hidden pause exclusion.
 Run `task contract:sync-rust` to record expected connection failures until the Rust API exists.
 Run `task contract:dose-precision-rails` to demonstrate the ignored
 expected-failing medication-take timestamp case: Rails accepts fractional

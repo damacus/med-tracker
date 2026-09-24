@@ -190,14 +190,20 @@ fixture = ActiveRecord::Base.transaction do
                                                       person: foreign_account.person, enabled: true)
   hidden_health_event = HealthEvent.create!(household: household, person: hidden_person, event_kind: :illness,
                                             title: "Contract hidden event #{nonce}", started_on: '2026-02-25')
-  hidden_feed_tombstone_source = HealthEvent.create!(household: household, person: hidden_person,
-                                                    event_kind: :illness, title: "Contract removed event #{nonce}",
-                                                    started_on: '2026-02-25')
-  hidden_feed_tombstone_id = hidden_feed_tombstone_source.portable_id
+  cursor_boundary_at = Time.utc(2026, 1, 1)
+  cursor_boundary_location = nil
   TenantContext.with(account: feed_account, household: household, membership: feed_membership,
                      request_id: "contract-feed-#{nonce}") do
-    hidden_feed_tombstone_source.destroy!
+    cursor_boundary_location = Location.create!(household: household, name: "Contract cursor boundary #{nonce}")
+    cursor_boundary_location.destroy!
   end
+  cursor_boundary_location_portable_id = cursor_boundary_location.portable_id
+  ApiChangeEvent.find_by!(household: household, record_type: 'Location',
+                          record_portable_id: cursor_boundary_location_portable_id)
+                .update_columns(occurred_at: cursor_boundary_at)
+  ApiTombstone.find_by!(household: household, record_type: 'Location',
+                        record_portable_id: cursor_boundary_location_portable_id)
+              .update_columns(deleted_at: cursor_boundary_at)
   foreign_health_event = HealthEvent.create!(household: foreign_household, person: foreign_account.person,
                                              event_kind: :illness, title: "Contract foreign event #{nonce}",
                                              started_on: '2026-02-25')
@@ -314,7 +320,7 @@ fixture = ActiveRecord::Base.transaction do
     foreign_person_name: foreign_account.person.name,
     view_access_token: view_access_token,
     feed_access_token: feed_access_token,
-    hidden_feed_tombstone_id: hidden_feed_tombstone_id,
+    cursor_boundary_location_portable_id: cursor_boundary_location_portable_id,
     view_account_id: view_account.id,
     view_membership_id: view_membership.id,
     delegated_access_token: delegated_access_token,

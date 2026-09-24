@@ -25,6 +25,17 @@ fn row_for_portable_id<'a>(rows: &'a Value, portable_id: &str) -> Option<&'a Val
         .find(|row| row["record_portable_id"] == portable_id)
 }
 
+fn contains_identifier(value: &Value, portable_id: &str) -> bool {
+    match value {
+        Value::String(text) => text.contains(portable_id),
+        Value::Array(rows) => rows.iter().any(|row| contains_identifier(row, portable_id)),
+        Value::Object(fields) => fields.iter().any(|(key, field)| {
+            key.contains(portable_id) || contains_identifier(field, portable_id)
+        }),
+        _ => false,
+    }
+}
+
 fn records(snapshot: &Value) -> &Value {
     &snapshot["data"]["records"]
 }
@@ -612,6 +623,31 @@ fn change_feed_retains_inclusive_ordered_writes_and_tombstone_metadata() {
 }
 
 #[test]
+fn change_feed_includes_events_and_tombstones_at_the_exact_cursor() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let boundary = "2026-01-01T00:00:00Z";
+    let feed = changes(&target, &fixture, &fixture.access_token, boundary);
+    let portable_id = &fixture.cursor_boundary_location_portable_id;
+    let event = row_for_portable_id(&feed["changes"], portable_id).expect("boundary event");
+    let tombstone =
+        row_for_portable_id(&feed["tombstones"], portable_id).expect("boundary tombstone");
+    assert_eq!(event["occurred_at"], boundary);
+    assert_eq!(event["action"], "create");
+    assert_eq!(tombstone["deleted_at"], boundary);
+    assert_eq!(tombstone["action"], "delete");
+
+    let after = changes(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        "2026-01-01T00:00:01Z",
+    );
+    assert!(row_for_portable_id(&after["changes"], portable_id).is_none());
+    assert!(row_for_portable_id(&after["tombstones"], portable_id).is_none());
+}
+
+#[test]
 fn change_feed_validates_cursor_and_current_household_access() {
     let target = Target::from_env();
     let fixture = fixture();
@@ -726,6 +762,13 @@ fn change_feed_projects_the_current_saved_dose_outcome() {
 fn change_feed_hides_ungranted_person_events_and_tombstones() {
     let target = Target::from_env();
     let fixture = fixture();
+    let snapshot = body(target.get(
+        &snapshot_path(&fixture, "sync/snapshot"),
+        Some(&fixture.view_access_token),
+    ));
+    let cursor = snapshot["data"]["cursor"]
+        .as_str()
+        .expect("snapshot cursor");
     let health_path = snapshot_path(&fixture, "health_events");
     let visible = target.post_json_authorized(
         &health_path,
@@ -782,12 +825,34 @@ fn change_feed_hides_ungranted_person_events_and_tombstones() {
         .expect("hidden pause ID")
         .to_owned();
 
-    let feed = changes(
-        &target,
-        &fixture,
-        &fixture.view_access_token,
-        "1970-01-01T00:00:00Z",
+    let hidden_assignment_path = format!(
+        "{}/{}",
+        snapshot_path(&fixture, "person_medications"),
+        fixture.hidden_assignment_portable_id
     );
+    let hidden_assignment = target.get(&hidden_assignment_path, Some(&fixture.feed_access_token));
+    assert_eq!(hidden_assignment.status().as_u16(), 200);
+    let tag = hidden_assignment.headers()["etag"]
+        .to_str()
+        .expect("assignment ETag")
+        .to_owned();
+    let deletion = target.post_json_authorized(
+        &snapshot_path(&fixture, "sync/batches"),
+        &fixture.feed_access_token,
+        &json!({"batch": {"operations": [{
+            "action": "delete", "resource_type": "person_medication",
+            "id": fixture.hidden_assignment_portable_id, "if_match": tag,
+            "attributes": {}
+        }]}}),
+    );
+    assert_eq!(deletion.status().as_u16(), 201);
+    assert!(
+        body(deletion)["data"]["results"][0]["record_portable_id"]
+            == fixture.hidden_assignment_portable_id,
+        "hidden deletion did not return its portable ID"
+    );
+
+    let feed = changes(&target, &fixture, &fixture.view_access_token, cursor);
     assert!(
         row_for_portable_id(&feed["changes"], &visible_id).is_some(),
         "managed control missing"
@@ -800,11 +865,26 @@ fn change_feed_hides_ungranted_person_events_and_tombstones() {
         row_for_portable_id(&feed["changes"], &hidden_pause_id).is_none(),
         "hidden pause disclosed"
     );
-    let hidden_event_disclosed = row_for_portable_id(&feed["changes"], &hidden_id).is_some();
+    let hidden_event_disclosed = contains_identifier(&feed["changes"], &hidden_id);
     let hidden_tombstone_disclosed =
-        row_for_portable_id(&feed["tombstones"], &fixture.hidden_feed_tombstone_id).is_some();
+        contains_identifier(&feed["tombstones"], &fixture.hidden_assignment_portable_id);
+    let hidden_identifier_disclosed = [
+        &fixture.hidden_person_portable_id,
+        &fixture.hidden_health_event_portable_id,
+        &hidden_id,
+        &fixture.hidden_assignment_portable_id,
+        &fixture.hidden_schedule_portable_id,
+        &fixture.hidden_medication_portable_id,
+        &fixture.hidden_dosage_portable_id,
+        &fixture.hidden_take_portable_id,
+        &fixture.hidden_preference_portable_id,
+        &fixture.hidden_pause_period_id,
+        &hidden_pause_id,
+    ]
+    .iter()
+    .any(|id| contains_identifier(&feed, id));
     assert!(
-        !hidden_event_disclosed && !hidden_tombstone_disclosed,
-        "hidden event disclosed: {hidden_event_disclosed}; hidden tombstone disclosed: {hidden_tombstone_disclosed}"
+        !hidden_event_disclosed && !hidden_tombstone_disclosed && !hidden_identifier_disclosed,
+        "hidden event disclosed: {hidden_event_disclosed}; hidden tombstone disclosed: {hidden_tombstone_disclosed}; hidden identifier disclosed: {hidden_identifier_disclosed}"
     );
 }
