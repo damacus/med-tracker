@@ -243,6 +243,25 @@ impl Target {
             .expect("target must respond")
     }
 
+    pub fn post_json_from_local_client(
+        &self,
+        path: &str,
+        token: &str,
+        client_ip: &str,
+        key: Option<&str>,
+        body: &serde_json::Value,
+    ) -> Response {
+        self.require_local_write();
+        let request = self
+            .authorize(self.client.post(self.url(path)), Some(token))
+            .header("X-Forwarded-For", client_ip);
+        let request = match key {
+            Some(key) => request.header("Idempotency-Key", key),
+            None => request,
+        };
+        request.json(body).send().expect("target must respond")
+    }
+
     pub fn post_json_if_match(
         &self,
         path: &str,

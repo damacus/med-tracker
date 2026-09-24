@@ -31,6 +31,15 @@ after an owner revokes the exact person grant. The disposable fixture includes
 a delegated mobile OAuth bearer credential that remains valid after the grant
 change; its older API session is expected to return 401 because the membership
 permission version changed.
+The replay file also submits paired sync batches through independent HTTP
+clients released by a barrier. It checks keyed response replay, persistent
+take UUID replay across different or absent request keys, and conflicting edits
+with distinct keys. The barrier aligns client dispatch; server scheduling may
+still serialize the requests, so this run does not prove internal overlap.
+Both requests in each pair use the same fixture-scoped `X-Forwarded-For` value
+on the local target to keep the 30-per-minute sync limit independent of other
+contract cases. A future Rust target may need equivalent trusted-proxy test
+setup or another isolated rate-limit bucket.
 Run `task contract:sync-privacy-rails` to demonstrate the ignored hidden-person
 feed defect: Rails exposes a hidden health-event change and a hidden
 person-medication tombstone to a member without that person's grant. The probe
