@@ -95,6 +95,8 @@ fixture = ActiveRecord::Base.transaction do
   grant_target_membership = household.household_memberships.create!(account: grant_target_account, role: :member,
                                                                     status: :active)
   primary_location = Location.create!(household: household, name: "Contract shelf #{nonce}")
+  hidden_location = Location.create!(household: household, name: "Contract hidden shelf #{nonce}")
+  LocationMembership.create!(household: household, person: hidden_person, location: hidden_location)
   foreign_location = Location.create!(household: foreign_household, name: "Contract foreign shelf #{nonce}")
   managed_medication = Medication.create!(household: household, location: primary_location,
                                           name: "Contract managed medicine #{nonce}", dose_amount: '2',
@@ -159,6 +161,20 @@ fixture = ActiveRecord::Base.transaction do
   foreign_schedule = Schedule.create!(household: foreign_household, person: foreign_account.person,
                                       medication: foreign_medication, dose_amount: '1', dose_unit: 'ml',
                                       frequency: 'Daily', start_date: '2026-02-25', end_date: '2099-12-31')
+  managed_take = MedicationTake.create!(household: household, schedule: historical_schedule, taken_at: Time.current,
+                                       dose_amount: '1', dose_unit: 'ml', taken_from_medication: historical_medication,
+                                       taken_from_location: historical_location)
+  hidden_take = MedicationTake.create!(household: household, schedule: hidden_schedule, taken_at: Time.current,
+                                      dose_amount: '1', dose_unit: 'ml', taken_from_medication: hidden_medication,
+                                      taken_from_location: primary_location)
+  foreign_take = MedicationTake.create!(household: foreign_household, schedule: foreign_schedule,
+                                       taken_at: Time.current, dose_amount: '1', dose_unit: 'ml',
+                                       taken_from_medication: foreign_medication,
+                                       taken_from_location: foreign_location)
+  managed_preference = NotificationPreference.create!(household: household, person: managed_person, enabled: true)
+  hidden_preference = NotificationPreference.create!(household: household, person: hidden_person, enabled: true)
+  foreign_preference = NotificationPreference.create!(household: foreign_household,
+                                                      person: foreign_account.person, enabled: true)
   hidden_health_event = HealthEvent.create!(household: household, person: hidden_person, event_kind: :illness,
                                             title: "Contract hidden event #{nonce}", started_on: '2026-02-25')
   foreign_health_event = HealthEvent.create!(household: foreign_household, person: foreign_account.person,
@@ -276,14 +292,19 @@ fixture = ActiveRecord::Base.transaction do
     foreign_person_portable_id: foreign_account.person.portable_id,
     foreign_person_name: foreign_account.person.name,
     view_access_token: view_access_token,
+    view_account_id: view_account.id,
+    view_membership_id: view_membership.id,
     delegated_access_token: delegated_access_token,
     view_owner_access_token: view_owner_access_token,
     care_access_token: care_access_token,
     grant_target_membership_id: grant_target_membership.id,
     primary_location_id: primary_location.id,
     primary_location_portable_id: primary_location.portable_id,
+    hidden_location_portable_id: hidden_location.portable_id,
     historical_location_portable_id: historical_location.portable_id,
+    historical_medication_portable_id: historical_medication.portable_id,
     foreign_location_id: foreign_location.id,
+    foreign_location_portable_id: foreign_location.portable_id,
     foreign_location_name: foreign_location.name,
     managed_medication_id: managed_medication.id,
     managed_medication_portable_id: managed_medication.portable_id,
@@ -305,14 +326,25 @@ fixture = ActiveRecord::Base.transaction do
     foreign_pause_period_id: foreign_pause_period.portable_id,
     managed_schedule_id: managed_schedule.id,
     managed_schedule_portable_id: managed_schedule.portable_id,
+    historical_schedule_portable_id: historical_schedule.portable_id,
     managed_occurrence_portable_id: managed_occurrence.portable_id,
+    managed_take_portable_id: managed_take.portable_id,
+    hidden_take_portable_id: hidden_take.portable_id,
+    foreign_take_portable_id: foreign_take.portable_id,
+    managed_preference_portable_id: managed_preference.portable_id,
+    hidden_preference_portable_id: hidden_preference.portable_id,
+    foreign_preference_portable_id: foreign_preference.portable_id,
     managed_health_event_portable_id: managed_health_event.portable_id,
     hidden_health_event_portable_id: hidden_health_event.portable_id,
     foreign_health_event_portable_id: foreign_health_event.portable_id,
     hidden_schedule_id: hidden_schedule.id,
+    hidden_schedule_portable_id: hidden_schedule.portable_id,
     foreign_schedule_id: foreign_schedule.id,
+    foreign_schedule_portable_id: foreign_schedule.portable_id,
     foreign_dosage_id: foreign_dosage.id,
+    foreign_dosage_portable_id: foreign_dosage.portable_id,
     hidden_dosage_id: hidden_dosage.id,
+    hidden_dosage_portable_id: hidden_dosage.portable_id,
     hidden_health_event_id: hidden_health_event.id,
     foreign_health_event_id: foreign_health_event.id,
     managed_review_prompt_id: managed_review_prompt.id,
