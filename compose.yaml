@@ -161,6 +161,7 @@ services:
       file: compose/base.yml
       service: rails
     profiles: [test]
+    command: rails server -b 0.0.0.0
     networks: [test]
     build:
       target: test

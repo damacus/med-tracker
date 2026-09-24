@@ -1,0 +1,27 @@
+---
+version: "3"
+
+tasks:
+  run:
+    desc: Run API black-box cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test auth --test care --no-fail-fast -- --test-threads=1
+
+  rails:
+    desc: Provision disposable test fixtures and run API contract cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails
+
+  rust:
+    desc: Run API contract cases against a Rust URL after provisioning isolated Rails fixtures
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust
