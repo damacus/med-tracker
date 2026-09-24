@@ -20,7 +20,15 @@ fn request_id(response: &Response) -> String {
         .to_owned()
 }
 
-fn assert_audit(target: &Target, fixture: &Fixture, id: &str, action: &str, status: u16) {
+fn assert_audit(
+    target: &Target,
+    fixture: &Fixture,
+    id: &str,
+    method: &str,
+    controller: &str,
+    action: &str,
+    status: u16,
+) {
     let response = target.get(
         &format!(
             "/api/v1/households/{}/admin/audit_logs",
@@ -38,10 +46,8 @@ fn assert_audit(target: &Target, fixture: &Fixture, id: &str, action: &str, stat
         .collect();
     assert_eq!(matching.len(), 1, "one visible audit event for {id}");
     assert_eq!(matching[0]["event_type"], "api.request");
-    assert_eq!(
-        matching[0]["metadata"]["http_method"],
-        if action == "create" { "POST" } else { "PATCH" }
-    );
+    assert_eq!(matching[0]["metadata"]["http_method"], method);
+    assert_eq!(matching[0]["metadata"]["controller"], controller);
     assert_eq!(matching[0]["metadata"]["action"], action);
     assert_eq!(matching[0]["metadata"]["status"], status);
 }
@@ -266,7 +272,15 @@ fn stock_removal_keeps_decimal_history_and_rejects_changed_replays() {
     let response = target.post_json_authorized(&path, &fixture.access_token, &payload);
     assert_eq!(response.status().as_u16(), 201);
     let first_request_id = request_id(&response);
-    assert_audit(&target, &fixture, &first_request_id, "create", 201);
+    assert_audit(
+        &target,
+        &fixture,
+        &first_request_id,
+        "POST",
+        "api/v1/stock_removals",
+        "create",
+        201,
+    );
     let first = body(response)["data"].clone();
     assert_eq!(first["quantity"], "1.25");
     assert_eq!(first["previous_quantity"], "80");
@@ -284,7 +298,15 @@ fn stock_removal_keeps_decimal_history_and_rejects_changed_replays() {
     let response = target.post_json_authorized(&path, &fixture.access_token, &payload);
     assert_eq!(response.status().as_u16(), 201);
     let replay_request_id = request_id(&response);
-    assert_audit(&target, &fixture, &replay_request_id, "create", 201);
+    assert_audit(
+        &target,
+        &fixture,
+        &replay_request_id,
+        "POST",
+        "api/v1/stock_removals",
+        "create",
+        201,
+    );
     assert_eq!(body(response)["data"], first);
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
@@ -320,7 +342,15 @@ fn stock_removal_keeps_decimal_history_and_rejects_changed_replays() {
     );
     assert_eq!(response.status().as_u16(), 201);
     let second_request_id = request_id(&response);
-    assert_audit(&target, &fixture, &second_request_id, "create", 201);
+    assert_audit(
+        &target,
+        &fixture,
+        &second_request_id,
+        "POST",
+        "api/v1/stock_removals",
+        "create",
+        201,
+    );
     let second = body(response)["data"].clone();
     assert_eq!(second["previous_quantity"], "78.75");
     assert_eq!(second["remaining_quantity"], "77.75");
@@ -390,6 +420,8 @@ fn inventory_adjustment_and_reorder_transitions_retain_http_state_and_audit() {
         &target,
         &fixture,
         &adjust_request_id,
+        "PATCH",
+        "api/v1/medications",
         "adjust_inventory",
         200,
     );
@@ -422,6 +454,8 @@ fn inventory_adjustment_and_reorder_transitions_retain_http_state_and_audit() {
         &target,
         &fixture,
         &ordered_request_id,
+        "PATCH",
+        "api/v1/medications",
         "mark_as_ordered",
         200,
     );
@@ -434,6 +468,16 @@ fn inventory_adjustment_and_reorder_transitions_retain_http_state_and_audit() {
         &json!({}),
     );
     assert_eq!(response.status().as_u16(), 200);
+    let first_received_request_id = request_id(&response);
+    assert_audit(
+        &target,
+        &fixture,
+        &first_received_request_id,
+        "PATCH",
+        "api/v1/medications",
+        "mark_as_received",
+        200,
+    );
     let received = body(response);
     assert_eq!(received["data"]["reorder_status"], "received");
     assert_eq!(received["data"]["current_supply"], "15.12");
@@ -457,6 +501,16 @@ fn inventory_adjustment_and_reorder_transitions_retain_http_state_and_audit() {
         &json!({}),
     );
     assert_eq!(response.status().as_u16(), 200);
+    let managed_ordered_request_id = request_id(&response);
+    assert_audit(
+        &target,
+        &fixture,
+        &managed_ordered_request_id,
+        "PATCH",
+        "api/v1/medications",
+        "mark_as_ordered",
+        200,
+    );
     assert_eq!(body(response)["data"]["reorder_status"], "ordered");
     let response = target.patch_json(
         &format!("{managed_path}/mark_as_received"),
@@ -469,6 +523,8 @@ fn inventory_adjustment_and_reorder_transitions_retain_http_state_and_audit() {
         &target,
         &fixture,
         &received_request_id,
+        "PATCH",
+        "api/v1/medications",
         "mark_as_received",
         200,
     );
