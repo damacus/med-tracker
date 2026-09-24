@@ -27,6 +27,7 @@ set -lx PATH $shim_dir $PATH
 set -lx CONTRACT_FAKE_RUN_DIR_FILE $test_dir/latest-run
 
 function check_status -a run_status cleanup_status expected_status
+    set -lx CONTRACT_FAKE_REMOVE_OWNER 0
     set -lx CONTRACT_FAKE_RUN_STATUS $run_status
     set -lx CONTRACT_FAKE_CLEANUP_STATUS $cleanup_status
     fish --no-config rust/contract-tests/run.fish rails > $test_dir/output 2>&1
@@ -48,6 +49,24 @@ function check_status -a run_status cleanup_status expected_status
     end
 end
 
+function check_missing_owner
+    set -lx CONTRACT_FAKE_REMOVE_OWNER 1
+    set -lx CONTRACT_FAKE_RUN_STATUS 0
+    set -lx CONTRACT_FAKE_CLEANUP_STATUS 0
+    fish --no-config rust/contract-tests/run.fish rails >$test_dir/output 2>&1
+    set -l actual_status $status
+    set -l run_dir (cat $test_dir/latest-run)
+    set -a status_test_run_dirs $run_dir
+    test $actual_status -ne 0
+    or begin; echo 'Missing owner marker reported success' >&2; return 1; end
+    test -d $run_dir; and test -f $run_dir/fixture.json
+    or begin; echo 'Missing owner marker lost recovery evidence' >&2; return 1; end
+    test ! -e $run_dir/owner
+    or begin; echo 'Missing owner marker was recreated without validation' >&2; return 1; end
+    rg -q 'ownership marker missing' $test_dir/output
+    or begin; echo 'Missing owner marker had no diagnostic' >&2; return 1; end
+end
+
 check_status 0 7 7
 or exit $status
 check_status 23 7 23
@@ -55,6 +74,8 @@ or exit $status
 check_status 0 0 0
 or exit $status
 check_status 23 0 23
+or exit $status
+check_missing_owner
 or exit $status
 
 echo 'Contract run and cleanup exit statuses passed'
