@@ -37,6 +37,7 @@ fn review_lists_filter_paginate_and_hide_ungranted_people() {
     let managed_prompt_id = fixture.managed_review_prompt_id.to_string();
     let hidden_prompt_id = fixture.hidden_review_prompt_id.to_string();
     let foreign_prompt_id = fixture.foreign_review_prompt_id.to_string();
+    let low_signal_prompt_id = fixture.low_signal_review_prompt_id.to_string();
     assert_eq!(rows.len(), 4);
     assert!(rows
         .iter()
@@ -50,6 +51,9 @@ fn review_lists_filter_paginate_and_hide_ungranted_people() {
     assert!(!rows
         .iter()
         .any(|row| row["id"].as_str() == Some(foreign_prompt_id.as_str())));
+    assert!(!rows
+        .iter()
+        .any(|row| row["id"].as_str() == Some(low_signal_prompt_id.as_str())));
     assert_eq!(list["meta"]["total_count"], 4);
 
     let first = body(target.get(
@@ -88,6 +92,37 @@ fn review_lists_filter_paginate_and_hide_ungranted_people() {
         Some(&fixture.access_token),
     ));
     assert_eq!(hidden["meta"]["total_count"], 5);
+    let hidden_rows = hidden["data"].as_array().unwrap();
+    assert!(hidden_rows.iter().any(|row| row["id"].as_str()
+        == Some(low_signal_prompt_id.as_str())
+        && row["person_id"].as_str() == Some(managed_person_id.as_str())
+        && row["status"] == "hidden_low_signal"));
+    assert!(!hidden_rows.iter().any(|row| {
+        row["id"].as_str() == Some(hidden_prompt_id.as_str())
+            || row["id"].as_str() == Some(foreign_prompt_id.as_str())
+    }));
+    let paged_ids: Vec<String> = (1..=5)
+        .map(|page| {
+            let response = target.get(
+                &format!("{base}?show_hidden=1&page={page}&per_page=1"),
+                Some(&fixture.view_access_token),
+            );
+            assert_eq!(response.status().as_u16(), 200);
+            let page_body = body(response);
+            assert_eq!(page_body["meta"]["total_count"], 5);
+            page_body["data"][0]["id"].as_str().unwrap().to_owned()
+        })
+        .collect();
+    assert_eq!(paged_ids.len(), 5);
+    assert_eq!(
+        paged_ids
+            .iter()
+            .filter(|id| *id == &low_signal_prompt_id)
+            .count(),
+        1
+    );
+    assert!(!paged_ids.contains(&hidden_prompt_id));
+    assert!(!paged_ids.contains(&foreign_prompt_id));
     let invalid = target.get(
         &format!("{base}?priority=private-invalid"),
         Some(&fixture.access_token),
@@ -248,12 +283,15 @@ fn review_patch_and_put_retain_evidence_and_emit_auditable_updates() {
     let response = target.put_json_if_match(&url, &fixture.access_token, &json!({"medication_review_prompt": {"status": "not_relevant", "review_note": "Updated note"}}), &patched_tag);
     assert_eq!(response.status().as_u16(), 200);
     let put_tag = etag(&response);
+    assert_ne!(put_tag, patched_tag);
     let updated = body(response)["data"].clone();
     assert_eq!(updated["status"], "not_relevant");
     assert_eq!(updated["review_note"], "Updated note");
     assert_eq!(updated["evidence_text"], snapshot["evidence_text"]);
     assert_eq!(updated["etag"], put_tag);
-    let retained = body(target.get(&url, Some(&fixture.access_token)))["data"].clone();
+    let retained_response = target.get(&url, Some(&fixture.access_token));
+    assert_eq!(etag(&retained_response), put_tag);
+    let retained = body(retained_response)["data"].clone();
     assert_eq!(retained, updated);
     let reviewed = body(target.get(
         &format!("{base}?review_status=reviewed"),
