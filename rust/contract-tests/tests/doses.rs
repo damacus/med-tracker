@@ -208,7 +208,7 @@ fn create_routine_assignment(target: &Target, fixture: &Fixture) -> (i64, i64) {
 fn schedule_occurrences_are_stable_person_scoped_and_validate_ranges() {
     let target = Target::from_env();
     let fixture = fixture();
-    let (date, _) = clock();
+    let (date, taken_at) = clock();
     let path = schedule_path(&fixture, fixture.managed_schedule_id);
     let first = rows(&target, &path, &fixture.view_access_token, &date);
     assert!(!first.is_empty());
@@ -239,14 +239,43 @@ fn schedule_occurrences_are_stable_person_scoped_and_validate_ranges() {
     }
     let response = target.get(&format!("{path}?start_date={date}&end_date={date}"), None);
     assert_eq!(response.status().as_u16(), 401);
+    let before_stock = stock(&target, &fixture, fixture.managed_medication_id);
     for id in [fixture.hidden_schedule_id, fixture.foreign_schedule_id] {
-        let path = schedule_path(&fixture, id);
+        let hidden_path = schedule_path(&fixture, id);
         let response = target.get(
-            &format!("{path}?start_date={date}&end_date={date}"),
-            Some(&fixture.view_access_token),
+            &format!("{hidden_path}?start_date={date}&end_date={date}"),
+            Some(&fixture.access_token),
+        );
+        assert_eq!(response.status().as_u16(), 404);
+        let response = target.post_json_authorized(
+            &format!("{hidden_path}/not_taken"),
+            &fixture.access_token,
+            &json!({"dose_occurrence": {"key": row["key"], "reason": "unwell"}}),
+        );
+        assert_eq!(response.status().as_u16(), 404);
+        let response = target.post_json_authorized(
+            &format!("{hidden_path}/take"),
+            &fixture.access_token,
+            &json!({"dose_occurrence": {
+                "key": row["key"],
+                "taken_at": taken_at,
+                "taken_from_medication_id": fixture.managed_medication_id
+            }}),
+        );
+        assert_eq!(response.status().as_u16(), 404);
+        let response = target.patch_json_if_match(
+            &format!("{hidden_path}/reopen"),
+            &fixture.access_token,
+            &json!({"dose_occurrence": {"key": row["key"]}}),
+            "stale",
         );
         assert_eq!(response.status().as_u16(), 404);
     }
+    assert_eq!(rows(&target, &path, &fixture.access_token, &date), first);
+    assert_eq!(
+        stock(&target, &fixture, fixture.managed_medication_id),
+        before_stock
+    );
 }
 
 #[test]
@@ -420,7 +449,7 @@ fn schedule_take_replaces_not_taken_once_and_stays_immutable() {
         target.post_json_authorized(&format!("{path}/take"), &fixture.access_token, &payload);
     if response.status().as_u16() != 200 {
         panic!(
-            "assignment take: {} {}",
+            "schedule take replay: {} {}",
             response.status(),
             response.text().unwrap()
         );
@@ -464,7 +493,7 @@ fn direct_assignment_occurrences_require_routine_and_person_access() {
     let (date, _) = clock();
     let as_needed = assignment_path(&fixture, fixture.managed_assignment_id);
     assert!(rows(&target, &as_needed, &fixture.access_token, &date).is_empty());
-    let (id, _) = create_routine_assignment(&target, &fixture);
+    let (id, medication_id) = create_routine_assignment(&target, &fixture);
     let path = assignment_path(&fixture, id);
     let first = rows(&target, &path, &fixture.view_access_token, &date);
     assert_eq!(first.len(), 1);
@@ -483,16 +512,58 @@ fn direct_assignment_occurrences_require_routine_and_person_access() {
         &json!({"dose_occurrence": {"key": first[0]["key"], "reason": "unwell"}}),
     );
     assert_eq!(response.status().as_u16(), 403);
+    let taken_at = (OffsetDateTime::now_utc() + time::Duration::seconds(1))
+        .format(&Rfc3339)
+        .unwrap();
+    let take_payload = json!({"dose_occurrence": {
+        "key": first[0]["key"],
+        "taken_at": taken_at,
+        "taken_from_medication_id": medication_id
+    }});
+    let response = target.post_json_authorized(
+        &format!("{path}/take"),
+        &fixture.view_access_token,
+        &take_payload,
+    );
+    assert_eq!(response.status().as_u16(), 403);
+    let response = target.patch_json_if_match(
+        &format!("{path}/reopen"),
+        &fixture.view_access_token,
+        &json!({"dose_occurrence": {"key": first[0]["key"]}}),
+        "stale",
+    );
+    assert_eq!(response.status().as_u16(), 403);
+    assert_eq!(rows(&target, &path, &fixture.access_token, &date), first);
+    assert_eq!(stock(&target, &fixture, medication_id), "20.0");
     for id in [fixture.hidden_assignment_id, fixture.foreign_assignment_id] {
+        let hidden_path = assignment_path(&fixture, id);
         let response = target.get(
-            &format!(
-                "{}?start_date={date}&end_date={date}",
-                assignment_path(&fixture, id)
-            ),
-            Some(&fixture.view_access_token),
+            &format!("{hidden_path}?start_date={date}&end_date={date}"),
+            Some(&fixture.access_token),
+        );
+        assert_eq!(response.status().as_u16(), 404);
+        let response = target.post_json_authorized(
+            &format!("{hidden_path}/not_taken"),
+            &fixture.access_token,
+            &json!({"dose_occurrence": {"key": first[0]["key"], "reason": "unwell"}}),
+        );
+        assert_eq!(response.status().as_u16(), 404);
+        let response = target.post_json_authorized(
+            &format!("{hidden_path}/take"),
+            &fixture.access_token,
+            &take_payload,
+        );
+        assert_eq!(response.status().as_u16(), 404);
+        let response = target.patch_json_if_match(
+            &format!("{hidden_path}/reopen"),
+            &fixture.access_token,
+            &json!({"dose_occurrence": {"key": first[0]["key"]}}),
+            "stale",
         );
         assert_eq!(response.status().as_u16(), 404);
     }
+    assert_eq!(rows(&target, &path, &fixture.access_token, &date), first);
+    assert_eq!(stock(&target, &fixture, medication_id), "20.0");
 }
 
 #[test]
@@ -505,6 +576,7 @@ fn direct_assignment_outcome_reopens_then_records_one_take() {
         .format(&Rfc3339)
         .unwrap();
     let path = assignment_path(&fixture, id);
+    let before_stock: f64 = stock(&target, &fixture, medication_id).parse().unwrap();
     let key = rows(&target, &path, &fixture.access_token, &date)[0]["key"].clone();
     let response = target.post_json_authorized(
         &format!("{path}/not_taken"),
@@ -513,6 +585,12 @@ fn direct_assignment_outcome_reopens_then_records_one_take() {
     );
     assert_eq!(response.status().as_u16(), 200);
     let tag = etag(&response);
+    assert_eq!(
+        stock(&target, &fixture, medication_id)
+            .parse::<f64>()
+            .unwrap(),
+        before_stock
+    );
     let response = target.patch_json_if_match(
         &format!("{path}/reopen"),
         &fixture.access_token,
@@ -520,7 +598,23 @@ fn direct_assignment_outcome_reopens_then_records_one_take() {
         &tag,
     );
     assert_eq!(response.status().as_u16(), 200);
-    assert_eq!(body(response)["data"]["outcome"], "open");
+    let reopened_tag = etag(&response);
+    let reopened = body(response)["data"].clone();
+    assert_eq!(reopened["outcome"], "open");
+    assert!(reopened["reason"].is_null());
+    assert!(reopened["note"].is_null());
+    assert_eq!(reopened["etag"], reopened_tag);
+    assert_ne!(reopened_tag, tag);
+    assert_eq!(
+        rows(&target, &path, &fixture.access_token, &date)[0],
+        reopened
+    );
+    assert_eq!(
+        stock(&target, &fixture, medication_id)
+            .parse::<f64>()
+            .unwrap(),
+        before_stock
+    );
     let payload = json!({"dose_occurrence": {
         "key": key,
         "taken_at": taken_at,
@@ -538,12 +632,24 @@ fn direct_assignment_outcome_reopens_then_records_one_take() {
     }
     let taken = body(response)["data"].clone();
     assert_eq!(taken["outcome"], "taken");
+    assert_eq!(
+        stock(&target, &fixture, medication_id)
+            .parse::<f64>()
+            .unwrap(),
+        before_stock - 1.25
+    );
     let response =
         target.post_json_authorized(&format!("{path}/take"), &fixture.access_token, &payload);
     assert_eq!(response.status().as_u16(), 200);
     assert_eq!(
         body(response)["data"]["medication_take_id"],
         taken["medication_take_id"]
+    );
+    assert_eq!(
+        stock(&target, &fixture, medication_id)
+            .parse::<f64>()
+            .unwrap(),
+        before_stock - 1.25
     );
     let response = target.get(&takes_path(&fixture), Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
