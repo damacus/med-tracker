@@ -35,6 +35,17 @@ tasks:
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test dosage_health -- --test-threads=1
 
+  run-dosage-health-privacy:
+    desc: Run the expected-failing dosage privacy case against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test dosage_health -- --ignored --exact dosage_option_collection_hides_ungranted_medication --test-threads=1
+
   oauth:
     desc: Run OAuth black-box cases against a checked target and fixture
     requires:
@@ -70,6 +81,11 @@ tasks:
     desc: Run dosage-option and health-event cases against isolated Rails
     cmds:
       - fish rust/contract-tests/run.fish rails dosage-health
+
+  dosage-health-privacy-rails:
+    desc: Demonstrate the currently failing Rails dosage privacy case
+    cmds:
+      - fish rust/contract-tests/run.fish rails dosage-health-privacy
 
   rust:
     desc: Run API contract cases against a Rust URL after provisioning isolated Rails fixtures
