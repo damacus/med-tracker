@@ -59,6 +59,13 @@ pub struct Fixture {
     pub hidden_dosage_id: i64,
     pub hidden_health_event_id: i64,
     pub foreign_health_event_id: i64,
+    pub managed_review_prompt_id: i64,
+    pub second_review_prompt_id: i64,
+    pub low_signal_review_prompt_id: i64,
+    pub edit_review_prompt_id: i64,
+    pub invalid_review_prompt_id: i64,
+    pub hidden_review_prompt_id: i64,
+    pub foreign_review_prompt_id: i64,
 }
 
 pub struct Target {

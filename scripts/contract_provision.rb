@@ -106,6 +106,52 @@ fixture = ActiveRecord::Base.transaction do
   foreign_health_event = HealthEvent.create!(household: foreign_household, person: foreign_account.person,
                                              event_kind: :illness, title: "Contract foreign event #{nonce}",
                                              started_on: '2026-02-25')
+  review_partner = Medication.create!(household: household, location: primary_location,
+                                      name: "Contract review partner #{nonce}", dose_amount: '1', dose_unit: 'tablet')
+  foreign_review_partner = Medication.create!(household: foreign_household, location: foreign_location,
+                                              name: "Contract foreign review partner #{nonce}", dose_amount: '1',
+                                              dose_unit: 'tablet')
+  review_evidence = { 'high' => 'high', 'moderate' => 'moderate', 'low' => 'low',
+                      'edit' => 'unknown', 'invalid' => 'unknown' }.to_h do |label, risk|
+    evidence = MedicationReviewEvidenceRecord.create!(source_name: 'Contract source',
+                                                      source_record_id: "contract-#{label}-#{nonce}",
+                                                      source_url: 'https://example.test/contract-evidence',
+                                                      retrieved_on: '2026-02-25', product_name: 'Contract medicine',
+                                                      label_section: 'warnings',
+                                                      evidence_text: "Contract evidence #{risk}",
+                                                      risk_level: risk, match_confidence: risk,
+                                                      match_status: 'not_pairwise')
+    [label, evidence]
+  end
+  review_attributes = lambda do |owner, subject, primary, partner, evidence, status|
+    MedicationReviewPrompt.create!(household: owner, person: subject, primary_medication: primary,
+                                   interacting_medication: partner, evidence_record: evidence,
+                                   risk_level: evidence.risk_level, match_confidence: evidence.match_confidence,
+                                   primary_medication_name: primary.name, interacting_medication_name: partner.name,
+                                   evidence_source_name: evidence.source_name,
+                                   evidence_source_url: evidence.source_url,
+                                   evidence_source_checked_on: evidence.retrieved_on,
+                                   evidence_source_version: 'contract-v1',
+                                   evidence_source_effective_on: evidence.retrieved_on,
+                                   matched_term: 'Contract medicine', match_type: 'reviewed_pair',
+                                   source_instruction: 'Discuss with a practitioner',
+                                   match_reason: 'Contract pair', evidence_text: evidence.evidence_text,
+                                   status: status)
+  end
+  managed_review_prompt = review_attributes.call(household, managed_person, managed_medication, review_partner,
+                                                 review_evidence.fetch('high'), 'needs_review')
+  second_review_prompt = review_attributes.call(household, managed_person, managed_medication, review_partner,
+                                                review_evidence.fetch('moderate'), 'needs_review')
+  low_signal_review_prompt = review_attributes.call(household, managed_person, managed_medication, review_partner,
+                                                    review_evidence.fetch('low'), 'hidden_low_signal')
+  edit_review_prompt = review_attributes.call(household, managed_person, managed_medication, review_partner,
+                                              review_evidence.fetch('edit'), 'needs_review')
+  invalid_review_prompt = review_attributes.call(household, managed_person, managed_medication, review_partner,
+                                                 review_evidence.fetch('invalid'), 'needs_review')
+  hidden_review_prompt = review_attributes.call(household, hidden_person, hidden_medication, review_partner,
+                                                review_evidence.fetch('high'), 'needs_review')
+  foreign_review_prompt = review_attributes.call(foreign_household, foreign_account.person, foreign_medication,
+                                                 foreign_review_partner, review_evidence.fetch('high'), 'needs_review')
   session, access_token, = ApiSession.issue_for(
     account: account, household_membership: membership, device_name: 'contract-tests'
   )
@@ -188,7 +234,14 @@ fixture = ActiveRecord::Base.transaction do
     foreign_dosage_id: foreign_dosage.id,
     hidden_dosage_id: hidden_dosage.id,
     hidden_health_event_id: hidden_health_event.id,
-    foreign_health_event_id: foreign_health_event.id
+    foreign_health_event_id: foreign_health_event.id,
+    managed_review_prompt_id: managed_review_prompt.id,
+    second_review_prompt_id: second_review_prompt.id,
+    low_signal_review_prompt_id: low_signal_review_prompt.id,
+    edit_review_prompt_id: edit_review_prompt.id,
+    invalid_review_prompt_id: invalid_review_prompt.id,
+    hidden_review_prompt_id: hidden_review_prompt.id,
+    foreign_review_prompt_id: foreign_review_prompt.id
   }
 end
 File.open(path, File::WRONLY | File::CREAT | File::EXCL, 0o600) do |file|
