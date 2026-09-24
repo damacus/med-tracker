@@ -2,10 +2,10 @@
 
 Run `task contract:rails` to start this worktree's isolated Rails test server,
 create two disposable households and a normal bearer session, and run the three
-initial cases. The fixture JSON is stored at `tmp/contract-tests/fixture.json`
-with mode `0600` while the command runs, then removed. The test database is
-local to this worktree's Docker Compose project; records remain there until
-that disposable test database is removed.
+initial cases. Each run stores fixture JSON in its own directory under
+`tmp/contract-tests/` with mode `0600` while the command runs, then removes
+that directory. The test database is local to this worktree's Docker Compose
+project; records remain there until that disposable test database is removed.
 
 Run `task contract:rust RUST_URL=http://127.0.0.1:39999` to run the same cases
 against a Rust server. Until that server exists, connection failures are
