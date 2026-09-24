@@ -35,6 +35,17 @@ tasks:
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test schedules -- --test-threads=1
 
+  run-schedule-precision:
+    desc: Run the expected-failing Rails schedule precision case against a checked target
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test schedules -- --ignored --exact schedule_preserves_fractional_min_hours_between_doses --test-threads=1
+
   run-dosage-health:
     desc: Run dosage-option and health-event cases against a checked target and fixture
     requires:
@@ -97,6 +108,11 @@ tasks:
     desc: Run schedule cases against isolated Rails
     cmds:
       - fish rust/contract-tests/run.fish rails schedules
+
+  schedule-precision-rails:
+    desc: Demonstrate Rails' current loss of fractional schedule minimum hours
+    cmds:
+      - fish rust/contract-tests/run.fish rails schedule-precision
 
   dosage-health-privacy-rails:
     desc: Demonstrate the currently failing Rails dosage privacy case
