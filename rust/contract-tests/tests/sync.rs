@@ -48,6 +48,42 @@ fn assert_batch_result(result: &Value, index: u64, action: &str, record_type: &s
     id.to_owned()
 }
 
+fn assert_batch_error(response: Response, status: u16, code: &str) {
+    assert_eq!(response.status().as_u16(), status);
+    let content_type = response.headers()["content-type"].to_str().unwrap();
+    assert_eq!(content_type.split(';').next().unwrap(), "application/json");
+    let request_id = response.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let error = body(response)["error"].clone();
+    assert_eq!(error["code"], code);
+    assert!(error["message"]
+        .as_str()
+        .is_some_and(|text| !text.is_empty()));
+    assert_eq!(error["request_id"], request_id);
+}
+
+fn location_feed_identifiers(feed: &Value) -> (Vec<String>, Vec<String>) {
+    let identifiers = |kind| {
+        let mut ids: Vec<String> = feed[kind]
+            .as_array()
+            .expect("feed collection")
+            .iter()
+            .filter(|row| row["record_type"] == "Location")
+            .map(|row| {
+                row["record_portable_id"]
+                    .as_str()
+                    .expect("location portable ID")
+                    .to_owned()
+            })
+            .collect();
+        ids.sort();
+        ids
+    };
+    (identifiers("changes"), identifiers("tombstones"))
+}
+
 #[test]
 fn batch_applies_indexed_care_creates_with_portable_results() {
     let target = Target::from_env();
@@ -168,7 +204,7 @@ fn batch_validates_actions_versions_and_current_permissions() {
             "id": fixture.managed_medication_portable_id, "if_match": etag,
             "attributes": {"new_quantity": "invalid", "reason": "Counted offline"}}]),
     );
-    assert_eq!(response.status().as_u16(), 422);
+    assert_batch_error(response, 422, "unprocessable_content");
     let response = batch(
         &target,
         &fixture,
@@ -176,18 +212,14 @@ fn batch_validates_actions_versions_and_current_permissions() {
         json!([{"resource_type": "location", "action": "reorder",
             "id": fixture.primary_location_portable_id, "attributes": {}}]),
     );
-    assert_eq!(response.status().as_u16(), 422);
-    assert_eq!(
-        body(response)["error"]["code"],
-        "sync_operation_unsupported"
-    );
+    assert_batch_error(response, 422, "sync_operation_unsupported");
     let response = batch(
         &target,
         &fixture,
         &fixture.view_access_token,
         json!([{"resource_type": "location", "action": "create", "attributes": {"name": "Denied batch"}}]),
     );
-    assert_eq!(response.status().as_u16(), 403);
+    assert_batch_error(response, 403, "forbidden");
     let response = batch(
         &target,
         &fixture,
@@ -196,7 +228,7 @@ fn batch_validates_actions_versions_and_current_permissions() {
             "id": fixture.hidden_person_portable_id, "if_match": "\"stale\"",
             "attributes": {"name": "Hidden batch"}}]),
     );
-    assert_eq!(response.status().as_u16(), 404);
+    assert_batch_error(response, 404, "not_found");
 }
 
 #[test]
@@ -327,6 +359,8 @@ fn batch_rolls_back_created_resource_after_a_late_stale_operation() {
         Some(&fixture.access_token),
     ));
     let cursor = snapshot["data"]["cursor"].as_str().unwrap();
+    let before_feed = changes(&target, &fixture, &fixture.access_token, cursor);
+    let before_location_identifiers = location_feed_identifiers(&before_feed);
     let response = batch(
         &target,
         &fixture,
@@ -355,11 +389,10 @@ fn batch_rolls_back_created_resource_after_a_late_stale_operation() {
         .iter()
         .all(|row| row["name"] != "Discarded batch location"));
     let feed = changes(&target, &fixture, &fixture.access_token, cursor);
-    assert!(feed["changes"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .all(|row| row["record"]["name"] != "Discarded batch location"));
+    assert_eq!(
+        location_feed_identifiers(&feed),
+        before_location_identifiers
+    );
     let audit = body(target.get(
         &snapshot_path(&fixture, "admin/audit_logs"),
         Some(&fixture.access_token),
@@ -373,6 +406,39 @@ fn batch_rolls_back_created_resource_after_a_late_stale_operation() {
     assert_eq!(related.len(), 1);
     assert_eq!(related[0]["event_type"], "api.request");
     assert_eq!(related[0]["metadata"]["status"], 409);
+}
+
+#[test]
+fn location_feed_identifiers_detect_an_event_without_a_record_body() {
+    let before = json!({"changes": [], "tombstones": []});
+    let leaked_change = json!({"changes": [{
+        "record_type": "Location", "record_portable_id": "11111111-1111-4111-8111-111111111111",
+        "action": "create", "metadata": {}
+    }], "tombstones": []});
+    let leaked_tombstone = json!({"changes": [], "tombstones": [{
+        "record_type": "Location", "record_portable_id": "22222222-2222-4222-8222-222222222222",
+        "action": "delete", "metadata": {}
+    }]});
+    assert!(leaked_change["changes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|row| row["record"]["name"] != "Discarded batch location"));
+    assert_eq!(location_feed_identifiers(&before), (vec![], vec![]));
+    assert_eq!(
+        location_feed_identifiers(&leaked_change),
+        (
+            vec!["11111111-1111-4111-8111-111111111111".to_owned()],
+            vec![]
+        )
+    );
+    assert_eq!(
+        location_feed_identifiers(&leaked_tombstone),
+        (
+            vec![],
+            vec!["22222222-2222-4222-8222-222222222222".to_owned()]
+        )
+    );
 }
 
 fn changes(target: &Target, fixture: &Fixture, token: &str, cursor: &str) -> Value {
