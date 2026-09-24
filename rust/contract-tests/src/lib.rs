@@ -40,10 +40,12 @@ pub struct Fixture {
     pub foreign_location_id: i64,
     pub foreign_location_name: String,
     pub managed_medication_id: i64,
+    pub managed_medication_portable_id: String,
     pub hidden_medication_id: i64,
     pub foreign_medication_id: i64,
     pub foreign_medication_name: String,
     pub foreign_dosage_id: i64,
+    pub hidden_dosage_id: i64,
     pub hidden_health_event_id: i64,
     pub foreign_health_event_id: i64,
 }

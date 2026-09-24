@@ -28,6 +28,31 @@ fn health_path(fixture: &Fixture) -> String {
     format!("/api/v1/households/{}/health_events", fixture.household_id)
 }
 
+fn paginated_ids(target: &Target, path: &str, token: &str) -> Vec<i64> {
+    let first = target.get(&format!("{path}?page=1&per_page=1"), Some(token));
+    assert_eq!(first.status().as_u16(), 200);
+    let first_page = body(first);
+    let total = first_page["meta"]["total_count"].as_u64().unwrap();
+    assert_eq!(first_page["meta"]["page"], 1);
+    assert_eq!(first_page["meta"]["per_page"], 1);
+    let mut ids = Vec::new();
+    for page in 1..=total {
+        let collection = if page == 1 {
+            first_page.clone()
+        } else {
+            let response = target.get(&format!("{path}?page={page}&per_page=1"), Some(token));
+            assert_eq!(response.status().as_u16(), 200);
+            body(response)
+        };
+        assert_eq!(collection["meta"]["page"], page);
+        assert_eq!(collection["meta"]["per_page"], 1);
+        assert_eq!(collection["meta"]["total_count"], total);
+        assert_eq!(collection["data"].as_array().unwrap().len(), 1);
+        ids.push(collection["data"][0]["id"].as_i64().unwrap());
+    }
+    ids
+}
+
 fn assert_audit_action(target: &Target, fixture: &Fixture, controller: &str, action: &str) {
     let path = format!(
         "/api/v1/households/{}/admin/audit_logs",
@@ -44,12 +69,16 @@ fn assert_audit_action(target: &Target, fixture: &Fixture, controller: &str, act
     }));
 }
 
-fn create_dosage(target: &Target, fixture: &Fixture, medication_id: i64) -> (Value, String) {
+fn create_dosage(
+    target: &Target,
+    fixture: &Fixture,
+    medication_portable_id: &str,
+) -> (Value, String) {
     let response = target.post_json_authorized(
         &dosage_path(fixture),
         &fixture.access_token,
         &json!({"dosage_option": {
-            "medication_id": medication_id.to_string(),
+            "medication_id": medication_portable_id,
             "amount": "2.125", "unit": "ml", "frequency": "Twice daily",
             "description": "Contract liquid dose", "default_for_adults": true,
             "default_max_daily_doses": 2, "default_min_hours_between_doses": "8.5",
@@ -59,7 +88,18 @@ fn create_dosage(target: &Target, fixture: &Fixture, medication_id: i64) -> (Val
     );
     assert_eq!(response.status().as_u16(), 201);
     let tag = etag(&response);
-    (body(response)["data"].clone(), tag)
+    let created = body(response)["data"].clone();
+    assert_eq!(created["medication_portable_id"], medication_portable_id);
+    assert_eq!(created["amount"], "2.125");
+    assert_eq!(created["unit"], "ml");
+    assert_eq!(created["frequency"], "Twice daily");
+    assert_eq!(created["description"], "Contract liquid dose");
+    assert_eq!(created["default_for_adults"], true);
+    assert_eq!(created["default_for_children"], false);
+    assert_eq!(created["default_max_daily_doses"], 2);
+    assert_eq!(created["default_min_hours_between_doses"], "8.5");
+    assert_eq!(created["default_dose_cycle"], "daily");
+    (created, tag)
 }
 
 #[test]
@@ -75,11 +115,13 @@ fn dosage_options_cover_collection_identity_etags_and_retained_updates() {
             "location_id": fixture.primary_location_id, "dose_amount": "1", "dose_unit": "ml"}}),
     );
     assert_eq!(response.status().as_u16(), 201);
-    let medication_id = body(response)["data"]["id"].as_i64().unwrap();
-    let (created, initial_tag) = create_dosage(&target, &fixture, medication_id);
+    let medication = body(response)["data"].clone();
+    let medication_id = medication["id"].as_i64().unwrap();
+    let medication_portable_id = medication["portable_id"].as_str().unwrap();
+    let (created, initial_tag) = create_dosage(&target, &fixture, medication_portable_id);
     let path = format!("{base}/{}", created["portable_id"].as_str().unwrap());
     assert_eq!(created["medication_id"], medication_id);
-    assert!(created["medication_portable_id"].as_str().is_some());
+    assert_eq!(created["medication_portable_id"], medication_portable_id);
     assert_eq!(created["amount"], "2.125");
     assert_eq!(created["default_min_hours_between_doses"], "8.5");
     assert_eq!(created["current_supply"], "10.25");
@@ -89,17 +131,12 @@ fn dosage_options_cover_collection_identity_etags_and_retained_updates() {
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
     assert_eq!(etag(&response), initial_tag);
-    assert_eq!(body(response)["data"]["id"], created["id"]);
-    let response = target.get(
-        &format!("{base}?page=1&per_page=1"),
-        Some(&fixture.access_token),
-    );
-    assert_eq!(response.status().as_u16(), 200);
-    let page = body(response);
-    assert_eq!(page["meta"]["page"], 1);
-    assert_eq!(page["meta"]["per_page"], 1);
-    assert!(page["meta"]["total_count"].as_u64().unwrap() >= 1);
-    assert_eq!(page["data"].as_array().unwrap().len(), 1);
+    assert_eq!(body(response)["data"], created);
+    let ids = paginated_ids(&target, &base, &fixture.access_token);
+    assert!(ids.contains(&created["id"].as_i64().unwrap()));
+    assert!(ids.contains(&fixture.hidden_dosage_id));
+    assert!(!ids.contains(&fixture.foreign_dosage_id));
+    assert_eq!(ids.len(), 2);
 
     let response = target.patch_json_if_match(
         &path,
@@ -173,8 +210,15 @@ fn dosage_options_reject_invalid_and_foreign_records_and_track_selected_stock() 
     );
     assert_eq!(response.status().as_u16(), 404);
 
-    let (created, _) = create_dosage(&target, &fixture, fixture.managed_medication_id);
+    let (created, _) = create_dosage(&target, &fixture, &fixture.managed_medication_portable_id);
     let path = format!("{base}/{}", created["id"]);
+    assert_eq!(created["medication_id"], fixture.managed_medication_id);
+    let viewer_ids = paginated_ids(&target, &base, &fixture.view_access_token);
+    assert!(viewer_ids.contains(&created["id"].as_i64().unwrap()));
+    assert!(!viewer_ids.contains(&fixture.foreign_dosage_id));
+    let hidden_path = format!("{base}/{}", fixture.hidden_dosage_id);
+    let response = target.get(&hidden_path, Some(&fixture.view_access_token));
+    assert_eq!(response.status().as_u16(), 403);
     let response = target.get(&path, Some(&fixture.view_access_token));
     assert_eq!(response.status().as_u16(), 200);
     let response = target.patch_json(
@@ -216,22 +260,43 @@ fn dosage_options_reject_invalid_and_foreign_records_and_track_selected_stock() 
     assert_eq!(body(response)["data"]["current_supply"], "9.0");
 }
 
+#[test]
+#[ignore = "Rails currently exposes hidden dosage options in viewer lists; privacy contract for Rust"]
+fn dosage_option_collection_hides_ungranted_medication() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let ids = paginated_ids(&target, &dosage_path(&fixture), &fixture.view_access_token);
+    assert!(!ids.contains(&fixture.hidden_dosage_id));
+}
+
 fn create_health_event(
     target: &Target,
     fixture: &Fixture,
-    person_id: i64,
+    person_portable_id: &str,
     title: &str,
 ) -> (Value, String) {
     let response = target.post_json_authorized(
         &health_path(fixture),
         &fixture.access_token,
-        &json!({"health_event": {"person_id": person_id.to_string(), "event_kind": "illness",
+        &json!({"health_event": {"person_id": person_portable_id, "event_kind": "illness",
             "severity": "mild", "title": title, "notes": "Managed at home",
-            "started_on": "2026-02-25", "medication_ids": [fixture.managed_medication_id.to_string()]}}),
+            "started_on": "2026-02-25", "medication_ids": [fixture.managed_medication_portable_id]}}),
     );
     assert_eq!(response.status().as_u16(), 201);
     let tag = etag(&response);
-    (body(response)["data"].clone(), tag)
+    let created = body(response)["data"].clone();
+    assert_eq!(created["person_portable_id"], person_portable_id);
+    assert_eq!(
+        created["medication_portable_ids"],
+        json!([fixture.managed_medication_portable_id])
+    );
+    assert_eq!(created["event_kind"], "illness");
+    assert_eq!(created["severity"], "mild");
+    assert_eq!(created["title"], title);
+    assert_eq!(created["notes"], "Managed at home");
+    assert_eq!(created["started_on"], "2026-02-25");
+    assert_eq!(created["ended_on"], Value::Null);
+    (created, tag)
 }
 
 #[test]
@@ -242,7 +307,7 @@ fn health_events_cover_portable_relations_pagination_etags_and_retained_updates(
     let (created, initial_tag) = create_health_event(
         &target,
         &fixture,
-        fixture.managed_person_id,
+        &fixture.managed_person_portable_id,
         "Contract cold",
     );
     let path = format!("{base}/{}", created["portable_id"].as_str().unwrap());
@@ -251,23 +316,20 @@ fn health_events_cover_portable_relations_pagination_etags_and_retained_updates(
         fixture.managed_person_portable_id
     );
     assert_eq!(created["medication_ids"][0], fixture.managed_medication_id);
-    assert!(created["medication_portable_ids"][0].as_str().is_some());
+    assert_eq!(
+        created["medication_portable_ids"],
+        json!([fixture.managed_medication_portable_id])
+    );
     assert_eq!(created["started_on"], "2026-02-25");
     assert_utc_second_timestamp(&created["updated_at"]);
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
     assert_eq!(etag(&response), initial_tag);
     assert_eq!(body(response)["data"], created);
-    let response = target.get(
-        &format!("{base}?page=1&per_page=1"),
-        Some(&fixture.access_token),
-    );
-    assert_eq!(response.status().as_u16(), 200);
-    let page = body(response);
-    assert_eq!(page["meta"]["page"], 1);
-    assert_eq!(page["meta"]["per_page"], 1);
-    assert!(page["meta"]["total_count"].as_u64().unwrap() >= 1);
-    assert_eq!(page["data"].as_array().unwrap().len(), 1);
+    let ids = paginated_ids(&target, &base, &fixture.access_token);
+    assert!(ids.contains(&created["id"].as_i64().unwrap()));
+    assert!(ids.contains(&fixture.hidden_health_event_id));
+    assert!(!ids.contains(&fixture.foreign_health_event_id));
     let response = target.patch_json_if_match(
         &path,
         &fixture.access_token,
@@ -321,24 +383,19 @@ fn health_events_reject_invalid_cross_household_and_person_scope_changes() {
             "event_kind": "illness", "title": "Foreign", "started_on": "2026-02-25"}}),
     );
     assert_eq!(response.status().as_u16(), 404);
-    let (managed, _) =
-        create_health_event(&target, &fixture, fixture.managed_person_id, "Visible cold");
+    let (managed, _) = create_health_event(
+        &target,
+        &fixture,
+        &fixture.managed_person_portable_id,
+        "Visible cold",
+    );
     let managed_path = format!("{base}/{}", managed["id"]);
     let hidden_path = format!("{base}/{}", fixture.hidden_health_event_id);
     let foreign_path = format!("{base}/{}", fixture.foreign_health_event_id);
-    let response = target.get(&base, Some(&fixture.view_access_token));
-    assert_eq!(response.status().as_u16(), 200);
-    let visible = body(response);
-    assert!(visible["data"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|event| event["id"] == managed["id"]));
-    assert!(!visible["data"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|event| event["id"] == fixture.hidden_health_event_id));
+    let visible_ids = paginated_ids(&target, &base, &fixture.view_access_token);
+    assert!(visible_ids.contains(&managed["id"].as_i64().unwrap()));
+    assert!(!visible_ids.contains(&fixture.hidden_health_event_id));
+    assert!(!visible_ids.contains(&fixture.foreign_health_event_id));
     let response = target.get(&managed_path, Some(&fixture.view_access_token));
     assert_eq!(response.status().as_u16(), 200);
     let response = target.get(&hidden_path, Some(&fixture.view_access_token));

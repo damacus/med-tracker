@@ -82,6 +82,10 @@ fixture = ActiveRecord::Base.transaction do
                            administration_kind: :as_needed)
   PersonMedication.create!(household: household, person: hidden_person, medication: hidden_medication,
                            administration_kind: :as_needed)
+  hidden_dosage = hidden_medication.dosage_records.create!(amount: '1', unit: 'ml', frequency: 'daily',
+                                                           default_max_daily_doses: 4,
+                                                           default_min_hours_between_doses: '4',
+                                                           default_dose_cycle: :daily)
   hidden_health_event = HealthEvent.create!(household: household, person: hidden_person, event_kind: :illness,
                                             title: "Contract hidden event #{nonce}", started_on: '2026-02-25')
   foreign_health_event = HealthEvent.create!(household: foreign_household, person: foreign_account.person,
@@ -151,10 +155,12 @@ fixture = ActiveRecord::Base.transaction do
     foreign_location_id: foreign_location.id,
     foreign_location_name: foreign_location.name,
     managed_medication_id: managed_medication.id,
+    managed_medication_portable_id: managed_medication.portable_id,
     hidden_medication_id: hidden_medication.id,
     foreign_medication_id: foreign_medication.id,
     foreign_medication_name: foreign_medication.name,
     foreign_dosage_id: foreign_dosage.id,
+    hidden_dosage_id: hidden_dosage.id,
     hidden_health_event_id: hidden_health_event.id,
     foreign_health_event_id: foreign_health_event.id
   }
