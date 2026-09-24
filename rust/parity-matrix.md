@@ -1,6 +1,6 @@
 # API parity matrix
 
-This is the Task 1 coverage map. A source spec identifies existing Rails evidence, not proven operation-level coverage. Planned files do not exist yet. No parity case has run against Rails or Rust.
+This is the Task 1 coverage map, now updated with Task 2's first black-box cases. A source spec identifies existing Rails evidence, not proven operation-level coverage. Planned files for later tasks do not exist yet. The three initial cases pass against isolated Rails and fail to connect to the absent Rust server as expected.
 
 Source: `docs/api/openapi.v1.yaml` (77 paths, 118 method/path operations). Paths below are relative to the OpenAPI server `/api/v1`. The global security requirement is `bearerAuth`; an operation-level override takes precedence.
 
@@ -8,12 +8,12 @@ Source: `docs/api/openapi.v1.yaml` (77 paths, 118 method/path operations). Paths
 
 | Operation ID | Method | Path | Security | Source request spec | Planned black-box test file | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `getCapabilities` | GET | `/api/v1/capabilities` | public (`security: []`) | `spec/requests/api/v1/capabilities_spec.rb` | `rust/contract-tests/tests/auth.rs` | Planned; Rails unrun; Rust unrun |
+| `getCapabilities` | GET | `/api/v1/capabilities` | public (`security: []`) | `spec/requests/api/v1/capabilities_spec.rb` | `rust/contract-tests/tests/auth.rs` | Initial case: Rails green; Rust absent (connection refused) |
 | `listHouseholds` | GET | `/api/v1/auth/households` | bearerAuth | `spec/requests/api/v1/auth/sessions_spec.rb` | `rust/contract-tests/tests/auth.rs` | Planned; Rails unrun; Rust unrun |
 | `listSessions` | GET | `/api/v1/auth/sessions` | bearerAuth | `spec/requests/api/v1/auth/sessions_spec.rb` | `rust/contract-tests/tests/auth.rs` | Planned; Rails unrun; Rust unrun |
 | `deleteSession` | DELETE | `/api/v1/auth/sessions/{id}` | bearerAuth | `spec/requests/api/v1/auth/sessions_spec.rb` | `rust/contract-tests/tests/auth.rs` | Planned; Rails unrun; Rust unrun |
 | `logoutSession` | DELETE | `/api/v1/auth/logout` | bearerAuth | `spec/requests/api/v1/auth/sessions_spec.rb` | `rust/contract-tests/tests/auth.rs` | Planned; Rails unrun; Rust unrun |
-| `getCurrentProfile` | GET | `/api/v1/households/{household_id}/me` | bearerAuth | `spec/requests/api/v1/me_spec.rb` | `rust/contract-tests/tests/care.rs` | Planned; Rails unrun; Rust unrun |
+| `getCurrentProfile` | GET | `/api/v1/households/{household_id}/me` | bearerAuth | `spec/requests/api/v1/me_spec.rb` | `rust/contract-tests/tests/care.rs` | Authenticated read and cross-household denial: Rails green; Rust absent (connection refused) |
 | `listPeople` | GET | `/api/v1/households/{household_id}/people` | bearerAuth | `spec/requests/api/v1/people_controller_spec.rb` | `rust/contract-tests/tests/care.rs` | Planned; Rails unrun; Rust unrun |
 | `createPerson` | POST | `/api/v1/households/{household_id}/people` | bearerAuth | `spec/requests/api/v1/people_controller_spec.rb` | `rust/contract-tests/tests/care.rs` | Planned; Rails unrun; Rust unrun |
 | `getPerson` | GET | `/api/v1/households/{household_id}/people/{id}` | bearerAuth | `spec/requests/api/v1/people_controller_spec.rb` | `rust/contract-tests/tests/care.rs` | Planned; Rails unrun; Rust unrun |

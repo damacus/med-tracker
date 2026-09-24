@@ -31,6 +31,7 @@
 /public/assets
 /coverage
 /client-tools/target/
+/rust/contract-tests/target/
 
 # Ignore master key for decrypting credentials and more.
 /config/master.key
