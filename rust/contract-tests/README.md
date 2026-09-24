@@ -11,6 +11,9 @@ disposable contract database until the test database volume is removed.
 Rack::Attack is enabled only for this contract test server so the 429 response
 can be observed over HTTP.
 
+Run `task contract:oauth-rails` for only the OAuth black-box cases with the
+same isolated fixture and server setup.
+
 Run `task contract:rust RUST_URL=http://127.0.0.1:39999` to run the same cases
 against a Rust server. Until that server exists, connection failures are
 expected. Fixture creation still uses isolated Rails. Each URL is checked by

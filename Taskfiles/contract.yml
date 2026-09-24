@@ -24,6 +24,17 @@ tasks:
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test care --test oauth --test envelopes --no-fail-fast -- --test-threads=1
 
+  oauth:
+    desc: Run OAuth black-box cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test oauth -- --test-threads=1
+
   fmt:
     desc: Format the black-box test crate
     cmds:
@@ -38,6 +49,11 @@ tasks:
     desc: Provision disposable test fixtures and run API contract cases against isolated Rails
     cmds:
       - fish rust/contract-tests/run.fish rails
+
+  oauth-rails:
+    desc: Run OAuth contract cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails oauth
 
   rust:
     desc: Run API contract cases against a Rust URL after provisioning isolated Rails fixtures

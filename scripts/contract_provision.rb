@@ -12,7 +12,8 @@ nonce = SecureRandom.hex(12)
 
 def create_household(nonce, label)
   email = "contract-#{label}-#{nonce}@example.test"
-  account = Account.create!(email: email, status: :verified)
+  account = Account.create!(email: email, status: :verified,
+                            password_hash: RodauthApp.rodauth.allocate.password_hash('password'))
   household = Household.create_with_owner!(
     name: "Contract #{label} #{nonce}",
     owner_account: account,
@@ -59,6 +60,7 @@ fixture = ActiveRecord::Base.transaction do
   {
     access_token: access_token,
     account_id: account.id,
+    primary_email: account.email,
     user_id: user.id,
     household_id: household.id,
     household_name: household.name,
