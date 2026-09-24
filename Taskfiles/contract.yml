@@ -22,7 +22,18 @@ tasks:
       CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test care --test medication_stock --test oauth --test envelopes --no-fail-fast -- --test-threads=1
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test care --test medication_stock --test dosage_health --test oauth --test envelopes --no-fail-fast -- --test-threads=1
+
+  run-dosage-health:
+    desc: Run dosage-option and health-event cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test dosage_health -- --test-threads=1
 
   oauth:
     desc: Run OAuth black-box cases against a checked target and fixture
@@ -54,6 +65,11 @@ tasks:
     desc: Run OAuth contract cases against isolated Rails
     cmds:
       - fish rust/contract-tests/run.fish rails oauth
+
+  dosage-health-rails:
+    desc: Run dosage-option and health-event cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails dosage-health
 
   rust:
     desc: Run API contract cases against a Rust URL after provisioning isolated Rails fixtures

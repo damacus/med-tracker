@@ -43,6 +43,9 @@ pub struct Fixture {
     pub hidden_medication_id: i64,
     pub foreign_medication_id: i64,
     pub foreign_medication_name: String,
+    pub foreign_dosage_id: i64,
+    pub hidden_health_event_id: i64,
+    pub foreign_health_event_id: i64,
 }
 
 pub struct Target {
