@@ -39,6 +39,10 @@ pub struct Fixture {
     pub primary_location_portable_id: String,
     pub foreign_location_id: i64,
     pub foreign_location_name: String,
+    pub managed_medication_id: i64,
+    pub hidden_medication_id: i64,
+    pub foreign_medication_id: i64,
+    pub foreign_medication_name: String,
 }
 
 pub struct Target {

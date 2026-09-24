@@ -65,6 +65,19 @@ fixture = ActiveRecord::Base.transaction do
                                                                     status: :active)
   primary_location = Location.create!(household: household, name: "Contract shelf #{nonce}")
   foreign_location = Location.create!(household: foreign_household, name: "Contract foreign shelf #{nonce}")
+  managed_medication = Medication.create!(household: household, location: primary_location,
+                                          name: "Contract managed medicine #{nonce}", dose_amount: '2',
+                                          dose_unit: 'ml', current_supply: '50', reorder_threshold: '5')
+  hidden_medication = Medication.create!(household: household, location: primary_location,
+                                         name: "Contract hidden medicine #{nonce}", dose_amount: '2',
+                                         dose_unit: 'ml', current_supply: '50', reorder_threshold: '5')
+  foreign_medication = Medication.create!(household: foreign_household, location: foreign_location,
+                                          name: "Contract foreign medicine #{nonce}", dose_amount: '2',
+                                          dose_unit: 'ml', current_supply: '50', reorder_threshold: '5')
+  PersonMedication.create!(household: household, person: managed_person, medication: managed_medication,
+                           administration_kind: :as_needed)
+  PersonMedication.create!(household: household, person: hidden_person, medication: hidden_medication,
+                           administration_kind: :as_needed)
   session, access_token, = ApiSession.issue_for(
     account: account, household_membership: membership, device_name: 'contract-tests'
   )
@@ -127,7 +140,11 @@ fixture = ActiveRecord::Base.transaction do
     primary_location_id: primary_location.id,
     primary_location_portable_id: primary_location.portable_id,
     foreign_location_id: foreign_location.id,
-    foreign_location_name: foreign_location.name
+    foreign_location_name: foreign_location.name,
+    managed_medication_id: managed_medication.id,
+    hidden_medication_id: hidden_medication.id,
+    foreign_medication_id: foreign_medication.id,
+    foreign_medication_name: foreign_medication.name
   }
 end
 File.open(path, File::WRONLY | File::CREAT | File::EXCL, 0o600) do |file|
