@@ -192,6 +192,7 @@ fn idempotency_key_replays_the_saved_response_and_rejects_changed_request_or_acc
     let first = target.post_json_with_key(&route, &fixture.access_token, &key, &payload);
     assert_eq!(first.status().as_u16(), 201);
     assert!(first.headers().get("Idempotency-Replayed").is_none());
+    let first_request_id = first.headers()["x-request-id"].to_str().unwrap().to_owned();
     let saved = body(first);
     let result = &saved["data"]["results"][0];
     assert_eq!(result["replayed"], false);
@@ -199,6 +200,11 @@ fn idempotency_key_replays_the_saved_response_and_rejects_changed_request_or_acc
     let second = target.post_json_with_key(&route, &fixture.access_token, &key, &payload);
     assert_eq!(second.status().as_u16(), 201);
     assert_eq!(second.headers()["Idempotency-Replayed"], "true");
+    let second_request_id = second.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    assert_ne!(second_request_id, first_request_id);
     assert_eq!(body(second), saved);
     assert_eq!(stock(&target, &fixture, medication_id), before - 1.25);
     assert_eq!(
@@ -209,6 +215,11 @@ fn idempotency_key_replays_the_saved_response_and_rejects_changed_request_or_acc
         1
     );
     assert_eq!(take_change_count(&target, &fixture, &cursor, take_id), 1);
+    assert_eq!(request_audit_count(&target, &fixture, &first_request_id), 1);
+    assert_eq!(
+        request_audit_count(&target, &fixture, &second_request_id),
+        1
+    );
 
     let changed = batch_body(
         json!({"resource_type": "medication_take", "action": "create",
