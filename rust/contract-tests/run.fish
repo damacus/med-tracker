@@ -47,6 +47,8 @@ if test "$mode" = rails
         rtk task contract:run-care BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
     else if test "$argv[2]" = sync
         rtk task contract:run-sync BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+    else if test "$argv[2]" = sync-privacy
+        rtk task contract:run-sync-privacy BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
     else if test "$argv[2]" = dose-precision
         rtk task contract:run-dose-precision BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
     else if test "$argv[2]" = assignment-precision

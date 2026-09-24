@@ -25,7 +25,7 @@ tasks:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test sync --test oauth --test envelopes --no-fail-fast -- --test-threads=1
 
   run-sync:
-    desc: Run snapshot contract cases against a checked target and fixture
+    desc: Run sync snapshot and change-feed contract cases against a checked target and fixture
     requires:
       vars: [BASE_URL, FIXTURE_PATH]
     env:
@@ -34,6 +34,17 @@ tasks:
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test sync -- --test-threads=1
+
+  run-sync-privacy:
+    desc: Probe hidden-person change-feed disclosure against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test sync -- --exact change_feed_hides_ungranted_person_events_and_tombstones --ignored --test-threads=1
 
   run-reviews:
     desc: Run medication review prompt cases against a checked target and fixture
@@ -240,9 +251,14 @@ tasks:
       - fish rust/contract-tests/run.fish rails care
 
   sync-rails:
-    desc: Run snapshot contract cases against isolated Rails
+    desc: Run sync snapshot and change-feed contract cases against isolated Rails
     cmds:
       - fish rust/contract-tests/run.fish rails sync
+
+  sync-privacy-rails:
+    desc: Demonstrate the currently failing Rails hidden-person feed case
+    cmds:
+      - fish rust/contract-tests/run.fish rails sync-privacy
 
   dose-precision-rails:
     desc: Demonstrate Rails medication-take timestamp precision
@@ -288,7 +304,7 @@ tasks:
       - fish rust/contract-tests/run.fish rust
 
   sync-rust:
-    desc: Run snapshot cases against a Rust URL after provisioning isolated fixtures
+    desc: Run sync cases against a Rust URL after provisioning isolated fixtures
     env:
       CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
       CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'

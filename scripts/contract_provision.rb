@@ -64,6 +64,19 @@ fixture = ActiveRecord::Base.transaction do
   _view_session, view_access_token, = ApiSession.issue_for(
     account: view_account, household_membership: view_membership, device_name: 'contract-view'
   )
+  feed_account = Account.create!(email: "contract-feed-#{nonce}@example.test", status: :verified,
+                                 password_hash: RodauthApp.rodauth.allocate.password_hash('password'))
+  feed_person = household.people.create!(account: feed_account, name: "Contract feed actor #{nonce}",
+                                         date_of_birth: 34.years.ago.to_date, person_type: :adult, has_capacity: true)
+  User.create!(person: feed_person, email_address: feed_account.email, password: 'password', active: true)
+  feed_membership = household.household_memberships.create!(account: feed_account, person: feed_person,
+                                                            role: :owner, status: :active)
+  PersonAccessGrant.create!(household: household, household_membership: feed_membership, person: hidden_person,
+                            access_level: :manage, relationship_type: :family_member,
+                            granted_by_membership: membership)
+  _feed_session, feed_access_token, = ApiSession.issue_for(
+    account: feed_account, household_membership: feed_membership, device_name: 'contract-feed'
+  )
   delegated_account = Account.create!(email: "contract-delegated-#{nonce}@example.test", status: :verified,
                                       password_hash: RodauthApp.rodauth.allocate.password_hash('password'))
   delegated_person = household.people.create!(account: delegated_account, name: "Contract delegated #{nonce}",
@@ -177,6 +190,14 @@ fixture = ActiveRecord::Base.transaction do
                                                       person: foreign_account.person, enabled: true)
   hidden_health_event = HealthEvent.create!(household: household, person: hidden_person, event_kind: :illness,
                                             title: "Contract hidden event #{nonce}", started_on: '2026-02-25')
+  hidden_feed_tombstone_source = HealthEvent.create!(household: household, person: hidden_person,
+                                                    event_kind: :illness, title: "Contract removed event #{nonce}",
+                                                    started_on: '2026-02-25')
+  hidden_feed_tombstone_id = hidden_feed_tombstone_source.portable_id
+  TenantContext.with(account: feed_account, household: household, membership: feed_membership,
+                     request_id: "contract-feed-#{nonce}") do
+    hidden_feed_tombstone_source.destroy!
+  end
   foreign_health_event = HealthEvent.create!(household: foreign_household, person: foreign_account.person,
                                              event_kind: :illness, title: "Contract foreign event #{nonce}",
                                              started_on: '2026-02-25')
@@ -292,6 +313,8 @@ fixture = ActiveRecord::Base.transaction do
     foreign_person_portable_id: foreign_account.person.portable_id,
     foreign_person_name: foreign_account.person.name,
     view_access_token: view_access_token,
+    feed_access_token: feed_access_token,
+    hidden_feed_tombstone_id: hidden_feed_tombstone_id,
     view_account_id: view_account.id,
     view_membership_id: view_membership.id,
     delegated_access_token: delegated_access_token,
