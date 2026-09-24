@@ -50,6 +50,8 @@ pub struct Fixture {
     pub hidden_assignment_portable_id: String,
     pub foreign_assignment_id: i64,
     pub foreign_assignment_portable_id: String,
+    pub hidden_pause_period_id: String,
+    pub foreign_pause_period_id: String,
     pub managed_schedule_id: i64,
     pub hidden_schedule_id: i64,
     pub foreign_schedule_id: i64,

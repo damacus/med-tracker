@@ -84,6 +84,10 @@ fixture = ActiveRecord::Base.transaction do
                                                medication: hidden_medication, administration_kind: :as_needed)
   foreign_assignment = PersonMedication.create!(household: foreign_household, person: foreign_account.person,
                                                 medication: foreign_medication, administration_kind: :as_needed)
+  hidden_assignment.pause!
+  foreign_assignment.pause!
+  hidden_pause_period = hidden_assignment.medication_pause_periods.sole
+  foreign_pause_period = foreign_assignment.medication_pause_periods.sole
   hidden_dosage = hidden_medication.dosage_records.create!(amount: '1', unit: 'ml', frequency: 'daily',
                                                            default_max_daily_doses: 4,
                                                            default_min_hours_between_doses: '4',
@@ -176,6 +180,8 @@ fixture = ActiveRecord::Base.transaction do
     hidden_assignment_portable_id: hidden_assignment.portable_id,
     foreign_assignment_id: foreign_assignment.id,
     foreign_assignment_portable_id: foreign_assignment.portable_id,
+    hidden_pause_period_id: hidden_pause_period.portable_id,
+    foreign_pause_period_id: foreign_pause_period.portable_id,
     managed_schedule_id: managed_schedule.id,
     hidden_schedule_id: hidden_schedule.id,
     foreign_schedule_id: foreign_schedule.id,

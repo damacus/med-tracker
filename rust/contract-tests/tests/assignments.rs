@@ -331,6 +331,12 @@ fn assignment_create_patch_and_put_validate_and_retain_decimal_state() {
         &json!({"person_medication": {"notes": "Forbidden"}}),
     );
     assert_eq!(response.status().as_u16(), 403);
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(etag(&response), replaced_tag);
+    let retained = body(response)["data"].clone();
+    assert_eq!(retained["notes"], "Replaced note");
+    assert_eq!(retained["dose_amount"], "2.25");
     let response = target.patch_json(
         &format!("{base}/{}", fixture.foreign_assignment_id),
         &fixture.access_token,
@@ -362,6 +368,11 @@ fn assignment_legacy_pause_resume_and_reorder_retain_state() {
     let fixture = fixture();
     let (first, _) = create_assignment(&target, &fixture, "Contract order first");
     let (second, _) = create_assignment(&target, &fixture, "Contract order second");
+    assert_ne!(first["position"], second["position"]);
+    assert_eq!(
+        second["position"].as_i64(),
+        first["position"].as_i64().map(|position| position + 1)
+    );
     let first_path = format!(
         "{}/{}",
         assignments_path(&fixture),
@@ -574,7 +585,20 @@ fn pause_periods_preserve_reason_actor_pagination_and_addressed_resume() {
     let second_page =
         format!("{base}?source_type=person_medication&source_id={source_id}&page=2&per_page=1");
     let response = target.get(&second_page, Some(&fixture.view_access_token));
-    assert_eq!(body(response)["data"][0]["id"], first["id"]);
+    assert_eq!(response.status().as_u16(), 200);
+    let older = body(response)["data"][0].clone();
+    assert_eq!(older["id"], first["id"]);
+    for field in [
+        "reason",
+        "note",
+        "recorded_by_membership_id",
+        "recorded_by_name",
+        "resumed_by_membership_id",
+        "resumed_by_name",
+        "ended_at",
+    ] {
+        assert_eq!(older[field], ended[field], "old period changed: {field}");
+    }
 }
 
 #[test]
@@ -588,8 +612,17 @@ fn pause_period_validation_and_visibility_do_not_disclose_foreign_context() {
         "source_type": "person_medication", "source_id": source_id,
         "reason": "side_effects", "note": "Private context"
     }});
+    let source_path = format!("{}/{}", assignments_path(&fixture), source_id);
+    let response = target.get(&source_path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let original_tag = etag(&response);
+    let original = body(response)["data"].clone();
     let response = target.post_json_authorized(&base, &fixture.view_access_token, &payload);
     assert_eq!(response.status().as_u16(), 403);
+    let response = target.get(&source_path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(etag(&response), original_tag);
+    assert_eq!(body(response)["data"], original);
     let response = target.post_json_authorized(&base, &fixture.access_token, &payload);
     assert_eq!(response.status().as_u16(), 201);
     let period = body(response)["data"].clone();
@@ -597,6 +630,12 @@ fn pause_period_validation_and_visibility_do_not_disclose_foreign_context() {
     let response =
         target.post_json_authorized(&resume_path, &fixture.view_access_token, &json!({}));
     assert_eq!(response.status().as_u16(), 403);
+    let response = target.get(&source_path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let retained = body(response)["data"].clone();
+    assert_eq!(retained["paused"], true);
+    assert_eq!(retained["current_pause_period"]["id"], period["id"]);
+    assert!(retained["current_pause_period"]["ended_at"].is_null());
     let response = target.post_json_authorized(
         &base,
         &fixture.access_token,
@@ -632,11 +671,30 @@ fn pause_period_validation_and_visibility_do_not_disclose_foreign_context() {
         Some(&fixture.view_access_token),
     );
     assert_eq!(response.status().as_u16(), 404);
-    let response = target.get(&base, Some(&fixture.view_access_token));
-    assert_eq!(response.status().as_u16(), 200);
-    assert!(body(response)["data"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|row| row["id"] == period["id"]));
+    let mut visible_ids = Vec::new();
+    let mut page = 1;
+    loop {
+        let response = target.get(
+            &format!("{base}?page={page}&per_page=1"),
+            Some(&fixture.view_access_token),
+        );
+        assert_eq!(response.status().as_u16(), 200);
+        let collection = body(response);
+        let total = collection["meta"]["total_count"].as_u64().unwrap() as usize;
+        visible_ids.extend(
+            collection["data"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|row| row["id"].clone()),
+        );
+        if visible_ids.len() >= total {
+            assert_eq!(visible_ids.len(), total);
+            break;
+        }
+        page += 1;
+    }
+    assert!(visible_ids.contains(&period["id"]));
+    assert!(!visible_ids.contains(&json!(fixture.hidden_pause_period_id)));
+    assert!(!visible_ids.contains(&json!(fixture.foreign_pause_period_id)));
 }
