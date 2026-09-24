@@ -111,6 +111,8 @@ fixture = ActiveRecord::Base.transaction do
                                                              default_dose_cycle: :daily)
   managed_assignment = PersonMedication.create!(household: household, person: managed_person,
                                                 medication: managed_medication, administration_kind: :as_needed)
+  managed_assignment_updated_at = Time.utc(2026, 1, 1)
+  managed_assignment.update_columns(updated_at: managed_assignment_updated_at)
   retired_medication = Medication.create!(household: household, location: primary_location,
                                           name: "Contract retired medicine #{nonce}", dose_amount: '1',
                                           dose_unit: 'ml')
@@ -274,6 +276,7 @@ fixture = ActiveRecord::Base.transaction do
     foreign_medication_portable_id: foreign_medication.portable_id,
     foreign_medication_name: foreign_medication.name,
     managed_assignment_id: managed_assignment.id,
+    managed_assignment_updated_at: managed_assignment_updated_at.iso8601,
     retired_assignment_portable_id: retired_assignment.portable_id,
     retired_assignment_period_id: retired_assignment_period.portable_id,
     hidden_assignment_id: hidden_assignment.id,
