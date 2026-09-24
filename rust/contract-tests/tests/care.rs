@@ -148,15 +148,26 @@ fn people_writes_validate_retain_state_and_return_current_etags() {
     );
     assert_ne!(patched_etag, created_etag);
 
+    let response = target.get(&path, Some(&fixture.care_access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(etag(&response), patched_etag);
+    assert_eq!(
+        json_body(response)["data"]["name"],
+        "Contract patched adult"
+    );
+
     let response = target.put_json(
         &path,
         &fixture.care_access_token,
         &json!({"person": {"name": "Contract put adult"}}),
     );
     assert_eq!(response.status().as_u16(), 200);
+    let put_etag = etag(&response);
+    assert_ne!(put_etag, patched_etag);
     assert_eq!(json_body(response)["data"]["name"], "Contract put adult");
     let response = target.get(&path, Some(&fixture.care_access_token));
     assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(etag(&response), put_etag);
     assert_eq!(json_body(response)["data"]["name"], "Contract put adult");
 
     let response = target.post_json_authorized(
@@ -257,10 +268,16 @@ fn person_access_grants_create_list_and_revoke_without_exposing_other_households
     let response = target.post_json_authorized(
         &base,
         &fixture.access_token,
-        &json!({"person_access_grant": {"access_level": "invalid"}}),
+        &json!({"person_access_grant": {
+            "household_membership_id": fixture.grant_target_membership_id,
+            "person_id": fixture.managed_person_id,
+            "access_level": "invalid", "relationship_type": "carer"
+        }}),
     );
     assert_eq!(response.status().as_u16(), 422);
-    assert_eq!(json_body(response)["error"]["code"], "validation_failed");
+    let body = json_body(response);
+    assert_eq!(body["error"]["code"], "validation_failed");
+    assert!(body["error"]["errors"]["access_level"].is_array());
 
     let response = target.post_json_authorized(
         &base,
@@ -295,21 +312,6 @@ fn locations_support_pagination_conditional_updates_and_deletion() {
     let target = Target::from_env();
     let fixture = fixture();
     let base = format!("/api/v1/households/{}/locations", fixture.household_id);
-    let response = target.get(&format!("{base}?per_page=1"), Some(&fixture.access_token));
-    assert_eq!(response.status().as_u16(), 200);
-    let body = json_body(response);
-    assert_eq!(body["meta"]["per_page"], 1);
-    assert_eq!(body["data"].as_array().unwrap().len(), 1);
-
-    let response = target.get(&base, Some(&fixture.access_token));
-    assert_eq!(response.status().as_u16(), 200);
-    let body = json_body(response);
-    assert!(!body["data"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|location| location["id"] == fixture.foreign_location_id));
-
     let response = target.post_json_authorized(
         &base,
         &fixture.access_token,
@@ -319,6 +321,42 @@ fn locations_support_pagination_conditional_updates_and_deletion() {
     let created_etag = etag(&response);
     let created = json_body(response)["data"].clone();
     let path = format!("{base}/{}", created["portable_id"].as_str().unwrap());
+
+    let response = target.get(
+        &format!("{base}?page=1&per_page=1"),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let first_page = json_body(response);
+    assert_eq!(first_page["meta"]["page"], 1);
+    assert_eq!(first_page["meta"]["per_page"], 1);
+    assert_eq!(first_page["data"].as_array().unwrap().len(), 1);
+    assert!(first_page["meta"]["total_count"].as_u64().unwrap() >= 2);
+    let first_id = &first_page["data"][0]["id"];
+
+    let response = target.get(
+        &format!("{base}?page=2&per_page=1"),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let second_page = json_body(response);
+    assert_eq!(second_page["meta"]["page"], 2);
+    assert_eq!(second_page["meta"]["per_page"], 1);
+    assert_eq!(second_page["data"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        second_page["meta"]["total_count"],
+        first_page["meta"]["total_count"]
+    );
+    assert_ne!(&second_page["data"][0]["id"], first_id);
+
+    let response = target.get(&base, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let body = json_body(response);
+    assert!(!body["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|location| location["id"] == fixture.foreign_location_id));
 
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
@@ -346,6 +384,11 @@ fn locations_support_pagination_conditional_updates_and_deletion() {
     let patched_etag = etag(&response);
     assert_eq!(json_body(response)["data"]["description"], "Patched");
     assert_ne!(patched_etag, created_etag);
+
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(etag(&response), patched_etag);
+    assert_eq!(json_body(response)["data"]["description"], "Patched");
 
     let response = target.put_json_if_match(
         &path,
