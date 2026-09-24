@@ -246,6 +246,29 @@ fn schedule_collection_filters_updates_and_normalizes_pagination() {
 }
 
 #[test]
+fn schedule_detail_uses_the_same_version_and_body_for_numeric_and_portable_ids() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let numeric = format!(
+        "{}/{}",
+        schedules_path(&fixture),
+        fixture.managed_schedule_id
+    );
+    let response = target.get(&numeric, Some(&fixture.view_access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let numeric_tag = etag(&response);
+    let numeric_body = body(response);
+    let portable_id = numeric_body["data"]["portable_id"].as_str().unwrap();
+    let response = target.get(
+        &format!("{}/{portable_id}", schedules_path(&fixture)),
+        Some(&fixture.view_access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(etag(&response), numeric_tag);
+    assert_eq!(body(response), numeric_body);
+}
+
+#[test]
 fn schedule_source_dosage_links_only_to_a_matching_visible_option() {
     let target = Target::from_env();
     let fixture = fixture();

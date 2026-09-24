@@ -691,6 +691,50 @@ fn direct_assignment_outcome_reopens_then_records_one_take() {
         rows(&target, &path, &fixture.view_access_token, &date)[0],
         not_taken
     );
+    let response = target.post_json_authorized(
+        &format!("{path}/not_taken"),
+        &fixture.access_token,
+        &json!({"dose_occurrence": {"key": key, "reason": "unwell", "note": "Resting after treatment"}}),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(etag(&response), tag);
+    assert_eq!(body(response)["data"], not_taken);
+    let response = target.patch_json(
+        &format!("{path}/reopen"),
+        &fixture.access_token,
+        &json!({"dose_occurrence": {"key": key}}),
+    );
+    assert_eq!(response.status().as_u16(), 428);
+    let response = target.patch_json_if_match(
+        &format!("{path}/reopen"),
+        &fixture.access_token,
+        &json!({"dose_occurrence": {"key": key}}),
+        "stale",
+    );
+    assert_eq!(response.status().as_u16(), 409);
+    assert_eq!(
+        rows(&target, &path, &fixture.access_token, &date)[0],
+        not_taken
+    );
+    let replacement = json!({"dose_occurrence": {
+        "key": key, "taken_at": taken_at,
+        "client_uuid": client_uuid(&fixture, 2),
+        "taken_from_medication_id": medication_id
+    }});
+    let response =
+        target.post_json_authorized(&format!("{path}/take"), &fixture.access_token, &replacement);
+    assert_eq!(response.status().as_u16(), 428);
+    let response = target.post_json_if_match(
+        &format!("{path}/take"),
+        &fixture.access_token,
+        &replacement,
+        "stale",
+    );
+    assert_eq!(response.status().as_u16(), 409);
+    assert_eq!(
+        rows(&target, &path, &fixture.access_token, &date)[0],
+        not_taken
+    );
     assert!(takes_for_medication(&target, &fixture, medication_id).is_empty());
     assert_eq!(
         stock(&target, &fixture, medication_id)
@@ -739,6 +783,28 @@ fn direct_assignment_outcome_reopens_then_records_one_take() {
         "client_uuid": client_uuid(&fixture, 2),
         "taken_from_medication_id": medication_id
     }});
+    let invalid_time = json!({"dose_occurrence": {
+        "key": key, "taken_at": "invalid",
+        "client_uuid": client_uuid(&fixture, 2),
+        "taken_from_medication_id": medication_id
+    }});
+    let response = target.post_json_authorized(
+        &format!("{path}/take"),
+        &fixture.access_token,
+        &invalid_time,
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert_eq!(
+        rows(&target, &path, &fixture.access_token, &date)[0],
+        reopened
+    );
+    assert!(takes_for_medication(&target, &fixture, medication_id).is_empty());
+    assert_eq!(
+        stock(&target, &fixture, medication_id)
+            .parse::<f64>()
+            .unwrap(),
+        before_stock
+    );
     let response =
         target.post_json_authorized(&format!("{path}/take"), &fixture.access_token, &payload);
     if response.status().as_u16() != 200 {
@@ -1020,11 +1086,66 @@ fn medication_takes_create_filters_paginates_and_preserves_precision() {
 }
 
 #[test]
+fn medication_take_collection_excludes_takes_for_ungranted_people() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let medication = create_medication(&target, &fixture);
+    let person = target.post_json_authorized(
+        &format!("/api/v1/households/{}/people", fixture.household_id),
+        &fixture.care_access_token,
+        &json!({"person": {"name": "Private take subject", "date_of_birth": "1980-02-03",
+            "person_type": "adult", "has_capacity": true}}),
+    );
+    assert_eq!(person.status().as_u16(), 201);
+    let person = body(person)["data"].clone();
+    let assignment = target.post_json_authorized(
+        &format!(
+            "/api/v1/households/{}/person_medications",
+            fixture.household_id
+        ),
+        &fixture.care_access_token,
+        &json!({"person_medication": {
+            "person_id": person["portable_id"],
+            "medication_id": medication["portable_id"],
+            "dose_amount": "1", "dose_unit": "ml", "administration_kind": "as_needed"
+        }}),
+    );
+    assert_eq!(assignment.status().as_u16(), 201);
+    let assignment = body(assignment)["data"].clone();
+    let (_, taken_at) = clock();
+    let take = target.post_json_authorized(
+        &takes_path(&fixture),
+        &fixture.care_access_token,
+        &json!({"medication_take": {
+            "source_type": "person_medication", "source_id": assignment["portable_id"],
+            "taken_at": taken_at, "dose_amount": "1", "taken_from_medication_id": medication["id"]
+        }}),
+    );
+    assert_eq!(take.status().as_u16(), 201);
+    let take_id = body(take)["data"]["id"].clone();
+    let visible = body(target.get(&takes_path(&fixture), Some(&fixture.care_access_token)));
+    assert!(visible["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|row| row["id"] == take_id));
+    let viewer = target.get(&takes_path(&fixture), Some(&fixture.view_access_token));
+    assert_eq!(viewer.status().as_u16(), 200);
+    let viewer = body(viewer);
+    assert!(!viewer["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|row| row["id"] == take_id));
+}
+
+#[test]
 fn medication_take_rejects_invalid_time_source_and_future_without_stock_loss() {
     let target = Target::from_env();
     let fixture = fixture();
     let path = takes_path(&fixture);
     let before_stock = stock(&target, &fixture, fixture.managed_medication_id);
+    let before_takes = take_snapshot(&target, &fixture);
     let (_, taken_at) = clock();
     let schedule_source_id = schedule_portable_id(&target, &fixture);
     let assignment_source_id = assignment_portable_id(&target, &fixture);
@@ -1061,6 +1182,19 @@ fn medication_take_rejects_invalid_time_source_and_future_without_stock_loss() {
             assert_eq!(body(response)["error"]["message"], message);
         }
     }
+    let response = target.post_json_authorized(
+        &path,
+        &fixture.access_token,
+        &json!({"medication_take": {
+            "source_type": "person_medication", "source_id": assignment_source_id,
+            "taken_at": taken_at, "dose_amount": "1",
+            "taken_from_medication_id": fixture.foreign_medication_id
+        }}),
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert!(!body(response)
+        .to_string()
+        .contains(&fixture.foreign_medication_name));
     let future = (OffsetDateTime::now_utc() + time::Duration::hours(2))
         .format(&Rfc3339)
         .unwrap();
@@ -1082,6 +1216,7 @@ fn medication_take_rejects_invalid_time_source_and_future_without_stock_loss() {
         stock(&target, &fixture, fixture.managed_medication_id),
         before_stock
     );
+    assert_eq!(take_snapshot(&target, &fixture), before_takes);
 }
 
 #[test]

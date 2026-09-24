@@ -665,6 +665,58 @@ fn pause_periods_preserve_reason_actor_pagination_and_addressed_resume() {
 }
 
 #[test]
+fn pause_period_history_orders_schedule_and_assignment_sources_together() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let base = periods_path(&fixture);
+    let schedule_path = format!(
+        "/api/v1/households/{}/schedules/{}/pause",
+        fixture.household_id, fixture.managed_schedule_id
+    );
+    let schedule_pause = target.patch_json(
+        &schedule_path,
+        &fixture.access_token,
+        &json!({"reason": "other"}),
+    );
+    assert_eq!(schedule_pause.status().as_u16(), 200);
+    let schedule_period = body(schedule_pause)["data"]["current_pause_period"]["id"].clone();
+
+    let (assignment, _) = create_assignment(&target, &fixture, "Mixed pause history source");
+    let assignment_id = assignment["portable_id"].as_str().unwrap();
+    let assignment_pause = target.post_json_authorized(
+        &base,
+        &fixture.access_token,
+        &json!({"medication_pause_period": {
+            "source_type": "person_medication", "source_id": assignment_id, "reason": "other"
+        }}),
+    );
+    assert_eq!(assignment_pause.status().as_u16(), 201);
+    let assignment_period = body(assignment_pause)["data"]["id"].clone();
+
+    let response = target.get(
+        &format!("{base}?page=1&per_page=100"),
+        Some(&fixture.view_access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let collection = body(response);
+    let rows = collection["data"].as_array().unwrap();
+    let assignment_position = rows
+        .iter()
+        .position(|row| row["id"] == assignment_period)
+        .unwrap();
+    let schedule_position = rows
+        .iter()
+        .position(|row| row["id"] == schedule_period)
+        .unwrap();
+    assert!(assignment_position < schedule_position);
+    assert_eq!(
+        rows[assignment_position]["source_type"],
+        "person_medication"
+    );
+    assert_eq!(rows[schedule_position]["source_type"], "schedule");
+}
+
+#[test]
 fn pause_period_validation_and_visibility_do_not_disclose_foreign_context() {
     let target = Target::from_env();
     let fixture = fixture();
