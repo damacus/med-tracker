@@ -13,6 +13,20 @@ fn etag(response: &Response) -> String {
         .to_owned()
 }
 
+fn matching_grant_ids(body: &Value, membership_id: i64, person_id: i64) -> Vec<i64> {
+    let mut ids: Vec<i64> = body["data"]
+        .as_array()
+        .expect("grant collection")
+        .iter()
+        .filter(|grant| {
+            grant["household_membership_id"] == membership_id && grant["person_id"] == person_id
+        })
+        .map(|grant| grant["id"].as_i64().expect("grant id"))
+        .collect();
+    ids.sort_unstable();
+    ids
+}
+
 #[test]
 fn current_profile_reads_with_bearer_session() {
     let target = Target::from_env();
@@ -222,11 +236,12 @@ fn person_access_grants_create_list_and_revoke_without_exposing_other_households
 
     let response = target.get(&base, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
-    assert!(json_body(response)["data"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|grant| grant["id"] == grant_id));
+    let before_duplicate = matching_grant_ids(
+        &json_body(response),
+        fixture.grant_target_membership_id,
+        fixture.managed_person_id,
+    );
+    assert_eq!(before_duplicate, vec![grant_id]);
 
     let response = target.post_json_authorized(&base, &fixture.access_token, &payload);
     assert_eq!(response.status().as_u16(), 422);
@@ -234,17 +249,12 @@ fn person_access_grants_create_list_and_revoke_without_exposing_other_households
     let response = target.get(&base, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
     assert_eq!(
-        json_body(response)["data"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .filter(|grant| {
-                grant["household_membership_id"] == fixture.grant_target_membership_id
-                    && grant["person_id"] == fixture.managed_person_id
-                    && grant["revoked_at"].is_null()
-            })
-            .count(),
-        1
+        matching_grant_ids(
+            &json_body(response),
+            fixture.grant_target_membership_id,
+            fixture.managed_person_id,
+        ),
+        before_duplicate
     );
 
     let response = target.delete(&format!("{base}/{grant_id}"), Some(&fixture.access_token));
@@ -627,7 +637,8 @@ fn invalid_person_updates_and_view_only_writes_preserve_the_record() {
     );
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
-    let original_name = json_body(response)["data"]["name"].clone();
+    let original_etag = etag(&response);
+    let original_body = json_body(response);
     for method in ["PATCH", "PUT"] {
         let payload = json!({"person": {"name": ""}});
         let response = if method == "PATCH" {
@@ -637,6 +648,18 @@ fn invalid_person_updates_and_view_only_writes_preserve_the_record() {
         };
         assert_eq!(response.status().as_u16(), 422, "{method} invalid person");
         assert!(json_body(response)["error"]["errors"]["name"].is_array());
+        let response = target.get(&path, Some(&fixture.access_token));
+        assert_eq!(response.status().as_u16(), 200);
+        assert_eq!(
+            etag(&response),
+            original_etag,
+            "{method} changed person ETag"
+        );
+        assert_eq!(
+            json_body(response),
+            original_body,
+            "{method} changed person"
+        );
     }
     let response = target.put_json(
         &path,
@@ -646,7 +669,16 @@ fn invalid_person_updates_and_view_only_writes_preserve_the_record() {
     assert_eq!(response.status().as_u16(), 403);
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
-    assert_eq!(json_body(response)["data"]["name"], original_name);
+    assert_eq!(
+        etag(&response),
+        original_etag,
+        "view-only PUT changed person ETag"
+    );
+    assert_eq!(
+        json_body(response),
+        original_body,
+        "view-only PUT changed person"
+    );
 }
 
 #[test]

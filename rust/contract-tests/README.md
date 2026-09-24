@@ -21,6 +21,7 @@ Run `task contract:schedules-rails` for only the schedule cases.
 Run `task contract:doses-rails` for schedule and direct-assignment dose outcomes
 and medication takes.
 Run `task contract:reviews-rails` for medication review prompt list, read and update cases.
+Run `task contract:care-rails` for people, person-grant, and location permission cases.
 Run `task contract:dose-precision-rails` to demonstrate the ignored
 expected-failing medication-take timestamp case: Rails accepts fractional
 seconds but returns `taken_at` at whole-second precision.
