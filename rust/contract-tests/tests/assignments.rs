@@ -385,6 +385,16 @@ fn assignment_legacy_pause_resume_and_reorder_retain_state() {
     );
 
     let response = target.patch_json(
+        &format!("{second_path}/resume"),
+        &fixture.access_token,
+        &json!({}),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let never_paused = body(response)["data"].clone();
+    assert_eq!(never_paused["paused"], false);
+    assert!(never_paused["current_pause_period"].is_null());
+
+    let response = target.patch_json(
         &format!("{second_path}/pause"),
         &fixture.access_token,
         &json!({}),
@@ -400,6 +410,16 @@ fn assignment_legacy_pause_resume_and_reorder_retain_state() {
     );
     assert_eq!(paused["current_pause_period"]["legacy_context"], true);
     let period_id = paused["current_pause_period"]["id"].clone();
+    let response = target.patch_json(
+        &format!("{second_path}/pause"),
+        &fixture.access_token,
+        &json!({}),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(
+        body(response)["data"]["current_pause_period"]["id"],
+        period_id
+    );
     assert_audit_action(
         &target,
         &fixture,
@@ -421,6 +441,13 @@ fn assignment_legacy_pause_resume_and_reorder_retain_state() {
     assert_eq!(resumed["paused"], false);
     assert_eq!(resumed["active"], true);
     assert!(resumed["current_pause_period"].is_null());
+    let response = target.patch_json(
+        &format!("{second_path}/resume"),
+        &fixture.access_token,
+        &json!({}),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(body(response)["data"]["paused"], false);
     assert_audit_action(
         &target,
         &fixture,
@@ -485,6 +512,42 @@ fn assignment_legacy_pause_resume_and_reorder_retain_state() {
         &json!({}),
     );
     assert_eq!(response.status().as_u16(), 403);
+    let response = target.patch_json(
+        &format!("{second_path}/reorder"),
+        &fixture.view_access_token,
+        &json!({"direction": "down"}),
+    );
+    assert_eq!(response.status().as_u16(), 403);
+    for action in ["pause", "resume", "reorder"] {
+        let response = target.patch_json(
+            &format!(
+                "{}/{}/{action}",
+                assignments_path(&fixture),
+                fixture.foreign_assignment_id
+            ),
+            &fixture.access_token,
+            &json!({"direction": "up"}),
+        );
+        assert_eq!(response.status().as_u16(), 404);
+    }
+    let response = target.get(&second_path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let retained = body(response)["data"].clone();
+    assert_eq!(retained["position"], first["position"]);
+    assert_eq!(retained["paused"], false);
+    assert!(retained["current_pause_period"].is_null());
+    let foreign_path = format!(
+        "/api/v1/households/{}/person_medications/{}",
+        fixture.foreign_household_id, fixture.foreign_assignment_id
+    );
+    let response = target.get(&foreign_path, Some(&fixture.foreign_access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let foreign_retained = body(response)["data"].clone();
+    assert_eq!(foreign_retained["paused"], true);
+    assert_eq!(
+        foreign_retained["current_pause_period"]["id"],
+        fixture.foreign_pause_period_id
+    );
 }
 
 #[test]
@@ -697,4 +760,270 @@ fn pause_period_validation_and_visibility_do_not_disclose_foreign_context() {
     assert!(visible_ids.contains(&period["id"]));
     assert!(!visible_ids.contains(&json!(fixture.hidden_pause_period_id)));
     assert!(!visible_ids.contains(&json!(fixture.foreign_pause_period_id)));
+}
+
+#[test]
+fn assignment_updated_since_is_inclusive_validated_and_person_scoped() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (created, _) = create_assignment(&target, &fixture, "Contract assignment filter");
+    let base = assignments_path(&fixture);
+    let boundary = created["updated_at"].as_str().unwrap();
+    let response = target.get(
+        &format!("{base}?updated_since={boundary}"),
+        Some(&fixture.view_access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let rows = body(response)["data"].as_array().unwrap().clone();
+    assert!(rows.iter().any(|row| row["id"] == created["id"]));
+    assert!(!rows
+        .iter()
+        .any(|row| row["id"] == fixture.hidden_assignment_id));
+    assert!(!rows
+        .iter()
+        .any(|row| row["id"] == fixture.foreign_assignment_id));
+
+    let response = target.get(
+        &format!("{base}?updated_since=2999-01-01T00:00:00Z"),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    assert!(body(response)["data"].as_array().unwrap().is_empty());
+    let response = target.get(
+        &format!("{base}?updated_since=invalid"),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert_eq!(body(response)["error"]["code"], "unprocessable_content");
+}
+
+#[test]
+fn assignment_source_dosage_snapshot_validates_matching_and_portable_ids() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let medications = format!("/api/v1/households/{}/medications", fixture.household_id);
+    let response = target.post_json_authorized(
+        &medications,
+        &fixture.access_token,
+        &json!({"medication": {"name": "Contract source dosage medication",
+            "location_id": fixture.primary_location_id, "dose_amount": "1", "dose_unit": "ml"}}),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let medication = body(response)["data"].clone();
+    let dosages = format!("/api/v1/households/{}/dosage_options", fixture.household_id);
+    let response = target.post_json_authorized(
+        &dosages,
+        &fixture.access_token,
+        &json!({"dosage_option": {"medication_id": medication["portable_id"],
+            "amount": "2.5", "unit": "ml", "frequency": "Daily",
+            "default_max_daily_doses": 2, "default_min_hours_between_doses": "8.0",
+            "default_dose_cycle": "daily"}}),
+    );
+    let status = response.status().as_u16();
+    let result = body(response);
+    assert_eq!(status, 201, "{result}");
+    let dosage = result["data"].clone();
+    let base = assignments_path(&fixture);
+    let payload = json!({"person_medication": {
+        "person_id": fixture.managed_person_portable_id,
+        "medication_id": medication["portable_id"],
+        "source_dosage_option_id": dosage["portable_id"],
+        "dose_amount": "2.5", "dose_unit": "ml"
+    }});
+    let response = target.post_json_authorized(&base, &fixture.access_token, &payload);
+    assert_eq!(response.status().as_u16(), 201);
+    let created = body(response)["data"].clone();
+    assert_eq!(created["medication_id"], medication["id"]);
+    assert_eq!(created["medication_portable_id"], medication["portable_id"]);
+    assert_eq!(
+        created["person_portable_id"],
+        fixture.managed_person_portable_id
+    );
+    assert_eq!(created["dose_amount"], "2.5");
+    assert_eq!(created["dose_unit"], "ml");
+    let path = format!("{base}/{}", created["portable_id"].as_str().unwrap());
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let original_tag = etag(&response);
+    let original = body(response)["data"].clone();
+    assert_eq!(original["dose_amount"], created["dose_amount"]);
+    assert_eq!(
+        original["medication_portable_id"],
+        created["medication_portable_id"]
+    );
+
+    let response = target.patch_json(
+        &path,
+        &fixture.access_token,
+        &json!({"person_medication": {"medication_id": fixture.managed_medication_portable_id}}),
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert!(body(response)["error"]["errors"]["source_dosage_option"].is_array());
+    for (value, status) in [
+        (json!(fixture.foreign_dosage_id.to_string()), 404),
+        (json!(fixture.foreign_dosage_id), 422),
+    ] {
+        let response = target.patch_json(
+            &path,
+            &fixture.access_token,
+            &json!({"person_medication": {"source_dosage_option_id": value}}),
+        );
+        assert_eq!(response.status().as_u16(), status);
+    }
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(etag(&response), original_tag);
+    assert_eq!(body(response)["data"], original);
+
+    let mut mismatch = payload.clone();
+    mismatch["person_medication"]["dose_amount"] = json!("1");
+    let response = target.post_json_authorized(&base, &fixture.access_token, &mismatch);
+    assert_eq!(response.status().as_u16(), 422);
+    assert!(body(response)["error"]["errors"]["source_dosage_option"].is_array());
+}
+
+#[test]
+fn assignment_invalid_numeric_and_replacement_inputs_retain_body_and_etag() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (created, original_tag) =
+        create_assignment(&target, &fixture, "Contract assignment invalid");
+    let path = format!(
+        "{}/{}",
+        assignments_path(&fixture),
+        created["portable_id"].as_str().unwrap()
+    );
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let original = body(response)["data"].clone();
+    let base = assignments_path(&fixture);
+    for payload in [
+        json!({"person_medication": {"person_id": fixture.managed_person_id,
+            "medication_id": fixture.managed_medication_portable_id, "dose_amount": "1", "dose_unit": "ml"}}),
+        json!({"person_medication": {"person_id": fixture.managed_person_portable_id,
+            "medication_id": fixture.managed_medication_id, "dose_amount": "1", "dose_unit": "ml"}}),
+        json!({"person_medication": {"person_id": fixture.managed_person_portable_id,
+            "medication_id": fixture.managed_medication_portable_id, "dose_amount": 1.25, "dose_unit": "ml"}}),
+    ] {
+        let response = target.post_json_authorized(&base, &fixture.access_token, &payload);
+        assert_eq!(response.status().as_u16(), 422);
+    }
+    for payload in [
+        json!({"person_medication": {"dose_amount": 1.25}}),
+        json!({"person_medication": {"dose_amount": "-2"}}),
+    ] {
+        let response =
+            target.patch_json_if_match(&path, &fixture.access_token, &payload, &original_tag);
+        assert_eq!(response.status().as_u16(), 422);
+        let response = target.get(&path, Some(&fixture.access_token));
+        assert_eq!(response.status().as_u16(), 200);
+        assert_eq!(etag(&response), original_tag);
+        assert_eq!(body(response)["data"], original);
+    }
+    let response = target.put_json_if_match(
+        &path,
+        &fixture.access_token,
+        &json!({"person_medication": {"dose_amount": "-3", "notes": "Should not persist"}}),
+        &original_tag,
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert!(body(response)["error"]["errors"]["dose_amount"].is_array());
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(etag(&response), original_tag);
+    assert_eq!(body(response)["data"], original);
+    let response = target.put_json_if_match(
+        &path,
+        &fixture.view_access_token,
+        &json!({"person_medication": {"notes": "Forbidden"}}),
+        &original_tag,
+    );
+    assert_eq!(response.status().as_u16(), 403);
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(etag(&response), original_tag);
+    assert_eq!(body(response)["data"], original);
+}
+
+#[test]
+fn retired_assignment_history_remains_visible_but_pause_writes_are_denied() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let source_id = &fixture.retired_assignment_portable_id;
+    let period_id = &fixture.retired_assignment_period_id;
+    let base = periods_path(&fixture);
+    let history_path = format!("{base}?source_type=person_medication&source_id={source_id}");
+    let response = target.get(&history_path, Some(&fixture.view_access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let history = body(response);
+    assert_eq!(history["data"][0]["id"], period_id.as_str());
+    assert_eq!(history["data"][0]["source_id"], source_id.as_str());
+    assert!(history["data"][0]["ended_at"].is_null());
+    let response = target.get(&base, Some(&fixture.view_access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert!(body(response)["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|row| row["id"] == period_id.as_str()));
+    let response = target.post_json_authorized(
+        &base,
+        &fixture.access_token,
+        &json!({"medication_pause_period": {"source_type": "person_medication",
+            "source_id": source_id, "reason": "other"}}),
+    );
+    assert_eq!(response.status().as_u16(), 404);
+    let response = target.post_json_authorized(
+        &format!("{base}/{period_id}/resume"),
+        &fixture.access_token,
+        &json!({}),
+    );
+    assert_eq!(response.status().as_u16(), 404);
+    let response = target.get(&history_path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let retained = body(response);
+    assert_eq!(retained["data"][0]["id"], period_id.as_str());
+    assert!(retained["data"][0]["ended_at"].is_null());
+}
+
+#[test]
+fn stale_period_etag_and_foreign_resume_preserve_the_open_period() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (assignment, _) = create_assignment(&target, &fixture, "Contract period precondition");
+    let source_id = assignment["portable_id"].as_str().unwrap();
+    let base = periods_path(&fixture);
+    let response = target.post_json_authorized(
+        &base,
+        &fixture.access_token,
+        &json!({"medication_pause_period": {"source_type": "person_medication",
+            "source_id": source_id, "reason": "other"}}),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let tag = etag(&response);
+    let period = body(response)["data"].clone();
+    let path = format!("{base}/{}/resume", period["id"].as_str().unwrap());
+    let response = target.post_json_if_match(&path, &fixture.access_token, &json!({}), "\"stale\"");
+    assert_eq!(response.status().as_u16(), 409);
+    assert_eq!(body(response)["error"]["code"], "conflict");
+    let history = format!("{base}?source_type=person_medication&source_id={source_id}");
+    let response = target.get(&history, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(body(response)["data"][0], period);
+    let response = target.get(
+        &format!("{}/{}", assignments_path(&fixture), source_id),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(
+        body(response)["data"]["current_pause_period"]["id"],
+        period["id"]
+    );
+
+    let foreign = format!("{base}/{}/resume", fixture.foreign_pause_period_id);
+    let response = target.post_json_authorized(&foreign, &fixture.access_token, &json!({}));
+    assert_eq!(response.status().as_u16(), 404);
+    let response = target.post_json_if_match(&path, &fixture.access_token, &json!({}), &tag);
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(body(response)["data"]["id"], period["id"]);
 }

@@ -29,6 +29,10 @@ end
 fixture = ActiveRecord::Base.transaction do
   account, household, user = create_household(nonce, 'primary')
   foreign_account, foreign_household, = create_household(nonce, 'foreign')
+  foreign_membership = foreign_account.household_memberships.find_by!(household: foreign_household)
+  _foreign_session, foreign_access_token, = ApiSession.issue_for(
+    account: foreign_account, household_membership: foreign_membership, device_name: 'contract-foreign'
+  )
   membership = account.household_memberships.find_by!(household: household)
   managed_person = household.people.create!(name: "Contract managed #{nonce}", date_of_birth: 35.years.ago.to_date,
                                             person_type: :adult, has_capacity: true)
@@ -107,6 +111,14 @@ fixture = ActiveRecord::Base.transaction do
                                                              default_dose_cycle: :daily)
   managed_assignment = PersonMedication.create!(household: household, person: managed_person,
                                                 medication: managed_medication, administration_kind: :as_needed)
+  retired_medication = Medication.create!(household: household, location: primary_location,
+                                          name: "Contract retired medicine #{nonce}", dose_amount: '1',
+                                          dose_unit: 'ml')
+  retired_assignment = PersonMedication.create!(household: household, person: managed_person,
+                                                medication: retired_medication, administration_kind: :as_needed)
+  retired_assignment.pause!
+  retired_assignment_period = retired_assignment.medication_pause_periods.sole
+  retired_assignment.retire!
   hidden_assignment = PersonMedication.create!(household: household, person: hidden_person,
                                                medication: hidden_medication, administration_kind: :as_needed)
   foreign_assignment = PersonMedication.create!(household: foreign_household, person: foreign_account.person,
@@ -228,6 +240,7 @@ fixture = ActiveRecord::Base.transaction do
     household_id: household.id,
     household_name: household.name,
     foreign_household_id: foreign_household.id,
+    foreign_access_token: foreign_access_token,
     foreign_email: "contract-foreign-#{nonce}@example.test",
     session_id: session.id,
     revocable_session_id: revocable_session.id,
@@ -261,6 +274,8 @@ fixture = ActiveRecord::Base.transaction do
     foreign_medication_portable_id: foreign_medication.portable_id,
     foreign_medication_name: foreign_medication.name,
     managed_assignment_id: managed_assignment.id,
+    retired_assignment_portable_id: retired_assignment.portable_id,
+    retired_assignment_period_id: retired_assignment_period.portable_id,
     hidden_assignment_id: hidden_assignment.id,
     hidden_assignment_portable_id: hidden_assignment.portable_id,
     foreign_assignment_id: foreign_assignment.id,
