@@ -175,15 +175,44 @@ fn review_list_caps_page_size_and_treats_invalid_show_hidden_as_false() {
     let target = Target::from_env();
     let fixture = fixture();
     let base = path(&fixture);
+    let foreign_base = format!(
+        "/api/v1/households/{}/medication_review_prompts",
+        fixture.foreign_household_id
+    );
     let capped = target.get(
-        &format!("{base}?per_page=1000"),
-        Some(&fixture.view_access_token),
+        &format!("{foreign_base}?page=1&per_page=1000"),
+        Some(&fixture.foreign_access_token),
     );
     assert_eq!(capped.status().as_u16(), 200);
     let capped = body(capped);
+    assert_eq!(capped["meta"]["page"], 1);
     assert_eq!(capped["meta"]["per_page"], 100);
-    assert_eq!(capped["meta"]["total_count"], 4);
-    assert_eq!(capped["data"].as_array().unwrap().len(), 4);
+    assert_eq!(capped["meta"]["total_count"], 101);
+    let first_page = capped["data"].as_array().unwrap();
+    assert_eq!(first_page.len(), 100);
+    let remaining = target.get(
+        &format!("{foreign_base}?page=2&per_page=1000"),
+        Some(&fixture.foreign_access_token),
+    );
+    assert_eq!(remaining.status().as_u16(), 200);
+    let remaining = body(remaining);
+    assert_eq!(remaining["meta"]["page"], 2);
+    assert_eq!(remaining["meta"]["per_page"], 100);
+    assert_eq!(remaining["meta"]["total_count"], 101);
+    let second_page = remaining["data"].as_array().unwrap();
+    assert_eq!(second_page.len(), 1);
+    let mut ids: Vec<_> = first_page
+        .iter()
+        .map(|row| row["id"].as_str().unwrap())
+        .collect();
+    ids.extend(second_page.iter().map(|row| row["id"].as_str().unwrap()));
+    assert_eq!(ids.len(), 101);
+    assert_eq!(
+        ids.iter().collect::<std::collections::HashSet<_>>().len(),
+        101
+    );
+    let foreign_prompt_id = fixture.foreign_review_prompt_id.to_string();
+    assert!(ids.contains(&foreign_prompt_id.as_str()));
 
     let invalid = target.get(
         &format!("{base}?show_hidden=private-invalid"),

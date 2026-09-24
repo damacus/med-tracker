@@ -202,6 +202,13 @@ fixture = ActiveRecord::Base.transaction do
                                                 review_evidence.fetch('high'), 'needs_review')
   foreign_review_prompt = review_attributes.call(foreign_household, foreign_account.person, foreign_medication,
                                                  foreign_review_partner, review_evidence.fetch('high'), 'needs_review')
+  100.times do |index|
+    evidence = review_evidence.fetch('high').dup
+    evidence.source_record_id = "contract-review-page-#{index}-#{nonce}"
+    evidence.save!
+    review_attributes.call(foreign_household, foreign_account.person, foreign_medication,
+                           foreign_review_partner, evidence, 'needs_review')
+  end
   session, access_token, = ApiSession.issue_for(
     account: account, household_membership: membership, device_name: 'contract-tests'
   )
