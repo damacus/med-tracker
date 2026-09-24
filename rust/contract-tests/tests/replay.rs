@@ -1,6 +1,8 @@
 use medtracker_contract_tests::{fixture, Fixture, Target};
 use reqwest::blocking::Response;
 use serde_json::{json, Value};
+use std::sync::{Arc, Barrier};
+use std::thread;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
@@ -127,6 +129,97 @@ fn request_audit_count(target: &Target, fixture: &Fixture, request_id: &str) -> 
         .iter()
         .filter(|row| row["request_id"] == request_id && row["event_type"] == "api.request")
         .count()
+}
+
+struct BatchResponse {
+    status: u16,
+    replay_header: Option<String>,
+    request_id: String,
+    body: Value,
+}
+
+fn concurrent_batches(
+    fixture: &Fixture,
+    requests: [(Value, Option<String>); 2],
+) -> [BatchResponse; 2] {
+    let barrier = Arc::new(Barrier::new(3));
+    let route = path(fixture, "sync/batches");
+    let token = fixture.access_token.clone();
+    let client_ip = format!(
+        "198.19.{}.{}",
+        (fixture.household_id / 256) % 256,
+        fixture.household_id % 256
+    );
+    thread::scope(|scope| {
+        let workers: Vec<_> = requests
+            .into_iter()
+            .map(|(payload, key)| {
+                let barrier = Arc::clone(&barrier);
+                let route = route.clone();
+                let token = token.clone();
+                let client_ip = client_ip.clone();
+                scope.spawn(move || {
+                    let target = Target::from_env();
+                    barrier.wait();
+                    let response = target.post_json_from_local_client(
+                        &route,
+                        &token,
+                        &client_ip,
+                        key.as_deref(),
+                        &payload,
+                    );
+                    let status = response.status().as_u16();
+                    let replay_header = response
+                        .headers()
+                        .get("Idempotency-Replayed")
+                        .map(|value| value.to_str().unwrap().to_owned());
+                    let request_id = response.headers()["x-request-id"]
+                        .to_str()
+                        .unwrap()
+                        .to_owned();
+                    BatchResponse {
+                        status,
+                        replay_header,
+                        request_id,
+                        body: body(response),
+                    }
+                })
+            })
+            .collect();
+        barrier.wait();
+        workers
+            .into_iter()
+            .map(|worker| worker.join().expect("concurrent HTTP worker"))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap_or_else(|_| panic!("two HTTP responses"))
+    })
+}
+
+fn assert_one_take_effect(
+    target: &Target,
+    fixture: &Fixture,
+    medication_id: i64,
+    before_stock: f64,
+    cursor: &str,
+    take_id: &str,
+    responses: &[BatchResponse; 2],
+) {
+    assert_eq!(stock(target, fixture, medication_id), before_stock - 1.25);
+    assert_eq!(
+        take_rows(target, fixture)
+            .iter()
+            .filter(|row| row["portable_id"] == take_id)
+            .count(),
+        1
+    );
+    assert_eq!(take_change_count(target, fixture, cursor, take_id), 1);
+    for response in responses {
+        assert_eq!(
+            request_audit_count(target, fixture, &response.request_id),
+            1
+        );
+    }
 }
 
 #[test]
@@ -302,6 +395,190 @@ fn saved_validation_error_replays_without_creating_a_take() {
         before
     );
     assert_eq!(take_rows(&target, &fixture).len(), before_takes);
+}
+
+#[test]
+fn concurrent_matching_request_keys_replay_one_response() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (source_id, medication_id) = fresh_source(&target, &fixture);
+    let cursor = feed_cursor(&target, &fixture);
+    let before_stock = stock(&target, &fixture, medication_id);
+    let payload = batch_body(take_operation(
+        &source_id,
+        &uuid(&fixture, 7),
+        medication_id,
+    ));
+    let key = uuid(&fixture, 8);
+    let responses = concurrent_batches(
+        &fixture,
+        [(payload.clone(), Some(key.clone())), (payload, Some(key))],
+    );
+    assert!(responses.iter().all(|response| response.status == 201));
+    assert_eq!(
+        responses
+            .iter()
+            .filter(|response| response.replay_header.as_deref() == Some("true"))
+            .count(),
+        1
+    );
+    assert_eq!(
+        responses
+            .iter()
+            .filter(|response| response.replay_header.is_none())
+            .count(),
+        1
+    );
+    assert_ne!(responses[0].request_id, responses[1].request_id);
+    assert_eq!(responses[0].body, responses[1].body);
+    let result = &responses[0].body["data"]["results"][0];
+    assert_eq!(result["replayed"], false);
+    let take_id = result["record_portable_id"].as_str().unwrap();
+    assert_one_take_effect(
+        &target,
+        &fixture,
+        medication_id,
+        before_stock,
+        &cursor,
+        take_id,
+        &responses,
+    );
+}
+
+#[test]
+fn concurrent_matching_client_uuids_create_one_take_without_a_shared_request_key() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (source_id, medication_id) = fresh_source(&target, &fixture);
+    let cursor = feed_cursor(&target, &fixture);
+    let before_stock = stock(&target, &fixture, medication_id);
+    let payload = batch_body(take_operation(
+        &source_id,
+        &uuid(&fixture, 9),
+        medication_id,
+    ));
+    let responses = concurrent_batches(
+        &fixture,
+        [(payload.clone(), Some(uuid(&fixture, 10))), (payload, None)],
+    );
+    assert!(responses.iter().all(|response| response.status == 201));
+    assert!(responses
+        .iter()
+        .all(|response| response.replay_header.is_none()));
+    assert_ne!(responses[0].request_id, responses[1].request_id);
+    let results: Vec<_> = responses
+        .iter()
+        .map(|response| &response.body["data"]["results"][0])
+        .collect();
+    assert_eq!(
+        results
+            .iter()
+            .filter(|result| result["replayed"] == false)
+            .count(),
+        1
+    );
+    assert_eq!(
+        results
+            .iter()
+            .filter(|result| result["replayed"] == true)
+            .count(),
+        1
+    );
+    assert_eq!(
+        results[0]["record_portable_id"],
+        results[1]["record_portable_id"]
+    );
+    assert_eq!(results[0]["etag"], results[1]["etag"]);
+    let take_id = results[0]["record_portable_id"].as_str().unwrap();
+    assert_one_take_effect(
+        &target,
+        &fixture,
+        medication_id,
+        before_stock,
+        &cursor,
+        take_id,
+        &responses,
+    );
+}
+
+#[test]
+fn concurrent_stale_edits_with_distinct_keys_conflict() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let created = target.post_json_authorized(
+        &path(&fixture, "locations"),
+        &fixture.access_token,
+        &json!({"location": {"name": "Concurrent edit baseline"}}),
+    );
+    assert_eq!(created.status().as_u16(), 201);
+    let id = body(created)["data"]["portable_id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let read = target.get(
+        &path(&fixture, &format!("locations/{id}")),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(read.status().as_u16(), 200);
+    let etag = read.headers()["etag"].to_str().unwrap().to_owned();
+    let cursor = feed_cursor(&target, &fixture);
+    let count_changes = |feed: Response| {
+        assert_eq!(feed.status().as_u16(), 200);
+        body(feed)["data"]["changes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|row| row["record_type"] == "Location" && row["record_portable_id"] == id)
+            .count()
+    };
+    let before_changes = count_changes(target.get(
+        &path(&fixture, &format!("sync/changes?cursor={cursor}")),
+        Some(&fixture.access_token),
+    ));
+    let payload = |name| {
+        batch_body(
+            json!({"resource_type": "location", "action": "update", "id": id,
+            "if_match": etag, "attributes": {"name": name}}),
+        )
+    };
+    let responses = concurrent_batches(
+        &fixture,
+        [
+            (payload("Concurrent edit A"), Some(uuid(&fixture, 11))),
+            (payload("Concurrent edit B"), Some(uuid(&fixture, 12))),
+        ],
+    );
+    let winner = responses
+        .iter()
+        .position(|response| response.status == 201)
+        .unwrap();
+    let loser = 1 - winner;
+    assert_eq!(responses[loser].status, 409);
+    assert_eq!(responses[loser].body["error"]["code"], "sync_conflict");
+    assert!(responses
+        .iter()
+        .all(|response| response.replay_header.is_none()));
+    assert_ne!(responses[0].request_id, responses[1].request_id);
+    let expected_name = if winner == 0 {
+        "Concurrent edit A"
+    } else {
+        "Concurrent edit B"
+    };
+    let retained = target.get(
+        &path(&fixture, &format!("locations/{id}")),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(retained.status().as_u16(), 200);
+    assert_eq!(body(retained)["data"]["name"], expected_name);
+    let after_changes = count_changes(target.get(
+        &path(&fixture, &format!("sync/changes?cursor={cursor}")),
+        Some(&fixture.access_token),
+    ));
+    assert_eq!(after_changes, before_changes + 1);
+    assert_eq!(
+        request_audit_count(&target, &fixture, &responses[winner].request_id),
+        1
+    );
 }
 
 #[test]
