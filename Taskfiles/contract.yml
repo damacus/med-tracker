@@ -35,6 +35,17 @@ tasks:
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test reviews -- --test-threads=1
 
+  run-care:
+    desc: Run people, grant, and location cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test care -- --test-threads=1
+
   run-doses:
     desc: Run dose outcome and medication take cases against a checked target and fixture
     requires:
@@ -178,6 +189,11 @@ tasks:
     desc: Run medication review prompt cases against isolated Rails
     cmds:
       - fish rust/contract-tests/run.fish rails reviews
+
+  care-rails:
+    desc: Run people, grant, and location cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails care
 
   dose-precision-rails:
     desc: Demonstrate Rails medication-take timestamp precision
