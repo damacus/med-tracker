@@ -156,6 +156,17 @@ tasks:
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test dosage_health -- --ignored --exact health_event_invalid_kind_returns_validation_error --test-threads=1
 
+  run-health-event-replacement-atomicity:
+    desc: Run the expected-failing invalid health-event replacement atomicity case
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test dosage_health -- --ignored --exact health_event_invalid_replacement_preserves_links_and_etag --test-threads=1
+
   oauth:
     desc: Run OAuth black-box cases against a checked target and fixture
     requires:
@@ -246,6 +257,11 @@ tasks:
     desc: Demonstrate the currently failing Rails invalid health-event kind validation case
     cmds:
       - fish rust/contract-tests/run.fish rails health-event-kind-validation
+
+  health-event-replacement-atomicity-rails:
+    desc: Demonstrate the currently failing Rails invalid health-event replacement atomicity case
+    cmds:
+      - fish rust/contract-tests/run.fish rails health-event-replacement-atomicity
 
   rust:
     desc: Run API contract cases against a Rust URL after provisioning isolated Rails fixtures
