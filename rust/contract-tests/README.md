@@ -17,6 +17,7 @@ global ceiling.
 
 Run `task contract:dosage-health-rails` for only the dosage-option and
 health-event black-box cases with the same isolated fixture setup.
+Run `task contract:schedules-rails` for only the schedule cases.
 Run `task contract:dosage-health-privacy-rails` to demonstrate the separate
 ignored privacy case that currently fails on Rails: a viewer can list a dosage
 option for a medication without a person grant. This expected failure is not
