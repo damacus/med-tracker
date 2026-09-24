@@ -117,6 +117,7 @@ services:
     networks: [test]
     volumes:
       - ./compose/init-roles.sql:/docker-entrypoint-initdb.d/001-init-roles.sql:ro
+      - ./compose/contract-db.sql:/contract-db.sql:ro
     healthcheck:
       interval: 5s
       timeout: 3s
@@ -136,7 +137,7 @@ services:
         condition: service_healthy
     environment: &rails_env_test
       RAILS_ENV: test
-      DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker
+      DATABASE_URL: ${CONTRACT_DATABASE_URL:-postgresql://medtracker:medtracker_password@db-test:5432/medtracker}
       DATABASE_ROLE: ${TEST_MIGRATION_DATABASE_ROLE:-}
       SMTP_ADDRESS: mail-test
       APP_URL: ${TEST_APP_URL:-http://localhost:3000}
@@ -178,6 +179,7 @@ services:
     environment:
       <<: *rails_env_test
       DATABASE_ROLE: ${TEST_DATABASE_ROLE:-}
+      CONTRACT_RATE_LIMITING: ${CONTRACT_RATE_LIMITING:-false}
     volumes:
       - .:/app
       - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro

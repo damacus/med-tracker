@@ -18,6 +18,10 @@ set -g contract_run_dir (rtk proxy mktemp -d tmp/contract-tests/run.XXXXXX)
 or exit $status
 set -g contract_fixture_path (pwd)/$contract_run_dir/fixture.json
 
+set -lx CONTRACT_RATE_LIMITING true
+set -lx CONTRACT_DATABASE_URL postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract
+rtk task contract:prepare-db
+or exit $status
 rtk task test:server
 or exit $status
 

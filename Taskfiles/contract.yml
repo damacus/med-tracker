@@ -2,6 +2,17 @@
 version: "3"
 
 tasks:
+  prepare-db:
+    desc: Create the disposable contract database in the isolated test PostgreSQL container
+    cmds:
+      - task: :internal:up-db
+        vars: { ENVIRONMENT: test }
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: db-test
+          COMMAND: env PGPASSWORD=medtracker_password psql -v ON_ERROR_STOP=1 -h db-test -U medtracker -d medtracker -f /contract-db.sql
+
   run:
     desc: Run API black-box cases against a checked target and fixture
     requires:
@@ -11,7 +22,17 @@ tasks:
       CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test care --no-fail-fast -- --test-threads=1
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test care --test oauth --test envelopes --no-fail-fast -- --test-threads=1
+
+  fmt:
+    desc: Format the black-box test crate
+    cmds:
+      - cargo fmt --manifest-path rust/contract-tests/Cargo.toml --all
+
+  clippy:
+    desc: Lint the black-box test crate
+    cmds:
+      - cargo clippy --manifest-path rust/contract-tests/Cargo.toml --all-targets -- -D warnings
 
   rails:
     desc: Provision disposable test fixtures and run API contract cases against isolated Rails

@@ -141,6 +141,6 @@ module Rack
   end
 end
 
-Rack::Attack.enabled = !Rails.env.test?
+Rack::Attack.enabled = !Rails.env.test? || ENV['CONTRACT_RATE_LIMITING'] == 'true'
 
 Rails.application.config.middleware.use Rack::Attack
