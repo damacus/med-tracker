@@ -67,7 +67,9 @@ function run_contract
     if test "$mode" = rails
         set -l port (rtk task test:port CONTRACT_PROJECT=$contract_project)
         or return $status
-        if test "$argv[2]" = oauth
+        if test "$argv[2]" = admin
+            rtk task contract:run-admin BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+        else if test "$argv[2]" = oauth
             rtk task contract:oauth BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = dosage-health
             rtk task contract:run-dosage-health BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
@@ -105,7 +107,9 @@ function run_contract
             rtk task contract:run BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         end
     else
-        if test "$argv[2]" = sync
+        if test "$argv[2]" = admin
+            rtk task contract:run-admin BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
+        else if test "$argv[2]" = sync
             rtk task contract:run-sync BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = replay
             rtk task contract:run-replay BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"

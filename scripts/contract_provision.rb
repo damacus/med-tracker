@@ -26,6 +26,21 @@ def create_household(nonce, label)
   [account, household, user]
 end
 
+def create_admin_member(household, nonce, label, role: :member)
+  email = "contract-#{label}-#{nonce}@example.test"
+  account = Account.create!(email: email, status: :verified,
+                            password_hash: RodauthApp.rodauth.allocate.password_hash('password'))
+  person = household.people.create!(account: account, name: "Contract #{label}",
+                                    date_of_birth: 30.years.ago.to_date,
+                                    person_type: :adult, has_capacity: true)
+  User.create!(person: person, email_address: email, password: 'password', active: true)
+  membership = household.household_memberships.create!(account: account, person: person,
+                                                       role: role, status: :active)
+  _session, token, = ApiSession.issue_for(account: account, household_membership: membership,
+                                         device_name: "contract-#{label}")
+  [membership, token]
+end
+
 fixture = ActiveRecord::Base.transaction do
   account, household, user = create_household(nonce, 'primary')
   foreign_account, foreign_household, = create_household(nonce, 'foreign')
@@ -34,6 +49,15 @@ fixture = ActiveRecord::Base.transaction do
     account: foreign_account, household_membership: foreign_membership, device_name: 'contract-foreign'
   )
   membership = account.household_memberships.find_by!(household: household)
+  manager_membership, manager_access_token = create_admin_member(household, nonce, 'manager', role: :administrator)
+  admin_target_membership, admin_target_access_token = create_admin_member(household, nonce, 'admin-target')
+  admin_invalid_membership, = create_admin_member(household, nonce, 'admin-invalid')
+  admin_revoke_membership, admin_revoke_access_token = create_admin_member(household, nonce, 'admin-revoke')
+  last_owner_account, last_owner_household, = create_household(nonce, 'last-owner')
+  last_owner_membership = last_owner_account.household_memberships.find_by!(household: last_owner_household)
+  _last_owner_session, last_owner_access_token, = ApiSession.issue_for(
+    account: last_owner_account, household_membership: last_owner_membership, device_name: 'contract-last-owner'
+  )
   managed_person = household.people.create!(name: "Contract managed #{nonce}", date_of_birth: 35.years.ago.to_date,
                                             person_type: :adult, has_capacity: true)
   hidden_person = household.people.create!(name: "Contract hidden #{nonce}", date_of_birth: 36.years.ago.to_date,
@@ -318,8 +342,19 @@ fixture = ActiveRecord::Base.transaction do
     household_id: household.id,
     household_name: household.name,
     foreign_household_id: foreign_household.id,
+    foreign_membership_id: foreign_membership.id,
     foreign_access_token: foreign_access_token,
     foreign_email: "contract-foreign-#{nonce}@example.test",
+    manager_membership_id: manager_membership.id,
+    manager_access_token: manager_access_token,
+    admin_target_membership_id: admin_target_membership.id,
+    admin_target_access_token: admin_target_access_token,
+    admin_invalid_membership_id: admin_invalid_membership.id,
+    admin_revoke_membership_id: admin_revoke_membership.id,
+    admin_revoke_access_token: admin_revoke_access_token,
+    last_owner_household_id: last_owner_household.id,
+    last_owner_membership_id: last_owner_membership.id,
+    last_owner_access_token: last_owner_access_token,
     session_id: session.id,
     revocable_session_id: revocable_session.id,
     revocable_access_token: revocable_access_token,
