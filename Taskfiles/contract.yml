@@ -2,11 +2,24 @@
 version: "3"
 
 tasks:
+  cleanup:
+    run: always
+    requires:
+      vars: [CONTRACT_PROJECT, CONTRACT_RUN_DIR]
+    env:
+      CONTRACT_PROJECT: '{{ .CONTRACT_PROJECT }}'
+      CONTRACT_RUN_DIR: '{{ .CONTRACT_RUN_DIR }}'
+    cmds:
+      - fish rust/contract-tests/cleanup.fish
+      - task: :internal:contract-down
+        vars:
+          CONTRACT_PROJECT: { ref: .CONTRACT_PROJECT }
+
   prepare-db:
     desc: Create the disposable contract database in the isolated test PostgreSQL container
     cmds:
       - task: :internal:up-db
-        vars: { ENVIRONMENT: test }
+        vars: { ENVIRONMENT: test, WAIT: true }
       - task: :internal:run
         vars:
           ENVIRONMENT: test
