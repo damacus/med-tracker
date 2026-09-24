@@ -142,11 +142,15 @@ fn audit(
 }
 
 fn create_medication(target: &Target, fixture: &Fixture) -> Value {
+    let name = format!(
+        "Contract dose medicine {}",
+        OffsetDateTime::now_utc().unix_timestamp_nanos()
+    );
     let response = target.post_json_authorized(
         &format!("/api/v1/households/{}/medications", fixture.household_id),
         &fixture.access_token,
         &json!({"medication": {
-            "name": "Contract dose medicine",
+            "name": name,
             "location_id": fixture.primary_location_id,
             "dose_amount": "1.25",
             "dose_unit": "ml",
@@ -898,4 +902,420 @@ fn medication_take_preserves_fractional_second_timestamp() {
     );
     assert_eq!(response.status().as_u16(), 201);
     assert_eq!(body(response)["data"]["taken_at"], taken_at);
+}
+
+#[test]
+fn timed_schedule_and_routine_cycle_windows_project_only_expected_occurrences() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (date, _) = clock();
+    let (schedule_id, _) = create_schedule(&target, &fixture);
+    let path = schedule_path(&fixture, schedule_id);
+    let response = target.patch_json(
+        &format!(
+            "/api/v1/households/{}/schedules/{schedule_id}",
+            fixture.household_id
+        ),
+        &fixture.access_token,
+        &json!({"schedule": {"schedule_config": {"times": ["08:00", "20:00"]}}}),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let timed = rows(&target, &path, &fixture.view_access_token, &date);
+    assert_eq!(timed.len(), 2);
+    assert_ne!(timed[0]["key"], timed[1]["key"]);
+    assert_eq!(timed[0]["position"], 1);
+    assert_eq!(timed[1]["position"], 2);
+    assert!(timed
+        .iter()
+        .all(|row| row["scheduled_at"].as_str().is_some()));
+    assert_eq!(
+        rows(&target, &path, &fixture.view_access_token, &date),
+        timed
+    );
+    let response = target.patch_json(
+        &format!(
+            "/api/v1/households/{}/schedules/{schedule_id}",
+            fixture.household_id
+        ),
+        &fixture.access_token,
+        &json!({"schedule": {"frequency": "As needed"}}),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    assert!(rows(&target, &path, &fixture.view_access_token, &date).is_empty());
+
+    let (assignment_id, _) = create_routine_assignment(&target, &fixture);
+    let assignment = assignment_path(&fixture, assignment_id);
+    let source = format!(
+        "/api/v1/households/{}/person_medications/{assignment_id}",
+        fixture.household_id
+    );
+    let today = OffsetDateTime::now_utc().date();
+    for cycle in ["weekly", "monthly"] {
+        let response = target.patch_json(
+            &source,
+            &fixture.access_token,
+            &json!({"person_medication": {"dose_cycle": cycle}}),
+        );
+        assert_eq!(response.status().as_u16(), 200);
+        let projected = rows(&target, &assignment, &fixture.view_access_token, &date);
+        assert_eq!(projected.len(), 1);
+        let start = if cycle == "weekly" {
+            today - time::Duration::days(today.weekday().number_days_from_monday().into())
+        } else {
+            time::Date::from_calendar_date(today.year(), today.month(), 1).unwrap()
+        };
+        let end = if cycle == "weekly" {
+            start + time::Duration::days(6)
+        } else {
+            let next = if today.month() == time::Month::December {
+                time::Date::from_calendar_date(today.year() + 1, time::Month::January, 1).unwrap()
+            } else {
+                time::Date::from_calendar_date(today.year(), today.month().next(), 1).unwrap()
+            };
+            next - time::Duration::days(1)
+        };
+        assert_eq!(projected[0]["window_starts_on"], start.to_string());
+        assert_eq!(projected[0]["window_ends_on"], end.to_string());
+        assert_eq!(projected[0]["expected"], true);
+        assert_eq!(
+            rows(&target, &assignment, &fixture.view_access_token, &date),
+            projected
+        );
+    }
+    let response = target.patch_json(
+        &source,
+        &fixture.access_token,
+        &json!({"person_medication": {"administration_kind": "as_needed"}}),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    assert!(rows(&target, &assignment, &fixture.view_access_token, &date).is_empty());
+}
+
+#[test]
+fn occurrence_ranges_and_view_token_non_disclosure_are_consistent() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (date, _) = clock();
+    for path in [
+        schedule_path(&fixture, fixture.managed_schedule_id),
+        assignment_path(&fixture, fixture.managed_assignment_id),
+    ] {
+        let response = target.get(
+            &format!("{path}?start_date={date}&end_date={date}"),
+            Some(&fixture.view_access_token),
+        );
+        assert_eq!(response.status().as_u16(), 200);
+        for invalid in [
+            path.clone(),
+            format!("{path}?start_date=private-clinical-text&end_date={date}"),
+            format!("{path}?start_date=2099-12-31&end_date=2000-01-01"),
+            format!("{path}?start_date=2000-01-01&end_date=2000-02-01"),
+        ] {
+            let response = target.get(&invalid, Some(&fixture.view_access_token));
+            assert_eq!(response.status().as_u16(), 422);
+            assert!(!body(response).to_string().contains("private-clinical-text"));
+        }
+    }
+    for id in [fixture.hidden_schedule_id, fixture.foreign_schedule_id] {
+        let response = target.get(
+            &format!(
+                "{}?start_date={date}&end_date={date}",
+                schedule_path(&fixture, id)
+            ),
+            Some(&fixture.view_access_token),
+        );
+        assert_eq!(response.status().as_u16(), 404);
+    }
+    for id in [fixture.hidden_assignment_id, fixture.foreign_assignment_id] {
+        let response = target.get(
+            &format!(
+                "{}?start_date={date}&end_date={date}",
+                assignment_path(&fixture, id)
+            ),
+            Some(&fixture.view_access_token),
+        );
+        assert_eq!(response.status().as_u16(), 404);
+    }
+}
+
+#[test]
+fn occurrence_writes_reject_invalid_identity_context_time_and_amount_without_mutation() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (date, taken_at) = clock();
+    let (schedule_id, medication_id) = create_schedule(&target, &fixture);
+    let path = schedule_path(&fixture, schedule_id);
+    let source_id = body(target.get(
+        &format!(
+            "/api/v1/households/{}/schedules/{schedule_id}",
+            fixture.household_id
+        ),
+        Some(&fixture.access_token),
+    ))["data"]["portable_id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let open = rows(&target, &path, &fixture.access_token, &date)[0].clone();
+    let key = open["key"].clone();
+    let before_stock = stock(&target, &fixture, medication_id);
+    let before_takes = body(target.get(&takes_path(&fixture), Some(&fixture.access_token)))["meta"]
+        ["total_count"]
+        .clone();
+    for (invalid_key, status) in [(json!("private-clinical-text"), 422), (json!(null), 422)] {
+        let response = target.post_json_authorized(
+            &format!("{path}/not_taken"),
+            &fixture.access_token,
+            &json!({"dose_occurrence": {"key": invalid_key, "reason": "unwell"}}),
+        );
+        assert_eq!(response.status().as_u16(), status);
+        assert!(!body(response).to_string().contains("private-clinical-text"));
+    }
+    let response = target.post_json_authorized(
+        &format!("{path}/not_taken"),
+        &fixture.access_token,
+        &json!({"dose_occurrence": {"key": key, "reason": "private-clinical-text"}}),
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert!(!body(response).to_string().contains("private-clinical-text"));
+    for (time, amount) in [
+        (json!("invalid"), json!("1.25")),
+        (json!(taken_at), json!(1.25)),
+        (json!(taken_at), json!("0")),
+        (json!(taken_at), json!("-1")),
+    ] {
+        let response = target.post_json_authorized(
+            &format!("{path}/take"),
+            &fixture.access_token,
+            &json!({"dose_occurrence": {"key": key, "taken_at": time, "dose_amount": amount,
+                "taken_from_medication_id": medication_id}}),
+        );
+        assert_eq!(response.status().as_u16(), 422);
+    }
+    let response = target.post_json_authorized(
+        &takes_path(&fixture),
+        &fixture.access_token,
+        &json!({"medication_take": {"source_type": "schedule", "source_id": source_id,
+            "taken_at": taken_at, "dose_amount": 1.25}}),
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert_eq!(body(response)["error"]["code"], "validation_failed");
+    for amount in ["0", "-1"] {
+        let response = target.post_json_authorized(
+            &takes_path(&fixture),
+            &fixture.access_token,
+            &json!({"medication_take": {"source_type": "schedule",
+                "source_id": source_id,
+                "taken_at": taken_at, "dose_amount": amount}}),
+        );
+        assert_eq!(response.status().as_u16(), 422);
+    }
+    assert_eq!(rows(&target, &path, &fixture.access_token, &date)[0], open);
+    assert_eq!(stock(&target, &fixture, medication_id), before_stock);
+    assert_eq!(
+        body(target.get(&takes_path(&fixture), Some(&fixture.access_token)))["meta"]["total_count"],
+        before_takes
+    );
+}
+
+#[test]
+fn future_occurrences_and_changed_cycle_keys_cannot_be_resolved() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (date, _) = clock();
+    let tomorrow = (OffsetDateTime::now_utc().date() + time::Duration::days(1)).to_string();
+    let (schedule_id, medication_id) = create_schedule(&target, &fixture);
+    let path = schedule_path(&fixture, schedule_id);
+    let future = rows(&target, &path, &fixture.access_token, &tomorrow);
+    assert!(!future.is_empty());
+    assert!(future.iter().all(|row| row["due"] == false));
+    let before_stock = stock(&target, &fixture, medication_id);
+    let response = target.post_json_authorized(
+        &format!("{path}/not_taken"),
+        &fixture.access_token,
+        &json!({"dose_occurrence": {"key": future[0]["key"], "reason": "unwell"}}),
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert_eq!(body(response)["error"]["code"], "invalid_occurrence");
+    assert_eq!(stock(&target, &fixture, medication_id), before_stock);
+
+    let (assignment_id, assignment_medication_id) = create_routine_assignment(&target, &fixture);
+    let assignment = assignment_path(&fixture, assignment_id);
+    let daily = rows(&target, &assignment, &fixture.access_token, &date)[0].clone();
+    let response = target.post_json_authorized(
+        &format!("{assignment}/not_taken"),
+        &fixture.access_token,
+        &json!({"dose_occurrence": {"key": daily["key"], "reason": "unwell", "note": "Retained"}}),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let saved = body(response)["data"].clone();
+    let source = format!(
+        "/api/v1/households/{}/person_medications/{assignment_id}",
+        fixture.household_id
+    );
+    let response = target.patch_json(
+        &source,
+        &fixture.access_token,
+        &json!({"person_medication": {"administration_kind": "as_needed"}}),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let historical = rows(&target, &assignment, &fixture.view_access_token, &date);
+    assert_eq!(historical.len(), 1);
+    assert_eq!(historical[0]["key"], saved["key"]);
+    assert_eq!(historical[0]["outcome"], "not_taken");
+    assert_eq!(historical[0]["reason"], "unwell");
+    assert_eq!(historical[0]["note"], "Retained");
+    assert_eq!(historical[0]["expected"], false);
+    let response = target.post_json_authorized(
+        &format!("{assignment}/not_taken"),
+        &fixture.access_token,
+        &json!({"dose_occurrence": {"key": daily["key"], "reason": "refused"}}),
+    );
+    assert_eq!(response.status().as_u16(), 409);
+    assert_eq!(
+        rows(&target, &assignment, &fixture.access_token, &date),
+        historical
+    );
+    assert_eq!(stock(&target, &fixture, assignment_medication_id), "20.0");
+
+    let (other_id, _) = create_routine_assignment(&target, &fixture);
+    let other = assignment_path(&fixture, other_id);
+    let former_key = rows(&target, &other, &fixture.access_token, &date)[0]["key"].clone();
+    let response = target.patch_json(
+        &format!(
+            "/api/v1/households/{}/person_medications/{other_id}",
+            fixture.household_id
+        ),
+        &fixture.access_token,
+        &json!({"person_medication": {"administration_kind": "as_needed"}}),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let response = target.post_json_authorized(
+        &format!("{other}/not_taken"),
+        &fixture.access_token,
+        &json!({"dose_occurrence": {"key": former_key, "reason": "unwell"}}),
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert!(rows(&target, &other, &fixture.access_token, &date).is_empty());
+}
+
+#[test]
+fn direct_take_failures_leave_stock_and_take_history_unchanged() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (_, taken_at) = clock();
+    let (schedule_id, medication_id) = create_schedule(&target, &fixture);
+    let source_path = format!(
+        "/api/v1/households/{}/schedules/{schedule_id}",
+        fixture.household_id
+    );
+    let source = body(target.get(&source_path, Some(&fixture.access_token)))["data"]["portable_id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let path = takes_path(&fixture);
+    let payload = json!({"medication_take": {"source_type": "schedule", "source_id": source,
+        "taken_at": taken_at, "taken_from_medication_id": medication_id}});
+    let count = body(target.get(&path, Some(&fixture.access_token)))["meta"]["total_count"].clone();
+    let (date, _) = clock();
+    let occurrence_path = schedule_path(&fixture, schedule_id);
+    let occurrence_key =
+        rows(&target, &occurrence_path, &fixture.access_token, &date)[0]["key"].clone();
+    let occurrence_payload = json!({"dose_occurrence": {"key": occurrence_key,
+        "taken_at": taken_at, "taken_from_medication_id": medication_id}});
+    let pause_path = format!(
+        "/api/v1/households/{}/schedules/{source}/pause",
+        fixture.household_id
+    );
+    let response = target.patch_json(&pause_path, &fixture.access_token, &json!({}));
+    assert_eq!(response.status().as_u16(), 200);
+    let response = target.post_json_authorized(
+        &format!("{occurrence_path}/take"),
+        &fixture.access_token,
+        &occurrence_payload,
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert_eq!(body(response)["error"]["code"], "paused");
+    let response = target.post_json_authorized(&path, &fixture.access_token, &payload);
+    assert_eq!(response.status().as_u16(), 422);
+    assert_eq!(
+        body(response)["error"]["message"],
+        "Cannot take medication: paused"
+    );
+    assert_eq!(stock(&target, &fixture, medication_id), "20.0");
+    let resume_path = format!(
+        "/api/v1/households/{}/schedules/{source}/resume",
+        fixture.household_id
+    );
+    let response = target.patch_json(&resume_path, &fixture.access_token, &json!({}));
+    assert_eq!(response.status().as_u16(), 200);
+    let medication_path = format!(
+        "/api/v1/households/{}/medications/{medication_id}",
+        fixture.household_id
+    );
+    let response = target.patch_json(
+        &medication_path,
+        &fixture.access_token,
+        &json!({"medication": {"current_supply": "0.0"}}),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let response = target.post_json_authorized(
+        &format!("{occurrence_path}/take"),
+        &fixture.access_token,
+        &occurrence_payload,
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert_eq!(body(response)["error"]["code"], "out_of_stock");
+    let response = target.post_json_authorized(&path, &fixture.access_token, &payload);
+    assert_eq!(response.status().as_u16(), 422);
+    assert_eq!(
+        body(response)["error"]["message"],
+        "Cannot take medication: out of stock"
+    );
+    assert_eq!(stock(&target, &fixture, medication_id), "0.0");
+    assert_eq!(
+        body(target.get(&path, Some(&fixture.access_token)))["meta"]["total_count"],
+        count
+    );
+
+    let (cooldown_id, cooldown_medication_id) = create_schedule(&target, &fixture);
+    let cooldown_path = format!(
+        "/api/v1/households/{}/schedules/{cooldown_id}",
+        fixture.household_id
+    );
+    let response = target.patch_json(
+        &cooldown_path,
+        &fixture.access_token,
+        &json!({"schedule": {"max_daily_doses": 3, "min_hours_between_doses": "24.0"}}),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let cooldown_source = body(target.get(&cooldown_path, Some(&fixture.access_token)))["data"]
+        ["portable_id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let cooldown_payload = json!({"medication_take": {"source_type": "schedule",
+        "source_id": cooldown_source, "taken_at": taken_at,
+        "taken_from_medication_id": cooldown_medication_id}});
+    let response = target.post_json_authorized(&path, &fixture.access_token, &cooldown_payload);
+    assert_eq!(response.status().as_u16(), 201);
+    let first = body(response)["data"].clone();
+    let before = stock(&target, &fixture, cooldown_medication_id);
+    let response = target.post_json_authorized(&path, &fixture.access_token, &cooldown_payload);
+    assert_eq!(response.status().as_u16(), 422);
+    assert_eq!(
+        body(response)["error"]["message"],
+        "Cannot take medication: timing restrictions not met"
+    );
+    assert_eq!(stock(&target, &fixture, cooldown_medication_id), before);
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(
+        body(response)["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|row| row["id"] == first["id"])
+            .count(),
+        1
+    );
 }
