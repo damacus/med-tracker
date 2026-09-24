@@ -11,6 +11,370 @@ fn snapshot_path(fixture: &Fixture, kind: &str) -> String {
     format!("/api/v1/households/{}/{}", fixture.household_id, kind)
 }
 
+fn batch(target: &Target, fixture: &Fixture, token: &str, operations: Value) -> Response {
+    target.post_json_authorized(
+        &snapshot_path(fixture, "sync/batches"),
+        token,
+        &json!({"batch": {"operations": operations}}),
+    )
+}
+
+fn resource(target: &Target, fixture: &Fixture, kind: &str, id: &str) -> (Value, String) {
+    let response = target.get(
+        &format!("{}/{}", snapshot_path(fixture, kind), id),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let etag = response.headers()["etag"].to_str().unwrap().to_owned();
+    (body(response)["data"].clone(), etag)
+}
+
+fn assert_batch_result(result: &Value, index: u64, action: &str, record_type: &str) -> String {
+    assert_eq!(result["index"], index);
+    assert_eq!(result["action"], action);
+    assert_eq!(result["record_type"], record_type);
+    let id = result["record_portable_id"]
+        .as_str()
+        .expect("portable result ID");
+    assert_eq!(id.len(), 36, "portable result ID must be a UUID");
+    assert!(id.chars().enumerate().all(|(index, character)| {
+        if [8, 13, 18, 23].contains(&index) {
+            character == '-'
+        } else {
+            character.is_ascii_hexdigit()
+        }
+    }));
+    assert!(result["etag"].as_str().is_some_and(|tag| !tag.is_empty()));
+    id.to_owned()
+}
+
+#[test]
+fn batch_applies_indexed_care_creates_with_portable_results() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let response = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([
+            {"resource_type": "location", "action": "create", "attributes": {"name": "Batch location"}},
+            {"resource_type": "health_event", "action": "create", "attributes": {
+                "person_id": fixture.managed_person_portable_id,
+                "title": "Batch event", "event_kind": "illness", "started_on": "2026-02-25"
+            }}
+        ]),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let data = body(response)["data"].clone();
+    assert_eq!(data["applied"], true);
+    let results = data["results"].as_array().unwrap();
+    assert_eq!(results.len(), 2);
+    let location_id = assert_batch_result(&results[0], 0, "create", "Location");
+    let event_id = assert_batch_result(&results[1], 1, "create", "HealthEvent");
+    let (location, location_etag) = resource(&target, &fixture, "locations", &location_id);
+    assert_eq!(location["name"], "Batch location");
+    assert_eq!(results[0]["etag"], location_etag);
+    let (event, event_etag) = resource(&target, &fixture, "health_events", &event_id);
+    assert_eq!(event["title"], "Batch event");
+    assert_eq!(results[1]["etag"], event_etag);
+}
+
+#[test]
+fn batch_updates_and_deletes_care_records_with_operation_etags() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let created = target.post_json_authorized(
+        &snapshot_path(&fixture, "locations"),
+        &fixture.access_token,
+        &json!({"location": {"name": "Batch lifecycle"}}),
+    );
+    assert_eq!(created.status().as_u16(), 201);
+    let id = body(created)["data"]["portable_id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let (_, original_etag) = resource(&target, &fixture, "locations", &id);
+    let response = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "location", "action": "update", "id": id,
+            "if_match": original_etag, "attributes": {"description": "Updated offline"}}]),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let result = body(response)["data"]["results"][0].clone();
+    assert_eq!(assert_batch_result(&result, 0, "update", "Location"), id);
+    assert_ne!(result["etag"], original_etag);
+    let (updated, current_etag) = resource(&target, &fixture, "locations", &id);
+    assert_eq!(updated["description"], "Updated offline");
+    assert_eq!(result["etag"], current_etag);
+    let response = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "location", "action": "delete", "id": id,
+            "if_match": current_etag, "attributes": {}}]),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let deleted = body(response)["data"]["results"][0].clone();
+    assert_eq!(deleted["index"], 0);
+    assert_eq!(deleted["action"], "delete");
+    assert_eq!(deleted["record_type"], "Location");
+    assert_eq!(deleted["record_portable_id"], id);
+    assert!(deleted.get("etag").is_none());
+    assert_eq!(
+        target
+            .get(
+                &format!("{}/{}", snapshot_path(&fixture, "locations"), id),
+                Some(&fixture.access_token)
+            )
+            .status()
+            .as_u16(),
+        404
+    );
+}
+
+#[test]
+fn batch_validates_actions_versions_and_current_permissions() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (_, etag) = resource(
+        &target,
+        &fixture,
+        "medications",
+        &fixture.managed_medication_portable_id,
+    );
+    let mutation = json!({"resource_type": "medication", "action": "adjust_inventory",
+        "id": fixture.managed_medication_portable_id,
+        "attributes": {"new_quantity": "18", "reason": "Counted offline"}});
+    let response = batch(&target, &fixture, &fixture.access_token, json!([mutation]));
+    assert_eq!(response.status().as_u16(), 428);
+    assert_eq!(body(response)["error"]["code"], "precondition_required");
+    let response = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{ "resource_type": "medication", "action": "adjust_inventory",
+            "id": fixture.managed_medication_portable_id, "if_match": "\"stale\"",
+            "attributes": {"new_quantity": "18", "reason": "Counted offline"}}]),
+    );
+    assert_eq!(response.status().as_u16(), 409);
+    assert_eq!(body(response)["error"]["code"], "sync_conflict");
+    let response = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "medication", "action": "adjust_inventory",
+            "id": fixture.managed_medication_portable_id, "if_match": etag,
+            "attributes": {"new_quantity": "invalid", "reason": "Counted offline"}}]),
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    let response = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "location", "action": "reorder",
+            "id": fixture.primary_location_portable_id, "attributes": {}}]),
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert_eq!(
+        body(response)["error"]["code"],
+        "sync_operation_unsupported"
+    );
+    let response = batch(
+        &target,
+        &fixture,
+        &fixture.view_access_token,
+        json!([{"resource_type": "location", "action": "create", "attributes": {"name": "Denied batch"}}]),
+    );
+    assert_eq!(response.status().as_u16(), 403);
+    let response = batch(
+        &target,
+        &fixture,
+        &fixture.view_access_token,
+        json!([{"resource_type": "person", "action": "update",
+            "id": fixture.hidden_person_portable_id, "if_match": "\"stale\"",
+            "attributes": {"name": "Hidden batch"}}]),
+    );
+    assert_eq!(response.status().as_u16(), 404);
+}
+
+#[test]
+fn batch_inventory_action_updates_stock_and_order_status() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let id = &fixture.managed_medication_portable_id;
+    let (_, etag) = resource(&target, &fixture, "medications", id);
+    let response = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "medication", "action": "adjust_inventory", "id": id,
+            "if_match": etag, "attributes": {"new_quantity": "18.5", "reason": "Counted offline"}}]),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let result = body(response)["data"]["results"][0].clone();
+    assert_eq!(
+        assert_batch_result(&result, 0, "adjust_inventory", "Medication"),
+        *id
+    );
+    let (adjusted, next_etag) = resource(&target, &fixture, "medications", id);
+    assert_eq!(adjusted["current_supply"], "18.5");
+    assert_eq!(result["etag"], next_etag);
+    let response = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "medication", "action": "mark_as_ordered", "id": id,
+            "if_match": next_etag, "attributes": {"supplier": "Batch pharmacy", "quantity": "20"}}]),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let result = body(response)["data"]["results"][0].clone();
+    assert_eq!(
+        assert_batch_result(&result, 0, "mark_as_ordered", "Medication"),
+        *id
+    );
+    let (ordered, current_etag) = resource(&target, &fixture, "medications", id);
+    assert_eq!(ordered["reorder_status"], "ordered");
+    assert_eq!(result["etag"], current_etag);
+}
+
+#[test]
+fn batch_rolls_back_stock_and_feed_after_a_late_invalid_operation() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let id = &fixture.managed_medication_portable_id;
+    let (before, etag) = resource(&target, &fixture, "medications", id);
+    let snapshot = body(target.get(
+        &snapshot_path(&fixture, "sync/snapshot"),
+        Some(&fixture.access_token),
+    ));
+    let cursor = snapshot["data"]["cursor"].as_str().unwrap();
+    let before_feed = changes(&target, &fixture, &fixture.access_token, cursor);
+    let before_changes = before_feed["changes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|row| row["record_portable_id"] == *id)
+        .count();
+    let before_tombstones = before_feed["tombstones"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|row| row["record_portable_id"] == *id)
+        .count();
+    let response = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([
+            {"resource_type": "medication", "action": "adjust_inventory", "id": id,
+                "if_match": etag, "attributes": {"new_quantity": "17", "reason": "Counted offline"}},
+            {"resource_type": "medication", "action": "remove_stock", "id": id,
+                "attributes": {"quantity": "1e1", "reason": "dropped"}}
+        ]),
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    let request_id = response.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let (after, current_etag) = resource(&target, &fixture, "medications", id);
+    assert_eq!(after["current_supply"], before["current_supply"]);
+    assert_eq!(current_etag, etag);
+    let feed = changes(&target, &fixture, &fixture.access_token, cursor);
+    assert_eq!(
+        feed["changes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|row| row["record_portable_id"] == *id)
+            .count(),
+        before_changes
+    );
+    assert_eq!(
+        feed["tombstones"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|row| row["record_portable_id"] == *id)
+            .count(),
+        before_tombstones
+    );
+    let audit = body(target.get(
+        &snapshot_path(&fixture, "admin/audit_logs"),
+        Some(&fixture.access_token),
+    ));
+    let related: Vec<_> = audit["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|event| event["request_id"] == request_id)
+        .collect();
+    assert_eq!(related.len(), 1);
+    assert_eq!(related[0]["event_type"], "api.request");
+    assert_eq!(related[0]["metadata"]["status"], 422);
+}
+
+#[test]
+fn batch_rolls_back_created_resource_after_a_late_stale_operation() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let id = &fixture.managed_medication_portable_id;
+    let (before, etag) = resource(&target, &fixture, "medications", id);
+    let snapshot = body(target.get(
+        &snapshot_path(&fixture, "sync/snapshot"),
+        Some(&fixture.access_token),
+    ));
+    let cursor = snapshot["data"]["cursor"].as_str().unwrap();
+    let response = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([
+            {"resource_type": "location", "action": "create", "attributes": {"name": "Discarded batch location"}},
+            {"resource_type": "medication", "action": "update", "id": id,
+                "if_match": "\"stale\"", "attributes": {"description": "Must not persist"}}
+        ]),
+    );
+    assert_eq!(response.status().as_u16(), 409);
+    let request_id = response.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let (after, current_etag) = resource(&target, &fixture, "medications", id);
+    assert_eq!(after["description"], before["description"]);
+    assert_eq!(current_etag, etag);
+    let locations = body(target.get(
+        &snapshot_path(&fixture, "locations"),
+        Some(&fixture.access_token),
+    ));
+    assert!(locations["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|row| row["name"] != "Discarded batch location"));
+    let feed = changes(&target, &fixture, &fixture.access_token, cursor);
+    assert!(feed["changes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|row| row["record"]["name"] != "Discarded batch location"));
+    let audit = body(target.get(
+        &snapshot_path(&fixture, "admin/audit_logs"),
+        Some(&fixture.access_token),
+    ));
+    let related: Vec<_> = audit["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|event| event["request_id"] == request_id)
+        .collect();
+    assert_eq!(related.len(), 1);
+    assert_eq!(related[0]["event_type"], "api.request");
+    assert_eq!(related[0]["metadata"]["status"], 409);
+}
+
 fn changes(target: &Target, fixture: &Fixture, token: &str, cursor: &str) -> Value {
     let path = format!("{}?cursor={cursor}", snapshot_path(fixture, "sync/changes"));
     let response = target.get(&path, Some(token));
