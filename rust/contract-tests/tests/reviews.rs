@@ -20,6 +20,26 @@ fn path(fixture: &Fixture) -> String {
     )
 }
 
+fn audit_updates(target: &Target, fixture: &Fixture, prompt_id: i64) -> Vec<Value> {
+    let audit = body(target.get(
+        &format!(
+            "/api/v1/households/{}/admin/audit_logs",
+            fixture.household_id
+        ),
+        Some(&fixture.access_token),
+    ));
+    audit["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|event| {
+            event["event_type"] == "medication_review_prompt.updated"
+                && event["metadata"]["prompt_id"] == prompt_id
+        })
+        .cloned()
+        .collect()
+}
+
 #[test]
 fn review_lists_filter_paginate_and_hide_ungranted_people() {
     let target = Target::from_env();
@@ -151,6 +171,38 @@ fn review_lists_filter_paginate_and_hide_ungranted_people() {
 }
 
 #[test]
+fn review_list_caps_page_size_and_treats_invalid_show_hidden_as_false() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let base = path(&fixture);
+    let capped = target.get(
+        &format!("{base}?per_page=1000"),
+        Some(&fixture.view_access_token),
+    );
+    assert_eq!(capped.status().as_u16(), 200);
+    let capped = body(capped);
+    assert_eq!(capped["meta"]["per_page"], 100);
+    assert_eq!(capped["meta"]["total_count"], 4);
+    assert_eq!(capped["data"].as_array().unwrap().len(), 4);
+
+    let invalid = target.get(
+        &format!("{base}?show_hidden=private-invalid"),
+        Some(&fixture.view_access_token),
+    );
+    assert_eq!(invalid.status().as_u16(), 200);
+    let invalid = body(invalid);
+    assert_eq!(invalid["meta"]["total_count"], 4);
+    let low_signal_id = fixture.low_signal_review_prompt_id.to_string();
+    let hidden_id = fixture.hidden_review_prompt_id.to_string();
+    let foreign_id = fixture.foreign_review_prompt_id.to_string();
+    assert!(!invalid["data"].as_array().unwrap().iter().any(|row| {
+        row["id"].as_str() == Some(low_signal_id.as_str())
+            || row["id"].as_str() == Some(hidden_id.as_str())
+            || row["id"].as_str() == Some(foreign_id.as_str())
+    }));
+}
+
+#[test]
 fn review_get_has_bounded_snapshot_and_non_disclosing_access() {
     let target = Target::from_env();
     let fixture = fixture();
@@ -181,6 +233,20 @@ fn review_get_has_bounded_snapshot_and_non_disclosing_access() {
         assert_eq!(response.status().as_u16(), 404);
         assert_eq!(body(response)["error"]["code"], "not_found");
     }
+}
+
+#[test]
+fn review_get_rejects_malformed_item_id_without_disclosing_evidence() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let response = target.get(
+        &format!("{}/not-an-id", path(&fixture)),
+        Some(&fixture.view_access_token),
+    );
+    assert_eq!(response.status().as_u16(), 404);
+    let error = body(response);
+    assert_eq!(error["error"]["code"], "not_found");
+    assert!(!error.to_string().contains("Contract evidence"));
 }
 
 #[test]
@@ -332,4 +398,76 @@ fn review_patch_and_put_retain_evidence_and_emit_auditable_updates() {
         ));
     assert!(!audit.to_string().contains("Private practitioner context"));
     assert!(!audit.to_string().contains("Dr Taylor"));
+}
+
+#[test]
+fn review_put_ignores_forged_evidence_and_retains_the_full_snapshot_with_one_audit_event() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let url = format!("{}/{}", path(&fixture), fixture.invalid_review_prompt_id);
+    let initial = target.get(&url, Some(&fixture.access_token));
+    assert_eq!(initial.status().as_u16(), 200);
+    let original_tag = etag(&initial);
+    let original = body(initial)["data"].clone();
+    let before = audit_updates(&target, &fixture, fixture.invalid_review_prompt_id);
+
+    let response = target.put_json_if_match(
+        &url,
+        &fixture.access_token,
+        &json!({"medication_review_prompt": {
+            "status": "not_relevant",
+            "review_note": "Decision from PUT",
+            "evidence_text": "Forged evidence"
+        }}),
+        &original_tag,
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let updated_tag = etag(&response);
+    let updated = body(response)["data"].clone();
+    assert_ne!(updated_tag, original_tag);
+    assert_eq!(updated["etag"], updated_tag);
+    assert_eq!(updated["status"], "not_relevant");
+    assert_eq!(updated["review_note"], "Decision from PUT");
+    for field in [
+        "person_id",
+        "primary_medication_id",
+        "interacting_medication_id",
+        "evidence_record_id",
+        "risk_level",
+        "match_confidence",
+        "primary_medication_name",
+        "interacting_medication_name",
+        "evidence_source_name",
+        "evidence_source_url",
+        "evidence_source_checked_on",
+        "evidence_source_version",
+        "evidence_source_effective_on",
+        "matched_term",
+        "match_type",
+        "source_instruction",
+        "match_reason",
+        "evidence_text",
+    ] {
+        assert_eq!(
+            updated[field], original[field],
+            "evidence field {field} changed"
+        );
+    }
+    assert_ne!(updated["evidence_text"], "Forged evidence");
+
+    let retained_response = target.get(&url, Some(&fixture.access_token));
+    assert_eq!(retained_response.status().as_u16(), 200);
+    assert_eq!(etag(&retained_response), updated_tag);
+    assert_eq!(body(retained_response)["data"], updated);
+
+    let after = audit_updates(&target, &fixture, fixture.invalid_review_prompt_id);
+    assert_eq!(after.len(), before.len() + 1);
+    let event = after
+        .iter()
+        .find(|event| event["metadata"]["status"] == "not_relevant")
+        .unwrap();
+    assert_eq!(event["metadata"]["previous_status"], "needs_review");
+    assert_eq!(event["metadata"]["status"], "not_relevant");
+    assert!(!event.to_string().contains("Forged evidence"));
+    assert!(!event.to_string().contains("Decision from PUT"));
 }
