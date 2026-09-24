@@ -1,11 +1,15 @@
 # API black-box cases
 
 Run `task contract:rails` to start this worktree's isolated Rails test server,
-create two disposable households and a normal bearer session, and run the three
-initial cases. Each run stores fixture JSON in its own directory under
-`tmp/contract-tests/` with mode `0600` while the command runs, then removes
-that directory. The test database is local to this worktree's Docker Compose
-project; records remain there until that disposable test database is removed.
+create disposable households, sessions and an OAuth public client, and run the
+black-box cases. Contract data lives in the separate `medtracker_contract`
+database in this worktree's test PostgreSQL container, leaving the ordinary
+Rails test database available for RSpec fixtures. Each run stores fixture JSON
+in its own directory under `tmp/contract-tests/` with mode `0600` while the
+command runs, then removes that file. Contract records remain only in the
+disposable contract database until the test database volume is removed.
+Rack::Attack is enabled only for this contract test server so the 429 response
+can be observed over HTTP.
 
 Run `task contract:rust RUST_URL=http://127.0.0.1:39999` to run the same cases
 against a Rust server. Until that server exists, connection failures are
@@ -16,6 +20,7 @@ For a remote HTTPS origin, pass its exact value as `APPROVED_ORIGIN` to
 and ignores HTTP proxy settings.
 
 `task contract:run BASE_URL=http://127.0.0.1:3000 FIXTURE_PATH=/absolute/path`
-runs against a prepared target and fixture. Its fixture must contain a real
-bearer token and IDs for two separate households in that target's own
-disposable environment. The runner sends only GET requests.
+runs against a prepared target and fixture. Its fixture must contain real
+bearer tokens and IDs for separate households in that target's own disposable
+environment. The runner rejects every DELETE, PATCH and POST request to a
+non-loopback target, even when that target has an approved HTTPS origin.

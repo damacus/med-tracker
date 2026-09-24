@@ -1,4 +1,4 @@
-use reqwest::blocking::{Client, Response};
+use reqwest::blocking::{Client, RequestBuilder, Response};
 use reqwest::redirect::Policy;
 use serde::Deserialize;
 use std::env;
@@ -10,10 +10,20 @@ use url::{Host, Url};
 #[derive(Deserialize)]
 pub struct Fixture {
     pub access_token: String,
+    pub account_id: i64,
     pub user_id: i64,
     pub household_id: i64,
+    pub household_name: String,
     pub foreign_household_id: i64,
     pub foreign_email: String,
+    pub session_id: i64,
+    pub revocable_session_id: i64,
+    pub revocable_access_token: String,
+    pub logout_access_token: String,
+    pub expired_access_token: String,
+    pub locked_access_token: String,
+    pub oauth_client_id: String,
+    pub oauth_redirect_uri: String,
 }
 
 pub struct Target {
@@ -66,14 +76,66 @@ impl Target {
     }
 
     pub fn get(&self, path: &str, token: Option<&str>) -> Response {
-        let url =
-            checked_url(&self.origin, path).expect("request path must stay within target origin");
-        let request = self.client.get(url).header("Accept", "application/json");
-        let request = match token {
+        self.authorize(self.client.get(self.url(path)), token)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn get_from_local_client(&self, path: &str, client_ip: &str) -> Response {
+        self.require_local_write();
+        self.client
+            .get(self.url(path))
+            .header("Accept", "application/json")
+            .header("X-Forwarded-For", client_ip)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn delete(&self, path: &str, token: Option<&str>) -> Response {
+        self.require_local_write();
+        self.authorize(self.client.delete(self.url(path)), token)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn post_form(&self, path: &str, fields: &[(&str, &str)]) -> Response {
+        self.require_local_write();
+        self.client
+            .post(self.url(path))
+            .header("Accept", "application/json")
+            .form(fields)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn patch_json(&self, path: &str, token: &str, body: &serde_json::Value) -> Response {
+        self.require_local_write();
+        self.authorize(self.client.patch(self.url(path)), Some(token))
+            .json(body)
+            .send()
+            .expect("target must respond")
+    }
+
+    fn url(&self, path: &str) -> Url {
+        checked_url(&self.origin, path).expect("request path must stay within target origin")
+    }
+
+    fn authorize(&self, request: RequestBuilder, token: Option<&str>) -> RequestBuilder {
+        let request = request.header("Accept", "application/json");
+        match token {
             Some(token) => request.bearer_auth(token),
             None => request,
+        }
+    }
+
+    fn require_local_write(&self) {
+        let local = match self.origin.host() {
+            Some(Host::Domain("localhost")) => true,
+            Some(Host::Ipv4(ip)) => ip.is_loopback(),
+            Some(Host::Ipv6(ip)) => ip.is_loopback(),
+            _ => false,
         };
-        request.send().expect("target must respond")
+        assert!(local, "contract write requests require a loopback target");
     }
 }
 
