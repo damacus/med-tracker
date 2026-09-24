@@ -7,8 +7,9 @@ then runs the black-box cases. The project name is recorded in the run directory
 under `tmp/contract-tests/`. Fixture JSON has mode `0600`. On success or failure,
 the harness validates its ownership marker and uses `task contract:cleanup` to
 remove only that project's containers, network, volumes and generated web image.
-Run `fish rust/contract-tests/isolation_test.fish` to check two simultaneous
-projects have separate fixture rows and cleaning one leaves the other healthy.
+Run `task contract:isolation` to check cleanup exit statuses and then verify
+two simultaneous projects have separate fixture rows and cleaning one leaves
+the other healthy.
 Rack::Attack is enabled only for this contract test server so the 429 response
 can be observed over HTTP.
 The contract test environment raises only the global request-per-IP ceiling to
