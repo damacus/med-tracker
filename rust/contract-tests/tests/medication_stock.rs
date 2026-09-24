@@ -611,4 +611,24 @@ fn delegated_creator_can_read_unlinked_medication_without_exposing_it_to_other_m
     assert!(!body(response)
         .to_string()
         .contains("Contract delegated medicine"));
+    let mut page = 1;
+    loop {
+        let response = target.get(
+            &format!("{base}?page={page}&per_page=1"),
+            Some(&fixture.view_access_token),
+        );
+        assert_eq!(response.status().as_u16(), 200);
+        let collection = body(response);
+        assert_eq!(collection["meta"]["page"], page);
+        assert_eq!(collection["meta"]["per_page"], 1);
+        assert!(collection["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|item| item["id"] != created["id"]));
+        if page >= collection["meta"]["total_count"].as_u64().unwrap() {
+            break;
+        }
+        page += 1;
+    }
 }
