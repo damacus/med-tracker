@@ -1,6 +1,6 @@
 # API parity matrix
 
-This is the Task 1 coverage map, updated through Task 4D5B. A source spec identifies existing Rails evidence, not proven operation-level coverage. Planned files for later tasks do not exist yet. The implemented contract cases pass against isolated Rails; Rust has no product server yet and connection failure remains the expected result.
+This is the Task 1 coverage map, updated through Task 5A. A source spec identifies existing Rails evidence, not proven operation-level coverage. Planned files for later tasks do not exist yet. The implemented contract cases pass against isolated Rails; Rust has no product server yet and connection failure remains the expected result.
 
 Source: `docs/api/openapi.v1.yaml` (77 paths, 118 method/path operations). Paths below are relative to the OpenAPI server `/api/v1`. The global security requirement is `bearerAuth`; an operation-level override takes precedence.
 
@@ -102,11 +102,11 @@ Source: `docs/api/openapi.v1.yaml` (77 paths, 118 method/path operations). Paths
 | `searchMedicationLookup` | GET | `/api/v1/households/{household_id}/medication_lookup` | bearerAuth | `spec/requests/api/v1/domain_parity_spec.rb` | `rust/contract-tests/tests/lookup.rs` | Planned; Rails unrun; Rust unrun |
 | `generateAiMedicationSuggestions` | POST | `/api/v1/households/{household_id}/ai_medication_suggestions` | bearerAuth | `spec/requests/api/v1/domain_parity_spec.rb` | `rust/contract-tests/tests/lookup.rs` | Planned; Rails unrun; Rust unrun |
 | `exportPortableHouseholdBundle` | GET | `/api/v1/households/{household_id}/portable_export` | bearerAuth | `spec/requests/api/v1/portable_data_spec.rb` | `rust/contract-tests/tests/portability.rs` | Planned; Rails unrun; Rust unrun |
-| `getMobileSnapshot` | GET | `/api/v1/households/{household_id}/mobile_snapshot` | bearerAuth | `spec/requests/api/v1/portable_data_spec.rb` | `rust/contract-tests/tests/sync.rs` | Planned; Rails unrun; Rust unrun |
+| `getMobileSnapshot` | GET | `/api/v1/households/{household_id}/mobile_snapshot` | bearerAuth | `spec/requests/api/v1/portable_data_spec.rb` | `rust/contract-tests/tests/sync.rs` | Task 5A disposition: portable v1 categories and relations, manageable-person scope distinct from sync view scope, hidden/foreign exclusion, correlated read audit, unauthenticated and foreign-household denial Rails green; Rust absent |
 | `dryRunPortableImport` | POST | `/api/v1/households/{household_id}/portable_imports/dry_run` | bearerAuth | `spec/requests/api/v1/portable_data_spec.rb` | `rust/contract-tests/tests/portability.rs` | Planned; Rails unrun; Rust unrun |
 | `createPortableImport` | POST | `/api/v1/households/{household_id}/portable_imports` | bearerAuth | `spec/requests/api/v1/portable_data_spec.rb` | `rust/contract-tests/tests/portability.rs` | Planned; Rails unrun; Rust unrun |
 | `getDataExport` | GET | `/api/v1/households/{household_id}/data_exports/{mode}` | bearerAuth | `spec/requests/api/v1/data_exports_spec.rb` | `rust/contract-tests/tests/envelopes.rs`; `reports.rs` for export contract | 429 envelope and Retry-After: Rails green; Rust absent; export contract pending |
-| `getSyncSnapshot` | GET | `/api/v1/households/{household_id}/sync/snapshot` | bearerAuth | `spec/requests/api/v1/sync_spec.rb` | `rust/contract-tests/tests/sync.rs` | Planned; Rails unrun; Rust unrun |
+| `getSyncSnapshot` | GET | `/api/v1/households/{household_id}/sync/snapshot` | bearerAuth | `spec/requests/api/v1/sync_spec.rb` | `rust/contract-tests/tests/sync.rs` | Task 5A disposition: portable v2 cursor, record ETags, clinical categories and relations, policy-scoped view visibility, hidden/foreign exclusion, unauthenticated and foreign-household denial Rails green; Rust absent |
 | `getSyncChanges` | GET | `/api/v1/households/{household_id}/sync/changes` | bearerAuth | `spec/requests/api/v1/sync_spec.rb` | `rust/contract-tests/tests/sync.rs` | Planned; Rails unrun; Rust unrun |
 | `createSyncBatch` | POST | `/api/v1/households/{household_id}/sync/batches` | bearerAuth | `spec/requests/api/v1/sync_spec.rb` | `rust/contract-tests/tests/sync.rs` | Planned; Rails unrun; Rust unrun |
 | `getHouseholdAdminSettings` | GET | `/api/v1/households/{household_id}/admin/settings` | bearerAuth | `spec/requests/api/v1/admin_api_spec.rb` | `rust/contract-tests/tests/admin.rs` | Planned; Rails unrun; Rust unrun |

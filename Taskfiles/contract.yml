@@ -22,7 +22,18 @@ tasks:
       CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test oauth --test envelopes --no-fail-fast -- --test-threads=1
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test sync --test oauth --test envelopes --no-fail-fast -- --test-threads=1
+
+  run-sync:
+    desc: Run snapshot contract cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test sync -- --test-threads=1
 
   run-reviews:
     desc: Run medication review prompt cases against a checked target and fixture
@@ -228,6 +239,11 @@ tasks:
     cmds:
       - fish rust/contract-tests/run.fish rails care
 
+  sync-rails:
+    desc: Run snapshot contract cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails sync
+
   dose-precision-rails:
     desc: Demonstrate Rails medication-take timestamp precision
     cmds:
@@ -270,3 +286,11 @@ tasks:
       CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
       - fish rust/contract-tests/run.fish rust
+
+  sync-rust:
+    desc: Run snapshot cases against a Rust URL after provisioning isolated fixtures
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust sync
