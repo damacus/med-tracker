@@ -113,6 +113,30 @@ fn stock(target: &Target, fixture: &Fixture, medication_id: i64) -> String {
         .to_owned()
 }
 
+fn take_snapshot(target: &Target, fixture: &Fixture) -> (u64, Vec<i64>) {
+    let mut ids = Vec::new();
+    let mut page = 1;
+    let total = loop {
+        let response = target.get(
+            &format!("{}?page={page}&per_page=100", takes_path(fixture)),
+            Some(&fixture.access_token),
+        );
+        assert_eq!(response.status().as_u16(), 200);
+        let collection = body(response);
+        let total = collection["meta"]["total_count"].as_u64().unwrap();
+        let page_rows = collection["data"].as_array().unwrap();
+        assert!(!page_rows.is_empty() || total == 0);
+        ids.extend(page_rows.iter().map(|row| row["id"].as_i64().unwrap()));
+        if ids.len() >= total as usize {
+            break total;
+        }
+        page += 1;
+    };
+    assert_eq!(ids.len(), total as usize);
+    ids.sort_unstable();
+    (total, ids)
+}
+
 fn audit(
     target: &Target,
     fixture: &Fixture,
@@ -925,9 +949,14 @@ fn timed_schedule_and_routine_cycle_windows_project_only_expected_occurrences() 
     assert_ne!(timed[0]["key"], timed[1]["key"]);
     assert_eq!(timed[0]["position"], 1);
     assert_eq!(timed[1]["position"], 2);
-    assert!(timed
-        .iter()
-        .all(|row| row["scheduled_at"].as_str().is_some()));
+    for (row, clock_time) in timed.iter().zip(["08:00:00", "20:00:00"]) {
+        let scheduled_at = row["scheduled_at"].as_str().unwrap();
+        assert!(
+            scheduled_at.starts_with(&format!("{date}T{clock_time}")),
+            "unexpected local schedule time: {scheduled_at}"
+        );
+        assert!(scheduled_at.len() > 19);
+    }
     assert_eq!(
         rows(&target, &path, &fixture.view_access_token, &date),
         timed
@@ -1118,6 +1147,55 @@ fn occurrence_writes_reject_invalid_identity_context_time_and_amount_without_mut
 }
 
 #[test]
+fn malformed_and_future_keys_leave_schedule_and_assignment_writes_unchanged() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (date, taken_at) = clock();
+    let tomorrow = (OffsetDateTime::now_utc().date() + time::Duration::days(1)).to_string();
+    let (schedule_id, schedule_medication_id) = create_schedule(&target, &fixture);
+    let (assignment_id, assignment_medication_id) = create_routine_assignment(&target, &fixture);
+    for (path, medication_id) in [
+        (schedule_path(&fixture, schedule_id), schedule_medication_id),
+        (
+            assignment_path(&fixture, assignment_id),
+            assignment_medication_id,
+        ),
+    ] {
+        let today = rows(&target, &path, &fixture.access_token, &date);
+        let future = rows(&target, &path, &fixture.access_token, &tomorrow);
+        assert!(!today.is_empty());
+        assert!(!future.is_empty());
+        assert!(future.iter().all(|row| row["due"] == false));
+        let stock_before = stock(&target, &fixture, medication_id);
+        let takes_before = take_snapshot(&target, &fixture);
+        for key in [json!("private-clinical-text"), future[0]["key"].clone()] {
+            let response = target.post_json_authorized(
+                &format!("{path}/not_taken"),
+                &fixture.access_token,
+                &json!({"dose_occurrence": {"key": key, "reason": "unwell"}}),
+            );
+            assert_eq!(response.status().as_u16(), 422);
+            assert_eq!(body(response)["error"]["code"], "invalid_occurrence");
+            let response = target.post_json_authorized(
+                &format!("{path}/take"),
+                &fixture.access_token,
+                &json!({"dose_occurrence": {"key": key, "taken_at": taken_at,
+                    "taken_from_medication_id": medication_id}}),
+            );
+            assert_eq!(response.status().as_u16(), 422);
+            assert_eq!(body(response)["error"]["code"], "invalid_occurrence");
+        }
+        assert_eq!(rows(&target, &path, &fixture.access_token, &date), today);
+        assert_eq!(
+            rows(&target, &path, &fixture.access_token, &tomorrow),
+            future
+        );
+        assert_eq!(stock(&target, &fixture, medication_id), stock_before);
+        assert_eq!(take_snapshot(&target, &fixture), takes_before);
+    }
+}
+
+#[test]
 fn future_occurrences_and_changed_cycle_keys_cannot_be_resolved() {
     let target = Target::from_env();
     let fixture = fixture();
@@ -1300,6 +1378,8 @@ fn direct_take_failures_leave_stock_and_take_history_unchanged() {
     assert_eq!(response.status().as_u16(), 201);
     let first = body(response)["data"].clone();
     let before = stock(&target, &fixture, cooldown_medication_id);
+    let takes_before = take_snapshot(&target, &fixture);
+    assert!(takes_before.1.contains(&first["id"].as_i64().unwrap()));
     let response = target.post_json_authorized(&path, &fixture.access_token, &cooldown_payload);
     assert_eq!(response.status().as_u16(), 422);
     assert_eq!(
@@ -1307,15 +1387,5 @@ fn direct_take_failures_leave_stock_and_take_history_unchanged() {
         "Cannot take medication: timing restrictions not met"
     );
     assert_eq!(stock(&target, &fixture, cooldown_medication_id), before);
-    let response = target.get(&path, Some(&fixture.access_token));
-    assert_eq!(response.status().as_u16(), 200);
-    assert_eq!(
-        body(response)["data"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .filter(|row| row["id"] == first["id"])
-            .count(),
-        1
-    );
+    assert_eq!(take_snapshot(&target, &fixture), takes_before);
 }
