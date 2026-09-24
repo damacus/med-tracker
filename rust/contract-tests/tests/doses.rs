@@ -98,13 +98,10 @@ fn rows(target: &Target, path: &str, token: &str, date: &str) -> Vec<Value> {
     body(response)["data"].as_array().unwrap().clone()
 }
 
-fn stock(target: &Target, fixture: &Fixture, medication_id: i64) -> String {
+fn stock_for(target: &Target, household_id: i64, token: &str, medication_id: i64) -> String {
     let response = target.get(
-        &format!(
-            "/api/v1/households/{}/medications/{}",
-            fixture.household_id, medication_id
-        ),
-        Some(&fixture.access_token),
+        &format!("/api/v1/households/{household_id}/medications/{medication_id}"),
+        Some(token),
     );
     assert_eq!(response.status().as_u16(), 200);
     body(response)["data"]["current_supply"]
@@ -113,13 +110,22 @@ fn stock(target: &Target, fixture: &Fixture, medication_id: i64) -> String {
         .to_owned()
 }
 
-fn take_snapshot(target: &Target, fixture: &Fixture) -> (u64, Vec<i64>) {
+fn stock(target: &Target, fixture: &Fixture, medication_id: i64) -> String {
+    stock_for(
+        target,
+        fixture.household_id,
+        &fixture.access_token,
+        medication_id,
+    )
+}
+
+fn take_snapshot_for(target: &Target, household_id: i64, token: &str) -> (u64, Vec<i64>) {
     let mut ids = Vec::new();
     let mut page = 1;
     let total = loop {
         let response = target.get(
-            &format!("{}?page={page}&per_page=100", takes_path(fixture)),
-            Some(&fixture.access_token),
+            &format!("/api/v1/households/{household_id}/medication_takes?page={page}&per_page=100"),
+            Some(token),
         );
         assert_eq!(response.status().as_u16(), 200);
         let collection = body(response);
@@ -135,6 +141,10 @@ fn take_snapshot(target: &Target, fixture: &Fixture) -> (u64, Vec<i64>) {
     assert_eq!(ids.len(), total as usize);
     ids.sort_unstable();
     (total, ids)
+}
+
+fn take_snapshot(target: &Target, fixture: &Fixture) -> (u64, Vec<i64>) {
+    take_snapshot_for(target, fixture.household_id, &fixture.access_token)
 }
 
 fn takes_for_medication(target: &Target, fixture: &Fixture, medication_id: i64) -> Vec<Value> {
@@ -1146,6 +1156,17 @@ fn medication_take_rejects_invalid_time_source_and_future_without_stock_loss() {
     let path = takes_path(&fixture);
     let before_stock = stock(&target, &fixture, fixture.managed_medication_id);
     let before_takes = take_snapshot(&target, &fixture);
+    let foreign_stock = stock_for(
+        &target,
+        fixture.foreign_household_id,
+        &fixture.foreign_access_token,
+        fixture.foreign_medication_id,
+    );
+    let foreign_takes = take_snapshot_for(
+        &target,
+        fixture.foreign_household_id,
+        &fixture.foreign_access_token,
+    );
     let (_, taken_at) = clock();
     let schedule_source_id = schedule_portable_id(&target, &fixture);
     let assignment_source_id = assignment_portable_id(&target, &fixture);
@@ -1195,6 +1216,23 @@ fn medication_take_rejects_invalid_time_source_and_future_without_stock_loss() {
     assert!(!body(response)
         .to_string()
         .contains(&fixture.foreign_medication_name));
+    assert_eq!(
+        stock_for(
+            &target,
+            fixture.foreign_household_id,
+            &fixture.foreign_access_token,
+            fixture.foreign_medication_id,
+        ),
+        foreign_stock
+    );
+    assert_eq!(
+        take_snapshot_for(
+            &target,
+            fixture.foreign_household_id,
+            &fixture.foreign_access_token,
+        ),
+        foreign_takes
+    );
     let future = (OffsetDateTime::now_utc() + time::Duration::hours(2))
         .format(&Rfc3339)
         .unwrap();
