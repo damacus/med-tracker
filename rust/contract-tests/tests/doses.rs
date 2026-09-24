@@ -669,7 +669,7 @@ fn direct_assignment_outcome_reopens_then_records_one_take() {
     let response = target.post_json_authorized(
         &format!("{path}/not_taken"),
         &fixture.access_token,
-        &json!({"dose_occurrence": {"key": key, "reason": "unwell"}}),
+        &json!({"dose_occurrence": {"key": key, "reason": "unwell", "note": "Resting after treatment"}}),
     );
     assert_eq!(response.status().as_u16(), 200);
     let tag = etag(&response);
@@ -677,6 +677,7 @@ fn direct_assignment_outcome_reopens_then_records_one_take() {
     let not_taken = body(response)["data"].clone();
     assert_eq!(not_taken["outcome"], "not_taken");
     assert_eq!(not_taken["reason"], "unwell");
+    assert_eq!(not_taken["note"], "Resting after treatment");
     audit(
         &target,
         &fixture,
