@@ -3,8 +3,11 @@ require 'securerandom'
 
 abort 'Contract fixtures require the Rails test environment' unless Rails.env.test?
 
-path = Rails.root.join('tmp/contract-tests/fixture.json')
-FileUtils.mkdir_p(path.dirname)
+path = Pathname.new(ENV.fetch('CONTRACT_FIXTURE_PATH'))
+fixture_root = Rails.root.join('tmp/contract-tests').realpath
+abort 'Contract fixture path must be in its own run directory' unless
+  path.absolute? && path.basename.to_s == 'fixture.json' && path.dirname.dirname.realpath == fixture_root &&
+  path.dirname.basename.to_s.start_with?('run.')
 nonce = SecureRandom.hex(12)
 
 def create_household(nonce, label)
@@ -38,7 +41,6 @@ fixture = ActiveRecord::Base.transaction do
     foreign_email: "contract-foreign-#{nonce}@example.test"
   }
 end
-File.unlink(path) if path.exist? || path.symlink?
 File.open(path, File::WRONLY | File::CREAT | File::EXCL, 0o600) do |file|
   file.write(JSON.generate(fixture))
 end

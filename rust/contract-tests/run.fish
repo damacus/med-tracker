@@ -1,8 +1,10 @@
 set -l mode $argv[1]
-set -l fixture_path (pwd)/tmp/contract-tests/fixture.json
 
 function remove_contract_fixture --on-event fish_exit
-    rtk proxy rm -f tmp/contract-tests/fixture.json
+    if set -q contract_run_dir
+        rtk proxy rm -f "$contract_fixture_path"
+        rtk proxy rmdir "$contract_run_dir"
+    end
 end
 
 if test "$mode" != rails; and test "$mode" != rust
@@ -10,16 +12,22 @@ if test "$mode" != rails; and test "$mode" != rust
     exit 2
 end
 
+rtk proxy mkdir -p tmp/contract-tests
+or exit $status
+set -g contract_run_dir (rtk proxy mktemp -d tmp/contract-tests/run.XXXXXX)
+or exit $status
+set -g contract_fixture_path (pwd)/$contract_run_dir/fixture.json
+
 rtk task test:server
 or exit $status
 
-rtk task --force test:exec CMD='rails runner scripts/contract_provision.rb'
+rtk task --force test:exec CMD="CONTRACT_FIXTURE_PATH=/app/$contract_run_dir/fixture.json rails runner scripts/contract_provision.rb"
 or exit $status
 
 if test "$mode" = rails
     set -l port (rtk task test:port)
     or exit $status
-    rtk task contract:run BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$fixture_path"
+    rtk task contract:run BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
 else
-    rtk task contract:run BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
+    rtk task contract:run BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
 end
