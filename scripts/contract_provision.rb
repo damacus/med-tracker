@@ -86,6 +86,15 @@ fixture = ActiveRecord::Base.transaction do
                                                            default_max_daily_doses: 4,
                                                            default_min_hours_between_doses: '4',
                                                            default_dose_cycle: :daily)
+  managed_schedule = Schedule.create!(household: household, person: managed_person, medication: managed_medication,
+                                      dose_amount: '1', dose_unit: 'ml', frequency: 'Daily',
+                                      start_date: '2026-02-25', end_date: '2099-12-31')
+  hidden_schedule = Schedule.create!(household: household, person: hidden_person, medication: hidden_medication,
+                                     dose_amount: '1', dose_unit: 'ml', frequency: 'Daily',
+                                     start_date: '2026-02-25', end_date: '2099-12-31')
+  foreign_schedule = Schedule.create!(household: foreign_household, person: foreign_account.person,
+                                      medication: foreign_medication, dose_amount: '1', dose_unit: 'ml',
+                                      frequency: 'Daily', start_date: '2026-02-25', end_date: '2099-12-31')
   hidden_health_event = HealthEvent.create!(household: household, person: hidden_person, event_kind: :illness,
                                             title: "Contract hidden event #{nonce}", started_on: '2026-02-25')
   foreign_health_event = HealthEvent.create!(household: foreign_household, person: foreign_account.person,
@@ -159,6 +168,9 @@ fixture = ActiveRecord::Base.transaction do
     hidden_medication_id: hidden_medication.id,
     foreign_medication_id: foreign_medication.id,
     foreign_medication_name: foreign_medication.name,
+    managed_schedule_id: managed_schedule.id,
+    hidden_schedule_id: hidden_schedule.id,
+    foreign_schedule_id: foreign_schedule.id,
     foreign_dosage_id: foreign_dosage.id,
     hidden_dosage_id: hidden_dosage.id,
     hidden_health_event_id: hidden_health_event.id,
