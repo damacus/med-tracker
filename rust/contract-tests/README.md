@@ -19,6 +19,9 @@ global ceiling.
 
 Run `task contract:dosage-health-rails` for only the dosage-option and
 health-event black-box cases with the same isolated fixture setup.
+Run `task contract:admin-rails` for household settings and membership cases.
+Run `task contract:admin-rust` to check the same cases against a local Rust
+target after provisioning the isolated fixtures.
 Run `task contract:schedules-rails` for only the schedule cases.
 Run `task contract:doses-rails` for schedule and direct-assignment dose outcomes
 and medication takes.
