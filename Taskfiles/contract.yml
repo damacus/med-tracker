@@ -2,6 +2,12 @@
 version: "3"
 
 tasks:
+  isolation:
+    desc: Verify per-run database and cleanup isolation
+    cmds:
+      - fish rust/contract-tests/cleanup_status_test.fish
+      - fish rust/contract-tests/isolation_test.fish
+
   cleanup:
     run: always
     requires:

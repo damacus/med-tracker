@@ -1,0 +1,31 @@
+#!/usr/bin/env fish
+
+if test "$argv[1]" = proxy
+    if test "$argv[2]" = mktemp
+        set -l run_dir (command mktemp $argv[3..-1])
+        or exit $status
+        echo $run_dir > $CONTRACT_FAKE_RUN_DIR_FILE
+        echo $run_dir
+    else
+        command $argv[2..-1]
+    end
+    exit $status
+end
+
+if test "$argv[1]" != task
+    exit 2
+end
+
+set -l task_name $argv[2]
+if test "$task_name" = --force
+    set task_name $argv[3]
+end
+
+switch $task_name
+    case contract:cleanup
+        exit $CONTRACT_FAKE_CLEANUP_STATUS
+    case test:port
+        echo 43017
+    case 'contract:run*' contract:oauth
+        exit $CONTRACT_FAKE_RUN_STATUS
+end
