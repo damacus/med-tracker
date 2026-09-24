@@ -78,10 +78,12 @@ fixture = ActiveRecord::Base.transaction do
                                                              default_max_daily_doses: 4,
                                                              default_min_hours_between_doses: '4',
                                                              default_dose_cycle: :daily)
-  PersonMedication.create!(household: household, person: managed_person, medication: managed_medication,
-                           administration_kind: :as_needed)
-  PersonMedication.create!(household: household, person: hidden_person, medication: hidden_medication,
-                           administration_kind: :as_needed)
+  managed_assignment = PersonMedication.create!(household: household, person: managed_person,
+                                                medication: managed_medication, administration_kind: :as_needed)
+  hidden_assignment = PersonMedication.create!(household: household, person: hidden_person,
+                                               medication: hidden_medication, administration_kind: :as_needed)
+  foreign_assignment = PersonMedication.create!(household: foreign_household, person: foreign_account.person,
+                                                medication: foreign_medication, administration_kind: :as_needed)
   hidden_dosage = hidden_medication.dosage_records.create!(amount: '1', unit: 'ml', frequency: 'daily',
                                                            default_max_daily_doses: 4,
                                                            default_min_hours_between_doses: '4',
@@ -167,7 +169,13 @@ fixture = ActiveRecord::Base.transaction do
     managed_medication_portable_id: managed_medication.portable_id,
     hidden_medication_id: hidden_medication.id,
     foreign_medication_id: foreign_medication.id,
+    foreign_medication_portable_id: foreign_medication.portable_id,
     foreign_medication_name: foreign_medication.name,
+    managed_assignment_id: managed_assignment.id,
+    hidden_assignment_id: hidden_assignment.id,
+    hidden_assignment_portable_id: hidden_assignment.portable_id,
+    foreign_assignment_id: foreign_assignment.id,
+    foreign_assignment_portable_id: foreign_assignment.portable_id,
     managed_schedule_id: managed_schedule.id,
     hidden_schedule_id: hidden_schedule.id,
     foreign_schedule_id: foreign_schedule.id,

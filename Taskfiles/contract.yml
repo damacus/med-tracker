@@ -22,7 +22,29 @@ tasks:
       CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test care --test medication_stock --test dosage_health --test schedules --test oauth --test envelopes --no-fail-fast -- --test-threads=1
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test care --test medication_stock --test dosage_health --test schedules --test assignments --test oauth --test envelopes --no-fail-fast -- --test-threads=1
+
+  run-assignments:
+    desc: Run direct-assignment and pause-period cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test assignments -- --test-threads=1
+
+  run-assignment-precision:
+    desc: Demonstrate the expected-failing Rails direct-assignment decimal precision case
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test assignments -- --ignored --exact assignment_preserves_three_decimal_dose_amount --test-threads=1
 
   run-schedules:
     desc: Run schedule cases against a checked target and fixture
@@ -108,6 +130,16 @@ tasks:
     desc: Run schedule cases against isolated Rails
     cmds:
       - fish rust/contract-tests/run.fish rails schedules
+
+  assignments-rails:
+    desc: Run direct-assignment and pause-period cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails assignments
+
+  assignment-precision-rails:
+    desc: Demonstrate Rails' current assignment decimal precision limit
+    cmds:
+      - fish rust/contract-tests/run.fish rails assignment-precision
 
   schedule-precision-rails:
     desc: Demonstrate Rails' current loss of fractional schedule minimum hours
