@@ -36,7 +36,7 @@ pub struct Fixture {
     pub foreign_person_name: String,
     pub view_access_token: String,
     pub feed_access_token: String,
-    pub hidden_feed_tombstone_id: String,
+    pub cursor_boundary_location_portable_id: String,
     pub view_account_id: i64,
     pub view_membership_id: i64,
     pub delegated_access_token: String,
