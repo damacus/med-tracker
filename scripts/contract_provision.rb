@@ -51,6 +51,9 @@ fixture = ActiveRecord::Base.transaction do
   membership = account.household_memberships.find_by!(household: household)
   manager_membership, manager_access_token = create_admin_member(household, nonce, 'manager', role: :administrator)
   admin_target_membership, admin_target_access_token = create_admin_member(household, nonce, 'admin-target')
+  admin_owner_patch_membership, = create_admin_member(household, nonce, 'admin-owner-patch')
+  admin_manager_put_membership, admin_manager_put_access_token = create_admin_member(household, nonce, 'admin-manager-put')
+  admin_owner_put_membership, admin_owner_put_access_token = create_admin_member(household, nonce, 'admin-owner-put')
   admin_invalid_membership, = create_admin_member(household, nonce, 'admin-invalid')
   admin_revoke_membership, admin_revoke_access_token = create_admin_member(household, nonce, 'admin-revoke')
   last_owner_account, last_owner_household, = create_household(nonce, 'last-owner')
@@ -349,6 +352,11 @@ fixture = ActiveRecord::Base.transaction do
     manager_access_token: manager_access_token,
     admin_target_membership_id: admin_target_membership.id,
     admin_target_access_token: admin_target_access_token,
+    admin_owner_patch_membership_id: admin_owner_patch_membership.id,
+    admin_manager_put_membership_id: admin_manager_put_membership.id,
+    admin_manager_put_access_token: admin_manager_put_access_token,
+    admin_owner_put_membership_id: admin_owner_put_membership.id,
+    admin_owner_put_access_token: admin_owner_put_access_token,
     admin_invalid_membership_id: admin_invalid_membership.id,
     admin_revoke_membership_id: admin_revoke_membership.id,
     admin_revoke_access_token: admin_revoke_access_token,
