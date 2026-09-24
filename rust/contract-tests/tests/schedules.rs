@@ -197,6 +197,181 @@ fn schedule_collection_is_person_scoped_and_paginated() {
 }
 
 #[test]
+fn schedule_collection_filters_updates_and_normalizes_pagination() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let base = schedules_path(&fixture);
+    let (created, _) = create_schedule(&target, &fixture);
+
+    let response = target.get(
+        &format!("{base}?updated_since=1970-01-01T00%3A00%3A00Z&per_page=100"),
+        Some(&fixture.view_access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    assert!(body(response)["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|row| row["id"] == created["id"]));
+    let response = target.get(
+        &format!("{base}?updated_since=2099-01-01T00%3A00%3A00Z"),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(body(response)["meta"]["total_count"], 0);
+    let response = target.get(
+        &format!("{base}?updated_since=invalid"),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert_eq!(body(response)["error"]["code"], "unprocessable_content");
+
+    let response = target.get(
+        &format!("{base}?page=bogus&per_page=0"),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let normalized = body(response);
+    assert_eq!(normalized["meta"]["page"], 1);
+    assert_eq!(normalized["meta"]["per_page"], 1);
+    assert_eq!(normalized["data"].as_array().unwrap().len(), 1);
+    let response = target.get(
+        &format!("{base}?page=-3&per_page=1000"),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let normalized = body(response);
+    assert_eq!(normalized["meta"]["page"], 1);
+    assert_eq!(normalized["meta"]["per_page"], 100);
+}
+
+#[test]
+fn schedule_source_dosage_links_only_to_a_matching_visible_option() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let dosage_path = format!("/api/v1/households/{}/dosage_options", fixture.household_id);
+    let response = target.post_json_authorized(
+        &dosage_path,
+        &fixture.access_token,
+        &json!({"dosage_option": {
+            "medication_id": fixture.managed_medication_portable_id,
+            "amount": "2.5", "unit": "ml", "frequency": "Twice daily",
+            "default_max_daily_doses": 2, "default_min_hours_between_doses": "8.0",
+            "default_dose_cycle": "daily"
+        }}),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let dosage = body(response)["data"].clone();
+    let mut payload = schedule_payload(&fixture);
+    payload["schedule"]["source_dosage_option_id"] = dosage["portable_id"].clone();
+    payload["schedule"]["dose_amount"] = json!("2.5");
+    let response =
+        target.post_json_authorized(&schedules_path(&fixture), &fixture.access_token, &payload);
+    let status = response.status().as_u16();
+    let result = body(response);
+    assert_eq!(status, 201, "{result}");
+    let created = result["data"].clone();
+    assert_eq!(created["dose_amount"], "2.5");
+    assert_eq!(
+        created["medication_portable_id"],
+        fixture.managed_medication_portable_id
+    );
+    let response = target.post_json_authorized(
+        &format!("/api/v1/households/{}/medications", fixture.household_id),
+        &fixture.access_token,
+        &json!({"medication": {"name": "Different source option medicine",
+            "location_id": fixture.primary_location_id,
+            "dose_amount": "1", "dose_unit": "ml"}}),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let alternate = body(response)["data"].clone();
+    let path = format!(
+        "{}/{}",
+        schedules_path(&fixture),
+        created["portable_id"].as_str().unwrap()
+    );
+    let response = target.patch_json(
+        &path,
+        &fixture.access_token,
+        &json!({"schedule": {"medication_id": alternate["portable_id"]}}),
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert!(body(response)["error"]["errors"]["source_dosage_option"].is_array());
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(
+        body(response)["data"]["medication_id"],
+        created["medication_id"]
+    );
+
+    payload["schedule"]["dose_amount"] = json!("1.25");
+    let response =
+        target.post_json_authorized(&schedules_path(&fixture), &fixture.access_token, &payload);
+    assert_eq!(response.status().as_u16(), 422);
+    assert!(body(response)["error"]["errors"]["source_dosage_option"].is_array());
+    payload["schedule"]["source_dosage_option_id"] = json!(fixture.foreign_dosage_id.to_string());
+    let response =
+        target.post_json_authorized(&schedules_path(&fixture), &fixture.access_token, &payload);
+    assert_eq!(response.status().as_u16(), 404);
+    payload["schedule"]["source_dosage_option_id"] = json!(fixture.hidden_dosage_id.to_string());
+    let response = target.post_json_authorized(
+        &schedules_path(&fixture),
+        &fixture.view_access_token,
+        &payload,
+    );
+    assert_eq!(response.status().as_u16(), 403);
+}
+
+#[test]
+fn schedule_recurrence_retains_valid_rules() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let mut payload = schedule_payload(&fixture);
+    payload["schedule"]["schedule_type"] = json!("specific_dates");
+    payload["schedule"]["schedule_config"] =
+        json!({"dates": ["2026-04-21", "2026-04-24"], "times": ["08:00"]});
+    let response =
+        target.post_json_authorized(&schedules_path(&fixture), &fixture.access_token, &payload);
+    assert_eq!(response.status().as_u16(), 201);
+    let created = body(response)["data"].clone();
+    let path = format!(
+        "{}/{}",
+        schedules_path(&fixture),
+        created["portable_id"].as_str().unwrap()
+    );
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(
+        body(response)["data"]["schedule_config"],
+        payload["schedule"]["schedule_config"]
+    );
+}
+
+#[test]
+#[ignore = "Rails currently returns 500 for an unknown schedule type"]
+fn schedule_recurrence_rejects_unknown_type_without_server_error() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let mut payload = schedule_payload(&fixture);
+    payload["schedule"]["schedule_type"] = json!("unknown");
+    let response =
+        target.post_json_authorized(&schedules_path(&fixture), &fixture.access_token, &payload);
+    assert_eq!(response.status().as_u16(), 422);
+}
+
+#[test]
+#[ignore = "Rails currently accepts a recurrence time outside the OpenAPI time format"]
+fn schedule_recurrence_rejects_invalid_config_time() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let mut payload = schedule_payload(&fixture);
+    payload["schedule"]["schedule_config"] = json!({"weekdays": ["monday"], "times": ["99:99"]});
+    let response =
+        target.post_json_authorized(&schedules_path(&fixture), &fixture.access_token, &payload);
+    assert_eq!(response.status().as_u16(), 422);
+}
+
+#[test]
 fn schedule_create_get_and_invalid_inputs_preserve_the_public_contract() {
     let target = Target::from_env();
     let fixture = fixture();
@@ -369,6 +544,181 @@ fn schedule_patch_and_put_keep_etags_validation_and_audit() {
         &json!({"schedule": {"frequency": "Foreign"}}),
     );
     assert_eq!(response.status().as_u16(), 404);
+}
+
+#[test]
+fn schedule_patch_relinks_medication_but_keeps_the_person_fixed() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (created, _) = create_schedule(&target, &fixture);
+    let path = format!(
+        "{}/{}",
+        schedules_path(&fixture),
+        created["portable_id"].as_str().unwrap()
+    );
+    let medications_path = format!("/api/v1/households/{}/medications", fixture.household_id);
+    let response = target.post_json_authorized(
+        &medications_path,
+        &fixture.access_token,
+        &json!({"medication": {"name": "Schedule relink medicine",
+            "location_id": fixture.primary_location_id,
+            "dose_amount": "1", "dose_unit": "ml"}}),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let alternate = body(response)["data"].clone();
+    let response = target.patch_json(
+        &path,
+        &fixture.access_token,
+        &json!({"schedule": {"medication_id": alternate["portable_id"]}}),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let relinked = body(response)["data"].clone();
+    assert_eq!(relinked["medication_id"], alternate["id"]);
+    assert_eq!(relinked["medication_portable_id"], alternate["portable_id"]);
+    assert_eq!(relinked["person_id"], created["person_id"]);
+
+    let response = target.patch_json(
+        &path,
+        &fixture.access_token,
+        &json!({"schedule": {"medication_id": fixture.foreign_medication_portable_id}}),
+    );
+    assert_eq!(response.status().as_u16(), 404);
+    let response = target.patch_json(
+        &path,
+        &fixture.access_token,
+        &json!({"schedule": {"person_id": fixture.hidden_person_id.to_string()}}),
+    );
+    assert_eq!(response.status().as_u16(), 404);
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let persisted = body(response)["data"].clone();
+    assert_eq!(persisted["medication_id"], alternate["id"]);
+    assert_eq!(persisted["person_id"], created["person_id"]);
+}
+
+#[test]
+fn schedule_full_put_replaces_mutable_fields_and_rejects_invalid_values() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (created, original_etag) = create_schedule(&target, &fixture);
+    let path = format!(
+        "{}/{}",
+        schedules_path(&fixture),
+        created["portable_id"].as_str().unwrap()
+    );
+    let response = target.put_json_if_match(
+        &path,
+        &fixture.access_token,
+        &json!({"schedule": {
+            "person_id": fixture.managed_person_portable_id,
+            "medication_id": fixture.managed_medication_portable_id,
+            "dose_amount": "2.5", "dose_unit": "ml", "frequency": "Alternate days",
+            "start_date": "2026-03-01", "end_date": "2098-12-31",
+            "notes": "Complete replacement", "max_daily_doses": 3,
+            "min_hours_between_doses": "6.0", "dose_cycle": "daily",
+            "schedule_type": "every_other_day", "schedule_config": {"times": ["09:30"]}
+        }}),
+        &original_etag,
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let replaced_etag = etag(&response);
+    let replaced = body(response)["data"].clone();
+    assert_ne!(replaced_etag, original_etag);
+    assert_eq!(replaced["person_id"], created["person_id"]);
+    assert_eq!(replaced["dose_amount"], "2.5");
+    assert_eq!(replaced["frequency"], "Alternate days");
+    assert_eq!(replaced["start_date"], "2026-03-01");
+    assert_eq!(replaced["end_date"], "2098-12-31");
+    assert_eq!(replaced["notes"], "Complete replacement");
+    assert_eq!(replaced["max_daily_doses"], 3);
+    assert_eq!(replaced["min_hours_between_doses"], "6.0");
+    assert_eq!(replaced["dose_cycle"], "daily");
+    assert_eq!(replaced["schedule_type"], "every_other_day");
+    assert_eq!(replaced["schedule_config"], json!({"times": ["09:30"]}));
+
+    let response = target.put_json_if_match(
+        &path,
+        &fixture.access_token,
+        &json!({"schedule": {"dose_amount": 2.5}}),
+        &replaced_etag,
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert_eq!(
+        body(response)["error"]["errors"]["dose_amount"][0],
+        "must be a string"
+    );
+    let response = target.put_json_if_match(
+        &path,
+        &fixture.access_token,
+        &json!({"schedule": {"end_date": "2026-02-28"}}),
+        &replaced_etag,
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(etag(&response), replaced_etag);
+    let persisted = body(response)["data"].clone();
+    assert_eq!(persisted["dose_amount"], replaced["dose_amount"]);
+    assert_eq!(persisted["end_date"], replaced["end_date"]);
+    assert_eq!(persisted["schedule_config"], replaced["schedule_config"]);
+}
+
+#[test]
+fn schedule_legacy_pause_and_resume_authorize_and_preserve_repeated_transitions() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let (created, _) = create_schedule(&target, &fixture);
+    let path = format!(
+        "{}/{}",
+        schedules_path(&fixture),
+        created["portable_id"].as_str().unwrap()
+    );
+    let pause = format!("{path}/pause");
+    let resume = format!("{path}/resume");
+    let response = target.patch_json(&resume, &fixture.access_token, &json!({}));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(body(response)["data"]["active"], true);
+    for route in [&pause, &resume] {
+        let response = target.patch_json(route, &fixture.view_access_token, &json!({}));
+        assert_eq!(response.status().as_u16(), 403);
+        let foreign = route.replace(
+            created["portable_id"].as_str().unwrap(),
+            &fixture.foreign_schedule_id.to_string(),
+        );
+        let response = target.patch_json(&foreign, &fixture.access_token, &json!({}));
+        assert_eq!(response.status().as_u16(), 404);
+    }
+    let response = target.patch_json(&pause, &fixture.access_token, &json!({}));
+    assert_eq!(response.status().as_u16(), 200);
+    let first_period = body(response)["data"]["current_pause_period"]["id"].clone();
+    let response = target.patch_json(&pause, &fixture.access_token, &json!({}));
+    assert_eq!(response.status().as_u16(), 200);
+    let repeated = body(response)["data"].clone();
+    assert_eq!(repeated["current_pause_period"]["id"], first_period);
+    assert_eq!(repeated["active"], false);
+    let response = target.patch_json(&resume, &fixture.access_token, &json!({}));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(body(response)["data"]["active"], true);
+    let response = target.patch_json(&resume, &fixture.access_token, &json!({}));
+    assert_eq!(response.status().as_u16(), 200);
+    let repeated = body(response)["data"].clone();
+    assert_eq!(repeated["active"], true);
+    assert!(repeated["current_pause_period"].is_null());
+    let history_path = format!(
+        "/api/v1/households/{}/medication_pause_periods?source_type=schedule&source_id={}",
+        fixture.household_id,
+        created["portable_id"].as_str().unwrap()
+    );
+    let response = target.get(&history_path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let periods = body(response)["data"].as_array().unwrap().to_vec();
+    assert_eq!(
+        periods
+            .iter()
+            .filter(|row| row["id"] == first_period)
+            .count(),
+        1
+    );
 }
 
 #[test]
