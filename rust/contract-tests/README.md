@@ -18,6 +18,11 @@ global ceiling.
 Run `task contract:dosage-health-rails` for only the dosage-option and
 health-event black-box cases with the same isolated fixture setup.
 Run `task contract:schedules-rails` for only the schedule cases.
+Run `task contract:doses-rails` for schedule and direct-assignment dose outcomes
+and medication takes.
+Run `task contract:dose-precision-rails` to demonstrate the ignored
+expected-failing medication-take timestamp case: Rails accepts fractional
+seconds but returns `taken_at` at whole-second precision.
 Run `task contract:schedule-precision-rails` to demonstrate the ignored
 schedule case that currently fails on Rails: `"8.5"` minimum hours returns
 `"8.0"`. This expected failure is outside the green parity suite.

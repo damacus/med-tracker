@@ -22,7 +22,29 @@ tasks:
       CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test care --test medication_stock --test dosage_health --test schedules --test assignments --test oauth --test envelopes --no-fail-fast -- --test-threads=1
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test oauth --test envelopes --no-fail-fast -- --test-threads=1
+
+  run-doses:
+    desc: Run dose outcome and medication take cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test doses -- --test-threads=1
+
+  run-dose-precision:
+    desc: Probe fractional medication-take timestamp precision against a checked target
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test doses -- --exact medication_take_preserves_fractional_second_timestamp --ignored --test-threads=1
 
   run-assignments:
     desc: Run direct-assignment and pause-period cases against a checked target and fixture
@@ -135,6 +157,16 @@ tasks:
     desc: Run direct-assignment and pause-period cases against isolated Rails
     cmds:
       - fish rust/contract-tests/run.fish rails assignments
+
+  doses-rails:
+    desc: Run dose outcome and medication take cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails doses
+
+  dose-precision-rails:
+    desc: Demonstrate Rails medication-take timestamp precision
+    cmds:
+      - fish rust/contract-tests/run.fish rails dose-precision
 
   assignment-precision-rails:
     desc: Demonstrate Rails' current assignment decimal precision limit
