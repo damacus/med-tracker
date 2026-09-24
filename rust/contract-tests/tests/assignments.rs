@@ -768,13 +768,25 @@ fn assignment_updated_since_is_inclusive_validated_and_person_scoped() {
     let fixture = fixture();
     let (created, _) = create_assignment(&target, &fixture, "Contract assignment filter");
     let base = assignments_path(&fixture);
-    let boundary = created["updated_at"].as_str().unwrap();
+    let response = target.get(
+        &format!("{base}/{}", fixture.managed_assignment_id),
+        Some(&fixture.view_access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(
+        body(response)["data"]["updated_at"],
+        fixture.managed_assignment_updated_at
+    );
+    let boundary = &fixture.managed_assignment_updated_at;
     let response = target.get(
         &format!("{base}?updated_since={boundary}"),
         Some(&fixture.view_access_token),
     );
     assert_eq!(response.status().as_u16(), 200);
     let rows = body(response)["data"].as_array().unwrap().clone();
+    assert!(rows
+        .iter()
+        .any(|row| row["id"] == fixture.managed_assignment_id));
     assert!(rows.iter().any(|row| row["id"] == created["id"]));
     assert!(!rows
         .iter()
@@ -993,6 +1005,17 @@ fn stale_period_etag_and_foreign_resume_preserve_the_open_period() {
     let (assignment, _) = create_assignment(&target, &fixture, "Contract period precondition");
     let source_id = assignment["portable_id"].as_str().unwrap();
     let base = periods_path(&fixture);
+    let first_payload = json!({"medication_pause_period": {"source_type": "person_medication",
+        "source_id": source_id, "reason": "side_effects"}});
+    let response = target.post_json_authorized(&base, &fixture.access_token, &first_payload);
+    assert_eq!(response.status().as_u16(), 201);
+    let old_tag = etag(&response);
+    let first = body(response)["data"].clone();
+    let first_path = format!("{base}/{}/resume", first["id"].as_str().unwrap());
+    let response =
+        target.post_json_if_match(&first_path, &fixture.access_token, &json!({}), &old_tag);
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(body(response)["data"]["id"], first["id"]);
     let response = target.post_json_authorized(
         &base,
         &fixture.access_token,
@@ -1001,9 +1024,10 @@ fn stale_period_etag_and_foreign_resume_preserve_the_open_period() {
     );
     assert_eq!(response.status().as_u16(), 201);
     let tag = etag(&response);
+    assert_ne!(tag, old_tag);
     let period = body(response)["data"].clone();
     let path = format!("{base}/{}/resume", period["id"].as_str().unwrap());
-    let response = target.post_json_if_match(&path, &fixture.access_token, &json!({}), "\"stale\"");
+    let response = target.post_json_if_match(&path, &fixture.access_token, &json!({}), &old_tag);
     assert_eq!(response.status().as_u16(), 409);
     assert_eq!(body(response)["error"]["code"], "conflict");
     let history = format!("{base}?source_type=person_medication&source_id={source_id}");

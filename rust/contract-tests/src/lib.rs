@@ -50,6 +50,7 @@ pub struct Fixture {
     pub foreign_medication_portable_id: String,
     pub foreign_medication_name: String,
     pub managed_assignment_id: i64,
+    pub managed_assignment_updated_at: String,
     pub retired_assignment_portable_id: String,
     pub retired_assignment_period_id: String,
     pub hidden_assignment_id: i64,
