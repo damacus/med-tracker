@@ -44,6 +44,19 @@ crates, the ORM selection, auth context, response and error types, router
 wiring, and migrations. Keep shared manifests, schema, router, and
 cross-domain abstractions under one integration owner.
 
+The ORM trial uses a Rails-migrated disposable PostgreSQL 18 database. Its read
+is the medication API with manager, delegated, and denied household contexts,
+including active person grants, linked schedules and direct assignments, and
+creator-owned unlinked medications. Its write is the authorised absolute stock
+adjustment: lock the medication row, preserve decimal precision, write the
+audit version atomically, and exercise invalid, foreign, and concurrent
+requests. Give both ORM candidates the same fixture, connection limit, Tokio
+worker count, HTTP/serialization boundary, and warmup. Record query counts,
+combined application-process RSS at warm idle and load, CPU time, and latency;
+choose only after correctness and the under-200 MB budget are measured. Dose
+recording adds advisory locks and stock callbacks and is a separate follow-up
+trial, not a substitute for the initial comparison.
+
 ## Current source of truth
 
 - `docs/api/openapi.v1.yaml` is the authoritative v1 mobile API contract. At

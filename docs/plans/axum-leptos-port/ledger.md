@@ -22,6 +22,13 @@ PostgreSQL 18 trial chooses the ORM before Rust API implementation — the cost
 if wrong is reworking the persistence boundary, not dropping the ORM
 requirement without a new product decision.
 
+Read-only ORM trial design: compare the authorised medication read and atomic
+stock adjustment with identical Rails-migrated PostgreSQL 18 fixtures, pool
+limits, HTTP boundary, and workload. Audit persistence and lock behaviour are
+correctness gates; warm-idle and loaded application RSS, CPU, and latency
+choose between candidates only after equivalent results. No benchmark or ORM
+selection has been claimed.
+
 Ruling: for v1 `show_hidden`, only `1` reveals hidden medication review prompts;
 any other value retains Rails' 200 response with hidden rows excluded. The
 OpenAPI enum describes valid client inputs, while the existing controller and
