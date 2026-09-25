@@ -70,6 +70,23 @@ fn parse_page(
     ))
 }
 
+fn parse_location_page(
+    db: DatabaseTransaction,
+    pagination: Pagination,
+) -> Result<(DatabaseTransaction, Page), (DatabaseTransaction, ApiError)> {
+    if pagination.page.is_some_and(|page| page < 1)
+        || pagination
+            .per_page
+            .is_some_and(|per_page| !(1..=100).contains(&per_page))
+    {
+        return Err((db, ApiError::invalid_pagination()));
+    }
+    if pagination.updated_since.as_deref() == Some("") {
+        return Err((db, ApiError::invalid_filter()));
+    }
+    parse_page(db, pagination)
+}
+
 async fn audited_error_response(
     db: DatabaseTransaction,
     context: &AuthContext,
@@ -221,6 +238,95 @@ fn assignment_scope(
         .filter(
             person_medication::Column::PersonId.in_subquery(granted_people(&context.membership)),
         )
+}
+
+fn location_value(location: stock_location::Model) -> Value {
+    json!({
+        "id": location.id,
+        "portable_id": location.portable_id,
+        "name": location.name,
+        "description": location.description,
+        "updated_at": location.updated_at.and_utc().to_rfc3339()
+    })
+}
+
+pub(super) async fn locations_index(
+    State(state): State<AppState>,
+    Path(household_id): Path<i64>,
+    Query(pagination): Query<Pagination>,
+    headers: HeaderMap,
+) -> Result<Response, ApiError> {
+    let (db, context) = request_context(&state, &headers, household_id).await?;
+    let (db, page) = match parse_location_page(db, pagination) {
+        Ok(value) => value,
+        Err((db, error)) => {
+            return audited_error_response(
+                db,
+                &context,
+                "api/v1/locations",
+                "LocationPolicy",
+                "index",
+                error,
+                true,
+            )
+            .await;
+        }
+    };
+    let mut query =
+        stock_location::Entity::find().filter(stock_location::Column::HouseholdId.eq(household_id));
+    if let Some(updated_since) = page.updated_since {
+        query = query.filter(stock_location::Column::UpdatedAt.gte(updated_since));
+    }
+    let total = query.clone().count(&db).await.map_err(database_error)?;
+    let rows = query
+        .order_by_asc(stock_location::Column::Id)
+        .limit(page.size as u64)
+        .offset(offset(&page))
+        .all(&db)
+        .await
+        .map_err(database_error)?
+        .into_iter()
+        .map(location_value)
+        .collect();
+    collection_response(
+        db,
+        &context,
+        "api/v1/locations",
+        "LocationPolicy",
+        rows,
+        page,
+        total,
+    )
+    .await
+}
+
+pub(super) async fn locations_show(
+    State(state): State<AppState>,
+    Path((household_id, id)): Path<(i64, String)>,
+    headers: HeaderMap,
+) -> Result<Response, ApiError> {
+    let (db, context) = request_context(&state, &headers, household_id).await?;
+    let mut query =
+        stock_location::Entity::find().filter(stock_location::Column::HouseholdId.eq(household_id));
+    query = if let Ok(numeric_id) = id.parse::<i64>() {
+        query.filter(stock_location::Column::Id.eq(numeric_id))
+    } else {
+        query.filter(stock_location::Column::PortableId.eq(id))
+    };
+    let row = query
+        .one(&db)
+        .await
+        .map_err(database_error)?
+        .map(location_value);
+    detail_response(
+        db,
+        &context,
+        "api/v1/locations",
+        "LocationPolicy",
+        row,
+        &headers,
+    )
+    .await
 }
 
 fn today() -> NaiveDate {

@@ -79,7 +79,10 @@ read_entity!(location_membership, "location_memberships", {
 
 read_entity!(stock_location, "locations", {
     household_id: i64,
+    portable_id: String,
     name: String,
+    description: Option<String>,
+    updated_at: DateTime,
 });
 
 read_entity!(notification_preference, "notification_preferences", {
