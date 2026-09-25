@@ -298,7 +298,7 @@ tasks:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test sync -- --test-threads=1
 
   run-sync-privacy:
-    desc: Probe hidden-person change-feed disclosure against a checked target and fixture
+    desc: Run hidden-person change-feed privacy contract against a checked target and fixture
     requires:
       vars: [BASE_URL, FIXTURE_PATH]
     env:
@@ -306,7 +306,7 @@ tasks:
       CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test sync -- --exact change_feed_hides_ungranted_person_events_and_tombstones --ignored --test-threads=1
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test sync -- --exact change_feed_hides_ungranted_person_events_and_tombstones --test-threads=1
 
   run-reviews:
     desc: Run medication review prompt cases against a checked target and fixture
@@ -726,7 +726,7 @@ tasks:
       - fish rust/contract-tests/run.fish rails replay
 
   sync-privacy-rails:
-    desc: Demonstrate the currently failing Rails hidden-person feed case
+    desc: Run hidden-person feed privacy case against isolated Rails
     cmds:
       - fish rust/contract-tests/run.fish rails sync-privacy
 

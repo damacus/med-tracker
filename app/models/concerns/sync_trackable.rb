@@ -7,6 +7,7 @@ module SyncTrackable
     after_create -> { record_sync_change('create') }
     after_update -> { record_sync_change('update') }
     after_touch -> { record_sync_change('update') }
+    before_destroy :capture_sync_tombstone_visibility_metadata
     after_destroy -> { record_sync_change('delete') }
   end
 
@@ -21,7 +22,23 @@ module SyncTrackable
     record_sync_change('delete')
   end
 
+  def sync_tombstone_visibility_metadata
+    @sync_tombstone_visibility_metadata
+  end
+
   private
+
+  def capture_sync_tombstone_visibility_metadata
+    return unless Current.household&.id == household_id
+
+    recorder = Api::ChangeRecorder.new(
+      household: household,
+      account: Current.account,
+      membership: Current.membership,
+      request_id: Current.request_id
+    )
+    @sync_tombstone_visibility_metadata = recorder.tombstone_visibility_metadata_for(self)
+  end
 
   def record_sync_change(action)
     return unless Current.household&.id == household_id

@@ -4,6 +4,14 @@ module Api
   module V1
     module Sync
       class FeedsController < Api::V1::BaseController
+        PERSON_SCOPED_RECORD_TYPES = %w[
+          HealthEvent MedicationDoseOccurrence MedicationPausePeriod MedicationTake NotificationPreference Person
+          PersonMedication Schedule
+        ].freeze
+        HOUSEHOLD_WIDE_RECORD_TYPES = %w[
+          Location MedicationDosageOption
+        ].freeze
+
         def snapshot
           render json: { data: Api::SyncSnapshot.new(household: current_household, exporter: exporter).payload }
         end
@@ -46,14 +54,60 @@ module Api
 
         def change_events_since(since)
           scope = ApiChangeEvent.where(household: current_household).where(occurred_at: since..)
-          ordinary_events = scope.where.not(record_type: 'MedicationPausePeriod')
+          ordinary_events = scope.where.not(record_type: %w[Medication MedicationPausePeriod])
+          ordinary_events = visible_person_rows(ordinary_events)
+          medication_events = scope.where(record_type: 'Medication', record_id: visible_medications.select(:id))
           pause_events = scope.where(record_type: 'MedicationPausePeriod', record_id: visible_pause_period_ids)
-          ordinary_events.or(pause_events).order(:occurred_at, :id)
+          ordinary_events.or(medication_events).or(pause_events).order(:occurred_at, :id)
         end
 
         def tombstones_since(since)
-          ApiTombstone.where(household: current_household).where.not(record_type: 'MedicationPausePeriod')
-                      .where(deleted_at: since..).order(:deleted_at, :id)
+          scope = ApiTombstone.where(household: current_household).where.not(record_type: 'MedicationPausePeriod')
+                              .where(deleted_at: since..)
+          ordinary_tombstones = visible_person_rows(scope.where.not(record_type: 'Medication'))
+          medication_tombstones = visible_medication_tombstones(scope)
+          ordinary_tombstones.or(medication_tombstones).order(:deleted_at, :id)
+        end
+
+        def visible_person_rows(scope)
+          visible_people = policy_scope(Person).select(:portable_id)
+          household_rows = scope.where(record_type: HOUSEHOLD_WIDE_RECORD_TYPES)
+          related_person_rows = scope.where(record_type: PERSON_SCOPED_RECORD_TYPES - ['Person'])
+                                     .where("metadata ->> 'person_portable_id' IN (?)", visible_people)
+          person_rows = scope.where(record_type: 'Person', record_portable_id: visible_people)
+          legacy_person_rows = household_manager_authorized? ? scope.where(record_type: PERSON_SCOPED_RECORD_TYPES) : scope.none
+
+          household_rows.or(related_person_rows).or(person_rows).or(legacy_person_rows)
+        end
+
+        def visible_medication_tombstones(scope)
+          medication_rows = scope.where(record_type: 'Medication')
+          return medication_rows if household_manager_authorized?
+
+          visible_person_ids = policy_scope(Person).pluck(:portable_id)
+          person_rows = medication_rows.where(
+            "jsonb_exists_any(metadata -> 'sync_person_portable_ids', ARRAY(SELECT jsonb_array_elements_text(?::jsonb)))",
+            visible_person_ids.to_json
+          )
+          creator_rows = medication_rows.where(
+            "metadata ->> 'sync_creator_membership_id' = ?", current_membership.id.to_s
+          )
+
+          person_rows.or(creator_rows)
+        end
+
+        def household_manager_authorized?
+          current_membership.owner? || current_membership.administrator?
+        end
+
+        def visible_medications
+          medications = Medication.where(household: current_household)
+          authorized_ids = policy_scope(Medication).select(:id)
+          health_event_ids = HealthEventMedication.where(health_event_id: policy_scope(HealthEvent).select(:id))
+                                                  .where.not(medication_id: nil)
+                                                  .select(:medication_id)
+
+          medications.where(id: authorized_ids).or(medications.where(id: health_event_ids))
         end
 
         def visible_pause_period_ids
@@ -92,8 +146,15 @@ module Api
             record_portable_id: tombstone.record_portable_id,
             action: tombstone.action,
             deleted_at: tombstone.deleted_at.iso8601,
-            metadata: tombstone.metadata
+            metadata: public_metadata(tombstone.metadata)
           }
+        end
+
+        def public_metadata(metadata)
+          metadata.except(
+            'sync_person_portable_ids', 'sync_creator_membership_id',
+            :sync_person_portable_ids, :sync_creator_membership_id
+          )
         end
       end
     end

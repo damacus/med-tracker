@@ -1188,7 +1188,6 @@ fn change_feed_projects_the_current_saved_dose_outcome() {
 }
 
 #[test]
-#[ignore = "Rails exposes ordinary hidden-person change events and tombstones to a restricted member"]
 fn change_feed_hides_ungranted_person_events_and_tombstones() {
     let target = Target::from_env();
     let fixture = fixture();
