@@ -13,6 +13,8 @@ Planning baseline: `781c3a297ffe24ae5b70f893d55b568eab1216fc`.
   supporting services are excluded.
 - API tests precede broad UI parity tests; product implementation follows both
   baselines except the bounded Leptos foundation ruling below.
+- Persistence remains undecided until typed, parameterized SQL and an ORM are
+  compared against representative PostgreSQL 18 operations and memory data.
 
 Ruling: start one isolated Leptos SSR login-page foundation before the full
 API and browser baselines close — the user explicitly requested an early UI
