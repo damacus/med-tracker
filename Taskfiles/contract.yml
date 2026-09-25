@@ -63,7 +63,7 @@ tasks:
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
       CONTRACT_MAILPIT_URL: '{{ .MAILPIT_URL }}'
     cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml {{ if eq .TEST_TARGET "lib" }}--lib{{ else if .TEST_TARGET }}--test {{ .TEST_TARGET }}{{ else }}--lib --test auth --test admin --test invitations --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test reports --test fhir --test platform --test lookup --test web_json_read --test portability --test retained --test web_json_actions --test profile --test web_profile --test sync --test replay --test oauth --test devices --test web_devices --test push_delivery --test mcp --test uploads --test envelopes{{ end }} --no-fail-fast -- --test-threads=1
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml {{ if eq .TEST_TARGET "lib" }}--lib{{ else if .TEST_TARGET }}--test {{ .TEST_TARGET }}{{ else }}--lib --test auth --test admin --test invitations --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test reports --test fhir --test smart_fhir --test platform --test lookup --test web_json_read --test portability --test retained --test web_json_actions --test profile --test web_profile --test sync --test replay --test oauth --test devices --test web_devices --test push_delivery --test mcp --test uploads --test envelopes{{ end }} --no-fail-fast -- --test-threads=1
 
   run-platform:
     desc: Run platform administration web-session contract cases
@@ -341,6 +341,17 @@ tasks:
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test fhir -- --test-threads=1
 
+  run-smart-fhir:
+    desc: Run SMART consent and FHIR token contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test smart_fhir -- --test-threads=1
+
   run-care:
     desc: Run people, grant, and location cases against a checked target and fixture
     requires:
@@ -577,6 +588,11 @@ tasks:
     cmds:
       - fish rust/contract-tests/run.fish rails fhir
 
+  smart-fhir-rails:
+    desc: Run SMART consent and FHIR token cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails smart-fhir
+
   platform-rails:
     desc: Run platform administration cases against isolated Rails
     cmds:
@@ -597,6 +613,14 @@ tasks:
       CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
       - fish rust/contract-tests/run.fish rust fhir
+
+  smart-fhir-rust:
+    desc: Run SMART consent and FHIR token cases against the configured Rust target
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust smart-fhir
 
   portability-rails:
     desc: Run portable household export and import cases against isolated Rails

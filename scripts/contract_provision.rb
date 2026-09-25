@@ -804,6 +804,12 @@ fixture = ActiveRecord::Base.transaction do
                                               redirect_uri: 'https://client.example/callback',
                                               scopes: 'patient/Patient.rs patient/Medication.rs',
                                               token_endpoint_auth_method: 'none')
+  smart_client_id = "contract-smart-#{nonce}"
+  smart_redirect_uri = 'https://client.example/smart-contract-callback?tenant=7'
+  OauthApplication.create!(name: 'Contract SMART issued client', client_id: smart_client_id,
+                           redirect_uri: smart_redirect_uri,
+                           scopes: 'launch/patient patient/*.rs offline_access',
+                           token_endpoint_auth_method: 'none')
   role_member_oauth_token = "contract-auth-role-#{SecureRandom.urlsafe_base64(48)}"
   OauthGrant.create!(account: role_member_membership.account, oauth_application: fhir_application,
                      household_membership: role_member_membership, person: role_member_membership.person,
@@ -1043,6 +1049,9 @@ fixture = ActiveRecord::Base.transaction do
     auth_role_member_oauth_token: role_member_oauth_token,
     oauth_client_id: oauth_client_id,
     oauth_redirect_uri: oauth_redirect_uri,
+    smart_client_id: smart_client_id,
+    smart_redirect_uri: smart_redirect_uri,
+    smart_patient_portable_id: account.person.portable_id,
     user_person_id: account.person.id,
     managed_person_id: managed_person.id,
     managed_person_portable_id: managed_person.portable_id,
