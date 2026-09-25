@@ -2,9 +2,17 @@ use medtracker_contract_tests::{fixture, Fixture, Target};
 use reqwest::blocking::Response;
 use scraper::{Html, Selector};
 use serde_json::{json, Value};
+use std::sync::OnceLock;
 
 fn sign_in(target: &Target, email: &str) {
-    let response = target.get_html("/login");
+    let client_ip = format!(
+        "203.0.113.{}",
+        20 + email
+            .bytes()
+            .fold(0u16, |sum, byte| sum.wrapping_add(u16::from(byte)))
+            % 220
+    );
+    let response = target.get_html_from_local_client("/login", &client_ip);
     assert_eq!(response.status().as_u16(), 200);
     let document = Html::parse_document(&response.text().expect("login HTML"));
     let selector = Selector::parse("form[action='/login'] input[name='authenticity_token']")
@@ -20,9 +28,21 @@ fn sign_in(target: &Target, email: &str) {
         ("authenticity_token".to_string(), token.to_string()),
     ];
     assert_eq!(
-        target.post_html_form("/login", &fields).status().as_u16(),
+        target
+            .post_html_form_from_local_client("/login", &fields, &client_ip)
+            .status()
+            .as_u16(),
         302
     );
+}
+
+fn owner_target(fixture: &Fixture) -> &'static Target {
+    static OWNER: OnceLock<Target> = OnceLock::new();
+    OWNER.get_or_init(|| {
+        let target = Target::from_env();
+        sign_in(&target, &fixture.primary_email);
+        target
+    })
 }
 
 fn web_path(fixture: &Fixture, suffix: &str) -> String {
@@ -44,15 +64,15 @@ fn assert_login_redirect(response: Response) {
 #[test]
 fn web_json_reads_require_login_and_search_is_scoped_and_literal() {
     let fixture = fixture();
-    let target = Target::from_env();
+    let unauthenticated = Target::from_env();
     let search = web_path(&fixture, "/search.json");
     let finder = web_path(&fixture, "/medication-finder/search.json");
     let scan = web_path(&fixture, "/medications/scan_restock_match.json");
     for path in [&search, &finder, &scan] {
-        assert_login_redirect(target.get(path, None));
+        assert_login_redirect(unauthenticated.get(path, None));
     }
 
-    sign_in(&target, &fixture.primary_email);
+    let target = owner_target(&fixture);
     assert_eq!(
         json_body(target.get(&search, None), 200)["results"],
         json!([])
@@ -89,8 +109,7 @@ fn web_json_reads_require_login_and_search_is_scoped_and_literal() {
 #[test]
 fn scan_restock_match_only_exposes_accessible_local_stock() {
     let fixture = fixture();
-    let target = Target::from_env();
-    sign_in(&target, &fixture.primary_email);
+    let target = owner_target(&fixture);
     let scan = web_path(&fixture, "/medications/scan_restock_match.json");
     let matched = json_body(
         target.get(&format!("{scan}?q={}", fixture.lookup_barcode), None),
@@ -115,8 +134,7 @@ fn scan_restock_match_only_exposes_accessible_local_stock() {
 #[test]
 fn finder_resolves_local_barcode_and_hides_foreign_stock_metadata() {
     let fixture = fixture();
-    let target = Target::from_env();
-    sign_in(&target, &fixture.primary_email);
+    let target = owner_target(&fixture);
     let finder = web_path(&fixture, "/medication-finder/search.json");
     let blank = json_body(target.get(&finder, None), 200);
     assert_eq!(blank["results"], json!([]));
@@ -151,8 +169,7 @@ fn finder_resolves_local_barcode_and_hides_foreign_stock_metadata() {
 #[test]
 fn finder_uses_deterministic_nhs_and_open_food_facts_fallbacks() {
     let fixture = fixture();
-    let target = Target::from_env();
-    sign_in(&target, &fixture.primary_email);
+    let target = owner_target(&fixture);
     let finder = web_path(&fixture, "/medication-finder/search.json");
     let nhs = json_body(
         target.get(&format!("{finder}?q=contractupstream"), None),
@@ -190,21 +207,111 @@ fn finder_uses_deterministic_nhs_and_open_food_facts_fallbacks() {
 }
 
 #[test]
+fn carer_search_respects_person_grants_and_finder_is_restock_only() {
+    let fixture = fixture();
+    let search = web_path(&fixture, "/search.json");
+    let finder = web_path(&fixture, "/medication-finder/search.json");
+    let hidden_authorized = Target::from_env();
+    sign_in(&hidden_authorized, &fixture.web_feed_email);
+    let hidden_query = fixture.web_hidden_person_name.replace(' ', "%20");
+    let authorized_results = json_body(
+        hidden_authorized.get(&format!("{search}?q={hidden_query}"), None),
+        200,
+    );
+    assert!(authorized_results["results"]
+        .as_array()
+        .expect("granted search results")
+        .iter()
+        .any(|row| row["type"] == "person" && row["title"] == fixture.web_hidden_person_name));
+
+    let carer = Target::from_env();
+    sign_in(&carer, &fixture.web_view_email);
+    let managed_query = fixture.web_managed_person_name.replace(' ', "%20");
+    let managed_results = json_body(carer.get(&format!("{search}?q={managed_query}"), None), 200);
+    assert!(managed_results["results"]
+        .as_array()
+        .expect("carer granted search results")
+        .iter()
+        .any(|row| row["type"] == "person" && row["title"] == fixture.web_managed_person_name));
+    let hidden_results = json_body(carer.get(&format!("{search}?q={hidden_query}"), None), 200);
+    assert!(!hidden_results["results"]
+        .as_array()
+        .expect("carer ungranted search results")
+        .iter()
+        .any(|row| row["title"] == fixture.web_hidden_person_name));
+
+    let matched = json_body(
+        carer.get(&format!("{finder}?q={}", fixture.lookup_barcode), None),
+        200,
+    );
+    assert_eq!(
+        matched["permissions"],
+        json!({"can_create": false, "can_restock": true})
+    );
+    assert_eq!(
+        matched["results"][0]["existing_medication"]["id"],
+        fixture.managed_medication_id
+    );
+}
+
+#[test]
+fn finder_filters_deterministic_nhs_results_by_form_and_strength() {
+    let fixture = fixture();
+    let target = owner_target(&fixture);
+    let finder = web_path(&fixture, "/medication-finder/search.json");
+
+    let liquid = json_body(
+        target.get(&format!("{finder}?q=contractupstream&form=liquid"), None),
+        200,
+    );
+    assert_eq!(liquid["form"], "liquid");
+    assert_eq!(liquid["strength"], Value::Null);
+    let mut liquid_codes: Vec<&str> = liquid["results"]
+        .as_array()
+        .expect("liquid results")
+        .iter()
+        .map(|row| row["code"].as_str().expect("liquid code"))
+        .collect();
+    liquid_codes.sort_unstable();
+    assert_eq!(
+        liquid_codes,
+        ["contract-upstream-125", "contract-upstream-250"]
+    );
+
+    let strength = json_body(
+        target.get(
+            &format!("{finder}?q=contractupstream&strength=0.5%20g"),
+            None,
+        ),
+        200,
+    );
+    assert_eq!(strength["form"], Value::Null);
+    assert_eq!(strength["strength"], "500mg");
+    let strength_codes: Vec<&str> = strength["results"]
+        .as_array()
+        .expect("strength results")
+        .iter()
+        .map(|row| row["code"].as_str().expect("strength code"))
+        .collect();
+    assert_eq!(strength_codes, ["contract-upstream-500"]);
+}
+
+#[test]
 fn finder_throttles_after_sixty_requests_and_advertises_retry() {
     let fixture = fixture();
-    let target = Target::from_env();
-    sign_in(&target, &fixture.primary_email);
+    let target = owner_target(&fixture);
     let finder = web_path(&fixture, "/medication-finder/search.json");
+    let client_ip = format!("198.51.100.{}", 20 + fixture.household_id % 220);
     for _ in 0..60 {
         assert_eq!(
             target
-                .get_from_local_client(&finder, "198.51.100.167")
+                .get_from_local_client(&finder, &client_ip)
                 .status()
                 .as_u16(),
             200
         );
     }
-    let response = target.get_from_local_client(&finder, "198.51.100.167");
+    let response = target.get_from_local_client(&finder, &client_ip);
     assert_eq!(response.status().as_u16(), 429);
     assert!(
         response.headers()["retry-after"]
