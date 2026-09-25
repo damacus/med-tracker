@@ -9,6 +9,23 @@ use url::{Host, Url};
 
 #[derive(Deserialize)]
 pub struct Fixture {
+    pub portable_source_household_id: i64,
+    pub portable_source_access_token: String,
+    pub portable_source_person_name: String,
+    pub portable_source_person_portable_id: String,
+    pub portable_source_location_portable_id: String,
+    pub portable_source_medication_portable_id: String,
+    pub portable_source_schedule_portable_id: String,
+    pub portable_target_household_id: i64,
+    pub portable_target_access_token: String,
+    pub portable_target_app_token: String,
+    pub portable_target_mobile_token: String,
+    pub portable_member_access_token: String,
+    pub portable_revoked_access_token: String,
+    pub portable_locked_access_token: String,
+    pub portable_numeric_bundle: serde_json::Value,
+    pub portable_conflict_bundle: serde_json::Value,
+    pub portable_malformed_bundle: serde_json::Value,
     pub access_token: String,
     pub account_id: i64,
     pub primary_email: String,
@@ -286,6 +303,22 @@ impl Target {
     ) -> Response {
         self.require_local_write();
         self.authorize(self.client.post(self.url(path)), Some(token))
+            .json(body)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn post_json_with_header(
+        &self,
+        path: &str,
+        token: &str,
+        name: &'static str,
+        value: &str,
+        body: &serde_json::Value,
+    ) -> Response {
+        self.require_local_write();
+        self.authorize(self.client.post(self.url(path)), Some(token))
+            .header(name, value)
             .json(body)
             .send()
             .expect("target must respond")
