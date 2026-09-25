@@ -15,6 +15,19 @@ pub struct Fixture {
     pub retained_schedule_id: i64,
     pub retained_medication_id: i64,
     pub retained_foreign_household_slug: String,
+    pub platform_admin_email: String,
+    pub platform_target_email: String,
+    pub platform_target_user_id: i64,
+    pub platform_promote_membership_id: i64,
+    pub platform_promote_email: String,
+    pub platform_denied_user_id: i64,
+    pub platform_denied_membership_id: i64,
+    pub platform_denied_email: String,
+    pub platform_household_id: i64,
+    pub platform_support_household_id: i64,
+    pub platform_support_household_slug: String,
+    pub platform_support_session_id: i64,
+    pub platform_existing_support_household_slug: String,
     pub profile_household_id: i64,
     pub avatar_household_id: i64,
     pub avatar_access_token: String,
@@ -326,6 +339,36 @@ impl Target {
         self.require_local_write();
         self.client
             .post(self.url(path))
+            .header("Accept", "text/html")
+            .form(fields)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn patch_html_form(&self, path: &str, fields: &[(String, String)]) -> Response {
+        self.require_local_write();
+        self.client
+            .patch(self.url(path))
+            .header("Accept", "text/html")
+            .form(fields)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn put_html_form(&self, path: &str, fields: &[(String, String)]) -> Response {
+        self.require_local_write();
+        self.client
+            .put(self.url(path))
+            .header("Accept", "text/html")
+            .form(fields)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn delete_html_form(&self, path: &str, fields: &[(String, String)]) -> Response {
+        self.require_local_write();
+        self.client
+            .delete(self.url(path))
             .header("Accept", "text/html")
             .form(fields)
             .send()

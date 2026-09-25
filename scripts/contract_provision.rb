@@ -43,6 +43,18 @@ end
 
 fixture = ActiveRecord::Base.transaction do
   account, household, user = create_household(nonce, 'primary')
+  platform_account, platform_household, = create_household(nonce, 'platform')
+  PlatformAdmin.create!(account: platform_account)
+  platform_target_membership, = create_admin_member(platform_household, nonce, 'platform-target')
+  platform_promote_membership, = create_admin_member(platform_household, nonce, 'platform-promote')
+  platform_denied_membership, = create_admin_member(platform_household, nonce, 'platform-denied')
+  _, platform_support_household, = create_household(nonce, 'platform-support')
+  _, platform_existing_support_household, = create_household(nonce, 'platform-existing-support')
+  platform_support_session = SupportAccessSession.create!(
+    platform_admin: platform_account.platform_admin,
+    household: platform_existing_support_household,
+    reason: 'Existing contract support session'
+  )
   foreign_account, foreign_household, = create_household(nonce, 'foreign')
   retained_account, retained_household, = create_household(nonce, 'retained')
   retained_location = Location.create!(household: retained_household, name: "Contract retained shelf #{nonce}")
@@ -715,6 +727,19 @@ fixture = ActiveRecord::Base.transaction do
                                                                 passphrase: 'contract portable secret'),
     access_token: access_token,
     account_id: account.id,
+    platform_admin_email: platform_account.email,
+    platform_target_email: platform_target_membership.account.email,
+    platform_target_user_id: platform_target_membership.person.user.id,
+    platform_promote_membership_id: platform_promote_membership.id,
+    platform_promote_email: platform_promote_membership.account.email,
+    platform_denied_user_id: platform_denied_membership.person.user.id,
+    platform_denied_membership_id: platform_denied_membership.id,
+    platform_denied_email: platform_denied_membership.account.email,
+    platform_household_id: platform_household.id,
+    platform_support_household_id: platform_support_household.id,
+    platform_support_household_slug: platform_support_household.slug,
+    platform_support_session_id: platform_support_session.id,
+    platform_existing_support_household_slug: platform_existing_support_household.slug,
     primary_email: account.email,
     user_id: user.id,
     household_id: household.id,
