@@ -225,6 +225,14 @@ fn search_filters_and_pagination_are_observable_without_order_assumptions() {
         &fixture.managed_schedule_portable_id
     ));
     assert!(!has_id(
+        &active_requests,
+        &fixture.fhir_stopped_schedule_portable_id
+    ));
+    assert!(has_id(
+        &stopped_requests,
+        &fixture.fhir_stopped_schedule_portable_id
+    ));
+    assert!(!has_id(
         &stopped_requests,
         &fixture.managed_schedule_portable_id
     ));
@@ -233,6 +241,14 @@ fn search_filters_and_pagination_are_observable_without_order_assumptions() {
     assert!(has_id(
         &active_statements,
         &fixture.managed_assignment_portable_id
+    ));
+    assert!(!has_id(
+        &active_statements,
+        &fixture.fhir_stopped_assignment_portable_id
+    ));
+    assert!(has_id(
+        &stopped_statements,
+        &fixture.fhir_stopped_assignment_portable_id
     ));
     assert!(!has_id(
         &stopped_statements,
