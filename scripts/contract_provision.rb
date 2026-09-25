@@ -1,5 +1,6 @@
 require 'json'
 require 'securerandom'
+require 'stringio'
 
 abort 'Contract fixtures require the Rails test environment' unless Rails.env.test?
 
@@ -68,6 +69,13 @@ fixture = ActiveRecord::Base.transaction do
   profile_account, profile_household, = create_household(nonce, 'profile')
   avatar_account, avatar_household, = create_household(nonce, 'avatar')
   avatar_invalid_account, avatar_invalid_household, = create_household(nonce, 'avatar-invalid')
+  avatar_account.person.avatar.attach(io: StringIO.new('contract-owner-avatar'), filename: 'owner.png',
+                                      content_type: 'image/png')
+  avatar_hidden_person = avatar_household.people.create!(name: "Contract hidden avatar #{nonce}",
+                                                          date_of_birth: 25.years.ago.to_date,
+                                                          person_type: :adult, has_capacity: true)
+  avatar_hidden_person.avatar.attach(io: StringIO.new('contract-hidden-avatar'), filename: 'hidden.png',
+                                     content_type: 'image/png')
   avatar_membership = avatar_account.household_memberships.find_by!(household: avatar_household)
   _avatar_session, avatar_access_token, = ApiSession.issue_for(
     account: avatar_account, household_membership: avatar_membership, device_name: 'contract-avatar'
@@ -676,6 +684,11 @@ fixture = ActiveRecord::Base.transaction do
     retained_foreign_household_slug: foreign_household.slug,
     profile_household_id: profile_household.id,
     avatar_household_id: avatar_household.id,
+    avatar_household_slug: avatar_household.slug,
+    avatar_email: avatar_account.email,
+    avatar_person_id: avatar_account.person.id,
+    avatar_hidden_person_id: avatar_hidden_person.id,
+    avatar_invalid_household_slug: avatar_invalid_household.slug,
     avatar_access_token: avatar_access_token,
     avatar_invalid_household_id: avatar_invalid_household.id,
     avatar_invalid_access_token: avatar_invalid_access_token,
@@ -742,10 +755,12 @@ fixture = ActiveRecord::Base.transaction do
     primary_email: account.email,
     user_id: user.id,
     household_id: household.id,
+    household_slug: household.slug,
     household_name: household.name,
     owner_membership_id: membership.id,
     revoked_owner_app_token_id: revoked_owner_app_token.id,
     foreign_household_id: foreign_household.id,
+    foreign_household_slug: foreign_household.slug,
     foreign_membership_id: foreign_membership.id,
     foreign_app_token_id: foreign_app_token.id,
     foreign_access_token: foreign_access_token,

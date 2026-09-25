@@ -63,7 +63,7 @@ tasks:
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
       CONTRACT_MAILPIT_URL: '{{ .MAILPIT_URL }}'
     cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml {{ if eq .TEST_TARGET "lib" }}--lib{{ else if .TEST_TARGET }}--test {{ .TEST_TARGET }}{{ else }}--lib --test auth --test admin --test invitations --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test reports --test fhir --test platform --test lookup --test portability --test retained --test profile --test sync --test replay --test oauth --test devices --test mcp --test envelopes{{ end }} --no-fail-fast -- --test-threads=1
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml {{ if eq .TEST_TARGET "lib" }}--lib{{ else if .TEST_TARGET }}--test {{ .TEST_TARGET }}{{ else }}--lib --test auth --test admin --test invitations --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test reports --test fhir --test platform --test lookup --test portability --test retained --test profile --test web_profile --test sync --test replay --test oauth --test devices --test mcp --test envelopes{{ end }} --no-fail-fast -- --test-threads=1
 
   run-platform:
     desc: Run platform administration web-session contract cases
@@ -108,6 +108,17 @@ tasks:
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test profile -- --test-threads=1
+
+  run-web-profile:
+    desc: Run web profile, avatar, and health contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test web_profile -- --test-threads=1
 
   run-lookup:
     desc: Run medication lookup and AI suggestion contract cases
@@ -511,6 +522,10 @@ tasks:
       CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
       - fish rust/contract-tests/run.fish rust retained
+  web-profile-rails:
+    desc: Run web profile, avatar, and health cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails web-profile
 
   lookup-rails:
     desc: Run medication lookup and AI suggestion cases against isolated Rails
@@ -632,6 +647,14 @@ tasks:
       CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
       - fish rust/contract-tests/run.fish rust profile
+
+  web-profile-rust:
+    desc: Run web profile, avatar, and health cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust web-profile
 
   lookup-rust:
     desc: Run medication lookup and AI suggestion cases against a Rust URL
