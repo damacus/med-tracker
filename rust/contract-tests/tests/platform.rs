@@ -1,6 +1,7 @@
 use medtracker_contract_tests::{fixture, Fixture, Target};
 use reqwest::blocking::Response;
 use scraper::{Html, Selector};
+use serde_json::Value;
 use url::Url;
 
 fn login(target: &Target, email: &str) {
@@ -78,6 +79,35 @@ fn user_row(target: &Target, email: &str) -> String {
         .collect::<String>()
 }
 
+fn invite_only_checked(target: &Target) -> bool {
+    let response = target.get_html("/platform/settings");
+    assert_eq!(response.status().as_u16(), 200);
+    let document = Html::parse_document(&response.text().expect("settings HTML"));
+    let checkbox =
+        Selector::parse("input[type='checkbox'][name='app_settings[invite_only]']").unwrap();
+    document
+        .select(&checkbox)
+        .next()
+        .expect("invite setting")
+        .value()
+        .attr("checked")
+        .is_some()
+}
+
+fn support_audit_events(fixture: &Fixture) -> Vec<Value> {
+    let target = Target::from_env();
+    let path = format!(
+        "/api/v1/households/{}/admin/audit_logs",
+        fixture.platform_support_household_id
+    );
+    let response = target.get(&path, Some(&fixture.platform_support_audit_token));
+    assert_eq!(response.status().as_u16(), 200);
+    response.json::<Value>().expect("audit JSON")["data"]
+        .as_array()
+        .expect("audit events")
+        .clone()
+}
+
 #[test]
 fn platform_routes_require_a_web_session_and_platform_role() {
     let fixture = fixture();
@@ -96,13 +126,7 @@ fn platform_routes_require_a_web_session_and_platform_role() {
         anonymous.patch_html_form(&user_path, &[]),
         anonymous.put_html_form(&user_path, &[]),
         anonymous.post_html_form("/platform/support_access_sessions", &[]),
-        anonymous.delete_html_form(
-            &format!(
-                "/platform/support_access_sessions/{}",
-                fixture.platform_support_session_id
-            ),
-            &[],
-        ),
+        anonymous.delete_html_form("/platform/support_access_sessions/0", &[]),
         anonymous.patch_html_form(&promote_path, &[]),
     ] {
         redirect(response, "/login");
@@ -122,13 +146,7 @@ fn platform_routes_require_a_web_session_and_platform_role() {
         ordinary.patch_html_form("/platform/settings", &[]),
         ordinary.patch_html_form(&user_path, &[]),
         ordinary.post_html_form("/platform/support_access_sessions", &[]),
-        ordinary.delete_html_form(
-            &format!(
-                "/platform/support_access_sessions/{}",
-                fixture.platform_support_session_id
-            ),
-            &[],
-        ),
+        ordinary.delete_html_form("/platform/support_access_sessions/0", &[]),
         ordinary.patch_html_form(&promote_path, &[]),
     ] {
         redirect(response, "/");
@@ -151,23 +169,13 @@ fn platform_settings_accept_updates_and_reject_invalid_lookup_url() {
         &fields(&token, &[("app_settings[invite_only]", "0")]),
     );
     redirect(response, "/platform/settings");
+    assert!(!invite_only_checked(&target));
     let response = target.put_html_form(
         "/platform/settings",
         &fields(&token, &[("app_settings[invite_only]", "1")]),
     );
     redirect(response, "/platform/settings");
-    let response = target.get_html("/platform/settings");
-    let html = response.text().expect("settings HTML");
-    let document = Html::parse_document(&html);
-    let checkbox =
-        Selector::parse("input[type='checkbox'][name='app_settings[invite_only]']").unwrap();
-    assert!(document
-        .select(&checkbox)
-        .next()
-        .expect("invite setting")
-        .value()
-        .attr("checked")
-        .is_some());
+    assert!(invite_only_checked(&target));
 
     let invalid = target.patch_html_form(
         "/platform/settings",
@@ -184,18 +192,7 @@ fn platform_settings_accept_updates_and_reject_invalid_lookup_url() {
         .text()
         .expect("validation HTML")
         .contains("Platform Settings"));
-    let unchanged = target
-        .get_html("/platform/settings")
-        .text()
-        .expect("settings HTML");
-    let document = Html::parse_document(&unchanged);
-    assert!(document
-        .select(&checkbox)
-        .next()
-        .expect("invite setting")
-        .value()
-        .attr("checked")
-        .is_some());
+    assert!(invite_only_checked(&target));
 }
 
 #[test]
@@ -235,8 +232,9 @@ fn platform_user_access_and_owner_promotion_have_public_read_back() {
     assert!(user_row(&target, &fixture.platform_promote_email).contains("Owner"));
     let mismatch = format!(
         "/platform/households/{}/memberships/{}/promote_owner",
-        fixture.platform_support_household_id, fixture.platform_promote_membership_id
+        fixture.platform_support_household_id, fixture.platform_denied_membership_id
     );
+    assert!(user_row(&target, &fixture.platform_denied_email).contains("Member"));
     assert_eq!(
         target
             .patch_html_form(&mismatch, &fields(&token, &[]))
@@ -244,6 +242,7 @@ fn platform_user_access_and_owner_promotion_have_public_read_back() {
             .as_u16(),
         404
     );
+    assert!(user_row(&target, &fixture.platform_denied_email).contains("Member"));
 }
 
 #[test]
@@ -272,6 +271,9 @@ fn support_access_requires_reason_grants_one_household_and_can_end() {
         "/platform/settings",
     );
     assert_eq!(target.get_html(&support_path).status().as_u16(), 302);
+    assert!(!support_audit_events(&fixture)
+        .iter()
+        .any(|event| event["event_type"] == "support_access_session.started"));
     let valid = fields(
         &token,
         &[
@@ -285,27 +287,53 @@ fn support_access_requires_reason_grants_one_household_and_can_end() {
             ),
         ],
     );
-    redirect(
-        target.post_html_form("/platform/support_access_sessions", &valid),
-        "/platform/settings",
-    );
+    let created = target.post_html_form("/platform/support_access_sessions", &valid);
+    let request_id = created.headers()["x-request-id"]
+        .to_str()
+        .expect("support request ID")
+        .to_string();
+    redirect(created, "/platform/settings");
+    let events = support_audit_events(&fixture);
+    let started = events
+        .iter()
+        .find(|event| {
+            event["event_type"] == "support_access_session.started"
+                && event["request_id"].as_str() == Some(request_id.as_str())
+        })
+        .expect("started support audit event");
+    let session_id = started["metadata"]["support_access_session_id"]
+        .as_i64()
+        .expect("created support session ID");
     assert_eq!(target.get_html(&support_path).status().as_u16(), 200);
-    let end_path = format!(
-        "/platform/support_access_sessions/{}",
-        fixture.platform_support_session_id
-    );
-    let existing_path = format!(
+    let unrelated_path = format!(
         "/households/{}/admin",
-        fixture.platform_existing_support_household_slug
+        fixture.platform_unrelated_household_slug
     );
-    assert_eq!(target.get_html(&existing_path).status().as_u16(), 200);
+    assert_eq!(target.get_html(&unrelated_path).status().as_u16(), 302);
+    let end_path = format!("/platform/support_access_sessions/{session_id}");
     redirect(
         target.delete_html_form(&end_path, &fields(&token, &[])),
         "/platform/settings",
     );
-    assert_eq!(target.get_html(&existing_path).status().as_u16(), 302);
+    assert_eq!(target.get_html(&support_path).status().as_u16(), 302);
+    let ended = support_audit_events(&fixture)
+        .iter()
+        .filter(|event| {
+            event["event_type"] == "support_access_session.ended"
+                && event["metadata"]["support_access_session_id"] == session_id
+        })
+        .count();
+    assert_eq!(ended, 1);
     redirect(
         target.delete_html_form(&end_path, &fields(&token, &[])),
         "/platform/settings",
     );
+    let ended_again = support_audit_events(&fixture)
+        .iter()
+        .filter(|event| {
+            event["event_type"] == "support_access_session.ended"
+                && event["metadata"]["support_access_session_id"] == session_id
+        })
+        .count();
+    assert_eq!(ended_again, 1);
 }

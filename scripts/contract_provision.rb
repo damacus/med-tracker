@@ -48,12 +48,11 @@ fixture = ActiveRecord::Base.transaction do
   platform_target_membership, = create_admin_member(platform_household, nonce, 'platform-target')
   platform_promote_membership, = create_admin_member(platform_household, nonce, 'platform-promote')
   platform_denied_membership, = create_admin_member(platform_household, nonce, 'platform-denied')
-  _, platform_support_household, = create_household(nonce, 'platform-support')
-  _, platform_existing_support_household, = create_household(nonce, 'platform-existing-support')
-  platform_support_session = SupportAccessSession.create!(
-    platform_admin: platform_account.platform_admin,
-    household: platform_existing_support_household,
-    reason: 'Existing contract support session'
+  platform_support_account, platform_support_household, = create_household(nonce, 'platform-support')
+  platform_support_membership = platform_support_account.household_memberships.find_by!(household: platform_support_household)
+  _platform_support_api_session, platform_support_audit_token, = ApiSession.issue_for(
+    account: platform_support_account, household_membership: platform_support_membership,
+    device_name: 'contract-platform-audit'
   )
   foreign_account, foreign_household, = create_household(nonce, 'foreign')
   retained_account, retained_household, = create_household(nonce, 'retained')
@@ -738,8 +737,8 @@ fixture = ActiveRecord::Base.transaction do
     platform_household_id: platform_household.id,
     platform_support_household_id: platform_support_household.id,
     platform_support_household_slug: platform_support_household.slug,
-    platform_support_session_id: platform_support_session.id,
-    platform_existing_support_household_slug: platform_existing_support_household.slug,
+    platform_support_audit_token: platform_support_audit_token,
+    platform_unrelated_household_slug: foreign_household.slug,
     primary_email: account.email,
     user_id: user.id,
     household_id: household.id,
