@@ -1,5 +1,9 @@
 use crate::entities::{dosage, medication};
-use crate::medication_management::{error_response, finish, request_context};
+use crate::medication_management::{
+    error_response, finish, finish_with_request_id, household_manager, lock_medication,
+    medication_snapshot, record_version, request_context,
+};
+use crate::sync_events::{lock_household, record_change, SyncRecord};
 use crate::{database_error, decimal_string, representation_etag, ApiError, AppState, AuthContext};
 use axum::extract::{rejection::JsonRejection, rejection::QueryRejection, Path, Query, State};
 use axum::http::{header, HeaderMap, StatusCode};
@@ -9,11 +13,12 @@ use chrono::{DateTime, Utc};
 use sea_orm::prelude::Decimal;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, PaginatorTrait, QueryFilter,
-    QueryOrder, QuerySelect, Set, TransactionTrait,
+    QueryOrder, QuerySelect, QueryTrait, Set, TransactionTrait,
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub(super) struct Pagination {
@@ -79,7 +84,7 @@ fn storage_decimal(value: Decimal, integer_digits: i64, scale: u32) -> Option<De
 fn required_string(value: &Value) -> Option<String> {
     value
         .as_str()
-        .filter(|text| !text.is_empty())
+        .filter(|text| !text.trim().is_empty())
         .map(str::to_owned)
 }
 
@@ -178,6 +183,17 @@ fn attributes(body: &Value, create: bool) -> Option<Attributes> {
             }
         })
         .transpose_option()?;
+    if amount.is_some_and(|value| value <= Decimal::ZERO)
+        || default_min_hours_between_doses.is_some_and(|value| value < Decimal::ZERO)
+        || current_supply
+            .flatten()
+            .is_some_and(|value| value < Decimal::ZERO)
+        || reorder_threshold
+            .flatten()
+            .is_some_and(|value| value < Decimal::ZERO)
+    {
+        return None;
+    }
     if create
         && (medication_id.is_none()
             || amount.is_none()
@@ -264,7 +280,7 @@ async fn validation(
     .await
 }
 
-async fn owner_context(
+async fn write_context(
     state: &AppState,
     headers: &HeaderMap,
     household_id: i64,
@@ -272,7 +288,7 @@ async fn owner_context(
     action: &str,
 ) -> Result<Result<(DatabaseTransaction, AuthContext), Response>, ApiError> {
     let (db, context) = request_context(state, headers, household_id).await?;
-    if context.membership.role == "owner" {
+    if household_manager(&context) {
         Ok(Ok((db, context)))
     } else {
         Ok(Err(failure(
@@ -349,6 +365,50 @@ fn dosage_value(record: dosage::Model, medication_portable_id: &str) -> Result<V
     }))
 }
 
+fn dosage_snapshot(record: &dosage::Model) -> Value {
+    json!({
+        "id": record.id,
+        "portable_id": record.portable_id,
+        "medication_id": record.medication_id,
+        "amount": record.amount.map(|value| value.to_string()),
+        "unit": record.unit,
+        "frequency": record.frequency,
+        "description": record.description,
+        "default_for_adults": record.default_for_adults,
+        "default_for_children": record.default_for_children,
+        "default_max_daily_doses": record.default_max_daily_doses,
+        "default_min_hours_between_doses": record.default_min_hours_between_doses.map(|value| value.to_string()),
+        "default_dose_cycle": record.default_dose_cycle,
+        "current_supply": record.current_supply.map(|value| value.to_string()),
+        "reorder_threshold": record.reorder_threshold.map(|value| value.to_string())
+    })
+}
+
+fn valid_persisted_dosage(record: &dosage::Model) -> bool {
+    record.amount.is_some_and(|value| value > Decimal::ZERO)
+        && record
+            .unit
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && record
+            .frequency
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+        && record
+            .default_max_daily_doses
+            .is_some_and(|value| value > 0)
+        && record
+            .default_min_hours_between_doses
+            .is_some_and(|value| value >= Decimal::ZERO)
+        && matches!(record.default_dose_cycle, Some(0..=2))
+        && record
+            .current_supply
+            .is_none_or(|value| value >= Decimal::ZERO)
+        && record
+            .reorder_threshold
+            .is_none_or(|value| value >= Decimal::ZERO)
+}
+
 async fn representation(
     db: &DatabaseTransaction,
     record: dosage::Model,
@@ -363,16 +423,86 @@ async fn representation(
     Ok((body, etag))
 }
 
+fn inventory_totals(
+    count: i64,
+    total: Option<Decimal>,
+    threshold: Option<Decimal>,
+    existing_baseline: Option<Decimal>,
+) -> Option<(Option<Decimal>, Decimal, Option<Decimal>)> {
+    if count == 0 {
+        return Some((None, Decimal::ZERO, None));
+    }
+    let total = storage_decimal(total?, 8, 2)?;
+    let threshold = storage_decimal(threshold.unwrap_or(Decimal::ZERO), 8, 2)?;
+    let baseline = existing_baseline.map_or(total, |baseline| baseline.max(total));
+    Some((Some(total), threshold, Some(baseline)))
+}
+
+async fn synchronize_inventory(
+    db: &DatabaseTransaction,
+    parent: medication::Model,
+    now: chrono::NaiveDateTime,
+    clear_dose: bool,
+) -> Result<Option<medication::Model>, ApiError> {
+    let aggregated: Option<(i64, Option<Decimal>, Option<Decimal>)> = dosage::Entity::find()
+        .select_only()
+        .column_as(dosage::Column::Id.count(), "tracked_count")
+        .column_as(dosage::Column::CurrentSupply.sum(), "supply_total")
+        .column_as(dosage::Column::ReorderThreshold.sum(), "threshold_total")
+        .filter(dosage::Column::MedicationId.eq(parent.id))
+        .filter(dosage::Column::CurrentSupply.is_not_null())
+        .into_tuple()
+        .one(db)
+        .await
+        .map_err(database_error)?;
+    let (count, total, threshold) = aggregated.ok_or_else(ApiError::internal)?;
+    let Some((current_supply, reorder_threshold, baseline)) =
+        inventory_totals(count, total, threshold, parent.supply_at_last_restock)
+    else {
+        return Ok(None);
+    };
+    let mut active: medication::ActiveModel = parent.into();
+    active.current_supply = Set(current_supply);
+    active.reorder_threshold = Set(reorder_threshold);
+    active.supply_at_last_restock = Set(baseline);
+    if clear_dose {
+        active.dose_amount = Set(None);
+    }
+    active.updated_at = Set(now);
+    active.update(db).await.map(Some).map_err(database_error)
+}
+
+async fn record_sync(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    request_id: &str,
+    record_type: &str,
+    id: i64,
+    portable_id: &str,
+    action: &str,
+) -> Result<(), ApiError> {
+    record_change(
+        db,
+        context,
+        request_id,
+        SyncRecord {
+            record_type,
+            record_id: id,
+            portable_id,
+            action,
+            person_portable_id: None,
+        },
+    )
+    .await
+}
+
 pub(super) async fn index(
     State(state): State<AppState>,
     Path(household_id): Path<i64>,
     pagination: Result<Query<Pagination>, QueryRejection>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
-    let (db, context) = match owner_context(&state, &headers, household_id, "GET", "index").await? {
-        Ok(value) => value,
-        Err(response) => return Ok(response),
-    };
+    let (db, context) = request_context(&state, &headers, household_id).await?;
     let Query(pagination) = match pagination {
         Ok(value) => value,
         Err(_) => return validation(db, &context, "GET", "index").await,
@@ -389,7 +519,13 @@ pub(super) async fn index(
         },
         None => None,
     };
-    let mut query = dosage::Entity::find().filter(dosage::Column::HouseholdId.eq(household_id));
+    let visible_medication_ids = crate::scope(household_id, &context.membership)
+        .select_only()
+        .column(medication::Column::Id)
+        .into_query();
+    let mut query = dosage::Entity::find()
+        .filter(dosage::Column::HouseholdId.eq(household_id))
+        .filter(dosage::Column::MedicationId.in_subquery(visible_medication_ids));
     if let Some(updated_since) = updated_since {
         query = query.filter(dosage::Column::UpdatedAt.gte(updated_since));
     }
@@ -427,10 +563,7 @@ pub(super) async fn show(
     Path((household_id, id)): Path<(i64, String)>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
-    let (db, context) = match owner_context(&state, &headers, household_id, "GET", "show").await? {
-        Ok(value) => value,
-        Err(response) => return Ok(response),
-    };
+    let (db, context) = request_context(&state, &headers, household_id).await?;
     if !valid_identifier(&id) {
         return failure(
             db,
@@ -455,6 +588,23 @@ pub(super) async fn show(
         )
         .await;
     };
+    let visible = crate::scope(household_id, &context.membership)
+        .filter(medication::Column::Id.eq(record.medication_id))
+        .one(&db)
+        .await
+        .map_err(database_error)?;
+    if visible.is_none() {
+        return failure(
+            db,
+            &context,
+            "GET",
+            "show",
+            StatusCode::NOT_FOUND,
+            "not_found",
+            "Record not found",
+        )
+        .await;
+    }
     let (body, etag) = representation(&db, record).await?;
     finish(
         db,
@@ -478,7 +628,7 @@ pub(super) async fn create(
     payload: Result<Json<Value>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     let (db, context) =
-        match owner_context(&state, &headers, household_id, "POST", "create").await? {
+        match write_context(&state, &headers, household_id, "POST", "create").await? {
             Ok(value) => value,
             Err(response) => return Ok(response),
         };
@@ -521,6 +671,13 @@ pub(super) async fn create(
         )
         .await;
     };
+    lock_household(&db, household_id).await?;
+    lock_medication(&db, medication.id).await?;
+    let medication = medication::Entity::find_by_id(medication.id)
+        .one(&db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(ApiError::not_found)?;
     let now = Utc::now().naive_utc();
     let active = dosage::ActiveModel {
         household_id: Set(household_id),
@@ -542,10 +699,7 @@ pub(super) async fn create(
     };
     let savepoint = db.begin().await.map_err(database_error)?;
     let record = match active.insert(&savepoint).await {
-        Ok(record) => {
-            savepoint.commit().await.map_err(database_error)?;
-            record
-        }
+        Ok(record) => record,
         Err(error)
             if matches!(
                 error.sql_err(),
@@ -557,10 +711,73 @@ pub(super) async fn create(
         }
         Err(error) => return Err(database_error(error)),
     };
+    let parent_before = medication_snapshot(&medication);
+    let tracked_inventory = record.current_supply.is_some();
+    let parent = if tracked_inventory {
+        match synchronize_inventory(&savepoint, medication.clone(), now, true).await? {
+            Some(parent) => parent,
+            None => {
+                savepoint.rollback().await.map_err(database_error)?;
+                return validation(db, &context, "POST", "create").await;
+            }
+        }
+    } else {
+        let mut active: medication::ActiveModel = medication.into();
+        active.dose_amount = Set(None);
+        active.updated_at = Set(now);
+        active.update(&savepoint).await.map_err(database_error)?
+    };
+    savepoint.commit().await.map_err(database_error)?;
+    let request_id = Uuid::new_v4().to_string();
+    record_version(
+        &db,
+        &context,
+        &request_id,
+        "MedicationDosageOption",
+        record.id,
+        "api_create",
+        None,
+        Some(dosage_snapshot(&record)),
+    )
+    .await?;
+    if tracked_inventory {
+        record_version(
+            &db,
+            &context,
+            &request_id,
+            "Medication",
+            parent.id,
+            "api_update",
+            Some(parent_before),
+            Some(medication_snapshot(&parent)),
+        )
+        .await?;
+    }
+    record_sync(
+        &db,
+        &context,
+        &request_id,
+        "MedicationDosageOption",
+        record.id,
+        &record.portable_id,
+        "create",
+    )
+    .await?;
+    record_sync(
+        &db,
+        &context,
+        &request_id,
+        "Medication",
+        parent.id,
+        &parent.portable_id,
+        "update",
+    )
+    .await?;
     let (body, etag) = representation(&db, record).await?;
-    finish(
+    finish_with_request_id(
         db,
         &context,
+        &request_id,
         "POST",
         "api/v1/dosage_options",
         "DosageOptionPolicy",
@@ -582,7 +799,7 @@ async fn update(
     method: &str,
 ) -> Result<Response, ApiError> {
     let (db, context) =
-        match owner_context(&state, &headers, household_id, method, "update").await? {
+        match write_context(&state, &headers, household_id, method, "update").await? {
             Ok(value) => value,
             Err(response) => return Ok(response),
         };
@@ -598,6 +815,20 @@ async fn update(
         )
         .await;
     }
+    let Some(found) = dosage_row(&db, household_id, &id, false).await? else {
+        return failure(
+            db,
+            &context,
+            method,
+            "update",
+            StatusCode::NOT_FOUND,
+            "not_found",
+            "Record not found",
+        )
+        .await;
+    };
+    lock_household(&db, household_id).await?;
+    lock_medication(&db, found.medication_id).await?;
     let Some(record) = dosage_row(&db, household_id, &id, true).await? else {
         return failure(
             db,
@@ -643,6 +874,9 @@ async fn update(
     let Some(attrs) = attributes(&body, false) else {
         return validation(db, &context, method, "update").await;
     };
+    let new_supply = attrs.current_supply.unwrap_or(record.current_supply);
+    let sync_inventory = new_supply.is_some() || new_supply != record.current_supply;
+    let before = dosage_snapshot(&record);
     let mut active: dosage::ActiveModel = record.into();
     if let Some(value) = attrs.amount {
         active.amount = Set(Some(value));
@@ -677,13 +911,11 @@ async fn update(
     if let Some(value) = attrs.reorder_threshold {
         active.reorder_threshold = Set(value);
     }
-    active.updated_at = Set(Utc::now().naive_utc());
+    let now = Utc::now().naive_utc();
+    active.updated_at = Set(now);
     let savepoint = db.begin().await.map_err(database_error)?;
     let record = match active.update(&savepoint).await {
-        Ok(record) => {
-            savepoint.commit().await.map_err(database_error)?;
-            record
-        }
+        Ok(record) => record,
         Err(error)
             if matches!(
                 error.sql_err(),
@@ -695,10 +927,78 @@ async fn update(
         }
         Err(error) => return Err(database_error(error)),
     };
+    if !valid_persisted_dosage(&record) {
+        savepoint.rollback().await.map_err(database_error)?;
+        return validation(db, &context, method, "update").await;
+    }
+    let parent = if sync_inventory {
+        let parent = medication::Entity::find_by_id(record.medication_id)
+            .one(&savepoint)
+            .await
+            .map_err(database_error)?
+            .ok_or_else(ApiError::not_found)?;
+        let before = medication_snapshot(&parent);
+        match synchronize_inventory(&savepoint, parent, now, false).await? {
+            Some(parent) => Some((before, parent)),
+            None => {
+                savepoint.rollback().await.map_err(database_error)?;
+                return validation(db, &context, method, "update").await;
+            }
+        }
+    } else {
+        None
+    };
+    savepoint.commit().await.map_err(database_error)?;
+    let request_id = Uuid::new_v4().to_string();
+    record_version(
+        &db,
+        &context,
+        &request_id,
+        "MedicationDosageOption",
+        record.id,
+        "api_update",
+        Some(before),
+        Some(dosage_snapshot(&record)),
+    )
+    .await?;
+    record_sync(
+        &db,
+        &context,
+        &request_id,
+        "MedicationDosageOption",
+        record.id,
+        &record.portable_id,
+        "update",
+    )
+    .await?;
+    if let Some((before, parent)) = parent {
+        record_version(
+            &db,
+            &context,
+            &request_id,
+            "Medication",
+            parent.id,
+            "api_update",
+            Some(before),
+            Some(medication_snapshot(&parent)),
+        )
+        .await?;
+        record_sync(
+            &db,
+            &context,
+            &request_id,
+            "Medication",
+            parent.id,
+            &parent.portable_id,
+            "update",
+        )
+        .await?;
+    }
     let (body, etag) = representation(&db, record).await?;
-    finish(
+    finish_with_request_id(
         db,
         &context,
+        &request_id,
         method,
         "api/v1/dosage_options",
         "DosageOptionPolicy",

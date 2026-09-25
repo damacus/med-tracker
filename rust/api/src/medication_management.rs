@@ -255,7 +255,7 @@ pub(super) fn valid_stock_decimal(value: Decimal) -> bool {
     value >= Decimal::ZERO && value.scale() <= 2 && value < Decimal::from(100_000_000)
 }
 
-fn medication_snapshot(record: &medication::Model) -> Value {
+pub(super) fn medication_snapshot(record: &medication::Model) -> Value {
     json!({
         "id": record.id,
         "portable_id": record.portable_id,
