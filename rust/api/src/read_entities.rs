@@ -75,6 +75,8 @@ read_entity!(location_membership, "location_memberships", {
     household_id: i64,
     location_id: i64,
     person_id: i64,
+    created_at: DateTime,
+    updated_at: DateTime,
 });
 
 read_entity!(stock_location, "locations", {
@@ -82,6 +84,7 @@ read_entity!(stock_location, "locations", {
     portable_id: String,
     name: String,
     description: Option<String>,
+    created_at: DateTime,
     updated_at: DateTime,
 });
 

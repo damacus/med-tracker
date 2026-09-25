@@ -5,36 +5,77 @@
     "statuses_tested": [200, 401, 422],
     "behaviours_tested": [
       "bearer required",
-      "household records exclude a foreign household",
-      "collection and pagination metadata have only documented properties",
-      "location required fields and basic numeric ID, UUID, RFC3339 constraints",
-      "page=1 and per_page=1",
-      "page=0, page=-1, per_page=0, per_page=101 rejected",
-      "invalid and empty updated_since rejected"
+      "own-household collection excludes a foreign location",
+      "exact collection, Location and PaginationMeta fields and basic field formats",
+      "page 1 differs from page 2, with consistent total_count",
+      "per_page 1 and 100",
+      "valid past and future updated_since filtering",
+      "out-of-range, noninteger and overflowing pagination return JSON 422",
+      "invalid and empty updated_since return JSON 422"
     ],
     "not_yet_tested": [
-      "403 and 404 responses",
-      "429 response and Retry-After header",
-      "valid updated_since filtering",
-      "later pages and boundary per_page=100",
-      "all authorization roles and meanings of visible location"
+      "precise 403 or 404 status for wrong household ID",
+      "429 and Retry-After",
+      "role/person-grant visibility policy"
     ]
   },
   "getLocation": {
     "state": "partial_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_locations.rs",
-    "statuses_tested": [200, 404],
+    "statuses_tested": [200, 401, 404],
     "behaviours_tested": [
       "numeric and portable resource IDs",
-      "response envelope has only documented properties",
-      "location required fields and basic numeric ID, UUID, RFC3339 constraints",
+      "exact response and Location fields with basic field formats",
       "ETag response header present",
-      "foreign household resource returns JSON 404"
+      "foreign location under own household returns JSON 404",
+      "bearer required"
     ],
     "not_yet_tested": [
-      "401, 403 and 429 responses",
-      "Retry-After header on 429",
-      "all authorization roles and meanings of visible location"
+      "precise 403 or 404 status for wrong household ID",
+      "429 and Retry-After",
+      "role/person-grant visibility policy"
     ]
+  },
+  "createLocation": {
+    "state": "partial_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_location_writes.rs",
+    "statuses_tested": [201, 400, 401, 422],
+    "behaviours_tested": ["owner bearer creates storage and can read it", "exact LocationResponse fields and ETag", "missing or malformed JSON returns JSON 400", "empty or absent name and extra request properties return JSON 422"],
+    "not_yet_tested": ["precise 403 or 404 status for wrong household ID", "409 duplicate/conflict", "429 and Retry-After", "role permission policy"]
+  },
+  "updateLocation": {
+    "state": "partial_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_location_writes.rs",
+    "statuses_tested": [200, 400, 409, 422, 428],
+    "behaviours_tested": ["current If-Match updates and returns changed ETag", "missing If-Match returns JSON 428; stale version returns JSON 409 without mutation", "two concurrent writes with the same ETag yield one 200 and one 409", "invalid ResourceIdentifier returns JSON 400", "omitted description is preserved"],
+    "not_yet_tested": ["401 and precise 403 or 404 wrong-household status", "429 and Retry-After", "role permission policy"]
+  },
+  "updateLocationWithPut": {
+    "state": "partial_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_location_writes.rs",
+    "statuses_tested": [200, 422, 428],
+    "behaviours_tested": ["current If-Match updates description and ETag", "explicit null clears description while absent name is preserved", "missing If-Match returns JSON 428", "empty name, empty attributes and extra outer or inner properties return JSON 422"],
+    "not_yet_tested": ["400, 401, 409 and precise 403 or 404 wrong-household status", "429 and Retry-After", "role permission policy"]
+  },
+  "deleteLocation": {
+    "state": "partial_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_location_writes.rs",
+    "statuses_tested": [204, 409, 428],
+    "behaviours_tested": ["current If-Match removes unreferenced storage with empty 204 body", "missing If-Match returns JSON 428; stale version returns JSON 409 without deletion"],
+    "not_yet_tested": ["400, 401, 422 and precise 403 or 404 wrong-household status", "retained-history delete policy and related conflict cases", "429 and Retry-After", "role permission policy"]
+  },
+  "createLocationMembership": {
+    "state": "partial_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_location_writes.rs",
+    "statuses_tested": [201, 401, 422],
+    "behaviours_tested": ["owner bearer creates and replays an existing same-household assignment", "exact LocationMembershipResponse fields, numeric-string IDs and RFC3339 created_at", "invalid person identifier returns JSON 422"],
+    "not_yet_tested": ["400, 409 and precise 403 or 404 wrong-household status", "malformed or extra request fields", "429 and Retry-After", "managed-person and role policies"]
+  },
+  "deleteLocationMembership": {
+    "state": "partial_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_location_writes.rs",
+    "statuses_tested": [204, 400, 404],
+    "behaviours_tested": ["location-scoped assignment removal with empty 204 body", "invalid numeric membership ID returns JSON 400", "wrong location or missing assignment returns JSON 404"],
+    "not_yet_tested": ["401, 409, 422 and precise 403 or 404 wrong-household status", "429 and Retry-After", "managed-person and role policies"]
   }
 }
