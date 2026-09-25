@@ -585,6 +585,26 @@ fixture = ActiveRecord::Base.transaction do
                                          name: "Contract hidden medicine #{nonce}", dose_amount: '2',
                                          dose_unit: 'ml', current_supply: '50', reorder_threshold: '5', category: 'Vitamin')
   hidden_medication.update!(barcode: lookup_hidden_barcode)
+  _medication_read_account, medication_read_household, = create_household(nonce, 'medication-read')
+  medication_read_secondary_membership = medication_read_household.household_memberships.create!(
+    account: account, role: :member, status: :active
+  )
+  _medication_read_secondary_session, medication_read_secondary_access_token, = ApiSession.issue_for(
+    account: account, household_membership: medication_read_secondary_membership,
+    device_name: 'contract-medication-read-secondary'
+  )
+  medication_read_member, medication_read_delegated_access_token = create_admin_member(
+    medication_read_household, nonce, 'medication-read-delegated'
+  )
+  medication_read_location = Location.create!(household: medication_read_household,
+                                             name: "Contract medication read shelf #{nonce}")
+  medication_read_unlinked = Medication.create!(household: medication_read_household,
+                                               location: medication_read_location,
+                                               name: "Contract delegated unlinked #{nonce}",
+                                               created_by_membership_id: medication_read_member.id)
+  medication_read_hidden = Medication.create!(household: medication_read_household,
+                                             location: medication_read_location,
+                                             name: "Contract delegated hidden #{nonce}")
   foreign_medication = Medication.create!(household: foreign_household, location: foreign_location,
                                           name: "Contract foreign medicine #{nonce}", dose_amount: '2',
                                           dose_unit: 'ml', current_supply: '50', reorder_threshold: '5')
@@ -771,6 +791,14 @@ fixture = ActiveRecord::Base.transaction do
   session, access_token, = ApiSession.issue_for(
     account: account, household_membership: membership, device_name: 'contract-tests'
   )
+  medication_read_revoked_session, medication_read_revoked_access_token, = ApiSession.issue_for(
+    account: account, household_membership: membership, device_name: 'contract-medication-read-revoked'
+  )
+  medication_read_revoked_session.update!(revoked_at: Time.current)
+  medication_read_stale_session, medication_read_stale_access_token, = ApiSession.issue_for(
+    account: account, household_membership: membership, device_name: 'contract-medication-read-stale'
+  )
+  medication_read_stale_session.update!(permissions_version: membership.permissions_version + 1)
   revocable_session, revocable_access_token, = ApiSession.issue_for(
     account: account, household_membership: membership, device_name: 'contract-revocable'
   )
@@ -1112,6 +1140,8 @@ fixture = ActiveRecord::Base.transaction do
     session_id: session.id,
     revocable_session_id: revocable_session.id,
     revocable_access_token: revocable_access_token,
+    medication_read_revoked_access_token: medication_read_revoked_access_token,
+    medication_read_stale_access_token: medication_read_stale_access_token,
     logout_access_token: logout_access_token,
     expired_access_token: expired_access_token,
     locked_access_token: locked_access_token,
@@ -1172,6 +1202,11 @@ fixture = ActiveRecord::Base.transaction do
     foreign_low_stock_portable_id: foreign_low_stock.portable_id,
     managed_dosage_portable_id: managed_dosage.portable_id,
     hidden_medication_id: hidden_medication.id,
+    medication_read_household_id: medication_read_household.id,
+    medication_read_delegated_access_token: medication_read_delegated_access_token,
+    medication_read_secondary_access_token: medication_read_secondary_access_token,
+    medication_read_unlinked_id: medication_read_unlinked.id,
+    medication_read_hidden_id: medication_read_hidden.id,
     hidden_medication_portable_id: hidden_medication.portable_id,
     foreign_medication_id: foreign_medication.id,
     foreign_medication_portable_id: foreign_medication.portable_id,

@@ -12,6 +12,8 @@ includes:
     taskfile: Taskfiles/test.yml
   contract:
     taskfile: Taskfiles/contract.yml
+  api:
+    taskfile: rust/api/Taskfile.yml
   local:
     taskfile: Taskfiles/local.yml
   prod:

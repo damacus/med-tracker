@@ -1,0 +1,31 @@
+---
+version: "3"
+
+tasks:
+  build:
+    cmds:
+      - cargo build --manifest-path rust/api/Cargo.toml
+
+  fmt:
+    cmds:
+      - cargo fmt --manifest-path rust/api/Cargo.toml --all -- --check
+
+  fmt:write:
+    cmds:
+      - cargo fmt --manifest-path rust/api/Cargo.toml --all
+
+  check:
+    cmds:
+      - cargo check --manifest-path rust/api/Cargo.toml --all-targets
+
+  test:
+    cmds:
+      - cargo test --manifest-path rust/api/Cargo.toml
+
+  clippy:
+    cmds:
+      - cargo clippy --manifest-path rust/api/Cargo.toml --all-targets -- -D warnings
+
+  acceptance:
+    cmds:
+      - fish rust/contract-tests/run.fish rails medication-read-api

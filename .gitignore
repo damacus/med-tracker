@@ -78,3 +78,4 @@ vendor/**/*
 /mobile/android/local.properties
 /mobile/android/.idea/
 /mobile/android/*.iml
+/rust/api/target/
