@@ -198,6 +198,16 @@ function run_contract
             rtk task contract:run-retained BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = profile
             rtk task contract:run-profile BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+        else if test "$argv[2]" = profile-web-profile
+            rtk task contract:run-profile BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+            or return $status
+            rtk task contract:restart-web CONTRACT_PROJECT=$contract_project CONTRACT_RUN_DIR=$contract_run_dir
+            or return $status
+            set port (contract_web_port $contract_project)
+            or return $status
+            wait_for_contract_web "http://127.0.0.1:$port"
+            or return $status
+            rtk task contract:run-web-profile BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = web-profile
             rtk task contract:run-web-profile BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = mcp

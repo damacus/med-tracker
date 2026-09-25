@@ -69,13 +69,14 @@ fixture = ActiveRecord::Base.transaction do
   profile_account, profile_household, = create_household(nonce, 'profile')
   avatar_account, avatar_household, = create_household(nonce, 'avatar')
   avatar_invalid_account, avatar_invalid_household, = create_household(nonce, 'avatar-invalid')
-  avatar_account.person.avatar.attach(io: StringIO.new('contract-owner-avatar'), filename: 'owner.png',
-                                      content_type: 'image/png')
-  avatar_hidden_person = avatar_household.people.create!(name: "Contract hidden avatar #{nonce}",
-                                                          date_of_birth: 25.years.ago.to_date,
-                                                          person_type: :adult, has_capacity: true)
-  avatar_hidden_person.avatar.attach(io: StringIO.new('contract-hidden-avatar'), filename: 'hidden.png',
-                                     content_type: 'image/png')
+  web_avatar_account, web_avatar_household, = create_household(nonce, 'web-avatar')
+  web_avatar_account.person.avatar.attach(io: StringIO.new('contract-owner-avatar'), filename: 'owner.png',
+                                          content_type: 'image/png')
+  web_avatar_hidden_person = web_avatar_household.people.create!(name: "Contract hidden avatar #{nonce}",
+                                                                  date_of_birth: 25.years.ago.to_date,
+                                                                  person_type: :adult, has_capacity: true)
+  web_avatar_hidden_person.avatar.attach(io: StringIO.new('contract-hidden-avatar'), filename: 'hidden.png',
+                                         content_type: 'image/png')
   avatar_membership = avatar_account.household_memberships.find_by!(household: avatar_household)
   _avatar_session, avatar_access_token, = ApiSession.issue_for(
     account: avatar_account, household_membership: avatar_membership, device_name: 'contract-avatar'
@@ -684,10 +685,10 @@ fixture = ActiveRecord::Base.transaction do
     retained_foreign_household_slug: foreign_household.slug,
     profile_household_id: profile_household.id,
     avatar_household_id: avatar_household.id,
-    avatar_household_slug: avatar_household.slug,
-    avatar_email: avatar_account.email,
-    avatar_person_id: avatar_account.person.id,
-    avatar_hidden_person_id: avatar_hidden_person.id,
+    web_avatar_household_slug: web_avatar_household.slug,
+    web_avatar_email: web_avatar_account.email,
+    web_avatar_person_id: web_avatar_account.person.id,
+    web_avatar_hidden_person_id: web_avatar_hidden_person.id,
     avatar_invalid_household_slug: avatar_invalid_household.slug,
     avatar_access_token: avatar_access_token,
     avatar_invalid_household_id: avatar_invalid_household.id,

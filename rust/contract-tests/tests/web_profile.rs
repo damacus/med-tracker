@@ -1,6 +1,23 @@
 use medtracker_contract_tests::{fixture, Fixture, Target};
 use scraper::{Html, Selector};
 use serde_json::Value;
+use std::io::{Cursor, Read};
+use zip::ZipArchive;
+
+fn assert_household_export_records(payload: &Value, fixture: &Fixture) {
+    assert_eq!(payload["scope"], "single_person");
+    let people = payload["records"]["people"].as_array().expect("people");
+    assert!(people
+        .iter()
+        .any(|person| person["portable_id"] == fixture.managed_person_portable_id));
+    let medications = payload["records"]["medications"]
+        .as_array()
+        .expect("medications");
+    assert!(medications
+        .iter()
+        .any(|medication| medication["portable_id"] == fixture.managed_medication_portable_id));
+    assert!(!payload.to_string().contains(&fixture.foreign_person_name));
+}
 
 fn token_from_html(html: &str) -> String {
     let document = Html::parse_document(html);
@@ -209,6 +226,7 @@ fn web_profile_exports_require_session_and_return_download_contracts() {
         .contains("no-store"));
     let payload: Value = response.json().expect("health data export");
     assert_eq!(payload["format"], "medtracker.health_data.v1");
+    assert_household_export_records(&payload, &fixture);
 
     let zip_path = format!(
         "{}/data_exports/backup_zip",
@@ -228,7 +246,20 @@ fn web_profile_exports_require_session_and_return_download_contracts() {
         .to_str()
         .unwrap()
         .contains("medtracker-backup-"));
-    assert!(response.bytes().expect("ZIP bytes").starts_with(b"PK"));
+    let bytes = response.bytes().expect("ZIP bytes");
+    assert!(bytes.starts_with(b"PK"));
+    let mut archive = ZipArchive::new(Cursor::new(bytes)).expect("parse ZIP");
+    assert_eq!(archive.len(), 1);
+    let mut entry = archive
+        .by_name("medtracker-backup.json")
+        .expect("backup JSON member");
+    let mut contents = String::new();
+    entry
+        .read_to_string(&mut contents)
+        .expect("backup JSON bytes");
+    let backup: Value = serde_json::from_str(&contents).expect("backup JSON");
+    assert_eq!(backup["format"], "medtracker.backup.v1");
+    assert_household_export_records(&backup, &fixture);
 }
 
 #[test]
@@ -267,14 +298,14 @@ fn person_avatar_requires_visible_person_and_returns_inline_image() {
     let fixture = fixture();
     let path = format!(
         "/households/{}/people/{}/avatar",
-        fixture.avatar_household_slug, fixture.avatar_person_id
+        fixture.web_avatar_household_slug, fixture.web_avatar_person_id
     );
     let anonymous = target.get_html(&path);
     assert_eq!(anonymous.status().as_u16(), 302);
     sign_in(
         &target,
-        &fixture.avatar_email,
-        &fixture.avatar_household_slug,
+        &fixture.web_avatar_email,
+        &fixture.web_avatar_household_slug,
         "198.51.100.26",
     );
     let image = target.get_html(&path);
@@ -294,12 +325,12 @@ fn person_avatar_requires_visible_person_and_returns_inline_image() {
 
     let hidden_path = format!(
         "/households/{}/people/{}/avatar",
-        fixture.avatar_household_slug, fixture.avatar_hidden_person_id
+        fixture.web_avatar_household_slug, fixture.web_avatar_hidden_person_id
     );
     assert_eq!(target.get_html(&hidden_path).status().as_u16(), 404);
     let foreign_path = format!(
         "/households/{}/people/{}/avatar",
-        fixture.avatar_invalid_household_slug, fixture.avatar_person_id
+        fixture.avatar_invalid_household_slug, fixture.web_avatar_person_id
     );
     assert_eq!(target.get_html(&foreign_path).status().as_u16(), 302);
 }
@@ -310,16 +341,19 @@ fn profile_avatar_delete_redirects_and_removes_public_read_back() {
     let fixture = fixture();
     let csrf = sign_in(
         &target,
-        &fixture.avatar_email,
-        &fixture.avatar_household_slug,
+        &fixture.web_avatar_email,
+        &fixture.web_avatar_household_slug,
         "198.51.100.27",
     );
     let avatar_path = format!(
         "/households/{}/people/{}/avatar",
-        fixture.avatar_household_slug, fixture.avatar_person_id
+        fixture.web_avatar_household_slug, fixture.web_avatar_person_id
     );
     assert_eq!(target.get_html(&avatar_path).status().as_u16(), 200);
-    let delete_path = format!("{}/avatar", profile_path(&fixture.avatar_household_slug));
+    let delete_path = format!(
+        "{}/avatar",
+        profile_path(&fixture.web_avatar_household_slug)
+    );
     let response = target.post_html_form(
         &delete_path,
         &[
