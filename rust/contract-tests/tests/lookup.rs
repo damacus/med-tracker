@@ -162,6 +162,20 @@ fn upstream_lookup_filters_deterministic_results_by_form_and_strength() {
     let results = payload["results"].as_array().expect("upstream results");
     assert_eq!(results.len(), 3);
 
+    let form_path = format!("{path}&form=liquid");
+    let response = target.get(&form_path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let payload: Value = response.json().expect("form-only lookup JSON");
+    let results = payload["results"].as_array().expect("form-only results");
+    let mut codes = results
+        .iter()
+        .map(|result| result["code"].as_str().expect("result code"))
+        .collect::<Vec<_>>();
+    codes.sort_unstable();
+    assert_eq!(codes, ["contract-upstream-125", "contract-upstream-250"]);
+    assert_eq!(payload["form"], "liquid");
+    assert!(payload["strength"].is_null());
+
     let filtered_path = format!("{path}&form=liquid&strength=250mg%2F5ml");
     let response = target.get(&filtered_path, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
