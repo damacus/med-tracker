@@ -124,6 +124,25 @@ fn paid_ai_suggestion_is_sourced_and_foreign_household_is_hidden() {
 }
 
 #[test]
+fn paid_member_without_medication_authority_cannot_request_ai_suggestion() {
+    let fixture = fixture();
+    let member = Target::from_env();
+    sign_in(&member, &fixture.web_ai_paid_member_email);
+    let household = snapshot(&member, &fixture.web_ai_paid_slug);
+    assert!(household["meta"]["generated_at"].is_string());
+
+    let response = member.post_json(
+        &ai_path(&fixture.web_ai_paid_slug),
+        &json!({"medication": {"name": "Calpol Six Plus"}}),
+    );
+    assert_eq!(response.status().as_u16(), 302);
+    assert!(!response
+        .text()
+        .expect("denied response")
+        .contains("Paracetamol pain and fever relief"));
+}
+
+#[test]
 fn ai_suggestions_throttle_by_ip() {
     let fixture = fixture();
     let target = Target::from_env();
@@ -214,6 +233,34 @@ fn person_delete_requires_login_and_preserves_unauthorized_state() {
     assert_eq!(denied.status().as_u16(), 302);
     let foreign_after = snapshot(&foreign_owner, &fixture.web_people_foreign_slug);
     assert_eq!(person_ids(&foreign_before), person_ids(&foreign_after));
+}
+
+#[test]
+fn view_granted_member_can_see_person_but_cannot_delete_them() {
+    let fixture = fixture();
+    let member = Target::from_env();
+    sign_in(&member, &fixture.web_people_view_member_email);
+    let before = snapshot(&member, &fixture.web_people_slug);
+    assert!(person_ids(&before).contains(&fixture.web_people_view_target_id));
+
+    let owner = Target::from_env();
+    sign_in(&owner, &fixture.web_people_email);
+    let owner_before = snapshot(&owner, &fixture.web_people_slug);
+    assert!(person_ids(&owner_before).contains(&fixture.web_people_view_target_id));
+
+    let response = member.delete_json(&person_path(
+        &fixture.web_people_slug,
+        fixture.web_people_view_target_id,
+    ));
+    assert_eq!(response.status().as_u16(), 302);
+    let after = snapshot(&member, &fixture.web_people_slug);
+    assert_eq!(person_ids(&before), person_ids(&after));
+
+    let owner_after = snapshot(&owner, &fixture.web_people_slug);
+    assert_eq!(
+        owner_before["data"]["people"],
+        owner_after["data"]["people"]
+    );
 }
 
 #[test]

@@ -71,6 +71,7 @@ fixture = ActiveRecord::Base.transaction do
                                        frequency: 'Daily', start_date: '2026-01-01', end_date: '2099-12-31')
   web_ai_paid_account, web_ai_paid_household, = create_household(nonce, 'web-ai-paid')
   web_ai_paid_household.update!(subscription_plan: 'family_plus')
+  web_ai_paid_member, = create_admin_member(web_ai_paid_household, nonce, 'web-ai-paid-member')
   web_ai_free_account, web_ai_free_household, = create_household(nonce, 'web-ai-free')
   web_ai_ip_account, web_ai_ip_household, = create_household(nonce, 'web-ai-ip')
   web_ai_ip_household.update!(subscription_plan: 'family_plus')
@@ -84,12 +85,19 @@ fixture = ActiveRecord::Base.transaction do
   web_people_history = web_people_household.people.create!(name: "Contract web history #{nonce}",
                                                             date_of_birth: 30.years.ago.to_date,
                                                             person_type: :adult, has_capacity: true)
-  [web_people_delete, web_people_history].each do |person|
+  web_people_view_target = web_people_household.people.create!(name: "Contract web view target #{nonce}",
+                                                                date_of_birth: 30.years.ago.to_date,
+                                                                person_type: :adult, has_capacity: true)
+  [web_people_delete, web_people_history, web_people_view_target].each do |person|
     PersonAccessGrant.create!(household: web_people_household, household_membership: web_people_membership,
                               person: person, access_level: :manage, relationship_type: :family_member,
                               granted_by_membership: web_people_membership)
   end
   web_people_member, = create_admin_member(web_people_household, nonce, 'web-people-member')
+  web_people_view_member, = create_admin_member(web_people_household, nonce, 'web-people-view-member')
+  PersonAccessGrant.create!(household: web_people_household, household_membership: web_people_view_member,
+                            person: web_people_view_target, access_level: :view, relationship_type: :family_member,
+                            granted_by_membership: web_people_membership)
   web_people_foreign_account, web_people_foreign_household, = create_household(nonce, 'web-people-foreign')
   web_people_foreign = web_people_foreign_account.person
   web_people_location = Location.create!(household: web_people_household, name: "Contract web shelf #{nonce}")
@@ -793,6 +801,7 @@ fixture = ActiveRecord::Base.transaction do
     web_hidden_person_name: hidden_person.name,
     web_ai_paid_slug: web_ai_paid_household.slug,
     web_ai_paid_email: web_ai_paid_account.email,
+    web_ai_paid_member_email: web_ai_paid_member.account.email,
     web_ai_free_slug: web_ai_free_household.slug,
     web_ai_free_email: web_ai_free_account.email,
     web_ai_ip_slug: web_ai_ip_household.slug,
@@ -802,12 +811,14 @@ fixture = ActiveRecord::Base.transaction do
     web_people_slug: web_people_household.slug,
     web_people_email: web_people_account.email,
     web_people_delete_id: web_people_delete.id,
+    web_people_view_target_id: web_people_view_target.id,
     web_people_history_id: web_people_history.id,
     web_people_history_schedule_id: web_people_schedule.id,
     web_people_foreign_slug: web_people_foreign_household.slug,
     web_people_foreign_email: web_people_foreign_account.email,
     web_people_foreign_id: web_people_foreign.id,
     web_people_member_email: web_people_member.account.email,
+    web_people_view_member_email: web_people_view_member.account.email,
     profile_household_id: profile_household.id,
     avatar_household_id: avatar_household.id,
     web_avatar_household_slug: web_avatar_household.slug,
