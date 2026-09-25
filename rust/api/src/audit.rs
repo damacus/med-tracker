@@ -34,7 +34,58 @@ pub async fn record_resource_read(
     status: StatusCode,
     authorized: bool,
 ) -> Result<String, DbErr> {
+    record_resource_request(
+        db,
+        context,
+        "GET",
+        controller,
+        policy_class,
+        action,
+        status,
+        authorized,
+    )
+    .await
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn record_resource_request(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    method: &str,
+    controller: &str,
+    policy_class: &str,
+    action: &str,
+    status: StatusCode,
+    authorized: bool,
+) -> Result<String, DbErr> {
     let request_id = Uuid::new_v4().to_string();
+    record_resource_request_with_id(
+        db,
+        context,
+        &request_id,
+        method,
+        controller,
+        policy_class,
+        action,
+        status,
+        authorized,
+    )
+    .await?;
+    Ok(request_id)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn record_resource_request_with_id(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    request_id: &str,
+    method: &str,
+    controller: &str,
+    policy_class: &str,
+    action: &str,
+    status: StatusCode,
+    authorized: bool,
+) -> Result<(), DbErr> {
     let (authentication_method, session_reference) = match context.credential_kind {
         CredentialKind::ApiSession => (
             "api_session",
@@ -70,9 +121,9 @@ pub async fn record_resource_read(
         actor_account_id: Set(Some(context.account_id)),
         actor_membership_id: Set(Some(context.membership.id)),
         event_type: Set("api.request".to_owned()),
-        request_id: Set(Some(request_id.clone())),
+        request_id: Set(Some(request_id.to_owned())),
         metadata: Set(json!({
-            "http_method": "GET",
+            "http_method": method,
             "controller": controller,
             "action": action,
             "outcome": if status.as_u16() < 400 { "success" } else { "failure" },
@@ -85,7 +136,7 @@ pub async fn record_resource_read(
     }
     .insert(db)
     .await?;
-    Ok(request_id)
+    Ok(())
 }
 
 pub async fn record_cookie_write_denial(

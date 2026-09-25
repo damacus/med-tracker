@@ -1,10 +1,14 @@
 mod audit;
+mod audit_logs;
 mod dose;
 mod entities;
 mod medication_forecast;
+mod medication_management;
 mod oauth;
 mod read_entities;
 mod read_resources;
+mod stock_removals;
+mod sync_events;
 mod web_pages;
 
 use axum::extract::{Path, Query, State};
@@ -76,14 +80,39 @@ fn api_router(state: AppState) -> Router {
     let csrf_state = state.clone();
     Router::new()
         .merge(oauth::api_routes())
-        .route("/api/v1/households/{household_id}/medications", get(index))
+        .route(
+            "/api/v1/households/{household_id}/medications",
+            get(index).post(medication_management::create),
+        )
         .route(
             "/api/v1/households/{household_id}/medication_takes",
             get(dose::index).post(dose::create),
         )
         .route(
             "/api/v1/households/{household_id}/medications/{id}",
-            get(show),
+            get(show)
+                .patch(medication_management::patch)
+                .put(medication_management::put),
+        )
+        .route(
+            "/api/v1/households/{household_id}/medications/{id}/adjust_inventory",
+            axum::routing::patch(medication_management::adjust_inventory),
+        )
+        .route(
+            "/api/v1/households/{household_id}/medications/{id}/mark_as_ordered",
+            axum::routing::patch(medication_management::mark_as_ordered),
+        )
+        .route(
+            "/api/v1/households/{household_id}/medications/{id}/mark_as_received",
+            axum::routing::patch(medication_management::mark_as_received),
+        )
+        .route(
+            "/api/v1/households/{household_id}/medications/{id}/stock_removals",
+            get(stock_removals::index).post(stock_removals::create),
+        )
+        .route(
+            "/api/v1/households/{household_id}/admin/audit_logs",
+            get(audit_logs::index),
         )
         .route(
             "/api/v1/households/{household_id}/people",

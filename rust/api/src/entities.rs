@@ -205,6 +205,7 @@ entity!(person_medication, "person_medications", {
     max_daily_doses: Option<i32>,
     dose_amount: Option<Decimal>,
     dose_unit: Option<String>,
+    updated_at: DateTime,
 });
 
 entity!(medication_take, "medication_takes", {
@@ -225,9 +226,11 @@ entity!(medication_take, "medication_takes", {
 entity!(dosage, "dosages", {
     household_id: i64,
     medication_id: i64,
+    portable_id: String,
     amount: Option<Decimal>,
     unit: Option<String>,
     current_supply: Option<Decimal>,
+    reorder_threshold: Option<Decimal>,
     frequency: Option<String>,
     description: Option<String>,
     default_for_adults: bool,
@@ -235,6 +238,7 @@ entity!(dosage, "dosages", {
     default_max_daily_doses: Option<i32>,
     default_min_hours_between_doses: Option<Decimal>,
     default_dose_cycle: Option<i32>,
+    updated_at: DateTime,
 });
 
 entity!(version, "versions", {
@@ -266,6 +270,19 @@ entity!(api_change_event, "api_change_events", {
     updated_at: DateTime,
 });
 
+entity!(api_tombstone, "api_tombstones", {
+    household_id: i64,
+    household_membership_id: Option<i64>,
+    account_id: Option<i64>,
+    action: String,
+    record_type: String,
+    record_portable_id: String,
+    metadata: serde_json::Value,
+    deleted_at: DateTime,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
 entity!(location, "locations", {
     household_id: i64,
     portable_id: String,
@@ -273,17 +290,30 @@ entity!(location, "locations", {
 
 entity!(medication, "medications", {
     household_id: i64,
+    created_at: DateTime,
     created_by_membership_id: Option<i64>,
     portable_id: String,
     name: Option<String>,
     friendly_name: Option<String>,
     category: Option<String>,
     description: Option<String>,
+    barcode: Option<String>,
+    dmd_code: Option<String>,
+    dmd_system: Option<String>,
+    dmd_concept_class: Option<String>,
     dose_amount: Option<f64>,
     dose_unit: Option<String>,
     current_supply: Option<Decimal>,
+    supply_at_last_restock: Option<Decimal>,
     reorder_threshold: Decimal,
     reorder_status: Option<i32>,
+    order_supplier: Option<String>,
+    order_quantity: Option<Decimal>,
+    expected_arrival_on: Option<Date>,
+    ordered_at: Option<DateTime>,
+    reordered_at: Option<DateTime>,
+    warnings: Option<String>,
+    default_schedule_type: i32,
     location_id: i64,
     updated_at: DateTime,
 });

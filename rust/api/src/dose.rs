@@ -2,6 +2,7 @@ use crate::entities::{
     dosage, grant, location, medication, medication_take, person_medication, schedule,
     security_audit_event,
 };
+use crate::sync_events::{record_change, SyncRecord};
 use crate::{authenticate, decimal_string, scope, ApiError, AppState, AuthContext, CredentialKind};
 use axum::extract::{Path, Query, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
@@ -1241,6 +1242,7 @@ async fn decrement_stock(
                 ));
             }
             let selected_id = selected.id;
+            let selected_portable_id = selected.portable_id.clone();
             let mut update: medication::ActiveModel = selected.into();
             update.current_supply = Set(Some(supply - needed));
             update.updated_at = Set(Utc::now().naive_utc());
@@ -1255,6 +1257,19 @@ async fn decrement_stock(
                     previous: supply,
                     current: supply - needed,
                     event: "dose_decrement",
+                },
+            )
+            .await?;
+            record_change(
+                db,
+                context,
+                request_id,
+                SyncRecord {
+                    record_type: "Medication",
+                    record_id: selected_id,
+                    portable_id: &selected_portable_id,
+                    action: "update",
+                    person_portable_id: None,
                 },
             )
             .await?;
@@ -1309,6 +1324,7 @@ async fn decrement_stock(
         ));
     }
     let option_id = selected_option.id;
+    let option_portable_id = selected_option.portable_id.clone();
     let mut update: dosage::ActiveModel = selected_option.into();
     update.current_supply = Set(Some(supply - needed));
     update.update(db).await.map_err(database_error)?;
@@ -1322,6 +1338,19 @@ async fn decrement_stock(
             previous: supply,
             current: supply - needed,
             event: "update",
+        },
+    )
+    .await?;
+    record_change(
+        db,
+        context,
+        request_id,
+        SyncRecord {
+            record_type: "MedicationDosageOption",
+            record_id: option_id,
+            portable_id: &option_portable_id,
+            action: "update",
+            person_portable_id: None,
         },
     )
     .await?;
@@ -1342,6 +1371,7 @@ async fn decrement_stock(
     }
     let previous = selected.current_supply;
     let selected_id = selected.id;
+    let selected_portable_id = selected.portable_id.clone();
     let mut inventory: medication::ActiveModel = selected.into();
     inventory.current_supply = Set(Some(total));
     inventory.updated_at = Set(Utc::now().naive_utc());
@@ -1361,6 +1391,19 @@ async fn decrement_stock(
         )
         .await?;
     }
+    record_change(
+        db,
+        context,
+        request_id,
+        SyncRecord {
+            record_type: "Medication",
+            record_id: selected_id,
+            portable_id: &selected_portable_id,
+            action: "update",
+            person_portable_id: None,
+        },
+    )
+    .await?;
     Ok(())
 }
 
@@ -1452,24 +1495,24 @@ async fn record_domain_audit(
     .insert(db)
     .await
     .map_err(database_error)?;
-    crate::entities::api_change_event::ActiveModel {
-        household_id: Set(context.membership.household_id),
-        household_membership_id: Set(Some(context.membership.id)),
-        account_id: Set(Some(context.account_id)),
-        action: Set("create".to_owned()),
-        record_type: Set("MedicationTake".to_owned()),
-        record_id: Set(take.id),
-        record_portable_id: Set(Some(take.portable_id.clone())),
-        request_id: Set(Some(request_id.to_owned())),
-        metadata: Set(json!({})),
-        occurred_at: Set(now),
-        created_at: Set(now),
-        updated_at: Set(now),
-        ..Default::default()
-    }
-    .insert(db)
-    .await
-    .map_err(database_error)?;
+    let person = crate::entities::person::Entity::find_by_id(proposed.source.person_id)
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(ApiError::not_found)?;
+    record_change(
+        db,
+        context,
+        request_id,
+        SyncRecord {
+            record_type: "MedicationTake",
+            record_id: take.id,
+            portable_id: &take.portable_id,
+            action: "create",
+            person_portable_id: Some(&person.portable_id),
+        },
+    )
+    .await?;
     Ok(())
 }
 

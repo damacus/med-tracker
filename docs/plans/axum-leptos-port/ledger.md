@@ -7,6 +7,33 @@ milestones and continued execution on 25 September. The app-level full
 cutover-readiness goal now reports active. The previous turn made concrete
 progress: reviewed direct dose recording was committed and pushed as `39904af0`.
 
+## Medication management API checkpoint
+
+The frozen management API candidate passes 72 HTTP cases, seven login
+browser cases and seven existing medication browser cases. It adds
+create/edit, conditional updates, stock removal and adjustment, reorder
+transitions and manager-only audit reads. Dose-mode transitions preserve
+schedule constraints; rejected requests retain their attributable audit.
+Domain versions and native sync events accompany committed stock changes,
+with person metadata for dose visibility and household locking before event
+timestamps. Replays and rejected mutations do not duplicate domain events.
+
+The focused sync tests first failed all three cases against missing events
+and metadata. The final candidate also passes Clippy and nine API unit tests.
+The candidate retains accepted web/OAuth code: later management UI and
+onboarding source are separate work and are not certified by these results.
+See [product report](journey-medication-management-product-report.md),
+[independent review](journey-medication-management-review.md) and
+[runtime evidence](journey-medication-management-runner-report.md).
+
+Next implement atomic wizard creation, inventory merge and refill with
+supporting location/capability reads. Eight onboarding and three read cases
+demonstrate missing Rust behaviour. The Rails PRN create/edit/refill and
+denial browser baseline passes two cases; the added timed-plan case needs
+its corrected daily-input selector rerun. The Rust management UI remains
+pending integrated browser acceptance. Performance and migration evidence
+remain outstanding for the full cutover goal.
+
 ## First-party session checkpoint
 
 Standalone web login now opens the first active household dashboard. Signed
