@@ -6,6 +6,11 @@ if test "$argv[1]" = proxy
         or exit $status
         echo $run_dir > $CONTRACT_FAKE_RUN_DIR_FILE
         echo $run_dir
+    else if test "$argv[2]" = curl
+        if set -q CONTRACT_FAKE_TRACE
+            echo ready >>$CONTRACT_FAKE_TRACE
+        end
+        exit 0
     else
         command $argv[2..-1]
     end
@@ -24,8 +29,42 @@ end
 switch $task_name
     case contract:cleanup
         exit $CONTRACT_FAKE_CLEANUP_STATUS
+    case contract:restart-web
+        if set -q CONTRACT_FAKE_TRACE
+            echo restart >>$CONTRACT_FAKE_TRACE
+        end
     case test:port
-        echo 43017
+        set -l port 43017
+        if set -q CONTRACT_FAKE_TRACE
+            if test -f $CONTRACT_FAKE_TRACE
+                set -l previous (string match -r '^port$' < $CONTRACT_FAKE_TRACE | count)
+                set port (math 43017 + $previous)
+            end
+            echo port >>$CONTRACT_FAKE_TRACE
+        end
+        echo $port
+    case contract:run
+        set -l target all
+        set -l base_url
+        for arg in $argv
+            if string match -q 'TEST_TARGET=*' -- $arg
+                set target (string replace 'TEST_TARGET=' '' -- $arg)
+            else if string match -q 'BASE_URL=*' -- $arg
+                set base_url (string replace 'BASE_URL=' '' -- $arg)
+            end
+        end
+        if set -q CONTRACT_FAKE_TRACE
+            echo "run:$target:$base_url" >>$CONTRACT_FAKE_TRACE
+        end
+        if test "$CONTRACT_FAKE_REMOVE_OWNER" = 1
+            set -l run_dir (cat $CONTRACT_FAKE_RUN_DIR_FILE)
+            echo '{"probe":true}' >$run_dir/fixture.json
+            command rm $run_dir/owner
+        end
+        if test "$target" = "$CONTRACT_FAKE_FAIL_TARGET"
+            exit 23
+        end
+        exit $CONTRACT_FAKE_RUN_STATUS
     case 'contract:run*' contract:oauth
         if test "$CONTRACT_FAKE_REMOVE_OWNER" = 1
             set -l run_dir (cat $CONTRACT_FAKE_RUN_DIR_FILE)

@@ -12,6 +12,10 @@ two simultaneous projects have separate fixture rows and cleaning one leaves
 the other healthy.
 Rack::Attack is enabled only for this contract test server so the 429 response
 can be observed over HTTP.
+The full Rails run keeps one disposable project, database, and fixture while
+running each Cargo target separately. It restarts only `web-test` between
+targets and waits for `/up` before continuing, clearing process-local throttle
+counters without changing the audit-log limit or the separate 429 contract case.
 The contract test environment raises only the global request-per-IP ceiling to
 3000 so the complete suite can finish in one five-minute window. The targeted
 data-export ceiling remains 10 per minute, and production keeps its 300-request
