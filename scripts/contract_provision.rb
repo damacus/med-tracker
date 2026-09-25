@@ -672,6 +672,27 @@ fixture = ActiveRecord::Base.transaction do
     household: household, person: managed_person, medication: journey_browser_mobile_medication,
     administration_kind: :as_needed, dose_amount: '1.25', dose_unit: 'ml'
   )
+  journey_browser_taper_prior_date = Time.zone.today - 1.day
+  journey_browser_taper_effective_date = Time.zone.today
+  journey_browser_taper_future_date = Time.zone.today + 1.day
+  journey_browser_taper_medication = Medication.create!(household: household, location: primary_location,
+                                                       name: "Contract browser taper dose #{nonce}",
+                                                       dose_amount: '2.25', dose_unit: 'ml', current_supply: '10.0')
+  journey_browser_taper_schedule = Schedule.create!(
+    household: household, person: managed_person, medication: journey_browser_taper_medication,
+    dose_amount: '2.25', dose_unit: 'ml', frequency: 'Daily', schedule_type: :tapering,
+    start_date: journey_browser_taper_prior_date, end_date: journey_browser_taper_future_date,
+    schedule_config: { 'taper_steps' => [
+      { 'start_date' => journey_browser_taper_prior_date.iso8601,
+        'end_date' => journey_browser_taper_prior_date.iso8601,
+        'amount' => '1.50', 'unit' => 'ml', 'max_daily_doses' => 4,
+        'min_hours_between_doses' => 0 },
+      { 'start_date' => journey_browser_taper_effective_date.iso8601,
+        'end_date' => journey_browser_taper_future_date.iso8601,
+        'amount' => '0.75', 'unit' => 'ml', 'max_daily_doses' => 4,
+        'min_hours_between_doses' => 0 }
+    ] }
+  )
   managed_assignment_updated_at = Time.utc(2026, 1, 1)
   managed_assignment.update_columns(updated_at: managed_assignment_updated_at)
   retired_medication = Medication.create!(household: household, location: primary_location,
@@ -1346,6 +1367,16 @@ fixture = ActiveRecord::Base.transaction do
     journey_browser_mobile_medication_id: journey_browser_mobile_medication.id,
     journey_browser_mobile_medication_name: journey_browser_mobile_medication.name,
     journey_browser_mobile_assignment_id: journey_browser_mobile_assignment.id,
+    journey_browser_taper_medication_id: journey_browser_taper_medication.id,
+    journey_browser_taper_medication_name: journey_browser_taper_medication.name,
+    journey_browser_taper_schedule_portable_id: journey_browser_taper_schedule.portable_id,
+    journey_browser_taper_person_id: managed_person.id,
+    journey_browser_taper_prior_date: journey_browser_taper_prior_date.iso8601,
+    journey_browser_taper_effective_date: journey_browser_taper_effective_date.iso8601,
+    journey_browser_taper_prior_amount: '1.50',
+    journey_browser_taper_effective_amount: '0.75',
+    journey_browser_taper_initial_stock: '10.00',
+    journey_browser_taper_stock_after: '9.25',
     journey_browser_person_id: managed_person.id,
     journey_browser_foreign_medication_id: foreign_medication.id,
     journey_browser_foreign_medication_name: foreign_medication.name,

@@ -55,13 +55,18 @@ now pass 51 consolidated Rust HTTP cases with independent review. Rust retains
 rejected-request audit events that Rails loses through transaction rollback;
 the two known Rails failures remain documented.
 
-The next bounded delivery is the complete medication browser journey. Its
-actual Rust failure was recorded before UI implementation: four desktop/mobile
-cases could not find the medication pages, while the negative-access case
-passed. UI implementation and form security/replay tests are in progress.
-Known Rails Escape-focus failure remains a required Rust fix. Shared API
-record permission and eligible-stock fields will close the remaining picker
-permission and alternate-stock gaps without duplicating rules in Leptos.
+The first medication browser journey now passes all seven selected cases:
+desktop/mobile recording, updated stock/history, Escape focus restoration,
+access denial, form rejection/replay and effective taper dosing. Leptos uses
+the shared API for these reads and writes. API-owned recording permissions
+and eligible-stock choices avoid duplicating medication rules in the web UI.
+The original missing-page failures, URL/source mismatch and taper regression
+were demonstrated against earlier Rust snapshots before final acceptance.
+
+The next bounded delivery is medication management: create/edit medication,
+stock operations and permission checks, followed by corresponding web forms.
+An exact effective-dose preview and clearer alternate-stock confirmation
+remain UI parity gaps; the first journey does not establish full web parity.
 
 Full authentication, management, browser/PWA and platform parity, migrated
 audit ledger proof and representative performance evidence remain incomplete.

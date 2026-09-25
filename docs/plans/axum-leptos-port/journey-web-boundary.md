@@ -41,6 +41,12 @@ schemas are the root OpenAPI document and Rails serializers.
 
 ## Browser credentials
 
+HTML medication and dashboard routes accept browser cookies only and reject
+any explicit Authorization header before database or API work. This prevents
+a page authenticated with one account's cookie from dispatching its form under another account's bearer
+credential. Shared `/api/v1` routes retain explicit bearer precedence and
+their existing native-client contract.
+
 Extend the existing signed browser session backed by
 `account_active_session_keys`; do not place API bearer or refresh tokens in
 HTML, JavaScript, URLs or browser storage. Direct `/login` creates a signed,

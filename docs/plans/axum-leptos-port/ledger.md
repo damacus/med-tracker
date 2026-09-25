@@ -17,7 +17,7 @@ canonical regression passed 36 HTTP and seven browser cases with no skips.
 See [session evidence](journey-web-session-runner-report.md) and
 [session review](journey-web-session-review.md).
 
-The dashboard remains a minimal authenticated landing page. The next work is
+At that checkpoint the dashboard was a minimal authenticated landing page. The next work was
 the shared people/schedule/assignment reads and the full Leptos medication
 journey, including the confirmed Escape-focus correction. The corrected
 shared-read suite passed all four cases against Rails and failed all four
@@ -53,6 +53,39 @@ Acceptance now uses an isolated worktree snapshot when a long build would
 otherwise freeze the UI writer. The current snapshot retains the verified
 cookie/router increment while medication UI development continues in the
 main checkout. Snapshot results do not certify later UI changes.
+
+## Medication browser journey checkpoint
+
+The first Leptos medication journey now passes all seven dedicated browser
+cases. It supports medication list/detail, source and stock selection, dose
+recording and stock/history read-back through the shared API. The suite covers
+desktop/mobile layouts, Escape focus restoration, invalid login and foreign
+records, missing/wrong CSRF, URL/source binding, retained failed form values,
+success redirects, fresh form UUIDs and exact replay without another dose.
+
+An independent review caught schedule base amounts overriding taper doses.
+The new regression fails against the old UI and passes with the correction:
+a schedule with a 2.25 ml base records its current 0.75 ml step and changes
+stock from 10 to 9.25 ml. Schedule forms let the shared API calculate the dose
+for the submitted time. This case does not submit the prior day's taper step.
+
+Shared API source capabilities distinguish recording from management rights
+and return eligible stock IDs using current grants, exact medication signature,
+tracked dosage and available supply. The 53-case API suite passes after fixing
+test-only string-to-numeric SQL bindings; assertions were retained. The final
+combined candidate also passes the seven login browser cases. See
+[runtime evidence](journey-web-journey-runner-report.md),
+[API evidence](journey-web-reads-runner-report.md) and
+[independent review](journey-medication-ui-review.md).
+
+Final staging removed one trailing empty line from the new CSS file to pass
+the staged whitespace check; no CSS declaration or application logic changed
+after the accepted snapshot.
+
+The medication journey is a bounded checkpoint. An exact effective-dose
+preview and clearer confirmation when consuming alternate stock remain UI
+parity work. Management workflows, PWA, remaining platform/API behaviours,
+migration rehearsals and representative release-build performance remain open.
 
 ## Direct dose checkpoint
 

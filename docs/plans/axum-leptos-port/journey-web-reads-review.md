@@ -34,7 +34,12 @@ adult-only schedule index rule. Detail reads preserve the same scoped lookup
 for numeric and portable source IDs.
 
 The canonical API snapshot revision two passed 51/51 HTTP cases, including
-all six shared-read cases and nine web-session cases. The four functional
+all six shared-read cases and nine web-session cases. Its frozen full-snapshot
+pre/post manifest matched at SHA-256
+`7ed2722833a34165d7256d8da2868b56c44e729e6bd17e81c05d7b922f7dc1d7`;
+the scoped Rust/runtime manifest matched at
+`f823cc917a05639dc6f77be1765fb785eb82b1b02a8208d8949ed4b228b9530d`.
+Both disposable projects cleaned up. The four functional
 shared-read cases also passed against Rails. Two added 403/422 audit assertions
 failed against Rails because `BaseController#audit_api_request` writes inside
 `TenantContext.with`'s `requires_new` transaction and re-raises; rollback
@@ -49,9 +54,8 @@ Rust medication detail pattern and has no established requirement here.
 acceptable code quality. The independent tests cover view-grant revocation,
 household/detail privacy, decimal and pause serialization, filtering before
 stable pagination, ETags and the corrected failure audit. This is not
-acceptance of the medication browser journey or general CRUD. The final
-runner post-manifest is being sealed; this verdict uses its reported 51/51
-HTTP result and the reviewed frozen source.
+acceptance of the medication browser journey or general CRUD. This verdict
+uses the final runner's 51/51 HTTP result and reviewed frozen source.
 
 ## Bounded cookie-household and API-router split review
 

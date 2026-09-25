@@ -5,7 +5,7 @@ use crate::entities::{
     oauth_grant, otp_key, person, recovery_code, user, webauthn_key,
 };
 use crate::{configured_lifetime_days, restricted_role, tenant_setting, AppState};
-use axum::extract::{Form, Path, State};
+use axum::extract::{Form, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode, Uri};
 use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{get, post};
@@ -361,7 +361,6 @@ pub fn routes() -> Router<AppState> {
         .route("/login", get(login).post(login_post))
         .route("/logout", post(logout))
         .route("/", get(home))
-        .route("/households/{slug}/dashboard", get(dashboard))
         .route("/token", post(token))
         .route("/revoke", post(revoke))
         .route("/reset-password-request", get(reset_password_unavailable))
@@ -925,62 +924,6 @@ async fn home(State(state): State<AppState>, headers: HeaderMap) -> Response {
             true,
         )),
     };
-    if let Some(cookie) = renewed_session_cookie(&state, &session) {
-        response.headers_mut().append(header::SET_COOKIE, cookie);
-    }
-    response
-}
-
-async fn dashboard(
-    State(state): State<AppState>,
-    Path(slug): Path<String>,
-    headers: HeaderMap,
-) -> Response {
-    let db = match transaction(&state).await {
-        Ok(db) => db,
-        Err(error) => return error,
-    };
-    let session = match browser_session(&state, &db, &headers).await {
-        Ok(Some(session)) => session,
-        Ok(None) => return redirect("/login"),
-        Err(error) => return error,
-    };
-    if let Err(error) =
-        tenant_setting(&db, "med_tracker.current_account_id", session.account_id).await
-    {
-        return database_error(error).into_response();
-    }
-    let household = match household::Entity::find()
-        .filter(household::Column::Slug.eq(slug))
-        .filter(household::Column::Status.eq("active"))
-        .filter(household::Column::LifecycleState.eq("active"))
-        .one(&db)
-        .await
-    {
-        Ok(Some(household)) => household,
-        Ok(None) => return StatusCode::NOT_FOUND.into_response(),
-        Err(error) => return database_error(error).into_response(),
-    };
-    let membership = membership::Entity::find()
-        .filter(membership::Column::AccountId.eq(session.account_id))
-        .filter(membership::Column::HouseholdId.eq(household.id))
-        .filter(membership::Column::Status.eq("active"))
-        .filter(membership::Column::RevokedAt.is_null())
-        .one(&db)
-        .await;
-    match membership {
-        Ok(Some(_)) => {}
-        Ok(None) => return StatusCode::NOT_FOUND.into_response(),
-        Err(error) => return database_error(error).into_response(),
-    }
-    if let Err(error) = db.commit().await {
-        return database_error(error).into_response();
-    }
-    let mut response = html(medtracker_web::render_dashboard(
-        &household.name,
-        &session.csrf,
-        false,
-    ));
     if let Some(cookie) = renewed_session_cookie(&state, &session) {
         response.headers_mut().append(header::SET_COOKIE, cookie);
     }

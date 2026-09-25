@@ -161,7 +161,7 @@ tasks:
     cmds:
       - mkdir -p docs/screenshots/journey-medication-rust
       - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test build rust-browser-tests
-      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-browser-tests node --test tests/medication-journey.test.mjs
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-browser-tests node --test tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs
 
   contract-subnet-check:
     requires:
