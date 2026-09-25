@@ -16,6 +16,11 @@ function cleanup_contract_run
             return $cleanup_status
         end
     end
+    if test -d "$contract_run_dir/storage"
+        rtk proxy rm -r "$contract_run_dir/storage"
+        or return $status
+        echo "Contract storage removed: $contract_run_dir/storage"
+    end
     rtk proxy rm -f "$contract_fixture_path" "$contract_run_dir/owner"
     or return $status
     rtk proxy rmdir "$contract_run_dir"
@@ -56,7 +61,7 @@ end
 
 function run_rails_contract_targets -a base_url fixture_path mailpit_url project run_dir
     set -l failed_targets
-    set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports portability sync replay oauth envelopes
+    set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports portability profile sync replay oauth envelopes
     rtk task contract:run BASE_URL="$base_url" FIXTURE_PATH="$fixture_path" MAILPIT_URL="$mailpit_url" TEST_TARGET=lib
     or set -a failed_targets lib
     for target in $targets
@@ -101,6 +106,10 @@ function run_contract
     echo $contract_project >$contract_run_dir/owner
     or return $status
     set -g contract_cleanup_pending true
+    rtk proxy mkdir -p "$contract_run_dir/storage"
+    or return $status
+    set -gx CONTRACT_STORAGE_ROOT (rtk proxy realpath "$contract_run_dir/storage")
+    set -gx COMPOSE_FILE compose.yaml:rust/contract-tests/storage.compose.yaml
     set -lx CONTRACT_PROJECT $contract_project
     echo "Contract run project: $contract_project"
 
@@ -150,6 +159,8 @@ function run_contract
             rtk task contract:run-reports BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = portability
             rtk task contract:run-portability BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+        else if test "$argv[2]" = profile
+            rtk task contract:run-profile BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = care
             rtk task contract:run-care BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = sync
@@ -190,6 +201,8 @@ function run_contract
             rtk task contract:run-reports BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = portability
             rtk task contract:run-portability BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
+        else if test "$argv[2]" = profile
+            rtk task contract:run-profile BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else
             rtk task contract:run BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN" MAILPIT_URL="$mailpit_url"
         end

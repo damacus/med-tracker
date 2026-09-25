@@ -15,6 +15,7 @@ function cleanup_status_test --on-event fish_exit
         string match -rq '^tmp/contract-tests/run\.[A-Za-z0-9]{6}$' -- $run_dir
         or continue
         if test -d $run_dir
+            command rm -r $run_dir/storage
             command rm -f $run_dir/owner $run_dir/fixture.json
             command rmdir $run_dir
         end
@@ -43,9 +44,13 @@ function check_status -a run_status cleanup_status expected_status
     if test $cleanup_status -eq 0
         test ! -e $run_dir/owner
         or begin; echo 'Successful cleanup retained the owner marker' >&2; return 1; end
+        test ! -e $run_dir/storage
+        or begin; echo 'Successful cleanup retained run storage' >&2; return 1; end
     else
         test -f $run_dir/owner
         or begin; echo 'Failed cleanup lost the owner marker' >&2; return 1; end
+        test -d $run_dir/storage
+        or begin; echo 'Failed cleanup lost run storage before recovery' >&2; return 1; end
     end
 end
 
