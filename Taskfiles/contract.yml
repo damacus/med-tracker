@@ -55,7 +55,7 @@ tasks:
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
       CONTRACT_MAILPIT_URL: '{{ .MAILPIT_URL }}'
     cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test admin --test invitations --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test sync --test replay --test oauth --test envelopes --no-fail-fast -- --test-threads=1
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test admin --test invitations --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test reports --test sync --test replay --test oauth --test envelopes --no-fail-fast -- --test-threads=1
 
   run-admin:
     desc: Run household settings and membership contract cases
@@ -134,6 +134,17 @@ tasks:
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test reviews -- --test-threads=1
+
+  run-reports:
+    desc: Run clinical report and data export contract cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test reports -- --test-threads=1
 
   run-care:
     desc: Run people, grant, and location cases against a checked target and fixture
@@ -338,6 +349,11 @@ tasks:
     cmds:
       - fish rust/contract-tests/run.fish rails reviews
 
+  reports-rails:
+    desc: Run clinical report and data export cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails reports
+
   care-rails:
     desc: Run people, grant, and location cases against isolated Rails
     cmds:
@@ -440,3 +456,11 @@ tasks:
       CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
       - fish rust/contract-tests/run.fish rust replay
+
+  reports-rust:
+    desc: Run clinical report and data export cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust reports
