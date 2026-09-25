@@ -160,6 +160,7 @@ entity!(user, "users", {
 entity!(person, "people", {
     account_id: Option<i64>,
     household_id: i64,
+    portable_id: String,
 });
 
 entity!(grant, "person_access_grants", {
@@ -173,12 +174,16 @@ entity!(grant, "person_access_grants", {
 
 entity!(schedule, "schedules", {
     household_id: i64,
+    portable_id: String,
     person_id: i64,
     medication_id: i64,
     active: bool,
+    retired_at: Option<DateTime>,
     start_date: Option<Date>,
     end_date: Option<Date>,
     max_daily_doses: Option<i32>,
+    min_hours_between_doses: Option<Decimal>,
+    source_dosage_option_id: Option<i64>,
     dose_cycle: Option<i32>,
     dose_amount: Option<Decimal>,
     dose_unit: Option<String>,
@@ -188,11 +193,77 @@ entity!(schedule, "schedules", {
 
 entity!(person_medication, "person_medications", {
     household_id: i64,
+    portable_id: String,
     person_id: i64,
     medication_id: i64,
+    active: bool,
+    retired_at: Option<DateTime>,
+    min_hours_between_doses: Option<i32>,
+    administration_kind: i32,
+    source_dosage_option_id: Option<i64>,
+    dose_cycle: Option<i32>,
     max_daily_doses: Option<i32>,
     dose_amount: Option<Decimal>,
     dose_unit: Option<String>,
+});
+
+entity!(medication_take, "medication_takes", {
+    household_id: i64,
+    portable_id: String,
+    client_uuid: Option<String>,
+    schedule_id: Option<i64>,
+    person_medication_id: Option<i64>,
+    taken_from_medication_id: Option<i64>,
+    taken_from_location_id: Option<i64>,
+    dose_amount: Option<Decimal>,
+    dose_unit: Option<String>,
+    taken_at: Option<DateTime>,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
+entity!(dosage, "dosages", {
+    household_id: i64,
+    medication_id: i64,
+    amount: Option<Decimal>,
+    unit: Option<String>,
+    current_supply: Option<Decimal>,
+    frequency: Option<String>,
+    description: Option<String>,
+    default_for_adults: bool,
+    default_for_children: bool,
+    default_max_daily_doses: Option<i32>,
+    default_min_hours_between_doses: Option<Decimal>,
+    default_dose_cycle: Option<i32>,
+});
+
+entity!(version, "versions", {
+    item_type: String,
+    item_id: i64,
+    event: String,
+    object: Option<String>,
+    object_changes: Option<String>,
+    whodunnit: Option<String>,
+    request_id: Option<String>,
+    household_id: Option<i64>,
+    actor_membership_id: Option<i64>,
+    audit_context: serde_json::Value,
+    created_at: Option<DateTime>,
+});
+
+entity!(api_change_event, "api_change_events", {
+    household_id: i64,
+    household_membership_id: Option<i64>,
+    account_id: Option<i64>,
+    action: String,
+    record_type: String,
+    record_id: i64,
+    record_portable_id: Option<String>,
+    request_id: Option<String>,
+    metadata: serde_json::Value,
+    occurred_at: DateTime,
+    created_at: DateTime,
+    updated_at: DateTime,
 });
 
 entity!(location, "locations", {

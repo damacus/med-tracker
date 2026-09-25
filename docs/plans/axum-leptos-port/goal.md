@@ -30,18 +30,19 @@ for intended behaviour; do not preserve defects as requirements.
    CPU and latency against equivalent Rails workloads without assuming a
    0.1% CPU result.
 7. Pass applicable full suites and independent reviews, resolve remaining
-   discrepancies, and produce a cutover/rollback runbook.
+   discrepancies, reconcile the authoritative OpenAPI contract and pinned
+   client schemas with intended Rust corrections, and produce a
+   cutover/rollback runbook.
 
 The goal ends at cutover readiness. Production migration, deployment, merge,
 rollout and Rails retirement require separate authorization.
 
 ## Execution state
 
-The user authorized continued work. The app-level goal still reports paused:
-the available goal tools cannot edit its objective or resume it, and computer
-use cannot access Codex's controls. This file is the revised repository goal;
-it does not claim the app-level goal was changed. Update that goal with the
-objective and milestones above and resume it through the app controls.
+The user authorized continued work. The app-level cutover-readiness goal is
+active, verified through the goal tool after the secure-entry checkpoint.
+The full objective remains open; completing a bounded workflow does not
+complete the cutover goal.
 
 The secure-entry tranche builds on `0b6fa2a8`: medication reads, forecasts,
 mobile OAuth issuance and bearer acceptance, household selection, read audits

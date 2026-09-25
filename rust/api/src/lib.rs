@@ -1,4 +1,5 @@
 mod audit;
+mod dose;
 mod entities;
 mod medication_forecast;
 mod oauth;
@@ -64,6 +65,10 @@ pub fn router(state: AppState) -> Router {
         .route("/up", get(|| async { StatusCode::OK }))
         .merge(oauth::routes())
         .route("/api/v1/households/{household_id}/medications", get(index))
+        .route(
+            "/api/v1/households/{household_id}/medication_takes",
+            get(dose::index).post(dose::create),
+        )
         .route(
             "/api/v1/households/{household_id}/medications/{id}",
             get(show),
@@ -137,8 +142,8 @@ impl IntoResponse for ApiError {
     }
 }
 
-fn database_error(error: sea_orm::DbErr) -> ApiError {
-    eprintln!("medication read database error: {error}");
+fn database_error(_: sea_orm::DbErr) -> ApiError {
+    eprintln!("medication database operation failed");
     ApiError::internal()
 }
 

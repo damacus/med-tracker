@@ -1,0 +1,98 @@
+# First-party web boundary for the medication journey
+
+The direct-dose API is accepted. The next bounded tranche implements the
+first-party session boundary before the full medication UI.
+
+The existing product owner owns `rust/api/src/**`, its manifest/lockfile and
+`rust/web/src/lib.rs` for standalone login, the minimal authenticated landing
+page and session controls. The test owner owns `web_session_api.rs`; the
+browser test owner retains the medication journey suite. Each updates its
+own report. The reviewer and runner remain independent. No database queries
+belong in the web crate. Implementation begins after the dedicated
+`task api:web-session-acceptance` records its behavioural RED.
+
+## One API for web and native clients
+
+Leptos remains server-rendered for this journey. Web handlers call the same
+Axum API routes used by Android and iOS; they must not query domain tables or
+repeat dose rules. Use a separate API router as an in-process Tower service,
+passing real HTTP method, path, headers and JSON body. Render the resulting
+API representation after its transaction finishes. Do not call the combined
+web router recursively or make a loopback network request to the same server.
+
+This keeps one application process and one bounded database pool. It also
+preserves the HTTP authorization, validation, idempotency, audit and response
+boundary. Axum's documented Router/ServiceExt oneshot composition supports
+this approach. Bound collected response bodies and list sizes.
+
+The current medication representation intentionally has no embedded person
+or source records. The web phase therefore also needs the existing shared
+API's visible people, schedules and person-medication read endpoints, with
+their current permissions and pagination. Port those reads as prerequisites
+to rendering the assignment picker; do not insert database access into web
+handlers or invent a browser-only dose source endpoint. The authoritative
+schemas are the root OpenAPI document and Rails serializers.
+
+## Browser credentials
+
+Extend the existing signed browser session backed by
+`account_active_session_keys`; do not place API bearer or refresh tokens in
+HTML, JavaScript, URLs or browser storage. Direct `/login` creates a signed,
+short-lived CSRF-protected web login intent. An OAuth request retains its
+validated registered-client intent and resumes consent. Client-supplied
+return URLs cannot choose arbitrary redirect destinations.
+
+Allow cookie authentication at the shared API boundary while retaining
+bearer authentication for native clients. An explicit Authorization header
+must be validated as supplied; an invalid bearer must not silently fall back
+to a cookie. Resolve current account state, session lifetime, factor policy,
+membership, household lifecycle and person permissions on every request.
+Refactor common membership binding rather than introducing a third copy of
+authorization logic.
+
+All unsafe cookie-authenticated API requests require a session-bound CSRF
+token and trusted same-origin checks. Apply this at the API routing boundary
+so a future write handler cannot accidentally omit it. The server-rendered
+form validates its CSRF token, then forwards the signed session cookie and
+CSRF header to the same API. The internal transport grants no extra privilege.
+Bearer-only native requests retain their current contract.
+
+Use the configured public origin for same-origin checks, never an arbitrary
+incoming Host. Preserve the necessary Origin/Referer/Host semantics when
+forwarding internal requests; do not inject a pre-trusted AuthContext.
+
+## First usable path
+
+Successful standalone login leads to the current household dashboard,
+household selection when needed, or the supported empty-household state.
+Preserve the established primary-fixture
+redirect to `/households/{slug}/dashboard`; do not force a new picker into
+that journey. Authenticated pages expose a session-bound CSRF token in
+`meta[name="csrf-token"]`, distinct from the short-lived login-intent token.
+Selection is a route choice, not a
+permanent grant cached in a cookie. The medication page renders the shared
+API response; recording a dose submits the shared dose API and redirects to
+updated stock and history. Preserve entered values and display useful errors
+when a write is rejected. Logout invalidates the current browser session and
+clears its cookie, with CSRF protection; confirm Rails token/logout semantics
+before deciding whether an independently issued mobile grant is affected.
+Generate the dose client UUID with the form and keep it unchanged through
+double submission and validation rerender. Generating a new UUID on every
+POST would defeat duplicate protection.
+
+## Required proof before acceptance
+
+- A real browser signs in from `/login`, selects its household, reads its
+  medication, records a decimal dose and sees the updated stock and history.
+- Both cookie and bearer clients use the same dose behavior and permissions.
+- Missing/wrong CSRF, cross-origin writes, expired/revoked sessions, foreign
+  household/person access and changed membership are denied without writes.
+- Repeated form submission is duplicate-safe; logout rejects a copied old
+  browser cookie. OAuth login/consent still passes its existing suite.
+- Desktop/mobile layout, keyboard operation, visible validation/focus and
+  screenshots are inspected. Presence-only assertions are insufficient.
+
+Use existing Rails browser assertions and current screenshots as the UI
+authority. The unstyled early Leptos placeholder is not the target. Broader
+MFA, account recovery, PWA/offline and remaining UI workflows stay on the full
+goal; do not claim them from this path.

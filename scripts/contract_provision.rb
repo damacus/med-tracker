@@ -617,6 +617,61 @@ fixture = ActiveRecord::Base.transaction do
                                                              default_dose_cycle: :daily)
   managed_assignment = PersonMedication.create!(household: household, person: managed_person,
                                                 medication: managed_medication, administration_kind: :as_needed)
+  dose_write_medication = Medication.create!(household: household, location: primary_location,
+                                             name: "Contract dose write #{nonce}", dose_amount: '1.25',
+                                             dose_unit: 'ml', current_supply: '20.0')
+  dose_write_assignment = PersonMedication.create!(household: household, person: managed_person,
+                                                   medication: dose_write_medication,
+                                                   administration_kind: :as_needed,
+                                                   dose_amount: '1.25', dose_unit: 'ml')
+  dose_write_other_medication = Medication.create!(household: household, location: primary_location,
+                                                   name: "Contract dose wrong stock #{nonce}", dose_amount: '1.25',
+                                                   dose_unit: 'ml', current_supply: '5.0')
+  dose_write_concurrent_assignment = PersonMedication.create!(
+    household: household, person: managed_person, medication: dose_write_other_medication,
+    administration_kind: :as_needed, dose_amount: '1.25', dose_unit: 'ml'
+  )
+  dose_write_tracked_medication = Medication.create!(household: household, location: primary_location,
+                                                     name: "Contract dose tracked #{nonce}", dose_amount: '1.25',
+                                                     dose_unit: 'ml')
+  dose_write_tracked_option = dose_write_tracked_medication.dosage_records.create!(
+    amount: '1.25', unit: 'ml', frequency: 'daily', current_supply: '10.0',
+    default_max_daily_doses: 4, default_min_hours_between_doses: '0', default_dose_cycle: :daily
+  )
+  dose_write_tracked_assignment = PersonMedication.create!(
+    household: household, person: managed_person, medication: dose_write_tracked_medication,
+    source_dosage_option: dose_write_tracked_option, administration_kind: :as_needed,
+    dose_amount: '1.25', dose_unit: 'ml'
+  )
+  dose_write_timed_medication = Medication.create!(household: household, location: primary_location,
+                                                   name: "Contract dose timed #{nonce}", dose_amount: '1.25',
+                                                   dose_unit: 'ml', current_supply: '10.0')
+  dose_write_timed_assignment = PersonMedication.create!(
+    household: household, person: managed_person, medication: dose_write_timed_medication,
+    administration_kind: :as_needed, dose_amount: '1.25', dose_unit: 'ml',
+    max_daily_doses: 1, min_hours_between_doses: '24.0'
+  )
+  dose_write_schedule_medication = Medication.create!(household: household, location: primary_location,
+                                                      name: "Contract dose scheduled #{nonce}", dose_amount: '1.25',
+                                                      dose_unit: 'ml', current_supply: '7.5')
+  dose_write_schedule = Schedule.create!(household: household, person: managed_person,
+                                         medication: dose_write_schedule_medication, dose_amount: '1.25',
+                                         dose_unit: 'ml', frequency: 'Daily', start_date: '2026-02-25',
+                                         end_date: '2099-12-31')
+  journey_browser_desktop_medication = Medication.create!(household: household, location: primary_location,
+                                                          name: "Contract browser desktop dose #{nonce}",
+                                                          dose_amount: '1.25', dose_unit: 'ml', current_supply: '20.0')
+  journey_browser_desktop_assignment = PersonMedication.create!(
+    household: household, person: managed_person, medication: journey_browser_desktop_medication,
+    administration_kind: :as_needed, dose_amount: '1.25', dose_unit: 'ml'
+  )
+  journey_browser_mobile_medication = Medication.create!(household: household, location: primary_location,
+                                                         name: "Contract browser mobile dose #{nonce}",
+                                                         dose_amount: '1.25', dose_unit: 'ml', current_supply: '20.0')
+  journey_browser_mobile_assignment = PersonMedication.create!(
+    household: household, person: managed_person, medication: journey_browser_mobile_medication,
+    administration_kind: :as_needed, dose_amount: '1.25', dose_unit: 'ml'
+  )
   managed_assignment_updated_at = Time.utc(2026, 1, 1)
   managed_assignment.update_columns(updated_at: managed_assignment_updated_at)
   retired_medication = Medication.create!(household: household, location: primary_location,
@@ -631,6 +686,13 @@ fixture = ActiveRecord::Base.transaction do
                                                medication: hidden_medication, administration_kind: :as_needed)
   foreign_assignment = PersonMedication.create!(household: foreign_household, person: foreign_account.person,
                                                 medication: foreign_medication, administration_kind: :as_needed)
+  dose_write_foreign_medication = Medication.create!(household: foreign_household, location: foreign_location,
+                                                     name: "Contract foreign dose #{nonce}", dose_amount: '1.25',
+                                                     dose_unit: 'ml', current_supply: '9.0')
+  dose_write_foreign_assignment = PersonMedication.create!(
+    household: foreign_household, person: foreign_account.person, medication: dose_write_foreign_medication,
+    administration_kind: :as_needed, dose_amount: '1.25', dose_unit: 'ml'
+  )
   visible_low_stock = Medication.create!(household: household, location: primary_location,
                                          name: "Contract visible low stock #{nonce}", current_supply: '1',
                                          reorder_threshold: '5')
@@ -1262,6 +1324,31 @@ fixture = ActiveRecord::Base.transaction do
     foreign_medication_name: foreign_medication.name,
     managed_assignment_id: managed_assignment.id,
     managed_assignment_portable_id: managed_assignment.portable_id,
+    dose_write_medication_id: dose_write_medication.id,
+    dose_write_assignment_id: dose_write_assignment.id,
+    dose_write_assignment_portable_id: dose_write_assignment.portable_id,
+    dose_write_person_id: managed_person.id,
+    dose_write_other_medication_id: dose_write_other_medication.id,
+    dose_write_concurrent_assignment_portable_id: dose_write_concurrent_assignment.portable_id,
+    dose_write_tracked_medication_id: dose_write_tracked_medication.id,
+    dose_write_tracked_option_id: dose_write_tracked_option.id,
+    dose_write_tracked_assignment_portable_id: dose_write_tracked_assignment.portable_id,
+    dose_write_timed_medication_id: dose_write_timed_medication.id,
+    dose_write_timed_assignment_portable_id: dose_write_timed_assignment.portable_id,
+    dose_write_schedule_medication_id: dose_write_schedule_medication.id,
+    dose_write_schedule_id: dose_write_schedule.id,
+    dose_write_schedule_portable_id: dose_write_schedule.portable_id,
+    dose_write_foreign_medication_id: dose_write_foreign_medication.id,
+    dose_write_foreign_assignment_portable_id: dose_write_foreign_assignment.portable_id,
+    journey_browser_desktop_medication_id: journey_browser_desktop_medication.id,
+    journey_browser_desktop_medication_name: journey_browser_desktop_medication.name,
+    journey_browser_desktop_assignment_id: journey_browser_desktop_assignment.id,
+    journey_browser_mobile_medication_id: journey_browser_mobile_medication.id,
+    journey_browser_mobile_medication_name: journey_browser_mobile_medication.name,
+    journey_browser_mobile_assignment_id: journey_browser_mobile_assignment.id,
+    journey_browser_person_id: managed_person.id,
+    journey_browser_foreign_medication_id: foreign_medication.id,
+    journey_browser_foreign_medication_name: foreign_medication.name,
     fhir_stopped_assignment_portable_id: fhir_stopped_assignment.portable_id,
     managed_assignment_updated_at: managed_assignment_updated_at.iso8601,
     retired_assignment_portable_id: retired_assignment.portable_id,

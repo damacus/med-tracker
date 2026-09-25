@@ -56,3 +56,24 @@ services:
       BASE_URL: http://127.0.0.1:39998
       CONTRACT_FIXTURE_PATH: /contract-run/fixture.json
       SCREENSHOT_DIR: /screenshots
+
+  rails-browser-tests:
+    profiles: [test]
+    image: medtracker-contract-browser:${CONTRACT_PROJECT}
+    build:
+      context: ./rust/web
+      dockerfile: Dockerfile.smoke
+    network_mode: service:web-test
+    shm_size: 1gb
+    volumes:
+      - type: bind
+        source: ${CONTRACT_FIXTURE_DIR}
+        target: /contract-run
+        read_only: true
+      - type: bind
+        source: ./docs/screenshots/journey-medication-rails
+        target: /screenshots
+    environment:
+      BASE_URL: http://127.0.0.1:3000
+      CONTRACT_FIXTURE_PATH: /contract-run/fixture.json
+      SCREENSHOT_DIR: /screenshots

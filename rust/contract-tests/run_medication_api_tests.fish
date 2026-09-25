@@ -1,4 +1,4 @@
-set -l targets --test medication_read_api --test medication_mobile_oauth_api --test medication_forecast_api --test oauth
+set -l targets --test medication_read_api --test medication_mobile_oauth_api --test medication_forecast_api --test oauth --test dose_write_api
 if test "$argv[1]" = --no-run
     cargo test --locked --manifest-path rust/contract-tests/Cargo.toml $targets --no-run
 else

@@ -91,4 +91,45 @@ or begin; echo 'Runner skipped cleanup after browser failure' >&2; exit 1; end
 contains -- api:contract-image-remove $trace
 or begin; echo 'Runner skipped image cleanup after browser failure' >&2; exit 1; end
 
-echo 'Medication Compose runner task sequence and failure cleanup passed'
+set -e CONTRACT_FAKE_FAIL_STEP
+command rm -f $test_dir/trace
+fish --no-config rust/contract-tests/run.fish rails browser-journey-rails >$test_dir/output 2>&1
+set run_status $status
+set trace (cat $test_dir/trace)
+contains -- api:contract-browser-rails $trace
+or begin; echo 'Runner skipped isolated Rails browser journey' >&2; exit 1; end
+test $run_status -eq 0
+or begin; cat $test_dir/output >&2; exit 1; end
+if contains -- api:contract-up $trace; or contains -- api:contract-test $trace
+    echo 'Rails browser baseline unnecessarily started Rust acceptance' >&2
+    exit 1
+end
+contains -- cleanup $trace
+or begin; echo 'Rails browser runner skipped cleanup' >&2; exit 1; end
+
+set -lx CONTRACT_FAKE_FAIL_STEP api:contract-browser-rails
+command rm -f $test_dir/trace
+fish --no-config rust/contract-tests/run.fish rails browser-journey-rails >$test_dir/output 2>&1
+set failure_status $status
+test $failure_status -eq 42
+or begin; cat $test_dir/output >&2; echo "Runner lost Rails browser failure status: $failure_status" >&2; exit 1; end
+set trace (cat $test_dir/trace)
+contains -- cleanup $trace
+or begin; echo 'Runner skipped cleanup after Rails browser failure' >&2; exit 1; end
+contains -- api:contract-image-remove $trace
+or begin; echo 'Runner skipped image cleanup after Rails browser failure' >&2; exit 1; end
+
+set -e CONTRACT_FAKE_FAIL_STEP
+set -e CONTRACT_BROWSER_TESTS
+command rm -f $test_dir/trace
+fish --no-config rust/contract-tests/run.fish rails web-session-api >$test_dir/output 2>&1
+set run_status $status
+set trace (cat $test_dir/trace)
+contains -- api:contract-web-session-test $trace
+or begin; echo 'Runner skipped isolated web session API tests' >&2; exit 1; end
+test $run_status -eq 0
+or begin; cat $test_dir/output >&2; exit 1; end
+contains -- cleanup $trace
+or begin; echo 'Web session runner skipped cleanup' >&2; exit 1; end
+
+echo 'Medication and Rails browser runner sequences and failure cleanup passed'
