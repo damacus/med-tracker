@@ -160,6 +160,102 @@ fn offline_snapshot_requires_web_session_and_hides_foreign_household() {
 }
 
 #[test]
+fn offline_snapshot_keeps_ineligible_schedules_visible_with_reasons() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    sign_in(&target, &fixture.offline_eligibility_email);
+    let path = format!(
+        "/households/{}/offline/snapshot",
+        fixture.offline_eligibility_household_slug
+    );
+    let response = target.get(&path, None);
+    assert_eq!(response.status().as_u16(), 200);
+    let snapshot: Value = response.json().expect("offline eligibility snapshot");
+    let schedules = snapshot["data"]["schedules"]
+        .as_array()
+        .expect("offline schedules");
+    let find_schedule = |id| {
+        schedules
+            .iter()
+            .find(|schedule| schedule["id"] == id)
+            .expect("ineligible schedule remains visible")
+    };
+    let inactive = find_schedule(fixture.offline_inactive_schedule_id);
+    assert_eq!(inactive["active"], false);
+    let cooldown = find_schedule(fixture.offline_cooldown_schedule_id);
+    assert!(snapshot["data"]["medication_takes"]
+        .as_array()
+        .expect("recent takes")
+        .iter()
+        .any(|take| take["schedule_id"] == fixture.offline_cooldown_schedule_id));
+    let expired = find_schedule(fixture.offline_expired_schedule_id);
+    assert!(
+        expired["end_date"].as_str().expect("expired end date")
+            < &snapshot["meta"]["generated_at"]
+                .as_str()
+                .expect("generated at")[..10]
+    );
+    for source in [inactive, cooldown, expired] {
+        assert_eq!(source["offline_eligibility"]["allowed"], false);
+        assert!(!source["offline_eligibility"]["reason"]
+            .as_str()
+            .expect("disallowed reason")
+            .is_empty());
+    }
+}
+
+#[test]
+fn offline_future_queued_take_returns_validation_without_mutation() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    sign_in(&target, &fixture.offline_future_email);
+    let snapshot_path = format!(
+        "/households/{}/offline/snapshot",
+        fixture.offline_future_household_slug
+    );
+    let before: Value = target
+        .get(&snapshot_path, None)
+        .json()
+        .expect("snapshot before future take");
+    assert_eq!(
+        retained_stock(&before, fixture.offline_future_medication_id),
+        "50.0"
+    );
+    assert!(household_takes(&before).is_empty());
+
+    let body = json!({
+        "client_uuid": format!("00000000-0000-4002-8000-{:012x}", fixture.offline_future_household_id),
+        "source_type": "schedule",
+        "source_id": fixture.offline_future_schedule_id,
+        "taken_at": "2099-01-01T00:00:00Z",
+        "dose_amount": "1",
+        "taken_from_medication_id": fixture.offline_future_medication_id
+    });
+    let takes_path = format!(
+        "/households/{}/offline/medication_takes",
+        fixture.offline_future_household_slug
+    );
+    let response = target.post_json(&takes_path, &body);
+    assert_eq!(response.status().as_u16(), 422);
+    let rejected: Value = response.json().expect("future dose error");
+    assert_eq!(rejected["error"]["code"], "unprocessable_content");
+    assert!(rejected["error"]["message"]
+        .as_str()
+        .expect("future dose message")
+        .contains("future"));
+
+    let after: Value = target
+        .get(&snapshot_path, None)
+        .json()
+        .expect("snapshot after future take");
+    assert_eq!(
+        retained_stock(&after, fixture.offline_future_medication_id),
+        "50.0"
+    );
+    assert!(household_takes(&after).is_empty());
+}
+
+#[test]
 fn offline_queued_take_replays_by_client_uuid_and_rejects_missing_source() {
     let fixture = fixture();
     let target = Target::from_env();
