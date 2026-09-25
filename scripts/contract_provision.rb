@@ -273,6 +273,9 @@ fixture = ActiveRecord::Base.transaction do
                                       start_date: '2026-02-25', end_date: '2099-12-31')
   managed_health_event = HealthEvent.create!(household: household, person: managed_person, event_kind: :illness,
                                             title: "Contract managed event #{nonce}", started_on: '2026-02-25')
+  earlier_health_event = HealthEvent.create!(household: household, person: managed_person, event_kind: :illness,
+                                            title: "Contract earlier event #{nonce}", started_on: '2026-02-20',
+                                            ended_on: '2026-02-21')
   HealthEventMedication.create!(household: household, health_event: managed_health_event,
                                 medication: managed_medication)
   historical_location = Location.create!(household: household, name: "Contract historical shelf #{nonce}")
@@ -293,6 +296,9 @@ fixture = ActiveRecord::Base.transaction do
   managed_take = MedicationTake.create!(household: household, schedule: historical_schedule, taken_at: Time.current,
                                        dose_amount: '1', dose_unit: 'ml', taken_from_medication: historical_medication,
                                        taken_from_location: historical_location)
+  MedicationTake.create!(household: household, schedule: historical_schedule,
+                         taken_at: Time.zone.parse('2026-02-25 12:00:00'), dose_amount: '1', dose_unit: 'ml',
+                         taken_from_medication: historical_medication, taken_from_location: historical_location)
   hidden_take = MedicationTake.create!(household: household, schedule: hidden_schedule, taken_at: Time.current,
                                       dose_amount: '1', dose_unit: 'ml', taken_from_medication: hidden_medication,
                                       taken_from_location: primary_location, client_uuid: SecureRandom.uuid)
@@ -539,6 +545,8 @@ fixture = ActiveRecord::Base.transaction do
     hidden_preference_portable_id: hidden_preference.portable_id,
     foreign_preference_portable_id: foreign_preference.portable_id,
     managed_health_event_portable_id: managed_health_event.portable_id,
+    managed_health_event_id: managed_health_event.id,
+    earlier_health_event_id: earlier_health_event.id,
     hidden_health_event_portable_id: hidden_health_event.portable_id,
     foreign_health_event_portable_id: foreign_health_event.portable_id,
     hidden_schedule_id: hidden_schedule.id,

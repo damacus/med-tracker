@@ -129,6 +129,8 @@ pub struct Fixture {
     pub hidden_preference_portable_id: String,
     pub foreign_preference_portable_id: String,
     pub managed_health_event_portable_id: String,
+    pub managed_health_event_id: i64,
+    pub earlier_health_event_id: i64,
     pub hidden_health_event_portable_id: String,
     pub foreign_health_event_portable_id: String,
     pub hidden_schedule_id: i64,
@@ -202,6 +204,19 @@ impl Target {
 
     pub fn get(&self, path: &str, token: Option<&str>) -> Response {
         self.authorize(self.client.get(self.url(path)), token)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn get_with_header(
+        &self,
+        path: &str,
+        token: &str,
+        name: &'static str,
+        value: &str,
+    ) -> Response {
+        self.authorize(self.client.get(self.url(path)), Some(token))
+            .header(name, value)
             .send()
             .expect("target must respond")
     }
