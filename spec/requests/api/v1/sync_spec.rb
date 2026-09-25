@@ -114,7 +114,8 @@ RSpec.describe 'API v1 sync' do
       household_membership: ApiSession.lookup_by_access_token(login_data.fetch('access_token')).household_membership,
       record_type: 'HealthEvent',
       record_portable_id: SecureRandom.uuid,
-      deleted_at: Time.current
+      deleted_at: Time.current,
+      metadata: { person_portable_id: people(:john).portable_id }
     )
 
     get api_v1_household_sync_changes_path(household_id),
@@ -125,6 +126,231 @@ RSpec.describe 'API v1 sync' do
     expect(response).to have_http_status(:ok)
     expect(response.parsed_body.dig('data', 'changes').first).to include('record_type' => 'Medication')
     expect(response.parsed_body.dig('data', 'tombstones').first).to include('record_type' => 'HealthEvent')
+  end
+
+  it 'limits change events and tombstones to people visible to the requester' do
+    restricted_login = api_login(users(:jane))
+    restricted_household_id = restricted_login.dig('household', 'id')
+    restricted_headers = api_auth_headers(restricted_login.fetch('access_token'))
+
+    get api_v1_household_sync_snapshot_path(restricted_household_id), headers: restricted_headers, as: :json
+    expect(response).to have_http_status(:ok)
+    cursor = response.parsed_body.dig('data', 'cursor')
+
+    post api_v1_household_health_events_path(household_id),
+         params: {
+           health_event: {
+             person_id: people(:jane).portable_id,
+             event_kind: 'illness',
+             title: 'Visible sync event',
+             started_on: '2026-02-25'
+           }
+         },
+         headers: headers,
+         as: :json
+    expect(response).to have_http_status(:created)
+    visible_event_id = response.parsed_body.dig('data', 'portable_id')
+
+    post api_v1_household_health_events_path(household_id),
+         params: {
+           health_event: {
+             person_id: people(:john).portable_id,
+             event_kind: 'illness',
+             title: 'Hidden sync event',
+             started_on: '2026-02-25'
+           }
+         },
+         headers: headers,
+         as: :json
+    expect(response).to have_http_status(:created)
+    hidden_event_id = response.parsed_body.dig('data', 'portable_id')
+
+    hidden_assignment = person_medications(:john_vitamin_d)
+    post_batch(
+      {
+        action: 'delete',
+        resource_type: 'person_medication',
+        id: hidden_assignment.portable_id,
+        if_match: Api::RecordEtag.for(hidden_assignment),
+        attributes: {}
+      }
+    )
+    expect(response).to have_http_status(:created)
+
+    session = ApiSession.lookup_by_access_token(login_data.fetch('access_token'))
+    restricted_session = ApiSession.lookup_by_access_token(restricted_login.fetch('access_token'))
+    legacy_tombstone_id = SecureRandom.uuid
+    ApiTombstone.create!(
+      household_id: household_id,
+      account: session.account,
+      household_membership: session.household_membership,
+      record_type: 'PersonMedication',
+      record_portable_id: legacy_tombstone_id,
+      action: 'delete',
+      deleted_at: Time.current,
+      metadata: { record_type: 'PersonMedication' }
+    )
+
+    deleted_person_portable_id = SecureRandom.uuid
+    ApiTombstone.create!(
+      household_id: household_id,
+      account: session.account,
+      household_membership: session.household_membership,
+      record_type: 'Person',
+      record_portable_id: deleted_person_portable_id,
+      action: 'delete',
+      deleted_at: Time.current,
+      metadata: {
+        record_type: 'Person',
+        person_portable_id: deleted_person_portable_id
+      }
+    )
+
+    inaccessible_medication = medications(:gabapentin)
+    ApiChangeEvent.create!(
+      household_id: household_id,
+      account: session.account,
+      household_membership: session.household_membership,
+      record_type: 'Medication',
+      record_id: inaccessible_medication.id,
+      record_portable_id: inaccessible_medication.portable_id,
+      action: 'update',
+      occurred_at: Time.current,
+      metadata: { record_type: 'Medication' }
+    )
+
+    household = session.household_membership.household
+    event_only_medication = create(:medication, household: household)
+    visible_event = HealthEvent.find_by!(portable_id: visible_event_id)
+    TenantContext.with(
+      account: session.account,
+      household: household,
+      membership: session.household_membership,
+      request_id: 'sync-health-event-medication'
+    ) do
+      HealthEventMedication.create!(household: household, health_event: visible_event,
+                                    medication: event_only_medication)
+    end
+    ApiChangeEvent.create!(
+      household_id: household_id,
+      account: session.account,
+      household_membership: session.household_membership,
+      record_type: 'Medication',
+      record_id: event_only_medication.id,
+      record_portable_id: event_only_medication.portable_id,
+      action: 'update',
+      occurred_at: Time.current,
+      metadata: { record_type: 'Medication' }
+    )
+    hidden_medication = create(:medication, household: household)
+    create(:person_medication, person: people(:john), medication: hidden_medication)
+    visible_medication = create(:medication, household: household)
+    create(:person_medication, person: people(:jane), medication: visible_medication)
+    legacy_medication_tombstone_id = SecureRandom.uuid
+    ApiTombstone.create!(
+      household_id: household_id,
+      account: session.account,
+      household_membership: session.household_membership,
+      record_type: 'Medication',
+      record_portable_id: legacy_medication_tombstone_id,
+      action: 'delete',
+      deleted_at: Time.current,
+      metadata: { record_type: 'Medication' }
+    )
+
+    TenantContext.with(
+      account: session.account,
+      household: session.household_membership.household,
+      membership: session.household_membership,
+      request_id: 'sync-delete-medications'
+    ) do
+      hidden_medication.destroy!
+      visible_medication.destroy!
+    end
+    hidden_medication_tombstone_id = hidden_medication.portable_id
+    visible_medication_tombstone_id = visible_medication.portable_id
+
+    location = locations(:home)
+    ApiChangeEvent.create!(
+      household_id: household_id,
+      account: session.account,
+      household_membership: session.household_membership,
+      record_type: 'Location',
+      record_id: location.id,
+      record_portable_id: location.portable_id,
+      action: 'update',
+      occurred_at: Time.current,
+      metadata: { record_type: 'Location' }
+    )
+
+    unclassified_id = SecureRandom.uuid
+    ApiChangeEvent.create!(
+      household_id: household_id,
+      account: session.account,
+      household_membership: session.household_membership,
+      record_type: 'UnclassifiedRecord',
+      record_id: location.id,
+      record_portable_id: unclassified_id,
+      action: 'update',
+      occurred_at: Time.current,
+      metadata: { record_type: 'UnclassifiedRecord' }
+    )
+
+    get api_v1_household_sync_changes_path(restricted_household_id),
+        params: { cursor: cursor },
+        headers: restricted_headers,
+        as: :json
+
+    expect(response).to have_http_status(:ok)
+    feed = response.parsed_body.fetch('data').to_json
+    expect(feed).to include(visible_event_id)
+    expect(feed).not_to include(hidden_event_id)
+    expect(feed).not_to include(hidden_assignment.portable_id)
+    expect(feed).not_to include(people(:john).portable_id)
+    expect(feed).not_to include(legacy_tombstone_id)
+    expect(feed).not_to include(unclassified_id)
+    expect(feed).not_to include(inaccessible_medication.portable_id)
+    expect(feed).not_to include(hidden_medication_tombstone_id)
+    expect(feed).to include(visible_medication_tombstone_id)
+    expect(feed).to include(event_only_medication.portable_id)
+    expect(feed).not_to include(deleted_person_portable_id)
+    expect(feed).to include(location.portable_id)
+
+    revoked_grant = PersonAccessGrant.active.find_by!(
+      household_membership: restricted_session.household_membership,
+      person: people(:jane)
+    )
+    Households::AccessChange.for(session.household_membership, request: request).revoke_grant!(revoked_grant)
+
+    get api_v1_household_sync_changes_path(restricted_household_id),
+        params: { cursor: cursor },
+        headers: restricted_headers,
+        as: :json
+
+    expect(response).to have_http_status(:unauthorized)
+
+    revoked_login = api_login(users(:jane))
+    revoked_headers = api_auth_headers(revoked_login.fetch('access_token'))
+
+    get api_v1_household_sync_changes_path(restricted_household_id),
+        params: { cursor: cursor },
+        headers: revoked_headers,
+        as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch('data').to_json).not_to include(visible_medication_tombstone_id)
+
+    get api_v1_household_sync_changes_path(household_id),
+        params: { cursor: cursor },
+        headers: headers,
+        as: :json
+
+    expect(response).to have_http_status(:ok)
+    admin_feed = response.parsed_body.fetch('data').to_json
+    expect(admin_feed).to include(legacy_tombstone_id)
+    expect(admin_feed).to include(hidden_medication_tombstone_id)
+    expect(admin_feed).to include(legacy_medication_tombstone_id)
+    expect(admin_feed).to include(deleted_person_portable_id)
   end
 
   it 'applies batch mutations transactionally and rolls back invalid operations' do
