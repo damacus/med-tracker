@@ -94,6 +94,7 @@ pub struct Fixture {
     pub profile_revoke_mobile_token: String,
     pub profile_signed_blob_id: String,
     pub upload_blob_signed_id: String,
+    pub upload_disk_write_token: String,
     pub upload_variation_key: String,
     pub lookup_paid_household_id: i64,
     pub lookup_paid_account_id: i64,
