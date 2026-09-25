@@ -35,6 +35,10 @@ Run `task contract:reviews-rails` for medication review prompt list, read and up
 Run `task contract:fhir-rails` for the 12 FHIR R4 GET routes, SMART discovery and scope,
 resource relationships, search, pagination, errors, and household privacy. Run
 `task contract:fhir-rust` for the same cases against the configured local Rust target.
+Run `task contract:lookup-rails` for medication lookup and AI suggestion cases
+using an isolated paid test household and a disposable local catalogue entry.
+The contract server has no NHS or AI provider credentials. Run
+`task contract:lookup-rust` for the expected red result until the Rust API exists.
 Run `task contract:care-rails` for people, person-grant, and location permission cases.
 Run `task contract:sync-rails` for sync v2, mobile v1, and change-feed cases.
 Run `task contract:replay-rails` for separate medication-take `client_uuid` and

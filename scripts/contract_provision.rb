@@ -79,6 +79,16 @@ fixture = ActiveRecord::Base.transaction do
     filename: 'foreign.png', byte_size: 7, checksum: Digest::MD5.base64digest('foreign'),
     content_type: 'image/png'
   )
+  lookup_paid_account, lookup_paid_household, = create_household(nonce, 'lookup-paid')
+  lookup_paid_household.update!(subscription_plan: 'family_plus')
+  lookup_paid_membership = lookup_paid_account.household_memberships.find_by!(household: lookup_paid_household)
+  _lookup_paid_session, lookup_paid_access_token, = ApiSession.issue_for(
+    account: lookup_paid_account, household_membership: lookup_paid_membership, device_name: 'contract-lookup-paid'
+  )
+  lookup_barcode = '9876543210987'
+  lookup_display = "Contract catalogue medicine #{nonce}"
+  BarcodeCatalogEntry.create!(gtin: lookup_barcode, display: lookup_display, source: 'contract_catalog',
+                              code: "contract-dmd-#{nonce}", system: 'https://dmd.nhs.uk', concept_class: 'AMPP')
   portable_source_membership = portable_source_account.household_memberships.find_by!(household: portable_source_household)
   portable_target_membership = portable_target_account.household_memberships.find_by!(household: portable_target_household)
   _portable_source_session, portable_source_access_token, = ApiSession.issue_for(
@@ -620,6 +630,10 @@ fixture = ActiveRecord::Base.transaction do
     profile_revoke_access_token: profile_revoke_access_token,
     profile_revoke_mobile_token: profile_revoke_mobile_token,
     profile_signed_blob_id: profile_signed_blob.signed_id,
+    lookup_paid_household_id: lookup_paid_household.id,
+    lookup_paid_access_token: lookup_paid_access_token,
+    lookup_barcode: lookup_barcode,
+    lookup_display: lookup_display,
     portable_source_household_id: portable_source_household.id,
     portable_source_account_id: portable_source_account.id,
     portable_source_membership_id: portable_source_membership.id,

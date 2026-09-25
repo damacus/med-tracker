@@ -182,6 +182,7 @@ services:
       <<: *rails_env_test
       DATABASE_ROLE: ${TEST_DATABASE_ROLE:-}
       CONTRACT_RATE_LIMITING: ${CONTRACT_RATE_LIMITING:-false}
+      MEDTRACKER_AI_MEDICATION_HELP_ENABLED: ${CONTRACT_AI_MEDICATION_HELP_ENABLED:-false}
     volumes:
       - .:/app
       - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro
