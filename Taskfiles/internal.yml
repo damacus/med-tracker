@@ -202,7 +202,7 @@ tasks:
     vars:
       WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
-      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} port {{ .WEB_SERVICE }} 3000 | sed -E 's/.*:([0-9]+)$/\\1/'"
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} port {{ .SERVICE | default .WEB_SERVICE }} {{ .PORT | default \"3000\" }} | sed -E 's/.*:([0-9]+)$/\\1/'"
 
   open-ui:
     desc: Open WebUI

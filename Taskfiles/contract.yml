@@ -32,14 +32,28 @@ tasks:
           SERVICE: db-test
           COMMAND: env PGPASSWORD=medtracker_password psql -v ON_ERROR_STOP=1 -h db-test -U medtracker -d medtracker -f /contract-db.sql
 
+  mail-port:
+    desc: Get the isolated test Mailpit HTTP port
+    cmds:
+      - task: :internal:port
+        vars: { ENVIRONMENT: test, SERVICE: mail-test, PORT: 8025 }
+
+  mail-clear:
+    desc: Clear the isolated test Mailpit before contract cases
+    requires:
+      vars: [MAILPIT_URL]
+    cmds:
+      - curl --fail --silent --show-error --output /dev/null --request DELETE '{{ .MAILPIT_URL }}/api/v1/messages'
+
   run:
     desc: Run API black-box cases against a checked target and fixture
     requires:
-      vars: [BASE_URL, FIXTURE_PATH]
+      vars: [BASE_URL, FIXTURE_PATH, MAILPIT_URL]
     env:
       CONTRACT_BASE_URL: '{{ .BASE_URL }}'
       CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+      CONTRACT_MAILPIT_URL: '{{ .MAILPIT_URL }}'
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test admin --test invitations --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test sync --test replay --test oauth --test envelopes --no-fail-fast -- --test-threads=1
 
@@ -68,11 +82,12 @@ tasks:
   run-invitations:
     desc: Run household invitation contract cases
     requires:
-      vars: [BASE_URL, FIXTURE_PATH]
+      vars: [BASE_URL, FIXTURE_PATH, MAILPIT_URL]
     env:
       CONTRACT_BASE_URL: '{{ .BASE_URL }}'
       CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+      CONTRACT_MAILPIT_URL: '{{ .MAILPIT_URL }}'
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test invitations -- --test-threads=1
 

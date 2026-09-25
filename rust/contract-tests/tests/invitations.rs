@@ -1,6 +1,107 @@
 use medtracker_contract_tests::{fixture, Fixture, Target};
 use reqwest::blocking::Response;
 use serde_json::{json, Value};
+use std::env;
+use std::thread;
+use std::time::Duration;
+use url::{Host, Url};
+
+struct Mailpit {
+    client: reqwest::blocking::Client,
+    origin: Url,
+}
+
+impl Mailpit {
+    fn from_env() -> Self {
+        let origin = Url::parse(&env::var("CONTRACT_MAILPIT_URL").expect("Mailpit URL"))
+            .expect("valid Mailpit URL");
+        assert_eq!(origin.scheme(), "http");
+        assert!(matches!(origin.host(), Some(Host::Ipv4(address)) if address.is_loopback()));
+        assert_eq!(origin.path(), "/");
+        assert!(origin.username().is_empty() && origin.password().is_none());
+        assert!(origin.query().is_none() && origin.fragment().is_none());
+        let client = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(5))
+            .redirect(reqwest::redirect::Policy::none())
+            .no_proxy()
+            .build()
+            .expect("Mailpit client");
+        Self { client, origin }
+    }
+
+    fn message_ids_to(&self, recipient: &str) -> Vec<String> {
+        let url = self
+            .origin
+            .join("api/v1/messages?start=0&limit=100")
+            .expect("Mailpit messages URL");
+        let response = self.client.get(url).send().expect("Mailpit messages");
+        assert_eq!(response.status().as_u16(), 200);
+        let payload: Value = response.json().expect("Mailpit messages JSON");
+        payload["messages"]
+            .as_array()
+            .expect("Mailpit messages array")
+            .iter()
+            .filter(|message| {
+                message["To"].as_array().is_some_and(|recipients| {
+                    recipients.iter().any(|item| {
+                        item["Address"]
+                            .as_str()
+                            .or_else(|| item["address"].as_str())
+                            .is_some_and(|address| address.eq_ignore_ascii_case(recipient))
+                    })
+                })
+            })
+            .map(|message| {
+                message["ID"]
+                    .as_str()
+                    .expect("Mailpit message ID")
+                    .to_owned()
+            })
+            .collect()
+    }
+
+    fn wait_for_one_to(&self, recipient: &str) -> String {
+        for _ in 0..30 {
+            let ids = self.message_ids_to(recipient);
+            if ids.len() == 1 {
+                return ids[0].clone();
+            }
+            thread::sleep(Duration::from_millis(100));
+        }
+        panic!("expected exactly one delivered invitation");
+    }
+
+    fn token_from_message(&self, message_id: &str) -> String {
+        assert!(message_id
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-'));
+        let url = self
+            .origin
+            .join(&format!("api/v1/message/{message_id}"))
+            .expect("Mailpit message URL");
+        let response = self.client.get(url).send().expect("Mailpit message");
+        assert_eq!(response.status().as_u16(), 200);
+        let message: Value = response.json().expect("Mailpit message JSON");
+        let text = message["Text"]
+            .as_str()
+            .or_else(|| message["text"].as_str())
+            .expect("Mailpit message text");
+        let accept_url = text
+            .lines()
+            .find(|line| line.contains("/invitations/accept?token="))
+            .expect("invitation acceptance URL");
+        let url = Url::parse(accept_url.trim()).expect("valid invitation acceptance URL");
+        let token = url
+            .query_pairs()
+            .find(|(key, _)| key == "token")
+            .expect("invitation token")
+            .1
+            .into_owned();
+        assert_eq!(token.len(), 64);
+        assert!(token.bytes().all(|byte| byte.is_ascii_hexdigit()));
+        token
+    }
+}
 
 fn invitations(fixture: &Fixture) -> String {
     format!(
@@ -72,6 +173,43 @@ fn assert_no_tokens(value: &Value, fixture: &Fixture) {
     }
 }
 
+fn assert_no_token_shaped_material(value: &Value) {
+    match value {
+        Value::String(text) => {
+            assert!(
+                !text
+                    .as_bytes()
+                    .windows(64)
+                    .any(|window| window.iter().all(u8::is_ascii_hexdigit)),
+                "public response exposed token-shaped material"
+            );
+        }
+        Value::Array(items) => items.iter().for_each(assert_no_token_shaped_material),
+        Value::Object(fields) => {
+            assert!(!fields.contains_key("token") && !fields.contains_key("token_digest"));
+            fields.values().for_each(assert_no_token_shaped_material);
+        }
+        _ => {}
+    }
+}
+
+fn resend_audit_count(target: &Target, fixture: &Fixture, invitation_id: i64) -> usize {
+    let path = format!(
+        "/api/v1/households/{}/admin/audit_logs",
+        fixture.household_id
+    );
+    let events = body(target.get(&path, Some(&fixture.access_token)));
+    events["data"]
+        .as_array()
+        .expect("audit events")
+        .iter()
+        .filter(|event| {
+            event["event_type"] == "api/admin/invitation/resent"
+                && event["metadata"]["target_id"] == invitation_id
+        })
+        .count()
+}
+
 #[test]
 fn task_6b_list_create_delete_validate_and_hide_invitation_secrets() {
     let target = Target::from_env();
@@ -92,12 +230,14 @@ fn task_6b_list_create_delete_validate_and_hide_invitation_secrets() {
     );
     assert_eq!(response.status().as_u16(), 201);
     let created = body(response);
+    assert_no_token_shaped_material(&created);
     assert_summary(&created["data"]);
     assert_eq!(created["data"]["email"], email);
     assert_eq!(created["data"]["pending"], true);
     let id = created["data"]["id"].as_i64().unwrap();
     let item = format!("{path}/{id}");
     let listed = body(target.get(&path, Some(&fixture.access_token)));
+    assert_no_token_shaped_material(&listed);
     assert_eq!(invitation(&listed, id), &created["data"]);
     assert_no_tokens(&listed, &fixture);
     let audit = format!(
@@ -106,6 +246,7 @@ fn task_6b_list_create_delete_validate_and_hide_invitation_secrets() {
     );
     let audit_events = body(target.get(&audit, Some(&fixture.access_token)));
     assert_no_tokens(&audit_events, &fixture);
+    assert_no_token_shaped_material(&audit_events);
 
     let response = target.delete(&item, Some(&fixture.manager_access_token));
     assert_eq!(response.status().as_u16(), 204);
@@ -212,6 +353,7 @@ fn task_6b_list_create_delete_validate_and_hide_invitation_secrets() {
     );
     assert!(duplicate["error"]["errors"]["email"].is_array());
     let final_list = body(target.get(&path, Some(&fixture.access_token)));
+    assert_no_token_shaped_material(&final_list);
     assert_eq!(
         final_list["data"].as_array().unwrap().len(),
         initial["data"].as_array().unwrap().len() + 1
@@ -222,6 +364,10 @@ fn task_6b_list_create_delete_validate_and_hide_invitation_secrets() {
 fn task_6b_resend_renews_expired_replays_once_and_rejects_revoked() {
     let target = Target::from_env();
     let fixture = fixture();
+    let mailpit = Mailpit::from_env();
+    assert!(mailpit
+        .message_ids_to(&fixture.invitation_expired_email)
+        .is_empty());
     let list = invitations(&fixture);
     let item = format!("{list}/{}", fixture.invitation_expired_id);
     let resend = format!("{item}/resend");
@@ -240,6 +386,7 @@ fn task_6b_resend_renews_expired_replays_once_and_rejects_revoked() {
         .contains(&fixture.invitation_expired_token));
 
     let key = format!("contract-resend-{}", fixture.invitation_expired_id);
+    let audit_before = resend_audit_count(&target, &fixture, fixture.invitation_expired_id);
     let response = target.post_json_with_key(&resend, &fixture.access_token, &key, &json!({}));
     assert_eq!(response.status().as_u16(), 200);
     assert!(response.headers()["cache-control"]
@@ -247,6 +394,7 @@ fn task_6b_resend_renews_expired_replays_once_and_rejects_revoked() {
         .unwrap()
         .contains("no-store"));
     let first = body(response);
+    assert_no_token_shaped_material(&first);
     assert_eq!(
         first["data"]["invitation_id"],
         fixture.invitation_expired_id.to_string()
@@ -256,7 +404,15 @@ fn task_6b_resend_renews_expired_replays_once_and_rejects_revoked() {
     assert!(!first
         .to_string()
         .contains(&fixture.invitation_expired_token));
+    let delivered_id = mailpit.wait_for_one_to(&fixture.invitation_expired_email);
+    let replacement_token = mailpit.token_from_message(&delivered_id);
+    assert!(replacement_token != fixture.invitation_expired_token);
+    assert_eq!(
+        resend_audit_count(&target, &fixture, fixture.invitation_expired_id),
+        audit_before + 1
+    );
     let renewed = body(target.get(&list, Some(&fixture.access_token)));
+    assert_no_token_shaped_material(&renewed);
     assert_eq!(
         invitation(&renewed, fixture.invitation_expired_id)["pending"],
         true
@@ -276,7 +432,21 @@ fn task_6b_resend_renews_expired_replays_once_and_rejects_revoked() {
     );
     let replay = target.post_json_with_key(&resend, &fixture.access_token, &key, &json!({}));
     assert_eq!(replay.status().as_u16(), 200);
-    assert_eq!(body(replay), first);
+    assert!(body(replay) == first, "resend replay response changed");
+    let after_replay = body(target.get(&list, Some(&fixture.access_token)));
+    assert_no_token_shaped_material(&after_replay);
+    assert_eq!(
+        invitation(&after_replay, fixture.invitation_expired_id),
+        invitation(&renewed, fixture.invitation_expired_id)
+    );
+    assert_eq!(
+        resend_audit_count(&target, &fixture, fixture.invitation_expired_id),
+        audit_before + 1
+    );
+    assert_eq!(
+        mailpit.message_ids_to(&fixture.invitation_expired_email),
+        vec![delivered_id]
+    );
     assert_error(
         target.post_json_authorized(&resend, &fixture.manager_app_token, &json!({})),
         403,
@@ -299,6 +469,15 @@ fn task_6b_resend_renews_expired_replays_once_and_rejects_revoked() {
     let response = target.delete(&item, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 204);
     assert_error(
+        target.post_json_authorized(
+            accept,
+            &fixture.invitation_expired_access_token,
+            &json!({"token": replacement_token}),
+        ),
+        422,
+        "invitation_unavailable",
+    );
+    assert_error(
         target.post_json_authorized(&resend, &fixture.access_token, &json!({})),
         422,
         "unprocessable_content",
@@ -309,6 +488,10 @@ fn task_6b_resend_renews_expired_replays_once_and_rejects_revoked() {
 fn task_6b_resend_invalidates_a_pending_matching_identity_token() {
     let target = Target::from_env();
     let fixture = fixture();
+    let mailpit = Mailpit::from_env();
+    assert!(mailpit
+        .message_ids_to(&fixture.invitation_rotation_email)
+        .is_empty());
     let list = invitations(&fixture);
     let before = body(target.get(&list, Some(&fixture.access_token)));
     let old = invitation(&before, fixture.invitation_rotation_id);
@@ -317,8 +500,14 @@ fn task_6b_resend_invalidates_a_pending_matching_identity_token() {
     let resend = format!("{list}/{}/resend", fixture.invitation_rotation_id);
     let response = target.post_json_authorized(&resend, &fixture.manager_access_token, &json!({}));
     assert_eq!(response.status().as_u16(), 200);
-    assert_eq!(body(response)["data"]["delivery_status"], "queued");
+    let resend_body = body(response);
+    assert_no_token_shaped_material(&resend_body);
+    assert_eq!(resend_body["data"]["delivery_status"], "queued");
+    let delivered_id = mailpit.wait_for_one_to(&fixture.invitation_rotation_email);
+    let replacement_token = mailpit.token_from_message(&delivered_id);
+    assert!(replacement_token != fixture.invitation_rotation_token);
     let after = body(target.get(&list, Some(&fixture.access_token)));
+    assert_no_token_shaped_material(&after);
     assert_eq!(
         invitation(&after, fixture.invitation_rotation_id)["pending"],
         true
@@ -345,6 +534,31 @@ fn task_6b_resend_invalidates_a_pending_matching_identity_token() {
         .unwrap()
         .iter()
         .any(|row| row["id"] == fixture.household_id));
+    let accepted = target.post_json_authorized(
+        "/api/v1/invitations/accept",
+        &fixture.invitation_rotation_access_token,
+        &json!({"token": replacement_token}),
+    );
+    assert_eq!(accepted.status().as_u16(), 200);
+    let accepted_body = body(accepted);
+    assert_eq!(
+        accepted_body["data"]["household_id"],
+        fixture.household_id.to_string()
+    );
+    assert_no_token_shaped_material(&accepted_body);
+    let households = body(target.get(
+        "/api/v1/auth/households",
+        Some(&fixture.invitation_rotation_access_token),
+    ));
+    assert_eq!(
+        households["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|row| row["id"] == fixture.household_id)
+            .count(),
+        1
+    );
 }
 
 #[test]
@@ -376,6 +590,7 @@ fn task_6b_accepts_once_with_grants_and_public_auth_readback() {
         .unwrap()
         .contains("no-store"));
     let accepted = body(response);
+    assert_no_token_shaped_material(&accepted);
     assert_eq!(
         accepted["data"]["household_id"],
         fixture.household_id.to_string()
@@ -390,7 +605,7 @@ fn task_6b_accepts_once_with_grants_and_public_auth_readback() {
     let replay =
         target.post_json_authorized(accept, &fixture.invitation_accept_access_token, &payload);
     assert_eq!(replay.status().as_u16(), 200);
-    assert_eq!(body(replay), accepted);
+    assert!(body(replay) == accepted, "accept replay response changed");
     let after = body(target.get(
         "/api/v1/auth/households",
         Some(&fixture.invitation_accept_access_token),
@@ -548,6 +763,7 @@ fn task_6b_mobile_oauth_acceptance_follows_observed_rails_behavior() {
     );
     assert_eq!(response.status().as_u16(), 200);
     let accepted = body(response);
+    assert_no_token_shaped_material(&accepted);
     assert_eq!(
         accepted["data"]["household_id"],
         fixture.household_id.to_string()

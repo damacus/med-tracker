@@ -64,6 +64,12 @@ function run_contract
     set -l fixture_seconds (math (date +%s) - $startup_at)
     echo "Contract fixture ready after $fixture_seconds seconds"
 
+    set -l mail_port (rtk task contract:mail-port CONTRACT_PROJECT=$contract_project)
+    or return $status
+    set -l mailpit_url "http://127.0.0.1:$mail_port"
+    rtk task contract:mail-clear MAILPIT_URL="$mailpit_url"
+    or return $status
+
     if test "$mode" = rails
         set -l port (rtk task test:port CONTRACT_PROJECT=$contract_project)
         or return $status
@@ -72,7 +78,7 @@ function run_contract
         else if test "$argv[2]" = admin-tokens-audit
             rtk task contract:run-admin-tokens-audit BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = invitations
-            rtk task contract:run-invitations BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+            rtk task contract:run-invitations BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path" MAILPIT_URL="$mailpit_url"
         else if test "$argv[2]" = oauth
             rtk task contract:oauth BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = dosage-health
@@ -108,7 +114,7 @@ function run_contract
         else if test "$argv[2]" = health-event-replacement-atomicity
             rtk task contract:run-health-event-replacement-atomicity BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else
-            rtk task contract:run BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+            rtk task contract:run BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path" MAILPIT_URL="$mailpit_url"
         end
     else
         if test "$argv[2]" = admin
@@ -116,13 +122,13 @@ function run_contract
         else if test "$argv[2]" = admin-tokens-audit
             rtk task contract:run-admin-tokens-audit BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = invitations
-            rtk task contract:run-invitations BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
+            rtk task contract:run-invitations BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN" MAILPIT_URL="$mailpit_url"
         else if test "$argv[2]" = sync
             rtk task contract:run-sync BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = replay
             rtk task contract:run-replay BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else
-            rtk task contract:run BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
+            rtk task contract:run BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN" MAILPIT_URL="$mailpit_url"
         end
     end
 end

@@ -75,8 +75,13 @@ For a remote HTTPS origin, pass its exact value as `APPROVED_ORIGIN` to
 `task contract:run` with an existing fixture path. The runner rejects redirects
 and ignores HTTP proxy settings.
 
-`task contract:run BASE_URL=http://127.0.0.1:3000 FIXTURE_PATH=/absolute/path`
+`task contract:run BASE_URL=http://127.0.0.1:3000 FIXTURE_PATH=/absolute/path MAILPIT_URL=http://127.0.0.1:8025`
 runs against a prepared target and fixture. Its fixture must contain real
 bearer tokens and IDs for separate households in that target's own disposable
 environment. The runner rejects every DELETE, PATCH and POST request to a
 non-loopback target, even when that target has an approved HTTPS origin.
+Invitation cases also require `MAILPIT_URL=http://127.0.0.1:<port>` from the
+same isolated test project. The runner clears that project's Mailpit before
+testing, captures delivered replacement tokens from its local HTTP API, and
+checks rotation and one-time acceptance without printing tokens. A Rust target
+must send invitation mail to the same isolated Mailpit for those cases.
