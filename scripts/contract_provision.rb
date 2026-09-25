@@ -873,6 +873,38 @@ fixture = ActiveRecord::Base.transaction do
   oauth_application = OauthApplication.create!(name: 'Contract mobile', client_id: oauth_client_id, client_kind: :mobile,
                                                redirect_uri: oauth_redirect_uri, scopes: 'medtracker offline_access',
                                                token_endpoint_auth_method: 'none')
+  medication_mobile_oauth_grant = lambda do |label, grant_account, **attributes|
+    token = "contract-medication-#{label}-#{SecureRandom.urlsafe_base64(48)}"
+    grant = OauthGrant.create!(
+      { account: grant_account, oauth_application: oauth_application, client_kind: :mobile,
+        scopes: 'medtracker offline_access', expires_in: 1.hour.from_now,
+        authenticated_at: Time.current, last_used_at: Time.current,
+        token_hash: OauthGrant.digest(token) }.merge(attributes)
+    )
+    [token, grant]
+  end
+  medication_mobile_oauth_token, medication_mobile_oauth_record = medication_mobile_oauth_grant.call('valid', account)
+  medication_mobile_revoked_view_member, = create_admin_member(household, nonce, 'medication-mobile-revoked-view')
+  PersonAccessGrant.create!(household: household, household_membership: medication_mobile_revoked_view_member,
+                            person: managed_person, access_level: :view, relationship_type: :carer,
+                            granted_by_membership: membership, revoked_at: Time.current)
+  medication_mobile_oauth_tokens = {
+    revoked: medication_mobile_oauth_grant.call('revoked', account, revoked_at: Time.current).first,
+    expired: medication_mobile_oauth_grant.call('expired', account, expires_in: 1.minute.ago).first,
+    inactive: medication_mobile_oauth_grant.call('inactive', inactive_account).first,
+    locked: medication_mobile_oauth_grant.call('locked', locked_account).first,
+    no_scope: medication_mobile_oauth_grant.call('no-scope', account, scopes: 'offline_access').first,
+    stale_login: medication_mobile_oauth_grant.call('stale-login', account,
+                                                    authenticated_at: 31.days.ago, last_used_at: 31.days.ago).first,
+    old_login: medication_mobile_oauth_grant.call('old-login', account,
+                                                  authenticated_at: 31.days.ago, last_used_at: Time.current).first,
+    revoked_membership: medication_mobile_oauth_grant.call('revoked-membership',
+                                                           portable_revoked_membership.account).first,
+    delegated: medication_mobile_oauth_grant.call('delegated', medication_read_member.account).first,
+    view: medication_mobile_oauth_grant.call('view', view_account).first,
+    revoked_view: medication_mobile_oauth_grant.call('revoked-view',
+                                                    medication_mobile_revoked_view_member.account).first
+  }
   profile_revoke_mobile_token = "contract-profile-revoke-#{SecureRandom.urlsafe_base64(48)}"
   OauthGrant.create!(account: profile_revoke_membership.account, oauth_application: oauth_application,
                      client_kind: :mobile, scopes: 'medtracker offline_access', expires_in: 1.hour.from_now,
@@ -1170,6 +1202,10 @@ fixture = ActiveRecord::Base.transaction do
     auth_role_member_oauth_token: role_member_oauth_token,
     oauth_client_id: oauth_client_id,
     oauth_redirect_uri: oauth_redirect_uri,
+    medication_mobile_oauth_token: medication_mobile_oauth_token,
+    medication_mobile_oauth_grant_id: medication_mobile_oauth_record.id,
+    medication_mobile_oauth_tokens: medication_mobile_oauth_tokens,
+    medication_mobile_locked_household_id: locked_membership.household_id,
     smart_client_id: smart_client_id,
     smart_redirect_uri: smart_redirect_uri,
     smart_patient_portable_id: account.person.portable_id,

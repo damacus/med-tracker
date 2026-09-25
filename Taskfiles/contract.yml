@@ -73,7 +73,7 @@ tasks:
       CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
       CONTRACT_AUDIT_DATABASE_URL: '{{ .AUDIT_DATABASE_URL }}'
     cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test medication_read_api --test medication_forecast_api -- --test-threads=1
+      - fish rust/contract-tests/run_medication_api_tests.fish
 
   run-platform:
     desc: Run platform administration web-session contract cases

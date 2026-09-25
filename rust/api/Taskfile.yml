@@ -29,3 +29,50 @@ tasks:
   acceptance:
     cmds:
       - fish rust/contract-tests/run.fish rails medication-read-api
+
+  contract-runner-test:
+    cmds:
+      - fish rust/contract-tests/runner_compose_test.fish
+
+  contract-up:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test up -d --wait --build rust-api
+
+  contract-ready:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test exec -T rust-api curl --fail --silent --show-error http://127.0.0.1:39998/up
+
+  contract-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests fish rust/contract-tests/run_medication_api_tests.fish
+
+  contract-image-remove:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    cmds:
+      - fish rust/contract-tests/remove_image.fish {{ .CONTRACT_PROJECT }}
+
+  contract-network-diagnostics:
+    cmds:
+      - fish rust/contract-tests/network_diagnostics.fish
+
+  contract-subnet-check:
+    requires:
+      vars: [CONTRACT_TEST_SUBNET]
+    cmds:
+      - fish rust/contract-tests/validate_subnet.fish '{{ .CONTRACT_TEST_SUBNET }}'
