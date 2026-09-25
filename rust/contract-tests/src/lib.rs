@@ -276,6 +276,7 @@ pub struct Fixture {
     pub managed_health_event_title: String,
     pub managed_side_effect_title: String,
     pub earlier_health_event_id: i64,
+    pub earlier_health_event_title: String,
     pub hidden_health_event_portable_id: String,
     pub foreign_health_event_portable_id: String,
     pub hidden_schedule_id: i64,
