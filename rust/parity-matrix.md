@@ -1,6 +1,16 @@
 # API parity matrix
 
-This is the Task 1 coverage map, updated through Task 5E. A source spec identifies existing Rails evidence, not proven operation-level coverage. Planned files for later tasks do not exist yet. The implemented contract cases pass against isolated Rails; Rust has no product server yet and connection failure remains the expected result.
+This is the evolving coverage map. A source spec identifies Rails evidence,
+not proven operation-level coverage. The Rust product server now implements a
+focused medication list/show subset; other routes remain incomplete. Read the
+per-operation status and current port ledger before treating a case as parity.
+
+The medication read subset also accepts mobile OAuth grants. Seven focused
+cases in `medication_mobile_oauth_api.rs` cover valid reads, current delegated
+visibility, invalid grants/accounts/membership, login lifetime, audit identity,
+and activity refresh on 403/422. Two concurrent isolated Compose runs each
+passed all 19 medication/OAuth/forecast cases on 25 September 2026. OAuth
+issuance, app tokens, and broader authentication/API parity remain open.
 
 Source: `docs/api/openapi.v1.yaml` (77 paths, 118 method/path operations). Paths below are relative to the OpenAPI server `/api/v1`. The global security requirement is `bearerAuth`; an operation-level override takes precedence.
 

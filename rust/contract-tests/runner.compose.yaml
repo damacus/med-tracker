@@ -1,0 +1,35 @@
+services:
+  rust-api:
+    profiles: [test]
+    build:
+      context: .
+      dockerfile: rust/contract-tests/Dockerfile
+    image: medtracker-contract-runner:${CONTRACT_PROJECT}
+    command: /src/rust/api/target/debug/medtracker-api
+    networks: [test]
+    environment:
+      DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract
+      API_LISTEN_ADDR: 0.0.0.0:39998
+      SESSION_MAX_AGE_DAYS: "30"
+    depends_on:
+      db-test:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:39998/up]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  rust-api-tests:
+    profiles: [test]
+    image: medtracker-contract-runner:${CONTRACT_PROJECT}
+    network_mode: service:rust-api
+    volumes:
+      - type: bind
+        source: ${CONTRACT_FIXTURE_DIR}
+        target: /contract-run
+        read_only: true
+    environment:
+      CONTRACT_BASE_URL: http://127.0.0.1:39998
+      CONTRACT_FIXTURE_PATH: /contract-run/fixture.json
+      CONTRACT_AUDIT_DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract

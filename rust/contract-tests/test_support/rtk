@@ -41,9 +41,30 @@ if test "$task_name" = --force
 end
 
 switch $task_name
+    case api:contract-up api:contract-ready api:contract-test api:contract-image-remove api:contract-subnet-check
+        if set -q CONTRACT_FAKE_TRACE
+            echo $task_name >>$CONTRACT_FAKE_TRACE
+        end
+        if test "$task_name" = api:contract-test; and test "$CONTRACT_FAKE_REQUIRE_RELATIVE_CLEANUP" = 1
+            test -d "$CONTRACT_FIXTURE_DIR"
+            or exit 44
+            set -q CONTRACT_RUN_DIR
+            and exit 45
+            string match -q '*runner-subnet.compose.yaml' -- "$COMPOSE_FILE"
+            or exit 46
+        end
+        if test "$CONTRACT_FAKE_FAIL_STEP" = "$task_name"
+            exit 42
+        end
+        exit 0
     case contract:cleanup
         if set -q CONTRACT_FAKE_TRACE
             echo cleanup >>$CONTRACT_FAKE_TRACE
+        end
+        if test "$CONTRACT_FAKE_REQUIRE_RELATIVE_CLEANUP" = 1
+            set -l run_dir_arg (string match 'CONTRACT_RUN_DIR=*' -- $argv)
+            string match -rq '^CONTRACT_RUN_DIR=tmp/contract-tests/run\.[A-Za-z0-9]{6}$' -- $run_dir_arg
+            or exit 43
         end
         exit $CONTRACT_FAKE_CLEANUP_STATUS
     case contract:restart-web

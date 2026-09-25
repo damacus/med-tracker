@@ -7,15 +7,16 @@ use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
-use chrono::{DateTime, Utc};
+use base64::{engine::general_purpose::URL_SAFE, Engine as _};
+use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use entities::{
     account, account_lockout, api_session, grant, household, location, medication, membership,
-    person, person_medication, schedule, user,
+    oauth_grant, person, person_medication, schedule, user,
 };
 use sea_orm::{
-    ColumnTrait, Condition, ConnectOptions, ConnectionTrait, Database, DatabaseConnection,
-    DatabaseTransaction, DbBackend, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, QueryTrait, Statement, TransactionTrait,
+    ActiveModelTrait, ColumnTrait, Condition, ConnectOptions, ConnectionTrait, Database,
+    DatabaseConnection, DatabaseTransaction, DbBackend, EntityTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, QuerySelect, QueryTrait, Set, Statement, TransactionTrait,
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -71,6 +72,7 @@ struct ApiError {
     status: StatusCode,
     code: &'static str,
     message: &'static str,
+    preserve_activity: bool,
 }
 
 impl ApiError {
@@ -79,6 +81,7 @@ impl ApiError {
             status: StatusCode::UNAUTHORIZED,
             code: "unauthorized",
             message: "Authentication required",
+            preserve_activity: false,
         }
     }
 
@@ -87,6 +90,7 @@ impl ApiError {
             status: StatusCode::FORBIDDEN,
             code: "forbidden",
             message: "You are not authorized to perform this action.",
+            preserve_activity: false,
         }
     }
 
@@ -95,6 +99,7 @@ impl ApiError {
             status: StatusCode::NOT_FOUND,
             code: "not_found",
             message: "Record not found",
+            preserve_activity: false,
         }
     }
 
@@ -103,6 +108,7 @@ impl ApiError {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             code: "internal_error",
             message: "Internal server error",
+            preserve_activity: false,
         }
     }
 
@@ -111,7 +117,13 @@ impl ApiError {
             status: StatusCode::UNPROCESSABLE_ENTITY,
             code: "unprocessable_content",
             message: "updated_since must be ISO8601",
+            preserve_activity: false,
         }
+    }
+
+    fn preserve_activity(mut self) -> Self {
+        self.preserve_activity = true;
+        self
     }
 }
 
@@ -152,8 +164,14 @@ async fn tenant_setting(
 struct AuthContext {
     account_id: i64,
     user_id: i64,
-    session_id: i64,
+    credential_id: i64,
+    credential_kind: CredentialKind,
     membership: membership::Model,
+}
+
+enum CredentialKind {
+    ApiSession,
+    OauthGrant,
 }
 
 async fn authenticate(
@@ -173,8 +191,10 @@ async fn authenticate(
         .filter(api_session::Column::AccessTokenDigest.eq(digest))
         .one(db)
         .await
-        .map_err(database_error)?
-        .ok_or_else(ApiError::unauthorized)?;
+        .map_err(database_error)?;
+    let Some(session) = session else {
+        return authenticate_mobile_oauth(db, token, household_id).await;
+    };
     if session.revoked_at.is_some() || session.access_expires_at <= Utc::now().naive_utc() {
         return Err(ApiError::unauthorized());
     }
@@ -247,7 +267,134 @@ async fn authenticate(
     Ok(AuthContext {
         account_id: account.id,
         user_id: user.id,
-        session_id: session.id,
+        credential_id: session.id,
+        credential_kind: CredentialKind::ApiSession,
+        membership,
+    })
+}
+
+fn configured_lifetime_days(name: &str, default: i64, minimum: i64) -> Option<i64> {
+    match std::env::var(name) {
+        Ok(value) => value.parse::<i64>().ok().filter(|days| *days >= minimum),
+        Err(std::env::VarError::NotPresent) => Some(default),
+        Err(std::env::VarError::NotUnicode(_)) => None,
+    }
+}
+
+fn within_login_lifetime(grant: &oauth_grant::Model, now: chrono::NaiveDateTime) -> bool {
+    let Some(last_used_at) = grant.last_used_at else {
+        return false;
+    };
+    let Some(authenticated_at) = grant.authenticated_at else {
+        return false;
+    };
+    let Some(inactivity_days) = configured_lifetime_days("SESSION_INACTIVITY_TIMEOUT_DAYS", 30, 1)
+    else {
+        return false;
+    };
+    let Some(maximum_age_days) = configured_lifetime_days("SESSION_MAX_AGE_DAYS", 0, 0) else {
+        return false;
+    };
+    let inactivity_active = ChronoDuration::try_days(inactivity_days)
+        .and_then(|period| now.checked_sub_signed(period))
+        .is_some_and(|deadline| last_used_at > deadline);
+    let maximum_age_active = maximum_age_days == 0
+        || ChronoDuration::try_days(maximum_age_days)
+            .and_then(|period| now.checked_sub_signed(period))
+            .is_some_and(|deadline| authenticated_at > deadline);
+    inactivity_active && maximum_age_active
+}
+
+async fn authenticate_mobile_oauth(
+    db: &DatabaseTransaction,
+    token: &str,
+    household_id: i64,
+) -> Result<AuthContext, ApiError> {
+    let digest = URL_SAFE.encode(Sha256::digest(token.as_bytes()));
+    let grant = oauth_grant::Entity::find()
+        .filter(oauth_grant::Column::TokenHash.eq(digest))
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(ApiError::unauthorized)?;
+    let now = Utc::now().naive_utc();
+    if grant.client_kind != "mobile"
+        || grant.revoked_at.is_some()
+        || grant.expires_in < now
+        || !grant
+            .scopes
+            .split_whitespace()
+            .any(|scope| scope == "medtracker")
+        || !within_login_lifetime(&grant, now)
+    {
+        return Err(ApiError::unauthorized());
+    }
+    let account = account::Entity::find_by_id(grant.account_id)
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(ApiError::unauthorized)?;
+    if account.status != 2 {
+        return Err(ApiError::unauthorized());
+    }
+    let lockout = account_lockout::Entity::find_by_id(account.id)
+        .one(db)
+        .await
+        .map_err(database_error)?;
+    if lockout.is_some_and(|lockout| lockout.deadline > now) {
+        return Err(ApiError::unauthorized());
+    }
+    tenant_setting(db, "med_tracker.current_account_id", account.id)
+        .await
+        .map_err(database_error)?;
+    let person = person::Entity::find()
+        .filter(person::Column::AccountId.eq(account.id))
+        .order_by_asc(person::Column::Id)
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(ApiError::unauthorized)?;
+    let user = user::Entity::find()
+        .filter(user::Column::PersonId.eq(person.id))
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(ApiError::unauthorized)?;
+    if !user.active {
+        return Err(ApiError::unauthorized());
+    }
+    let mut active_grant: oauth_grant::ActiveModel = grant.clone().into();
+    active_grant.last_used_at = Set(Some(now));
+    active_grant.updated_at = Set(now);
+    active_grant.update(db).await.map_err(database_error)?;
+    let household = household::Entity::find_by_id(household_id)
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(|| ApiError::not_found().preserve_activity())?;
+    if household.status != "active" || household.lifecycle_state != "active" {
+        return Err(ApiError::forbidden().preserve_activity());
+    }
+    let membership = membership::Entity::find()
+        .filter(membership::Column::AccountId.eq(account.id))
+        .filter(membership::Column::HouseholdId.eq(household_id))
+        .filter(membership::Column::Status.eq("active"))
+        .filter(membership::Column::RevokedAt.is_null())
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(|| ApiError::forbidden().preserve_activity())?;
+    tenant_setting(db, "med_tracker.current_household_id", household_id)
+        .await
+        .map_err(database_error)?;
+    tenant_setting(db, "med_tracker.current_membership_id", membership.id)
+        .await
+        .map_err(database_error)?;
+    Ok(AuthContext {
+        account_id: account.id,
+        user_id: user.id,
+        credential_id: grant.id,
+        credential_kind: CredentialKind::OauthGrant,
         membership,
     })
 }
@@ -322,15 +469,32 @@ async fn index(
     headers: HeaderMap,
 ) -> Result<Json<Value>, ApiError> {
     let db = state.db.begin().await.map_err(database_error)?;
-    let context = authenticate(&db, &headers, household_id).await?;
+    let context = match authenticate(&db, &headers, household_id).await {
+        Ok(context) => context,
+        Err(error) => {
+            if error.preserve_activity {
+                db.commit().await.map_err(database_error)?;
+            }
+            return Err(error);
+        }
+    };
     let page = pagination.page.unwrap_or(1).max(1);
     let per_page = pagination.per_page.unwrap_or(20).clamp(1, 100);
     let updated_since = pagination
         .updated_since
         .filter(|value| !value.is_empty())
         .map(|value| DateTime::parse_from_rfc3339(&value).map_err(|_| ApiError::invalid_filter()))
-        .transpose()?
-        .map(|value| value.naive_utc());
+        .transpose();
+    let updated_since = match updated_since {
+        Ok(value) => value,
+        Err(error) => {
+            if matches!(context.credential_kind, CredentialKind::OauthGrant) {
+                db.commit().await.map_err(database_error)?;
+            }
+            return Err(error);
+        }
+    }
+    .map(|value| value.naive_utc());
     let mut query = scope(household_id, &context.membership);
     if let Some(updated_since) = updated_since {
         query = query.filter(medication::Column::UpdatedAt.gte(updated_since));
@@ -359,7 +523,15 @@ async fn show(
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
     let db = state.db.begin().await.map_err(database_error)?;
-    let context = authenticate(&db, &headers, household_id).await?;
+    let context = match authenticate(&db, &headers, household_id).await {
+        Ok(context) => context,
+        Err(error) => {
+            if error.preserve_activity {
+                db.commit().await.map_err(database_error)?;
+            }
+            return Err(error);
+        }
+    };
     let query = scope(household_id, &context.membership);
     let query = match id.parse::<i64>() {
         Ok(id) => query.filter(medication::Column::Id.eq(id)),

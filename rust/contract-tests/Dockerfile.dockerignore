@@ -1,0 +1,7 @@
+**
+!rust/
+!rust/api/
+!rust/api/**
+!rust/contract-tests/
+!rust/contract-tests/**
+**/target/

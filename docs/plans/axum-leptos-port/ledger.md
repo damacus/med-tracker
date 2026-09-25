@@ -2,6 +2,55 @@
 
 Plan: `docs/plans/axum-leptos-port/plan.md`
 
+## Current execution override — 25 September 2026
+
+The user's subsequent instruction authorized bounded Rust implementation while
+the remaining parity inventory stays open. The medication read implementation
+is integrated through `7bec286a`; earlier entries saying no Rust API exists
+describe their historical checkpoints. SeaORM 2.0.3 is in use; the planned
+comparative ORM benchmark is not claimed complete.
+
+The current run follows [team-charter.md](team-charter.md), superseding the
+older ownership table below. The user explicitly authorized separate parallel
+test and product writers. Root owns integration; Sol owns each writing lane;
+Luna owns objective execution; independent Sol review gates acceptance.
+Read [retro-2026-09-25.md](retro-2026-09-25.md) for the workflow evidence.
+
+Assigned: [mobile OAuth medication reads](mobile-oauth-run-2026-09-25.md).
+Both interrupted predecessor agents handed off with no edits or processes.
+No new worktree is needed for this disjoint-file tranche. Remaining ledger
+trigger proof, broader API/UI/PWA parity, and representative memory/load
+measurements remain open.
+
+Mobile OAuth red proven against unchanged `rust/api` at `7bec286a`: valid
+mobile list request returned 401 instead of 200. Fixture preparation took
+122 seconds; the failing test took 0.01 seconds. Product implementation is
+now active alongside further test authoring.
+
+User correction: host port 39998 is an avoidable runner design constraint.
+[Compose runner correction](compose-runner-brief.md) is assigned to a disjoint
+tooling writer. API and HTTP tests must run on each disposable project's
+internal network; actual overlapping runs must prove isolation.
+
+Mobile OAuth green: two concurrent isolated Compose runs each passed 19/19
+HTTP cases (seven OAuth, nine medication read, three forecast). Unit tests
+passed 3/3; Rust formatting/Clippy and fixture RuboCop passed. Final independent
+review records are clean in the run reports. No broader API/UI/PWA
+parity or current memory/load target is claimed.
+
+Compose runner tranche accepted: the explicit-subnet `task contract:isolation`
+gate passed fixture separation on PostgreSQL 18.6, successful cleanup without
+affecting the peer, deliberate failed-target cleanup, and final peer cleanup.
+No owned contract networks remained. The new API sidecar has no published
+host port. The two 19/19 application runs have a matching 43-file digest, but
+two new runner paths were omitted; exact API lifetime overlap was not captured.
+Those evidence limits remain recorded rather than being promoted to stronger
+claims. Requirements and code-quality review found no actionable source issue.
+
+Next delivery milestone: medication viewing, dose recording, and updated
+stock/history as one usable journey. Broader inventory work is a cutover
+checklist, not the primary measure of progress.
+
 Planning baseline: `781c3a297ffe24ae5b70f893d55b568eab1216fc`.
 
 ## Decisions

@@ -3,9 +3,14 @@
 `task api:acceptance` provisions the existing disposable PostgreSQL 18 Rails
 fixture, starts this Axum service against that database, sends focused HTTP
 requests to the Rust listener, and removes the isolated Docker project.
+The API and HTTP test process run inside that project's Compose network. The
+test sidecar shares its API container's network namespace and uses loopback;
+the API publishes no host port. Each run has its own fixture,
+database, network and tagged test image. The test image caches dependency
+compilation separately from application source.
 
 The service currently handles collection and single-record medication GETs for
-Rails `ApiSession` bearer tokens. It checks the SHA-256 token digest, expiry,
+Rails `ApiSession` and mobile OAuth bearer tokens. It checks the token digest, expiry,
 revocation, verified account, active user and membership, permissions version,
 household state, and medication visibility. Every read uses a transaction with
 the restricted `med_tracker_app` role and transaction-local tenant settings.
@@ -30,7 +35,16 @@ location, stock flags, and collection pagination fields. Stock forecasts use
 the Rails daily consumption rule for active schedules and person medication
 assignments. Related rows are fetched in bounded batches for each response
 page. The forecast uses UTC by default and honours an explicit IANA `TZ` zone.
-`ApiSession.touch_last_used!`, non-`ApiSession` credentials, and other API
+Mobile OAuth uses the padded URL-safe Base64 SHA-256 digest, exact `medtracker`
+scope, login inactivity and optional maximum-age limits, and current household
+membership. Read audits identify `oauth_grant:<id>` without storing bearer
+material. Valid mobile credentials refresh activity on successful reads,
+household denial, and an invalid `updated_since` filter; database or audit
+failures roll back the transaction. Invalid lifetime environment settings deny
+OAuth authentication. The disposable acceptance API enables a 30-day maximum
+login age to exercise that policy; the product default remains unlimited.
+
+`ApiSession.touch_last_used!`, app/integration credentials, OAuth issuance, and other API
 routes are not implemented. The service is not a drop-in replacement for the
 complete Rails API.
 
@@ -49,7 +63,13 @@ the migration-defined audit ledger trigger and view. The focused test verifies
 the audit source row directly; ledger append still needs a migrated-database
 check.
 
-The combined Rust server passed 12 of 12 focused HTTP cases against disposable
-PostgreSQL 18. A debug idle sample used 13,376 KiB of resident memory. This
-does not establish memory use under representative load or a release-build
-memory budget.
+Two concurrent isolated Compose runs each passed 19 of 19 focused HTTP cases
+against PostgreSQL 18: seven mobile OAuth, nine medication read, and three
+forecast cases. Docker's default address pool was exhausted on the development
+host, so these runs used distinct checked /28 subnet overrides. The optional
+`CONTRACT_TEST_SUBNET` override currently supports macOS host-route checks;
+ordinary runs retain automatic Compose allocation.
+
+Before the OAuth/container changes, a debug idle sample used 13,376 KiB of
+resident memory. This is historical API-only evidence and does not establish
+the current release-build, workload, or combined web/API memory budget.

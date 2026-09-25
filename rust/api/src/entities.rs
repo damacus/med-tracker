@@ -28,6 +28,18 @@ entity!(api_session, "api_sessions", {
     permissions_version: i32,
 });
 
+entity!(oauth_grant, "oauth_grants", {
+    account_id: i64,
+    client_kind: String,
+    token_hash: Option<String>,
+    expires_in: DateTime,
+    revoked_at: Option<DateTime>,
+    scopes: String,
+    authenticated_at: Option<DateTime>,
+    last_used_at: Option<DateTime>,
+    updated_at: DateTime,
+});
+
 entity!(security_audit_event, "security_audit_events", {
     household_id: i64,
     actor_account_id: Option<i64>,

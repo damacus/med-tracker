@@ -1,11 +1,6 @@
 set -l mode $argv[1]
 
 function cleanup_contract_run
-    if set -q contract_api_pid
-        kill $contract_api_pid 2>/dev/null
-        wait $contract_api_pid 2>/dev/null
-        set -e contract_api_pid
-    end
     if not set -q contract_run_dir
         return 0
     end
@@ -19,6 +14,10 @@ function cleanup_contract_run
             set -l cleanup_status $status
             echo "Contract project cleanup failed; ownership marker retained at $contract_run_dir/owner" >&2
             return $cleanup_status
+        end
+        if set -q contract_api_image
+            rtk task api:contract-image-remove CONTRACT_PROJECT=$contract_project
+            or return $status
         end
     end
     if test -d "$contract_run_dir/storage"
@@ -179,6 +178,15 @@ function run_contract
     or return $status
     set -gx CONTRACT_STORAGE_ROOT (rtk proxy realpath "$contract_run_dir/storage")
     set -gx COMPOSE_FILE compose.yaml:rust/contract-tests/storage.compose.yaml
+    if set -q CONTRACT_TEST_SUBNET; and test -n "$CONTRACT_TEST_SUBNET"
+        rtk task api:contract-subnet-check CONTRACT_TEST_SUBNET=$CONTRACT_TEST_SUBNET
+        or return $status
+        set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner-subnet.compose.yaml"
+    end
+    if test "$argv[2]" = medication-read-api
+        set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner.compose.yaml"
+        set -gx CONTRACT_FIXTURE_DIR (rtk proxy realpath "$contract_run_dir")
+    end
     set -lx CONTRACT_PROJECT $contract_project
     echo "Contract run project: $contract_project"
 
@@ -216,34 +224,12 @@ function run_contract
     echo "Contract fixture ready after $fixture_seconds seconds"
 
     if test "$argv[2]" = medication-read-api
-        if nc -z 127.0.0.1 39998 2>/dev/null
-            echo "Medication API acceptance port 39998 is already in use" >&2
-            return 1
-        end
-        set -l db_port (rtk task internal:port ENVIRONMENT=test SERVICE=db-test PORT=5432 CONTRACT_PROJECT=$contract_project)
+        set -g contract_api_image true
+        rtk task api:contract-up CONTRACT_PROJECT=$contract_project
         or return $status
-        set -lx DATABASE_URL "postgresql://medtracker:medtracker_password@127.0.0.1:$db_port/medtracker_contract"
-        set -lx API_LISTEN_ADDR 127.0.0.1:39998
-        rtk task api:build
+        rtk task api:contract-ready CONTRACT_PROJECT=$contract_project
         or return $status
-        rust/api/target/debug/medtracker-api &
-        set -g contract_api_pid $last_pid
-        set -l api_ready false
-        for attempt in (seq 30)
-            rtk proxy curl --silent --max-time 1 --output /dev/null http://127.0.0.1:39998/up 2>/dev/null
-            and begin
-                set api_ready true
-                break
-            end
-            sleep 1
-        end
-        if test "$api_ready" != true
-            echo "Medication API did not become ready" >&2
-            return 1
-        end
-        set -l api_rss (ps -o rss= -p $contract_api_pid | string trim)
-        echo "Medication API debug idle RSS KiB: $api_rss"
-        rtk task contract:run-medication-read-api BASE_URL=http://127.0.0.1:39998 FIXTURE_PATH="$contract_fixture_path" AUDIT_DATABASE_URL="$DATABASE_URL"
+        rtk task api:contract-test CONTRACT_PROJECT=$contract_project
         return $status
     end
 

@@ -2,6 +2,13 @@
 
 Status: execution plan, 24 September 2026
 
+Execution update, 25 September: subsequent user instructions authorized
+bounded Rust implementation alongside the still-open parity work. Current
+ownership and sequencing are in [team-charter.md](team-charter.md) and the
+[mobile OAuth run](mobile-oauth-run-2026-09-25.md). These supersede the original
+whole-baseline-before-implementation gate below. The historical plan remains
+to explain the original scope; the ledger records current evidence and gaps.
+
 ## Outcome and decisions
 
 Replace the Rails application with one Rust application process that serves the

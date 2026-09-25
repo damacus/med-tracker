@@ -1,5 +1,5 @@
 use crate::entities::security_audit_event;
-use crate::AuthContext;
+use crate::{AuthContext, CredentialKind};
 use axum::http::StatusCode;
 use chrono::Utc;
 use sea_orm::{ActiveModelTrait, DatabaseTransaction, DbErr, Set};
@@ -14,6 +14,13 @@ pub async fn record_medication_read(
     authorized: bool,
 ) -> Result<(), DbErr> {
     let request_id = Uuid::new_v4().to_string();
+    let (authentication_method, session_reference) = match context.credential_kind {
+        CredentialKind::ApiSession => (
+            "api_session",
+            format!("api_session:{}", context.credential_id),
+        ),
+        CredentialKind::OauthGrant => ("oauth", format!("oauth_grant:{}", context.credential_id)),
+    };
     let mut audit_context = json!({
         "actor_account_id": context.account_id,
         "actor_user_id": context.user_id,
@@ -21,8 +28,8 @@ pub async fn record_medication_read(
         "active_role": context.membership.role,
         "permissions_version": context.membership.permissions_version,
         "household_id": context.membership.household_id,
-        "authentication_method": "api_session",
-        "session_reference": format!("api_session:{}", context.session_id),
+        "authentication_method": authentication_method,
+        "session_reference": session_reference,
         "request_id": request_id
     });
     if authorized {
