@@ -7,7 +7,8 @@ import { chromium } from 'playwright';
 const baseUrl = process.env.BASE_URL;
 assert.ok(baseUrl, 'Set BASE_URL to the Rails or Rust server under test');
 const fixturePath = process.env.CONTRACT_FIXTURE_PATH;
-const fixture = fixturePath ? JSON.parse(await readFile(fixturePath, 'utf8')) : null;
+assert.ok(fixturePath, 'Set CONTRACT_FIXTURE_PATH for the canonical browser smoke');
+const fixture = JSON.parse(await readFile(fixturePath, 'utf8'));
 
 const browser = await chromium.launch({
   executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH,
@@ -25,6 +26,8 @@ async function assertUsableLoginLayout(page, viewport) {
   assert.ok(password.width >= Math.min(280, viewport.width - 64));
   assert.ok(email.x >= 16 && email.x + email.width <= viewport.width - 16);
   assert.ok(password.x >= 16 && password.x + password.width <= viewport.width - 16);
+  const submit = await page.getByRole('button', { name: 'Sign In to Dashboard', exact: true }).boundingBox();
+  assert.ok(submit && submit.x >= 16 && submit.x + submit.width <= viewport.width - 16);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
 }
 
@@ -32,7 +35,7 @@ for (const viewport of [
   { name: 'desktop', width: 1400, height: 900 },
   { name: 'mobile', width: 390, height: 844 },
 ]) {
-  test(`public login page at ${viewport.name}`, async () => {
+  test(`standalone login page at ${viewport.name}`, async () => {
     const context = await browser.newContext({
       viewport: { width: viewport.width, height: viewport.height },
     });
@@ -45,17 +48,20 @@ for (const viewport of [
       assert.equal(await main.count(), 1);
       assert.ok(await main.isVisible());
 
-      const heading = main.getByRole('heading', { level: 1, name: 'Sign in through your app', exact: true });
+      const heading = main.getByRole('heading', { level: 1, name: 'Welcome back', exact: true });
       assert.equal(await heading.count(), 1);
       assert.ok(await heading.isVisible());
-      assert.ok(await main.getByText('Open MedTracker from your registered mobile app to begin sign-in.', { exact: true }).isVisible());
-      assert.equal(await main.locator('form').count(), 0);
-      assert.equal(await main.getByRole('button', { name: 'Sign In to Dashboard' }).count(), 0);
-      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+      const form = main.locator('form[action="/login"][method="post"]');
+      assert.equal(await form.count(), 1);
+      assert.ok((await form.locator('input[name="authenticity_token"][type="hidden"]').inputValue()).length > 0);
+      await assertUsableLoginLayout(page, viewport);
+      const submit = form.getByRole('button', { name: 'Sign In to Dashboard', exact: true });
+      await submit.focus();
+      assert.ok(await submit.evaluate(element => element === element.ownerDocument.activeElement));
 
       if (process.env.SCREENSHOT_DIR) {
         await mkdir(process.env.SCREENSHOT_DIR, { recursive: true });
-        await page.screenshot({ path: join(process.env.SCREENSHOT_DIR, `login-public-${viewport.name}.png`) });
+        await page.screenshot({ path: join(process.env.SCREENSHOT_DIR, `login-standalone-${viewport.name}.png`) });
       }
 
       assert.equal(await page.getByRole('button', { name: /^Continue with (?!Passkey$).+/i }).count(), 0);
@@ -63,9 +69,41 @@ for (const viewport of [
       await context.close();
     }
   });
+
+  test(`standalone login reaches the owner household and logout revokes it at ${viewport.name}`, async () => {
+    const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height } });
+
+    try {
+      const page = await context.newPage();
+      await page.goto(new URL('/login', baseUrl).toString());
+      const loginCsrf = await page.locator('form[action="/login"] input[name="authenticity_token"]').inputValue();
+      assert.ok(loginCsrf.length > 0);
+      await page.getByRole('textbox', { name: 'Email address', exact: true }).fill(fixture.primary_email);
+      const password = page.getByLabel('Password', { exact: true });
+      await password.fill('password');
+      await password.press('Enter');
+
+      const dashboardPath = `/households/${fixture.household_slug}/dashboard`;
+      await page.waitForURL(url => url.pathname === dashboardPath);
+      await page.getByRole('heading', { level: 1, name: fixture.household_name, exact: true }).waitFor();
+      const sessionCsrf = await page.locator('meta[name="csrf-token"]').getAttribute('content');
+      assert.ok(sessionCsrf && sessionCsrf !== loginCsrf);
+      const logout = page.getByRole('button', { name: 'Sign out', exact: true });
+      assert.ok(await logout.isVisible());
+      await logout.focus();
+      assert.ok(await logout.evaluate(element => element === element.ownerDocument.activeElement));
+      await logout.press('Enter');
+      await page.waitForURL(url => url.pathname === '/login');
+      await page.goto(new URL(dashboardPath, baseUrl).toString());
+      await page.waitForURL(url => url.pathname === '/login');
+      assert.ok(await page.getByRole('heading', { level: 1, name: 'Welcome back', exact: true }).isVisible());
+    } finally {
+      await context.close();
+    }
+  });
 }
 
-test('failed mobile login remains usable with keyboard and visible error', { skip: !fixture }, async () => {
+test('failed mobile login remains usable with keyboard and visible error', async () => {
   const context = await browser.newContext();
 
   try {
@@ -107,7 +145,7 @@ for (const viewport of [
   { name: 'desktop', width: 1400, height: 900 },
   { name: 'mobile', width: 390, height: 844 },
 ]) {
-  test(`mobile authorization presents and submits consent at ${viewport.name}`, { skip: !fixture }, async () => {
+  test(`mobile authorization presents and submits consent at ${viewport.name}`, async () => {
     const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height } });
 
     try {

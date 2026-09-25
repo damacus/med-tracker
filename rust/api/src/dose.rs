@@ -294,9 +294,16 @@ async fn audit(
     let (authentication_method, session_reference) = match context.credential_kind {
         CredentialKind::ApiSession => (
             "api_session",
-            format!("api_session:{}", context.credential_id),
+            format!("api_session:{}", context.credential_reference),
         ),
-        CredentialKind::OauthGrant => ("oauth", format!("oauth_grant:{}", context.credential_id)),
+        CredentialKind::OauthGrant => (
+            "oauth",
+            format!("oauth_grant:{}", context.credential_reference),
+        ),
+        CredentialKind::BrowserSession => (
+            "browser_session",
+            format!("browser_session:{}", context.credential_reference),
+        ),
     };
     let mut audit_context = json!({
         "actor_account_id": context.account_id,
@@ -501,7 +508,7 @@ pub async fn index(
         Ok(db) => db,
         Err(error) => return request_error_response(database_error(error), &request_id),
     };
-    let context = match authenticate(&db, &headers, household_id).await {
+    let context = match authenticate(&state, &db, &headers, household_id).await {
         Ok(context) => context,
         Err(error) => {
             if error.preserve_activity {
@@ -1096,9 +1103,16 @@ fn domain_audit_context(context: &AuthContext, request_id: &str) -> Value {
     let (authentication_method, session_reference) = match context.credential_kind {
         CredentialKind::ApiSession => (
             "api_session",
-            format!("api_session:{}", context.credential_id),
+            format!("api_session:{}", context.credential_reference),
         ),
-        CredentialKind::OauthGrant => ("oauth", format!("oauth_grant:{}", context.credential_id)),
+        CredentialKind::OauthGrant => (
+            "oauth",
+            format!("oauth_grant:{}", context.credential_reference),
+        ),
+        CredentialKind::BrowserSession => (
+            "browser_session",
+            format!("browser_session:{}", context.credential_reference),
+        ),
     };
     json!({"actor_account_id": context.account_id, "actor_user_id": context.user_id,
         "actor_membership_id": context.membership.id, "household_id": context.membership.household_id,
@@ -1420,7 +1434,7 @@ pub async fn create(
         Ok(db) => db,
         Err(error) => return request_error_response(database_error(error), &request_id),
     };
-    let context = match authenticate(&db, &headers, household_id).await {
+    let context = match authenticate(&state, &db, &headers, household_id).await {
         Ok(context) => context,
         Err(error) => {
             if error.preserve_activity {
@@ -1459,7 +1473,9 @@ pub async fn create(
             let status = error.status;
             let _ = db.rollback().await;
             if let Ok(audit_db) = state.db.begin().await {
-                if let Ok(current_context) = authenticate(&audit_db, &headers, household_id).await {
+                if let Ok(current_context) =
+                    authenticate(&state, &audit_db, &headers, household_id).await
+                {
                     let _ = audit(
                         &audit_db,
                         &current_context,
