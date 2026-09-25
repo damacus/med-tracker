@@ -52,11 +52,47 @@ fixture = ActiveRecord::Base.transaction do
   )
   membership = account.household_memberships.find_by!(household: household)
   manager_membership, manager_access_token = create_admin_member(household, nonce, 'manager', role: :administrator)
+  invitation_authority_membership, invitation_authority_access_token = create_admin_member(
+    household, nonce, 'invitation-authority', role: :administrator
+  )
   token_authority_membership, token_authority_access_token = create_admin_member(household, nonce, 'token-authority',
                                                                                   role: :administrator)
   manager_app_token, manager_app_token_value = ApiAppToken.issue_for(account: manager_membership.account,
                                                                      household_membership: manager_membership,
                                                                      name: 'Contract manager app token')
+  invitation_accept_account, invitation_accept_household, = create_household(nonce, 'invitation-accept')
+  invitation_accept_membership = invitation_accept_account.household_memberships.find_by!(
+    household: invitation_accept_household
+  )
+  _invitation_accept_session, invitation_accept_access_token, = ApiSession.issue_for(
+    account: invitation_accept_account, household_membership: invitation_accept_membership,
+    device_name: 'contract-invitation-accept'
+  )
+  invitation_expired_account, invitation_expired_household, = create_household(nonce, 'invitation-expired')
+  invitation_expired_membership = invitation_expired_account.household_memberships.find_by!(
+    household: invitation_expired_household
+  )
+  _invitation_expired_session, invitation_expired_access_token, = ApiSession.issue_for(
+    account: invitation_expired_account, household_membership: invitation_expired_membership,
+    device_name: 'contract-invitation-expired'
+  )
+  invitation_revoked_account, invitation_revoked_household, = create_household(nonce, 'invitation-revoked')
+  invitation_revoked_membership = invitation_revoked_account.household_memberships.find_by!(
+    household: invitation_revoked_household
+  )
+  _invitation_revoked_session, invitation_revoked_access_token, = ApiSession.issue_for(
+    account: invitation_revoked_account, household_membership: invitation_revoked_membership,
+    device_name: 'contract-invitation-revoked'
+  )
+  invitation_rotation_account, invitation_rotation_household, = create_household(nonce, 'invitation-rotation')
+  invitation_rotation_membership = invitation_rotation_account.household_memberships.find_by!(
+    household: invitation_rotation_household
+  )
+  _invitation_rotation_session, invitation_rotation_access_token, = ApiSession.issue_for(
+    account: invitation_rotation_account, household_membership: invitation_rotation_membership,
+    device_name: 'contract-invitation-rotation'
+  )
+  invitation_mobile_account, = create_household(nonce, 'invitation-mobile')
   revoked_owner_app_token, = ApiAppToken.issue_for(account: account, household_membership: membership,
                                                    name: 'Contract revoked owner app token')
   revoked_owner_app_token.revoke!
@@ -78,6 +114,33 @@ fixture = ActiveRecord::Base.transaction do
   PersonAccessGrant.create!(household: household, household_membership: membership, person: managed_person,
                             access_level: :manage, relationship_type: :family_member,
                             granted_by_membership: membership)
+  invitation_accept = household.household_invitations.create!(
+    email: invitation_accept_account.email, membership_role: :member, invited_by_membership: membership
+  )
+  invitation_accept.household_invitation_grants.create!(
+    household: household, person: managed_person, access_level: :record, relationship_type: :professional
+  )
+  invitation_expired = household.household_invitations.create!(
+    email: invitation_expired_account.email, membership_role: :member,
+    invited_by_membership: membership, expires_at: 1.day.ago
+  )
+  invitation_revoked = household.household_invitations.create!(
+    email: invitation_revoked_account.email, membership_role: :member, invited_by_membership: membership
+  )
+  invitation_rotation = household.household_invitations.create!(
+    email: invitation_rotation_account.email, membership_role: :member, invited_by_membership: membership
+  )
+  invitation_mobile = household.household_invitations.create!(
+    email: invitation_mobile_account.email, membership_role: :member, invited_by_membership: membership
+  )
+  invitation_duplicate_email = "contract-invitation-duplicate-#{nonce}@example.test"
+  household.household_invitations.create!(
+    email: invitation_duplicate_email, membership_role: :member, invited_by_membership: membership
+  )
+  invitation_authority = household.household_invitations.create!(
+    email: "contract-invitation-authority-#{nonce}@example.test", membership_role: :member,
+    invited_by_membership: invitation_authority_membership
+  )
   care_account = Account.create!(email: "contract-care-#{nonce}@example.test", status: :verified,
                                  password_hash: RodauthApp.rodauth.allocate.password_hash('password'))
   care_person = household.people.create!(account: care_account, name: "Contract carer #{nonce}",
@@ -346,6 +409,11 @@ fixture = ActiveRecord::Base.transaction do
                      scopes: 'medtracker offline_access', expires_in: 1.hour.from_now,
                      authenticated_at: Time.current, last_used_at: Time.current,
                      token_hash: OauthGrant.digest(replay_mobile_access_token))
+  invitation_mobile_oauth_token = "contract-invitation-mobile-#{SecureRandom.urlsafe_base64(48)}"
+  OauthGrant.create!(account: invitation_mobile_account, oauth_application: oauth_application, client_kind: :mobile,
+                     scopes: 'medtracker offline_access', expires_in: 1.hour.from_now,
+                     authenticated_at: Time.current, last_used_at: Time.current,
+                     token_hash: OauthGrant.digest(invitation_mobile_oauth_token))
 
   {
     access_token: access_token,
@@ -363,10 +431,30 @@ fixture = ActiveRecord::Base.transaction do
     foreign_email: "contract-foreign-#{nonce}@example.test",
     manager_membership_id: manager_membership.id,
     manager_access_token: manager_access_token,
+    invitation_authority_membership_id: invitation_authority_membership.id,
+    invitation_authority_access_token: invitation_authority_access_token,
+    invitation_authority_id: invitation_authority.id,
     token_authority_membership_id: token_authority_membership.id,
     token_authority_access_token: token_authority_access_token,
     manager_app_token_id: manager_app_token.id,
     manager_app_token: manager_app_token_value,
+    invitation_accept_id: invitation_accept.id,
+    invitation_accept_email: invitation_accept_account.email,
+    invitation_accept_account_id: invitation_accept_account.id,
+    invitation_accept_access_token: invitation_accept_access_token,
+    invitation_accept_token: invitation_accept.plain_token,
+    invitation_expired_id: invitation_expired.id,
+    invitation_expired_access_token: invitation_expired_access_token,
+    invitation_expired_token: invitation_expired.plain_token,
+    invitation_revoked_id: invitation_revoked.id,
+    invitation_revoked_access_token: invitation_revoked_access_token,
+    invitation_revoked_token: invitation_revoked.plain_token,
+    invitation_rotation_id: invitation_rotation.id,
+    invitation_rotation_access_token: invitation_rotation_access_token,
+    invitation_rotation_token: invitation_rotation.plain_token,
+    invitation_mobile_token: invitation_mobile.plain_token,
+    invitation_mobile_oauth_token: invitation_mobile_oauth_token,
+    invitation_duplicate_email: invitation_duplicate_email,
     admin_target_membership_id: admin_target_membership.id,
     admin_target_access_token: admin_target_access_token,
     admin_owner_patch_membership_id: admin_owner_patch_membership.id,
