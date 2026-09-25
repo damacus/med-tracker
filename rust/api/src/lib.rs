@@ -2,11 +2,11 @@ mod entities;
 mod medication_forecast;
 
 use axum::extract::{Path, Query, State};
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use entities::{
     account, account_lockout, api_session, grant, household, location, medication, membership,
     person, person_medication, schedule, user,
@@ -102,6 +102,14 @@ impl ApiError {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             code: "internal_error",
             message: "Internal server error",
+        }
+    }
+
+    fn invalid_filter() -> Self {
+        Self {
+            status: StatusCode::UNPROCESSABLE_ENTITY,
+            code: "unprocessable_content",
+            message: "updated_since must be ISO8601",
         }
     }
 }
@@ -295,6 +303,7 @@ fn scope(household_id: i64, membership: &membership::Model) -> sea_orm::Select<m
 struct Pagination {
     page: Option<i64>,
     per_page: Option<i64>,
+    updated_since: Option<String>,
 }
 
 async fn index(
@@ -307,11 +316,18 @@ async fn index(
     let context = authenticate(&db, &headers, household_id).await?;
     let page = pagination.page.unwrap_or(1).max(1);
     let per_page = pagination.per_page.unwrap_or(20).clamp(1, 100);
-    let total = scope(household_id, &context.membership)
-        .count(&db)
-        .await
-        .map_err(database_error)?;
-    let records = scope(household_id, &context.membership)
+    let updated_since = pagination
+        .updated_since
+        .filter(|value| !value.is_empty())
+        .map(|value| DateTime::parse_from_rfc3339(&value).map_err(|_| ApiError::invalid_filter()))
+        .transpose()?
+        .map(|value| value.naive_utc());
+    let mut query = scope(household_id, &context.membership);
+    if let Some(updated_since) = updated_since {
+        query = query.filter(medication::Column::UpdatedAt.gte(updated_since));
+    }
+    let total = query.clone().count(&db).await.map_err(database_error)?;
+    let records = query
         .order_by_asc(medication::Column::Id)
         .limit(per_page as u64)
         .offset(((page - 1) * per_page) as u64)
@@ -329,7 +345,7 @@ async fn show(
     State(state): State<AppState>,
     Path((household_id, id)): Path<(i64, String)>,
     headers: HeaderMap,
-) -> Result<Json<Value>, ApiError> {
+) -> Result<Response, ApiError> {
     let db = state.db.begin().await.map_err(database_error)?;
     let context = authenticate(&db, &headers, household_id).await?;
     let query = scope(household_id, &context.membership);
@@ -343,8 +359,43 @@ async fn show(
         .map_err(database_error)?
         .ok_or_else(ApiError::not_found)?;
     let data = serialize_many(&db, vec![record]).await?.remove(0);
+    let body = json!({"data": data});
+    let etag = representation_etag(&body);
+    if if_none_match_matches(&headers, &etag) {
+        db.commit().await.map_err(database_error)?;
+        let mut response = StatusCode::NOT_MODIFIED.into_response();
+        response.headers_mut().insert(
+            header::ETAG,
+            HeaderValue::from_str(&etag).map_err(|_| ApiError::internal())?,
+        );
+        return Ok(response);
+    }
     db.commit().await.map_err(database_error)?;
-    Ok(Json(json!({"data": data})))
+    let mut response = Json(body).into_response();
+    response.headers_mut().insert(
+        header::ETAG,
+        HeaderValue::from_str(&etag).map_err(|_| ApiError::internal())?,
+    );
+    Ok(response)
+}
+
+fn if_none_match_matches(headers: &HeaderMap, etag: &str) -> bool {
+    headers
+        .get(header::IF_NONE_MATCH)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| {
+            value.split(',').any(|tag| {
+                let tag = tag.trim();
+                tag == "*" || tag.strip_prefix("W/").unwrap_or(tag) == etag
+            })
+        })
+}
+
+fn representation_etag(body: &Value) -> String {
+    format!(
+        "\"{:x}\"",
+        Sha256::digest(serde_json::to_vec(body).expect("JSON value must serialize"))
+    )
 }
 
 async fn serialize_many(
@@ -410,7 +461,27 @@ fn decimal_string(value: String) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::decimal_string;
+    use super::{decimal_string, representation_etag};
+    use serde_json::json;
+
+    #[test]
+    fn etag_changes_with_forecast_and_location_in_the_response() {
+        let initial =
+            json!({"data": {"id": 1, "location_portable_id": "A", "days_until_low_stock": null}});
+        let changed_forecast =
+            json!({"data": {"id": 1, "location_portable_id": "A", "days_until_low_stock": 3}});
+        let changed_location =
+            json!({"data": {"id": 1, "location_portable_id": "B", "days_until_low_stock": null}});
+        assert_ne!(
+            representation_etag(&initial),
+            representation_etag(&changed_forecast)
+        );
+        assert_ne!(
+            representation_etag(&initial),
+            representation_etag(&changed_location)
+        );
+        assert_eq!(representation_etag(&initial), representation_etag(&initial));
+    }
 
     #[test]
     fn decimal_strings_keep_integer_digits_and_one_fraction_digit() {
