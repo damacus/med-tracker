@@ -36,31 +36,28 @@ set -a run_dirs (cat $test_dir/latest-run)
 test $actual_status -eq 1
 or begin; cat $test_dir/output >&2; echo "Expected target failure to survive cleanup; got $actual_status" >&2; exit 1; end
 
-set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports portability profile sync replay oauth devices envelopes
+set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports fhir lookup portability profile sync replay oauth devices mcp envelopes
 set -l trace (cat $test_dir/trace)
 set -l runs (string match 'run:*' -- $trace)
-test (count $trace) -eq (math 4 x (count $targets)); and test "$trace[-1]" = cleanup
-or begin; cat $test_dir/trace >&2; echo 'Full runner did not refresh each restarted target' >&2; exit 1; end
 test (count $runs) -eq (math (count $targets) + 1)
 or begin; cat $test_dir/trace >&2; echo 'Full runner did not run all targets' >&2; exit 1; end
-test "$trace[1]" = port; and test "$trace[2]" = run:lib:http://127.0.0.1:43017
-or begin; cat $test_dir/trace >&2; echo 'Full runner skipped library tests' >&2; exit 1; end
+set -l expected_trace port run:lib:http://127.0.0.1:43017 run:auth:http://127.0.0.1:43017
 for index in (seq (count $targets))
     set -l run_index (math $index + 1)
     set -l expected_run "run:$targets[$index]:http://127.0.0.1:"(math 43016 + $index)
     test "$runs[$run_index]" = "$expected_run"
     or begin; cat $test_dir/trace >&2; echo "Wrong target at index $index" >&2; exit 1; end
-    set -l trace_index (math 4 \* $index - 1)
-    test "$trace[$trace_index]" = "$expected_run"
-    or begin; cat $test_dir/trace >&2; echo "Runner did not isolate $targets[$index]" >&2; exit 1; end
     if test $index -lt (count $targets)
-        set -l restart_index (math $trace_index + 1)
-        set -l port_index (math $trace_index + 2)
-        set -l ready_index (math $trace_index + 3)
-        test "$trace[$restart_index]" = restart; and test "$trace[$port_index]" = port; and test "$trace[$ready_index]" = ready
-        or begin; cat $test_dir/trace >&2; echo "No ready refreshed server after $targets[$index]" >&2; exit 1; end
+        set -l next_index (math $index + 1)
+        if test "$targets[$index]" != lookup; and test "$targets[$next_index]" != lookup
+            set -a expected_trace restart
+        end
+        set -a expected_trace port ready "run:$targets[$next_index]:http://127.0.0.1:"(math 43016 + $next_index)
     end
 end
+set -a expected_trace cleanup
+test (string join '\n' -- $trace) = (string join '\n' -- $expected_trace)
+or begin; cat $test_dir/trace >&2; echo 'Full runner did not isolate and refresh every target' >&2; exit 1; end
 string match -q 'run:envelopes:*' -- $runs[-1]
 or begin; echo 'A failed target skipped a later target' >&2; exit 1; end
 rg -q 'schedules' $test_dir/output
