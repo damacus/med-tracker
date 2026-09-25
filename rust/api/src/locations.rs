@@ -1,6 +1,8 @@
-use crate::entities::person;
+use crate::entities::{dosage, grant, household, medication, medication_take, person};
 use crate::medication_management::{error_response, finish, request_context};
-use crate::read_entities::{location_membership, stock_location};
+use crate::read_entities::{
+    dose_occurrence, location_membership, pause_period, person_medication, schedule, stock_location,
+};
 use crate::read_resources::location_value;
 use crate::{database_error, representation_etag, ApiError, AppState, AuthContext};
 use axum::extract::{rejection::JsonRejection, Path, State};
@@ -9,13 +11,13 @@ use axum::response::Response;
 use axum::Json;
 use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, QuerySelect, Set,
-    TransactionTrait,
+    ActiveModelTrait, ColumnTrait, Condition, DatabaseTransaction, DbErr, EntityTrait, QueryFilter,
+    QueryOrder, QuerySelect, Set, TransactionTrait,
 };
 use serde_json::{json, Value};
 
-fn owner(context: &AuthContext) -> bool {
-    context.membership.role == "owner"
+fn manager(context: &AuthContext) -> bool {
+    matches!(context.membership.role.as_str(), "owner" | "administrator")
 }
 
 async fn failure(
@@ -61,6 +63,27 @@ async fn validation(
         Some(json!({"location": ["is invalid"]})),
     )
     .await
+}
+
+async fn person_manage_access(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    person_id: i64,
+) -> Result<Option<bool>, ApiError> {
+    let grant = grant::Entity::find()
+        .filter(grant::Column::HouseholdId.eq(context.membership.household_id))
+        .filter(grant::Column::HouseholdMembershipId.eq(context.membership.id))
+        .filter(grant::Column::PersonId.eq(person_id))
+        .filter(grant::Column::RevokedAt.is_null())
+        .filter(
+            Condition::any()
+                .add(grant::Column::ExpiresAt.is_null())
+                .add(grant::Column::ExpiresAt.gt(Utc::now().naive_utc())),
+        )
+        .one(db)
+        .await
+        .map_err(database_error)?;
+    Ok(grant.map(|grant| grant.access_level == "manage"))
 }
 
 fn valid_identifier(value: &str) -> bool {
@@ -137,7 +160,7 @@ fn representation(record: stock_location::Model) -> (Value, String) {
     (body, etag)
 }
 
-async fn owner_context(
+async fn manager_context(
     state: &AppState,
     headers: &HeaderMap,
     household_id: i64,
@@ -145,7 +168,7 @@ async fn owner_context(
     action: &str,
 ) -> Result<Result<(DatabaseTransaction, AuthContext), Response>, ApiError> {
     let (db, context) = request_context(state, headers, household_id).await?;
-    if owner(&context) {
+    if manager(&context) {
         Ok(Ok((db, context)))
     } else {
         let response = failure(
@@ -169,7 +192,7 @@ pub(super) async fn create(
     payload: Result<Json<Value>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     let (db, context) =
-        match owner_context(&state, &headers, household_id, "POST", "create").await? {
+        match manager_context(&state, &headers, household_id, "POST", "create").await? {
             Ok(value) => value,
             Err(response) => return Ok(response),
         };
@@ -251,7 +274,7 @@ async fn update(
     method: &str,
 ) -> Result<Response, ApiError> {
     let (db, context) =
-        match owner_context(&state, &headers, household_id, method, "update").await? {
+        match manager_context(&state, &headers, household_id, method, "update").await? {
             Ok(value) => value,
             Err(response) => return Ok(response),
         };
@@ -405,13 +428,133 @@ pub(super) async fn put(
     update(state, household_id, id, headers, payload, "PUT").await
 }
 
+async fn delete_dependents(
+    db: &DatabaseTransaction,
+    record: &stock_location::Model,
+) -> Result<bool, DbErr> {
+    let medications = medication::Entity::find()
+        .filter(medication::Column::HouseholdId.eq(record.household_id))
+        .filter(medication::Column::LocationId.eq(record.id))
+        .order_by_asc(medication::Column::Id)
+        .lock_exclusive()
+        .all(db)
+        .await?;
+    let medication_ids: Vec<i64> = medications.iter().map(|medication| medication.id).collect();
+    let schedules = if medication_ids.is_empty() {
+        Vec::new()
+    } else {
+        schedule::Entity::find()
+            .filter(schedule::Column::MedicationId.is_in(medication_ids.clone()))
+            .order_by_asc(schedule::Column::Id)
+            .lock_exclusive()
+            .all(db)
+            .await?
+    };
+    let assignments = if medication_ids.is_empty() {
+        Vec::new()
+    } else {
+        person_medication::Entity::find()
+            .filter(person_medication::Column::MedicationId.is_in(medication_ids.clone()))
+            .order_by_asc(person_medication::Column::Id)
+            .lock_exclusive()
+            .all(db)
+            .await?
+    };
+    let schedule_ids: Vec<i64> = schedules.iter().map(|schedule| schedule.id).collect();
+    let assignment_ids: Vec<i64> = assignments.iter().map(|assignment| assignment.id).collect();
+
+    let mut takes =
+        Condition::any().add(medication_take::Column::TakenFromLocationId.eq(record.id));
+    if !medication_ids.is_empty() {
+        takes =
+            takes.add(medication_take::Column::TakenFromMedicationId.is_in(medication_ids.clone()));
+    }
+    if !schedule_ids.is_empty() {
+        takes = takes.add(medication_take::Column::ScheduleId.is_in(schedule_ids.clone()));
+    }
+    if !assignment_ids.is_empty() {
+        takes =
+            takes.add(medication_take::Column::PersonMedicationId.is_in(assignment_ids.clone()));
+    }
+    if medication_take::Entity::find()
+        .filter(takes)
+        .one(db)
+        .await?
+        .is_some()
+    {
+        return Ok(true);
+    }
+
+    let mut sources = Condition::any();
+    if !schedule_ids.is_empty() {
+        sources = sources.add(dose_occurrence::Column::ScheduleId.is_in(schedule_ids.clone()));
+    }
+    if !assignment_ids.is_empty() {
+        sources =
+            sources.add(dose_occurrence::Column::PersonMedicationId.is_in(assignment_ids.clone()));
+    }
+    if !schedule_ids.is_empty() || !assignment_ids.is_empty() {
+        if dose_occurrence::Entity::find()
+            .filter(sources)
+            .one(db)
+            .await?
+            .is_some()
+        {
+            return Ok(true);
+        }
+        let mut pauses = Condition::any();
+        if !schedule_ids.is_empty() {
+            pauses = pauses.add(pause_period::Column::ScheduleId.is_in(schedule_ids.clone()));
+        }
+        if !assignment_ids.is_empty() {
+            pauses =
+                pauses.add(pause_period::Column::PersonMedicationId.is_in(assignment_ids.clone()));
+        }
+        if pause_period::Entity::find()
+            .filter(pauses)
+            .one(db)
+            .await?
+            .is_some()
+        {
+            return Ok(true);
+        }
+    }
+
+    location_membership::Entity::delete_many()
+        .filter(location_membership::Column::LocationId.eq(record.id))
+        .exec(db)
+        .await?;
+    if !medication_ids.is_empty() {
+        schedule::Entity::delete_many()
+            .filter(schedule::Column::MedicationId.is_in(medication_ids.clone()))
+            .exec(db)
+            .await?;
+        person_medication::Entity::delete_many()
+            .filter(person_medication::Column::MedicationId.is_in(medication_ids.clone()))
+            .exec(db)
+            .await?;
+        dosage::Entity::delete_many()
+            .filter(dosage::Column::MedicationId.is_in(medication_ids.clone()))
+            .exec(db)
+            .await?;
+        medication::Entity::delete_many()
+            .filter(medication::Column::Id.is_in(medication_ids))
+            .exec(db)
+            .await?;
+    }
+    stock_location::Entity::delete_by_id(record.id)
+        .exec(db)
+        .await?;
+    Ok(false)
+}
+
 pub(super) async fn delete(
     State(state): State<AppState>,
     Path((household_id, id)): Path<(i64, String)>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
     let (db, context) =
-        match owner_context(&state, &headers, household_id, "DELETE", "destroy").await? {
+        match manager_context(&state, &headers, household_id, "DELETE", "destroy").await? {
             Ok(value) => value,
             Err(response) => return Ok(response),
         };
@@ -427,6 +570,12 @@ pub(super) async fn delete(
         )
         .await;
     }
+    household::Entity::find_by_id(household_id)
+        .lock_exclusive()
+        .one(&db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(ApiError::not_found)?;
     let Some(record) = location(&db, household_id, &id, true).await? else {
         return failure(
             db,
@@ -480,11 +629,21 @@ pub(super) async fn delete(
         .await;
     }
     let savepoint = db.begin().await.map_err(database_error)?;
-    match stock_location::Entity::delete_by_id(record.id)
-        .exec(&savepoint)
-        .await
-    {
-        Ok(_) => savepoint.commit().await.map_err(database_error)?,
+    match delete_dependents(&savepoint, &record).await {
+        Ok(false) => savepoint.commit().await.map_err(database_error)?,
+        Ok(true) => {
+            savepoint.rollback().await.map_err(database_error)?;
+            return failure(
+                db,
+                &context,
+                "DELETE",
+                "destroy",
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "validation_failed",
+                "Location cannot be deleted while administration history exists",
+            )
+            .await;
+        }
         Err(error)
             if matches!(
                 error.sql_err(),
@@ -497,9 +656,9 @@ pub(super) async fn delete(
                 &context,
                 "DELETE",
                 "destroy",
-                StatusCode::CONFLICT,
-                "conflict",
-                "Location is still in use",
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "validation_failed",
+                "Location cannot be deleted while retained records exist",
             )
             .await;
         }
@@ -542,7 +701,7 @@ pub(super) async fn create_membership(
     payload: Result<Json<Value>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     let (db, context) =
-        match owner_context(&state, &headers, household_id, "POST", "create_membership").await? {
+        match manager_context(&state, &headers, household_id, "POST", "create_membership").await? {
             Ok(value) => value,
             Err(response) => return Ok(response),
         };
@@ -618,6 +777,33 @@ pub(super) async fn create_membership(
         )
         .await;
     };
+    match person_manage_access(&db, &context, person.id).await? {
+        None => {
+            return failure(
+                db,
+                &context,
+                "POST",
+                "create_membership",
+                StatusCode::NOT_FOUND,
+                "not_found",
+                "Record not found",
+            )
+            .await;
+        }
+        Some(false) => {
+            return failure(
+                db,
+                &context,
+                "POST",
+                "create_membership",
+                StatusCode::FORBIDDEN,
+                "forbidden",
+                "You are not authorized to perform this action.",
+            )
+            .await;
+        }
+        Some(true) => {}
+    }
     let existing = location_membership::Entity::find()
         .filter(location_membership::Column::LocationId.eq(location.id))
         .filter(location_membership::Column::PersonId.eq(person.id))
@@ -661,7 +847,7 @@ pub(super) async fn delete_membership(
     Path((household_id, location_id, id)): Path<(i64, String, String)>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
-    let (db, context) = match owner_context(
+    let (db, context) = match manager_context(
         &state,
         &headers,
         household_id,
@@ -716,6 +902,33 @@ pub(super) async fn delete_membership(
         )
         .await;
     };
+    match person_manage_access(&db, &context, membership.person_id).await? {
+        None => {
+            return failure(
+                db,
+                &context,
+                "DELETE",
+                "destroy_membership",
+                StatusCode::NOT_FOUND,
+                "not_found",
+                "Record not found",
+            )
+            .await;
+        }
+        Some(false) => {
+            return failure(
+                db,
+                &context,
+                "DELETE",
+                "destroy_membership",
+                StatusCode::FORBIDDEN,
+                "forbidden",
+                "You are not authorized to perform this action.",
+            )
+            .await;
+        }
+        Some(true) => {}
+    }
     let active: location_membership::ActiveModel = membership.into();
     active.delete(&db).await.map_err(database_error)?;
     finish(

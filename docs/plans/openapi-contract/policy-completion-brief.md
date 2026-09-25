@@ -1,0 +1,11 @@
+# Location policy completion brief
+
+Approved source change: document existing Rails semantics in `docs/api/openapi.v1.yaml`, then derive new contract tests from that amended document before changing Rust handlers. The eight location operations remain the scope.
+
+Current Rails policy: active members read locations in their household (`app/policies/location_policy.rb`). Owners and administrators create, update and delete locations and memberships (`app/policies/concerns/policy_helpers.rb`). Membership changes also require `PersonPolicy#update?`, which needs an active same-household manage grant; see `app/controllers/api/v1/location_memberships_controller.rb`. API requests do not populate the browser-only support session (`app/controllers/api/v1/base_controller.rb`), so no platform-support bearer exception is added. Authentication returns 401 for absent or invalid credentials, 403 for a denied household, and 404 for a resource outside the authorized scope.
+
+Location deletion requires a current `If-Match` version. `app/services/medication_administration_history.rb` blocks direct or indirect medication takes and saved dose outcomes; retained medication pause periods also block deletion through associated schedules/assignments. Otherwise Rails association deletion removes the location and its memberships, medications, dosage options, schedules and assignments. Rust must do this in one transaction and coordinate locks with history writers.
+
+`config/initializers/rack_attack.rb` defines a general 300 requests per five minutes per IP plus narrower operation limits. Health checks and production loopback are exempt. The API 429 body is the strict `RateLimitErrorEnvelope`, with `Retry-After` and existing rate-limit headers. The Rust server has no established trusted proxy list; use the socket peer unless an explicit trusted-proxy configuration is supplied. Never trust forwarded IP headers unconditionally.
+
+Test sequence: update OpenAPI policy/retention/rate text; add independent authorization, retention/cascade, malformed/error and rate-limit contract tests; run an isolated RED; implement minimum SeaORM-backed fixes; run consolidated isolated GREEN and report per-case coverage. No Rails or UI implementation changes.

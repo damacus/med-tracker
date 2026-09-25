@@ -6,6 +6,7 @@ mod locations;
 mod medication_forecast;
 mod medication_management;
 mod oauth;
+mod rate_limit;
 mod read_entities;
 mod read_resources;
 mod stock_removals;
@@ -33,12 +34,16 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::net::{IpAddr, SocketAddr};
+use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Clone)]
 pub struct AppState {
     db: DatabaseConnection,
     oauth: oauth::OAuthState,
+    rate_limiter: Arc<rate_limit::RateLimiter>,
+    trusted_proxy_ips: Arc<std::collections::HashSet<IpAddr>>,
 }
 
 pub async fn connect(url: &str) -> Result<AppState, sea_orm::DbErr> {
@@ -66,15 +71,67 @@ pub async fn connect(url: &str) -> Result<AppState, sea_orm::DbErr> {
     }
     transaction.rollback().await?;
     let oauth = oauth::OAuthState::from_env().map_err(sea_orm::DbErr::Custom)?;
-    Ok(AppState { db, oauth })
+    Ok(AppState {
+        db,
+        oauth,
+        rate_limiter: Arc::new(rate_limit::RateLimiter::default()),
+        trusted_proxy_ips: Arc::new(rate_limit::trusted_proxy_ips()),
+    })
 }
 
 pub fn router(state: AppState) -> Router {
+    let rate_state = state.clone();
     Router::new()
         .route("/up", get(|| async { StatusCode::OK }))
         .merge(oauth::routes().with_state(state.clone()))
         .merge(web_pages::routes().with_state(state.clone()))
         .merge(api_router(state))
+        .layer(middleware::from_fn_with_state(rate_state, rate_middleware))
+}
+
+async fn rate_middleware(State(state): State<AppState>, request: Request, next: Next) -> Response {
+    let path = request.uri().path();
+    if path == "/up" || path == "/health" {
+        return next.run(request).await;
+    }
+    let Some(peer) = request
+        .extensions()
+        .get::<axum::extract::connect_info::ConnectInfo<SocketAddr>>()
+        .map(|connection| connection.0.ip())
+    else {
+        return next.run(request).await;
+    };
+    if rate_limit::direct_loopback(peer, &state.trusted_proxy_ips) {
+        return next.run(request).await;
+    }
+    let ip = rate_limit::client_ip(peer, request.headers(), &state.trusted_proxy_ips);
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    if let Some(rejection) = state.rate_limiter.check(ip, request.method(), path, now) {
+        let mut response = (
+            StatusCode::TOO_MANY_REQUESTS,
+            Json(json!({"error": {
+                "code": "rate_limited",
+                "message": format!("Rate limit exceeded. Retry in {} seconds.", rejection.retry_after)
+            }})),
+        )
+            .into_response();
+        for (name, value) in [
+            ("retry-after", rejection.retry_after),
+            ("ratelimit-limit", u64::from(rejection.limit)),
+            ("ratelimit-remaining", 0),
+            ("ratelimit-reset", rejection.reset_at),
+        ] {
+            response.headers_mut().insert(
+                name,
+                HeaderValue::from_str(&value.to_string()).expect("numeric rate header"),
+            );
+        }
+        return response;
+    }
+    next.run(request).await
 }
 
 fn api_router(state: AppState) -> Router {
@@ -416,14 +473,6 @@ async fn authenticate(
     tenant_setting(db, "med_tracker.current_account_id", account.id)
         .await
         .map_err(database_error)?;
-    let household = household::Entity::find_by_id(household_id)
-        .one(db)
-        .await
-        .map_err(database_error)?
-        .ok_or_else(ApiError::not_found)?;
-    if household.status != "active" || household.lifecycle_state != "active" {
-        return Err(ApiError::forbidden());
-    }
     let membership_id = session
         .household_membership_id
         .ok_or_else(ApiError::unauthorized)?;
@@ -439,15 +488,6 @@ async fn authenticate(
     {
         return Err(ApiError::unauthorized());
     }
-    if membership.household_id != household_id {
-        return Err(ApiError::forbidden());
-    }
-    tenant_setting(db, "med_tracker.current_household_id", household_id)
-        .await
-        .map_err(database_error)?;
-    tenant_setting(db, "med_tracker.current_membership_id", membership.id)
-        .await
-        .map_err(database_error)?;
     let person = person::Entity::find()
         .filter(person::Column::AccountId.eq(account.id))
         .order_by_asc(person::Column::Id)
@@ -464,6 +504,23 @@ async fn authenticate(
     if !user.active {
         return Err(ApiError::unauthorized());
     }
+    let household = household::Entity::find_by_id(household_id)
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(ApiError::not_found)?;
+    if household.status != "active" || household.lifecycle_state != "active" {
+        return Err(ApiError::forbidden());
+    }
+    if membership.household_id != household_id {
+        return Err(ApiError::forbidden());
+    }
+    tenant_setting(db, "med_tracker.current_household_id", household_id)
+        .await
+        .map_err(database_error)?;
+    tenant_setting(db, "med_tracker.current_membership_id", membership.id)
+        .await
+        .map_err(database_error)?;
     Ok(AuthContext {
         account_id: account.id,
         user_id: user.id,

@@ -60,6 +60,7 @@ pub struct Fixture {
     pub sync_period_assignment_portable_id: String,
     pub platform_admin_email: String,
     pub platform_admin_account_id: i64,
+    pub platform_access_token: String,
     pub platform_target_email: String,
     pub platform_target_user_id: i64,
     pub platform_promote_membership_id: i64,
@@ -760,6 +761,16 @@ impl Target {
             .expect("target must respond")
     }
 
+    pub fn patch_raw_json_if_match(&self, path: &str, token: &str, body: &str, etag: &str) -> Response {
+        self.require_local_write();
+        self.authorize(self.client.patch(self.url(path)), Some(token))
+            .header("If-Match", etag)
+            .header("Content-Type", "application/json")
+            .body(body.to_owned())
+            .send()
+            .expect("target must respond")
+    }
+
     pub fn put_json_if_match(
         &self,
         path: &str,
@@ -771,6 +782,16 @@ impl Target {
         self.authorize(self.client.put(self.url(path)), Some(token))
             .header("If-Match", etag)
             .json(body)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn put_raw_json_if_match(&self, path: &str, token: &str, body: &str, etag: &str) -> Response {
+        self.require_local_write();
+        self.authorize(self.client.put(self.url(path)), Some(token))
+            .header("If-Match", etag)
+            .header("Content-Type", "application/json")
+            .body(body.to_owned())
             .send()
             .expect("target must respond")
     }

@@ -1,6 +1,6 @@
 {
   "spec": "docs/api/openapi.v1.yaml",
-  "sha256": "87714efed85bbad206d1b3361fb5975f3b11f7ce7e58ac4e4f8c22e4a77c41c7",
+  "sha256": "904c7280e6cdc60007c330f9b7a2c93845951bb2a03ee6ce01362da0ebf9122d",
   "server_base": "/api/v1",
   "operation_count": 118,
   "unique_paths": 77,

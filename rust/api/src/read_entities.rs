@@ -109,3 +109,9 @@ read_entity!(pause_period, "medication_pause_periods", {
     created_at: DateTime,
     updated_at: DateTime,
 });
+
+read_entity!(dose_occurrence, "medication_dose_occurrences", {
+    household_id: i64,
+    schedule_id: Option<i64>,
+    person_medication_id: Option<i64>,
+});
