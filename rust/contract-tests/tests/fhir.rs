@@ -214,7 +214,11 @@ fn search_filters_and_pagination_are_observable_without_order_assumptions() {
                 has_id(&rows, id),
                 "{kind} filter must include the fixture resource"
             );
-            if kind == "MedicationRequest" || kind == "MedicationStatement" {
+            if kind == "Patient" {
+                assert!(rows.iter().all(|row| row["name"][0]["text"]
+                    .as_str()
+                    .is_some_and(|name| name.contains("Contract managed"))));
+            } else if kind == "MedicationRequest" || kind == "MedicationStatement" {
                 assert!(rows.iter().all(|row| {
                     row["subject"]["reference"] == format!("Patient/{person}")
                         && row["medicationReference"]["reference"]
@@ -282,10 +286,9 @@ fn search_filters_and_pagination_are_observable_without_order_assumptions() {
         .all(|row| row["form"]["text"] == "Analgesic"));
     let medication_by_code = search(&target, &fixture, "Medication", "code=123456");
     assert!(has_id(&medication_by_code, medication));
-    assert!(!has_id(
-        &medication_by_code,
-        &fixture.hidden_medication_portable_id
-    ));
+    assert!(medication_by_code.iter().all(|row| row["code"]["coding"]
+        .as_array()
+        .is_some_and(|codes| codes.iter().any(|code| code["code"] == "123456"))));
     let administration = resource(
         &target,
         &fixture,
