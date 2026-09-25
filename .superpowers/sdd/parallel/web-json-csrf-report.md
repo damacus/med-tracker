@@ -17,3 +17,11 @@ No Rails application code changed.
 - Green with the overlay: `task contract:web-json-actions-rails` 11/11 (one intentionally ignored feature-disabled test); `task contract:web-json-actions-disabled-rails` 1/1.
 - `task contract:web-json-actions-rust` 0/11 against the absent target at `127.0.0.1:39999`, all failing on connection before assertions. All isolated Docker projects cleaned.
 - `task contract:fmt`, `task contract:clippy`, Fish syntax, the runner isolation mock, and `git diff --check` passed.
+
+## Independent review
+
+No findings.
+
+The added token helper obtains the login form token for authentication and then reads the authenticated dashboard token, using the same cookie-backed `Target` session for subsequent requests. The negative probes omit or corrupt only the CSRF header and assert JSON `401`; deletion probes compare the household people snapshot through a separate authorized `Target` before and after rejection. The runner scopes the CSRF overlay and AI adapter to web JSON actions, clears adapter variables between ordinary targets, and explicitly runs the ignored feature-disabled probe with the paid feature disabled. Rails test config normally disables forgery protection, so the test-only `protect_against_forgery?` overlay is required to exercise the production controller's invalid-token handler (`app/controllers/application_controller.rb`, unchanged). The `c83b93d9..709d05b` product-source diff contains no Rails application changes.
+
+Review was source and diff inspection only; no Docker or contract tests were rerun.
