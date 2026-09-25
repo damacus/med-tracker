@@ -44,11 +44,19 @@ active, verified through the goal tool after the secure-entry checkpoint.
 The full objective remains open; completing a bounded workflow does not
 complete the cutover goal.
 
-The secure-entry tranche builds on `0b6fa2a8`: medication reads, forecasts,
-mobile OAuth issuance and bearer acceptance, household selection, read audits
-and isolated Compose HTTP/browser tests are implemented. The focused run
-passed 30 HTTP and five browser checks. Standalone web sign-in, full
-authentication parity, write workflows, browser/PWA parity, migrated audit
-ledger proof and representative performance evidence remain incomplete.
-See [ledger.md](ledger.md) for evidence and [journey-dose-brief.md](journey-dose-brief.md)
-for the next bounded workflow.
+Accepted checkpoints now include secure entry, direct dose recording with
+atomic stock updates and replay protection (`39904af0`), and standalone web
+sessions using the shared API (`d86c613a`). The session checkpoint passed
+eight focused HTTP cases, 36 existing HTTP cases and seven login browser
+cases, with independent review.
+
+The next bounded delivery is the complete medication browser journey.
+Its shared person, schedule and assignment read tests pass four cases against
+Rails and fail on Rust's missing routes. Implementation of those routes and
+preparation of the medication UI proceed in separate file ownership lanes.
+The actual Rust medication browser failure must be recorded before UI
+implementation. Known Rails Escape-focus failure remains a required Rust fix.
+
+Full authentication, management, browser/PWA and platform parity, migrated
+audit ledger proof and representative performance evidence remain incomplete.
+See [ledger.md](ledger.md) for current acceptance evidence.
