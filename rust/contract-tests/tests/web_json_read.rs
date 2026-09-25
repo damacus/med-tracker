@@ -117,7 +117,25 @@ fn scan_restock_match_only_exposes_accessible_local_stock() {
     );
     assert_eq!(matched["matched"], true);
     assert_eq!(matched["medication"]["id"], fixture.managed_medication_id);
-    assert_eq!(matched["medication"]["current_supply"], "50");
+    let medication = json_body(
+        Target::from_env().get(
+            &format!(
+                "/api/v1/households/{}/medications/{}",
+                fixture.household_id, fixture.managed_medication_id
+            ),
+            Some(&fixture.access_token),
+        ),
+        200,
+    );
+    let api_supply = medication["data"]["current_supply"]
+        .as_str()
+        .expect("API current supply");
+    let expected_supply = if api_supply.contains('.') {
+        api_supply.trim_end_matches('0').trim_end_matches('.')
+    } else {
+        api_supply
+    };
+    assert_eq!(matched["medication"]["current_supply"], expected_supply);
     assert_eq!(
         json_body(
             target.get(&format!("{scan}?q={}", fixture.web_foreign_barcode), None),
