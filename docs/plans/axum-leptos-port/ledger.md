@@ -137,6 +137,20 @@ above. The 12 ignored
 cases remain classified Rails defects or owned gaps, not green parity proof.
 General browser-test writing waits for Task 7 reconciliation and handoff.
 
+API Task 7 gap closures: the health-history report contract now compares its
+complete eligible chronology with the paginated authorised health-event list
+and independently requires four seeded episodes (`adfabfcb`, `f83624c8`,
+`976ab37c`; independent review clean). A first combined run exposed health
+events created by earlier contract groups; the corrected isolated branch
+passed focused reports 7/7 and its full Rails-backed corpus 228/0/12 across
+31 groups. The direct-write-purpose Active Storage disk-token PUT now has an
+HTTP 404 and unchanged-blob read-back contract (`ec278e69`; independent
+review clean), with focused Rails uploads 5 passed, 0 failed, 1 existing
+ignored representation case. The final combined Rails-backed corpus passed
+all 31 target groups on this branch, including the upload and report tests;
+the 12 existing ignored cases remain. These additions do not close Task 7 or
+turn ignored Rails defects into passing parity evidence.
+
 Browser/PWA read-only inventory: first journeys are session boundaries,
 parent medication assignment, and offline dose queue/replay. Source inspection
 found the service worker caches `/offline` while the authenticated shell is
