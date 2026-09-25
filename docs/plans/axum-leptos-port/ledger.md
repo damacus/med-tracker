@@ -49,8 +49,9 @@ newly named OIDC provider button until the full authentication browser suite.
 - Tranche 1: in progress. Reviewed API contract slices through web JSON reads,
   web JSON actions, cross-account session denial, platform/web profile CSRF,
   web JSON action CSRF, and push delivery are integrated. The full isolated
-  Rails contract corpus passed with 227 tests, 0 failures, and 13 ignored
-  cases after the FHIR fixture and shared-stock expectations were corrected.
+  Rails contract corpus passed with 228 tests, 0 failures, and 12 ignored
+  cases after the FHIR fixture, shared-stock expectation, and sync pause
+  precondition were corrected.
   The feature-disabled AI case also passed in its separate target. Known
   Rails privacy, clinical-input, and image-representation defects remain
   explicit gaps.
@@ -103,4 +104,7 @@ dependent records are removed; tombstones use current grants. The final
 isolated Rails suite passed 6,102/0, RuboCop passed 1,892 files with no
 offenses, docs build passed, and the integrated Rails-backed Rust privacy
 contract passed 1/1. The Rust API remains absent, so Rust server parity and
-the memory target are not yet verified.
+the memory target are not yet verified. The first combined contract run exposed
+a reused pause period in the new test's shared fixture; after the test resumed
+both schedules before its cursor, the complete integrated corpus passed
+228/0/12 across 31 groups.

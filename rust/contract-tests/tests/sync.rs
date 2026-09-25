@@ -1191,6 +1191,30 @@ fn change_feed_projects_the_current_saved_dose_outcome() {
 fn change_feed_hides_ungranted_person_events_and_tombstones() {
     let target = Target::from_env();
     let fixture = fixture();
+    let managed_resume = format!(
+        "{}/{}/resume",
+        snapshot_path(&fixture, "schedules"),
+        fixture.managed_schedule_portable_id
+    );
+    let hidden_resume = format!(
+        "{}/{}/resume",
+        snapshot_path(&fixture, "schedules"),
+        fixture.hidden_schedule_portable_id
+    );
+    assert_eq!(
+        target
+            .patch_json(&managed_resume, &fixture.access_token, &json!({}))
+            .status()
+            .as_u16(),
+        200
+    );
+    assert_eq!(
+        target
+            .patch_json(&hidden_resume, &fixture.feed_access_token, &json!({}))
+            .status()
+            .as_u16(),
+        200
+    );
     let snapshot = body(target.get(
         &snapshot_path(&fixture, "sync/snapshot"),
         Some(&fixture.view_access_token),
