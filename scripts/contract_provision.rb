@@ -45,7 +45,7 @@ end
 fixture = ActiveRecord::Base.transaction do
   account, household, user = create_household(nonce, 'primary')
   platform_account, platform_household, = create_household(nonce, 'platform')
-  PlatformAdmin.create!(account: platform_account)
+  platform_admin = PlatformAdmin.create!(account: platform_account)
   platform_target_membership, = create_admin_member(platform_household, nonce, 'platform-target')
   platform_promote_membership, = create_admin_member(platform_household, nonce, 'platform-promote')
   platform_denied_membership, = create_admin_member(platform_household, nonce, 'platform-denied')
@@ -54,6 +54,11 @@ fixture = ActiveRecord::Base.transaction do
   _platform_support_api_session, platform_support_audit_token, = ApiSession.issue_for(
     account: platform_support_account, household_membership: platform_support_membership,
     device_name: 'contract-platform-audit'
+  )
+  platform_expired_support_session = SupportAccessSession.create!(
+    platform_admin: platform_admin, household: platform_support_household,
+    reason: 'Contract naturally expired support access',
+    starts_at: 1.hour.ago, expires_at: 30.minutes.ago
   )
   foreign_account, foreign_household, = create_household(nonce, 'foreign')
   web_device_account, web_device_household, = create_household(nonce, 'web-device')
@@ -1018,6 +1023,7 @@ fixture = ActiveRecord::Base.transaction do
     access_token: access_token,
     account_id: account.id,
     platform_admin_email: platform_account.email,
+    platform_admin_account_id: platform_account.id,
     platform_target_email: platform_target_membership.account.email,
     platform_target_user_id: platform_target_membership.person.user.id,
     platform_promote_membership_id: platform_promote_membership.id,
@@ -1029,6 +1035,7 @@ fixture = ActiveRecord::Base.transaction do
     platform_support_household_id: platform_support_household.id,
     platform_support_household_slug: platform_support_household.slug,
     platform_support_audit_token: platform_support_audit_token,
+    platform_expired_support_session_id: platform_expired_support_session.id,
     platform_unrelated_household_slug: foreign_household.slug,
     primary_email: account.email,
     user_id: user.id,
