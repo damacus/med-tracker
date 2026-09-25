@@ -84,8 +84,7 @@ fixture = ActiveRecord::Base.transaction do
                              location: portable_source_location)
   portable_source_medication = Medication.create!(household: portable_source_household,
                                                   location: portable_source_location,
-                                                  name: "Contract portable medicine #{nonce}", dose_amount: '2',
-                                                  dose_unit: 'ml', current_supply: '20')
+                                                  name: "Contract portable medicine #{nonce}", current_supply: '20')
   portable_source_dosage = portable_source_medication.dosage_records.create!(amount: '2', unit: 'ml',
                                                                               frequency: 'Daily',
                                                                               default_max_daily_doses: 4,
@@ -94,10 +93,20 @@ fixture = ActiveRecord::Base.transaction do
   portable_source_schedule = Schedule.create!(household: portable_source_household,
                                               person: portable_source_person, medication: portable_source_medication,
                                               source_dosage_option: portable_source_dosage,
-                                              dose_amount: '2', dose_unit: 'ml', frequency: 'Daily',
+                                              dose_amount: '2', dose_unit: 'ml', dose_cycle: :daily, frequency: 'Daily',
                                               start_date: '2026-01-01', end_date: '2099-12-31')
+  portable_source_assignment = PersonMedication.create!(household: portable_source_household,
+                                                        person: portable_source_person,
+                                                        medication: portable_source_medication,
+                                                        source_dosage_option: portable_source_dosage,
+                                                        administration_kind: :as_needed,
+                                                        dose_amount: '2', dose_unit: 'ml', dose_cycle: :daily)
   MedicationTake.create!(household: portable_source_household, schedule: portable_source_schedule,
                          taken_at: Time.zone.parse('2026-02-25 12:00:00'), dose_amount: '2', dose_unit: 'ml',
+                         taken_from_medication: portable_source_medication,
+                         taken_from_location: portable_source_location)
+  MedicationTake.create!(household: portable_source_household, person_medication: portable_source_assignment,
+                         taken_at: Time.zone.parse('2026-02-26 12:00:00'), dose_amount: '2', dose_unit: 'ml',
                          taken_from_medication: portable_source_medication,
                          taken_from_location: portable_source_location)
   NotificationPreference.create!(household: portable_source_household, person: portable_source_person,
@@ -531,6 +540,8 @@ fixture = ActiveRecord::Base.transaction do
 
   {
     portable_source_household_id: portable_source_household.id,
+    portable_source_account_id: portable_source_account.id,
+    portable_source_membership_id: portable_source_membership.id,
     portable_source_access_token: portable_source_access_token,
     portable_source_person_name: portable_source_person.name,
     portable_source_person_portable_id: portable_source_person.portable_id,
@@ -538,6 +549,8 @@ fixture = ActiveRecord::Base.transaction do
     portable_source_medication_portable_id: portable_source_medication.portable_id,
     portable_source_schedule_portable_id: portable_source_schedule.portable_id,
     portable_target_household_id: portable_target_household.id,
+    portable_target_account_id: portable_target_account.id,
+    portable_target_membership_id: portable_target_membership.id,
     portable_target_access_token: portable_target_access_token,
     portable_target_app_token: portable_target_app_token,
     portable_target_mobile_token: portable_target_mobile_token,
