@@ -22,6 +22,13 @@ PostgreSQL 18 trial chooses the ORM before Rust API implementation — the cost
 if wrong is reworking the persistence boundary, not dropping the ORM
 requirement without a new product decision.
 
+Ruling: for v1 `show_hidden`, only `1` reveals hidden medication review prompts;
+any other value retains Rails' 200 response with hidden rows excluded. The
+OpenAPI enum describes valid client inputs, while the existing controller and
+Rust contract establish this safe compatibility behaviour for invalid input.
+The cost if wrong is continuing to accept an invalid value; changing it to a
+rejection later would need an explicit API compatibility decision.
+
 Ruling: start one isolated Leptos SSR login-page foundation before the full
 API and browser baselines close — the user explicitly requested an early UI
 start with an expected-red Rust smoke — the cost if wrong is reworking the
@@ -117,8 +124,9 @@ both schedules before its cursor, the complete integrated corpus passed
 
 API Task 7 audit at `670786ae`: the 228/0/12 Rails-backed run does not close
 the baseline gate. The independent audit identified missing exact-set coverage
-for health-history reports, an untested direct-write-purpose disk-token route,
-and an unresolved `show_hidden` OpenAPI/Rails discrepancy. The 12 ignored
+for health-history reports and an untested direct-write-purpose disk-token
+route. The `show_hidden` OpenAPI/Rails discrepancy has the compatibility ruling
+above. The 12 ignored
 cases remain classified Rails defects or owned gaps, not green parity proof.
 General browser-test writing waits for Task 7 reconciliation and handoff.
 
