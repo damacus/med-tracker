@@ -140,7 +140,7 @@ function set_web_json_adapter_environment
 end
 
 function uses_web_csrf -a target
-    contains -- $target platform web_profile web_devices
+    contains -- $target platform web_profile web_devices retained
 end
 
 function set_push_delivery_environment
@@ -185,14 +185,14 @@ function run_contract
     end
     if test "$argv[2]" = lookup
         set_lookup_adapter_environment
-    else if contains -- "$argv[2]" platform web-profile web-devices
+    else if contains -- "$argv[2]" platform web-profile web-devices retained
         set_web_device_environment
-        else if test "$argv[2]" = web_json_read
-            set_web_json_read_adapter_environment
-        else if test "$argv[2]" = web-json-actions; or test "$argv[2]" = web-json-actions-disabled
-            set_web_json_adapter_environment
-        else if test "$argv[2]" = push-delivery
-            set_push_delivery_environment
+    else if test "$argv[2]" = web_json_read
+        set_web_json_read_adapter_environment
+    else if test "$argv[2]" = web-json-actions; or test "$argv[2]" = web-json-actions-disabled
+        set_web_json_adapter_environment
+    else if test "$argv[2]" = push-delivery
+        set_push_delivery_environment
     else
         clear_contract_adapter_environment
     end

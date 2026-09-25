@@ -1,8 +1,11 @@
 use medtracker_contract_tests::{fixture, Fixture, Target};
 use scraper::{Html, Selector};
 use serde_json::{json, Value};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-fn sign_in(target: &Target, email: &str) {
+static LOGIN_CLIENT: AtomicUsize = AtomicUsize::new(1);
+
+fn sign_in(target: &Target, email: &str, slug: &str) -> String {
     let response = target.get_html("/login");
     assert_eq!(response.status().as_u16(), 200);
     let document = Html::parse_document(&response.text().expect("login HTML"));
@@ -18,8 +21,20 @@ fn sign_in(target: &Target, email: &str) {
         ("password".to_string(), "password".to_string()),
         ("authenticity_token".to_string(), token.to_string()),
     ];
-    let response = target.post_html_form("/login", &fields);
+    let client_ip = format!("198.18.4.{}", LOGIN_CLIENT.fetch_add(1, Ordering::Relaxed));
+    let response = target.post_html_form_from_local_client("/login", &fields, &client_ip);
     assert_eq!(response.status().as_u16(), 302);
+    let response = target.get_html(&format!("/households/{slug}/offline"));
+    assert_eq!(response.status().as_u16(), 200);
+    let html = response.text().expect("offline shell HTML");
+    let document = Html::parse_document(&html);
+    let selector = Selector::parse("meta[name='csrf-token']").expect("CSRF meta selector");
+    document
+        .select(&selector)
+        .next()
+        .and_then(|element| element.value().attr("content"))
+        .expect("offline CSRF token")
+        .to_owned()
 }
 
 fn offline_path(fixture: &Fixture, suffix: &str) -> String {
@@ -44,6 +59,103 @@ fn household_takes(snapshot: &Value) -> &[Value] {
     snapshot["data"]["medication_takes"]
         .as_array()
         .expect("medication takes")
+}
+
+#[test]
+fn offline_queued_take_requires_csrf_without_mutating_stock_or_takes() {
+    let fixture = fixture();
+    let observer = Target::from_env();
+    let csrf = sign_in(
+        &observer,
+        &fixture.offline_csrf_email,
+        &fixture.offline_csrf_household_slug,
+    );
+    let snapshot_path = format!(
+        "/households/{}/offline/snapshot",
+        fixture.offline_csrf_household_slug
+    );
+    let before: Value = observer
+        .get(&snapshot_path, None)
+        .json()
+        .expect("offline snapshot before rejected writes");
+    assert_eq!(
+        retained_stock(&before, fixture.offline_csrf_medication_id),
+        "50.0"
+    );
+    assert!(household_takes(&before).is_empty());
+    let body = json!({
+        "client_uuid": format!("00000000-0000-4005-8000-{:012x}", fixture.offline_csrf_household_id),
+        "source_type": "schedule",
+        "source_id": fixture.offline_csrf_schedule_id,
+        "taken_at": before["meta"]["generated_at"],
+        "dose_amount": "1",
+        "taken_from_medication_id": fixture.offline_csrf_medication_id
+    });
+    let path = format!(
+        "/households/{}/offline/medication_takes",
+        fixture.offline_csrf_household_slug
+    );
+    let missing = Target::from_env();
+    sign_in(
+        &missing,
+        &fixture.offline_csrf_email,
+        &fixture.offline_csrf_household_slug,
+    );
+    assert_eq!(missing.post_json(&path, &body).status().as_u16(), 401);
+    let after_missing: Value = observer
+        .get(&snapshot_path, None)
+        .json()
+        .expect("offline snapshot after missing token");
+    assert_eq!(
+        after_missing["data"]["medication_takes"],
+        before["data"]["medication_takes"]
+    );
+    assert_eq!(
+        retained_stock(&after_missing, fixture.offline_csrf_medication_id),
+        "50.0"
+    );
+    let wrong = Target::from_env();
+    sign_in(
+        &wrong,
+        &fixture.offline_csrf_email,
+        &fixture.offline_csrf_household_slug,
+    );
+    assert_eq!(
+        wrong
+            .post_web_json(&path, "wrong-token", None, &body)
+            .status()
+            .as_u16(),
+        401
+    );
+    let after_wrong: Value = observer
+        .get(&snapshot_path, None)
+        .json()
+        .expect("offline snapshot after invalid token");
+    assert_eq!(
+        after_wrong["data"]["medication_takes"],
+        before["data"]["medication_takes"]
+    );
+    assert_eq!(
+        retained_stock(&after_wrong, fixture.offline_csrf_medication_id),
+        "50.0"
+    );
+    let response = observer.post_web_json(&path, &csrf, None, &body);
+    assert_eq!(response.status().as_u16(), 201);
+    let created: Value = response.json().expect("queued take response");
+    assert_eq!(created["data"]["client_uuid"], body["client_uuid"]);
+    let after_valid: Value = observer
+        .get(&snapshot_path, None)
+        .json()
+        .expect("offline snapshot after valid token");
+    assert_eq!(household_takes(&after_valid).len(), 1);
+    assert_eq!(
+        household_takes(&after_valid)[0]["id"],
+        created["data"]["id"]
+    );
+    assert_eq!(
+        retained_stock(&after_valid, fixture.offline_csrf_medication_id),
+        "49.0"
+    );
 }
 
 #[test]
@@ -107,7 +219,11 @@ fn offline_snapshot_requires_web_session_and_hides_foreign_household() {
         .expect("login redirect")
         .starts_with("/login"));
 
-    sign_in(&target, &fixture.retained_email);
+    sign_in(
+        &target,
+        &fixture.retained_email,
+        &fixture.retained_household_slug,
+    );
     let response = target.get(&path, None);
     assert_eq!(response.status().as_u16(), 200);
     let snapshot: Value = response.json().expect("offline snapshot");
@@ -163,7 +279,11 @@ fn offline_snapshot_requires_web_session_and_hides_foreign_household() {
 fn offline_snapshot_keeps_ineligible_schedules_visible_with_reasons() {
     let fixture = fixture();
     let target = Target::from_env();
-    sign_in(&target, &fixture.offline_eligibility_email);
+    sign_in(
+        &target,
+        &fixture.offline_eligibility_email,
+        &fixture.offline_eligibility_household_slug,
+    );
     let path = format!(
         "/households/{}/offline/snapshot",
         fixture.offline_eligibility_household_slug
@@ -208,7 +328,11 @@ fn offline_snapshot_keeps_ineligible_schedules_visible_with_reasons() {
 fn offline_future_queued_take_returns_validation_without_mutation() {
     let fixture = fixture();
     let target = Target::from_env();
-    sign_in(&target, &fixture.offline_future_email);
+    let csrf = sign_in(
+        &target,
+        &fixture.offline_future_email,
+        &fixture.offline_future_household_slug,
+    );
     let snapshot_path = format!(
         "/households/{}/offline/snapshot",
         fixture.offline_future_household_slug
@@ -235,7 +359,7 @@ fn offline_future_queued_take_returns_validation_without_mutation() {
         "/households/{}/offline/medication_takes",
         fixture.offline_future_household_slug
     );
-    let response = target.post_json(&takes_path, &body);
+    let response = target.post_web_json(&takes_path, &csrf, None, &body);
     assert_eq!(response.status().as_u16(), 422);
     let rejected: Value = response.json().expect("future dose error");
     assert_eq!(rejected["error"]["code"], "unprocessable_content");
@@ -259,7 +383,11 @@ fn offline_future_queued_take_returns_validation_without_mutation() {
 fn offline_queued_take_replays_by_client_uuid_and_rejects_missing_source() {
     let fixture = fixture();
     let target = Target::from_env();
-    sign_in(&target, &fixture.retained_email);
+    let csrf = sign_in(
+        &target,
+        &fixture.retained_email,
+        &fixture.retained_household_slug,
+    );
     let snapshot: Value = target
         .get(&offline_path(&fixture, "/snapshot"), None)
         .json()
@@ -286,7 +414,19 @@ fn offline_queued_take_replays_by_client_uuid_and_rejects_missing_source() {
     );
     assert!(household_takes(&snapshot).is_empty());
 
-    let unauthenticated = Target::from_env().post_json(&path, &body);
+    let anonymous = Target::from_env();
+    let login = anonymous.get_html("/login");
+    assert_eq!(login.status().as_u16(), 200);
+    let login_html = login.text().expect("anonymous login HTML");
+    let document = Html::parse_document(&login_html);
+    let selector = Selector::parse("form[action='/login'] input[name='authenticity_token']")
+        .expect("login selector");
+    let anonymous_csrf = document
+        .select(&selector)
+        .next()
+        .and_then(|input| input.value().attr("value"))
+        .expect("anonymous CSRF token");
+    let unauthenticated = anonymous.post_web_json(&path, anonymous_csrf, None, &body);
     assert_eq!(unauthenticated.status().as_u16(), 302);
     assert!(unauthenticated.headers()["location"]
         .to_str()
@@ -297,7 +437,7 @@ fn offline_queued_take_replays_by_client_uuid_and_rejects_missing_source() {
         "/households/{}/offline/medication_takes",
         fixture.retained_foreign_household_slug
     );
-    let foreign = target.post_json(&foreign_path, &body);
+    let foreign = target.post_web_json(&foreign_path, &csrf, None, &body);
     assert_eq!(foreign.status().as_u16(), 302);
     let before: Value = target
         .get(&offline_path(&fixture, "/snapshot"), None)
@@ -309,7 +449,7 @@ fn offline_queued_take_replays_by_client_uuid_and_rejects_missing_source() {
     );
     assert!(household_takes(&before).is_empty());
 
-    let response = target.post_json(&path, &body);
+    let response = target.post_web_json(&path, &csrf, None, &body);
     assert_eq!(response.status().as_u16(), 201);
     let created: Value = response.json().expect("created take");
     assert_eq!(created["data"]["client_uuid"], client_uuid);
@@ -339,7 +479,7 @@ fn offline_queued_take_replays_by_client_uuid_and_rejects_missing_source() {
         fixture.retained_medication_id
     );
 
-    let response = target.post_json(&path, &body);
+    let response = target.post_web_json(&path, &csrf, None, &body);
     assert_eq!(response.status().as_u16(), 200);
     let replayed: Value = response.json().expect("replayed take");
     assert_eq!(replayed["data"]["id"], take_id);
@@ -367,7 +507,7 @@ fn offline_queued_take_replays_by_client_uuid_and_rejects_missing_source() {
         "taken_at": taken_at,
         "dose_amount": "1"
     });
-    let response = target.post_json(&path, &invalid);
+    let response = target.post_web_json(&path, &csrf, None, &invalid);
     assert_eq!(response.status().as_u16(), 422);
     let error: Value = response.json().expect("source error");
     assert_eq!(error["error"]["code"], "unprocessable_content");
