@@ -63,7 +63,7 @@ tasks:
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
       CONTRACT_MAILPIT_URL: '{{ .MAILPIT_URL }}'
     cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml {{ if eq .TEST_TARGET "lib" }}--lib{{ else if .TEST_TARGET }}--test {{ .TEST_TARGET }}{{ else }}--lib --test auth --test admin --test invitations --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test reports --test portability --test profile --test sync --test replay --test oauth --test envelopes{{ end }} --no-fail-fast -- --test-threads=1
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml {{ if eq .TEST_TARGET "lib" }}--lib{{ else if .TEST_TARGET }}--test {{ .TEST_TARGET }}{{ else }}--lib --test auth --test admin --test invitations --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test reports --test portability --test profile --test sync --test replay --test oauth --test devices --test envelopes{{ end }} --no-fail-fast -- --test-threads=1
 
   run-portability:
     desc: Run portable household export and import contract cases
@@ -120,6 +120,17 @@ tasks:
       CONTRACT_MAILPIT_URL: '{{ .MAILPIT_URL }}'
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test invitations -- --test-threads=1
+
+  run-devices:
+    desc: Run notification preference, native device and push subscription API cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test devices -- --test-threads=1
 
   run-replay:
     desc: Run offline medication take and response replay contract cases
@@ -348,6 +359,19 @@ tasks:
     desc: Run household invitation cases against isolated Rails
     cmds:
       - fish rust/contract-tests/run.fish rails invitations
+
+  devices-rails:
+    desc: Run notification preference, native device and push subscription cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails devices
+
+  devices-rust:
+    desc: Run notification preference, native device and push subscription cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust devices
 
   oauth-rails:
     desc: Run OAuth contract cases against isolated Rails

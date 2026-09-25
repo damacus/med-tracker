@@ -61,7 +61,7 @@ end
 
 function run_rails_contract_targets -a base_url fixture_path mailpit_url project run_dir
     set -l failed_targets
-    set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports portability profile sync replay oauth envelopes
+    set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports portability profile sync replay oauth devices envelopes
     rtk task contract:run BASE_URL="$base_url" FIXTURE_PATH="$fixture_path" MAILPIT_URL="$mailpit_url" TEST_TARGET=lib
     or set -a failed_targets lib
     for target in $targets
@@ -143,6 +143,8 @@ function run_contract
             rtk task contract:run-admin-tokens-audit BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = invitations
             rtk task contract:run-invitations BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path" MAILPIT_URL="$mailpit_url"
+        else if test "$argv[2]" = devices
+            rtk task contract:run-devices BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = oauth
             rtk task contract:oauth BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = dosage-health
@@ -193,6 +195,8 @@ function run_contract
             rtk task contract:run-admin-tokens-audit BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = invitations
             rtk task contract:run-invitations BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN" MAILPIT_URL="$mailpit_url"
+        else if test "$argv[2]" = devices
+            rtk task contract:run-devices BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = sync
             rtk task contract:run-sync BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = replay
