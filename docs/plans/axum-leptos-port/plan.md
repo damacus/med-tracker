@@ -19,10 +19,11 @@ adapters use the same authorization rules and response data types.
 suite is either represented in the new black-box suites, represented by a Rust
 domain test where no public route exposes it, or explicitly recorded as a
 Rails-only implementation check with a reason. It does not mean translating
-every RSpec example line for line. No Rust product behaviour is implemented
-until the API and web parity inventories and their initial test suites are
-written, reviewed, and run against Rails. Subsequent implementation follows
-Red-Green-Refactor for each behaviour.
+every RSpec example line for line. No Rust product behaviour beyond the
+bounded Leptos foundation exception below is implemented until the API and
+web parity inventories and their initial test suites are written, reviewed,
+and run against Rails. Subsequent implementation follows Red-Green-Refactor
+for each behaviour.
 
 The application-process memory target is under 200 MB for the combined API,
 web, and in-process job workload. PostgreSQL and supporting services are
@@ -83,6 +84,32 @@ against Rails, and expected Rust failures are recorded. Any mismatch in the
 Rails baseline is investigated before using that case as a parity oracle.
 
 ## Ordered tranches
+
+### Bounded Leptos foundation exception
+
+Ruling: Start one isolated server-rendered Leptos foundation slice while API
+contract work continues — the user explicitly requested an early UI start and
+accepted an initially failing Rust browser smoke test — the cost if wrong is
+reworking this shell after the shared router, API, and authentication
+interfaces are agreed. The API and full browser parity gates still apply to
+all later product behaviour; this exception proves only a public login-page
+smoke path.
+
+The foundation writer exclusively owns `rust/web/**`, including its own crate
+manifest, source, and browser smoke test. Existing API writers retain
+`rust/contract-tests/**`, `rust/parity-matrix.md`, API fixtures, and contract
+task wiring. The coordinator owns this plan, the ledger, integration order,
+and combined verification. Root workspace manifests and lockfiles, the shared
+router, database/schema files, and API integration are reserved for a named
+coordinator task after independent review. The UI writer must not edit them.
+
+The foundation check navigates the current Rails `/login` page and verifies
+its accessible sign-in heading and labelled email and password controls in a
+real browser, records the absent Rust target failure, then runs the same smoke
+against a minimal Axum-hosted Leptos SSR shell. Authentication submission,
+mobile navigation, PWA behaviour, and visual parity remain later browser
+tasks. Review the isolated UI commit before serial integration, then run its
+smoke and affected API contract checks in the integration worktree.
 
 Each tranche has one writer, a file-based brief and report, an independent
 requirements and quality review, and a ledger entry before acceptance. Use the
