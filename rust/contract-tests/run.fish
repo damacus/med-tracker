@@ -61,7 +61,7 @@ end
 
 function run_rails_contract_targets -a base_url fixture_path mailpit_url project run_dir
     set -l failed_targets
-    set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports fhir platform lookup web_json_read portability retained profile web_profile sync replay oauth devices web_devices mcp uploads envelopes
+    set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports fhir platform lookup web_json_read portability retained web_json_actions profile web_profile sync replay oauth devices web_devices mcp uploads envelopes
     rtk task contract:run BASE_URL="$base_url" FIXTURE_PATH="$fixture_path" MAILPIT_URL="$mailpit_url" TEST_TARGET=lib
     or set -a failed_targets lib
     set -l previous_target
@@ -69,15 +69,18 @@ function run_rails_contract_targets -a base_url fixture_path mailpit_url project
         if test "$target" = lookup
             set_lookup_adapter_environment
         else if test "$target" = web_devices
-            clear_lookup_adapter_environment
+            clear_contract_adapter_environment
             set_web_device_environment
         else if test "$target" = web_json_read
             set_web_json_read_adapter_environment
+        else if test "$target" = web_json_actions
+            clear_contract_adapter_environment
+            set_web_json_adapter_environment
         else
-            clear_lookup_adapter_environment
+            clear_contract_adapter_environment
         end
         if test "$target" != auth
-            if contains -- "$target" lookup web_devices web_json_read; or contains -- "$previous_target" lookup web_devices web_json_read
+            if contains -- "$target" lookup web_devices web_json_read web_json_actions; or contains -- "$previous_target" lookup web_devices web_json_read web_json_actions
                 rtk task test:server CONTRACT_PROJECT=$project
             else
                 rtk task contract:restart-web CONTRACT_PROJECT=$project CONTRACT_RUN_DIR=$run_dir
@@ -97,6 +100,17 @@ function run_rails_contract_targets -a base_url fixture_path mailpit_url project
         rtk task contract:run BASE_URL="$base_url" FIXTURE_PATH="$fixture_path" MAILPIT_URL="$mailpit_url" TEST_TARGET=$target
         or set -a failed_targets $target
     end
+    set -gx CONTRACT_AI_MEDICATION_HELP_ENABLED false
+    set_web_json_adapter_environment
+    rtk task test:server CONTRACT_PROJECT=$project
+    or return $status
+    set -l port (contract_web_port $project)
+    or return $status
+    set base_url "http://127.0.0.1:$port"
+    wait_for_contract_web $base_url
+    or return $status
+    rtk task contract:run-web-json-actions-disabled BASE_URL="$base_url" FIXTURE_PATH="$fixture_path"
+    or set -a failed_targets web_json_actions_disabled
     if test (count $failed_targets) -gt 0
         echo "Contract targets failed: "(string join ', ' $failed_targets) >&2
         return 1
@@ -118,7 +132,11 @@ function set_web_json_read_adapter_environment
     set -gx CONTRACT_RUBYOPT '-r/app/rust/contract-tests/test_support/nhs_dmd_webmock -r/app/rust/contract-tests/test_support/web_json_read_webmock'
 end
 
-function clear_lookup_adapter_environment
+function set_web_json_adapter_environment
+    set -gx CONTRACT_RUBYOPT -r/app/rust/contract-tests/test_support/ai_suggestion_adapter
+end
+
+function clear_contract_adapter_environment
     set -e CONTRACT_NHS_DMD_CLIENT_ID CONTRACT_NHS_DMD_CLIENT_SECRET CONTRACT_RUBYOPT
 end
 
@@ -149,15 +167,21 @@ function run_contract
     echo "Contract run project: $contract_project"
 
     set -lx CONTRACT_RATE_LIMITING true
-    set -lx CONTRACT_AI_MEDICATION_HELP_ENABLED true
+    if test "$argv[2]" = web-json-actions-disabled
+        set -gx CONTRACT_AI_MEDICATION_HELP_ENABLED false
+    else
+        set -gx CONTRACT_AI_MEDICATION_HELP_ENABLED true
+    end
     if test "$argv[2]" = lookup
         set_lookup_adapter_environment
     else if test "$argv[2]" = web-devices
         set_web_device_environment
     else if test "$argv[2]" = web_json_read
         set_web_json_read_adapter_environment
+    else if test "$argv[2]" = web-json-actions; or test "$argv[2]" = web-json-actions-disabled
+        set_web_json_adapter_environment
     else
-        clear_lookup_adapter_environment
+        clear_contract_adapter_environment
     end
     set -lx CONTRACT_DATABASE_URL postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract
     set -l startup_at (date +%s)
@@ -220,6 +244,10 @@ function run_contract
             rtk task contract:run-portability BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = retained
             rtk task contract:run-retained BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+        else if test "$argv[2]" = web-json-actions
+            rtk task contract:run-web-json-actions BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+        else if test "$argv[2]" = web-json-actions-disabled
+            rtk task contract:run-web-json-actions-disabled BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = profile
             rtk task contract:run-profile BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = profile-web-profile
@@ -298,6 +326,10 @@ function run_contract
             rtk task contract:run-portability BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = retained
             rtk task contract:run-retained BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
+        else if test "$argv[2]" = web-json-actions
+            rtk task contract:run-web-json-actions BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
+        else if test "$argv[2]" = web-json-actions-disabled
+            rtk task contract:run-web-json-actions-disabled BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = profile
             rtk task contract:run-profile BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = web-profile

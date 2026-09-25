@@ -36,10 +36,10 @@ set -a run_dirs (cat $test_dir/latest-run)
 test $actual_status -eq 1
 or begin; cat $test_dir/output >&2; echo "Expected target failure to survive cleanup; got $actual_status" >&2; exit 1; end
 
-set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports fhir platform lookup web_json_read portability retained profile web_profile sync replay oauth devices web_devices mcp uploads envelopes
+set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports fhir platform lookup web_json_read portability retained web_json_actions profile web_profile sync replay oauth devices web_devices mcp uploads envelopes
 set -l trace (cat $test_dir/trace)
 set -l runs (string match 'run:*' -- $trace)
-test (count $runs) -eq (math (count $targets) + 1)
+test (count $runs) -eq (math (count $targets) + 2)
 or begin; cat $test_dir/trace >&2; echo 'Full runner did not run all targets' >&2; exit 1; end
 set -l expected_trace port run:lib:http://127.0.0.1:43017 run:auth:http://127.0.0.1:43017
 for index in (seq (count $targets))
@@ -49,16 +49,16 @@ for index in (seq (count $targets))
     or begin; cat $test_dir/trace >&2; echo "Wrong target at index $index" >&2; exit 1; end
     if test $index -lt (count $targets)
         set -l next_index (math $index + 1)
-        if not contains -- "$targets[$index]" lookup web_devices web_json_read; and not contains -- "$targets[$next_index]" lookup web_devices web_json_read
+        if not contains -- "$targets[$index]" lookup web_devices web_json_read web_json_actions; and not contains -- "$targets[$next_index]" lookup web_devices web_json_read web_json_actions
             set -a expected_trace restart
         end
         set -a expected_trace port ready "run:$targets[$next_index]:http://127.0.0.1:"(math 43016 + $next_index)
     end
 end
-set -a expected_trace cleanup
+set -a expected_trace port ready "run:web_json_actions_disabled:http://127.0.0.1:"(math 43017 + (count $targets)) cleanup
 test (string join '\n' -- $trace) = (string join '\n' -- $expected_trace)
 or begin; cat $test_dir/trace >&2; echo 'Full runner did not isolate and refresh every target' >&2; exit 1; end
-string match -q 'run:envelopes:*' -- $runs[-1]
+string match -q 'run:envelopes:*' -- $runs[-2]
 or begin; echo 'A failed target skipped a later target' >&2; exit 1; end
 rg -q 'schedules' $test_dir/output
 or begin; echo 'Failed target was not reported' >&2; exit 1; end

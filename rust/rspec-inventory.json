@@ -1880,13 +1880,13 @@
     },
     {
       "path": "spec/requests/ai_medication_rate_limiting_spec.rb",
-      "category": "browser",
-      "review": true
+      "category": "API",
+      "review": false
     },
     {
       "path": "spec/requests/ai_medication_suggestions_spec.rb",
-      "category": "browser",
-      "review": true
+      "category": "API",
+      "review": false
     },
     {
       "path": "spec/requests/api/fhir/r4_spec.rb",
