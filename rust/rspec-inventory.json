@@ -2333,7 +2333,7 @@
       "path": "spec/requests/medications_open_food_facts_search_spec.rb",
       "category": "API",
       "review": true,
-      "rationale": "Portable JSON finder coverage still needs the Open Food Facts description, barcode, and name fields for supplement results; browser interaction is separate."
+      "rationale": "Portable JSON finder now asserts Open Food Facts name, description, display, source, barcode, category, and package fields for barcode and text results. Review remains for browser interaction and accessibility."
     },
     {
       "path": "spec/requests/medications_refill_spec.rb",
@@ -2354,7 +2354,7 @@
       "path": "spec/requests/medications_search_spec.rb",
       "category": "API",
       "review": true,
-      "rationale": "Portable JSON finder coverage still needs medication review guidance and prompt shape; existing web_json_read.rs cases cover other response, filter, permission, and error behavior."
+      "rationale": "Portable JSON finder now asserts NHS display, concept class, available guidance, and empty prompt/filter shape for clean results. Review remains for a positive PIL URL, an accessible Warfarin-Ibuprofen evidence prompt, and guidance-unavailable response using deterministic fixtures."
     },
     {
       "path": "spec/requests/medications_single_dose_switch_spec.rb",
