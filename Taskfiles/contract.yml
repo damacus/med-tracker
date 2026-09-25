@@ -187,6 +187,17 @@ tasks:
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test reports -- --test-threads=1
 
+  run-fhir:
+    desc: Run FHIR R4 contract cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test fhir -- --test-threads=1
+
   run-care:
     desc: Run people, grant, and location cases against a checked target and fixture
     requires:
@@ -407,6 +418,19 @@ tasks:
     desc: Run clinical report and data export cases against isolated Rails
     cmds:
       - fish rust/contract-tests/run.fish rails reports
+
+  fhir-rails:
+    desc: Run FHIR R4 cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails fhir
+
+  fhir-rust:
+    desc: Run FHIR R4 cases against the configured Rust target
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust fhir
 
   portability-rails:
     desc: Run portable household export and import cases against isolated Rails
