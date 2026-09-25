@@ -1,3 +1,4 @@
+mod audit;
 mod entities;
 mod medication_forecast;
 
@@ -149,6 +150,9 @@ async fn tenant_setting(
 }
 
 struct AuthContext {
+    account_id: i64,
+    user_id: i64,
+    session_id: i64,
     membership: membership::Model,
 }
 
@@ -240,7 +244,12 @@ async fn authenticate(
     if !user.active {
         return Err(ApiError::unauthorized());
     }
-    Ok(AuthContext { membership })
+    Ok(AuthContext {
+        account_id: account.id,
+        user_id: user.id,
+        session_id: session.id,
+        membership,
+    })
 }
 
 fn granted_people(membership: &membership::Model) -> sea_orm::sea_query::SelectStatement {
@@ -335,6 +344,9 @@ async fn index(
         .await
         .map_err(database_error)?;
     let data = serialize_many(&db, records).await?;
+    audit::record_medication_read(&db, &context, "index", StatusCode::OK, true)
+        .await
+        .map_err(database_error)?;
     db.commit().await.map_err(database_error)?;
     Ok(Json(
         json!({"data": data, "meta": {"page": page, "per_page": per_page, "total_count": total}}),
@@ -353,15 +365,21 @@ async fn show(
         Ok(id) => query.filter(medication::Column::Id.eq(id)),
         Err(_) => query.filter(medication::Column::PortableId.eq(id)),
     };
-    let record = query
-        .one(&db)
-        .await
-        .map_err(database_error)?
-        .ok_or_else(ApiError::not_found)?;
+    let record = query.one(&db).await.map_err(database_error)?;
+    let Some(record) = record else {
+        audit::record_medication_read(&db, &context, "show", StatusCode::NOT_FOUND, false)
+            .await
+            .map_err(database_error)?;
+        db.commit().await.map_err(database_error)?;
+        return Err(ApiError::not_found());
+    };
     let data = serialize_many(&db, vec![record]).await?.remove(0);
     let body = json!({"data": data});
     let etag = representation_etag(&body);
     if if_none_match_matches(&headers, &etag) {
+        audit::record_medication_read(&db, &context, "show", StatusCode::NOT_MODIFIED, true)
+            .await
+            .map_err(database_error)?;
         db.commit().await.map_err(database_error)?;
         let mut response = StatusCode::NOT_MODIFIED.into_response();
         response.headers_mut().insert(
@@ -370,6 +388,9 @@ async fn show(
         );
         return Ok(response);
     }
+    audit::record_medication_read(&db, &context, "show", StatusCode::OK, true)
+        .await
+        .map_err(database_error)?;
     db.commit().await.map_err(database_error)?;
     let mut response = Json(body).into_response();
     response.headers_mut().insert(

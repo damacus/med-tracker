@@ -1,5 +1,145 @@
 use medtracker_contract_tests::{fixture, Target};
 use serde_json::Value;
+use std::env;
+
+fn audit_rows_after(id: i64) -> Vec<Value> {
+    let url = env::var("CONTRACT_AUDIT_DATABASE_URL").expect("contract audit database URL");
+    let mut db = postgres::Client::connect(&url, postgres::NoTls).expect("audit database");
+    db.query(
+        "SELECT id, household_id, actor_account_id, actor_membership_id, request_id, event_type, metadata::text, audit_context::text, row_to_json(security_audit_events)::text AS complete_event FROM security_audit_events WHERE id > $1 ORDER BY id",
+        &[&id],
+    )
+    .expect("audit rows")
+    .into_iter()
+    .map(|row| {
+        serde_json::json!({
+            "id": row.get::<_, i64>("id"),
+            "household_id": row.get::<_, i64>("household_id"),
+            "actor_account_id": row.get::<_, Option<i64>>("actor_account_id"),
+            "actor_membership_id": row.get::<_, Option<i64>>("actor_membership_id"),
+            "request_id": row.get::<_, Option<String>>("request_id"),
+            "event_type": row.get::<_, String>("event_type"),
+            "metadata": serde_json::from_str::<Value>(&row.get::<_, String>("metadata")).unwrap(),
+            "audit_context": serde_json::from_str::<Value>(&row.get::<_, String>("audit_context")).unwrap(),
+            "complete_event": row.get::<_, String>("complete_event")
+        })
+    })
+    .collect()
+}
+
+fn latest_audit_id() -> i64 {
+    let url = env::var("CONTRACT_AUDIT_DATABASE_URL").expect("contract audit database URL");
+    let mut db = postgres::Client::connect(&url, postgres::NoTls).expect("audit database");
+    db.query_one(
+        "SELECT COALESCE(MAX(id), 0) FROM security_audit_events",
+        &[],
+    )
+    .expect("latest audit row")
+    .get(0)
+}
+
+#[test]
+fn medication_reads_write_scoped_success_and_failure_audits_without_bearers() {
+    let fixture = fixture();
+    let target = Target::from_env();
+
+    for (path, expected_status, action, outcome) in [
+        (list_path(fixture.household_id), 200, "index", "success"),
+        (
+            show_path(fixture.household_id, fixture.managed_medication_id),
+            200,
+            "show",
+            "success",
+        ),
+        (
+            show_path(fixture.household_id, fixture.foreign_medication_id),
+            404,
+            "show",
+            "failure",
+        ),
+    ] {
+        let before = latest_audit_id();
+        let response = target.get(&path, Some(&fixture.access_token));
+        assert_eq!(response.status().as_u16(), expected_status);
+        let events = audit_rows_after(before);
+        assert_eq!(events.len(), 1, "one audit row for {path}");
+        let event = &events[0];
+        assert_eq!(event["household_id"], fixture.household_id);
+        assert_eq!(event["actor_account_id"], fixture.account_id);
+        assert_eq!(event["actor_membership_id"], fixture.owner_membership_id);
+        assert_eq!(event["event_type"], "api.request");
+        assert!(!event["request_id"].as_str().unwrap().is_empty());
+        assert_eq!(event["metadata"]["http_method"], "GET");
+        assert_eq!(event["metadata"]["controller"], "api/v1/medications");
+        assert_eq!(event["metadata"]["action"], action);
+        assert_eq!(event["metadata"]["status"], expected_status);
+        assert_eq!(event["metadata"]["outcome"], outcome);
+        assert_eq!(
+            event["audit_context"]["authentication_method"],
+            "api_session"
+        );
+        assert_eq!(event["audit_context"]["active_role"], "owner");
+        assert_eq!(
+            event["audit_context"]["actor_account_id"],
+            fixture.account_id
+        );
+        assert_eq!(
+            event["audit_context"]["actor_membership_id"],
+            fixture.owner_membership_id
+        );
+        assert_eq!(event["audit_context"]["actor_user_id"], fixture.user_id);
+        assert_eq!(event["audit_context"]["household_id"], fixture.household_id);
+        assert_eq!(event["audit_context"]["request_id"], event["request_id"]);
+        if expected_status == 200 {
+            assert_eq!(event["audit_context"]["policy_class"], "MedicationPolicy");
+            assert_eq!(event["audit_context"]["policy_query"], format!("{action}?"));
+        } else {
+            assert!(event["audit_context"].get("policy_class").is_none());
+            assert!(event["audit_context"].get("policy_query").is_none());
+        }
+        assert_eq!(
+            event["audit_context"]["session_reference"],
+            format!("api_session:{}", fixture.session_id)
+        );
+        assert!(!event["complete_event"]
+            .as_str()
+            .unwrap()
+            .contains(&fixture.access_token));
+    }
+
+    let before = latest_audit_id();
+    assert_eq!(
+        target
+            .get(
+                &list_path(fixture.foreign_household_id),
+                Some(&fixture.access_token)
+            )
+            .status()
+            .as_u16(),
+        403
+    );
+    assert!(audit_rows_after(before).is_empty());
+}
+
+#[test]
+fn authorized_conditional_read_writes_a_success_audit() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let path = show_path(fixture.household_id, fixture.managed_medication_id);
+    let initial = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(initial.status().as_u16(), 200);
+    let etag = initial.headers()["etag"].to_str().unwrap().to_owned();
+
+    let before = latest_audit_id();
+    let unchanged = target.get_with_header(&path, &fixture.access_token, "If-None-Match", &etag);
+    assert_eq!(unchanged.status().as_u16(), 304);
+    assert!(unchanged.bytes().unwrap().is_empty());
+    let events = audit_rows_after(before);
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0]["metadata"]["status"], 304);
+    assert_eq!(events[0]["metadata"]["outcome"], "success");
+    assert_eq!(events[0]["metadata"]["action"], "show");
+}
 
 fn list_path(household_id: i64) -> String {
     format!("/api/v1/households/{household_id}/medications")

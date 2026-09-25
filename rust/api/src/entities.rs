@@ -28,6 +28,19 @@ entity!(api_session, "api_sessions", {
     permissions_version: i32,
 });
 
+entity!(security_audit_event, "security_audit_events", {
+    household_id: i64,
+    actor_account_id: Option<i64>,
+    actor_membership_id: Option<i64>,
+    event_type: String,
+    request_id: Option<String>,
+    ip: Option<String>,
+    metadata: serde_json::Value,
+    audit_context: serde_json::Value,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
 entity!(account, "accounts", { status: i32, });
 
 pub mod account_lockout {
