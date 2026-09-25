@@ -49,6 +49,9 @@ end
 
 check_compose_port 127.0.0.1:43017 0 43017
 or exit $status
+check_compose_port '127.0.0.1:43017
+127.0.0.1:43018' 2 ''
+or exit $status
 check_compose_port error 27 ''
 or exit $status
 check_compose_port empty 1 ''

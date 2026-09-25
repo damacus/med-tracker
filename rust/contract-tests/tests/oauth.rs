@@ -8,13 +8,17 @@ fn discovery_advertises_authorization_code_pkce_and_local_endpoints() {
     let response = Target::from_env().get("/.well-known/oauth-authorization-server", None);
     assert_eq!(response.status().as_u16(), 200);
     let body: Value = response.json().expect("JSON OAuth discovery");
-    for endpoint in [
-        "authorization_endpoint",
-        "token_endpoint",
-        "revocation_endpoint",
+    for (endpoint, expected_path) in [
+        ("authorization_endpoint", "/authorize"),
+        ("token_endpoint", "/token"),
+        ("revocation_endpoint", "/revoke"),
     ] {
         let value = body[endpoint].as_str().expect("endpoint URL");
-        assert!(value.starts_with("http://") || value.starts_with("https://"));
+        let advertised = Url::parse(value).expect("absolute endpoint URL");
+        assert!(matches!(advertised.scheme(), "http" | "https"));
+        assert_eq!(advertised.path(), expected_path);
+        assert!(advertised.query().is_none());
+        assert!(advertised.fragment().is_none());
     }
     assert!(body["code_challenge_methods_supported"]
         .as_array()

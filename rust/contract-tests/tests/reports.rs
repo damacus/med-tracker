@@ -211,6 +211,16 @@ fn health_history_json_chronology_dates_and_takes() {
     assert!(!chronology
         .iter()
         .any(|row| row["id"].as_str() == Some(earlier_event_id.as_str())));
+    let medicine = format!(
+        "/api/v1/households/{}/medications/{}",
+        fixture.household_id, fixture.historical_medication_portable_id
+    );
+    let medicine_response = target.get(&medicine, Some(&fixture.access_token));
+    assert_eq!(medicine_response.status().as_u16(), 200);
+    let expected_medicine = json(medicine_response)["data"]["display_name"]
+        .as_str()
+        .expect("historical medicine display name")
+        .to_owned();
     assert!(body["data"]["medication_takes"]
         .as_array()
         .unwrap()
@@ -219,9 +229,7 @@ fn health_history_json_chronology_dates_and_takes() {
             row["taken_at"]
                 .as_str()
                 .is_some_and(|date| date.starts_with("2026-02-25"))
-                && row["medication_name"]
-                    .as_str()
-                    .is_some_and(|name| name.starts_with("Contract historical medicine"))
+                && row["medication_name"] == expected_medicine
         }));
     let audits = audits(&target, &fixture);
     assert_audited(&audits, &id, "health_history_report.downloaded", "json");

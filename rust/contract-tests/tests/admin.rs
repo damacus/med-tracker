@@ -457,6 +457,15 @@ fn task_6a2_audit_access_order_query_bounds_and_sensitive_redaction() {
         let rows = result["data"].as_array().expect("audit data array");
         assert!(!rows.is_empty());
         assert!(rows.len() <= 100);
+        for pair in rows.windows(2) {
+            let newer = pair[0]["created_at"]
+                .as_str()
+                .expect("newer audit timestamp");
+            let older = pair[1]["created_at"]
+                .as_str()
+                .expect("older audit timestamp");
+            assert!(newer >= older, "audit collection must be newest first");
+        }
         assert!(result.get("meta").is_none());
         assert!(!result.to_string().contains(secret));
         assert!(!result.to_string().contains(&raw));
@@ -900,6 +909,15 @@ fn invalid_and_forbidden_membership_updates_preserve_public_state() {
     let foreign_before = body(response);
     let foreign_original = membership(&foreign_before, fixture.foreign_membership_id).clone();
     let foreign = format!("{list_path}/{}", fixture.foreign_membership_id);
+    assert_api_error(
+        target.patch_json(
+            &foreign,
+            &fixture.access_token,
+            &json!({"household_membership": {"status": "suspended"}}),
+        ),
+        404,
+        "not_found",
+    );
     let response = target.put_json(
         &foreign,
         &fixture.access_token,
