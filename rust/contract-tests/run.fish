@@ -64,9 +64,19 @@ function run_rails_contract_targets -a base_url fixture_path mailpit_url project
     set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports fhir lookup portability profile sync replay oauth devices envelopes
     rtk task contract:run BASE_URL="$base_url" FIXTURE_PATH="$fixture_path" MAILPIT_URL="$mailpit_url" TEST_TARGET=lib
     or set -a failed_targets lib
+    set -l previous_target
     for target in $targets
+        if test "$target" = lookup
+            set_lookup_adapter_environment
+        else
+            clear_lookup_adapter_environment
+        end
         if test "$target" != auth
-            rtk task contract:restart-web CONTRACT_PROJECT=$project CONTRACT_RUN_DIR=$run_dir
+            if test "$target" = lookup; or test "$previous_target" = lookup
+                rtk task test:server CONTRACT_PROJECT=$project
+            else
+                rtk task contract:restart-web CONTRACT_PROJECT=$project CONTRACT_RUN_DIR=$run_dir
+            end
             or begin
                 set -l restart_status $status
                 echo "Contract web restart failed before $target" >&2
@@ -78,6 +88,7 @@ function run_rails_contract_targets -a base_url fixture_path mailpit_url project
             wait_for_contract_web $base_url
             or return $status
         end
+        set previous_target $target
         rtk task contract:run BASE_URL="$base_url" FIXTURE_PATH="$fixture_path" MAILPIT_URL="$mailpit_url" TEST_TARGET=$target
         or set -a failed_targets $target
     end
@@ -85,6 +96,16 @@ function run_rails_contract_targets -a base_url fixture_path mailpit_url project
         echo "Contract targets failed: "(string join ', ' $failed_targets) >&2
         return 1
     end
+end
+
+function set_lookup_adapter_environment
+    set -gx CONTRACT_NHS_DMD_CLIENT_ID contract-id
+    set -gx CONTRACT_NHS_DMD_CLIENT_SECRET contract-secret
+    set -gx CONTRACT_RUBYOPT -r/app/rust/contract-tests/test_support/nhs_dmd_webmock
+end
+
+function clear_lookup_adapter_environment
+    set -e CONTRACT_NHS_DMD_CLIENT_ID CONTRACT_NHS_DMD_CLIENT_SECRET CONTRACT_RUBYOPT
 end
 
 if test "$mode" != rails; and test "$mode" != rust
@@ -115,6 +136,11 @@ function run_contract
 
     set -lx CONTRACT_RATE_LIMITING true
     set -lx CONTRACT_AI_MEDICATION_HELP_ENABLED true
+    if test "$argv[2]" = lookup
+        set_lookup_adapter_environment
+    else
+        clear_lookup_adapter_environment
+    end
     set -lx CONTRACT_DATABASE_URL postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract
     set -l startup_at (date +%s)
     rtk task contract:prepare-db CONTRACT_PROJECT=$contract_project

@@ -86,9 +86,14 @@ fixture = ActiveRecord::Base.transaction do
     account: lookup_paid_account, household_membership: lookup_paid_membership, device_name: 'contract-lookup-paid'
   )
   lookup_barcode = '9876543210987'
+  lookup_hidden_barcode = '9876543210988'
   lookup_display = "Contract catalogue medicine #{nonce}"
+  lookup_code = "contract-dmd-#{nonce}"
   BarcodeCatalogEntry.create!(gtin: lookup_barcode, display: lookup_display, source: 'contract_catalog',
-                              code: "contract-dmd-#{nonce}", system: 'https://dmd.nhs.uk', concept_class: 'AMPP')
+                              code: lookup_code, system: 'https://dmd.nhs.uk', concept_class: 'AMPP')
+  BarcodeCatalogEntry.create!(gtin: lookup_hidden_barcode, display: "Contract hidden catalogue medicine #{nonce}",
+                              source: 'contract_catalog', code: "contract-hidden-dmd-#{nonce}",
+                              system: 'https://dmd.nhs.uk', concept_class: 'AMPP')
   portable_source_membership = portable_source_account.household_memberships.find_by!(household: portable_source_household)
   portable_target_membership = portable_target_account.household_memberships.find_by!(household: portable_target_household)
   _portable_source_session, portable_source_access_token, = ApiSession.issue_for(
@@ -383,6 +388,7 @@ fixture = ActiveRecord::Base.transaction do
                                           name: "Contract managed medicine #{nonce}", dose_amount: '2',
                                           dose_unit: 'ml', current_supply: '50', reorder_threshold: '5',
                                           category: 'Analgesic', dmd_code: '123456', dmd_system: 'https://dmd.nhs.uk')
+  managed_medication.update!(barcode: lookup_barcode)
   managed_dosage = managed_medication.dosage_records.create!(amount: '1', unit: 'ml', frequency: 'daily',
                                                              default_max_daily_doses: 4,
                                                              default_min_hours_between_doses: '4',
@@ -390,6 +396,7 @@ fixture = ActiveRecord::Base.transaction do
   hidden_medication = Medication.create!(household: household, location: primary_location,
                                          name: "Contract hidden medicine #{nonce}", dose_amount: '2',
                                          dose_unit: 'ml', current_supply: '50', reorder_threshold: '5', category: 'Vitamin')
+  hidden_medication.update!(barcode: lookup_hidden_barcode)
   foreign_medication = Medication.create!(household: foreign_household, location: foreign_location,
                                           name: "Contract foreign medicine #{nonce}", dose_amount: '2',
                                           dose_unit: 'ml', current_supply: '50', reorder_threshold: '5')
@@ -631,8 +638,12 @@ fixture = ActiveRecord::Base.transaction do
     profile_revoke_mobile_token: profile_revoke_mobile_token,
     profile_signed_blob_id: profile_signed_blob.signed_id,
     lookup_paid_household_id: lookup_paid_household.id,
+    lookup_paid_account_id: lookup_paid_account.id,
+    lookup_paid_membership_id: lookup_paid_membership.id,
     lookup_paid_access_token: lookup_paid_access_token,
     lookup_barcode: lookup_barcode,
+    lookup_hidden_barcode: lookup_hidden_barcode,
+    lookup_code: lookup_code,
     lookup_display: lookup_display,
     portable_source_household_id: portable_source_household.id,
     portable_source_account_id: portable_source_account.id,
