@@ -47,14 +47,14 @@ newly named OIDC provider button until the full authentication browser suite.
   reviewed API-plan Tasks 1 and 2; the matrix records all 118 OpenAPI
   operations and the existing RSpec inventory.
 - Tranche 1: in progress. Reviewed API contract slices through web JSON reads,
-  web JSON actions, and cross-account session denial are integrated. The
-  complete combined Rails run last had one FHIR fixture-state failure; the
-  corrected focused FHIR suite passed 5/5, and combined rerun is pending.
-  Provider delivery, production-like CSRF, and known Rails privacy/image
-  defects remain explicit gaps.
+  web JSON actions, cross-account session denial, platform/web profile CSRF,
+  and push delivery are integrated. The complete combined Rails run last had
+  one FHIR fixture-state failure; the corrected focused FHIR suite passed 5/5,
+  and combined rerun is pending. Web JSON action CSRF and known Rails
+  privacy/image defects remain explicit gaps.
 - Tranche 2: full browser/PWA parity pending. The bounded Leptos login-page
-  foundation is in progress in its isolated worktree; it does not close this
-  tranche.
+  foundation is integrated and passed its desktop/mobile Rust browser smoke;
+  it does not close this tranche or prove authentication, PWA, or visual parity.
 - Tranche 3: pending.
 - Tranche 4: pending.
 - Tranche 5: pending.
@@ -63,3 +63,19 @@ Record each accepted task as `Task N: complete (commits BASE..HEAD, review
 clean)` and each unresolved decision as `Ruling: decision — evidence — cost if
 wrong`. Do not mark a task complete from a test run without its independent
 review and recorded result.
+
+Accepted API slices: platform/web profile CSRF (`aaf11f35`, independent review
+clean); push delivery (`fd82ca4f`, independent review clean). Push delivery's
+combined-run target list was corrected after the fake runner first failed;
+the full isolation and failure-aggregation test then passed. These are contract
+tests against Rails, not a Rust API implementation.
+
+Bounded Leptos foundation Task 1: complete (`b14a8351..a86710ab`, independent
+review found no actionable issue after checking the report and four
+screenshots). Rails and Rust browser smokes each passed 2/2 across desktop and
+mobile. Integrated Rust unit, formatting, lint, and browser smoke passed; the
+browser smoke passed 2/2 after the pinned Playwright dependencies were
+installed with `10fa0129`. The corrected portable browser smoke did not have
+a strict failing-test-before-production sequence, which the writer reported.
+The visible `Forgot?` link currently leads to an unimplemented reset route;
+that journey and visual parity remain in the later browser tranche.
