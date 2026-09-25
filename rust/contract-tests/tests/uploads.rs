@@ -28,17 +28,12 @@ fn assert_icon(response: Response) {
 }
 
 #[test]
-fn direct_upload_creation_and_disk_write_are_unavailable() {
+fn direct_upload_creation_is_unavailable() {
     let target = Target::from_env();
     let response = target.post_json(
         &format!("{PREFIX}/direct_uploads"),
         &json!({"blob": {"filename": "contract-icon.png", "byte_size": ICON.len(),
             "content_type": "image/png", "checksum": "invalid"}}),
-    );
-    assert_eq!(response.status().as_u16(), 404);
-    let response = target.put_json_without_auth(
-        &format!("{PREFIX}/disk/unsigned-token/contract-icon.png"),
-        &json!({"bytes": "untrusted"}),
     );
     assert_eq!(response.status().as_u16(), 404);
 }
@@ -54,6 +49,14 @@ fn signed_blob_redirect_proxy_and_alias_download_public_bytes() {
     ] {
         let disk = disk_path(target.get(&path, None));
         assert_icon(target.get(&disk, None));
+        assert_eq!(
+            target
+                .put_json_without_auth(&disk, &json!({"bytes": "untrusted"}))
+                .status()
+                .as_u16(),
+            404
+        );
+        assert_icon(target.get(&disk, None));
         let encoded_key = disk
             .trim_start_matches(&format!("{PREFIX}/disk/"))
             .split('/')
@@ -66,6 +69,29 @@ fn signed_blob_redirect_proxy_and_alias_download_public_bytes() {
         &format!("{PREFIX}/blobs/proxy/{signed_id}/contract-icon.png"),
         None,
     ));
+}
+
+#[test]
+fn tampered_variation_key_is_denied_with_a_valid_blob_signature() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let variation = format!("{}x", fixture.upload_variation_key);
+    for path in [
+        format!(
+            "{PREFIX}/representations/redirect/{}/{variation}/contract-icon.png",
+            fixture.upload_blob_signed_id
+        ),
+        format!(
+            "{PREFIX}/representations/proxy/{}/{variation}/contract-icon.png",
+            fixture.upload_blob_signed_id
+        ),
+        format!(
+            "{PREFIX}/representations/{}/{variation}/contract-icon.png",
+            fixture.upload_blob_signed_id
+        ),
+    ] {
+        assert_eq!(target.get(&path, None).status().as_u16(), 404, "{path}");
+    }
 }
 
 #[test]
