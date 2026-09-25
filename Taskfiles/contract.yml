@@ -527,6 +527,11 @@ tasks:
     cmds:
       - fish rust/contract-tests/run.fish rails web-profile
 
+  profile-web-profile-rails:
+    desc: Run profile then web profile contracts against one isolated Rails fixture
+    cmds:
+      - fish rust/contract-tests/run.fish rails profile-web-profile
+
   lookup-rails:
     desc: Run medication lookup and AI suggestion cases against isolated Rails
     cmds:
