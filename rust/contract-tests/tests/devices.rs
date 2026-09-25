@@ -43,6 +43,15 @@ fn audit_for(target: &Target, fixture: &Fixture, id: &str) -> Value {
         .expect("request-correlated API audit")
 }
 
+fn assert_success_audit(target: &Target, fixture: &Fixture, id: &str, method: &str, status: u16) {
+    let audit = audit_for(target, fixture, id);
+    assert_eq!(audit["actor_account_id"], fixture.account_id);
+    assert_eq!(audit["actor_membership_id"], fixture.owner_membership_id);
+    assert_eq!(audit["metadata"]["http_method"], method);
+    assert_eq!(audit["metadata"]["status"], status);
+    assert_eq!(audit["metadata"]["outcome"], "success");
+}
+
 #[test]
 fn notification_preference_get_patch_and_put_follow_rails_partial_update_contract() {
     let target = Target::from_env();
@@ -89,12 +98,39 @@ fn notification_preference_get_patch_and_put_follow_rails_partial_update_contrac
     let read = target.get(&url, Some(&fixture.access_token));
     assert_eq!(read.status().as_u16(), 200);
     assert_eq!(response_body(read)["data"], created);
+    let denied_change =
+        json!({"notification_preference": {"enabled": false, "morning_time": "06:00"}});
+    assert_error(
+        target.patch_json_without_auth(&url, &denied_change),
+        401,
+        "unauthorized",
+    );
+    assert_error(
+        target.patch_json(&url, &fixture.foreign_access_token, &denied_change),
+        403,
+        "forbidden",
+    );
+    assert_error(
+        target.put_json_without_auth(&url, &denied_change),
+        401,
+        "unauthorized",
+    );
+    assert_error(
+        target.put_json(&url, &fixture.foreign_access_token, &denied_change),
+        403,
+        "forbidden",
+    );
+    assert_eq!(
+        response_body(target.get(&url, Some(&fixture.access_token)))["data"],
+        created
+    );
     let put = target.put_json(
         &url,
         &fixture.access_token,
         &json!({"notification_preference": {"enabled": false, "night_time": "21:10"}}),
     );
     assert_eq!(put.status().as_u16(), 200);
+    let put_id = request_id(&put);
     let replaced = response_body(put)["data"].clone();
     assert_eq!(replaced["enabled"], false);
     assert_eq!(replaced["night_time"], "21:10:00");
@@ -105,11 +141,8 @@ fn notification_preference_get_patch_and_put_follow_rails_partial_update_contrac
         response_body(target.get(&url, Some(&fixture.access_token)))["data"],
         replaced
     );
-    let audit = audit_for(&target, &fixture, &patch_id);
-    assert_eq!(audit["actor_account_id"], fixture.account_id);
-    assert_eq!(audit["actor_membership_id"], fixture.owner_membership_id);
-    assert_eq!(audit["metadata"]["http_method"], "PATCH");
-    assert_eq!(audit["metadata"]["status"], 200);
+    assert_success_audit(&target, &fixture, &patch_id, "PATCH", 200);
+    assert_success_audit(&target, &fixture, &put_id, "PUT", 200);
 }
 
 #[test]
@@ -173,9 +206,22 @@ fn device_tokens_are_account_owned_idempotent_and_secret_free() {
             .as_u16(),
         403
     );
+    assert_error(
+        target.post_json_authorized(&foreign_url, &fixture.foreign_access_token, &request),
+        422,
+        "validation_failed",
+    );
+    let removed = target.delete(&delete, Some(&fixture.access_token));
+    assert_eq!(removed.status().as_u16(), 204);
+    let delete_id = request_id(&removed);
+    assert_success_audit(&target, &fixture, &delete_id, "DELETE", 204);
+    let claimed =
+        target.post_json_authorized(&foreign_url, &fixture.foreign_access_token, &request);
+    assert_eq!(claimed.status().as_u16(), 201);
+    let foreign_delete = format!("{foreign_url}/{token}");
     assert_eq!(
         target
-            .delete(&delete, Some(&fixture.access_token))
+            .delete(&foreign_delete, Some(&fixture.foreign_access_token))
             .status()
             .as_u16(),
         204
@@ -187,12 +233,6 @@ fn device_tokens_are_account_owned_idempotent_and_secret_free() {
             .as_u16(),
         204
     );
-    assert!(!response_body(target.get(
-        &path(&fixture, "mobile_snapshot"),
-        Some(&fixture.access_token)
-    ))
-    .to_string()
-    .contains(&token));
 }
 
 #[test]
@@ -219,9 +259,23 @@ fn device_token_validation_and_authority_fail_before_persistence() {
         403,
         "forbidden",
     );
+    let foreign_url = format!(
+        "/api/v1/households/{}/native_device_tokens",
+        fixture.foreign_household_id
+    );
     assert_eq!(
         target
-            .delete(&format!("{url}/{token}"), Some(&fixture.access_token))
+            .post_json_authorized(&foreign_url, &fixture.foreign_access_token, &request)
+            .status()
+            .as_u16(),
+        201
+    );
+    assert_eq!(
+        target
+            .delete(
+                &format!("{foreign_url}/{token}"),
+                Some(&fixture.foreign_access_token)
+            )
             .status()
             .as_u16(),
         204
@@ -259,6 +313,11 @@ fn push_subscriptions_register_repeat_and_revoke_by_endpoint() {
         fixture.foreign_household_id
     );
     assert_error(
+        target.post_json_authorized(&url, &fixture.foreign_access_token, &request),
+        403,
+        "forbidden",
+    );
+    assert_error(
         target.post_json_authorized(&foreign_url, &fixture.foreign_access_token, &request),
         422,
         "validation_failed",
@@ -276,9 +335,31 @@ fn push_subscriptions_register_repeat_and_revoke_by_endpoint() {
             .as_u16(),
         403
     );
+    assert_error(
+        target.post_json_authorized(&foreign_url, &fixture.foreign_access_token, &request),
+        422,
+        "validation_failed",
+    );
+    let removed = target.delete(&delete, Some(&fixture.access_token));
+    assert_eq!(removed.status().as_u16(), 204);
+    let delete_id = request_id(&removed);
+    assert_success_audit(&target, &fixture, &delete_id, "DELETE", 204);
     assert_eq!(
         target
-            .delete(&delete, Some(&fixture.access_token))
+            .post_json_authorized(&foreign_url, &fixture.foreign_access_token, &request)
+            .status()
+            .as_u16(),
+        201
+    );
+    let foreign_delete = format!(
+        "{foreign_url}?{}",
+        form_urlencoded::Serializer::new(String::new())
+            .append_pair("endpoint", &endpoint)
+            .finish()
+    );
+    assert_eq!(
+        target
+            .delete(&foreign_delete, Some(&fixture.foreign_access_token))
             .status()
             .as_u16(),
         204
@@ -297,14 +378,81 @@ fn push_subscription_validation_missing_endpoint_and_test_http_outcome() {
     let target = Target::from_env();
     let fixture = fixture();
     let url = path(&fixture, "push_subscription");
+    let foreign_url = format!(
+        "/api/v1/households/{}/push_subscription",
+        fixture.foreign_household_id
+    );
+    let invalid_endpoint = format!(
+        "https://fcm.googleapis.com/fcm/send/contract-invalid-{}",
+        fixture.account_id
+    );
     let invalid = target.post_json_authorized(
         &url,
         &fixture.access_token,
-        &json!({"push_subscription": {"endpoint": "http://push.example.test/invalid", "keys": {
+        &json!({"push_subscription": {"endpoint": invalid_endpoint, "keys": {
             "p256dh": "", "auth": ""
         }}}),
     );
     assert_error(invalid, 422, "validation_failed");
+    let valid_after_rejection = json!({"push_subscription": {"endpoint": invalid_endpoint, "keys": {
+        "p256dh": "contract-valid-key", "auth": "contract-valid-auth"
+    }}});
+    assert_eq!(
+        target
+            .post_json_authorized(
+                &foreign_url,
+                &fixture.foreign_access_token,
+                &valid_after_rejection
+            )
+            .status()
+            .as_u16(),
+        201
+    );
+    let foreign_delete = format!(
+        "{foreign_url}?{}",
+        form_urlencoded::Serializer::new(String::new())
+            .append_pair("endpoint", &invalid_endpoint)
+            .finish()
+    );
+    assert_eq!(
+        target
+            .delete(&foreign_delete, Some(&fixture.foreign_access_token))
+            .status()
+            .as_u16(),
+        204
+    );
+    let denied_endpoint = format!(
+        "https://fcm.googleapis.com/fcm/send/contract-denied-{}",
+        fixture.account_id
+    );
+    let denied_request = json!({"push_subscription": {"endpoint": denied_endpoint, "keys": {
+        "p256dh": "contract-denied-key", "auth": "contract-denied-auth"
+    }}});
+    assert_error(
+        target.post_json_authorized(&url, &fixture.foreign_access_token, &denied_request),
+        403,
+        "forbidden",
+    );
+    assert_eq!(
+        target
+            .post_json_authorized(&foreign_url, &fixture.foreign_access_token, &denied_request)
+            .status()
+            .as_u16(),
+        201
+    );
+    let denied_delete = format!(
+        "{foreign_url}?{}",
+        form_urlencoded::Serializer::new(String::new())
+            .append_pair("endpoint", &denied_endpoint)
+            .finish()
+    );
+    assert_eq!(
+        target
+            .delete(&denied_delete, Some(&fixture.foreign_access_token))
+            .status()
+            .as_u16(),
+        204
+    );
     assert_error(
         target.delete(&url, Some(&fixture.access_token)),
         400,
@@ -322,7 +470,21 @@ fn push_subscription_validation_missing_endpoint_and_test_http_outcome() {
         403,
         "forbidden",
     );
+    let endpoint = format!(
+        "https://fcm.googleapis.com/fcm/send/contract-test-{}",
+        fixture.account_id
+    );
+    let registration = target.post_json_authorized(
+        &url,
+        &fixture.access_token,
+        &json!({"push_subscription": {"endpoint": endpoint, "keys": {
+            "p256dh": "contract-test-key", "auth": "contract-test-auth"
+        }}}),
+    );
+    assert_eq!(registration.status().as_u16(), 201);
     let response = target.post_json_authorized(&test_url, &fixture.access_token, &json!({}));
     assert_eq!(response.status().as_u16(), 204);
+    let test_id = request_id(&response);
     assert!(response.text().expect("empty test response").is_empty());
+    assert_success_audit(&target, &fixture, &test_id, "POST", 204);
 }

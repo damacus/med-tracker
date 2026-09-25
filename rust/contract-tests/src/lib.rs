@@ -403,6 +403,16 @@ impl Target {
             .expect("target must respond")
     }
 
+    pub fn patch_json_without_auth(&self, path: &str, body: &serde_json::Value) -> Response {
+        self.require_local_write();
+        self.client
+            .patch(self.url(path))
+            .header("Accept", "application/json")
+            .json(body)
+            .send()
+            .expect("target must respond")
+    }
+
     pub fn patch_json_if_match(
         &self,
         path: &str,
@@ -450,6 +460,16 @@ impl Target {
         self.require_local_write();
         self.authorize(self.client.put(self.url(path)), Some(token))
             .multipart(form)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn put_json_without_auth(&self, path: &str, body: &serde_json::Value) -> Response {
+        self.require_local_write();
+        self.client
+            .put(self.url(path))
+            .header("Accept", "application/json")
+            .json(body)
             .send()
             .expect("target must respond")
     }
