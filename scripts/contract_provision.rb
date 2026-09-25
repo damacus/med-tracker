@@ -123,12 +123,17 @@ fixture = ActiveRecord::Base.transaction do
   )
   lookup_barcode = '9876543210987'
   lookup_hidden_barcode = '9876543210988'
+  web_foreign_barcode = '9876543210997'
+  web_foreign_display = "Contract foreign catalogue medicine #{nonce}"
   lookup_display = "Contract catalogue medicine #{nonce}"
   lookup_code = "contract-dmd-#{nonce}"
   BarcodeCatalogEntry.create!(gtin: lookup_barcode, display: lookup_display, source: 'contract_catalog',
                               code: lookup_code, system: 'https://dmd.nhs.uk', concept_class: 'AMPP')
   BarcodeCatalogEntry.create!(gtin: lookup_hidden_barcode, display: "Contract hidden catalogue medicine #{nonce}",
                               source: 'contract_catalog', code: "contract-hidden-dmd-#{nonce}",
+                              system: 'https://dmd.nhs.uk', concept_class: 'AMPP')
+  BarcodeCatalogEntry.create!(gtin: web_foreign_barcode, display: web_foreign_display,
+                              source: 'contract_catalog', code: "contract-web-foreign-#{nonce}",
                               system: 'https://dmd.nhs.uk', concept_class: 'AMPP')
   portable_source_membership = portable_source_account.household_memberships.find_by!(household: portable_source_household)
   portable_target_membership = portable_target_account.household_memberships.find_by!(household: portable_target_household)
@@ -437,6 +442,7 @@ fixture = ActiveRecord::Base.transaction do
   foreign_medication = Medication.create!(household: foreign_household, location: foreign_location,
                                           name: "Contract foreign medicine #{nonce}", dose_amount: '2',
                                           dose_unit: 'ml', current_supply: '50', reorder_threshold: '5')
+  foreign_medication.update!(barcode: web_foreign_barcode)
   foreign_dosage = foreign_medication.dosage_records.create!(amount: '1', unit: 'ml', frequency: 'daily',
                                                              default_max_daily_doses: 4,
                                                              default_min_hours_between_doses: '4',
@@ -744,6 +750,9 @@ fixture = ActiveRecord::Base.transaction do
     retained_schedule_id: retained_schedule.id,
     retained_medication_id: retained_medication.id,
     retained_foreign_household_slug: foreign_household.slug,
+    web_household_slug: household.slug,
+    web_foreign_barcode: web_foreign_barcode,
+    web_foreign_display: web_foreign_display,
     profile_household_id: profile_household.id,
     avatar_household_id: avatar_household.id,
     web_avatar_household_slug: web_avatar_household.slug,
