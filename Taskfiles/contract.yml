@@ -388,6 +388,11 @@ tasks:
     cmds:
       - fish rust/contract-tests/run.fish rails admin-tokens-audit
 
+  oauth-rails:
+    desc: Run OAuth cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails oauth
+
   invitations-rails:
     desc: Run household invitation cases against isolated Rails
     cmds:
@@ -552,6 +557,14 @@ tasks:
       CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
       - fish rust/contract-tests/run.fish rust admin-tokens-audit
+
+  oauth-rust:
+    desc: Run OAuth cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust oauth
 
   invitations-rust:
     desc: Run household invitation cases against a Rust URL
