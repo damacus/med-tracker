@@ -1,7 +1,10 @@
 use base64::{engine::general_purpose::STANDARD, Engine};
+use lopdf::Document;
 use medtracker_contract_tests::{fixture, Fixture, Target};
 use reqwest::blocking::Response;
 use serde_json::Value;
+use std::io::{Cursor, Read};
+use zip::ZipArchive;
 
 fn report_path(fixture: &Fixture, kind: &str) -> String {
     format!("/api/v1/households/{}/reports/{kind}", fixture.household_id)
@@ -84,9 +87,68 @@ fn assert_pdf(response: Response, filename_suffix: &str) -> String {
     let id = request_id(&response);
     let bytes = response.bytes().expect("PDF bytes");
     assert!(bytes.len() > 500, "PDF must be nonempty");
-    assert!(bytes.starts_with(b"%PDF-"));
-    assert!(bytes.windows(5).any(|window| window == b"%%EOF"));
+    let document = Document::load_mem(&bytes).expect("parse PDF structure");
+    let pages = document.get_pages();
+    assert!(!pages.is_empty(), "PDF must contain a page");
+    assert!(pages.values().any(|page| !document
+        .get_page_content(*page)
+        .expect("PDF page content stream")
+        .is_empty()));
     id
+}
+
+fn assert_chronology(rows: &[Value], start_date: &str, end_date: &str) {
+    for row in rows {
+        let started_on = row["started_on"].as_str().expect("event start date");
+        assert!(started_on <= end_date, "future event escaped date filter");
+        if let Some(ended_on) = row["ended_on"].as_str() {
+            assert!(ended_on >= start_date, "past event escaped date filter");
+        }
+    }
+    for pair in rows.windows(2) {
+        let first = (
+            pair[0]["started_on"].as_str().unwrap(),
+            pair[0]["id"].as_str().unwrap().parse::<i64>().unwrap(),
+        );
+        let second = (
+            pair[1]["started_on"].as_str().unwrap(),
+            pair[1]["id"].as_str().unwrap().parse::<i64>().unwrap(),
+        );
+        assert!(first >= second, "health history must be newest first");
+    }
+}
+
+fn backup_json(bytes: &[u8]) -> Value {
+    let mut archive = ZipArchive::new(Cursor::new(bytes)).expect("parse ZIP archive");
+    let mut entry = archive
+        .by_name("medtracker-backup.json")
+        .expect("backup JSON entry");
+    let mut contents = String::new();
+    entry
+        .read_to_string(&mut contents)
+        .expect("decompress backup JSON");
+    serde_json::from_str(&contents).expect("ZIP contains JSON export")
+}
+
+#[test]
+fn backup_json_accepts_deflated_entry_after_another_file() {
+    use std::io::Write;
+    use zip::{write::SimpleFileOptions, CompressionMethod, ZipWriter};
+
+    let writer = Cursor::new(Vec::new());
+    let mut archive = ZipWriter::new(writer);
+    let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+    archive.start_file("readme.txt", options).unwrap();
+    archive.write_all(b"a preceding entry").unwrap();
+    archive
+        .start_file("medtracker-backup.json", options)
+        .unwrap();
+    archive
+        .write_all(br#"{"format":"medtracker.backup.v1"}"#)
+        .unwrap();
+    let bytes = archive.finish().unwrap().into_inner();
+
+    assert_eq!(backup_json(&bytes)["format"], "medtracker.backup.v1");
 }
 
 #[test]
@@ -109,6 +171,7 @@ fn health_history_json_chronology_dates_and_takes() {
     assert_eq!(data["end_date"], "2026-02-26");
     assert!(data["generated_at"].is_string());
     let chronology = data["chronology"].as_array().expect("chronology");
+    assert_chronology(chronology, "2026-02-19", "2026-02-26");
     let managed_event_id = fixture.managed_health_event_id.to_string();
     let earlier_event_id = fixture.earlier_health_event_id.to_string();
     let managed = chronology
@@ -122,11 +185,12 @@ fn health_history_json_chronology_dates_and_takes() {
     assert!(managed < earlier, "chronology is newest first");
     assert_eq!(chronology[managed]["started_on"], "2026-02-25");
     assert_eq!(
-        chronology[managed]["medication_names"]
-            .as_array()
-            .unwrap()
-            .len(),
-        1
+        chronology[managed]["title"],
+        fixture.managed_health_event_title
+    );
+    assert_eq!(
+        chronology[managed]["medication_names"],
+        serde_json::json!([fixture.managed_medication_name])
     );
     assert_eq!(data["medication_takes"].as_array().unwrap().len(), 0);
     assert!(!body.to_string().contains("Contract hidden event"));
@@ -140,16 +204,25 @@ fn health_history_json_chronology_dates_and_takes() {
     let filtered_id = request_id(&response);
     let body = json(response);
     let chronology = body["data"]["chronology"].as_array().unwrap();
+    assert_chronology(chronology, "2026-02-24", "2026-02-26");
     assert!(chronology
         .iter()
         .any(|row| row["id"].as_str() == Some(managed_event_id.as_str())));
     assert!(!chronology
         .iter()
         .any(|row| row["id"].as_str() == Some(earlier_event_id.as_str())));
-    assert!(!body["data"]["medication_takes"]
+    assert!(body["data"]["medication_takes"]
         .as_array()
         .unwrap()
-        .is_empty());
+        .iter()
+        .any(|row| {
+            row["taken_at"]
+                .as_str()
+                .is_some_and(|date| date.starts_with("2026-02-25"))
+                && row["medication_name"]
+                    .as_str()
+                    .is_some_and(|name| name.starts_with("Contract historical medicine"))
+        }));
     let audits = audits(&target, &fixture);
     assert_audited(&audits, &id, "health_history_report.downloaded", "json");
     assert_audited(
@@ -174,17 +247,29 @@ fn health_history_pdf_and_denied_requests() {
         "2026-02-24-to-2026-02-26.pdf",
     );
     let mut denied_ids = Vec::new();
-    for (person, token, status) in [
-        (fixture.managed_person_id, &fixture.view_access_token, 404),
-        (fixture.hidden_person_id, &fixture.view_access_token, 404),
-        (fixture.foreign_person_id, &fixture.access_token, 404),
+    for (person, token, private_text) in [
+        (
+            fixture.managed_person_id,
+            &fixture.view_access_token,
+            "Contract managed event",
+        ),
+        (
+            fixture.hidden_person_id,
+            &fixture.view_access_token,
+            "Contract hidden event",
+        ),
+        (
+            fixture.foreign_person_id,
+            &fixture.access_token,
+            "Contract foreign event",
+        ),
     ] {
         let denied = format!("{path}?person_id={person}&start_date=2026-02-24&end_date=2026-02-26");
         let id = assert_error(
             target.get(&denied, Some(token)),
-            status,
+            404,
             "not_found",
-            "Contract managed event",
+            private_text,
         );
         denied_ids.push(id);
     }
@@ -416,14 +501,7 @@ fn data_exports_cover_json_zip_encryption_and_errors() {
     let bytes = STANDARD
         .decode(zip["base64"].as_str().unwrap())
         .expect("base64 ZIP");
-    assert!(bytes.starts_with(b"PK\x03\x04"));
-    assert!(bytes.windows(4).any(|window| window == b"PK\x05\x06"));
-    let name_len = u16::from_le_bytes([bytes[26], bytes[27]]) as usize;
-    let extra_len = u16::from_le_bytes([bytes[28], bytes[29]]) as usize;
-    let content_len = u32::from_le_bytes([bytes[18], bytes[19], bytes[20], bytes[21]]) as usize;
-    let content_start = 30 + name_len + extra_len;
-    let payload: Value = serde_json::from_slice(&bytes[content_start..content_start + content_len])
-        .expect("ZIP contains JSON export");
+    let payload = backup_json(&bytes);
     assert_eq!(payload["format"], "medtracker.backup.v1");
     assert!(payload["records"]["people"].is_array());
     assert!(!payload.to_string().contains(&fixture.foreign_person_name));
