@@ -25,14 +25,17 @@ Spec: [plan.md](plan.md), bounded Leptos foundation exception.
 
 ## Task 1: Public login page SSR smoke
 
-Create a target-independent Playwright browser smoke under `rust/web/tests/`
-for a real current Rails journey: navigate to `/login` in a fresh browser
-context, assert one visible level-one heading `Welcome back`, labelled
-`Email address` and `Password` fields, and a visible `Sign In to Dashboard`
-submit control. Run at desktop 1400×900 and mobile 390×844. Fail if the form
-is absent or its labels are inaccessible. Run it against an isolated Rails
-test server first and record the exact baseline result. Point it at the absent
-Rust target and record the connection failure as expected red.
+Port the existing login-page example in `spec/system/user_sessions_spec.rb`
+(`describe 'login page'`, `it 'displays the login form with all fields'`) into
+a target-independent Playwright browser smoke under `rust/web/tests/`. In a
+fresh browser context at `/login`, preserve its assertions inside `main`:
+email field, password field, `Sign In to Dashboard` button, and `Forgot?`
+link. Also preserve `Welcome back` and absent `Continue with` OIDC button from
+`spec/features/security/oidc_security_spec.rb` for the no-credentials
+configuration. Use accessible locators for the fields and controls. Run at
+desktop 1400×900 and mobile 390×844. Run the portable contract against an
+isolated Rails test server and record the exact baseline result. Point it at
+the absent Rust target and record the connection failure as expected red.
 
 Create the smallest standalone `rust/web/` Rust crate that serves `/login`
 through Axum with HTML rendered by a Leptos component on the server. It may
@@ -43,7 +46,7 @@ slice. Avoid presenting an inert submit as working authentication: use a
 clearly disabled submit until the shared auth integration task is approved,
 and have the smoke check its visible label rather than submission behaviour.
 
-Run the same browser smoke against the Rust server at both viewports, plus
+Run the same ported browser smoke against the Rust server at both viewports, plus
 crate formatting, Clippy, and Rust unit/integration checks through its local
 Taskfile. Record server RSS for warm idle as a measurement only if practical;
 the under-200 MB target is a later combined-process acceptance gate. Commit

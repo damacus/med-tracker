@@ -20,6 +20,13 @@ start with an expected-red Rust smoke — the cost if wrong is reworking the
 shell when shared API, router, and authentication interfaces are settled.
 This does not count as UI, PWA, or workflow parity.
 
+Ruling: port the existing login-form display example in
+`spec/system/user_sessions_spec.rb` and the public heading/OIDC-absence
+example in `spec/features/security/oidc_security_spec.rb` as the foundation
+smoke — the Rails suite is the behaviour source, and the user rejected an
+invented substitute — the cost if wrong is later reworking this small smoke
+when the full authenticated login journey is ported.
+
 | Owner | Exclusive paths | Reserved shared paths |
 | --- | --- | --- |
 | API contract writers | Their separate worktrees; `rust/contract-tests/**`, `rust/parity-matrix.md`, API fixture and contract-task changes | No `rust/web/**` edits |
