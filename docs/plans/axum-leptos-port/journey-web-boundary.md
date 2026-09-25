@@ -1,15 +1,21 @@
 # First-party web boundary for the medication journey
 
-The direct-dose API is accepted. The next bounded tranche implements the
-first-party session boundary before the full medication UI.
+The direct-dose API and first-party session boundary are accepted. The next
+bounded tranche completes shared source reads and the medication UI.
 
-The existing product owner owns `rust/api/src/**`, its manifest/lockfile and
-`rust/web/src/lib.rs` for standalone login, the minimal authenticated landing
-page and session controls. The test owner owns `web_session_api.rs`; the
-browser test owner retains the medication journey suite. Each updates its
-own report. The reviewer and runner remain independent. No database queries
-belong in the web crate. Implementation begins after the dedicated
-`task api:web-session-acceptance` records its behavioural RED.
+The shared-read product owner owns `rust/api/src/read_resources.rs`,
+`read_entities.rs` and the generic read-audit helper in `audit.rs`. The web
+product owner owns route integration in `lib.rs`, cookie household discovery
+in `oauth.rs`, the new `web_pages.rs` API transport, and `rust/web/src/`.
+The API test owner owns `web_session_api.rs`; the browser test owner owns the
+medication journey suite and its dedicated Task/runner wiring. Each retains
+its fixes and report. Review and execution remain independent. No database
+queries belong in the web crate or medication web handlers.
+
+Shared-read implementation follows its recorded four-case Rust HTTP failure.
+Cookie household discovery and medication UI changes require their own
+recorded failures before implementation. The dedicated commands are
+`task api:web-session-acceptance` and `task api:browser-rust`.
 
 ## One API for web and native clients
 
@@ -91,6 +97,13 @@ before deciding whether an independently issued mobile grant is affected.
 Generate the dose client UUID with the form and keep it unchanged through
 double submission and validation rerender. Generating a new UUID on every
 POST would defeat duplicate protection.
+
+The current shared source representations expose `can_manage`, which is not
+permission to record doses. Rails source policies check a separate `record`
+grant. The first owner journey may submit through the shared API and show
+its denial, but matching action visibility for view-only users remains an
+owned parity gap. Resolve it through a tested shared API capability before
+claiming permission-aware UI parity; do not duplicate grant rules in Leptos.
 
 ## Required proof before acceptance
 

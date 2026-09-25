@@ -183,11 +183,14 @@ function run_contract
         or return $status
         set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner-subnet.compose.yaml"
     end
-    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api browser-journey-rails web-reads-rails
+    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api browser-journey-rails browser-journey-rust web-reads-rails
         set -gx CONTRACT_AUTH_SESSION_SECRET (rtk proxy openssl rand -hex 32)
         or return $status
         set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner.compose.yaml"
         set -gx CONTRACT_FIXTURE_DIR (rtk proxy realpath "$contract_run_dir")
+    end
+    if test "$argv[2]" = browser-journey-rust
+        set -gx CONTRACT_RUST_BROWSER_SCREENSHOT_DIR ./docs/screenshots/journey-medication-rust
     end
     set -lx CONTRACT_PROJECT $contract_project
     echo "Contract run project: $contract_project"
@@ -228,6 +231,16 @@ function run_contract
     if test "$argv[2]" = browser-journey-rails
         set -g contract_api_image true
         rtk task api:contract-browser-rails CONTRACT_PROJECT=$contract_project
+        return $status
+    end
+
+    if test "$argv[2]" = browser-journey-rust
+        set -g contract_api_image true
+        rtk task api:contract-up CONTRACT_PROJECT=$contract_project
+        or return $status
+        rtk task api:contract-ready CONTRACT_PROJECT=$contract_project
+        or return $status
+        rtk task api:contract-browser-rust CONTRACT_PROJECT=$contract_project
         return $status
     end
 

@@ -98,6 +98,38 @@ or begin; echo 'Runner skipped image cleanup after browser failure' >&2; exit 1;
 
 set -e CONTRACT_FAKE_FAIL_STEP
 command rm -f $test_dir/trace
+fish --no-config rust/contract-tests/run.fish rails browser-journey-rust >$test_dir/output 2>&1
+set run_status $status
+set trace (cat $test_dir/trace)
+test $run_status -eq 0
+or begin; cat $test_dir/output >&2; exit 1; end
+contains -- api:contract-up $trace
+or begin; echo 'Rust journey runner did not start the isolated API' >&2; exit 1; end
+contains -- api:contract-ready $trace
+or begin; echo 'Rust journey runner did not wait for API readiness' >&2; exit 1; end
+contains -- api:contract-browser-rust $trace
+or begin; echo 'Rust journey runner skipped its selected browser suite' >&2; exit 1; end
+contains -- cleanup $trace
+or begin; echo 'Rust journey runner skipped cleanup' >&2; exit 1; end
+if contains -- api:contract-test $trace; or contains -- api:contract-browser-test $trace; or contains -- api:contract-browser-rails $trace
+    echo 'Rust journey runner selected unrelated API, login or Rails browser tests' >&2
+    exit 1
+end
+
+set -lx CONTRACT_FAKE_FAIL_STEP api:contract-browser-rust
+command rm -f $test_dir/trace
+fish --no-config rust/contract-tests/run.fish rails browser-journey-rust >$test_dir/output 2>&1
+set failure_status $status
+test $failure_status -eq 42
+or begin; cat $test_dir/output >&2; echo "Rust journey runner lost browser failure status: $failure_status" >&2; exit 1; end
+set trace (cat $test_dir/trace)
+contains -- cleanup $trace
+or begin; echo 'Rust journey runner skipped cleanup after browser failure' >&2; exit 1; end
+contains -- api:contract-image-remove $trace
+or begin; echo 'Rust journey runner skipped image cleanup after browser failure' >&2; exit 1; end
+
+set -e CONTRACT_FAKE_FAIL_STEP
+command rm -f $test_dir/trace
 fish --no-config rust/contract-tests/run.fish rails browser-journey-rails >$test_dir/output 2>&1
 set run_status $status
 set trace (cat $test_dir/trace)

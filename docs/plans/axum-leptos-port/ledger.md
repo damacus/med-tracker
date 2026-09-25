@@ -26,6 +26,34 @@ successfully with unchanged source manifests. See
 [shared-read evidence](journey-web-reads-runner-report.md). This establishes
 the failing tests required before implementing those routes.
 
+## Shared-read and cookie household checkpoint
+
+Shared people, schedule and assignment reads plus cookie household discovery
+now pass the consolidated 51-case Rust HTTP suite. This includes six shared
+read cases and nine session cases. Independent requirements and code-quality
+review passed for this API boundary. The dedicated medication browser run
+remains separate from login smoke evidence and is not accepted by this result.
+
+Expanded verification passed all nine session cases, including cookie
+household discovery. The new audit cases exposed a Rails defect: the API
+around-action writes its exception audit inside a transaction and then
+re-raises, rolling the event back before the 403/422 response is rendered.
+Rust must retain these events. The initial expanded run also exposed a test
+cleanup error restoring a nullable birth date; that caused later read cases
+to remain subject to the temporary minor restriction. Both cleanup and Rust
+audit persistence are fixed. The final Rails run passes four functional cases
+and fails exactly the two known audit assertions; Rust passes all six.
+Neither historical failure is recorded as a passing baseline. Both full and
+scoped source manifests matched before and after the final runs, and both
+Compose projects cleaned up successfully. Snapshot Clippy, six API unit tests
+and diff checks also pass. See [independent review](journey-web-reads-review.md)
+and [runtime evidence](journey-web-reads-runner-report.md).
+
+Acceptance now uses an isolated worktree snapshot when a long build would
+otherwise freeze the UI writer. The current snapshot retains the verified
+cookie/router increment while medication UI development continues in the
+main checkout. Snapshot results do not certify later UI changes.
+
 ## Direct dose checkpoint
 
 Direct medication-take POST and history GET now pass independent requirements

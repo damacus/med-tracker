@@ -26,7 +26,13 @@ After a successful write, the medication profile must visibly show **18.75 ml re
 
 The final isolated Rails browser baseline completed with three passing cases and two failing strict Escape focus cases. The desktop and mobile owner journeys each recorded one 1.25 ml dose, showed stock falling from 20 to 18.75 ml, and found exactly one matching history row for the selected managed person. Bad credentials and foreign medication access were rejected. On both viewports, Escape from the nested dose dialog left `BODY` focused rather than the visible medication-page **Log** link. This is a Rails accessibility defect; the strict assertion remains active for Rust. The final mobile stock screenshot visibly shows 18.75 ml. The mobile history screenshot captures the dashboard's first viewport rather than its below-fold history row; the row is verified by browser assertions, not that screenshot. No Rust result is claimed.
 
-After the root commit, the next Rust journey run can scroll the asserted **Previous Doses Today** section into view before its screenshot. This is an artifact improvement only; the frozen Rails baseline and the history assertions need no repeat run for it.
+The dedicated Rust browser target now scrolls the asserted **Previous Doses Today** section into view before its screenshot. This is an artifact improvement only; the frozen Rails baseline and the history assertions need no repeat run for it.
+
+## Dedicated Rust RED
+
+`task api:browser-rust` provisions the disposable contract fixture, starts the isolated Rust API, and runs only `medication-journey.test.mjs` in the existing Playwright sidecar. Its screenshots go to `docs/screenshots/journey-medication-rust`; the canonical login smoke selection remains separate. `task api:contract-runner-test` passed fake dispatch, failure propagation and cleanup; `git diff --check` passed.
+
+The first live Rust run (`mtcontract-232df6665f68446e`, log `/Users/damacus/Library/Application Support/rtk/tee/1790350900_task_api_db4caa.log`) produced a genuine red: one of five cases passed, four failed, none skipped. Invalid credentials and foreign medication access passed. At desktop and mobile sizes, the journey cases timed out waiting for the exact fixture medication heading on the inventory list (H2); the separate focus cases timed out waiting for the detail heading (H1). None reached the dose dialog, so this run does not assess Rust focus restoration, dose recording, stock or history. The product UI must supply those routes and visible states before the next browser pass.
 
 ## Final baseline adjustments
 

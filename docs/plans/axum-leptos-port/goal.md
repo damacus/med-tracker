@@ -50,12 +50,18 @@ sessions using the shared API (`d86c613a`). The session checkpoint passed
 eight focused HTTP cases, 36 existing HTTP cases and seven login browser
 cases, with independent review.
 
-The next bounded delivery is the complete medication browser journey.
-Its shared person, schedule and assignment read tests pass four cases against
-Rails and fail on Rust's missing routes. Implementation of those routes and
-preparation of the medication UI proceed in separate file ownership lanes.
-The actual Rust medication browser failure must be recorded before UI
-implementation. Known Rails Escape-focus failure remains a required Rust fix.
+Shared person, schedule and assignment reads and cookie household discovery
+now pass 51 consolidated Rust HTTP cases with independent review. Rust retains
+rejected-request audit events that Rails loses through transaction rollback;
+the two known Rails failures remain documented.
+
+The next bounded delivery is the complete medication browser journey. Its
+actual Rust failure was recorded before UI implementation: four desktop/mobile
+cases could not find the medication pages, while the negative-access case
+passed. UI implementation and form security/replay tests are in progress.
+Known Rails Escape-focus failure remains a required Rust fix. Shared API
+record permission and eligible-stock fields will close the remaining picker
+permission and alternate-stock gaps without duplicating rules in Leptos.
 
 Full authentication, management, browser/PWA and platform parity, migrated
 audit ledger proof and representative performance evidence remain incomplete.
