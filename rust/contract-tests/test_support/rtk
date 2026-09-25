@@ -41,7 +41,7 @@ if test "$task_name" = --force
 end
 
 switch $task_name
-    case api:contract-up api:contract-ready api:contract-test api:contract-image-remove api:contract-subnet-check
+    case api:contract-up api:contract-ready api:contract-test api:contract-browser-test api:contract-image-remove api:contract-subnet-check
         if set -q CONTRACT_FAKE_TRACE
             echo $task_name >>$CONTRACT_FAKE_TRACE
         end
@@ -50,7 +50,7 @@ switch $task_name
             or exit 44
             set -q CONTRACT_RUN_DIR
             and exit 45
-            string match -q '*runner-subnet.compose.yaml' -- "$COMPOSE_FILE"
+            contains -- rust/contract-tests/runner-subnet.compose.yaml (string split : -- "$COMPOSE_FILE")
             or exit 46
         end
         if test "$CONTRACT_FAKE_FAIL_STEP" = "$task_name"

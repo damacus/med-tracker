@@ -2,6 +2,8 @@
 
 Status: execution plan, 24 September 2026
 
+Current user-approved objective and milestone order: [goal.md](goal.md).
+
 Execution update, 25 September: subsequent user instructions authorized
 bounded Rust implementation alongside the still-open parity work. Current
 ownership and sequencing are in [team-charter.md](team-charter.md) and the

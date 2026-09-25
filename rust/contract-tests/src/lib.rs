@@ -239,6 +239,7 @@ pub struct Fixture {
     pub auth_role_member_oauth_token: String,
     pub oauth_client_id: String,
     pub oauth_redirect_uri: String,
+    pub oauth_mfa_email: String,
     pub medication_mobile_oauth_token: String,
     pub medication_mobile_oauth_grant_id: i64,
     pub medication_mobile_oauth_tokens: serde_json::Value,

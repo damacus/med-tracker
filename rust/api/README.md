@@ -1,4 +1,4 @@
-# Medication read API slice
+# Secure mobile entry and medication reads
 
 `task api:acceptance` provisions the existing disposable PostgreSQL 18 Rails
 fixture, starts this Axum service against that database, sends focused HTTP
@@ -8,6 +8,14 @@ test sidecar shares its API container's network namespace and uses loopback;
 the API publishes no host port. Each run has its own fixture,
 database, network and tagged test image. The test image caches dependency
 compilation separately from application source.
+
+Set `CONTRACT_BROWSER_TESTS=true` for login and consent browser checks in the
+same disposable run. The Playwright sidecar shares the API network namespace
+and writes desktop/mobile evidence to `docs/screenshots/journey-auth/`.
+Browser failures propagate and still trigger owner-checked cleanup. The
+runner generates a disposable authentication signing key before Compose
+starts; deployment must supply its own stable `AUTH_SESSION_SECRET` and
+trusted `PUBLIC_BASE_URL`.
 
 The service currently handles collection and single-record medication GETs for
 Rails `ApiSession` and mobile OAuth bearer tokens. It checks the token digest, expiry,
@@ -44,9 +52,19 @@ failures roll back the transaction. Invalid lifetime environment settings deny
 OAuth authentication. The disposable acceptance API enables a 30-day maximum
 login age to exercise that policy; the product default remains unlimited.
 
-`ApiSession.touch_last_used!`, app/integration credentials, OAuth issuance, and other API
-routes are not implemented. The service is not a drop-in replacement for the
-complete Rails API.
+The service also implements public mobile-client login and consent, S256
+PKCE code exchange, refresh rotation, revocation and household selection.
+Leptos renders the OAuth forms. Signed cookies use a configured secret;
+authenticated browser sessions are database-backed. Ordinary persistence
+uses SeaORM entities; targeted SQL handles atomic lockout and grant changes.
+Refresh preserves authentication and activity timestamps. Unsupported MFA or
+passkey requirements reject issuance rather than allowing password-only
+access.
+
+Standalone web dashboard login, MFA/passkey completion, password reset,
+explicit consent cancellation, `ApiSession.touch_last_used!`,
+app/integration credentials and most other API routes remain incomplete.
+The service is not a drop-in replacement for the complete Rails application.
 
 Authenticated medication list and show reads write `api.request` rows through
 SeaORM under the restricted role. Successful reads use a `success` outcome; a scoped

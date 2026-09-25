@@ -27,8 +27,8 @@ set -lx CONTRACT_FAKE_REQUIRE_RELATIVE_CLEANUP 1
 set -lx CONTRACT_TEST_SUBNET 192.168.240.0/28
 
 set -l api_url (string match -r 'CONTRACT_BASE_URL: http://127.0.0.1:39998' < rust/contract-tests/runner.compose.yaml)
-set -l shared_namespace (string match -r 'network_mode: service:rust-api' < rust/contract-tests/runner.compose.yaml)
-set -l fixture_mount (string match -r 'source: \$\{CONTRACT_FIXTURE_DIR\}' < rust/contract-tests/runner.compose.yaml)
+set -l shared_namespace (string match -m 1 -r 'network_mode: service:rust-api' < rust/contract-tests/runner.compose.yaml)
+set -l fixture_mount (string match -m 1 -r 'source: \$\{CONTRACT_FIXTURE_DIR\}' < rust/contract-tests/runner.compose.yaml)
 set -l network_subnet (string match -r 'subnet: \$\{CONTRACT_TEST_SUBNET\}' < rust/contract-tests/runner-subnet.compose.yaml)
 test (count $api_url $shared_namespace $fixture_mount $network_subnet) -eq 4
 or begin; echo 'Compose runner lacks its internal network namespace or fixture bind' >&2; exit 1; end
@@ -54,6 +54,18 @@ contains -- cleanup $trace
 or begin; echo 'Runner did not clean up its Compose project' >&2; exit 1; end
 contains -- api:contract-image-remove $trace
 or begin; echo 'Runner did not remove its project image' >&2; exit 1; end
+if contains -- api:contract-browser-test $trace
+    echo 'Runner launched browser checks without opting in' >&2
+    exit 1
+end
+
+set -lx CONTRACT_BROWSER_TESTS true
+command rm -f $test_dir/trace
+fish --no-config rust/contract-tests/run.fish rails medication-read-api >$test_dir/output 2>&1
+or begin; cat $test_dir/output >&2; exit 1; end
+set trace (cat $test_dir/trace)
+contains -- api:contract-browser-test $trace
+or begin; echo 'Runner skipped opted-in browser checks' >&2; exit 1; end
 
 set -lx CONTRACT_FAKE_FAIL_STEP api:contract-test
 command rm -f $test_dir/trace
@@ -66,5 +78,17 @@ contains -- cleanup $trace
 or begin; echo 'Runner skipped project cleanup after test failure' >&2; exit 1; end
 contains -- api:contract-image-remove $trace
 or begin; echo 'Runner skipped image cleanup after test failure' >&2; exit 1; end
+
+set -lx CONTRACT_FAKE_FAIL_STEP api:contract-browser-test
+command rm -f $test_dir/trace
+fish --no-config rust/contract-tests/run.fish rails medication-read-api >$test_dir/output 2>&1
+set failure_status $status
+test $failure_status -eq 42
+or begin; cat $test_dir/output >&2; echo "Runner lost browser failure status: $failure_status" >&2; exit 1; end
+set trace (cat $test_dir/trace)
+contains -- cleanup $trace
+or begin; echo 'Runner skipped cleanup after browser failure' >&2; exit 1; end
+contains -- api:contract-image-remove $trace
+or begin; echo 'Runner skipped image cleanup after browser failure' >&2; exit 1; end
 
 echo 'Medication Compose runner task sequence and failure cleanup passed'

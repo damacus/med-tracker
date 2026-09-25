@@ -50,9 +50,11 @@ Acceptance evidence needs a stable input: writers freeze the relevant files
 for the run and the runner records HEAD plus a content digest of relevant
 tracked and new source files before and after it. Exclude generated artifacts
 and reports. A changing input invalidates that result. The existing HTTP
-runner uses port 39998; serialize only runs that compete for that port until
-the runner supports isolation. Formatting checks, unit tests, and review do
-not need to wait for that port.
+runner now uses port 39998 inside each isolated Compose project, with the
+HTTP test sidecar sharing its own API container's network namespace. There
+is no host API port to serialize. On this host, concurrent runs use checked
+explicit subnets because Docker's default address pools are exhausted.
+Formatting checks, unit tests, and review can run independently.
 
 ## Acceptance and escalation
 

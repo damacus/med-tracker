@@ -44,6 +44,8 @@ end
 
 fixture = ActiveRecord::Base.transaction do
   account, household, user = create_household(nonce, 'primary')
+  oauth_mfa_account, = create_household(nonce, 'oauth-mfa')
+  AccountOtpKey.create!(id: oauth_mfa_account.id, key: 'jbswy3dpehpk3pxp', last_use: 5.minutes.ago)
   platform_account, platform_household, = create_household(nonce, 'platform')
   platform_admin = PlatformAdmin.create!(account: platform_account)
   platform_target_membership, = create_admin_member(platform_household, nonce, 'platform-target')
@@ -1202,6 +1204,7 @@ fixture = ActiveRecord::Base.transaction do
     auth_role_member_oauth_token: role_member_oauth_token,
     oauth_client_id: oauth_client_id,
     oauth_redirect_uri: oauth_redirect_uri,
+    oauth_mfa_email: oauth_mfa_account.email,
     medication_mobile_oauth_token: medication_mobile_oauth_token,
     medication_mobile_oauth_grant_id: medication_mobile_oauth_record.id,
     medication_mobile_oauth_tokens: medication_mobile_oauth_tokens,

@@ -2,6 +2,11 @@
 !rust/
 !rust/api/
 !rust/api/**
+!rust/web/
+!rust/web/Cargo.toml
+!rust/web/Cargo.lock
+!rust/web/src/
+!rust/web/src/**
 !rust/contract-tests/
 !rust/contract-tests/**
 **/target/
