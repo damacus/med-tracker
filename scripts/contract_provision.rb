@@ -46,6 +46,39 @@ fixture = ActiveRecord::Base.transaction do
   foreign_account, foreign_household, = create_household(nonce, 'foreign')
   portable_source_account, portable_source_household, = create_household(nonce, 'portable-source')
   portable_target_account, portable_target_household, = create_household(nonce, 'portable-target')
+  profile_account, profile_household, = create_household(nonce, 'profile')
+  avatar_account, avatar_household, = create_household(nonce, 'avatar')
+  avatar_invalid_account, avatar_invalid_household, = create_household(nonce, 'avatar-invalid')
+  avatar_membership = avatar_account.household_memberships.find_by!(household: avatar_household)
+  _avatar_session, avatar_access_token, = ApiSession.issue_for(
+    account: avatar_account, household_membership: avatar_membership, device_name: 'contract-avatar'
+  )
+  avatar_invalid_membership = avatar_invalid_account.household_memberships.find_by!(household: avatar_invalid_household)
+  _avatar_invalid_session, avatar_invalid_access_token, = ApiSession.issue_for(
+    account: avatar_invalid_account, household_membership: avatar_invalid_membership, device_name: 'contract-avatar-invalid'
+  )
+  profile_membership = profile_account.household_memberships.find_by!(household: profile_household)
+  _profile_session, profile_access_token, = ApiSession.issue_for(
+    account: profile_account, household_membership: profile_membership, device_name: 'contract-profile'
+  )
+  profile_view_membership, profile_view_access_token = create_admin_member(profile_household, nonce, 'profile-view')
+  PersonAccessGrant.create!(household: profile_household, household_membership: profile_view_membership,
+                            person: profile_view_membership.person, access_level: :view,
+                            relationship_type: :family_member, granted_by_membership: profile_membership)
+  PersonAccessGrant.create!(household: profile_household, household_membership: profile_view_membership,
+                            person: profile_account.person, access_level: :manage,
+                            relationship_type: :family_member, granted_by_membership: profile_membership)
+  profile_revoke_membership, profile_revoke_access_token = create_admin_member(profile_household, nonce,
+                                                                              'profile-revoke')
+  profile_revoke_grant = PersonAccessGrant.create!(household: profile_household,
+                                                  household_membership: profile_revoke_membership,
+                                                  person: profile_revoke_membership.person, access_level: :manage,
+                                                  relationship_type: :family_member,
+                                                  granted_by_membership: profile_membership)
+  profile_signed_blob = ActiveStorage::Blob.create_before_direct_upload!(
+    filename: 'foreign.png', byte_size: 7, checksum: Digest::MD5.base64digest('foreign'),
+    content_type: 'image/png'
+  )
   portable_source_membership = portable_source_account.household_memberships.find_by!(household: portable_source_household)
   portable_target_membership = portable_target_account.household_memberships.find_by!(household: portable_target_household)
   _portable_source_session, portable_source_access_token, = ApiSession.issue_for(
@@ -517,6 +550,11 @@ fixture = ActiveRecord::Base.transaction do
   oauth_application = OauthApplication.create!(name: 'Contract mobile', client_id: oauth_client_id, client_kind: :mobile,
                                                redirect_uri: oauth_redirect_uri, scopes: 'medtracker offline_access',
                                                token_endpoint_auth_method: 'none')
+  profile_revoke_mobile_token = "contract-profile-revoke-#{SecureRandom.urlsafe_base64(48)}"
+  OauthGrant.create!(account: profile_revoke_membership.account, oauth_application: oauth_application,
+                     client_kind: :mobile, scopes: 'medtracker offline_access', expires_in: 1.hour.from_now,
+                     authenticated_at: Time.current, last_used_at: Time.current,
+                     token_hash: OauthGrant.digest(profile_revoke_mobile_token))
   portable_target_mobile_token = "contract-portable-target-#{SecureRandom.urlsafe_base64(48)}"
   OauthGrant.create!(account: portable_target_account, oauth_application: oauth_application, client_kind: :mobile,
                      scopes: 'medtracker offline_access', expires_in: 1.hour.from_now,
@@ -539,6 +577,24 @@ fixture = ActiveRecord::Base.transaction do
                      token_hash: OauthGrant.digest(invitation_mobile_oauth_token))
 
   {
+    profile_household_id: profile_household.id,
+    avatar_household_id: avatar_household.id,
+    avatar_access_token: avatar_access_token,
+    avatar_invalid_household_id: avatar_invalid_household.id,
+    avatar_invalid_access_token: avatar_invalid_access_token,
+    profile_account_id: profile_account.id,
+    profile_email: profile_account.email,
+    profile_person_id: profile_account.person.id,
+    profile_access_token: profile_access_token,
+    profile_view_account_id: profile_view_membership.account_id,
+    profile_view_person_id: profile_view_membership.person_id,
+    profile_view_access_token: profile_view_access_token,
+    profile_revoke_person_id: profile_revoke_membership.person_id,
+    profile_revoke_membership_id: profile_revoke_membership.id,
+    profile_revoke_grant_id: profile_revoke_grant.id,
+    profile_revoke_access_token: profile_revoke_access_token,
+    profile_revoke_mobile_token: profile_revoke_mobile_token,
+    profile_signed_blob_id: profile_signed_blob.signed_id,
     portable_source_household_id: portable_source_household.id,
     portable_source_account_id: portable_source_account.id,
     portable_source_membership_id: portable_source_membership.id,

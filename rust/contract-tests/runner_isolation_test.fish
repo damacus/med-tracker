@@ -13,6 +13,7 @@ set -g run_dirs
 function cleanup_runner_test --on-event fish_exit
     for run_dir in $run_dirs
         if string match -rq '^tmp/contract-tests/run\.[A-Za-z0-9]{6}$' -- $run_dir
+            command rm -r $run_dir/storage
             command rm -f $run_dir/owner $run_dir/fixture.json
             command rmdir $run_dir
         end
@@ -35,10 +36,10 @@ set -a run_dirs (cat $test_dir/latest-run)
 test $actual_status -eq 1
 or begin; cat $test_dir/output >&2; echo "Expected target failure to survive cleanup; got $actual_status" >&2; exit 1; end
 
-set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports portability sync replay oauth envelopes
+set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports portability profile sync replay oauth envelopes
 set -l trace (cat $test_dir/trace)
 set -l runs (string match 'run:*' -- $trace)
-test (count $trace) -eq 64; and test "$trace[-1]" = cleanup
+test (count $trace) -eq 68; and test "$trace[-1]" = cleanup
 or begin; cat $test_dir/trace >&2; echo 'Full runner did not refresh each restarted target' >&2; exit 1; end
 test (count $runs) -eq (math (count $targets) + 1)
 or begin; cat $test_dir/trace >&2; echo 'Full runner did not run all targets' >&2; exit 1; end

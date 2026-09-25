@@ -9,6 +9,24 @@ use url::{Host, Url};
 
 #[derive(Deserialize)]
 pub struct Fixture {
+    pub profile_household_id: i64,
+    pub avatar_household_id: i64,
+    pub avatar_access_token: String,
+    pub avatar_invalid_household_id: i64,
+    pub avatar_invalid_access_token: String,
+    pub profile_account_id: i64,
+    pub profile_email: String,
+    pub profile_person_id: i64,
+    pub profile_access_token: String,
+    pub profile_view_account_id: i64,
+    pub profile_view_person_id: i64,
+    pub profile_view_access_token: String,
+    pub profile_revoke_person_id: i64,
+    pub profile_revoke_membership_id: i64,
+    pub profile_revoke_grant_id: i64,
+    pub profile_revoke_access_token: String,
+    pub profile_revoke_mobile_token: String,
+    pub profile_signed_blob_id: String,
     pub portable_source_household_id: i64,
     pub portable_source_account_id: i64,
     pub portable_source_membership_id: i64,
@@ -419,6 +437,19 @@ impl Target {
         self.require_local_write();
         self.authorize(self.client.put(self.url(path)), Some(token))
             .json(body)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn put_multipart(
+        &self,
+        path: &str,
+        token: &str,
+        form: reqwest::blocking::multipart::Form,
+    ) -> Response {
+        self.require_local_write();
+        self.authorize(self.client.put(self.url(path)), Some(token))
+            .multipart(form)
             .send()
             .expect("target must respond")
     }

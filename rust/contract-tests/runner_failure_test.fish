@@ -16,6 +16,7 @@ function cleanup_runner_failure_test --on-event fish_exit
     for run_dir in $run_dirs
         if string match -rq '^tmp/contract-tests/run\.[A-Za-z0-9]{6}$' -- $run_dir
             if test -d $run_dir
+                command rm -r $run_dir/storage
                 command rm -f $run_dir/owner $run_dir/fixture.json
                 command rmdir $run_dir
             end
