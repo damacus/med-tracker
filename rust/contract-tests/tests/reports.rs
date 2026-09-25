@@ -118,6 +118,63 @@ fn assert_chronology(rows: &[Value], start_date: &str, end_date: &str) {
     }
 }
 
+fn health_event_identity(row: &Value) -> (i64, String, String, String, Option<String>) {
+    let id = row["id"]
+        .as_i64()
+        .or_else(|| row["id"].as_str().and_then(|value| value.parse().ok()))
+        .expect("health event ID");
+    (
+        id,
+        row["event_kind"].as_str().expect("event kind").to_owned(),
+        row["title"].as_str().expect("event title").to_owned(),
+        row["started_on"]
+            .as_str()
+            .expect("event start date")
+            .to_owned(),
+        row["ended_on"].as_str().map(str::to_owned),
+    )
+}
+
+fn eligible_health_events(
+    target: &Target,
+    fixture: &Fixture,
+    start_date: &str,
+    end_date: &str,
+) -> Vec<(i64, String, String, String, Option<String>)> {
+    let path = format!("/api/v1/households/{}/health_events", fixture.household_id);
+    let mut events = Vec::new();
+    let mut page = 1;
+    loop {
+        let response = target.get(
+            &format!("{path}?page={page}&per_page=100"),
+            Some(&fixture.access_token),
+        );
+        assert_eq!(response.status().as_u16(), 200);
+        let body = json(response);
+        let rows = body["data"].as_array().expect("health event collection");
+        events.extend(
+            rows.iter()
+                .filter(|row| {
+                    row["person_id"].as_i64() == Some(fixture.managed_person_id)
+                        && row["started_on"].as_str().expect("event start date") <= end_date
+                        && row["ended_on"]
+                            .as_str()
+                            .is_none_or(|ended_on| ended_on >= start_date)
+                })
+                .map(health_event_identity),
+        );
+        let total = body["meta"]["total_count"]
+            .as_u64()
+            .expect("health event total count");
+        if page * 100 >= total {
+            break;
+        }
+        page += 1;
+    }
+    events.sort_by(|first, second| second.3.cmp(&first.3).then_with(|| second.0.cmp(&first.0)));
+    events
+}
+
 fn backup_json(bytes: &[u8]) -> Value {
     let mut archive = ZipArchive::new(Cursor::new(bytes)).expect("parse ZIP archive");
     let mut entry = archive
@@ -160,6 +217,7 @@ fn health_history_json_chronology_dates_and_takes() {
         "{path}?person_id={}&start_date=2026-02-19&end_date=2026-02-26",
         fixture.managed_person_portable_id
     );
+    let expected_chronology = eligible_health_events(&target, &fixture, "2026-02-19", "2026-02-26");
     let response = target.get(&query, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
     no_store(&response);
@@ -174,46 +232,48 @@ fn health_history_json_chronology_dates_and_takes() {
     assert_chronology(chronology, "2026-02-19", "2026-02-26");
     let managed_event_id = fixture.managed_health_event_id.to_string();
     let earlier_event_id = fixture.earlier_health_event_id.to_string();
-    let actual_chronology: Vec<_> = chronology
-        .iter()
-        .map(|row| {
-            (
-                row["event_kind"].as_str().expect("event kind"),
-                row["title"].as_str().expect("event title"),
-                row["started_on"].as_str().expect("event start date"),
-                row["ended_on"].as_str(),
-            )
-        })
-        .collect();
-    assert_eq!(
-        actual_chronology,
-        [
-            (
-                "illness",
-                fixture.managed_health_event_title.as_str(),
-                "2026-02-26",
-                None,
-            ),
-            (
-                "suspected_side_effect",
-                fixture.managed_side_effect_title.as_str(),
-                "2026-02-25",
-                None,
-            ),
-            (
-                "illness",
-                fixture.managed_health_event_title.as_str(),
-                "2026-02-25",
-                None,
-            ),
-            (
-                "illness",
-                fixture.earlier_health_event_title.as_str(),
-                "2026-02-20",
-                Some("2026-02-21")
-            ),
-        ]
-    );
+    for (kind, title, started_on, ended_on) in [
+        (
+            "illness",
+            fixture.managed_health_event_title.as_str(),
+            "2026-02-26",
+            None,
+        ),
+        (
+            "suspected_side_effect",
+            fixture.managed_side_effect_title.as_str(),
+            "2026-02-25",
+            None,
+        ),
+        (
+            "illness",
+            fixture.managed_health_event_title.as_str(),
+            "2026-02-25",
+            None,
+        ),
+        (
+            "illness",
+            fixture.earlier_health_event_title.as_str(),
+            "2026-02-20",
+            Some("2026-02-21"),
+        ),
+    ] {
+        assert_eq!(
+            expected_chronology
+                .iter()
+                .filter(|row| {
+                    row.1 == kind
+                        && row.2 == title
+                        && row.3 == started_on
+                        && row.4.as_deref() == ended_on
+                })
+                .count(),
+            1,
+            "seeded health event must appear exactly once in public list"
+        );
+    }
+    let actual_chronology: Vec<_> = chronology.iter().map(health_event_identity).collect();
+    assert_eq!(actual_chronology, expected_chronology);
     let managed = chronology
         .iter()
         .position(|row| row["id"].as_str() == Some(managed_event_id.as_str()))
