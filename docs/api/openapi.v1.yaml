@@ -1692,6 +1692,7 @@ paths:
         - Household
         - Dosage options
       summary: List medication dosage options.
+      description: Active household members receive options only for medications they can read. Owners and administrators can read every medication in their household. Other members can read a medication linked to a person with an active view grant, or an unlinked medication they created. Options for medications outside that scope are omitted from the collection and its total count.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/page'
@@ -1720,6 +1721,7 @@ paths:
         - Household
         - Dosage options
       summary: Create a medication dosage option.
+      description: Household owners and administrators may create options for medications in their household. Amount must be greater than zero; minimum hours, current supply, and reorder threshold must be nonnegative; unit and frequency must contain non-whitespace text. Only one option per medication may be the adult default and only one may be the child default; a duplicate returns 422 without changing either option. Creation clears the parent medication's single-dose amount and refreshes its sync version. If the option has current supply, the parent inventory is recalculated from all options with current supply, including their reorder thresholds and last-restock baseline. The option and parent changes are atomic.
       parameters:
         - $ref: '#/components/parameters/household_id'
       requestBody:
@@ -1757,6 +1759,7 @@ paths:
         - Household
         - Dosage options
       summary: Read a medication dosage option.
+      description: Active household members may read an option only if they can read its parent medication. Owners and administrators can read every medication in their household. Other members require an active person view grant linked to the medication or must have created an unlinked medication. An option outside this visibility scope returns 404.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
@@ -1784,6 +1787,7 @@ paths:
         - Household
         - Dosage options
       summary: Update a medication dosage option.
+      description: Household owners and administrators may update options for medications in their household. The resulting full record must have positive amount, nonnegative minimum hours, current supply and reorder threshold, and non-whitespace unit and frequency. An incomplete legacy record returns 422 until the request repairs its missing fields. A duplicate adult or child default returns 422 and rolls back the update. Changing a tracked option's inventory recalculates parent stock, reorder threshold, and last-restock baseline atomically; when no options retain current supply, parent stock and baseline become null and reorder threshold becomes zero. If-Match is optional; a stale supplied value returns 409.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
@@ -1824,6 +1828,7 @@ paths:
         - Household
         - Dosage options
       summary: Replace a medication dosage option.
+      description: Household owners and administrators may replace option attributes for medications in their household. The same validation, default uniqueness, optional If-Match, and atomic parent inventory synchronization rules as PATCH apply.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'

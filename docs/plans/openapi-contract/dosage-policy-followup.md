@@ -1,8 +1,12 @@
 # Resolve dosage policy and domain gaps
 
-Read-only findings after the dosage checkpoint, to apply after the active
-session-management tranche. The global default is now to document existing
-Rails rules before deriving OpenAPI tests, preserving the original parity goal.
+Source findings after the first dosage checkpoint. Permissions, visibility,
+validation, default-conflict rollback, parent inventory, audit and sync changes
+have since passed the eleven-group acceptance run documented in
+`dosage-completion-review.md`. The remaining decisions are legacy nullable
+response handling and the shared credential work in `household-auth-followup.md`.
+The findings below retain the source rationale; they are not an instruction to
+repeat the completed implementation.
 
 - `MedicationDosageOptionPolicy#index?` allows active household members.
   `DosagePolicy#show?` delegates to `MedicationPolicy#show?`. Owners and

@@ -1,5 +1,7 @@
 use medtracker_contract_tests::{fixture, Fixture, Target};
 use serde_json::{json, Value};
+use std::env;
+use std::time::{Duration, Instant};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 fn keys(value: &Value) -> Vec<&str> {
@@ -13,6 +15,63 @@ fn keys(value: &Value) -> Vec<&str> {
 
 fn base(fixture: &Fixture) -> String {
     format!("/api/v1/households/{}/dosage_options", fixture.household_id)
+}
+
+fn database() -> postgres::Client {
+    postgres::Client::connect(
+        &env::var("CONTRACT_AUDIT_DATABASE_URL").expect("database URL"),
+        postgres::NoTls,
+    )
+    .expect("contract database")
+}
+
+fn parent_state(id: i64) -> (Option<f64>, Option<String>, String, Option<String>, String) {
+    let row = database()
+        .query_one(
+            "SELECT dose_amount, current_supply::text, reorder_threshold::text, supply_at_last_restock::text, updated_at::text FROM medications WHERE id = $1",
+            &[&id],
+        )
+        .expect("parent medication");
+    (row.get(0), row.get(1), row.get(2), row.get(3), row.get(4))
+}
+
+fn event_count(record_type: &str, id: i64) -> i64 {
+    database()
+        .query_one(
+            "SELECT count(*) FROM api_change_events WHERE record_type = $1 AND record_id = $2",
+            &[&record_type, &id],
+        )
+        .unwrap()
+        .get(0)
+}
+
+fn version_count(item_type: &str, id: i64) -> i64 {
+    database()
+        .query_one(
+            "SELECT count(*) FROM versions WHERE item_type = $1 AND item_id = $2",
+            &[&item_type, &id],
+        )
+        .unwrap()
+        .get(0)
+}
+
+fn new_parent(target: &Target, fixture: &Fixture) -> i64 {
+    let response = target.post_json_authorized(
+        &format!("/api/v1/households/{}/medications", fixture.household_id),
+        &fixture.access_token,
+        &json!({"medication": {"name": format!("Dosage parent {}", OffsetDateTime::now_utc().unix_timestamp_nanos()),
+            "location_id": fixture.primary_location_id, "dose_amount": "2",
+            "dose_unit": "ml", "current_supply": "50", "reorder_threshold": "5"}}),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let body: Value = response.json().unwrap();
+    body["data"]["id"].as_i64().unwrap()
+}
+
+fn request_for_parent(fixture: &Fixture, id: i64) -> Value {
+    let mut request = valid_request(fixture);
+    request["dosage_option"]["medication_id"] = json!(id.to_string());
+    request
 }
 
 fn valid_request(fixture: &Fixture) -> Value {
@@ -321,25 +380,106 @@ fn simultaneous_updates_with_one_etag_only_one_commits() {
 }
 
 #[test]
-fn administrator_is_denied_until_dosage_policy_is_specified() {
+fn administrator_can_read_and_manage_dosage_options() {
     let fixture = fixture();
     let target = Target::from_env();
     let base = base(&fixture);
     let path = format!("{base}/{}", fixture.managed_dosage_portable_id);
-    assert_error(target.get(&base, Some(&fixture.manager_access_token)), 403);
+    assert_eq!(
+        target
+            .get(&base, Some(&fixture.manager_access_token))
+            .status()
+            .as_u16(),
+        200
+    );
+    assert_eq!(
+        target
+            .get(&path, Some(&fixture.manager_access_token))
+            .status()
+            .as_u16(),
+        200
+    );
+    let parent = new_parent(&target, &fixture);
+    let created = target.post_json_authorized(
+        &base,
+        &fixture.manager_access_token,
+        &request_for_parent(&fixture, parent),
+    );
+    assert_eq!(created.status().as_u16(), 201);
+    let row: Value = created.json().unwrap();
+    let path = format!("{base}/{}", row["data"]["id"]);
+    assert_eq!(
+        target
+            .patch_json(
+                &path,
+                &fixture.manager_access_token,
+                &json!({"dosage_option": {"amount": "2"}})
+            )
+            .status()
+            .as_u16(),
+        200
+    );
+    assert_eq!(
+        target
+            .put_json(
+                &path,
+                &fixture.manager_access_token,
+                &json!({"dosage_option": {"amount": "3"}})
+            )
+            .status()
+            .as_u16(),
+        200
+    );
+}
+
+#[test]
+fn member_reads_only_options_for_visible_medications_and_cannot_write() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let list = target.get(
+        &format!("{}?per_page=100", base(&fixture)),
+        Some(&fixture.view_access_token),
+    );
+    assert_eq!(list.status().as_u16(), 200);
+    let body: Value = list.json().unwrap();
+    let ids: Vec<i64> = body["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|row| row["medication_id"].as_i64().unwrap())
+        .collect();
+    assert!(ids.contains(&fixture.managed_medication_id));
+    assert!(!ids.contains(&fixture.hidden_medication_id));
+    assert_eq!(
+        target
+            .get(
+                &format!("{}/{}", base(&fixture), fixture.managed_dosage_portable_id),
+                Some(&fixture.view_access_token)
+            )
+            .status()
+            .as_u16(),
+        200
+    );
+    assert_error(
+        target.get(
+            &format!("{}/{}", base(&fixture), fixture.hidden_dosage_portable_id),
+            Some(&fixture.view_access_token),
+        ),
+        404,
+    );
     assert_error(
         target.post_json_authorized(
-            &base,
-            &fixture.manager_access_token,
+            &base(&fixture),
+            &fixture.view_access_token,
             &valid_request(&fixture),
         ),
         403,
     );
-    assert_error(target.get(&path, Some(&fixture.manager_access_token)), 403);
+    let path = format!("{}/{}", base(&fixture), fixture.managed_dosage_portable_id);
     assert_error(
         target.patch_json(
             &path,
-            &fixture.manager_access_token,
+            &fixture.view_access_token,
             &json!({"dosage_option": {"amount": "2"}}),
         ),
         403,
@@ -347,11 +487,268 @@ fn administrator_is_denied_until_dosage_policy_is_specified() {
     assert_error(
         target.put_json(
             &path,
-            &fixture.manager_access_token,
+            &fixture.view_access_token,
             &json!({"dosage_option": {"amount": "2"}}),
         ),
         403,
     );
+}
+
+#[test]
+fn create_and_inventory_updates_are_atomic_with_parent_and_sync_events() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let parent = new_parent(&target, &fixture);
+    let before = parent_state(parent);
+    let parent_events = event_count("Medication", parent);
+    let mut request = request_for_parent(&fixture, parent);
+    request["dosage_option"]["current_supply"] = json!("12.25");
+    let response = target.post_json_authorized(&base(&fixture), &fixture.access_token, &request);
+    assert_eq!(response.status().as_u16(), 201);
+    let request_id = response.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let body: Value = response.json().unwrap();
+    let id = body["data"]["id"].as_i64().unwrap();
+    let after = parent_state(parent);
+    assert_eq!(after.0, None);
+    assert_eq!(after.1.as_deref(), Some("12.25"));
+    assert_eq!(after.2, "2.50");
+    assert_eq!(after.3.as_deref(), Some("12.25"));
+    assert_ne!(before.4, after.4);
+    assert_eq!(event_count("Medication", parent), parent_events + 1);
+    assert_eq!(event_count("MedicationDosageOption", id), 1);
+    let rows = database()
+        .query(
+            "SELECT record_type FROM api_change_events WHERE request_id = $1",
+            &[&request_id],
+        )
+        .unwrap();
+    assert!(rows
+        .iter()
+        .any(|row| row.get::<_, String>(0) == "Medication"));
+    assert!(rows
+        .iter()
+        .any(|row| row.get::<_, String>(0) == "MedicationDosageOption"));
+    let versions: i64 = database().query_one(
+        "SELECT count(*) FROM versions WHERE item_type = 'MedicationDosageOption' AND item_id = $1 AND event = 'api_create' AND request_id = $2",
+        &[&id, &request_id],
+    ).unwrap().get(0);
+    assert_eq!(versions, 1);
+    let parent_versions: i64 = database().query_one(
+        "SELECT count(*) FROM versions WHERE item_type = 'Medication' AND item_id = $1 AND request_id = $2",
+        &[&parent, &request_id],
+    ).unwrap().get(0);
+    assert_eq!(parent_versions, 1);
+    let mut second_request = request_for_parent(&fixture, parent);
+    second_request["dosage_option"]["current_supply"] = json!("5.00");
+    second_request["dosage_option"]["reorder_threshold"] = json!("3.00");
+    let second_response =
+        target.post_json_authorized(&base(&fixture), &fixture.access_token, &second_request);
+    assert_eq!(second_response.status().as_u16(), 201);
+    let second: Value = second_response.json().unwrap();
+    let second_path = format!("{}/{}", base(&fixture), second["data"]["id"]);
+    let mut untracked = request_for_parent(&fixture, parent);
+    untracked["dosage_option"]["reorder_threshold"] = json!("99.00");
+    assert_eq!(
+        target
+            .post_json_authorized(&base(&fixture), &fixture.access_token, &untracked)
+            .status()
+            .as_u16(),
+        201
+    );
+    let aggregated = parent_state(parent);
+    assert_eq!(aggregated.1.as_deref(), Some("17.25"));
+    assert_eq!(aggregated.2, "5.50");
+    assert_eq!(aggregated.3.as_deref(), Some("17.25"));
+    let path = format!("{}/{}", base(&fixture), id);
+    let changed_response = target.patch_json(
+        &path,
+        &fixture.access_token,
+        &json!({"dosage_option": {"current_supply": "7.00", "reorder_threshold": "1.00"}}),
+    );
+    assert_eq!(changed_response.status().as_u16(), 200);
+    let changed_request_id = changed_response.headers()["x-request-id"].to_str().unwrap();
+    let parent_versions: i64 = database().query_one(
+        "SELECT count(*) FROM versions WHERE item_type = 'Medication' AND item_id = $1 AND request_id = $2",
+        &[&parent, &changed_request_id],
+    ).unwrap().get(0);
+    assert_eq!(parent_versions, 1);
+    let changed = parent_state(parent);
+    assert_eq!(changed.1.as_deref(), Some("12.00"));
+    assert_eq!(changed.2, "4.00");
+    assert_eq!(changed.3.as_deref(), Some("17.25"));
+    assert_eq!(
+        target
+            .put_json(
+                &path,
+                &fixture.access_token,
+                &json!({"dosage_option": {"current_supply": null}})
+            )
+            .status()
+            .as_u16(),
+        200
+    );
+    let still_tracked = parent_state(parent);
+    assert_eq!(still_tracked.1.as_deref(), Some("5.00"));
+    assert_eq!(still_tracked.2, "3.00");
+    assert_eq!(still_tracked.3.as_deref(), Some("17.25"));
+    assert_eq!(
+        target
+            .put_json(
+                &second_path,
+                &fixture.access_token,
+                &json!({"dosage_option": {"current_supply": null}})
+            )
+            .status()
+            .as_u16(),
+        200
+    );
+    let reset = parent_state(parent);
+    assert_eq!(reset.1, None);
+    assert_eq!(reset.2, "0.00");
+    assert_eq!(reset.3, None);
+}
+
+#[test]
+fn rejects_invalid_quantities_and_duplicate_defaults_without_side_effects() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let parent = new_parent(&target, &fixture);
+    for (field, value) in [
+        ("amount", "0"),
+        ("amount", "-1"),
+        ("default_min_hours_between_doses", "-1"),
+        ("current_supply", "-1"),
+        ("reorder_threshold", "-1"),
+        ("unit", "  "),
+        ("frequency", "  "),
+    ] {
+        let mut request = request_for_parent(&fixture, parent);
+        request["dosage_option"][field] = json!(value);
+        assert_error(
+            target.post_json_authorized(&base(&fixture), &fixture.access_token, &request),
+            422,
+        );
+    }
+    let mut request = request_for_parent(&fixture, parent);
+    request["dosage_option"]["default_for_adults"] = json!(true);
+    let first = target.post_json_authorized(&base(&fixture), &fixture.access_token, &request);
+    assert_eq!(first.status().as_u16(), 201);
+    let first: Value = first.json().unwrap();
+    let before = parent_state(parent);
+    let parent_events = event_count("Medication", parent);
+    let parent_versions = version_count("Medication", parent);
+    assert_error(
+        target.post_json_authorized(&base(&fixture), &fixture.access_token, &request),
+        422,
+    );
+    assert_eq!(parent_state(parent), before);
+    assert_eq!(event_count("Medication", parent), parent_events);
+    assert_eq!(version_count("Medication", parent), parent_versions);
+    let mut second = request_for_parent(&fixture, parent);
+    second["dosage_option"]["default_for_children"] = json!(true);
+    let created = target.post_json_authorized(&base(&fixture), &fixture.access_token, &second);
+    assert_eq!(created.status().as_u16(), 201);
+    let second: Value = created.json().unwrap();
+    let path = format!("{}/{}", base(&fixture), second["data"]["id"]);
+    assert_error(
+        target.patch_json(
+            &path,
+            &fixture.access_token,
+            &json!({"dosage_option": {"default_for_adults": true}}),
+        ),
+        422,
+    );
+    let before = parent_state(parent);
+    let parent_events = event_count("Medication", parent);
+    let parent_versions = version_count("Medication", parent);
+    assert_error(
+        target.put_json(
+            &format!("{}/{}", base(&fixture), first["data"]["id"]),
+            &fixture.access_token,
+            &json!({"dosage_option": {"default_for_children": true}}),
+        ),
+        422,
+    );
+    assert_eq!(parent_state(parent), before);
+    assert_eq!(event_count("Medication", parent), parent_events);
+    assert_eq!(version_count("Medication", parent), parent_versions);
+    let reread: Value = target
+        .get(&path, Some(&fixture.access_token))
+        .json()
+        .unwrap();
+    assert_eq!(reread["data"]["default_for_adults"], false);
+    assert_eq!(first["data"]["default_for_adults"], true);
+    let overflow_parent = new_parent(&target, &fixture);
+    let mut big = request_for_parent(&fixture, overflow_parent);
+    big["dosage_option"]["current_supply"] = json!("60000000.00");
+    assert_eq!(
+        target
+            .post_json_authorized(&base(&fixture), &fixture.access_token, &big)
+            .status()
+            .as_u16(),
+        201
+    );
+    let before = parent_state(overflow_parent);
+    let parent_events = event_count("Medication", overflow_parent);
+    let parent_versions = version_count("Medication", overflow_parent);
+    assert_error(
+        target.post_json_authorized(&base(&fixture), &fixture.access_token, &big),
+        422,
+    );
+    assert_eq!(parent_state(overflow_parent), before);
+    assert_eq!(event_count("Medication", overflow_parent), parent_events);
+    assert_eq!(
+        version_count("Medication", overflow_parent),
+        parent_versions
+    );
+}
+
+#[test]
+fn update_validates_entire_legacy_record_and_can_repair_missing_field() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let parent = new_parent(&target, &fixture);
+    let response = target.post_json_authorized(
+        &base(&fixture),
+        &fixture.access_token,
+        &request_for_parent(&fixture, parent),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let created: Value = response.json().unwrap();
+    let id = created["data"]["id"].as_i64().unwrap();
+    database()
+        .execute("UPDATE dosages SET unit = NULL WHERE id = $1", &[&id])
+        .unwrap();
+    let path = format!("{}/{}", base(&fixture), id);
+    let versions = version_count("MedicationDosageOption", id);
+    assert_error(
+        target.patch_json(
+            &path,
+            &fixture.access_token,
+            &json!({"dosage_option": {"amount": "2"}}),
+        ),
+        422,
+    );
+    assert_eq!(version_count("MedicationDosageOption", id), versions);
+    let row = database()
+        .query_one(
+            "SELECT amount::text, unit FROM dosages WHERE id = $1",
+            &[&id],
+        )
+        .unwrap();
+    assert_eq!(row.get::<_, String>(0), "1.25");
+    assert_eq!(row.get::<_, Option<String>>(1), None);
+    let repaired = target.put_json(
+        &path,
+        &fixture.access_token,
+        &json!({"dosage_option": {"unit": "tablet"}}),
+    );
+    assert_eq!(repaired.status().as_u16(), 200);
+    let body: Value = repaired.json().unwrap();
+    assert_eq!(body["data"]["unit"], "tablet");
 }
 
 #[test]
@@ -512,4 +909,58 @@ fn dosage_option_rejects_invalid_requests_and_missing_auth() {
         target.put_raw_json_if_match(&path, &fixture.access_token, "{", &etag),
         400,
     );
+}
+
+#[test]
+fn z_rate_limit_wires_all_five_dosage_operations_without_mutation() {
+    let fixture = fixture();
+    let rate_origin = env::var("CONTRACT_RATE_BASE_URL").expect("nonloopback API URL");
+    let client = reqwest::blocking::Client::builder()
+        .no_proxy()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .unwrap();
+    let started = Instant::now();
+    let mut limited = false;
+    for _ in 0..601 {
+        let response = client
+            .get(format!("{rate_origin}/api/v1/capabilities"))
+            .send()
+            .unwrap();
+        if response.status().as_u16() == 429 {
+            assert_eq!(response.headers()["ratelimit-limit"], "300");
+            assert_eq!(response.headers()["ratelimit-remaining"], "0");
+            let body: Value = response.json().unwrap();
+            assert_eq!(keys(&body), ["error"]);
+            assert_eq!(keys(&body["error"]), ["code", "message"]);
+            assert_eq!(body["error"]["code"], "rate_limited");
+            limited = true;
+            break;
+        }
+        assert_eq!(response.status().as_u16(), 200);
+    }
+    assert!(limited && started.elapsed() < Duration::from_secs(60));
+    let collection = format!("{rate_origin}{}", base(&fixture));
+    let detail = format!("{collection}/{}", fixture.managed_dosage_portable_id);
+    for request in [
+        client.get(&collection),
+        client.post(&collection).json(&valid_request(&fixture)),
+        client.get(&detail),
+        client
+            .patch(&detail)
+            .json(&json!({"dosage_option": {"amount": "99"}})),
+        client
+            .put(&detail)
+            .json(&json!({"dosage_option": {"amount": "99"}})),
+    ] {
+        assert_eq!(
+            request
+                .bearer_auth(&fixture.access_token)
+                .send()
+                .unwrap()
+                .status()
+                .as_u16(),
+            429
+        );
+    }
 }
