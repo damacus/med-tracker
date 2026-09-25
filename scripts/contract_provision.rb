@@ -656,6 +656,15 @@ fixture = ActiveRecord::Base.transaction do
   managed_schedule = Schedule.create!(household: household, person: managed_person, medication: managed_medication,
                                       dose_amount: '1', dose_unit: 'ml', frequency: 'Daily',
                                       start_date: '2026-02-25', end_date: '2099-12-31')
+  forecast_medication = Medication.create!(household: household, location: primary_location,
+                                           name: "Contract forecast medicine #{nonce}", dose_amount: '2',
+                                           dose_unit: 'tablet', current_supply: '5', reorder_threshold: '3')
+  Schedule.create!(household: household, person: managed_person, medication: forecast_medication,
+                   dose_amount: '2', dose_unit: 'tablet', frequency: 'Weekly', max_daily_doses: 7,
+                   dose_cycle: :weekly, start_date: '2026-02-25', end_date: '2099-12-31')
+  PersonMedication.create!(household: household, person: managed_person, medication: forecast_medication,
+                           administration_kind: :as_needed, dose_amount: '1', dose_unit: 'tablet',
+                           max_daily_doses: 1)
   managed_health_event = HealthEvent.create!(household: household, person: managed_person, event_kind: :illness,
                                             title: "Contract managed event #{nonce}", started_on: '2026-02-25')
   HealthEvent.create!(household: household, person: managed_person, event_kind: :illness,
@@ -1195,6 +1204,7 @@ fixture = ActiveRecord::Base.transaction do
     foreign_location_portable_id: foreign_location.portable_id,
     foreign_location_name: foreign_location.name,
     managed_medication_id: managed_medication.id,
+    forecast_medication_id: forecast_medication.id,
     managed_medication_portable_id: managed_medication.portable_id,
     managed_medication_name: managed_medication.name,
     visible_low_stock_portable_id: visible_low_stock.portable_id,

@@ -273,6 +273,7 @@ pub struct Fixture {
     pub foreign_location_portable_id: String,
     pub foreign_location_name: String,
     pub managed_medication_id: i64,
+    pub forecast_medication_id: i64,
     pub managed_medication_portable_id: String,
     pub managed_medication_name: String,
     pub visible_low_stock_portable_id: String,

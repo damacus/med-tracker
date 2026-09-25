@@ -85,12 +85,24 @@ entity!(schedule, "schedules", {
     household_id: i64,
     person_id: i64,
     medication_id: i64,
+    active: bool,
+    start_date: Option<Date>,
+    end_date: Option<Date>,
+    max_daily_doses: Option<i32>,
+    dose_cycle: Option<i32>,
+    dose_amount: Option<Decimal>,
+    dose_unit: Option<String>,
+    schedule_type: i32,
+    schedule_config: serde_json::Value,
 });
 
 entity!(person_medication, "person_medications", {
     household_id: i64,
     person_id: i64,
     medication_id: i64,
+    max_daily_doses: Option<i32>,
+    dose_amount: Option<Decimal>,
+    dose_unit: Option<String>,
 });
 
 entity!(location, "locations", {

@@ -72,7 +72,7 @@ tasks:
       CONTRACT_BASE_URL: '{{ .BASE_URL }}'
       CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
     cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test medication_read_api -- --test-threads=1
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test medication_read_api --test medication_forecast_api -- --test-threads=1
 
   run-platform:
     desc: Run platform administration web-session contract cases
