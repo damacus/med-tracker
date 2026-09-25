@@ -1,5 +1,6 @@
 mod audit;
 mod audit_logs;
+mod dosage_options;
 mod dose;
 mod entities;
 mod locations;
@@ -151,6 +152,16 @@ fn api_router(state: AppState) -> Router {
             get(show)
                 .patch(medication_management::patch)
                 .put(medication_management::put),
+        )
+        .route(
+            "/api/v1/households/{household_id}/dosage_options",
+            get(dosage_options::index).post(dosage_options::create),
+        )
+        .route(
+            "/api/v1/households/{household_id}/dosage_options/{id}",
+            get(dosage_options::show)
+                .patch(dosage_options::patch)
+                .put(dosage_options::put),
         )
         .route(
             "/api/v1/households/{household_id}/medications/{id}/adjust_inventory",

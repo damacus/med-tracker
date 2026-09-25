@@ -227,4 +227,30 @@ or begin; echo 'Rails web reads runner skipped cleanup after failure' >&2; exit 
 contains -- api:contract-image-remove $trace
 or begin; echo 'Rails web reads runner skipped image cleanup after failure' >&2; exit 1; end
 
-echo 'Medication, web reads and Rails browser runner sequences and failure cleanup passed'
+set -e CONTRACT_FAKE_FAIL_STEP CONTRACT_BROWSER_TESTS
+command rm -f $test_dir/trace
+fish --no-config rust/contract-tests/run.fish rails openapi-dosages >$test_dir/output 2>&1
+set run_status $status
+set trace (cat $test_dir/trace)
+test $run_status -eq 0
+or begin; cat $test_dir/output >&2; exit 1; end
+contains -- api:contract-openapi-dosages-test $trace
+or begin; echo 'Dosage runner skipped its selected OpenAPI tests' >&2; exit 1; end
+contains -- api:contract-up $trace
+or begin; echo 'Dosage runner did not start the isolated API' >&2; exit 1; end
+contains -- cleanup $trace
+or begin; echo 'Dosage runner skipped cleanup' >&2; exit 1; end
+
+set -lx CONTRACT_FAKE_FAIL_STEP api:contract-openapi-dosages-test
+command rm -f $test_dir/trace
+fish --no-config rust/contract-tests/run.fish rails openapi-dosages >$test_dir/output 2>&1
+set failure_status $status
+test $failure_status -eq 42
+or begin; cat $test_dir/output >&2; echo "Dosage runner lost test failure status: $failure_status" >&2; exit 1; end
+set trace (cat $test_dir/trace)
+contains -- cleanup $trace
+or begin; echo 'Dosage runner skipped cleanup after failure' >&2; exit 1; end
+contains -- api:contract-image-remove $trace
+or begin; echo 'Dosage runner skipped image cleanup after failure' >&2; exit 1; end
+
+echo 'Medication, web reads, dosage and Rails browser runner sequences and failure cleanup passed'
