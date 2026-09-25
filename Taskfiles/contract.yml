@@ -411,11 +411,6 @@ tasks:
     cmds:
       - fish rust/contract-tests/run.fish rust devices
 
-  oauth-rails:
-    desc: Run OAuth contract cases against isolated Rails
-    cmds:
-      - fish rust/contract-tests/run.fish rails oauth
-
   dosage-health-rails:
     desc: Run dosage-option and health-event cases against isolated Rails
     cmds:
