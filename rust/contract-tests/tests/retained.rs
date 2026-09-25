@@ -40,13 +40,10 @@ fn retained_stock(snapshot: &Value, medication_id: i64) -> &str {
         .expect("current supply")
 }
 
-fn take_count(snapshot: &Value, client_uuid: &str) -> usize {
+fn household_takes(snapshot: &Value) -> &[Value] {
     snapshot["data"]["medication_takes"]
         .as_array()
         .expect("medication takes")
-        .iter()
-        .filter(|take| take["client_uuid"] == client_uuid)
-        .count()
 }
 
 #[test]
@@ -191,7 +188,7 @@ fn offline_queued_take_replays_by_client_uuid_and_rejects_missing_source() {
         retained_stock(&snapshot, fixture.retained_medication_id),
         "50.0"
     );
-    assert_eq!(take_count(&snapshot, &client_uuid), 0);
+    assert!(household_takes(&snapshot).is_empty());
 
     let unauthenticated = Target::from_env().post_json(&path, &body);
     assert_eq!(unauthenticated.status().as_u16(), 302);
@@ -214,7 +211,7 @@ fn offline_queued_take_replays_by_client_uuid_and_rejects_missing_source() {
         retained_stock(&before, fixture.retained_medication_id),
         "50.0"
     );
-    assert_eq!(take_count(&before, &client_uuid), 0);
+    assert!(household_takes(&before).is_empty());
 
     let response = target.post_json(&path, &body);
     assert_eq!(response.status().as_u16(), 201);
@@ -229,7 +226,22 @@ fn offline_queued_take_replays_by_client_uuid_and_rejects_missing_source() {
         retained_stock(&after_create, fixture.retained_medication_id),
         "49.0"
     );
-    assert_eq!(take_count(&after_create, &client_uuid), 1);
+    let created_takes = household_takes(&after_create);
+    assert_eq!(created_takes.len(), 1);
+    assert_eq!(created_takes[0]["id"], take_id);
+    assert_eq!(created_takes[0]["client_uuid"], client_uuid);
+    assert_eq!(
+        created_takes[0]["schedule_id"],
+        fixture.retained_schedule_id
+    );
+    assert_eq!(
+        created_takes[0]["medication_id"],
+        fixture.retained_medication_id
+    );
+    assert_eq!(
+        created_takes[0]["taken_from_medication_id"],
+        fixture.retained_medication_id
+    );
 
     let response = target.post_json(&path, &body);
     assert_eq!(response.status().as_u16(), 200);
@@ -243,7 +255,10 @@ fn offline_queued_take_replays_by_client_uuid_and_rejects_missing_source() {
         retained_stock(&after_replay, fixture.retained_medication_id),
         "49.0"
     );
-    assert_eq!(take_count(&after_replay, &client_uuid), 1);
+    let replay_takes = household_takes(&after_replay);
+    assert_eq!(replay_takes.len(), 1);
+    assert_eq!(replay_takes[0]["id"], take_id);
+    assert_eq!(replay_takes[0], created_takes[0]);
 
     let invalid_uuid = format!(
         "00000000-0000-4001-8000-{:012x}",
