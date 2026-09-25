@@ -10,6 +10,8 @@ use url::{Host, Url};
 #[derive(Deserialize)]
 pub struct Fixture {
     pub portable_source_household_id: i64,
+    pub portable_source_account_id: i64,
+    pub portable_source_membership_id: i64,
     pub portable_source_access_token: String,
     pub portable_source_person_name: String,
     pub portable_source_person_portable_id: String,
@@ -17,6 +19,8 @@ pub struct Fixture {
     pub portable_source_medication_portable_id: String,
     pub portable_source_schedule_portable_id: String,
     pub portable_target_household_id: i64,
+    pub portable_target_account_id: i64,
+    pub portable_target_membership_id: i64,
     pub portable_target_access_token: String,
     pub portable_target_app_token: String,
     pub portable_target_mobile_token: String,
