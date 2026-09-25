@@ -69,6 +69,8 @@ function run_contract
         or return $status
         if test "$argv[2]" = admin
             rtk task contract:run-admin BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+        else if test "$argv[2]" = admin-tokens-audit
+            rtk task contract:run-admin-tokens-audit BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = oauth
             rtk task contract:oauth BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = dosage-health
@@ -109,6 +111,8 @@ function run_contract
     else
         if test "$argv[2]" = admin
             rtk task contract:run-admin BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
+        else if test "$argv[2]" = admin-tokens-audit
+            rtk task contract:run-admin-tokens-audit BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = sync
             rtk task contract:run-sync BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = replay

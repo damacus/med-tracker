@@ -45,11 +45,21 @@ fixture = ActiveRecord::Base.transaction do
   account, household, user = create_household(nonce, 'primary')
   foreign_account, foreign_household, = create_household(nonce, 'foreign')
   foreign_membership = foreign_account.household_memberships.find_by!(household: foreign_household)
+  foreign_app_token, = ApiAppToken.issue_for(account: foreign_account, household_membership: foreign_membership,
+                                            name: 'Contract foreign app token')
   _foreign_session, foreign_access_token, = ApiSession.issue_for(
     account: foreign_account, household_membership: foreign_membership, device_name: 'contract-foreign'
   )
   membership = account.household_memberships.find_by!(household: household)
   manager_membership, manager_access_token = create_admin_member(household, nonce, 'manager', role: :administrator)
+  token_authority_membership, token_authority_access_token = create_admin_member(household, nonce, 'token-authority',
+                                                                                  role: :administrator)
+  manager_app_token, manager_app_token_value = ApiAppToken.issue_for(account: manager_membership.account,
+                                                                     household_membership: manager_membership,
+                                                                     name: 'Contract manager app token')
+  revoked_owner_app_token, = ApiAppToken.issue_for(account: account, household_membership: membership,
+                                                   name: 'Contract revoked owner app token')
+  revoked_owner_app_token.revoke!
   admin_target_membership, admin_target_access_token = create_admin_member(household, nonce, 'admin-target')
   admin_owner_patch_membership, = create_admin_member(household, nonce, 'admin-owner-patch')
   admin_manager_put_membership, admin_manager_put_access_token = create_admin_member(household, nonce, 'admin-manager-put')
@@ -344,12 +354,19 @@ fixture = ActiveRecord::Base.transaction do
     user_id: user.id,
     household_id: household.id,
     household_name: household.name,
+    owner_membership_id: membership.id,
+    revoked_owner_app_token_id: revoked_owner_app_token.id,
     foreign_household_id: foreign_household.id,
     foreign_membership_id: foreign_membership.id,
+    foreign_app_token_id: foreign_app_token.id,
     foreign_access_token: foreign_access_token,
     foreign_email: "contract-foreign-#{nonce}@example.test",
     manager_membership_id: manager_membership.id,
     manager_access_token: manager_access_token,
+    token_authority_membership_id: token_authority_membership.id,
+    token_authority_access_token: token_authority_access_token,
+    manager_app_token_id: manager_app_token.id,
+    manager_app_token: manager_app_token_value,
     admin_target_membership_id: admin_target_membership.id,
     admin_target_access_token: admin_target_access_token,
     admin_owner_patch_membership_id: admin_owner_patch_membership.id,
