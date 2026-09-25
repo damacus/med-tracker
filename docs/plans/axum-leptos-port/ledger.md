@@ -53,7 +53,12 @@ newly named OIDC provider button until the full authentication browser suite.
   cases after the FHIR fixture and shared-stock expectations were corrected.
   The feature-disabled AI case also passed in its separate target. Known
   Rails privacy, clinical-input, and image-representation defects remain
-  explicit gaps; a sync change-feed privacy regression is in progress.
+  explicit gaps.
+  The sync change-feed privacy regression is integrated: focused Rails and
+  Rails-backed Rust contract checks passed, as did the isolated full Rails
+  suite (6,102 examples, 0 failures). The integrated privacy contract passed
+  1/1. Legacy ownerless rows and deleted-Person tombstones remain manager-only;
+  restricted clients recover by replacing local state from a full snapshot.
 - Tranche 2: full browser/PWA parity pending. The bounded Leptos login-page
   foundation is integrated and passed its desktop/mobile Rust browser smoke;
   it does not close this tranche or prove authentication, PWA, or visual parity.
@@ -89,3 +94,13 @@ The visible `Forgot?` link currently leads to an unimplemented reset route;
 that journey and visual parity remain in the later browser tranche.
 Fresh integrated screenshots are saved under
 `docs/screenshots/leptos-foundation/` (`840fd64b`).
+
+Sync privacy slice of Task 5B: complete (`20348a31`, independent review found no
+remaining findings). The change feed now scopes person rows to current grants
+and medication changes to current snapshot visibility, including visible
+health-event references. Medication deletion metadata is captured before
+dependent records are removed; tombstones use current grants. The final
+isolated Rails suite passed 6,102/0, RuboCop passed 1,892 files with no
+offenses, docs build passed, and the integrated Rails-backed Rust privacy
+contract passed 1/1. The Rust API remains absent, so Rust server parity and
+the memory target are not yet verified.
