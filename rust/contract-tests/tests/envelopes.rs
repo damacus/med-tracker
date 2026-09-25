@@ -43,6 +43,14 @@ fn cross_household_denial_does_not_disclose_foreign_account() {
 }
 
 #[test]
+fn task_6n_missing_household_has_correlated_not_found_envelope() {
+    let fixture = fixture();
+    let path = "/api/v1/households/999999999/me";
+    let response = Target::from_env().get(path, Some(&fixture.access_token));
+    assert_error(response, 404, "not_found", "Record not found");
+}
+
+#[test]
 fn invalid_filter_has_correlated_unprocessable_envelope() {
     let fixture = fixture();
     let path = format!(

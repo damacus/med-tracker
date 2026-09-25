@@ -722,9 +722,9 @@
     },
     {
       "path": "spec/controllers/api/v1/base_controller_spec.rb",
-      "category": "Rails-only",
-      "review": true,
-      "rationale": "Rails controller, middleware, or authentication integration check; port its public behaviour through API or browser tests."
+      "category": "API",
+      "review": false,
+      "rationale": "Public bearer, membership, tenant and canonical error outcomes are covered by auth.rs and envelopes.rs; mocked around-action details remain Rails-only."
     },
     {
       "path": "spec/controllers/application_controller_controller_action_length_spec.rb",
@@ -1849,8 +1849,9 @@
     },
     {
       "path": "spec/requests/admin/user_mutation_boundary_spec.rb",
-      "category": "browser",
-      "review": true
+      "category": "API",
+      "review": true,
+      "rationale": "Role-change invalidation of prior API session, app token and household-bound OAuth grant is covered by auth.rs; web forms, redirects, owner governance and support UI remain for browser tests."
     },
     {
       "path": "spec/requests/admin_create_update_turbo_spec.rb",
@@ -2159,8 +2160,9 @@
     },
     {
       "path": "spec/requests/deactivated_users_authentication_spec.rb",
-      "category": "browser",
-      "review": true
+      "category": "API",
+      "review": true,
+      "rationale": "Deactivated-user API session and app-token denial is covered by auth.rs; Rodauth login and existing web-session behavior remain for browser tests, and audit-failure persistence stays Rails-only."
     },
     {
       "path": "spec/requests/doctor_carer_prescription_workflow_spec.rb",
@@ -2204,8 +2206,9 @@
     },
     {
       "path": "spec/requests/household_operational_boundaries_spec.rb",
-      "category": "browser",
-      "review": true
+      "category": "API",
+      "review": true,
+      "rationale": "Held, offboarded and purged household API denial is covered by auth.rs; web tenant selection and platform support-mode navigation remain for browser tests."
     },
     {
       "path": "spec/requests/invitations_controller_spec.rb",

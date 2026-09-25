@@ -76,6 +76,17 @@ tasks:
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test platform -- --test-threads=1
 
+  run-auth-boundaries:
+    desc: Run API authentication and tenant-boundary contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test auth --test envelopes task_6n_ --no-fail-fast -- --test-threads=1
+
   run-portability:
     desc: Run portable household export and import contract cases
     requires:
@@ -426,6 +437,11 @@ tasks:
     cmds:
       - fish rust/contract-tests/run.fish rails oauth
 
+  auth-boundaries-rails:
+    desc: Run authentication and tenant-boundary cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails auth-boundaries
+
   invitations-rails:
     desc: Run household invitation cases against isolated Rails
     cmds:
@@ -628,6 +644,14 @@ tasks:
       CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
       - fish rust/contract-tests/run.fish rust oauth
+
+  auth-boundaries-rust:
+    desc: Run authentication and tenant-boundary cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust auth-boundaries
 
   invitations-rust:
     desc: Run household invitation cases against a Rust URL
