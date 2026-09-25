@@ -33,6 +33,7 @@ services:
         read_only: true
     environment:
       CONTRACT_BASE_URL: http://127.0.0.1:39998
+      CONTRACT_RATE_BASE_URL: http://rust-api:39998
       CONTRACT_FIXTURE_PATH: /contract-run/fixture.json
       CONTRACT_AUDIT_DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract
 

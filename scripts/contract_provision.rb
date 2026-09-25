@@ -48,6 +48,13 @@ fixture = ActiveRecord::Base.transaction do
   AccountOtpKey.create!(id: oauth_mfa_account.id, key: 'jbswy3dpehpk3pxp', last_use: 5.minutes.ago)
   platform_account, platform_household, = create_household(nonce, 'platform')
   platform_admin = PlatformAdmin.create!(account: platform_account)
+  platform_membership = platform_account.household_memberships.find_by!(household: platform_household)
+  _platform_session, platform_access_token, = ApiSession.issue_for(
+    account: platform_account, household_membership: platform_membership, device_name: 'contract-platform-admin'
+  )
+  SupportAccessSession.create!(platform_admin: platform_admin, household: household,
+                               reason: 'Contract API bearer support boundary',
+                               starts_at: 1.minute.ago, expires_at: 1.hour.from_now)
   platform_target_membership, = create_admin_member(platform_household, nonce, 'platform-target')
   platform_promote_membership, = create_admin_member(platform_household, nonce, 'platform-promote')
   platform_denied_membership, = create_admin_member(platform_household, nonce, 'platform-denied')
@@ -1192,6 +1199,7 @@ fixture = ActiveRecord::Base.transaction do
     account_id: account.id,
     platform_admin_email: platform_account.email,
     platform_admin_account_id: platform_account.id,
+    platform_access_token: platform_access_token,
     platform_target_email: platform_target_membership.account.email,
     platform_target_user_id: platform_target_membership.person.user.id,
     platform_promote_membership_id: platform_promote_membership.id,

@@ -8,7 +8,10 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind(address)
         .await
         .expect("bind API listener");
-    axum::serve(listener, medtracker_api::router(state))
-        .await
-        .expect("serve API");
+    axum::serve(
+        listener,
+        medtracker_api::router(state).into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .await
+    .expect("serve API");
 }

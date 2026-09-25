@@ -123,7 +123,7 @@ tasks:
       GIT_COMMON_DIR:
         sh: git rev-parse --path-format=absolute --git-common-dir
     cmds:
-      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_locations --test openapi_location_writes -- --test-threads=1
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --no-fail-fast --manifest-path rust/contract-tests/Cargo.toml --test openapi_locations --test openapi_location_writes --test openapi_rate_limit -- --test-threads=1
 
   openapi-locations-acceptance:
     cmds:
@@ -133,11 +133,13 @@ tasks:
     cmds:
       - rustfmt --check rust/contract-tests/tests/openapi_locations.rs
       - rustfmt --check rust/contract-tests/tests/openapi_location_writes.rs
+      - rustfmt --check rust/contract-tests/tests/openapi_rate_limit.rs
 
   openapi-locations-fmt:write:
     cmds:
       - rustfmt rust/contract-tests/tests/openapi_locations.rs
       - rustfmt rust/contract-tests/tests/openapi_location_writes.rs
+      - rustfmt rust/contract-tests/tests/openapi_rate_limit.rs
 
   contract-web-reads-rails-test:
     requires:

@@ -2,7 +2,20 @@ openapi: 3.0.3
 info:
   title: MedTracker API
   version: v1
-  description: Hosted MedTracker API contract for mobile clients, API clients, and portable migration.
+  description: |
+    Hosted MedTracker API contract for mobile clients, API clients, and portable migration.
+    API requests are limited per client IP to 300 requests in each five-minute window. GET
+    household data exports are also limited to 10 per minute; POST sync batches to 30 per
+    minute; GET medication lookup to 60 per minute; POST AI medication suggestions to 10 per
+    minute; and GET household admin audit logs to 100 per minute. Limits use epoch-aligned
+    fixed windows. The first exceeded limit rejects the request with 429 and Retry-After,
+    RateLimit-Limit, RateLimit-Remaining and RateLimit-Reset response headers. Counters are
+    local to each server process. Counter storage is bounded; a new client is rejected with
+    429 while the store is full of live counters. Expired counters are reclaimed. Health
+    checks and direct loopback clients are exempt in production. The client IP is the socket
+    peer unless a deployment explicitly configures trusted proxy IPs through
+    API_TRUSTED_PROXY_IPS. A configured loopback proxy is not exempt, and untrusted
+    forwarding headers do not set the client IP.
 servers:
   - url: /api/v1
 security:
@@ -23,7 +36,15 @@ tags:
   - name: People
     description: Household people and current-profile operations.
   - name: Locations
-    description: Household location records.
+    description: |
+      Active household members can read all locations in their selected household. Only
+      household owners and administrators can create, update or delete locations and
+      location memberships. A bearer API credential does not convey browser support-session
+      authority. A membership change additionally needs a manage grant for the selected
+      person. A person outside the caller's view scope is not found (404); a visible person
+      without a manage grant is forbidden (403). Missing or invalid credentials return 401,
+      a denied household returns 403, and a resource outside the authorized household scope
+      returns 404.
   - name: Medications
     description: Medication records and inventory/reorder actions.
   - name: Dosage options
@@ -995,6 +1016,7 @@ paths:
         - Household
         - Locations
       summary: List visible locations.
+      description: Active members can list every location in their selected household.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/page'
@@ -1021,6 +1043,7 @@ paths:
       operationId: createLocation
       tags: [Household, Locations]
       summary: Create household storage.
+      description: Only an active household owner or administrator can create a location.
       parameters:
         - $ref: '#/components/parameters/household_id'
       requestBody:
@@ -1060,6 +1083,7 @@ paths:
         - Household
         - Locations
       summary: Read a location.
+      description: Active members can read a location in their selected household.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
@@ -1085,6 +1109,7 @@ paths:
       operationId: updateLocation
       tags: [Household, Locations]
       summary: Update household storage with its current version.
+      description: Only an active household owner or administrator can update an in-scope location. If-Match must equal the current location ETag.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
@@ -1129,6 +1154,13 @@ paths:
       operationId: deleteLocation
       tags: [Household, Locations]
       summary: Delete storage only when retained history permits it.
+      description: |
+        Only an active household owner or administrator can delete an in-scope location,
+        using the current If-Match ETag. Direct or indirect medication takes, saved dose
+        outcomes, or medication pause periods retained through the location's medications,
+        schedules or person assignments prevent deletion with 422. Otherwise the location,
+        its memberships, medications, dosage options, schedules and person assignments are
+        removed atomically. A failed deletion leaves every related row unchanged.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
@@ -1160,6 +1192,7 @@ paths:
       operationId: updateLocationWithPut
       tags: [Household, Locations]
       summary: Update household storage with its current version.
+      description: Only an active household owner or administrator can update an in-scope location. If-Match must equal the current location ETag.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
@@ -1205,6 +1238,11 @@ paths:
       operationId: createLocationMembership
       tags: [Household, Locations]
       summary: Assign a managed person to a location or replay the existing assignment.
+      description: |
+        Only an active household owner or administrator can assign a person to an in-scope
+        location. The person must be visible to the caller and have a current manage grant;
+        a person outside view scope returns 404, while a visible person without manage
+        access returns 403. Replaying the same assignment returns the existing resource.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - name: location_id
@@ -1244,6 +1282,11 @@ paths:
       operationId: deleteLocationMembership
       tags: [Household, Locations]
       summary: Remove a managed person from the selected location.
+      description: |
+        Only an active household owner or administrator can remove an assignment from an
+        in-scope location. The assigned person must be visible to the caller and have a
+        current manage grant; out-of-scope person or assignment returns 404, and a visible
+        person without manage access returns 403.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - name: id
@@ -4279,6 +4322,21 @@ components:
       headers:
         Retry-After:
           $ref: '#/components/headers/retry_after'
+        RateLimit-Limit:
+          description: Maximum requests allowed by the matched limit.
+          schema:
+            type: integer
+            minimum: 1
+        RateLimit-Remaining:
+          description: Requests remaining in the matched window.
+          schema:
+            type: integer
+            enum: [0]
+        RateLimit-Reset:
+          description: Unix timestamp in seconds when the matched window resets.
+          schema:
+            type: integer
+            minimum: 1
       content:
         application/json:
           schema:

@@ -205,7 +205,7 @@ fn get_location_matches_openapi_resource_and_errors() {
         ),
         Some(&fixture.access_token),
     );
-    assert!([403, 404].contains(&wrong_household.status().as_u16()));
+    assert_eq!(wrong_household.status().as_u16(), 403);
     assert_error(&wrong_household.json().expect("foreign household JSON"));
 }
 
