@@ -218,6 +218,39 @@ fn search_filters_and_pagination_are_observable_without_order_assumptions() {
             assert_eq!(rows[0]["id"], id);
         }
     }
+    let active_requests = search(&target, &fixture, "MedicationRequest", "status=active");
+    let stopped_requests = search(&target, &fixture, "MedicationRequest", "status=stopped");
+    assert!(has_id(
+        &active_requests,
+        &fixture.managed_schedule_portable_id
+    ));
+    assert!(!has_id(
+        &stopped_requests,
+        &fixture.managed_schedule_portable_id
+    ));
+    let active_statements = search(&target, &fixture, "MedicationStatement", "status=active");
+    let stopped_statements = search(&target, &fixture, "MedicationStatement", "status=stopped");
+    assert!(has_id(
+        &active_statements,
+        &fixture.managed_assignment_portable_id
+    ));
+    assert!(!has_id(
+        &stopped_statements,
+        &fixture.managed_assignment_portable_id
+    ));
+    let completed_administrations = search(
+        &target,
+        &fixture,
+        "MedicationAdministration",
+        "status=completed",
+    );
+    assert!(has_id(
+        &completed_administrations,
+        &fixture.managed_take_portable_id
+    ));
+    assert!(completed_administrations
+        .iter()
+        .all(|row| row["status"] == "completed"));
     let medication_resource = resource(&target, &fixture, "Medication", medication);
     assert_eq!(medication_resource["form"]["text"], "Analgesic");
     let medication_by_form = search(&target, &fixture, "Medication", "form=Analgesic");
@@ -306,6 +339,18 @@ fn invalid_search_and_format_return_fhir_errors() {
         ),
         406,
         "not-supported",
+        &fixture.foreign_person_name,
+    );
+    outcome(
+        target.get(
+            &format!(
+                "{BASE}/MedicationAdministration?patient={}&status=in-progress",
+                fixture.managed_person_portable_id
+            ),
+            Some(&fixture.access_token),
+        ),
+        422,
+        "invalid",
         &fixture.foreign_person_name,
     );
 }
