@@ -90,6 +90,11 @@ fn assert_snapshot_excludes(
             &fixture.hidden_preference_portable_id,
             &fixture.foreign_preference_portable_id,
         ),
+        (
+            "health_events",
+            &fixture.hidden_health_event_portable_id,
+            &fixture.foreign_health_event_portable_id,
+        ),
     ];
     let managed = [
         ("people", &fixture.managed_person_portable_id),
@@ -106,6 +111,7 @@ fn assert_snapshot_excludes(
             "notification_preferences",
             &fixture.managed_preference_portable_id,
         ),
+        ("health_events", &fixture.managed_health_event_portable_id),
     ];
     for (kind, hidden, foreign) in forbidden {
         let rows = records[kind].as_array().expect("snapshot collection");
