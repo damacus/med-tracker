@@ -61,7 +61,7 @@ end
 
 function run_rails_contract_targets -a base_url fixture_path mailpit_url project run_dir
     set -l failed_targets
-    set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports fhir platform lookup web_json_read portability retained web_json_actions profile web_profile sync replay oauth devices web_devices push_delivery mcp uploads envelopes
+    set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports fhir smart_fhir platform lookup web_json_read portability retained web_json_actions profile web_profile sync replay oauth devices web_devices push_delivery mcp uploads envelopes
     rtk task contract:run BASE_URL="$base_url" FIXTURE_PATH="$fixture_path" MAILPIT_URL="$mailpit_url" TEST_TARGET=lib
     or set -a failed_targets lib
     set -l previous_target
@@ -247,6 +247,8 @@ function run_contract
             rtk task contract:run-reports BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = fhir
             rtk task contract:run-fhir BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+        else if test "$argv[2]" = smart-fhir
+            rtk task contract:run-smart-fhir BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = platform
             rtk task contract:run-platform BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = lookup
@@ -332,6 +334,8 @@ function run_contract
             rtk task contract:run-reports BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = fhir
             rtk task contract:run-fhir BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
+        else if test "$argv[2]" = smart-fhir
+            rtk task contract:run-smart-fhir BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = platform
             rtk task contract:run-platform BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = lookup
