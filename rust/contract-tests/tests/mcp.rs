@@ -43,6 +43,93 @@ fn rpc_error(response: Response, id: i64) -> Value {
     message["error"].clone()
 }
 
+fn assert_snapshot_excludes(
+    snapshot: &Value,
+    fixture: &medtracker_contract_tests::Fixture,
+    view_only: bool,
+) {
+    let records = &snapshot["snapshot"]["records"];
+    let forbidden = [
+        (
+            "people",
+            &fixture.hidden_person_portable_id,
+            &fixture.foreign_person_portable_id,
+        ),
+        (
+            "locations",
+            &fixture.hidden_location_portable_id,
+            &fixture.foreign_location_portable_id,
+        ),
+        (
+            "medications",
+            &fixture.hidden_medication_portable_id,
+            &fixture.foreign_medication_portable_id,
+        ),
+        (
+            "dosage_options",
+            &fixture.hidden_dosage_portable_id,
+            &fixture.foreign_dosage_portable_id,
+        ),
+        (
+            "schedules",
+            &fixture.hidden_schedule_portable_id,
+            &fixture.foreign_schedule_portable_id,
+        ),
+        (
+            "person_medications",
+            &fixture.hidden_assignment_portable_id,
+            &fixture.foreign_assignment_portable_id,
+        ),
+        (
+            "medication_takes",
+            &fixture.hidden_take_portable_id,
+            &fixture.foreign_take_portable_id,
+        ),
+        (
+            "notification_preferences",
+            &fixture.hidden_preference_portable_id,
+            &fixture.foreign_preference_portable_id,
+        ),
+    ];
+    let managed = [
+        ("people", &fixture.managed_person_portable_id),
+        ("locations", &fixture.primary_location_portable_id),
+        ("medications", &fixture.managed_medication_portable_id),
+        ("dosage_options", &fixture.managed_dosage_portable_id),
+        ("schedules", &fixture.managed_schedule_portable_id),
+        (
+            "person_medications",
+            &fixture.managed_assignment_portable_id,
+        ),
+        ("medication_takes", &fixture.managed_take_portable_id),
+        (
+            "notification_preferences",
+            &fixture.managed_preference_portable_id,
+        ),
+    ];
+    for (kind, hidden, foreign) in forbidden {
+        let rows = records[kind].as_array().expect("snapshot collection");
+        assert!(
+            rows.iter().all(|row| row["portable_id"] != *foreign),
+            "{kind} leaked foreign record"
+        );
+        if view_only {
+            assert!(
+                rows.iter().all(|row| row["portable_id"] != *hidden),
+                "{kind} leaked hidden record"
+            );
+        }
+    }
+    for (kind, id) in managed {
+        let rows = records[kind].as_array().expect("snapshot collection");
+        assert_eq!(
+            rows.iter().any(|row| row["portable_id"] == *id),
+            !view_only,
+            "{kind} manage scope"
+        );
+    }
+}
+
 #[test]
 fn mcp_initializes_and_lists_read_only_capabilities() {
     let target = Target::from_env();
@@ -95,16 +182,20 @@ fn mcp_initializes_and_lists_read_only_capabilities() {
         request(&target, Some(token), 3, "resources/list", json!({})),
         3,
     );
+    let resource_entries = resources["resources"].as_array().expect("MCP resources");
+    assert_eq!(resource_entries.len(), 1);
     assert_eq!(
-        resources["resources"][0]["uri"],
+        resource_entries[0]["uri"],
         "medtracker://household/snapshot"
     );
-    assert_eq!(resources["resources"][0]["mimeType"], "application/json");
+    assert_eq!(resource_entries[0]["mimeType"], "application/json");
     let prompts = result(
         request(&target, Some(token), 4, "prompts/list", json!({})),
         4,
     );
-    assert_eq!(prompts["prompts"][0]["name"], "medtracker_household_review");
+    let prompt_entries = prompts["prompts"].as_array().expect("MCP prompts");
+    assert_eq!(prompt_entries.len(), 1);
+    assert_eq!(prompt_entries[0]["name"], "medtracker_household_review");
 }
 
 #[test]
@@ -139,14 +230,7 @@ fn mcp_reads_account_and_policy_scoped_household_context() {
     let payload = &snapshot["structuredContent"];
     assert_eq!(payload["format"], "medtracker.mcp.household_snapshot.v1");
     assert_eq!(payload["snapshot"]["format"], "medtracker.portable.v1");
-    let people = payload["snapshot"]["records"]["people"]
-        .as_array()
-        .expect("visible people");
-    assert!(people.iter().all(|person| {
-        person["portable_id"] != fixture.managed_person_portable_id
-            && person["portable_id"] != fixture.hidden_person_portable_id
-            && person["portable_id"] != fixture.foreign_person_portable_id
-    }));
+    assert_snapshot_excludes(payload, &fixture, true);
     assert!(!snapshot.to_string().contains(&fixture.foreign_person_name));
     let owner_snapshot = call_tool(
         &target,
@@ -155,13 +239,7 @@ fn mcp_reads_account_and_policy_scoped_household_context() {
         "medtracker_household_snapshot",
         json!({}),
     );
-    assert!(
-        owner_snapshot["structuredContent"]["snapshot"]["records"]["people"]
-            .as_array()
-            .expect("manageable people")
-            .iter()
-            .any(|person| person["portable_id"] == fixture.managed_person_portable_id)
-    );
+    assert_snapshot_excludes(&owner_snapshot["structuredContent"], &fixture, false);
 
     let schedule = call_tool(
         &target,
@@ -184,6 +262,22 @@ fn mcp_reads_account_and_policy_scoped_household_context() {
         row["portable_id"] != fixture.hidden_schedule_portable_id
             && row["portable_id"] != fixture.foreign_schedule_portable_id
     }));
+    let taken_today = schedule["structuredContent"]["taken_today"]
+        .as_array()
+        .expect("taken today groups");
+    let managed_taken = taken_today
+        .iter()
+        .find(|row| row["person_id"] == fixture.managed_person_id)
+        .expect("managed person taken today");
+    assert!(managed_taken["medications"]
+        .as_array()
+        .expect("taken medications")
+        .iter()
+        .any(|row| row["id"] == fixture.historical_medication_id));
+    assert!(taken_today
+        .iter()
+        .all(|row| row["person_id"] != fixture.hidden_person_id
+            && row["person_id"] != fixture.foreign_person_id));
 
     let inventory = call_tool(
         &target,
@@ -196,14 +290,16 @@ fn mcp_reads_account_and_policy_scoped_household_context() {
         inventory["structuredContent"]["format"],
         "medtracker.mcp.inventory_risks.v1"
     );
-    assert!(inventory["structuredContent"]["medications"]
+    let risks = inventory["structuredContent"]["medications"]
         .as_array()
-        .expect("inventory risks")
+        .expect("inventory risks");
+    assert!(risks
         .iter()
-        .all(
-            |row| row["portable_id"] != fixture.hidden_medication_portable_id
-                && row["portable_id"] != fixture.foreign_medication_portable_id
-        ));
+        .any(|row| row["portable_id"] == fixture.visible_low_stock_portable_id));
+    assert!(risks.iter().all(
+        |row| row["portable_id"] != fixture.hidden_low_stock_portable_id
+            && row["portable_id"] != fixture.foreign_low_stock_portable_id
+    ));
 }
 
 #[test]
@@ -232,11 +328,24 @@ fn mcp_resources_prompts_and_history_obey_household_scope() {
     )
     .expect("household snapshot resource");
     assert_eq!(snapshot["format"], "medtracker.mcp.household_snapshot.v1");
-    assert!(snapshot["snapshot"]["records"]["people"]
-        .as_array()
-        .expect("resource people")
-        .iter()
-        .all(|person| person["portable_id"] != fixture.hidden_person_portable_id));
+    assert_snapshot_excludes(&snapshot, &fixture, true);
+    let owner_resource = result(
+        request(
+            &target,
+            Some(&fixture.access_token),
+            23,
+            "resources/read",
+            json!({"uri": "medtracker://household/snapshot"}),
+        ),
+        23,
+    );
+    let owner_snapshot: Value = serde_json::from_str(
+        owner_resource["contents"][0]["text"]
+            .as_str()
+            .expect("owner resource text"),
+    )
+    .expect("owner snapshot resource");
+    assert_snapshot_excludes(&owner_snapshot, &fixture, false);
 
     let prompt = result(
         request(
@@ -284,6 +393,44 @@ fn mcp_resources_prompts_and_history_obey_household_scope() {
         .iter()
         .all(|person| person["id"] == fixture.managed_person_id));
     assert!(!summary.to_string().contains(&fixture.foreign_person_name));
+    let takes = summary["medication_takes"]
+        .as_array()
+        .expect("history takes");
+    assert!(takes
+        .iter()
+        .any(|row| row["person_id"] == fixture.managed_person_id
+            && row["medication_name"] == fixture.historical_medication_name));
+    assert!(takes
+        .iter()
+        .all(|row| row["person_id"] == fixture.managed_person_id));
+    let effects = summary["suspected_side_effects"]
+        .as_array()
+        .expect("side effects");
+    assert!(effects
+        .iter()
+        .any(|row| row["person_id"] == fixture.managed_person_id
+            && row["title"] == fixture.managed_side_effect_title));
+    assert!(effects
+        .iter()
+        .all(|row| row["person_id"] == fixture.managed_person_id));
+    let illnesses = summary["notable_illnesses"].as_array().expect("illnesses");
+    assert!(illnesses
+        .iter()
+        .any(|row| row["person_id"] == fixture.managed_person_id
+            && row["title"] == fixture.managed_health_event_title));
+    assert!(illnesses
+        .iter()
+        .all(|row| row["person_id"] == fixture.managed_person_id));
+    let patterns = summary["illness_patterns"]
+        .as_array()
+        .expect("illness patterns");
+    assert!(patterns.iter().any(
+        |row| row["display_title"] == fixture.managed_health_event_title
+            && row["episode_count"] == 2
+    ));
+    assert!(patterns
+        .iter()
+        .all(|row| row["display_title"] == fixture.managed_health_event_title));
 }
 
 #[test]
@@ -337,6 +484,28 @@ fn mcp_rejects_missing_invalid_and_unavailable_requests() {
     assert!(!missing_tool
         .to_string()
         .contains(&fixture.manager_app_token));
+    let unknown_tool = rpc_error(
+        request(
+            &target,
+            Some(&fixture.manager_app_token),
+            36,
+            "tools/call",
+            json!({"name": "medtracker_delete_everything", "arguments": {}}),
+        ),
+        36,
+    );
+    assert_eq!(unknown_tool["code"], -32602);
+    let unknown_prompt = rpc_error(
+        request(
+            &target,
+            Some(&fixture.manager_app_token),
+            37,
+            "prompts/get",
+            json!({"name": "medtracker_unknown_prompt", "arguments": {}}),
+        ),
+        37,
+    );
+    assert_eq!(unknown_prompt["code"], -32602);
     let unknown_resource = rpc_error(
         request(
             &target,

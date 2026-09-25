@@ -420,6 +420,22 @@ fixture = ActiveRecord::Base.transaction do
                                                medication: hidden_medication, administration_kind: :as_needed)
   foreign_assignment = PersonMedication.create!(household: foreign_household, person: foreign_account.person,
                                                 medication: foreign_medication, administration_kind: :as_needed)
+  visible_low_stock = Medication.create!(household: household, location: primary_location,
+                                         name: "Contract visible low stock #{nonce}", current_supply: '1',
+                                         reorder_threshold: '5')
+  hidden_low_stock = Medication.create!(household: household, location: hidden_location,
+                                        name: "Contract hidden low stock #{nonce}", current_supply: '1',
+                                        reorder_threshold: '5')
+  foreign_low_stock = Medication.create!(household: foreign_household, location: foreign_location,
+                                         name: "Contract foreign low stock #{nonce}", current_supply: '1',
+                                         reorder_threshold: '5')
+  PersonMedication.create!(household: household, person: managed_person, medication: visible_low_stock,
+                           administration_kind: :as_needed, dose_amount: '1', dose_unit: 'tablet')
+  PersonMedication.create!(household: household, person: hidden_person, medication: hidden_low_stock,
+                           administration_kind: :as_needed, dose_amount: '1', dose_unit: 'tablet')
+  PersonMedication.create!(household: foreign_household, person: foreign_account.person,
+                           medication: foreign_low_stock, administration_kind: :as_needed,
+                           dose_amount: '1', dose_unit: 'tablet')
   hidden_assignment.pause!
   foreign_assignment.pause!
   hidden_pause_period = hidden_assignment.medication_pause_periods.sole
@@ -433,6 +449,11 @@ fixture = ActiveRecord::Base.transaction do
                                       start_date: '2026-02-25', end_date: '2099-12-31')
   managed_health_event = HealthEvent.create!(household: household, person: managed_person, event_kind: :illness,
                                             title: "Contract managed event #{nonce}", started_on: '2026-02-25')
+  HealthEvent.create!(household: household, person: managed_person, event_kind: :illness,
+                      title: managed_health_event.title, started_on: '2026-02-26')
+  managed_side_effect = HealthEvent.create!(household: household, person: managed_person,
+                                            event_kind: :suspected_side_effect,
+                                            title: "Contract managed side effect #{nonce}", started_on: '2026-02-25')
   earlier_health_event = HealthEvent.create!(household: household, person: managed_person, event_kind: :illness,
                                             title: "Contract earlier event #{nonce}", started_on: '2026-02-20',
                                             ended_on: '2026-02-21')
@@ -479,6 +500,10 @@ fixture = ActiveRecord::Base.transaction do
                                                       person: foreign_account.person, enabled: true)
   hidden_health_event = HealthEvent.create!(household: household, person: hidden_person, event_kind: :illness,
                                             title: "Contract hidden event #{nonce}", started_on: '2026-02-25')
+  HealthEvent.create!(household: household, person: hidden_person, event_kind: :illness,
+                      title: hidden_health_event.title, started_on: '2026-02-26')
+  HealthEvent.create!(household: household, person: hidden_person, event_kind: :suspected_side_effect,
+                      title: "Contract hidden side effect #{nonce}", started_on: '2026-02-25')
   cursor_boundary_at = Time.utc(2026, 1, 1)
   cursor_boundary_location = nil
   TenantContext.with(account: feed_account, household: household, membership: feed_membership,
@@ -496,6 +521,11 @@ fixture = ActiveRecord::Base.transaction do
   foreign_health_event = HealthEvent.create!(household: foreign_household, person: foreign_account.person,
                                              event_kind: :illness, title: "Contract foreign event #{nonce}",
                                              started_on: '2026-02-25')
+  HealthEvent.create!(household: foreign_household, person: foreign_account.person, event_kind: :illness,
+                      title: foreign_health_event.title, started_on: '2026-02-26')
+  HealthEvent.create!(household: foreign_household, person: foreign_account.person,
+                      event_kind: :suspected_side_effect,
+                      title: "Contract foreign side effect #{nonce}", started_on: '2026-02-25')
   review_partner = Medication.create!(household: household, location: primary_location,
                                       name: "Contract review partner #{nonce}", dose_amount: '1', dose_unit: 'tablet')
   foreign_review_partner = Medication.create!(household: foreign_household, location: foreign_location,
@@ -759,12 +789,17 @@ fixture = ActiveRecord::Base.transaction do
     hidden_location_portable_id: hidden_location.portable_id,
     historical_location_portable_id: historical_location.portable_id,
     historical_medication_portable_id: historical_medication.portable_id,
+    historical_medication_id: historical_medication.id,
+    historical_medication_name: historical_medication.name,
     foreign_location_id: foreign_location.id,
     foreign_location_portable_id: foreign_location.portable_id,
     foreign_location_name: foreign_location.name,
     managed_medication_id: managed_medication.id,
     managed_medication_portable_id: managed_medication.portable_id,
     managed_medication_name: managed_medication.name,
+    visible_low_stock_portable_id: visible_low_stock.portable_id,
+    hidden_low_stock_portable_id: hidden_low_stock.portable_id,
+    foreign_low_stock_portable_id: foreign_low_stock.portable_id,
     managed_dosage_portable_id: managed_dosage.portable_id,
     hidden_medication_id: hidden_medication.id,
     hidden_medication_portable_id: hidden_medication.portable_id,
@@ -797,6 +832,7 @@ fixture = ActiveRecord::Base.transaction do
     managed_health_event_portable_id: managed_health_event.portable_id,
     managed_health_event_id: managed_health_event.id,
     managed_health_event_title: managed_health_event.title,
+    managed_side_effect_title: managed_side_effect.title,
     earlier_health_event_id: earlier_health_event.id,
     hidden_health_event_portable_id: hidden_health_event.portable_id,
     foreign_health_event_portable_id: foreign_health_event.portable_id,
