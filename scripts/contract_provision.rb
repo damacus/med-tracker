@@ -44,6 +44,14 @@ end
 fixture = ActiveRecord::Base.transaction do
   account, household, user = create_household(nonce, 'primary')
   foreign_account, foreign_household, = create_household(nonce, 'foreign')
+  retained_account, retained_household, = create_household(nonce, 'retained')
+  retained_location = Location.create!(household: retained_household, name: "Contract retained shelf #{nonce}")
+  retained_medication = Medication.create!(household: retained_household, location: retained_location,
+                                           name: "Contract retained medicine #{nonce}", dose_amount: '1',
+                                           dose_unit: 'ml', current_supply: '50')
+  retained_schedule = Schedule.create!(household: retained_household, person: retained_account.person,
+                                       medication: retained_medication, dose_amount: '1', dose_unit: 'ml',
+                                       frequency: 'Daily', start_date: '2026-01-01', end_date: '2099-12-31')
   portable_source_account, portable_source_household, = create_household(nonce, 'portable-source')
   portable_target_account, portable_target_household, = create_household(nonce, 'portable-target')
   profile_account, profile_household, = create_household(nonce, 'profile')
@@ -649,6 +657,12 @@ fixture = ActiveRecord::Base.transaction do
                      expires_in: 1.hour.from_now, scopes: 'patient/Patient.rs', revoked_at: Time.current)
 
   {
+    retained_household_slug: retained_household.slug,
+    retained_household_id: retained_household.id,
+    retained_email: retained_account.email,
+    retained_schedule_id: retained_schedule.id,
+    retained_medication_id: retained_medication.id,
+    retained_foreign_household_slug: foreign_household.slug,
     profile_household_id: profile_household.id,
     avatar_household_id: avatar_household.id,
     avatar_access_token: avatar_access_token,
