@@ -425,6 +425,13 @@ fixture = ActiveRecord::Base.transaction do
   historical_medication = Medication.create!(household: household, location: historical_location,
                                              name: "Contract historical medicine #{nonce}", dose_amount: '1',
                                              dose_unit: 'ml', current_supply: '5')
+  fhir_stopped_schedule = Schedule.create!(household: household, person: managed_person,
+                                           medication: retired_medication, dose_amount: '1', dose_unit: 'ml',
+                                           frequency: 'Daily', start_date: '2026-02-25', end_date: '2099-12-31')
+  fhir_stopped_schedule.pause!
+  fhir_stopped_assignment = PersonMedication.create!(household: household, person: managed_person,
+                                                      medication: historical_medication, administration_kind: :as_needed)
+  fhir_stopped_assignment.pause!
   historical_schedule = Schedule.create!(household: household, person: managed_person,
                                          medication: historical_medication, dose_amount: '1', dose_unit: 'ml',
                                          frequency: 'Daily', start_date: '2026-02-25', end_date: '2099-12-31')
@@ -741,6 +748,7 @@ fixture = ActiveRecord::Base.transaction do
     foreign_medication_name: foreign_medication.name,
     managed_assignment_id: managed_assignment.id,
     managed_assignment_portable_id: managed_assignment.portable_id,
+    fhir_stopped_assignment_portable_id: fhir_stopped_assignment.portable_id,
     managed_assignment_updated_at: managed_assignment_updated_at.iso8601,
     retired_assignment_portable_id: retired_assignment.portable_id,
     retired_assignment_period_id: retired_assignment_period.portable_id,
@@ -752,6 +760,7 @@ fixture = ActiveRecord::Base.transaction do
     foreign_pause_period_id: foreign_pause_period.portable_id,
     managed_schedule_id: managed_schedule.id,
     managed_schedule_portable_id: managed_schedule.portable_id,
+    fhir_stopped_schedule_portable_id: fhir_stopped_schedule.portable_id,
     historical_schedule_portable_id: historical_schedule.portable_id,
     managed_occurrence_portable_id: managed_occurrence.portable_id,
     managed_take_portable_id: managed_take.portable_id,
