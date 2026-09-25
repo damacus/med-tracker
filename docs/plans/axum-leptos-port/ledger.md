@@ -35,9 +35,18 @@ when the full authenticated login journey is ported.
 
 ## Progress
 
-- Tranche 0: pending.
-- Tranche 1: pending.
-- Tranche 2: pending.
+- Tranche 0: API inventory and disposable contract runner accepted through
+  reviewed API-plan Tasks 1 and 2; the matrix records all 118 OpenAPI
+  operations and the existing RSpec inventory.
+- Tranche 1: in progress. Reviewed API contract slices through web JSON reads,
+  web JSON actions, and cross-account session denial are integrated. The
+  complete combined Rails run last had one FHIR fixture-state failure; the
+  corrected focused FHIR suite passed 5/5, and combined rerun is pending.
+  Provider delivery, production-like CSRF, and known Rails privacy/image
+  defects remain explicit gaps.
+- Tranche 2: full browser/PWA parity pending. The bounded Leptos login-page
+  foundation is in progress in its isolated worktree; it does not close this
+  tranche.
 - Tranche 3: pending.
 - Tranche 4: pending.
 - Tranche 5: pending.
