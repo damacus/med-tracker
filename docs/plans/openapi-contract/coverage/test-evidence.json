@@ -2,92 +2,383 @@
   "listLocations": {
     "state": "partial_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_locations.rs; rust/contract-tests/tests/openapi_location_writes.rs; rust/contract-tests/tests/openapi_rate_limit.rs",
-    "statuses_tested": [200, 401, 403, 422, 429],
-    "behaviours_tested": ["exact collection, Location and PaginationMeta fields", "active member reads all own-household locations", "wrong household 403", "missing/invalid/expired/revoked/suspended credentials 401", "distinct pages and per_page 1/100", "valid updated_since filtering", "invalid and noninteger pagination or timestamp 422", "nonloopback 429 with strict rate body and headers"],
-    "not_yet_tested": ["all response header variants and boundary-window HTTP timing", "every credential kind"]
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "exact collection, Location and PaginationMeta fields",
+      "active member reads all own-household locations",
+      "wrong household 403",
+      "missing/invalid/expired/revoked/suspended credentials 401",
+      "distinct pages and per_page 1/100",
+      "valid updated_since filtering",
+      "invalid and noninteger pagination or timestamp 422",
+      "nonloopback 429 with strict rate body and headers"
+    ],
+    "not_yet_tested": [
+      "all response header variants and boundary-window HTTP timing",
+      "every credential kind"
+    ]
   },
   "getLocation": {
     "state": "partial_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_locations.rs; rust/contract-tests/tests/openapi_location_writes.rs",
-    "statuses_tested": [200, 401, 403, 404],
-    "behaviours_tested": ["numeric and portable IDs", "exact LocationResponse fields and ETag", "active member read", "wrong household 403 and foreign resource under own household 404", "missing and invalid bearer 401"],
-    "not_yet_tested": ["429 on this operation", "every credential kind"]
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      404
+    ],
+    "behaviours_tested": [
+      "numeric and portable IDs",
+      "exact LocationResponse fields and ETag",
+      "active member read",
+      "wrong household 403 and foreign resource under own household 404",
+      "missing and invalid bearer 401"
+    ],
+    "not_yet_tested": [
+      "429 on this operation",
+      "every credential kind"
+    ]
   },
   "createLocation": {
     "state": "partial_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_location_writes.rs",
-    "statuses_tested": [201, 400, 401, 403, 422],
-    "behaviours_tested": ["owner and administrator create", "member and wrong household 403", "platform support bearer does not bypass household membership", "exact LocationResponse and ETag", "missing or malformed JSON 400", "required name and additionalProperties constraints 422"],
-    "not_yet_tested": ["409 duplicate/conflict", "429 on this operation"]
+    "statuses_tested": [
+      201,
+      400,
+      401,
+      403,
+      422
+    ],
+    "behaviours_tested": [
+      "owner and administrator create",
+      "member and wrong household 403",
+      "platform support bearer does not bypass household membership",
+      "exact LocationResponse and ETag",
+      "missing or malformed JSON 400",
+      "required name and additionalProperties constraints 422"
+    ],
+    "not_yet_tested": [
+      "409 duplicate/conflict",
+      "429 on this operation"
+    ]
   },
   "updateLocation": {
     "state": "partial_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_location_writes.rs",
-    "statuses_tested": [200, 400, 401, 403, 404, 409, 422, 428],
-    "behaviours_tested": ["owner and administrator update; member forbidden", "invalid ID and malformed JSON 400", "required wrapper and extra fields 422", "missing If-Match 428 and stale If-Match 409", "two simultaneous writes with one ETag yield one 200 and one 409", "omitted description preserved", "foreign resource 404"],
-    "not_yet_tested": ["429 on this operation", "all validation combinations"]
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      428
+    ],
+    "behaviours_tested": [
+      "owner and administrator update; member forbidden",
+      "invalid ID and malformed JSON 400",
+      "required wrapper and extra fields 422",
+      "missing If-Match 428 and stale If-Match 409",
+      "two simultaneous writes with one ETag yield one 200 and one 409",
+      "omitted description preserved",
+      "foreign resource 404"
+    ],
+    "not_yet_tested": [
+      "429 on this operation",
+      "all validation combinations"
+    ]
   },
   "updateLocationWithPut": {
     "state": "partial_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_location_writes.rs",
-    "statuses_tested": [200, 400, 401, 403, 404, 409, 422, 428],
-    "behaviours_tested": ["owner and administrator update; member forbidden", "malformed JSON 400", "explicit null clears description while absent name is preserved", "missing If-Match 428 and stale If-Match 409", "empty attributes and extra properties 422", "foreign resource 404"],
-    "not_yet_tested": ["429 on this operation"]
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      428
+    ],
+    "behaviours_tested": [
+      "owner and administrator update; member forbidden",
+      "malformed JSON 400",
+      "explicit null clears description while absent name is preserved",
+      "missing If-Match 428 and stale If-Match 409",
+      "empty attributes and extra properties 422",
+      "foreign resource 404"
+    ],
+    "not_yet_tested": [
+      "429 on this operation"
+    ]
   },
   "deleteLocation": {
     "state": "partial_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_location_writes.rs",
-    "statuses_tested": [204, 400, 401, 403, 404, 409, 422, 428],
-    "behaviours_tested": ["current If-Match and empty 204 response", "malformed location ID 400", "missing/stale preconditions 428/409", "member forbidden and foreign resource 404", "seven independent direct/source take, outcome and pause retention cases return 422", "unretained location/medication/dosage/schedule/assignment/membership cascade", "late FK conflict rolls back all deletes", "concurrent take and delete cannot both commit"],
-    "not_yet_tested": ["429 on this operation", "other retained FK graph shapes"]
+    "statuses_tested": [
+      204,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      428
+    ],
+    "behaviours_tested": [
+      "current If-Match and empty 204 response",
+      "malformed location ID 400",
+      "missing/stale preconditions 428/409",
+      "member forbidden and foreign resource 404",
+      "seven independent direct/source take, outcome and pause retention cases return 422",
+      "unretained location/medication/dosage/schedule/assignment/membership cascade",
+      "late FK conflict rolls back all deletes",
+      "concurrent take and delete cannot both commit"
+    ],
+    "not_yet_tested": [
+      "429 on this operation",
+      "other retained FK graph shapes"
+    ]
   },
   "createLocationMembership": {
     "state": "partial_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_location_writes.rs",
-    "statuses_tested": [201, 400, 401, 403, 404, 422],
-    "behaviours_tested": ["owner and administrator with person manage grant create; replay retains one assignment", "member forbidden even with person manage grant", "person outside view scope 404; view-only grant 403; revoked/expired grant 404", "wrong household 403 and foreign resource 404", "strict LocationMembershipResponse with numeric-string IDs", "malformed JSON 400 and malformed person/extra fields 422"],
-    "not_yet_tested": ["409 conflict", "429 on this operation"]
+    "statuses_tested": [
+      201,
+      400,
+      401,
+      403,
+      404,
+      422
+    ],
+    "behaviours_tested": [
+      "owner and administrator with person manage grant create; replay retains one assignment",
+      "member forbidden even with person manage grant",
+      "person outside view scope 404; view-only grant 403; revoked/expired grant 404",
+      "wrong household 403 and foreign resource 404",
+      "strict LocationMembershipResponse with numeric-string IDs",
+      "malformed JSON 400 and malformed person/extra fields 422"
+    ],
+    "not_yet_tested": [
+      "409 conflict",
+      "429 on this operation"
+    ]
   },
   "deleteLocationMembership": {
     "state": "partial_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_location_writes.rs",
-    "statuses_tested": [204, 400, 401, 403, 404],
-    "behaviours_tested": ["owner with person manage grant removes assignment with empty 204 body", "view-only grant 403 and person outside view scope 404", "invalid numeric ID 400", "wrong household 403 and wrong location or missing assignment 404", "missing and invalid bearer 401"],
-    "not_yet_tested": ["409 and 422 variants", "429 on this operation"]
+    "statuses_tested": [
+      204,
+      400,
+      401,
+      403,
+      404
+    ],
+    "behaviours_tested": [
+      "owner with person manage grant removes assignment with empty 204 body",
+      "view-only grant 403 and person outside view scope 404",
+      "invalid numeric ID 400",
+      "wrong household 403 and wrong location or missing assignment 404",
+      "missing and invalid bearer 401"
+    ],
+    "not_yet_tested": [
+      "409 and 422 variants",
+      "429 on this operation"
+    ]
   },
   "listDosageOptions": {
     "state": "partial_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_dosage_options.rs",
-    "statuses_tested": [200, 401, 403, 422],
-    "behaviours_tested": ["owner collection has exact envelope/resource/meta fields and decimal strings", "distinct page 1/2 IDs with stable total count and per_page 100", "past/future updated_since filters", "invalid page, per_page and timestamp 422", "missing/invalid bearer 401", "provisional administrator denial 403 pending policy"],
-    "not_yet_tested": ["non-owner role and visibility rules pending specification authority", "wrong-household 403 and 404 variants", "429 on this operation"]
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      422
+    ],
+    "behaviours_tested": [
+      "owner collection has exact envelope/resource/meta fields and decimal strings",
+      "distinct page 1/2 IDs with stable total count and per_page 100",
+      "past/future updated_since filters",
+      "invalid page, per_page and timestamp 422",
+      "missing/invalid bearer 401",
+      "provisional administrator denial 403 pending policy"
+    ],
+    "not_yet_tested": [
+      "non-owner role and visibility rules pending specification authority",
+      "wrong-household 403 and 404 variants",
+      "429 on this operation"
+    ]
   },
   "createDosageOption": {
     "state": "partial_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_dosage_options.rs",
-    "statuses_tested": [201, 400, 401, 403, 422],
-    "behaviours_tested": ["owner create returns exact DosageOptionResponse and ETag", "missing/invalid bearer 401", "provisional administrator denial 403 pending policy", "malformed JSON 400", "independent required-field, decimal string, ID pattern, enum, minimum, extra-field and storage precision/range failures 422"],
-    "not_yet_tested": ["non-owner role and medication visibility pending specification authority", "foreign medication 404", "default switch/unique conflict semantics", "429 on this operation"]
+    "statuses_tested": [
+      201,
+      400,
+      401,
+      403,
+      422
+    ],
+    "behaviours_tested": [
+      "owner create returns exact DosageOptionResponse and ETag",
+      "missing/invalid bearer 401",
+      "provisional administrator denial 403 pending policy",
+      "malformed JSON 400",
+      "independent required-field, decimal string, ID pattern, enum, minimum, extra-field and storage precision/range failures 422"
+    ],
+    "not_yet_tested": [
+      "non-owner role and medication visibility pending specification authority",
+      "foreign medication 404",
+      "default switch/unique conflict semantics",
+      "429 on this operation"
+    ]
   },
   "getDosageOption": {
     "state": "partial_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_dosage_options.rs",
-    "statuses_tested": [200, 401, 403, 404],
-    "behaviours_tested": ["owner numeric and portable IDs return exact resource and stable ETag", "missing/invalid bearer 401", "provisional administrator denial 403 pending policy", "foreign-household dosage ID under own household 404"],
-    "not_yet_tested": ["non-owner role and visibility rules pending specification authority", "wrong-household 403", "429 on this operation"]
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      404
+    ],
+    "behaviours_tested": [
+      "owner numeric and portable IDs return exact resource and stable ETag",
+      "missing/invalid bearer 401",
+      "provisional administrator denial 403 pending policy",
+      "foreign-household dosage ID under own household 404"
+    ],
+    "not_yet_tested": [
+      "non-owner role and visibility rules pending specification authority",
+      "wrong-household 403",
+      "429 on this operation"
+    ]
   },
   "updateDosageOption": {
     "state": "partial_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_dosage_options.rs",
-    "statuses_tested": [200, 400, 401, 403, 404, 409, 422],
-    "behaviours_tested": ["owner PATCH updates selected fields and preserves omitted fields with ETag", "optional absent If-Match succeeds and stale supplied ETag returns 409", "concurrent same-ETag writes yield one 200 and one 409", "missing/invalid bearer 401 and foreign resource 404", "provisional administrator denial 403 pending policy", "malformed JSON 400; empty attributes, extra fields, null description, wrong types and storage precision failures 422"],
-    "not_yet_tested": ["non-owner role and visibility rules pending specification authority", "wrong-household 403", "default switch/unique conflict semantics", "429 on this operation"]
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422
+    ],
+    "behaviours_tested": [
+      "owner PATCH updates selected fields and preserves omitted fields with ETag",
+      "optional absent If-Match succeeds and stale supplied ETag returns 409",
+      "concurrent same-ETag writes yield one 200 and one 409",
+      "missing/invalid bearer 401 and foreign resource 404",
+      "provisional administrator denial 403 pending policy",
+      "malformed JSON 400; empty attributes, extra fields, null description, wrong types and storage precision failures 422"
+    ],
+    "not_yet_tested": [
+      "non-owner role and visibility rules pending specification authority",
+      "wrong-household 403",
+      "default switch/unique conflict semantics",
+      "429 on this operation"
+    ]
   },
   "replaceDosageOption": {
     "state": "partial_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_dosage_options.rs",
-    "statuses_tested": [200, 400, 401, 403, 404, 409, 422],
-    "behaviours_tested": ["owner PUT applies selected fields, preserves omitted fields and returns strict resource with ETag", "optional absent If-Match succeeds and stale supplied ETag returns 409", "missing/invalid bearer 401 and foreign resource 404", "provisional administrator denial 403 pending policy", "malformed JSON 400; empty attributes, extra fields, null description, wrong types and storage precision failures 422"],
-    "not_yet_tested": ["non-owner role and visibility rules pending specification authority", "wrong-household 403", "default switch/unique conflict semantics", "429 on this operation"]
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422
+    ],
+    "behaviours_tested": [
+      "owner PUT applies selected fields, preserves omitted fields and returns strict resource with ETag",
+      "optional absent If-Match succeeds and stale supplied ETag returns 409",
+      "missing/invalid bearer 401 and foreign resource 404",
+      "provisional administrator denial 403 pending policy",
+      "malformed JSON 400; empty attributes, extra fields, null description, wrong types and storage precision failures 422"
+    ],
+    "not_yet_tested": [
+      "non-owner role and visibility rules pending specification authority",
+      "wrong-household 403",
+      "default switch/unique conflict semantics",
+      "429 on this operation"
+    ]
+  },
+  "listSessions": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_auth_sessions.rs",
+    "statuses_tested": [
+      200,
+      401,
+      429
+    ],
+    "behaviours_tested": [
+      "exact AuthSessionCollectionResponse and AuthSession fields, positive IDs, RFC3339 timestamps, no credential or digest fields",
+      "API session and app-token callers list own nonrevoked API sessions including access-expired rows, excluding revoked and foreign-account rows",
+      "mobile caller lists own mobile grants, excludes foreign account, and remains account-scoped despite revoked household membership",
+      "missing, invalid, expired, revoked, inactive, locked, suspended and stale-permissions credentials return JSON 401",
+      "nonloopback 429 has strict rate body and required headers",
+      "configured 30-day mobile maximum-age and inactivity expiry deny callers; absent medtracker scope denies caller",
+      "pure calendar-month app-token cap unit test covers month-end boundary"
+    ],
+    "not_yet_tested": [],
+    "limitations_outside_contract": [
+      "randomized credential fuzzing and every fixed-window rollover instant were not exercised"
+    ]
+  },
+  "deleteSession": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_auth_sessions.rs",
+    "statuses_tested": [
+      204,
+      401,
+      404,
+      429
+    ],
+    "behaviours_tested": [
+      "own-account selected API session revokes with empty 204 and durable refresh lookup exclusion",
+      "app token can revoke own-account API session",
+      "mobile grant namespace remains separate even with colliding numeric ID",
+      "foreign-account and missing target 404 without mutation",
+      "missing, invalid, expired, revoked, inactive, locked, suspended and stale-permissions credentials 401",
+      "target-household version and security audit for same-account cross-household revocation",
+      "nonloopback 429 does not revoke target",
+      "malformed numeric IDs and expired-login mobile targets return JSON 404 without mutation",
+      "two concurrent selected revocations yield one 204, one 404 and one audit event"
+    ],
+    "not_yet_tested": [],
+    "limitations_outside_contract": [
+      "every possible malformed path byte sequence was not exercised"
+    ]
+  },
+  "logoutSession": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_auth_sessions.rs",
+    "statuses_tested": [
+      204,
+      429
+    ],
+    "behaviours_tested": [
+      "API session, app token, mobile and integration OAuth logout produce empty 204 and durable revocation",
+      "repeated, absent and invalid bearer requests return empty 204 without duplicate audit event",
+      "API and OAuth version audit events persist once per revoked credential",
+      "nonloopback 429 does not revoke current credential and uses strict rate body and required headers",
+      "two concurrent logout requests return 204 and record one revocation audit event"
+    ],
+    "not_yet_tested": [],
+    "limitations_outside_contract": [
+      "every possible concurrent request interleaving was not exercised"
+    ]
   }
 }

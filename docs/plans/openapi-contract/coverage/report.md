@@ -1,12 +1,18 @@
 # OpenAPI-first API checkpoint
 
-Specification: `docs/api/openapi.v1.yaml`, SHA-256 `904c7280e6cdc60007c330f9b7a2c93845951bb2a03ee6ce01362da0ebf9122d`. The operation map is `operations.jsonl`; `operation-filter.jq`, `route-sources.json`, and `test-evidence.json` are its inputs. Rebuild it with:
+Specification: `docs/api/openapi.v1.yaml`, SHA-256 `1428d524861155635ae133969be12943b04ba9bf98010ae9adabbd84bac334a2`. The operation map is `operations.jsonl`; `operation-filter.jq`, `route-sources.json`, and `test-evidence.json` are its inputs. Rebuild it with:
 
 ```fish
 yq -o=json '.' docs/api/openapi.v1.yaml | jq -c --slurpfile routes docs/plans/openapi-contract/coverage/route-sources.json --slurpfile evidence docs/plans/openapi-contract/coverage/test-evidence.json -f docs/plans/openapi-contract/coverage/operation-filter.jq > docs/plans/openapi-contract/coverage/operations.jsonl
 ```
 
-The parsed specification has 118 HTTP operations, all with operation IDs, across 77 paths. It has 227 component schemas, 12 component responses and 765 response cases. Global server base is `/api/v1`; 117 operations inherit bearer authentication, while `getCapabilities` is public. The Rust route scan finds 84 documented method/path pairs without a route, 21 with a route but no spec-traced behavioural proof, and 13 operations with partial runtime proof (eight location, five dosage option). No operation has complete behavioural coverage. A route match or older Rails-derived test is not credited as OpenAPI coverage.
+The parsed specification has 118 HTTP operations, all with operation IDs, across 77 paths. It has 227 component schemas, 12 component responses and 765 response cases. Global server base is `/api/v1`; 117 operations inherit bearer authentication, while `getCapabilities` is public. The Rust route scan finds 81 documented method/path pairs without a route, 21 with a route but no spec-traced behavioural proof, 13 with partial runtime proof (eight location, five dosage option), and three account-session operations with full documented contract proof. A route match or older Rails-derived test is not credited as OpenAPI coverage.
+
+## Account session evidence
+
+The three operations at [OpenAPI line 150](../../../api/openapi.v1.yaml) use the exact `AuthSession` and collection schemas and inherited bearer security for list and selected revoke. The Rust routes and SeaORM handlers are in `rust/api/src/auth_sessions.rs`. Source credential namespaces and list/logout semantics were documented in OpenAPI before contract tests. API sessions and app tokens manage their own account's API sessions; mobile OAuth manages its own account's mobile grants; integration OAuth is accepted for logout only. Nonrevoked API sessions remain listed after access or refresh expiry, while expired bearer credentials cannot authenticate a new list or selected revoke request.
+
+Eight contract tests in `rust/contract-tests/tests/openapi_auth_sessions.rs` verify exact response fields and timestamps, own-account list scope, foreign-account 404 and nonmutation, durable selected/current revocation, idempotent empty 204 responses, invalid and inactive credential denials, namespace isolation with colliding IDs, target-household audit records, malformed IDs, expired-login targets, configured 30-day mobile maximum age, concurrent revocation audit uniqueness, and nonloopback 429 for all three methods without revocation. A pure API unit test verifies calendar-month app-token cap at a leap-day boundary. The test helper uses disposable credentials and checks that active refresh lookup no longer finds a revoked session. The initial compiled RED failed six tests on absent routes before deeper assertions, log `/Users/damacus/Library/Application Support/rtk/tee/1790373634_task_api_442df8.log`. The first GREEN passed 7/7, log `/Users/damacus/Library/Application Support/rtk/tee/1790374341_task_api_442df8.log`. Final isolated GREEN passed 8/8 in project `mtcontract-580c08dfe7ae4d14`, log `/Users/damacus/Library/Application Support/rtk/tee/1790374763_task_api_442df8.log`; its project was removed. The API unit suite passed 15/15, and the selected-test compile Task and runner dispatch/failure-cleanup shim test passed. All three declared session operations are marked fully verified in `test-evidence.json`. Randomized fuzzing and every timing interleaving remain outside the bounded contract proof.
 
 ## Dosage option evidence
 
@@ -26,7 +32,7 @@ The limiter uses an atomic mutex over at most 65,536 live IP/rule buckets per pr
 
 ## Remaining gaps
 
-- **Implementation:** 84 documented method/path pairs still have no Rust route. Their identities remain in `operations.jsonl`.
+- **Implementation:** 81 documented method/path pairs still have no Rust route. Their identities remain in `operations.jsonl`.
 - **Untested behaviour:** 21 other route matches have no spec-traced runtime assertion. Eight location and five dosage-option methods remain partial; `test-evidence.json` lists untested status and constraint variants. A shared middleware unit test does not count as per-operation HTTP proof.
 - **Outside this API tranche:** Approved permission, retention and rate rules were documented from Rails policy, controller and initializer sources before Rust tests. Browser support sessions remain outside bearer authority. Fixture SQL only provisions isolated records. No Rails application or UI implementation changed. Web-only Rack Attack rules and other API operations remain separate work.
 

@@ -32,7 +32,27 @@ tags:
   - name: Capabilities
     description: API capability discovery.
   - name: Authentication
-    description: Login, session, and credential lifecycle operations.
+    description: |
+      Login, session, and credential lifecycle operations. Account-level session
+      management accepts a valid API session, household app token, or mobile OAuth
+      access token. API sessions and app tokens see only nonrevoked API sessions
+      belonging to their own account; access or refresh expiration on a listed
+      session does not remove it until revocation. Mobile OAuth access tokens
+      see only nonrevoked grants for their own account whose token exists and
+      whose login remains within configured inactivity and maximum-age windows.
+      Deletion uses the credential's session namespace and returns 404
+      for a session outside that account or namespace. A credential used to manage
+      sessions must itself be unexpired, unrevoked and authorized for an active
+      account and, where applicable, active membership. An app token also expires
+      at the earlier of stored expiry or creation plus the configured maximum
+      number of calendar months (12 by default). Mobile session refresh expiry
+      is the earlier of last use plus configured inactivity days or authentication
+      plus configured maximum age when that limit is enabled. Listing touches
+      the current credential before serializing it. Logout revokes the current
+      API session, app token or OAuth grant (mobile or integration); absent, invalid or already
+      revoked credentials receive an empty 204 without affecting other records.
+      Successful revocations persist their revoked time and an audit event in the
+      same database transaction; repeating an idempotent logout adds no event.
   - name: People
     description: Household people and current-profile operations.
   - name: Locations
@@ -134,6 +154,12 @@ paths:
         - Account
         - Authentication
       summary: List active API sessions for the current account.
+      description: |
+        Return only the caller's nonrevoked sessions in descending creation order.
+        API-session and app-token credentials list API sessions, including devices
+        whose access or refresh token has expired; mobile OAuth credentials list
+        mobile grants within the configured login lifetime. Never expose access
+        or refresh tokens or their digests.
       responses:
         '200':
           description: API session collection.
@@ -152,6 +178,11 @@ paths:
         - Account
         - Authentication
       summary: Revoke an API session.
+      description: |
+        Revoke only a session belonging to the authenticated account and the
+        credential's session namespace. API-session and app-token credentials
+        address API sessions; mobile OAuth credentials address mobile grants.
+        A missing, revoked, or other-account session returns 404.
       parameters:
         - $ref: '#/components/parameters/id'
       responses:
@@ -169,7 +200,11 @@ paths:
       tags:
         - Account
         - Authentication
-      summary: Revoke the current API session or app token.
+      summary: Revoke the current API session, app token or OAuth grant.
+      description: |
+        Revoke the bearer API session, app token or OAuth grant when it is
+        known. An absent, invalid, or already revoked bearer is an idempotent
+        no-op and returns an empty 204 response.
       responses:
         '204':
           description: Credential revoked.

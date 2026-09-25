@@ -156,6 +156,33 @@ tasks:
     cmds:
       - rustfmt rust/contract-tests/tests/openapi_dosage_options.rs
 
+  contract-openapi-sessions-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --no-fail-fast --manifest-path rust/contract-tests/Cargo.toml --test openapi_auth_sessions -- --test-threads=1
+
+  contract-selected-compile:
+    requires:
+      vars: [TEST_TARGET]
+    cmds:
+      - cargo test --locked --no-run --manifest-path rust/contract-tests/Cargo.toml --test {{ .TEST_TARGET }}
+
+  openapi-sessions-acceptance:
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-sessions
+
+  openapi-sessions-fmt:
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_auth_sessions.rs
+
+  openapi-sessions-fmt:write:
+    cmds:
+      - rustfmt rust/contract-tests/tests/openapi_auth_sessions.rs
+
   openapi-locations-fmt:
     cmds:
       - rustfmt --check rust/contract-tests/tests/openapi_locations.rs
