@@ -36,7 +36,7 @@ set -a run_dirs (cat $test_dir/latest-run)
 test $actual_status -eq 1
 or begin; cat $test_dir/output >&2; echo "Expected target failure to survive cleanup; got $actual_status" >&2; exit 1; end
 
-set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports fhir lookup portability profile sync replay oauth devices mcp envelopes
+set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports fhir lookup portability retained profile sync replay oauth devices mcp envelopes
 set -l trace (cat $test_dir/trace)
 set -l runs (string match 'run:*' -- $trace)
 test (count $runs) -eq (math (count $targets) + 1)

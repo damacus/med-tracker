@@ -9,6 +9,12 @@ use url::{Host, Url};
 
 #[derive(Deserialize)]
 pub struct Fixture {
+    pub retained_household_slug: String,
+    pub retained_household_id: i64,
+    pub retained_email: String,
+    pub retained_schedule_id: i64,
+    pub retained_medication_id: i64,
+    pub retained_foreign_household_slug: String,
     pub profile_household_id: i64,
     pub avatar_household_id: i64,
     pub avatar_access_token: String,
