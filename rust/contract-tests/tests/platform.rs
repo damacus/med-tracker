@@ -365,4 +365,122 @@ fn support_access_requires_reason_grants_one_household_and_can_end() {
         })
         .count();
     assert_eq!(ended_again, 1);
+    late_support_close_records_natural_expiry_without_an_end_event(&target, &fixture, &token);
+    held_household_rejects_support_access(&target, &fixture, &token);
+}
+
+fn held_household_rejects_support_access(target: &Target, fixture: &Fixture, token: &str) {
+    let held_household_id = fixture.auth_operational_states["held"]["household_id"]
+        .as_i64()
+        .expect("held household ID");
+    let attempt = fields(
+        token,
+        &[
+            (
+                "support_access_session[household_id]",
+                held_household_id.to_string().as_str(),
+            ),
+            (
+                "support_access_session[reason]",
+                "Contract held household denial",
+            ),
+        ],
+    );
+    redirect(
+        target.post_html_form("/platform/support_access_sessions", &attempt),
+        "/",
+    );
+    let root = target.get_html("/");
+    assert_eq!(root.status().as_u16(), 303);
+    let landing = root.headers()["location"]
+        .to_str()
+        .expect("landing redirect");
+    let landing = Url::parse(landing).expect("absolute landing URL");
+    let base = Url::parse(&std::env::var("CONTRACT_BASE_URL").expect("target origin")).unwrap();
+    assert_eq!(landing.origin(), base.origin());
+    let page = target.get_html(landing.path());
+    assert_eq!(page.status().as_u16(), 200);
+    assert!(page
+        .text()
+        .expect("landing HTML")
+        .contains("You are not authorized to perform this action."));
+}
+
+fn late_support_close_records_natural_expiry_without_an_end_event(
+    target: &Target,
+    fixture: &Fixture,
+    token: &str,
+) {
+    let support_path = format!(
+        "/households/{}/admin",
+        fixture.platform_support_household_slug
+    );
+    assert_eq!(target.get_html(&support_path).status().as_u16(), 302);
+    let end_path = format!(
+        "/platform/support_access_sessions/{}",
+        fixture.platform_expired_support_session_id
+    );
+    let matching = |event: &&Value, kind: &str| {
+        event["event_type"] == kind
+            && event["metadata"]["support_access_session_id"]
+                == fixture.platform_expired_support_session_id
+    };
+    let before = support_audit_events(fixture);
+    assert_eq!(
+        before
+            .iter()
+            .filter(|event| matching(event, "support_access_session.expired"))
+            .count(),
+        0
+    );
+    assert_eq!(
+        before
+            .iter()
+            .filter(|event| matching(event, "support_access_session.ended"))
+            .count(),
+        0
+    );
+    redirect(
+        target.delete_html_form(&end_path, &fields(token, &[])),
+        "/platform/settings",
+    );
+    assert_eq!(target.get_html(&support_path).status().as_u16(), 302);
+    let events = support_audit_events(fixture);
+    let expired: Vec<&Value> = events
+        .iter()
+        .filter(|event| matching(event, "support_access_session.expired"))
+        .collect();
+    assert_eq!(expired.len(), 1);
+    assert_eq!(
+        expired[0]["actor_account_id"],
+        fixture.platform_admin_account_id
+    );
+    assert_eq!(expired[0]["metadata"]["outcome"], "expired");
+    assert!(expired[0]["metadata"]["expired_at"].as_str().is_some());
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| matching(event, "support_access_session.ended"))
+            .count(),
+        0
+    );
+    redirect(
+        target.delete_html_form(&end_path, &fields(token, &[])),
+        "/platform/settings",
+    );
+    let events = support_audit_events(fixture);
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| matching(event, "support_access_session.expired"))
+            .count(),
+        1
+    );
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| matching(event, "support_access_session.ended"))
+            .count(),
+        0
+    );
 }
