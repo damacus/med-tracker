@@ -371,14 +371,15 @@ fixture = ActiveRecord::Base.transaction do
   foreign_location = Location.create!(household: foreign_household, name: "Contract foreign shelf #{nonce}")
   managed_medication = Medication.create!(household: household, location: primary_location,
                                           name: "Contract managed medicine #{nonce}", dose_amount: '2',
-                                          dose_unit: 'ml', current_supply: '50', reorder_threshold: '5')
+                                          dose_unit: 'ml', current_supply: '50', reorder_threshold: '5',
+                                          category: 'Analgesic', dmd_code: '123456', dmd_system: 'https://dmd.nhs.uk')
   managed_dosage = managed_medication.dosage_records.create!(amount: '1', unit: 'ml', frequency: 'daily',
                                                              default_max_daily_doses: 4,
                                                              default_min_hours_between_doses: '4',
                                                              default_dose_cycle: :daily)
   hidden_medication = Medication.create!(household: household, location: primary_location,
                                          name: "Contract hidden medicine #{nonce}", dose_amount: '2',
-                                         dose_unit: 'ml', current_supply: '50', reorder_threshold: '5')
+                                         dose_unit: 'ml', current_supply: '50', reorder_threshold: '5', category: 'Vitamin')
   foreign_medication = Medication.create!(household: foreign_household, location: foreign_location,
                                           name: "Contract foreign medicine #{nonce}", dose_amount: '2',
                                           dose_unit: 'ml', current_supply: '50', reorder_threshold: '5')
