@@ -1,4 +1,5 @@
 mod entities;
+mod medication_forecast;
 
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
@@ -363,7 +364,11 @@ async fn serialize_many(
             .map(|location| (location.id, location.portable_id))
             .collect()
     };
+    let forecasts = medication_forecast::for_medications(db, &records)
+        .await
+        .map_err(database_error)?;
     Ok(records.into_iter().map(|record| {
+        let forecast = forecasts.get(&record.id).copied().unwrap_or_default();
         let display_name = record.friendly_name.as_ref().filter(|name| !name.is_empty()).or(record.name.as_ref());
         let low_stock = record.current_supply.is_some_and(|supply| supply <= record.reorder_threshold);
         let out_of_stock = record.current_supply.is_some_and(|supply| supply <= 0.into());
@@ -384,8 +389,8 @@ async fn serialize_many(
             "updated_at": record.updated_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
             "low_stock": low_stock,
             "out_of_stock": out_of_stock,
-            "days_until_low_stock": Value::Null,
-            "days_until_out_of_stock": Value::Null
+            "days_until_low_stock": forecast.days_until_low_stock,
+            "days_until_out_of_stock": forecast.days_until_out_of_stock
         })
     }).collect())
 }
