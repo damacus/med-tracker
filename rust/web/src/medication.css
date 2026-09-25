@@ -1,0 +1,63 @@
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#13263c;background:#edf5fa}
+*{box-sizing:border-box}
+body{margin:0}
+a{color:#145e8b}
+.med-app{min-height:100vh}
+.med-topbar{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem clamp(1rem,4vw,3rem);background:#fff;border-bottom:1px solid #dbe8f0;font-weight:600}
+.med-brand{font-size:1.25rem;font-weight:800;text-decoration:none;color:#126386}
+.med-layout{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:calc(100vh - 68px)}
+.med-sidebar{display:flex;flex-direction:column;gap:.5rem;padding:2rem 1rem;background:#f7fbfe;border-right:1px solid #dbe8f0}
+.med-sidebar a{padding:.7rem .9rem;border-radius:.6rem;text-decoration:none;color:#29475d}
+.med-sidebar a[aria-current="page"]{background:#dceefa;color:#0e527b;font-weight:700}
+.med-content{width:min(100%,1100px);padding:clamp(1.2rem,4vw,3rem);min-width:0}
+.med-eyebrow{font-size:.72rem;letter-spacing:.13em;font-weight:800;color:#3b789a}
+.med-content h1{font-size:clamp(1.8rem,3vw,2.6rem);overflow-wrap:anywhere;margin:.35rem 0 1rem}
+.med-location{color:#60788a;margin-top:0}
+.med-grid,.med-detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:1rem;margin:1.5rem 0}
+.med-card{min-width:0;border:1px solid #deebf2;background:#fff;border-radius:1rem;padding:1.5rem;box-shadow:0 8px 30px #1d5b8309}
+.med-card h2{font-size:1.13rem;margin:0 0 1rem;overflow-wrap:anywhere}
+.med-card p{color:#596e7c;overflow-wrap:anywhere}
+.med-card a{font-weight:700}
+.med-stock-number{display:flex;align-items:baseline;gap:.65rem;flex-wrap:wrap}
+.med-stock-number strong{font-size:2.6rem;color:#11618a}
+.med-stock-number span{font-size:.95rem;color:#597382}
+.med-button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:.7rem 1.25rem;border:0;border-radius:.55rem;background:#146b9a;color:#fff;font:inherit;font-weight:750;text-decoration:none;cursor:pointer}
+.med-button:hover{background:#0d557e}
+.med-button:focus-visible,.med-close:focus-visible,.med-text-button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #dc9b29;outline-offset:3px}
+.med-alert{padding:.9rem 1rem;border-radius:.6rem;background:#e6f5eb;color:#1e613c;font-weight:700}
+.med-text-button{background:none;border:0;text-decoration:underline;color:#145e8b;font:inherit;cursor:pointer;margin-top:2rem}
+.med-history{margin-top:1.5rem}
+.med-history-row{display:flex;justify-content:space-between;gap:1rem;padding:.9rem 0;border-top:1px solid #e0e9ee;overflow-wrap:anywhere}
+.med-history-row span{white-space:nowrap}
+dialog{width:min(92vw,620px);max-height:min(90vh,900px);overflow:auto;border:0;border-radius:1rem;padding:1.5rem;background:#fff;color:#13263c;box-shadow:0 20px 70px #143f6070}
+dialog::backdrop{background:#102c48a8}
+.med-dialog-heading{display:flex;justify-content:space-between;gap:1rem}
+.med-dialog-heading h2{margin:0;overflow-wrap:anywhere}
+.med-dialog-heading p{color:#607585}
+.med-close{align-self:flex-start;border:0;background:#e8f1f5;border-radius:100%;font:inherit;font-size:1.4rem;width:38px;height:38px;cursor:pointer}
+.med-source-list{display:grid;gap:1rem}
+.med-source-card{display:flex;align-items:center;justify-content:space-between;gap:1rem;border:1px solid #dce9f0;border-radius:.7rem;padding:1rem}
+.med-source-card p{margin:.3rem 0;overflow-wrap:anywhere}
+.med-source-card small{color:#547084}
+.med-dose-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem;background:#eaf5fb;border-radius:.65rem;padding:1rem;margin:1rem 0}
+.med-dose-summary div{min-width:0}
+.med-dose-summary small{display:block;font-size:.68rem;color:#567489;font-weight:750;letter-spacing:.08em}
+.med-dose-summary strong{display:block;overflow-wrap:anywhere}
+.med-dose-form{display:grid;gap:.65rem}
+.med-dose-form label{font-weight:700}
+.med-dose-form input:not([type="hidden"]),.med-dose-form select{width:100%;min-height:44px;border:1px solid #afc5d3;border-radius:.5rem;padding:.6rem;font:inherit}
+.med-dose-form input[name="dose_amount"]{position:absolute;left:-10000px;width:1px;height:1px}
+.med-dialog-actions{display:flex;justify-content:flex-end;margin-top:1rem}
+@media(max-width:720px){.med-layout{display:block}
+.med-sidebar{flex-direction:row;overflow:auto;padding:.5rem 1rem}
+.med-content{padding:1rem}
+.med-topbar{padding:1rem}
+.med-dose-summary{grid-template-columns:1fr}
+.med-source-card{align-items:flex-start}
+.med-source-card .med-button{flex-shrink:0}
+dialog{width:100vw;max-width:100vw;max-height:95vh;margin:auto 0 0;border-radius:1rem 1rem 0 0;padding:1rem}
+.med-dialog-actions .med-button{width:100%}
+}
+
+
+.med-source-note{color:#526c7d;font-size:.9rem}

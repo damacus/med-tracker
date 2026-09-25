@@ -5,6 +5,7 @@ mod medication_forecast;
 mod oauth;
 mod read_entities;
 mod read_resources;
+mod web_pages;
 
 use axum::extract::{Path, Query, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
@@ -67,6 +68,7 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/up", get(|| async { StatusCode::OK }))
         .merge(oauth::routes().with_state(state.clone()))
+        .merge(web_pages::routes().with_state(state.clone()))
         .merge(api_router(state))
 }
 

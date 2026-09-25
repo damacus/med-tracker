@@ -208,6 +208,38 @@ fn effective_source(source: &mut Source, date: NaiveDate) {
     }
 }
 
+pub(super) fn schedule_stock_dose(
+    schedule: &crate::read_entities::schedule::Model,
+    date: NaiveDate,
+) -> Option<(Decimal, String)> {
+    if !schedule.active || schedule.retired_at.is_some() {
+        return None;
+    }
+    let mut source = Source {
+        kind: "schedule",
+        id: schedule.id,
+        active: schedule.active,
+        retired: false,
+        person_id: schedule.person_id,
+        medication_id: schedule.medication_id,
+        dose_amount: schedule.dose_amount,
+        dose_unit: schedule.dose_unit.clone(),
+        max_daily_doses: schedule.max_daily_doses,
+        min_hours_between_doses: schedule.min_hours_between_doses.map(Decimal::from),
+        dose_cycle: schedule.dose_cycle,
+        source_dosage_option_id: schedule.source_dosage_option_id,
+        schedule_type: Some(schedule.schedule_type),
+        schedule_config: Some(schedule.schedule_config.clone()),
+        start_date: schedule.start_date,
+        end_date: schedule.end_date,
+    };
+    if !applies_on(&source, date) {
+        return None;
+    }
+    effective_source(&mut source, date);
+    Some((source.dose_amount?, source.dose_unit?))
+}
+
 async fn source(
     db: &DatabaseTransaction,
     context: &AuthContext,
@@ -845,9 +877,7 @@ async fn prepare(
         .into_iter()
         .filter(|value| {
             candidate_ids.contains(&value.id)
-                && value.name == original.name
-                && value.dose_amount == original.dose_amount
-                && value.dose_unit == original.dose_unit
+                && same_stock_signature(value, &original)
                 && value
                     .current_supply
                     .is_none_or(|supply| supply > Decimal::ZERO)
@@ -949,7 +979,7 @@ fn applies_on(source: &Source, date: NaiveDate) -> bool {
     }
 }
 
-fn quantity(amount: Decimal, unit: &str) -> Decimal {
+pub(super) fn quantity(amount: Decimal, unit: &str) -> Decimal {
     if matches!(
         unit,
         "tablet" | "capsule" | "gummy" | "sachet" | "spray" | "drop" | "pad" | "ml"
@@ -1139,7 +1169,7 @@ async fn stock_version(
     Ok(())
 }
 
-fn same_dosage_signature(left: &dosage::Model, right: &dosage::Model) -> bool {
+pub(super) fn same_dosage_signature(left: &dosage::Model, right: &dosage::Model) -> bool {
     left.amount == right.amount
         && left.unit == right.unit
         && left.frequency == right.frequency
@@ -1149,6 +1179,38 @@ fn same_dosage_signature(left: &dosage::Model, right: &dosage::Model) -> bool {
         && left.default_max_daily_doses == right.default_max_daily_doses
         && left.default_min_hours_between_doses == right.default_min_hours_between_doses
         && left.default_dose_cycle == right.default_dose_cycle
+}
+
+pub(super) fn same_stock_signature(left: &medication::Model, right: &medication::Model) -> bool {
+    left.name == right.name
+        && left.dose_amount == right.dose_amount
+        && left.dose_unit == right.dose_unit
+}
+
+pub(super) fn sufficient_stock(supply: Option<Decimal>, amount: Decimal, unit: &str) -> bool {
+    supply.is_none_or(|value| value >= quantity(amount, unit))
+}
+
+pub(super) fn selected_tracked_dosage<'a>(
+    tracked: &'a [dosage::Model],
+    inventory_id: i64,
+    source_option: Option<&dosage::Model>,
+    source_amount: Option<Decimal>,
+    source_unit: Option<&str>,
+) -> Option<&'a dosage::Model> {
+    let mut matches = tracked.iter().filter(|option| {
+        if let Some(source_option) = source_option {
+            if source_option.medication_id == inventory_id {
+                option.id == source_option.id
+            } else {
+                same_dosage_signature(option, source_option)
+            }
+        } else {
+            option.amount == source_amount && option.unit.as_deref() == source_unit
+        }
+    });
+    let selected = matches.next()?;
+    matches.next().is_none().then_some(selected)
 }
 
 async fn decrement_stock(
@@ -1172,7 +1234,7 @@ async fn decrement_stock(
     if tracked.is_empty() {
         if let Some(supply) = selected.current_supply {
             let needed = quantity(proposed.amount, &proposed.unit);
-            if supply < needed {
+            if !sufficient_stock(Some(supply), proposed.amount, &proposed.unit) {
                 return Err(error(
                     StatusCode::UNPROCESSABLE_ENTITY,
                     "Cannot take medication: out of stock",
@@ -1199,40 +1261,24 @@ async fn decrement_stock(
         }
         return Ok(());
     }
-    let matching: Vec<_> = if let Some(id) = proposed.source.source_dosage_option_id {
-        let source_option = dosage::Entity::find_by_id(id)
-            .one(db)
-            .await
-            .map_err(database_error)?
-            .ok_or_else(ApiError::not_found)?;
-        if source_option.medication_id == selected.id {
-            tracked
-                .iter()
-                .filter(|option| option.id == id)
-                .cloned()
-                .collect()
-        } else {
-            tracked
-                .iter()
-                .filter(|option| same_dosage_signature(option, &source_option))
-                .cloned()
-                .collect()
-        }
-    } else {
-        tracked
-            .iter()
-            .filter(|option| {
-                option.amount == proposed.source.dose_amount
-                    && option.unit == proposed.source.dose_unit
-            })
-            .cloned()
-            .collect()
-    };
-    let selected_option = if matching.len() == 1 {
-        matching.into_iter().next()
+    let source_option = if let Some(id) = proposed.source.source_dosage_option_id {
+        Some(
+            dosage::Entity::find_by_id(id)
+                .one(db)
+                .await
+                .map_err(database_error)?
+                .ok_or_else(ApiError::not_found)?,
+        )
     } else {
         None
-    }
+    };
+    let selected_option = selected_tracked_dosage(
+        &tracked,
+        selected.id,
+        source_option.as_ref(),
+        proposed.source.dose_amount,
+        proposed.source.dose_unit.as_deref(),
+    )
     .ok_or_else(|| {
         error(
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -1252,7 +1298,11 @@ async fn decrement_stock(
         proposed.amount,
         selected_option.unit.as_deref().unwrap_or(""),
     );
-    if supply < needed {
+    if !sufficient_stock(
+        Some(supply),
+        proposed.amount,
+        selected_option.unit.as_deref().unwrap_or(""),
+    ) {
         return Err(error(
             StatusCode::UNPROCESSABLE_ENTITY,
             "Cannot take medication: out of stock",

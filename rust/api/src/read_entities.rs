@@ -35,6 +35,7 @@ read_entity!(schedule, "schedules", {
     portable_id: String,
     person_id: i64,
     medication_id: i64,
+    source_dosage_option_id: Option<i64>,
     dose_amount: Option<Decimal>,
     dose_unit: Option<String>,
     frequency: Option<String>,
@@ -56,6 +57,7 @@ read_entity!(person_medication, "person_medications", {
     portable_id: String,
     person_id: i64,
     medication_id: i64,
+    source_dosage_option_id: Option<i64>,
     dose_amount: Option<Decimal>,
     dose_unit: Option<String>,
     active: bool,
@@ -73,6 +75,11 @@ read_entity!(location_membership, "location_memberships", {
     household_id: i64,
     location_id: i64,
     person_id: i64,
+});
+
+read_entity!(stock_location, "locations", {
+    household_id: i64,
+    name: String,
 });
 
 read_entity!(notification_preference, "notification_preferences", {
