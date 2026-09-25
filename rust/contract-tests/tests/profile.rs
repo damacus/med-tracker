@@ -130,6 +130,35 @@ fn profile_get_patch_put_and_invalid_update_preserve_public_state() {
         saved
     );
 
+    let response = target.put_json(
+        &path,
+        &fixture.profile_access_token,
+        &json!({"profile": {"time_zone": "UTC"}}),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let retained = data(response);
+    assert_eq!(retained["date_of_birth"], saved["date_of_birth"]);
+    assert_eq!(retained["gravatar_enabled"], saved["gravatar_enabled"]);
+    assert_eq!(retained["mobile_shortcuts"], saved["mobile_shortcuts"]);
+    assert_eq!(retained["time_zone"], "UTC");
+    assert_eq!(
+        data(target.get(&path, Some(&fixture.profile_access_token))),
+        retained
+    );
+    assert_error(
+        target.put_json(
+            &path,
+            &fixture.profile_access_token,
+            &json!({"profile": {"date_of_birth": "1981-01-01", "time_zone": "Invalid/Place"}}),
+        ),
+        422,
+        "validation_failed",
+    );
+    assert_eq!(
+        data(target.get(&path, Some(&fixture.profile_access_token))),
+        retained
+    );
+
     for (invalid, code) in [
         (
             json!({"date_of_birth": "1981-01-01", "time_zone": "Invalid/Place"}),
@@ -159,7 +188,7 @@ fn profile_get_patch_put_and_invalid_update_preserve_public_state() {
         );
         assert_eq!(
             data(target.get(&path, Some(&fixture.profile_access_token))),
-            saved
+            retained
         );
     }
 }
@@ -232,6 +261,21 @@ fn profile_access_is_self_scoped_and_checks_current_grants() {
     assert_eq!(
         data(response)["person_id"],
         fixture.profile_revoke_person_id.to_string()
+    );
+    let private_avatar = b"revoked-person-private-avatar\0bytes".to_vec();
+    let response = target.put_multipart(
+        &self_avatar,
+        &fixture.profile_revoke_mobile_token,
+        avatar_form(private_avatar.clone(), "private.png", "image/png"),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    download(
+        &target,
+        &self_avatar,
+        &fixture.profile_revoke_mobile_token,
+        "image/png",
+        "private.png",
+        &private_avatar,
     );
     let grants = format!(
         "/api/v1/households/{}/admin/person_access_grants/{}",
@@ -345,6 +389,7 @@ fn avatar_upload_download_replace_and_delete_are_private_and_audited() {
         avatar_form(webp.clone(), "third.webp", "image/webp"),
     );
     assert_eq!(response.status().as_u16(), 200);
+    let webp_id = request_id(&response);
     assert_eq!(data(response)["avatar_attached"], true);
     download(
         &target,
@@ -373,7 +418,7 @@ fn avatar_upload_download_replace_and_delete_are_private_and_audited() {
         false
     );
     let audits = audit_rows(&target, &fixture);
-    for id in [uploaded_id, replaced_id] {
+    for id in [uploaded_id, replaced_id, webp_id] {
         assert!(audits
             .iter()
             .any(|row| row["request_id"] == id && row["event_type"] == "profile.avatar.updated"));
