@@ -5,6 +5,10 @@ use serde_json::Value;
 use url::Url;
 
 fn login(target: &Target, email: &str) {
+    login_with_client_ip(target, email, None);
+}
+
+fn login_with_client_ip(target: &Target, email: &str, client_ip: Option<&str>) {
     let response = target.get_html("/login");
     assert_eq!(response.status().as_u16(), 200);
     let document = Html::parse_document(&response.text().expect("login HTML"));
@@ -15,14 +19,15 @@ fn login(target: &Target, email: &str) {
         .next()
         .and_then(|input| input.value().attr("value"))
         .expect("login CSRF token");
-    let response = target.post_html_form(
-        "/login",
-        &[
-            ("email".to_string(), email.to_string()),
-            ("password".to_string(), "password".to_string()),
-            ("authenticity_token".to_string(), token.to_string()),
-        ],
-    );
+    let fields = [
+        ("email".to_string(), email.to_string()),
+        ("password".to_string(), "password".to_string()),
+        ("authenticity_token".to_string(), token.to_string()),
+    ];
+    let response = match client_ip {
+        Some(client_ip) => target.post_html_form_from_local_client("/login", &fields, client_ip),
+        None => target.post_html_form("/login", &fields),
+    };
     assert_eq!(response.status().as_u16(), 302);
 }
 
@@ -55,7 +60,11 @@ fn fields(token: &str, values: &[(&str, &str)]) -> Vec<(String, String)> {
 }
 
 fn redirect(response: Response, location: &str) {
-    assert_eq!(response.status().as_u16(), 302);
+    redirect_with_status(response, 302, location);
+}
+
+fn redirect_with_status(response: Response, status: u16, location: &str) {
+    assert_eq!(response.status().as_u16(), status);
     let actual = response.headers()["location"]
         .to_str()
         .expect("redirect location");
@@ -120,20 +129,27 @@ fn platform_routes_require_a_web_session_and_platform_role() {
     for path in ["/platform/settings", "/platform/users"] {
         redirect(anonymous.get_html(path), "/login");
     }
+    let anonymous_token = csrf(&anonymous, "/login");
+    let anonymous_fields = fields(&anonymous_token, &[]);
     for response in [
-        anonymous.patch_html_form("/platform/settings", &[]),
-        anonymous.put_html_form("/platform/settings", &[]),
-        anonymous.patch_html_form(&user_path, &[]),
-        anonymous.put_html_form(&user_path, &[]),
-        anonymous.post_html_form("/platform/support_access_sessions", &[]),
-        anonymous.delete_html_form("/platform/support_access_sessions/0", &[]),
-        anonymous.patch_html_form(&promote_path, &[]),
+        anonymous.patch_html_form("/platform/settings", &anonymous_fields),
+        anonymous.put_html_form("/platform/settings", &anonymous_fields),
+        anonymous.patch_html_form(&user_path, &anonymous_fields),
+        anonymous.put_html_form(&user_path, &anonymous_fields),
+        anonymous.post_html_form("/platform/support_access_sessions", &anonymous_fields),
+        anonymous.delete_html_form("/platform/support_access_sessions/0", &anonymous_fields),
+        anonymous.patch_html_form(&promote_path, &anonymous_fields),
     ] {
         redirect(response, "/login");
     }
 
     let ordinary = Target::from_env();
     login(&ordinary, &fixture.primary_email);
+    let ordinary_token = csrf(
+        &ordinary,
+        &format!("/households/{}/profile", fixture.household_slug),
+    );
+    let ordinary_fields = fields(&ordinary_token, &[]);
     for path in ["/platform/settings", "/platform/users"] {
         let response = ordinary.get_html(path);
         assert_eq!(response.status().as_u16(), 302);
@@ -143,11 +159,11 @@ fn platform_routes_require_a_web_session_and_platform_role() {
             .contains("household_slug="));
     }
     for response in [
-        ordinary.patch_html_form("/platform/settings", &[]),
-        ordinary.patch_html_form(&user_path, &[]),
-        ordinary.post_html_form("/platform/support_access_sessions", &[]),
-        ordinary.delete_html_form("/platform/support_access_sessions/0", &[]),
-        ordinary.patch_html_form(&promote_path, &[]),
+        ordinary.patch_html_form("/platform/settings", &ordinary_fields),
+        ordinary.patch_html_form(&user_path, &ordinary_fields),
+        ordinary.post_html_form("/platform/support_access_sessions", &ordinary_fields),
+        ordinary.delete_html_form("/platform/support_access_sessions/0", &ordinary_fields),
+        ordinary.patch_html_form(&promote_path, &ordinary_fields),
     ] {
         redirect(response, "/");
     }
@@ -193,6 +209,19 @@ fn platform_settings_accept_updates_and_reject_invalid_lookup_url() {
         .expect("validation HTML")
         .contains("Platform Settings"));
     assert!(invite_only_checked(&target));
+
+    let missing = target.patch_html_form(
+        "/platform/settings",
+        &[("app_settings[invite_only]".to_string(), "0".to_string())],
+    );
+    redirect_with_status(missing, 303, "/login");
+    let observer = Target::from_env();
+    login_with_client_ip(
+        &observer,
+        &fixture.platform_admin_email,
+        Some("198.51.100.40"),
+    );
+    assert!(invite_only_checked(&observer));
 }
 
 #[test]
