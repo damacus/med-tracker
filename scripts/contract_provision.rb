@@ -107,6 +107,9 @@ fixture = ActiveRecord::Base.transaction do
     filename: 'foreign.png', byte_size: 7, checksum: Digest::MD5.base64digest('foreign'),
     content_type: 'image/png'
   )
+  upload_blob = File.open(Rails.root.join('public/icon.png')) do |image|
+    ActiveStorage::Blob.create_and_upload!(io: image, filename: 'contract-icon.png', content_type: 'image/png')
+  end
   lookup_paid_account, lookup_paid_household, = create_household(nonce, 'lookup-paid')
   lookup_paid_household.update!(subscription_plan: 'family_plus')
   lookup_paid_membership = lookup_paid_account.household_memberships.find_by!(household: lookup_paid_household)
@@ -754,6 +757,8 @@ fixture = ActiveRecord::Base.transaction do
     profile_revoke_access_token: profile_revoke_access_token,
     profile_revoke_mobile_token: profile_revoke_mobile_token,
     profile_signed_blob_id: profile_signed_blob.signed_id,
+    upload_blob_signed_id: upload_blob.signed_id,
+    upload_variation_key: upload_blob.variant(resize_to_limit: [16, 16]).variation.key,
     lookup_paid_household_id: lookup_paid_household.id,
     lookup_paid_account_id: lookup_paid_account.id,
     lookup_paid_membership_id: lookup_paid_membership.id,
