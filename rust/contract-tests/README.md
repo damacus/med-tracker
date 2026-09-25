@@ -32,6 +32,9 @@ Run `task contract:schedules-rails` for only the schedule cases.
 Run `task contract:doses-rails` for schedule and direct-assignment dose outcomes
 and medication takes.
 Run `task contract:reviews-rails` for medication review prompt list, read and update cases.
+Run `task contract:fhir-rails` for the 12 FHIR R4 GET routes, SMART discovery and scope,
+resource relationships, search, pagination, errors, and household privacy. Run
+`task contract:fhir-rust` for the same cases against the configured local Rust target.
 Run `task contract:care-rails` for people, person-grant, and location permission cases.
 Run `task contract:sync-rails` for sync v2, mobile v1, and change-feed cases.
 Run `task contract:replay-rails` for separate medication-take `client_uuid` and

@@ -576,6 +576,23 @@ fixture = ActiveRecord::Base.transaction do
                      authenticated_at: Time.current, last_used_at: Time.current,
                      token_hash: OauthGrant.digest(invitation_mobile_oauth_token))
 
+  fhir_application = OauthApplication.create!(name: 'Contract SMART FHIR', client_id: SecureRandom.uuid,
+                                              redirect_uri: 'https://client.example/callback',
+                                              scopes: 'patient/Patient.rs patient/Medication.rs',
+                                              token_endpoint_auth_method: 'none')
+  fhir_patient_scope_token = "contract-fhir-patient-#{SecureRandom.urlsafe_base64(48)}"
+  OauthGrant.create!(account: account, oauth_application: fhir_application,
+                     household_membership: membership, person: managed_person,
+                     permissions_version: membership.permissions_version,
+                     token_hash: OauthGrant.digest(fhir_patient_scope_token),
+                     expires_in: 1.hour.from_now, scopes: 'patient/Patient.rs')
+  fhir_revoked_scope_token = "contract-fhir-revoked-#{SecureRandom.urlsafe_base64(48)}"
+  OauthGrant.create!(account: account, oauth_application: fhir_application,
+                     household_membership: membership, person: managed_person,
+                     permissions_version: membership.permissions_version,
+                     token_hash: OauthGrant.digest(fhir_revoked_scope_token),
+                     expires_in: 1.hour.from_now, scopes: 'patient/Patient.rs', revoked_at: Time.current)
+
   {
     profile_household_id: profile_household.id,
     avatar_household_id: avatar_household.id,
@@ -631,6 +648,8 @@ fixture = ActiveRecord::Base.transaction do
     foreign_membership_id: foreign_membership.id,
     foreign_app_token_id: foreign_app_token.id,
     foreign_access_token: foreign_access_token,
+    fhir_patient_scope_token: fhir_patient_scope_token,
+    fhir_revoked_scope_token: fhir_revoked_scope_token,
     foreign_email: "contract-foreign-#{nonce}@example.test",
     manager_membership_id: manager_membership.id,
     manager_access_token: manager_access_token,
@@ -720,6 +739,7 @@ fixture = ActiveRecord::Base.transaction do
     foreign_medication_portable_id: foreign_medication.portable_id,
     foreign_medication_name: foreign_medication.name,
     managed_assignment_id: managed_assignment.id,
+    managed_assignment_portable_id: managed_assignment.portable_id,
     managed_assignment_updated_at: managed_assignment_updated_at.iso8601,
     retired_assignment_portable_id: retired_assignment.portable_id,
     retired_assignment_period_id: retired_assignment_period.portable_id,
