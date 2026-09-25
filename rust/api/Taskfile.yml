@@ -54,6 +54,12 @@ tasks:
     cmds:
       - fish rust/contract-tests/runner_compose_test.fish
 
+  contract-runner-lint:
+    cmds:
+      - fish --no-config -n rust/contract-tests/run.fish
+      - fish --no-config -n rust/contract-tests/runner_compose_test.fish
+      - fish --no-config -n rust/contract-tests/test_support/rtk
+
   contract-warm:
     deps: [contract-dependencies, contract-browser-dependencies]
 
@@ -128,6 +134,27 @@ tasks:
   openapi-locations-acceptance:
     cmds:
       - fish rust/contract-tests/run.fish rails openapi-locations
+
+  contract-openapi-dosages-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --no-fail-fast --manifest-path rust/contract-tests/Cargo.toml --test openapi_dosage_options -- --test-threads=1
+
+  openapi-dosages-acceptance:
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-dosages
+
+  openapi-dosages-fmt:
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_dosage_options.rs
+
+  openapi-dosages-fmt:write:
+    cmds:
+      - rustfmt rust/contract-tests/tests/openapi_dosage_options.rs
 
   openapi-locations-fmt:
     cmds:

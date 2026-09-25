@@ -238,6 +238,7 @@ entity!(dosage, "dosages", {
     default_max_daily_doses: Option<i32>,
     default_min_hours_between_doses: Option<Decimal>,
     default_dose_cycle: Option<i32>,
+    created_at: DateTime,
     updated_at: DateTime,
 });
 

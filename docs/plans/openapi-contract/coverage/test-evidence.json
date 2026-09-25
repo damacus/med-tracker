@@ -54,5 +54,40 @@
     "statuses_tested": [204, 400, 401, 403, 404],
     "behaviours_tested": ["owner with person manage grant removes assignment with empty 204 body", "view-only grant 403 and person outside view scope 404", "invalid numeric ID 400", "wrong household 403 and wrong location or missing assignment 404", "missing and invalid bearer 401"],
     "not_yet_tested": ["409 and 422 variants", "429 on this operation"]
+  },
+  "listDosageOptions": {
+    "state": "partial_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_dosage_options.rs",
+    "statuses_tested": [200, 401, 403, 422],
+    "behaviours_tested": ["owner collection has exact envelope/resource/meta fields and decimal strings", "distinct page 1/2 IDs with stable total count and per_page 100", "past/future updated_since filters", "invalid page, per_page and timestamp 422", "missing/invalid bearer 401", "provisional administrator denial 403 pending policy"],
+    "not_yet_tested": ["non-owner role and visibility rules pending specification authority", "wrong-household 403 and 404 variants", "429 on this operation"]
+  },
+  "createDosageOption": {
+    "state": "partial_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_dosage_options.rs",
+    "statuses_tested": [201, 400, 401, 403, 422],
+    "behaviours_tested": ["owner create returns exact DosageOptionResponse and ETag", "missing/invalid bearer 401", "provisional administrator denial 403 pending policy", "malformed JSON 400", "independent required-field, decimal string, ID pattern, enum, minimum, extra-field and storage precision/range failures 422"],
+    "not_yet_tested": ["non-owner role and medication visibility pending specification authority", "foreign medication 404", "default switch/unique conflict semantics", "429 on this operation"]
+  },
+  "getDosageOption": {
+    "state": "partial_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_dosage_options.rs",
+    "statuses_tested": [200, 401, 403, 404],
+    "behaviours_tested": ["owner numeric and portable IDs return exact resource and stable ETag", "missing/invalid bearer 401", "provisional administrator denial 403 pending policy", "foreign-household dosage ID under own household 404"],
+    "not_yet_tested": ["non-owner role and visibility rules pending specification authority", "wrong-household 403", "429 on this operation"]
+  },
+  "updateDosageOption": {
+    "state": "partial_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_dosage_options.rs",
+    "statuses_tested": [200, 400, 401, 403, 404, 409, 422],
+    "behaviours_tested": ["owner PATCH updates selected fields and preserves omitted fields with ETag", "optional absent If-Match succeeds and stale supplied ETag returns 409", "concurrent same-ETag writes yield one 200 and one 409", "missing/invalid bearer 401 and foreign resource 404", "provisional administrator denial 403 pending policy", "malformed JSON 400; empty attributes, extra fields, null description, wrong types and storage precision failures 422"],
+    "not_yet_tested": ["non-owner role and visibility rules pending specification authority", "wrong-household 403", "default switch/unique conflict semantics", "429 on this operation"]
+  },
+  "replaceDosageOption": {
+    "state": "partial_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_dosage_options.rs",
+    "statuses_tested": [200, 400, 401, 403, 404, 409, 422],
+    "behaviours_tested": ["owner PUT applies selected fields, preserves omitted fields and returns strict resource with ETag", "optional absent If-Match succeeds and stale supplied ETag returns 409", "missing/invalid bearer 401 and foreign resource 404", "provisional administrator denial 403 pending policy", "malformed JSON 400; empty attributes, extra fields, null description, wrong types and storage precision failures 422"],
+    "not_yet_tested": ["non-owner role and visibility rules pending specification authority", "wrong-household 403", "default switch/unique conflict semantics", "429 on this operation"]
   }
 }

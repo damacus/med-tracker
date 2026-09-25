@@ -41,7 +41,7 @@ if test "$task_name" = --force
 end
 
 switch $task_name
-    case api:contract-up api:contract-ready api:contract-test api:contract-web-session-test api:contract-web-reads-test api:contract-web-reads-rails-test api:contract-browser-test api:contract-browser-rails api:contract-browser-rust api:contract-image-remove api:contract-subnet-check
+    case api:contract-up api:contract-ready api:contract-test api:contract-openapi-dosages-test api:contract-web-session-test api:contract-web-reads-test api:contract-web-reads-rails-test api:contract-browser-test api:contract-browser-rails api:contract-browser-rust api:contract-image-remove api:contract-subnet-check
         if set -q CONTRACT_FAKE_TRACE
             echo $task_name >>$CONTRACT_FAKE_TRACE
         end
