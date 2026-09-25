@@ -35,6 +35,10 @@ pub struct Fixture {
     pub web_household_slug: String,
     pub web_foreign_barcode: String,
     pub web_foreign_display: String,
+    pub web_view_email: String,
+    pub web_feed_email: String,
+    pub web_managed_person_name: String,
+    pub web_hidden_person_name: String,
     pub profile_household_id: i64,
     pub avatar_household_id: i64,
     pub web_avatar_household_slug: String,
@@ -344,6 +348,16 @@ impl Target {
             .get(self.url(path))
             .header("Accept", "text/html")
             .header(name, value)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn get_html_from_local_client(&self, path: &str, client_ip: &str) -> Response {
+        self.require_local_write();
+        self.client
+            .get(self.url(path))
+            .header("Accept", "text/html")
+            .header("X-Forwarded-For", client_ip)
             .send()
             .expect("target must respond")
     }
