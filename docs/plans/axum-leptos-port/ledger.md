@@ -157,3 +157,59 @@ found the service worker caches `/offline` while the authenticated shell is
 `/households/:slug/offline`; a real controlled offline navigation test must
 establish the Rails baseline before this is treated as a confirmed runtime
 defect or as a Rust parity requirement.
+
+API Task 7 follow-up audit at `d32aafb6`: all 118 OpenAPI operation IDs have
+exactly one matrix row and each referenced Rust contract file exists. This
+does not prove operation behaviour coverage. The current 826 RSpec files
+match the 826 inventory paths exactly, but 153 entries still carry
+`review: true` and the inventory remains provisional. High-risk test gaps are
+SMART patient-scoped OAuth issuance through consent into FHIR access, mobile
+sync batch pause/close and dose
+outcome branches, offline eligibility/future-dose rejection, MFA-sensitive
+OAuth issuance, and support-access expiry/RLS. Independent API and retained
+route audits found these against current Rails request specs. Test-only
+contract slices now cover SMART issuance and offline dosing; sync actions
+remain in review.
+The browser/PWA tranche still waits for the reviewed API handoff.
+
+RSpec inventory correction (`bdd85c61`, `e19f031a`; independent review clean):
+all 826 current source paths remain present exactly once. Six classifications
+were resolved with specific rationales; mixed authentication and 20 migration
+specs were reclassified while retaining review flags for missing browser,
+HTTP, or cutover evidence. The matrix now records API 79, browser 276, Rust
+domain 302, operational 135, Rails-only 34, and 147 unresolved review flags.
+Two finder JSON specs retain review flags because guidance and Open Food Facts
+fields are not yet covered by portable HTTP assertions. This classification
+work does not close the API test gate.
+
+Offline contract gap closure (`c1ef57a1`; independent review clean): the
+Rails-backed retained-route tests now check that inactive, cooling-down, and
+expired schedules are excluded from the offline snapshot and that a future
+queued dose returns 422 without changing stock or dose records. Focused Rails
+passed 5/5. A production-style queued-write CSRF probe remains open.
+
+SMART/FHIR contract gap closure (`390c3401`; independent review clean): a
+nonce-scoped public client now exercises login, consent, PKCE, issuance of a
+patient-bound bearer token, foreign-patient denial, refresh rotation, and
+revocation. Focused Rails passed 1/1. Confidential-client authentication,
+MFA-sensitive issuance, and external-provider success remain uncovered.
+Both slices are tests against Rails; there is no corresponding Rust API yet.
+
+Sync action contract gap closure (`f25389d9`; independent review clean):
+isolated batches exercise schedule pause-period create/close, assignment
+pause/resume/reorder, actor attribution, forged-input rejection, cached
+replay, and late-operation rollback through public resource, change-feed,
+and audit reads. Focused Rails passed 18/18. Cached create/close replay after
+grant revocation and dose-outcome batch actions remain uncovered.
+
+Finder JSON contract expansion (`4743b150`; independent review clean):
+the web finder now checks available NHS guidance and result identity fields,
+plus Open Food Facts supplement fields for barcode and text searches.
+Focused Rails passed 7/7. Positive PIL URL, evidence prompts, and the
+unavailable-guidance fallback remain inventory review gaps.
+
+The integrated Rails-backed contract corpus passed all 32 target groups
+after these additions. Twelve ordinary cases remain ignored with recorded
+reasons; the separately enabled feature-disabled AI case passed. Rust
+formatting, Clippy, documentation build, and inventory JSON validation pass.
+This is Rails baseline evidence, not a passing Rust API implementation.
