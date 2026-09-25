@@ -174,6 +174,54 @@ fn health_history_json_chronology_dates_and_takes() {
     assert_chronology(chronology, "2026-02-19", "2026-02-26");
     let managed_event_id = fixture.managed_health_event_id.to_string();
     let earlier_event_id = fixture.earlier_health_event_id.to_string();
+    let side_effect_title =
+        fixture
+            .managed_health_event_title
+            .replacen("managed event", "managed side effect", 1);
+    let earlier_title =
+        fixture
+            .managed_health_event_title
+            .replacen("managed event", "earlier event", 1);
+    let actual_chronology: Vec<_> = chronology
+        .iter()
+        .map(|row| {
+            (
+                row["event_kind"].as_str().expect("event kind"),
+                row["title"].as_str().expect("event title"),
+                row["started_on"].as_str().expect("event start date"),
+                row["ended_on"].as_str(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        actual_chronology,
+        [
+            (
+                "illness",
+                fixture.managed_health_event_title.as_str(),
+                "2026-02-26",
+                None,
+            ),
+            (
+                "suspected_side_effect",
+                side_effect_title.as_str(),
+                "2026-02-25",
+                None,
+            ),
+            (
+                "illness",
+                fixture.managed_health_event_title.as_str(),
+                "2026-02-25",
+                None,
+            ),
+            (
+                "illness",
+                earlier_title.as_str(),
+                "2026-02-20",
+                Some("2026-02-21")
+            ),
+        ]
+    );
     let managed = chronology
         .iter()
         .position(|row| row["id"].as_str() == Some(managed_event_id.as_str()))
