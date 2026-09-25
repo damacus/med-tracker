@@ -1,0 +1,9 @@
+# Standalone web session browser contract
+
+The updated `rust/web/tests/login.smoke.test.mjs` expects the standalone first-party `/login` form while retaining the existing OAuth invalid-login and consent cases. Its selectors come from the current Leptos `LoginPage`, `render_dashboard`, and existing Rails route behavior. The earlier information-only `/login` placeholder is no longer the intended web entry.
+
+At desktop 1400 × 900 and mobile 390 × 844, the test requires the **Welcome back** heading, associated **Email address** and **Password** inputs, a non-empty hidden form CSRF token, a keyboard-focusable **Sign In to Dashboard** button, labels above their inputs, and no horizontal overflow. It then submits credentials with Enter, requires the fixture owner's `/households/{slug}/dashboard` and household-name heading, checks that the authenticated page exposes a distinct session CSRF meta token, and submits the visible **Sign out** action with Enter. Reopening the old dashboard path must return to `/login`.
+
+The existing OAuth path still checks failed login with visible alert and password focus, both requested scopes and explanations, keyboard consent submission, and callback state/code. `CONTRACT_FIXTURE_PATH` is mandatory and no canonical browser case is skipped when it is absent. Browser screenshots remain optional under `SCREENSHOT_DIR`.
+
+The canonical isolated browser run (`mtcontract-317183228df94655`) passed all seven cases with zero skipped. This includes standalone desktop/mobile sign-in and logout, desktop/mobile OAuth consent, and the invalid-login keyboard case. Browser-stage output is in `/Users/damacus/Library/Application Support/rtk/tee/1790349382_task_api_32a4eb.log`; the runner report records the complete project and image evidence. The browser result establishes this session UI path; it does not claim the medication journey or broader product parity.

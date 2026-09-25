@@ -6,9 +6,10 @@ mod oauth;
 
 use axum::extract::{Path, Query, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
+use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
-use axum::{Json, Router};
+use axum::{extract::Request, Json, Router};
 use base64::{engine::general_purpose::URL_SAFE, Engine as _};
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use entities::{
@@ -61,6 +62,7 @@ pub async fn connect(url: &str) -> Result<AppState, sea_orm::DbErr> {
 }
 
 pub fn router(state: AppState) -> Router {
+    let csrf_state = state.clone();
     Router::new()
         .route("/up", get(|| async { StatusCode::OK }))
         .merge(oauth::routes())
@@ -73,7 +75,99 @@ pub fn router(state: AppState) -> Router {
             "/api/v1/households/{household_id}/medications/{id}",
             get(show),
         )
+        .layer(middleware::from_fn_with_state(csrf_state, cookie_api_csrf))
         .with_state(state)
+}
+
+async fn cookie_api_csrf(State(state): State<AppState>, request: Request, next: Next) -> Response {
+    let api = request.uri().path().starts_with("/api/v1/");
+    let unsafe_api = !matches!(
+        *request.method(),
+        axum::http::Method::GET | axum::http::Method::HEAD | axum::http::Method::OPTIONS
+    );
+    if !api
+        || request.headers().contains_key(header::AUTHORIZATION)
+        || !request.headers().contains_key(header::COOKIE)
+    {
+        return next.run(request).await;
+    }
+    let trusted_origin = !unsafe_api || oauth::trusted_cookie_origin(&state, request.headers());
+    let db = match state.db.begin().await {
+        Ok(db) => db,
+        Err(error) => return database_error(error).into_response(),
+    };
+    if let Err(error) = restricted_role(&db).await {
+        return database_error(error).into_response();
+    }
+    let session = match oauth::browser_session(&state, &db, request.headers()).await {
+        Ok(Some(session)) => session,
+        Ok(None) => {
+            return if !unsafe_api {
+                let _ = db.rollback().await;
+                next.run(request).await
+            } else if trusted_origin {
+                ApiError::unauthorized().into_response()
+            } else {
+                ApiError::forbidden().into_response()
+            };
+        }
+        Err(_) => return ApiError::internal().into_response(),
+    };
+    let csrf = request
+        .headers()
+        .get("x-csrf-token")
+        .and_then(|value| value.to_str().ok());
+    if unsafe_api && (!trusted_origin || csrf != Some(session.csrf.as_str())) {
+        let request_id = uuid::Uuid::new_v4().to_string();
+        if *request.method() == axum::http::Method::POST {
+            if let Some(household_id) = dose_household_path(request.uri().path()) {
+                if let Ok(context) =
+                    authenticate(&state, &db, request.headers(), household_id).await
+                {
+                    if let Err(error) = audit::record_cookie_write_denial(
+                        &db,
+                        &context,
+                        &request_id,
+                        request.method().as_str(),
+                        StatusCode::FORBIDDEN,
+                    )
+                    .await
+                    {
+                        return database_error(error).into_response();
+                    }
+                }
+            }
+        }
+        if let Err(error) = db.commit().await {
+            return database_error(error).into_response();
+        }
+        let error = ApiError::forbidden();
+        let mut response = (
+            error.status,
+            Json(json!({"error": {"code": error.code, "message": error.message, "request_id": request_id}})),
+        )
+            .into_response();
+        if let Ok(value) = HeaderValue::from_str(&request_id) {
+            response.headers_mut().insert("x-request-id", value);
+        }
+        return response;
+    }
+    if let Err(error) = db.commit().await {
+        return database_error(error).into_response();
+    }
+    let mut response = next.run(request).await;
+    if let Some(cookie) = oauth::renewed_session_cookie(&state, &session) {
+        response.headers_mut().append(header::SET_COOKIE, cookie);
+    }
+    response
+}
+
+fn dose_household_path(path: &str) -> Option<i64> {
+    let rest = path.strip_prefix("/api/v1/households/")?;
+    let (id, tail) = rest.split_once('/')?;
+    (tail == "medication_takes")
+        .then(|| id.parse::<i64>().ok())
+        .flatten()
 }
 
 #[derive(Debug)]
@@ -173,7 +267,7 @@ async fn tenant_setting(
 struct AuthContext {
     account_id: i64,
     user_id: i64,
-    credential_id: i64,
+    credential_reference: String,
     credential_kind: CredentialKind,
     membership: membership::Model,
 }
@@ -181,14 +275,19 @@ struct AuthContext {
 enum CredentialKind {
     ApiSession,
     OauthGrant,
+    BrowserSession,
 }
 
 async fn authenticate(
+    state: &AppState,
     db: &DatabaseTransaction,
     headers: &HeaderMap,
     household_id: i64,
 ) -> Result<AuthContext, ApiError> {
     restricted_role(db).await.map_err(database_error)?;
+    if !headers.contains_key(header::AUTHORIZATION) {
+        return authenticate_browser_session(state, db, headers, household_id).await;
+    }
     let token = headers
         .get("authorization")
         .and_then(|value| value.to_str().ok())
@@ -276,7 +375,7 @@ async fn authenticate(
     Ok(AuthContext {
         account_id: account.id,
         user_id: user.id,
-        credential_id: session.id,
+        credential_reference: session.id.to_string(),
         credential_kind: CredentialKind::ApiSession,
         membership,
     })
@@ -312,6 +411,92 @@ fn within_login_lifetime(grant: &oauth_grant::Model, now: chrono::NaiveDateTime)
             .and_then(|period| now.checked_sub_signed(period))
             .is_some_and(|deadline| authenticated_at > deadline);
     inactivity_active && maximum_age_active
+}
+
+async fn current_household_membership(
+    db: &DatabaseTransaction,
+    account_id: i64,
+    household_id: i64,
+    preserve_activity: bool,
+) -> Result<membership::Model, ApiError> {
+    let missing = || {
+        if preserve_activity {
+            ApiError::not_found().preserve_activity()
+        } else {
+            ApiError::not_found()
+        }
+    };
+    let forbidden = || {
+        if preserve_activity {
+            ApiError::forbidden().preserve_activity()
+        } else {
+            ApiError::forbidden()
+        }
+    };
+    let household = household::Entity::find_by_id(household_id)
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(missing)?;
+    if household.status != "active" || household.lifecycle_state != "active" {
+        return Err(forbidden());
+    }
+    let membership = membership::Entity::find()
+        .filter(membership::Column::AccountId.eq(account_id))
+        .filter(membership::Column::HouseholdId.eq(household_id))
+        .filter(membership::Column::Status.eq("active"))
+        .filter(membership::Column::RevokedAt.is_null())
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(forbidden)?;
+    tenant_setting(db, "med_tracker.current_household_id", household_id)
+        .await
+        .map_err(database_error)?;
+    tenant_setting(db, "med_tracker.current_membership_id", membership.id)
+        .await
+        .map_err(database_error)?;
+    Ok(membership)
+}
+
+async fn authenticate_browser_session(
+    state: &AppState,
+    db: &DatabaseTransaction,
+    headers: &HeaderMap,
+    household_id: i64,
+) -> Result<AuthContext, ApiError> {
+    let session = oauth::browser_session(state, db, headers)
+        .await
+        .map_err(|_| ApiError::internal())?
+        .ok_or_else(ApiError::unauthorized)?;
+    tenant_setting(db, "med_tracker.current_account_id", session.account_id)
+        .await
+        .map_err(database_error)?;
+    let membership =
+        current_household_membership(db, session.account_id, household_id, false).await?;
+    let person = person::Entity::find()
+        .filter(person::Column::AccountId.eq(session.account_id))
+        .order_by_asc(person::Column::Id)
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(ApiError::unauthorized)?;
+    let user = user::Entity::find()
+        .filter(user::Column::PersonId.eq(person.id))
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(ApiError::unauthorized)?;
+    if !user.active {
+        return Err(ApiError::unauthorized());
+    }
+    Ok(AuthContext {
+        account_id: session.account_id,
+        user_id: user.id,
+        credential_reference: oauth::session_key_digest(&session.session_id),
+        credential_kind: CredentialKind::BrowserSession,
+        membership,
+    })
 }
 
 async fn authenticate_mobile_oauth(
@@ -356,6 +541,11 @@ async fn authenticate_mobile_oauth(
     tenant_setting(db, "med_tracker.current_account_id", account.id)
         .await
         .map_err(database_error)?;
+    let mut active_grant: oauth_grant::ActiveModel = grant.clone().into();
+    active_grant.last_used_at = Set(Some(now));
+    active_grant.updated_at = Set(now);
+    active_grant.update(db).await.map_err(database_error)?;
+    let membership = current_household_membership(db, account.id, household_id, true).await?;
     let person = person::Entity::find()
         .filter(person::Column::AccountId.eq(account.id))
         .order_by_asc(person::Column::Id)
@@ -372,37 +562,10 @@ async fn authenticate_mobile_oauth(
     if !user.active {
         return Err(ApiError::unauthorized());
     }
-    let mut active_grant: oauth_grant::ActiveModel = grant.clone().into();
-    active_grant.last_used_at = Set(Some(now));
-    active_grant.updated_at = Set(now);
-    active_grant.update(db).await.map_err(database_error)?;
-    let household = household::Entity::find_by_id(household_id)
-        .one(db)
-        .await
-        .map_err(database_error)?
-        .ok_or_else(|| ApiError::not_found().preserve_activity())?;
-    if household.status != "active" || household.lifecycle_state != "active" {
-        return Err(ApiError::forbidden().preserve_activity());
-    }
-    let membership = membership::Entity::find()
-        .filter(membership::Column::AccountId.eq(account.id))
-        .filter(membership::Column::HouseholdId.eq(household_id))
-        .filter(membership::Column::Status.eq("active"))
-        .filter(membership::Column::RevokedAt.is_null())
-        .one(db)
-        .await
-        .map_err(database_error)?
-        .ok_or_else(|| ApiError::forbidden().preserve_activity())?;
-    tenant_setting(db, "med_tracker.current_household_id", household_id)
-        .await
-        .map_err(database_error)?;
-    tenant_setting(db, "med_tracker.current_membership_id", membership.id)
-        .await
-        .map_err(database_error)?;
     Ok(AuthContext {
         account_id: account.id,
         user_id: user.id,
-        credential_id: grant.id,
+        credential_reference: grant.id.to_string(),
         credential_kind: CredentialKind::OauthGrant,
         membership,
     })
@@ -476,9 +639,9 @@ async fn index(
     Path(household_id): Path<i64>,
     Query(pagination): Query<Pagination>,
     headers: HeaderMap,
-) -> Result<Json<Value>, ApiError> {
+) -> Result<Response, ApiError> {
     let db = state.db.begin().await.map_err(database_error)?;
-    let context = match authenticate(&db, &headers, household_id).await {
+    let context = match authenticate(&state, &db, &headers, household_id).await {
         Ok(context) => context,
         Err(error) => {
             if error.preserve_activity {
@@ -517,13 +680,19 @@ async fn index(
         .await
         .map_err(database_error)?;
     let data = serialize_many(&db, records).await?;
-    audit::record_medication_read(&db, &context, "index", StatusCode::OK, true)
+    let request_id = audit::record_medication_read(&db, &context, "index", StatusCode::OK, true)
         .await
         .map_err(database_error)?;
     db.commit().await.map_err(database_error)?;
-    Ok(Json(
+    let mut response = Json(
         json!({"data": data, "meta": {"page": page, "per_page": per_page, "total_count": total}}),
-    ))
+    )
+    .into_response();
+    response.headers_mut().insert(
+        "x-request-id",
+        HeaderValue::from_str(&request_id).map_err(|_| ApiError::internal())?,
+    );
+    Ok(response)
 }
 
 async fn show(
@@ -532,7 +701,7 @@ async fn show(
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
     let db = state.db.begin().await.map_err(database_error)?;
-    let context = match authenticate(&db, &headers, household_id).await {
+    let context = match authenticate(&state, &db, &headers, household_id).await {
         Ok(context) => context,
         Err(error) => {
             if error.preserve_activity {

@@ -5,7 +5,26 @@ Plan: `docs/plans/axum-leptos-port/plan.md`
 Current goal: [goal.md](goal.md). The user authorized the workflow-first
 milestones and continued execution on 25 September. The app-level full
 cutover-readiness goal now reports active. The previous turn made concrete
-progress: reviewed secure entry was committed and pushed as `2a8b4c1b`.
+progress: reviewed direct dose recording was committed and pushed as `39904af0`.
+
+## First-party session checkpoint
+
+Standalone web login now opens the first active household dashboard. Signed
+database-backed browser sessions can call the shared API, with current actor,
+membership and person permission checks, CSRF/origin enforcement, sliding
+expiry and logout revocation. Focused session acceptance passed 8 HTTP cases;
+canonical regression passed 36 HTTP and seven browser cases with no skips.
+See [session evidence](journey-web-session-runner-report.md) and
+[session review](journey-web-session-review.md).
+
+The dashboard remains a minimal authenticated landing page. The next work is
+the shared people/schedule/assignment reads and the full Leptos medication
+journey, including the confirmed Escape-focus correction. The corrected
+shared-read suite passed all four cases against Rails and failed all four
+against Rust's missing routes (404). Both isolated Compose runs cleaned up
+successfully with unchanged source manifests. See
+[shared-read evidence](journey-web-reads-runner-report.md). This establishes
+the failing tests required before implementing those routes.
 
 ## Direct dose checkpoint
 

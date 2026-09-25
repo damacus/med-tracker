@@ -183,7 +183,7 @@ function run_contract
         or return $status
         set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner-subnet.compose.yaml"
     end
-    if contains -- "$argv[2]" medication-read-api web-session-api browser-journey-rails
+    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api browser-journey-rails web-reads-rails
         set -gx CONTRACT_AUTH_SESSION_SECRET (rtk proxy openssl rand -hex 32)
         or return $status
         set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner.compose.yaml"
@@ -231,7 +231,13 @@ function run_contract
         return $status
     end
 
-    if contains -- "$argv[2]" medication-read-api web-session-api
+    if test "$argv[2]" = web-reads-rails
+        set -g contract_api_image true
+        rtk task api:contract-web-reads-rails-test CONTRACT_PROJECT=$contract_project
+        return $status
+    end
+
+    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api
         set -g contract_api_image true
         rtk task api:contract-up CONTRACT_PROJECT=$contract_project
         or return $status
@@ -239,11 +245,13 @@ function run_contract
         or return $status
         if test "$argv[2]" = web-session-api
             rtk task api:contract-web-session-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = web-reads-api
+            rtk task api:contract-web-reads-test CONTRACT_PROJECT=$contract_project
         else
             rtk task api:contract-test CONTRACT_PROJECT=$contract_project
         end
         or return $status
-        if test "$CONTRACT_BROWSER_TESTS" = true
+        if test "$argv[2]" != web-reads-api; and test "$CONTRACT_BROWSER_TESTS" = true
             rtk task api:contract-browser-test CONTRACT_PROJECT=$contract_project
             or return $status
         end

@@ -77,3 +77,17 @@ services:
       BASE_URL: http://127.0.0.1:3000
       CONTRACT_FIXTURE_PATH: /contract-run/fixture.json
       SCREENSHOT_DIR: /screenshots
+
+  rails-web-read-tests:
+    profiles: [test]
+    image: medtracker-contract-runner:${CONTRACT_PROJECT}
+    network_mode: service:web-test
+    volumes:
+      - type: bind
+        source: ${CONTRACT_FIXTURE_DIR}
+        target: /contract-run
+        read_only: true
+    environment:
+      CONTRACT_BASE_URL: http://127.0.0.1:3000
+      CONTRACT_FIXTURE_PATH: /contract-run/fixture.json
+      CONTRACT_AUDIT_DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract

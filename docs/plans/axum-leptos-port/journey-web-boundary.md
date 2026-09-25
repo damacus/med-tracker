@@ -42,6 +42,11 @@ short-lived CSRF-protected web login intent. An OAuth request retains its
 validated registered-client intent and resumes consent. Client-supplied
 return URLs cannot choose arbitrary redirect destinations.
 
+The existing OAuth login POST may omit Origin and Referer: its signed intent
+and exact CSRF token remain mandatory. Reject any supplied foreign origin
+on login. This exception does not apply to authenticated cookie API writes
+or logout, which require trusted origin evidence as well as session CSRF.
+
 Allow cookie authentication at the shared API boundary while retaining
 bearer authentication for native clients. An explicit Authorization header
 must be validated as supplied; an invalid bearer must not silently fall back
@@ -49,6 +54,13 @@ to a cookie. Resolve current account state, session lifetime, factor policy,
 membership, household lifecycle and person permissions on every request.
 Refactor common membership binding rather than introducing a third copy of
 authorization logic.
+
+Preserve the account's primary actor identity across households: Rails
+`Account#person` explicitly orders by person ID, and its API derives the user
+from that person. Household membership determines access independently.
+Do not switch to another active household-linked user to bypass suspension
+of the primary user. Multiple linked people permitted by the schema do not
+by themselves establish a defect in this deliberate account-level identity.
 
 All unsafe cookie-authenticated API requests require a session-bound CSRF
 token and trusted same-origin checks. Apply this at the API routing boundary

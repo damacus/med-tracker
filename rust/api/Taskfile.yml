@@ -38,6 +38,14 @@ tasks:
     cmds:
       - fish rust/contract-tests/run.fish rails web-session-api
 
+  web-reads-acceptance:
+    cmds:
+      - fish rust/contract-tests/run.fish rails web-reads-api
+
+  web-reads-rails:
+    cmds:
+      - fish rust/contract-tests/run.fish rails web-reads-rails
+
   contract-runner-test:
     cmds:
       - fish rust/contract-tests/runner_compose_test.fish
@@ -94,6 +102,25 @@ tasks:
         sh: git rev-parse --path-format=absolute --git-common-dir
     cmds:
       - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test web_session_api -- --test-threads=1
+
+  contract-web-reads-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test web_reads_api -- --test-threads=1
+
+  contract-web-reads-rails-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test build rust-api
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rails-web-read-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test web_reads_api -- --test-threads=1
 
   contract-browser-test:
     requires:

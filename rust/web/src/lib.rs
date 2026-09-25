@@ -26,7 +26,7 @@ fn LoginPage(csrf: String, error: String) -> impl IntoView {
                 <section class="form-panel" aria-label="Sign in">
                     <p class="eyebrow">"SECURE SIGN IN"</p>
                     <h1>"Welcome back"</h1>
-                    <p class="form-intro">"Sign in to continue to your mobile app."</p>
+                    <p class="form-intro">"Sign in to your household dashboard or continue to your mobile app."</p>
                     {(!error.is_empty()).then(|| view! { <p class="form-alert" role="alert">{error}</p> })}
                     <form class="auth-form" action="/login" method="post">
                         <input type="hidden" name="authenticity_token" value=csrf/>
@@ -119,6 +119,14 @@ fn document(title: &str, body: String) -> String {
     )
 }
 
+fn authenticated_document(title: &str, csrf: &str, body: String) -> String {
+    document(title, body).replacen(
+        "<head>",
+        &format!("<head><meta name=\"csrf-token\" content=\"{csrf}\">"),
+        1,
+    )
+}
+
 pub fn render_login(csrf: &str, error: &str) -> String {
     if csrf.is_empty() {
         return document("Sign in", view! { <PublicLoginPage heading="Sign in through your app".to_owned() message="Open MedTracker from your registered mobile app to begin sign-in.".to_owned()/> }.to_html());
@@ -131,6 +139,27 @@ pub fn render_login(csrf: &str, error: &str) -> String {
 
 pub fn render_reset_unavailable() -> String {
     document("Password reset", view! { <PublicLoginPage heading="Password reset is unavailable".to_owned() message="Password reset is not yet supported in this sign-in service.".to_owned()/> }.to_html())
+}
+
+pub fn render_dashboard(household_name: &str, csrf: &str, empty: bool) -> String {
+    let body = view! {
+        <main class="auth-page">
+            <div class="auth-shell">
+                <BrandPanel/>
+                <section class="form-panel" aria-label="Household dashboard">
+                    <p class="eyebrow">"YOUR HOUSEHOLD"</p>
+                    <h1>{household_name.to_owned()}</h1>
+                    {empty.then(|| view! { <p class="form-intro">"You do not have an active household yet."</p> })}
+                    <form action="/logout" method="post">
+                        <input type="hidden" name="authenticity_token" value=csrf.to_owned()/>
+                        <button class="primary-button" type="submit">"Sign out"</button>
+                    </form>
+                </section>
+            </div>
+        </main>
+    }
+    .to_html();
+    authenticated_document("Dashboard", csrf, body)
 }
 
 pub fn stylesheet() -> &'static str {

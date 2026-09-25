@@ -5,7 +5,7 @@ use crate::entities::{
     oauth_grant, otp_key, person, recovery_code, user, webauthn_key,
 };
 use crate::{configured_lifetime_days, restricted_role, tenant_setting, AppState};
-use axum::extract::{Form, State};
+use axum::extract::{Form, Path, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode, Uri};
 use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{get, post};
@@ -31,6 +31,7 @@ use url::{form_urlencoded, Url};
 type HmacSha256 = Hmac<Sha256>;
 const PENDING_COOKIE: &str = "mt_oauth_pending";
 const SESSION_COOKIE: &str = "mt_oauth_session";
+const LOGIN_INTENT_COOKIE: &str = "mt_web_login_intent";
 
 #[derive(Clone)]
 pub struct OAuthState {
@@ -143,11 +144,17 @@ struct Pending {
 }
 
 #[derive(Deserialize, Serialize)]
-struct BrowserSession {
-    account_id: i64,
-    session_id: String,
-    issued_at: i64,
+struct LoginIntent {
     csrf: String,
+    issued_at: i64,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+pub(crate) struct BrowserSession {
+    pub(crate) account_id: i64,
+    pub(crate) session_id: String,
+    issued_at: i64,
+    pub(crate) csrf: String,
 }
 
 #[derive(Clone)]
@@ -172,6 +179,10 @@ fn digest(token: &str) -> String {
     URL_SAFE.encode(Sha256::digest(token.as_bytes()))
 }
 
+pub(crate) fn session_key_digest(token: &str) -> String {
+    digest(token)
+}
+
 fn browser_cookie_age() -> i64 {
     let inactivity =
         configured_lifetime_days("SESSION_INACTIVITY_TIMEOUT_DAYS", 30, 1).unwrap_or(0);
@@ -182,6 +193,30 @@ fn browser_cookie_age() -> i64 {
         inactivity
     };
     days.saturating_mul(86_400)
+}
+
+fn remaining_browser_cookie_age(session: &BrowserSession) -> i64 {
+    let inactivity = browser_cookie_age();
+    let maximum = configured_lifetime_days("SESSION_MAX_AGE_DAYS", 0, 0).unwrap_or(0);
+    if maximum == 0 {
+        return inactivity;
+    }
+    let absolute_end = session
+        .issued_at
+        .saturating_add(maximum.saturating_mul(86_400));
+    inactivity.min(absolute_end.saturating_sub(Utc::now().timestamp()).max(0))
+}
+
+pub(crate) fn renewed_session_cookie(
+    state: &AppState,
+    session: &BrowserSession,
+) -> Option<HeaderValue> {
+    let signed = state.oauth.sign(session)?;
+    Some(state.oauth.cookie(
+        SESSION_COOKIE,
+        &signed,
+        remaining_browser_cookie_age(session),
+    ))
 }
 
 fn cookie_value<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
@@ -196,6 +231,16 @@ fn cookie_value<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
 
 fn pending(state: &AppState, headers: &HeaderMap) -> Option<Pending> {
     let claim: Pending = state.oauth.verify(cookie_value(headers, PENDING_COOKIE)?)?;
+    (Utc::now().timestamp() - claim.issued_at)
+        .abs()
+        .le(&600)
+        .then_some(claim)
+}
+
+fn login_intent(state: &AppState, headers: &HeaderMap) -> Option<LoginIntent> {
+    let claim: LoginIntent = state
+        .oauth
+        .verify(cookie_value(headers, LOGIN_INTENT_COOKIE)?)?;
     (Utc::now().timestamp() - claim.issued_at)
         .abs()
         .le(&600)
@@ -315,6 +360,9 @@ pub fn routes() -> Router<AppState> {
         .route("/api/v1/capabilities", get(capabilities))
         .route("/authorize", get(authorize).post(consent))
         .route("/login", get(login).post(login_post))
+        .route("/logout", post(logout))
+        .route("/", get(home))
+        .route("/households/{slug}/dashboard", get(dashboard))
         .route("/token", post(token))
         .route("/revoke", post(revoke))
         .route("/api/v1/auth/households", get(households))
@@ -413,25 +461,23 @@ async fn account_available(db: &DatabaseTransaction, account_id: i64) -> Result<
     }
     let linked = person::Entity::find()
         .filter(person::Column::AccountId.eq(account_id))
-        .all(db)
+        .order_by_asc(person::Column::Id)
+        .one(db)
         .await
         .map_err(|e| database_error(e).into_response())?;
-    for person in linked {
-        if user::Entity::find()
+    if let Some(person) = linked {
+        return Ok(user::Entity::find()
             .filter(user::Column::PersonId.eq(person.id))
             .filter(user::Column::Active.eq(true))
             .one(db)
             .await
             .map_err(|e| database_error(e).into_response())?
-            .is_some()
-        {
-            return Ok(true);
-        }
+            .is_some());
     }
     Ok(false)
 }
 
-async fn browser_session(
+pub(crate) async fn browser_session(
     state: &AppState,
     db: &DatabaseTransaction,
     headers: &HeaderMap,
@@ -588,13 +634,8 @@ async fn authorize(State(state): State<AppState>, headers: HeaderMap, uri: Uri) 
                 .collect::<Vec<_>>(),
             &fields,
         ));
-        if let Some(cookie) = state.oauth.sign(&session) {
-            response.headers_mut().append(
-                header::SET_COOKIE,
-                state
-                    .oauth
-                    .cookie(SESSION_COOKIE, &cookie, browser_cookie_age()),
-            );
+        if let Some(cookie) = renewed_session_cookie(&state, &session) {
+            response.headers_mut().append(header::SET_COOKIE, cookie);
         }
         response
     } else {
@@ -608,15 +649,77 @@ async fn authorize(State(state): State<AppState>, headers: HeaderMap, uri: Uri) 
 }
 
 async fn login(State(state): State<AppState>, headers: HeaderMap) -> Response {
-    let claim = pending(&state, &headers);
-    let (csrf, error) = match claim {
-        Some(claim) => (claim.csrf, ""),
-        None => (
-            String::new(),
-            "Sign in through the authorization request to continue.",
-        ),
+    if let Some(claim) = pending(&state, &headers) {
+        return html(medtracker_web::render_login(&claim.csrf, ""));
+    }
+    let intent = login_intent(&state, &headers).unwrap_or_else(|| LoginIntent {
+        csrf: secret(),
+        issued_at: Utc::now().timestamp(),
+    });
+    let Some(signed) = state.oauth.sign(&intent) else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
-    html(medtracker_web::render_login(&csrf, error))
+    let mut response = html(medtracker_web::render_login(&intent.csrf, ""));
+    response.headers_mut().append(
+        header::SET_COOKIE,
+        state.oauth.cookie(LOGIN_INTENT_COOKIE, &signed, 600),
+    );
+    response
+}
+
+fn trusted_origin(state: &AppState, headers: &HeaderMap, allow_missing: bool) -> bool {
+    if let Some(value) = headers.get(header::ORIGIN) {
+        let Some(value) = value.to_str().ok().and_then(|value| Url::parse(value).ok()) else {
+            return false;
+        };
+        return value.origin() == state.oauth.base_url.origin()
+            && value.path() == "/"
+            && value.query().is_none()
+            && value.fragment().is_none();
+    }
+    let Some(value) = headers.get(header::REFERER) else {
+        return allow_missing;
+    };
+    value
+        .to_str()
+        .ok()
+        .and_then(|value| Url::parse(value).ok())
+        .is_some_and(|value| value.origin() == state.oauth.base_url.origin())
+}
+
+pub(crate) fn trusted_cookie_origin(state: &AppState, headers: &HeaderMap) -> bool {
+    trusted_origin(state, headers, false)
+}
+
+async fn first_active_household(
+    db: &DatabaseTransaction,
+    account_id: i64,
+) -> Result<Option<household::Model>, Response> {
+    tenant_setting(db, "med_tracker.current_account_id", account_id)
+        .await
+        .map_err(|error| database_error(error).into_response())?;
+    let memberships = membership::Entity::find()
+        .filter(membership::Column::AccountId.eq(account_id))
+        .filter(membership::Column::Status.eq("active"))
+        .filter(membership::Column::RevokedAt.is_null())
+        .order_by_asc(membership::Column::Id)
+        .all(db)
+        .await
+        .map_err(|error| database_error(error).into_response())?;
+    let households = household::Entity::find()
+        .filter(household::Column::Id.is_in(memberships.iter().map(|m| m.household_id)))
+        .filter(household::Column::Status.eq("active"))
+        .filter(household::Column::LifecycleState.eq("active"))
+        .all(db)
+        .await
+        .map_err(|error| database_error(error).into_response())?;
+    let households: HashMap<i64, household::Model> = households
+        .into_iter()
+        .map(|household| (household.id, household))
+        .collect();
+    Ok(memberships
+        .iter()
+        .find_map(|membership| households.get(&membership.household_id).cloned()))
 }
 
 #[derive(Deserialize)]
@@ -643,10 +746,20 @@ async fn login_post(
     headers: HeaderMap,
     Form(form): Form<LoginForm>,
 ) -> Response {
-    let Some(claim) = pending(&state, &headers) else {
+    let oauth_claim = pending(&state, &headers);
+    let web_claim = if oauth_claim.is_none() {
+        login_intent(&state, &headers)
+    } else {
+        None
+    };
+    let Some(intent_csrf) = oauth_claim
+        .as_ref()
+        .map(|claim| claim.csrf.as_str())
+        .or_else(|| web_claim.as_ref().map(|claim| claim.csrf.as_str()))
+    else {
         return StatusCode::FORBIDDEN.into_response();
     };
-    if claim.csrf != form.authenticity_token {
+    if intent_csrf != form.authenticity_token || !trusted_origin(&state, &headers, true) {
         return StatusCode::FORBIDDEN.into_response();
     }
     if form.email.len() > 320 || form.password.len() > 1024 {
@@ -679,7 +792,7 @@ async fn login_post(
     };
     let Some((account_id, _)) = account else {
         return html(medtracker_web::render_login(
-            &claim.csrf,
+            intent_csrf,
             "Invalid email or password",
         ));
     };
@@ -699,7 +812,7 @@ async fn login_post(
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
         return html(medtracker_web::render_login(
-            &claim.csrf,
+            intent_csrf,
             "Invalid email or password",
         ));
     }
@@ -709,7 +822,7 @@ async fn login_post(
     };
     if !available {
         return html(medtracker_web::render_login(
-            &claim.csrf,
+            intent_csrf,
             "Sign in is unavailable for this account",
         ));
     }
@@ -719,7 +832,7 @@ async fn login_post(
     };
     if required {
         return html(medtracker_web::render_login(
-            &claim.csrf,
+            intent_csrf,
             "This account requires a sign-in method that is not yet supported here.",
         ));
     }
@@ -745,6 +858,15 @@ async fn login_post(
     {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
+    let destination = if let Some(claim) = oauth_claim.as_ref() {
+        claim.request.path()
+    } else {
+        match first_active_household(&db, account_id).await {
+            Ok(Some(household)) => format!("/households/{}/dashboard", household.slug),
+            Ok(None) => "/".to_owned(),
+            Err(error) => return error,
+        }
+    };
     if let Err(error) = db.commit().await {
         return database_error(error).into_response();
     }
@@ -757,12 +879,152 @@ async fn login_post(
     let Some(cookie) = state.oauth.sign(&session) else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
-    let mut response = redirect(&claim.request.path());
+    let mut response = redirect(&destination);
     response.headers_mut().append(
         header::SET_COOKIE,
         state
             .oauth
             .cookie(SESSION_COOKIE, &cookie, browser_cookie_age()),
+    );
+    if web_claim.is_some() {
+        response.headers_mut().append(
+            header::SET_COOKIE,
+            state.oauth.cookie(LOGIN_INTENT_COOKIE, "", 0),
+        );
+    }
+    response
+}
+
+async fn home(State(state): State<AppState>, headers: HeaderMap) -> Response {
+    let db = match transaction(&state).await {
+        Ok(db) => db,
+        Err(error) => return error,
+    };
+    let session = match browser_session(&state, &db, &headers).await {
+        Ok(Some(session)) => session,
+        Ok(None) => return redirect("/login"),
+        Err(error) => return error,
+    };
+    let destination = match first_active_household(&db, session.account_id).await {
+        Ok(Some(household)) => Some(format!("/households/{}/dashboard", household.slug)),
+        Ok(None) => None,
+        Err(error) => return error,
+    };
+    if let Err(error) = db.commit().await {
+        return database_error(error).into_response();
+    }
+    let mut response = match destination {
+        Some(destination) => redirect(&destination),
+        None => html(medtracker_web::render_dashboard(
+            "Your households",
+            &session.csrf,
+            true,
+        )),
+    };
+    if let Some(cookie) = renewed_session_cookie(&state, &session) {
+        response.headers_mut().append(header::SET_COOKIE, cookie);
+    }
+    response
+}
+
+async fn dashboard(
+    State(state): State<AppState>,
+    Path(slug): Path<String>,
+    headers: HeaderMap,
+) -> Response {
+    let db = match transaction(&state).await {
+        Ok(db) => db,
+        Err(error) => return error,
+    };
+    let session = match browser_session(&state, &db, &headers).await {
+        Ok(Some(session)) => session,
+        Ok(None) => return redirect("/login"),
+        Err(error) => return error,
+    };
+    if let Err(error) =
+        tenant_setting(&db, "med_tracker.current_account_id", session.account_id).await
+    {
+        return database_error(error).into_response();
+    }
+    let household = match household::Entity::find()
+        .filter(household::Column::Slug.eq(slug))
+        .filter(household::Column::Status.eq("active"))
+        .filter(household::Column::LifecycleState.eq("active"))
+        .one(&db)
+        .await
+    {
+        Ok(Some(household)) => household,
+        Ok(None) => return StatusCode::NOT_FOUND.into_response(),
+        Err(error) => return database_error(error).into_response(),
+    };
+    let membership = membership::Entity::find()
+        .filter(membership::Column::AccountId.eq(session.account_id))
+        .filter(membership::Column::HouseholdId.eq(household.id))
+        .filter(membership::Column::Status.eq("active"))
+        .filter(membership::Column::RevokedAt.is_null())
+        .one(&db)
+        .await;
+    match membership {
+        Ok(Some(_)) => {}
+        Ok(None) => return StatusCode::NOT_FOUND.into_response(),
+        Err(error) => return database_error(error).into_response(),
+    }
+    if let Err(error) = db.commit().await {
+        return database_error(error).into_response();
+    }
+    let mut response = html(medtracker_web::render_dashboard(
+        &household.name,
+        &session.csrf,
+        false,
+    ));
+    if let Some(cookie) = renewed_session_cookie(&state, &session) {
+        response.headers_mut().append(header::SET_COOKIE, cookie);
+    }
+    response
+}
+
+async fn logout(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> Response {
+    if !trusted_cookie_origin(&state, &headers) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    let db = match transaction(&state).await {
+        Ok(db) => db,
+        Err(error) => return error,
+    };
+    let session = match browser_session(&state, &db, &headers).await {
+        Ok(Some(session)) => session,
+        Ok(None) => return StatusCode::FORBIDDEN.into_response(),
+        Err(error) => return error,
+    };
+    let supplied = headers
+        .get("x-csrf-token")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned)
+        .or_else(|| {
+            form_fields(&headers, &body)
+                .and_then(|fields| field(&fields, "authenticity_token").map(str::to_owned))
+        });
+    if supplied.as_deref() != Some(session.csrf.as_str()) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    let result =
+        active_session_key::Entity::delete_by_id((session.account_id, digest(&session.session_id)))
+            .exec(&db)
+            .await;
+    if let Err(error) = result {
+        return database_error(error).into_response();
+    }
+    if let Err(error) = db.commit().await {
+        return database_error(error).into_response();
+    }
+    let mut response = redirect("/login");
+    response.headers_mut().append(
+        header::SET_COOKIE,
+        state.oauth.cookie(SESSION_COOKIE, "", 0),
     );
     response
 }
