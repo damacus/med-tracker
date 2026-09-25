@@ -64,6 +64,75 @@ fn assert_batch_error(response: Response, status: u16, code: &str) {
     assert_eq!(error["request_id"], request_id);
 }
 
+fn sync_action_path(household_id: i64, kind: &str) -> String {
+    format!("/api/v1/households/{household_id}/{kind}")
+}
+
+fn sync_action_client_ip(household_id: i64) -> String {
+    format!("198.51.100.{}", 20 + household_id % 220)
+}
+
+fn sync_action_batch(
+    target: &Target,
+    household_id: i64,
+    token: &str,
+    operations: Value,
+) -> Response {
+    target.post_json_from_local_client(
+        &sync_action_path(household_id, "sync/batches"),
+        token,
+        &sync_action_client_ip(household_id),
+        None,
+        &json!({"batch": {"operations": operations}}),
+    )
+}
+
+fn sync_action_resource(
+    target: &Target,
+    household_id: i64,
+    token: &str,
+    kind: &str,
+    id: &str,
+) -> (Value, String) {
+    let response = target.get(
+        &format!("{}/{id}", sync_action_path(household_id, kind)),
+        Some(token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let etag = response.headers()["etag"].to_str().unwrap().to_owned();
+    (body(response)["data"].clone(), etag)
+}
+
+fn sync_periods(target: &Target, fixture: &Fixture) -> Vec<Value> {
+    let response = target.get(
+        &sync_action_path(fixture.sync_period_household_id, "medication_pause_periods"),
+        Some(&fixture.sync_period_access_token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    body(response)["data"].as_array().unwrap().clone()
+}
+
+fn sync_action_feed(target: &Target, household_id: i64, token: &str, cursor: &str) -> Value {
+    let response = target.get(
+        &format!(
+            "{}?cursor={cursor}",
+            sync_action_path(household_id, "sync/changes")
+        ),
+        Some(token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    body(response)["data"].clone()
+}
+
+fn sync_action_audit(target: &Target, household_id: i64, token: &str) -> Vec<Value> {
+    let response = target.get(
+        &sync_action_path(household_id, "admin/audit_logs"),
+        Some(token),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    body(response)["data"].as_array().unwrap().clone()
+}
+
 fn location_feed_identifiers(feed: &Value) -> (Vec<String>, Vec<String>) {
     let identifiers = |kind| {
         let mut ids: Vec<String> = feed[kind]
@@ -82,6 +151,519 @@ fn location_feed_identifiers(feed: &Value) -> (Vec<String>, Vec<String>) {
         ids
     };
     (identifiers("changes"), identifiers("tombstones"))
+}
+
+#[test]
+fn batch_pause_periods_create_close_replay_and_roll_back() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let household = fixture.sync_period_household_id;
+    let token = &fixture.sync_period_access_token;
+    let sources = [
+        (
+            "schedule",
+            "schedules",
+            &fixture.sync_period_schedule_portable_id,
+        ),
+        (
+            "person_medication",
+            "person_medications",
+            &fixture.sync_period_assignment_portable_id,
+        ),
+    ];
+    let initial: Vec<(Value, String)> = sources
+        .iter()
+        .map(|(_, kind, id)| sync_action_resource(&target, household, token, kind, id))
+        .collect();
+    assert!(sync_periods(&target, &fixture).is_empty());
+    let snapshot = target.get(&sync_action_path(household, "sync/snapshot"), Some(token));
+    assert_eq!(snapshot.status().as_u16(), 200);
+    let cursor = body(snapshot)["data"]["cursor"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let create = |source_type: &str, id: &str, reason: &str, note: &str| {
+        json!({"resource_type": "medication_pause_period", "action": "create", "attributes": {
+            "source_type": source_type, "source_id": id, "reason": reason, "note": note
+        }})
+    };
+    let schedule_create = create(
+        "schedule",
+        &fixture.sync_period_schedule_portable_id,
+        "out_of_supply",
+        "Delivery tomorrow",
+    );
+    let assignment_create = create(
+        "person_medication",
+        &fixture.sync_period_assignment_portable_id,
+        "out_of_supply",
+        "Delivery tomorrow",
+    );
+
+    assert_batch_error(
+        sync_action_batch(
+            &target,
+            household,
+            token,
+            json!([create(
+                "schedule",
+                &fixture.sync_period_schedule_portable_id,
+                "unsupported",
+                "Denied"
+            )]),
+        ),
+        422,
+        "unprocessable_content",
+    );
+    assert_batch_error(
+        sync_action_batch(
+            &target,
+            household,
+            &fixture.sync_period_view_access_token,
+            json!([schedule_create]),
+        ),
+        403,
+        "forbidden",
+    );
+    for field in ["started_at", "recorded_by_membership_id"] {
+        let mut forged = schedule_create.clone();
+        forged["attributes"][field] = if field == "started_at" {
+            json!("2026-09-08T12:00:00Z")
+        } else {
+            json!(fixture.sync_period_membership_id)
+        };
+        assert_batch_error(
+            sync_action_batch(&target, household, token, json!([forged])),
+            422,
+            "unprocessable_content",
+        );
+    }
+    let mut numeric_create = schedule_create.clone();
+    numeric_create["attributes"]["source_id"] =
+        json!(initial[0].0["id"].as_i64().unwrap().to_string());
+    assert_batch_error(
+        sync_action_batch(&target, household, token, json!([numeric_create])),
+        404,
+        "not_found",
+    );
+    let feed_before = sync_action_feed(&target, household, token, &cursor);
+    let audit_before = sync_action_audit(&target, household, token);
+    let rollback = sync_action_batch(
+        &target,
+        household,
+        token,
+        json!([schedule_create, {"resource_type": "unsupported", "action": "update",
+            "id": "00000000-0000-4000-8000-000000000000", "attributes": {}}]),
+    );
+    assert_batch_error(rollback, 422, "sync_operation_unsupported");
+    assert!(sync_periods(&target, &fixture).is_empty());
+    let feed_after = sync_action_feed(&target, household, token, &cursor);
+    assert_eq!(feed_after["changes"], feed_before["changes"]);
+    assert_eq!(feed_after["tombstones"], feed_before["tombstones"]);
+    let audit_after = sync_action_audit(&target, household, token);
+    let clinical_audit_ids = |events: &[Value]| -> Vec<Value> {
+        events
+            .iter()
+            .filter(|event| event["event_type"] != "api.request")
+            .map(|event| event["id"].clone())
+            .collect()
+    };
+    assert_eq!(
+        clinical_audit_ids(&audit_after),
+        clinical_audit_ids(&audit_before)
+    );
+    let rollback_audit: Vec<_> = audit_after
+        .iter()
+        .filter(|event| event["metadata"]["status"] == 422)
+        .collect();
+    assert!(rollback_audit
+        .iter()
+        .all(|event| event["event_type"] == "api.request"));
+    for (index, (_, kind, id)) in sources.iter().enumerate() {
+        assert_eq!(
+            sync_action_resource(&target, household, token, kind, id),
+            initial[index]
+        );
+    }
+
+    let route = sync_action_path(household, "sync/batches");
+    let client_ip = sync_action_client_ip(household);
+    let create_key = format!("00000000-0000-4002-8000-{:012x}", household);
+    let create_request = json!({"batch": {"operations": [schedule_create, assignment_create]}});
+    let response = target.post_json_from_local_client(
+        &route,
+        token,
+        &client_ip,
+        Some(&create_key),
+        &create_request,
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let created_body = body(response);
+    let results = created_body["data"]["results"].as_array().unwrap().clone();
+    let cached = target.post_json_from_local_client(
+        &route,
+        token,
+        &client_ip,
+        Some(&create_key),
+        &create_request,
+    );
+    assert_eq!(cached.status().as_u16(), 201);
+    assert_eq!(cached.headers()["idempotency-replayed"], "true");
+    assert_eq!(body(cached), created_body);
+    assert_eq!(results.len(), 2);
+    let mut period_ids = Vec::new();
+    let mut period_etags = Vec::new();
+    for (index, (source_type, kind, id)) in sources.iter().enumerate() {
+        let period_id = assert_batch_result(
+            &results[index],
+            index as u64,
+            "create",
+            "MedicationPausePeriod",
+        );
+        assert_eq!(results[index]["replayed"], false);
+        let (source, _) = sync_action_resource(&target, household, token, kind, id);
+        assert_eq!(source["active"], false);
+        let period = &source["current_pause_period"];
+        assert_eq!(period["portable_id"], period_id);
+        assert_eq!(period["source_type"], *source_type);
+        assert_eq!(period["source_id"], **id);
+        assert_eq!(period["reason"], "out_of_supply");
+        assert_eq!(period["note"], "Delivery tomorrow");
+        assert_eq!(period["legacy_context"], false);
+        assert_eq!(
+            period["recorded_by_membership_id"],
+            fixture.sync_period_membership_id.to_string()
+        );
+        assert!(period["started_at"].is_string());
+        assert!(period["ended_at"].is_null());
+        period_ids.push(period_id);
+        period_etags.push(results[index]["etag"].as_str().unwrap().to_owned());
+    }
+    assert_eq!(sync_periods(&target, &fixture).len(), 2);
+
+    let repeat = sync_action_batch(
+        &target,
+        household,
+        token,
+        json!([create(
+            "schedule",
+            &fixture.sync_period_schedule_portable_id,
+            "other",
+            "Replacement"
+        )]),
+    );
+    assert_eq!(repeat.status().as_u16(), 201);
+    let repeated = body(repeat)["data"]["results"][0].clone();
+    assert_eq!(repeated["replayed"], true);
+    assert_eq!(repeated["record_portable_id"], period_ids[0]);
+    assert_eq!(sync_periods(&target, &fixture).len(), 2);
+
+    let close: Vec<Value> = period_ids
+        .iter()
+        .zip(period_etags.iter())
+        .map(|(id, etag)| {
+            json!({"resource_type": "medication_pause_period", "action": "close", "id": id,
+                "if_match": etag, "attributes": {}})
+        })
+        .collect();
+    let without_version = json!([{"resource_type": "medication_pause_period", "action": "close",
+        "id": period_ids[0], "attributes": {}}]);
+    assert_batch_error(
+        sync_action_batch(&target, household, token, without_version),
+        428,
+        "precondition_required",
+    );
+    assert_batch_error(
+        sync_action_batch(
+            &target,
+            household,
+            token,
+            json!([{"resource_type": "medication_pause_period", "action": "close",
+                "id": period_ids[0], "if_match": "\"stale\"", "attributes": {}}]),
+        ),
+        409,
+        "sync_conflict",
+    );
+    assert_batch_error(
+        sync_action_batch(
+            &target,
+            household,
+            token,
+            json!([{"resource_type": "medication_pause_period", "action": "close",
+                "id": period_ids[0], "if_match": period_etags[0],
+                "attributes": {"reason": "other"}}]),
+        ),
+        422,
+        "unprocessable_content",
+    );
+    assert_eq!(sync_periods(&target, &fixture).len(), 2);
+    let close_key = format!("00000000-0000-4003-8000-{:012x}", household);
+    let close_request = json!({"batch": {"operations": close}});
+    let response = target.post_json_from_local_client(
+        &route,
+        token,
+        &client_ip,
+        Some(&close_key),
+        &close_request,
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let closed_body = body(response);
+    let closed = closed_body["data"]["results"].as_array().unwrap().clone();
+    let cached = target.post_json_from_local_client(
+        &route,
+        token,
+        &client_ip,
+        Some(&close_key),
+        &close_request,
+    );
+    assert_eq!(cached.status().as_u16(), 201);
+    assert_eq!(cached.headers()["idempotency-replayed"], "true");
+    assert_eq!(body(cached), closed_body);
+    for (index, (_, kind, id)) in sources.iter().enumerate() {
+        assert_eq!(closed[index]["action"], "close");
+        assert_eq!(closed[index]["record_portable_id"], period_ids[index]);
+        assert_eq!(closed[index]["replayed"], false);
+        let (source, _) = sync_action_resource(&target, household, token, kind, id);
+        assert_eq!(source["active"], true);
+        assert!(source["current_pause_period"].is_null());
+    }
+    let periods = sync_periods(&target, &fixture);
+    assert_eq!(periods.len(), 2);
+    for period in &periods {
+        assert!(period["ended_at"].is_string());
+        assert_eq!(
+            period["resumed_by_membership_id"],
+            fixture.sync_period_membership_id.to_string()
+        );
+        assert_eq!(period["note"], "Delivery tomorrow");
+    }
+
+    let newer = sync_action_batch(
+        &target,
+        household,
+        token,
+        json!([create(
+            "schedule",
+            &fixture.sync_period_schedule_portable_id,
+            "other",
+            "Later pause"
+        )]),
+    );
+    assert_eq!(newer.status().as_u16(), 201);
+    let newer_id = body(newer)["data"]["results"][0]["record_portable_id"].clone();
+    assert_ne!(newer_id, period_ids[0]);
+    let response = sync_action_batch(
+        &target,
+        household,
+        token,
+        json!([{"resource_type": "medication_pause_period", "action": "close",
+            "id": period_ids[0], "if_match": closed[0]["etag"], "attributes": {}}]),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    assert_eq!(body(response)["data"]["results"][0]["replayed"], true);
+    let (source, _) = sync_action_resource(
+        &target,
+        household,
+        token,
+        "schedules",
+        &fixture.sync_period_schedule_portable_id,
+    );
+    assert_eq!(source["current_pause_period"]["portable_id"], newer_id);
+    assert_eq!(source["active"], false);
+}
+
+#[test]
+fn batch_assignment_actions_pause_resume_and_reorder_with_current_versions() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let household = fixture.sync_action_household_id;
+    let token = &fixture.sync_action_access_token;
+    let sources = [
+        (
+            "schedule",
+            "schedules",
+            "Schedule",
+            &fixture.sync_action_source_schedule_portable_id,
+        ),
+        (
+            "person_medication",
+            "person_medications",
+            "PersonMedication",
+            &fixture.sync_action_source_assignment_portable_id,
+        ),
+    ];
+    let initial: Vec<(Value, String)> = sources
+        .iter()
+        .map(|(_, kind, _, id)| sync_action_resource(&target, household, token, kind, id))
+        .collect();
+    let pause = |source_type: &str, id: &str, etag: &str| {
+        json!({"resource_type": source_type, "action": "pause", "id": id,
+            "if_match": etag, "attributes": {"reason": "clinician_advice", "note": "Queued pause"}})
+    };
+    let schedule_pause = pause(
+        "schedule",
+        &fixture.sync_action_source_schedule_portable_id,
+        &initial[0].1,
+    );
+    let assignment_pause = pause(
+        "person_medication",
+        &fixture.sync_action_source_assignment_portable_id,
+        &initial[1].1,
+    );
+    assert_batch_error(
+        sync_action_batch(
+            &target,
+            household,
+            token,
+            json!([{"resource_type": "schedule", "action": "pause",
+                "id": fixture.sync_action_source_schedule_portable_id,
+                "attributes": {"reason": "clinician_advice"}}]),
+        ),
+        428,
+        "precondition_required",
+    );
+    assert_batch_error(
+        sync_action_batch(
+            &target,
+            household,
+            token,
+            json!([pause(
+                "schedule",
+                &fixture.sync_action_source_schedule_portable_id,
+                "\"stale\""
+            )]),
+        ),
+        409,
+        "sync_conflict",
+    );
+    assert_batch_error(
+        sync_action_batch(
+            &target,
+            household,
+            &fixture.sync_action_view_access_token,
+            json!([schedule_pause]),
+        ),
+        403,
+        "forbidden",
+    );
+    for (index, (_, kind, _, id)) in sources.iter().enumerate() {
+        assert_eq!(
+            sync_action_resource(&target, household, token, kind, id),
+            initial[index]
+        );
+    }
+
+    let key = format!("00000000-0000-4000-8000-{:012x}", household);
+    let route = sync_action_path(household, "sync/batches");
+    let client_ip = sync_action_client_ip(household);
+    let request = json!({"batch": {"operations": [schedule_pause, assignment_pause]}});
+    let first = target.post_json_from_local_client(&route, token, &client_ip, Some(&key), &request);
+    assert_eq!(first.status().as_u16(), 201);
+    let original = body(first);
+    let results = original["data"]["results"].as_array().unwrap();
+    assert_eq!(results.len(), 2);
+    for (index, (_, kind, record_type, id)) in sources.iter().enumerate() {
+        assert_eq!(
+            assert_batch_result(&results[index], index as u64, "pause", record_type),
+            **id
+        );
+        let (source, tag) = sync_action_resource(&target, household, token, kind, id);
+        assert_eq!(results[index]["etag"], tag);
+        assert_eq!(source["active"], false);
+        assert_eq!(source["current_pause_period"]["reason"], "clinician_advice");
+        assert_eq!(source["current_pause_period"]["note"], "Queued pause");
+        assert_eq!(source["current_pause_period"]["legacy_context"], false);
+    }
+    let repeated =
+        target.post_json_from_local_client(&route, token, &client_ip, Some(&key), &request);
+    assert_eq!(repeated.status().as_u16(), 201);
+    assert_eq!(repeated.headers()["idempotency-replayed"], "true");
+    assert_eq!(body(repeated), original);
+
+    let resume: Vec<Value> = sources
+        .iter()
+        .map(|(source_type, kind, _, id)| {
+            let (_, tag) = sync_action_resource(&target, household, token, kind, id);
+            json!({"resource_type": source_type, "action": "resume", "id": id,
+                "if_match": tag, "attributes": {}})
+        })
+        .collect();
+    let response = sync_action_batch(&target, household, token, json!(resume));
+    assert_eq!(response.status().as_u16(), 201);
+    let resumed = body(response)["data"]["results"]
+        .as_array()
+        .unwrap()
+        .clone();
+    for (index, (_, kind, record_type, id)) in sources.iter().enumerate() {
+        assert_eq!(
+            assert_batch_result(&resumed[index], index as u64, "resume", record_type),
+            **id
+        );
+        let (source, tag) = sync_action_resource(&target, household, token, kind, id);
+        assert_eq!(resumed[index]["etag"], tag);
+        assert_eq!(source["active"], true);
+        assert!(source["current_pause_period"].is_null());
+    }
+
+    let first_id = &fixture.sync_action_reorder_first_portable_id;
+    let second_id = &fixture.sync_action_reorder_second_portable_id;
+    let (first_before, _) =
+        sync_action_resource(&target, household, token, "person_medications", first_id);
+    let (second_before, second_tag) =
+        sync_action_resource(&target, household, token, "person_medications", second_id);
+    assert_eq!(
+        second_before["position"].as_i64(),
+        first_before["position"]
+            .as_i64()
+            .map(|position| position + 1)
+    );
+    let reorder = json!({"batch": {"operations": [{"resource_type": "person_medication",
+        "action": "reorder", "id": second_id, "if_match": second_tag,
+        "attributes": {"direction": "up"}}]}});
+    let key = format!("00000000-0000-4001-8000-{:012x}", household);
+    let first = target.post_json_from_local_client(&route, token, &client_ip, Some(&key), &reorder);
+    assert_eq!(first.status().as_u16(), 201);
+    let first_body = body(first);
+    assert_eq!(
+        assert_batch_result(
+            &first_body["data"]["results"][0],
+            0,
+            "reorder",
+            "PersonMedication"
+        ),
+        *second_id
+    );
+    let (first_after, _) =
+        sync_action_resource(&target, household, token, "person_medications", first_id);
+    let (second_after, _) =
+        sync_action_resource(&target, household, token, "person_medications", second_id);
+    assert_eq!(first_after["position"], second_before["position"]);
+    assert_eq!(second_after["position"], first_before["position"]);
+    let replay =
+        target.post_json_from_local_client(&route, token, &client_ip, Some(&key), &reorder);
+    assert_eq!(replay.status().as_u16(), 201);
+    assert_eq!(replay.headers()["idempotency-replayed"], "true");
+    assert_eq!(body(replay), first_body);
+    let (_, current_tag) =
+        sync_action_resource(&target, household, token, "person_medications", second_id);
+    assert_batch_error(
+        sync_action_batch(
+            &target,
+            household,
+            token,
+            json!([{"resource_type": "person_medication", "action": "reorder",
+                "id": second_id, "if_match": current_tag,
+                "attributes": {"direction": "sideways"}}]),
+        ),
+        422,
+        "unprocessable_content",
+    );
+    let (first_retained, _) =
+        sync_action_resource(&target, household, token, "person_medications", first_id);
+    let (second_retained, _) =
+        sync_action_resource(&target, household, token, "person_medications", second_id);
+    assert_eq!(first_retained["position"], first_after["position"]);
+    assert_eq!(second_retained["position"], second_after["position"]);
 }
 
 #[test]

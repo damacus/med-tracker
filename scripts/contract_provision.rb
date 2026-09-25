@@ -111,6 +111,54 @@ fixture = ActiveRecord::Base.transaction do
   offline_cooldown_schedule.medication_takes.create!(taken_at: 1.hour.ago, dose_amount: 1, dose_unit: 'ml')
   offline_expired_schedule = offline_schedule.call('expired', start_date: 3.days.ago.to_date,
                                                                 end_date: Date.yesterday)
+  sync_action_account, sync_action_household, = create_household(nonce, 'sync-actions')
+  sync_action_membership = sync_action_account.household_memberships.find_by!(household: sync_action_household)
+  _sync_action_session, sync_action_access_token, = ApiSession.issue_for(
+    account: sync_action_account, household_membership: sync_action_membership, device_name: 'contract-sync-actions'
+  )
+  sync_action_view_membership, sync_action_view_access_token = create_admin_member(
+    sync_action_household, nonce, 'sync-actions-view'
+  )
+  PersonAccessGrant.create!(household: sync_action_household, household_membership: sync_action_view_membership,
+                            person: sync_action_account.person, access_level: :view, relationship_type: :family_member,
+                            granted_by_membership: sync_action_membership)
+  sync_action_location = Location.create!(household: sync_action_household, name: "Contract sync shelf #{nonce}")
+  sync_action_medications = Array.new(4) do |index|
+    Medication.create!(household: sync_action_household, location: sync_action_location,
+                       name: "Contract sync medicine #{index} #{nonce}", dose_amount: '1',
+                       dose_unit: 'ml', current_supply: '50')
+  end
+  sync_action_schedule = Schedule.create!(household: sync_action_household, person: sync_action_account.person,
+                                          medication: sync_action_medications.first, dose_amount: '1', dose_unit: 'ml',
+                                          frequency: 'Daily', start_date: '2026-01-01', end_date: '2099-12-31')
+  sync_action_assignments = sync_action_medications.last(3).each_with_index.map do |medication, index|
+    PersonMedication.create!(household: sync_action_household, person: sync_action_account.person,
+                             medication: medication, administration_kind: :as_needed, position: index + 10)
+  end
+  sync_period_account, sync_period_household, = create_household(nonce, 'sync-periods')
+  sync_period_membership = sync_period_account.household_memberships.find_by!(household: sync_period_household)
+  _sync_period_session, sync_period_access_token, = ApiSession.issue_for(
+    account: sync_period_account, household_membership: sync_period_membership, device_name: 'contract-sync-periods'
+  )
+  sync_period_view_membership, sync_period_view_access_token = create_admin_member(
+    sync_period_household, nonce, 'sync-periods-view'
+  )
+  PersonAccessGrant.create!(household: sync_period_household, household_membership: sync_period_view_membership,
+                            person: sync_period_account.person, access_level: :view, relationship_type: :family_member,
+                            granted_by_membership: sync_period_membership)
+  sync_period_location = Location.create!(household: sync_period_household, name: "Contract period shelf #{nonce}")
+  sync_period_medications = Array.new(2) do |index|
+    Medication.create!(household: sync_period_household, location: sync_period_location,
+                       name: "Contract period medicine #{index} #{nonce}", dose_amount: '1',
+                       dose_unit: 'ml', current_supply: '50')
+  end
+  sync_period_schedule = Schedule.create!(household: sync_period_household, person: sync_period_account.person,
+                                          medication: sync_period_medications.first, dose_amount: '1', dose_unit: 'ml',
+                                          frequency: 'Daily', start_date: '2026-01-01', end_date: '2099-12-31')
+  sync_period_assignment = PersonMedication.create!(household: sync_period_household,
+                                                    person: sync_period_account.person,
+                                                    medication: sync_period_medications.last,
+                                                    administration_kind: :as_needed)
   web_ai_paid_account, web_ai_paid_household, = create_household(nonce, 'web-ai-paid')
   web_ai_paid_household.update!(subscription_plan: 'family_plus')
   web_ai_paid_member, = create_admin_member(web_ai_paid_household, nonce, 'web-ai-paid-member')
@@ -861,6 +909,19 @@ fixture = ActiveRecord::Base.transaction do
     offline_inactive_schedule_id: offline_inactive_schedule.id,
     offline_cooldown_schedule_id: offline_cooldown_schedule.id,
     offline_expired_schedule_id: offline_expired_schedule.id,
+    sync_action_household_id: sync_action_household.id,
+    sync_action_access_token: sync_action_access_token,
+    sync_action_view_access_token: sync_action_view_access_token,
+    sync_action_source_schedule_portable_id: sync_action_schedule.portable_id,
+    sync_action_source_assignment_portable_id: sync_action_assignments.first.portable_id,
+    sync_action_reorder_first_portable_id: sync_action_assignments.second.portable_id,
+    sync_action_reorder_second_portable_id: sync_action_assignments.third.portable_id,
+    sync_period_household_id: sync_period_household.id,
+    sync_period_membership_id: sync_period_membership.id,
+    sync_period_access_token: sync_period_access_token,
+    sync_period_view_access_token: sync_period_view_access_token,
+    sync_period_schedule_portable_id: sync_period_schedule.portable_id,
+    sync_period_assignment_portable_id: sync_period_assignment.portable_id,
     web_household_slug: household.slug,
     web_foreign_barcode: web_foreign_barcode,
     web_foreign_display: web_foreign_display,
