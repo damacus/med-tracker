@@ -63,7 +63,7 @@ tasks:
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
       CONTRACT_MAILPIT_URL: '{{ .MAILPIT_URL }}'
     cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml {{ if eq .TEST_TARGET "lib" }}--lib{{ else if .TEST_TARGET }}--test {{ .TEST_TARGET }}{{ else }}--lib --test auth --test admin --test invitations --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test reports --test fhir --test platform --test lookup --test web_json_read --test portability --test retained --test web_json_actions --test profile --test web_profile --test sync --test replay --test oauth --test devices --test web_devices --test mcp --test uploads --test envelopes{{ end }} --no-fail-fast -- --test-threads=1
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml {{ if eq .TEST_TARGET "lib" }}--lib{{ else if .TEST_TARGET }}--test {{ .TEST_TARGET }}{{ else }}--lib --test auth --test admin --test invitations --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test reports --test fhir --test platform --test lookup --test web_json_read --test portability --test retained --test web_json_actions --test profile --test web_profile --test sync --test replay --test oauth --test devices --test web_devices --test push_delivery --test mcp --test uploads --test envelopes{{ end }} --no-fail-fast -- --test-threads=1
 
   run-platform:
     desc: Run platform administration web-session contract cases
@@ -86,6 +86,17 @@ tasks:
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test web_devices -- --test-threads=1
+
+  run-push-delivery:
+    desc: Run API and web push sender outcome contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test push_delivery -- --test-threads=1
 
   run-auth-boundaries:
     desc: Run API authentication and tenant-boundary contract cases
@@ -654,6 +665,11 @@ tasks:
     cmds:
       - fish rust/contract-tests/run.fish rails web-devices
 
+  push-delivery-rails:
+    desc: Run API and web push sender cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails push-delivery
+
   web-devices-rust:
     desc: Run web device and notification preference cases against a Rust URL
     env:
@@ -661,6 +677,14 @@ tasks:
       CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
       - fish rust/contract-tests/run.fish rust web-devices
+
+  push-delivery-rust:
+    desc: Run API and web push sender cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust push-delivery
   web-profile-rails:
     desc: Run web profile, avatar, and health cases against isolated Rails
     cmds:
