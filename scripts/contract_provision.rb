@@ -124,6 +124,9 @@ fixture = ActiveRecord::Base.transaction do
     email: invitation_expired_account.email, membership_role: :member,
     invited_by_membership: membership, expires_at: 1.day.ago
   )
+  invitation_expired.household_invitation_grants.create!(
+    household: household, person: managed_person, access_level: :record, relationship_type: :professional
+  )
   invitation_revoked = household.household_invitations.create!(
     email: invitation_revoked_account.email, membership_role: :member, invited_by_membership: membership
   )
@@ -445,6 +448,7 @@ fixture = ActiveRecord::Base.transaction do
     invitation_accept_token: invitation_accept.plain_token,
     invitation_expired_id: invitation_expired.id,
     invitation_expired_email: invitation_expired_account.email,
+    invitation_expired_account_id: invitation_expired_account.id,
     invitation_expired_access_token: invitation_expired_access_token,
     invitation_expired_token: invitation_expired.plain_token,
     invitation_revoked_id: invitation_revoked.id,

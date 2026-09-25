@@ -447,6 +447,67 @@ fn task_6b_resend_renews_expired_replays_once_and_rejects_revoked() {
         mailpit.message_ids_to(&fixture.invitation_expired_email),
         vec![delivered_id]
     );
+    let accepted = target.post_json_authorized(
+        accept,
+        &fixture.invitation_expired_access_token,
+        &json!({"token": replacement_token}),
+    );
+    assert_eq!(accepted.status().as_u16(), 200);
+    let accepted_body = body(accepted);
+    assert_no_token_shaped_material(&accepted_body);
+    assert_eq!(
+        accepted_body["data"]["household_id"],
+        fixture.household_id.to_string()
+    );
+    let accepted_membership_id = accepted_body["data"]["membership_id"]
+        .as_str()
+        .expect("accepted membership ID")
+        .parse::<i64>()
+        .expect("numeric membership ID");
+    let households = body(target.get(
+        "/api/v1/auth/households",
+        Some(&fixture.invitation_expired_access_token),
+    ));
+    assert_eq!(
+        households["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|row| row["id"] == fixture.household_id)
+            .count(),
+        1
+    );
+    let memberships = format!(
+        "/api/v1/households/{}/admin/memberships",
+        fixture.household_id
+    );
+    let members = body(target.get(&memberships, Some(&fixture.access_token)));
+    let matching_members: Vec<_> = members["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|row| row["account_id"] == fixture.invitation_expired_account_id)
+        .collect();
+    assert_eq!(matching_members.len(), 1);
+    assert_eq!(matching_members[0]["id"], accepted_membership_id);
+    let grants = format!(
+        "/api/v1/households/{}/admin/person_access_grants",
+        fixture.household_id
+    );
+    let granted = body(target.get(&grants, Some(&fixture.access_token)));
+    assert_eq!(
+        granted["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|row| {
+                row["household_membership_id"] == accepted_membership_id
+                    && row["person_id"] == fixture.managed_person_id
+                    && row["revoked_at"].is_null()
+            })
+            .count(),
+        1
+    );
     assert_error(
         target.post_json_authorized(&resend, &fixture.manager_app_token, &json!({})),
         403,
@@ -466,19 +527,36 @@ fn task_6b_resend_renews_expired_replays_once_and_rejects_revoked() {
         404,
         "not_found",
     );
-    let response = target.delete(&item, Some(&fixture.access_token));
+    assert!(mailpit.message_ids_to(&fixture.foreign_email).is_empty());
+    let created = target.post_json_authorized(
+        &list,
+        &fixture.access_token,
+        &json!({"household_invitation": {"email": fixture.foreign_email.clone(), "membership_role": "member"}}),
+    );
+    assert_eq!(created.status().as_u16(), 201);
+    let revoked_id = body(created)["data"]["id"]
+        .as_i64()
+        .expect("revocation invitation ID");
+    let revoked_item = format!("{list}/{revoked_id}");
+    let revoked_resend = format!("{revoked_item}/resend");
+    let response = target.post_json_authorized(&revoked_resend, &fixture.access_token, &json!({}));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_no_token_shaped_material(&body(response));
+    let revoked_message_id = mailpit.wait_for_one_to(&fixture.foreign_email);
+    let revoked_replacement_token = mailpit.token_from_message(&revoked_message_id);
+    let response = target.delete(&revoked_item, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 204);
     assert_error(
         target.post_json_authorized(
             accept,
-            &fixture.invitation_expired_access_token,
-            &json!({"token": replacement_token}),
+            &fixture.foreign_access_token,
+            &json!({"token": revoked_replacement_token}),
         ),
         422,
         "invitation_unavailable",
     );
     assert_error(
-        target.post_json_authorized(&resend, &fixture.access_token, &json!({})),
+        target.post_json_authorized(&revoked_resend, &fixture.access_token, &json!({})),
         422,
         "unprocessable_content",
     );

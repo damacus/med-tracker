@@ -38,6 +38,7 @@ pub struct Fixture {
     pub invitation_accept_token: String,
     pub invitation_expired_id: i64,
     pub invitation_expired_email: String,
+    pub invitation_expired_account_id: i64,
     pub invitation_expired_access_token: String,
     pub invitation_expired_token: String,
     pub invitation_revoked_id: i64,
