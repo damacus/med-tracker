@@ -39,6 +39,28 @@ fn direct_upload_creation_is_unavailable() {
 }
 
 #[test]
+fn signed_direct_write_disk_token_cannot_replace_existing_blob() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let redirect = format!(
+        "{PREFIX}/blobs/redirect/{}/contract-icon.png",
+        fixture.upload_blob_signed_id
+    );
+    let disk = disk_path(target.get(&redirect, None));
+    assert_icon(target.get(&disk, None));
+
+    let write_path = format!("{PREFIX}/disk/{}", fixture.upload_disk_write_token);
+    assert_eq!(
+        target
+            .put_json_without_auth(&write_path, &json!({"bytes": "untrusted"}))
+            .status()
+            .as_u16(),
+        404
+    );
+    assert_icon(target.get(&disk, None));
+}
+
+#[test]
 fn signed_blob_redirect_proxy_and_alias_download_public_bytes() {
     let target = Target::from_env();
     let fixture = fixture();

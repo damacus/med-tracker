@@ -870,6 +870,15 @@ fixture = ActiveRecord::Base.transaction do
     profile_revoke_mobile_token: profile_revoke_mobile_token,
     profile_signed_blob_id: profile_signed_blob.signed_id,
     upload_blob_signed_id: upload_blob.signed_id,
+    upload_disk_write_token: ActiveStorage.verifier.generate(
+      {
+        key: upload_blob.key,
+        content_type: upload_blob.content_type,
+        content_length: upload_blob.byte_size,
+        checksum: upload_blob.checksum,
+        service_name: upload_blob.service.name
+      }, expires_in: 24.hours, purpose: :blob_token
+    ),
     upload_variation_key: upload_blob.variant(resize_to_limit: [16, 16]).variation.key,
     lookup_paid_household_id: lookup_paid_household.id,
     lookup_paid_account_id: lookup_paid_account.id,
