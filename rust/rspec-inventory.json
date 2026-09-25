@@ -6,8 +6,8 @@
     {
       "path": "spec/architecture/controller_concerns_spec.rb",
       "category": "Rails-only",
-      "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "review": false,
+      "rationale": "Static guard against a single-use Rails controller concern; no retained user-visible contract."
     },
     {
       "path": "spec/architecture/domain_boundaries_spec.rb",
@@ -18,8 +18,8 @@
     {
       "path": "spec/architecture/job_framework_api_collisions_spec.rb",
       "category": "Rails-only",
-      "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "review": false,
+      "rationale": "Static guard against Rails Active Job helper method collisions; no retained user-visible contract."
     },
     {
       "path": "spec/architecture/tenant_safety_spec.rb",
@@ -638,15 +638,15 @@
     },
     {
       "path": "spec/concerns/authentication_oidc_spec.rb",
-      "category": "Rails-only",
+      "category": "browser",
       "review": true,
-      "rationale": "Rails controller, middleware, or authentication integration check; port its public behaviour through API or browser tests."
+      "rationale": "OIDC MFA session state, two-factor prompt, and professional-title effects need browser parity; Rails concern mechanics are implementation-only."
     },
     {
       "path": "spec/config/authentication/passkey_configuration_spec.rb",
-      "category": "Rails-only",
+      "category": "browser",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Discoverable passkey registration and verified passkey login need browser parity; Rails schema and Rodauth method checks are implementation-only."
     },
     {
       "path": "spec/config/database_role_config_spec.rb",
@@ -668,15 +668,15 @@
     },
     {
       "path": "spec/config/json_spec.rb",
-      "category": "Rails-only",
-      "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "category": "operational",
+      "review": false,
+      "rationale": "Dependency automation policy for repository maintenance; no application behavior to port."
     },
     {
       "path": "spec/config/med_tracker/application_host_authorization_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Production APP_URL host allowlist and health-route exceptions require an isolated production-configuration check; parity matrix row 154 records the gap."
     },
     {
       "path": "spec/config/med_tracker/application_spec.rb",
@@ -736,13 +736,13 @@
       "path": "spec/controllers/locations_controller_spec.rb",
       "category": "Rails-only",
       "review": true,
-      "rationale": "Rails controller, middleware, or authentication integration check; port its public behaviour through API or browser tests."
+      "rationale": "Rails strong-parameter implementation check for name and description; verify equivalent create/update field allowlist through HTTP or browser tests."
     },
     {
       "path": "spec/database/fresh_schema_row_level_security_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Disposable fresh-schema row-level security and runtime-role isolation must be verified for the Rust database setup."
     },
     {
       "path": "spec/domain/dose_amount_spec.rb",
@@ -1143,9 +1143,9 @@
     },
     {
       "path": "spec/lib/rodauth_main_spec.rb",
-      "category": "Rails-only",
+      "category": "API",
       "review": true,
-      "rationale": "Rails controller, middleware, or authentication integration check; port its public behaviour through API or browser tests."
+      "rationale": "SMART OAuth scope and token behavior need portable HTTP coverage; login, consent, MFA, and OIDC results also need browser coverage."
     },
     {
       "path": "spec/lib/schema_inventory_spec.rb",
@@ -1184,123 +1184,123 @@
     },
     {
       "path": "spec/migrations/add_carer_relationship_source_to_person_access_grants_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Preserve ambiguous legacy grant provenance and structural rollback; verify that the cutover does not invent carer ownership."
     },
     {
       "path": "spec/migrations/add_portable_ids_to_health_events_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Preserve existing health events while backfilling portable IDs through forced row-level security."
     },
     {
       "path": "spec/migrations/add_portable_ids_to_mobile_domain_records_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Backfill missing portable IDs across populated mobile-domain tables without changing existing IDs on retry."
     },
     {
       "path": "spec/migrations/add_window_end_to_medication_dose_occurrences_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Backfill dose occurrence window ends across households under tenant isolation without losing history."
     },
     {
       "path": "spec/migrations/allow_account_linked_person_rls_login_lookup_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Install login lookup policy only after runtime roles exist; verify account-linked person visibility under the cutover role."
     },
     {
       "path": "spec/migrations/backfill_legacy_medication_pause_periods_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Preserve completed and open pause history while adding missing legacy periods idempotently."
     },
     {
       "path": "spec/migrations/backfill_missing_household_memberships_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Preserve account-linked memberships, active owner roles, and carer access grants during data migration."
     },
     {
       "path": "spec/migrations/bound_api_app_token_lifetimes_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Backfill existing app-token expiry from issuance without extending already expired credentials."
     },
     {
       "path": "spec/migrations/configure_audit_object_lock_exporter_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Preserve ledger export and delivery access while denying clinical reads and evidence mutation."
     },
     {
       "path": "spec/migrations/configure_audit_verifier_role_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Preserve audit verifier read access and deny clinical reads or changes to audit evidence."
     },
     {
       "path": "spec/migrations/configure_database_runtime_roles_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Verify runtime role bootstrapping and safe failure when required database roles are unavailable."
     },
     {
       "path": "spec/migrations/create_household_medication_take_purge_function_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Preserve tenant and operator scoped take-purge refusal, exact deletion count, retry, and context restoration."
     },
     {
       "path": "spec/migrations/create_tamper_evident_audit_ledger_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Backfill existing audit evidence into a legacy epoch and preserve the live ledger head."
     },
     {
       "path": "spec/migrations/enforce_one_active_nhs_dmd_import_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Reconcile interrupted or duplicate import runs before enforcing one active catalogue import."
     },
     {
       "path": "spec/migrations/enforce_strict_household_tenant_boundary_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Validate relationship household ownership before backfill, restore forced RLS on failure, and reject cross-tenant links."
     },
     {
       "path": "spec/migrations/grant_audit_verifier_complete_visibility_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Allow complete audit evidence verification without clinical reads, row-security bypass, or evidence mutation."
     },
     {
       "path": "spec/migrations/register_android_oauth_clients_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Preserve exact public Android OAuth callbacks without modifying existing integrations."
     },
     {
       "path": "spec/migrations/repair_rls_hidden_audit_sources_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Repair forced-RLS hidden audit evidence without changing existing entries; roll back transient policies on failure."
     },
     {
       "path": "spec/migrations/retire_api_oidc_nonces_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Refuse deletion of a populated nonce table and retain structural rollback for legacy data."
     },
     {
       "path": "spec/migrations/retire_nhs_dmd_archive_path_spec.rb",
-      "category": "Rails-only",
+      "category": "operational",
       "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "rationale": "Refuse dropping nonempty catalogue archive paths and preserve column rollback."
     },
     {
       "path": "spec/models/account_preferences_spec.rb",
@@ -1809,8 +1809,9 @@
     },
     {
       "path": "spec/requests/admin/audit_logs_rate_limiting_spec.rb",
-      "category": "browser",
-      "review": true
+      "category": "API",
+      "review": true,
+      "rationale": "Admin audit-log HTTP 429 and Retry-After behavior is observable; add a portable rate-limit contract before clearing review."
     },
     {
       "path": "spec/requests/admin/audit_logs_spec.rb",
@@ -1870,8 +1871,9 @@
     },
     {
       "path": "spec/requests/admin_users_index_performance_spec.rb",
-      "category": "browser",
-      "review": true
+      "category": "operational",
+      "review": true,
+      "rationale": "Rails 100-user admin index response-time budget; establish a representative Rust workload benchmark before clearing review."
     },
     {
       "path": "spec/requests/admin_users_index_spec.rb",
@@ -2252,8 +2254,9 @@
     },
     {
       "path": "spec/requests/medication_lookup_rate_limiting_spec.rb",
-      "category": "browser",
-      "review": true
+      "category": "API",
+      "review": false,
+      "rationale": "JSON finder rate limiting and Retry-After behavior are covered by rust/contract-tests/tests/web_json_read.rs and parity matrix row 152."
     },
     {
       "path": "spec/requests/medication_pause_context_spec.rb",
@@ -2312,8 +2315,9 @@
     },
     {
       "path": "spec/requests/medications_finder_spec.rb",
-      "category": "browser",
-      "review": true
+      "category": "API",
+      "review": true,
+      "rationale": "HTTP Permissions-Policy camera header for the finder is observable; add a portable response-header contract before clearing review."
     },
     {
       "path": "spec/requests/medications_log_administration_spec.rb",
@@ -2327,8 +2331,9 @@
     },
     {
       "path": "spec/requests/medications_open_food_facts_search_spec.rb",
-      "category": "browser",
-      "review": true
+      "category": "API",
+      "review": false,
+      "rationale": "JSON supplement and barcode finder responses are covered by rust/contract-tests/tests/web_json_read.rs and parity matrix row 152; browser interaction is separate."
     },
     {
       "path": "spec/requests/medications_refill_spec.rb",
@@ -2347,8 +2352,9 @@
     },
     {
       "path": "spec/requests/medications_search_spec.rb",
-      "category": "browser",
-      "review": true
+      "category": "API",
+      "review": false,
+      "rationale": "JSON finder response, filters, permission scoping and error behavior are covered by rust/contract-tests/tests/web_json_read.rs and parity matrix row 152; browser interaction is separate."
     },
     {
       "path": "spec/requests/medications_single_dose_switch_spec.rb",
@@ -2387,8 +2393,9 @@
     },
     {
       "path": "spec/requests/observability_exception_capture_spec.rb",
-      "category": "browser",
-      "review": true
+      "category": "operational",
+      "review": true,
+      "rationale": "Injected request failure records a trace exception; verify equivalent Rust operational telemetry before clearing review."
     },
     {
       "path": "spec/requests/offline_spec.rb",
@@ -2527,8 +2534,9 @@
     },
     {
       "path": "spec/requests/test_setup_spec.rb",
-      "category": "browser",
-      "review": true
+      "category": "Rails-only",
+      "review": false,
+      "rationale": "RSpec fixture assignment and test-session helper behavior; it does not define an application route contract."
     },
     {
       "path": "spec/requests/timeline_refresh_spec.rb",
@@ -2558,8 +2566,8 @@
     {
       "path": "spec/routing/active_storage_routes_spec.rb",
       "category": "Rails-only",
-      "review": true,
-      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+      "review": false,
+      "rationale": "Rails route-matcher implementation check; direct-upload POST and disk-token PUT absence are covered over HTTP by rust/contract-tests/tests/uploads.rs and parity matrix row 143."
     },
     {
       "path": "spec/scripts/compare_ruby_ui_spec.rb",
@@ -2593,9 +2601,9 @@
     },
     {
       "path": "spec/security/zitadel_oidc_spec.rb",
-      "category": "Rails-only",
+      "category": "browser",
       "review": true,
-      "rationale": "Rails controller, middleware, or authentication integration check; port its public behaviour through API or browser tests."
+      "rationale": "OIDC single sign-out, claim mapping, and MFA outcomes need browser parity; this spec currently checks Rails source strings."
     },
     {
       "path": "spec/seeds/audit_evidence_spec.rb",
