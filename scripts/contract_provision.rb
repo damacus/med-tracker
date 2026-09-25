@@ -90,6 +90,15 @@ fixture = ActiveRecord::Base.transaction do
   retained_schedule = Schedule.create!(household: retained_household, person: retained_account.person,
                                        medication: retained_medication, dose_amount: '1', dose_unit: 'ml',
                                        frequency: 'Daily', start_date: '2026-01-01', end_date: '2099-12-31')
+  offline_csrf_account, offline_csrf_household, = create_household(nonce, 'offline-csrf')
+  offline_csrf_location = Location.create!(household: offline_csrf_household,
+                                           name: "Contract offline CSRF shelf #{nonce}")
+  offline_csrf_medication = Medication.create!(household: offline_csrf_household, location: offline_csrf_location,
+                                               name: "Contract offline CSRF medicine #{nonce}", dose_amount: '1',
+                                               dose_unit: 'ml', current_supply: '50')
+  offline_csrf_schedule = Schedule.create!(household: offline_csrf_household, person: offline_csrf_account.person,
+                                           medication: offline_csrf_medication, dose_amount: '1', dose_unit: 'ml',
+                                           frequency: 'Daily', start_date: '2026-01-01', end_date: '2099-12-31')
   offline_future_account, offline_future_household, = create_household(nonce, 'offline-future')
   offline_future_location = Location.create!(household: offline_future_household,
                                              name: "Contract offline future shelf #{nonce}")
@@ -904,6 +913,11 @@ fixture = ActiveRecord::Base.transaction do
     retained_schedule_id: retained_schedule.id,
     retained_medication_id: retained_medication.id,
     retained_foreign_household_slug: foreign_household.slug,
+    offline_csrf_household_slug: offline_csrf_household.slug,
+    offline_csrf_household_id: offline_csrf_household.id,
+    offline_csrf_email: offline_csrf_account.email,
+    offline_csrf_schedule_id: offline_csrf_schedule.id,
+    offline_csrf_medication_id: offline_csrf_medication.id,
     offline_future_household_slug: offline_future_household.slug,
     offline_future_household_id: offline_future_household.id,
     offline_future_email: offline_future_account.email,
