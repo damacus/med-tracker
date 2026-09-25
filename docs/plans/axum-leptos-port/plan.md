@@ -30,15 +30,17 @@ web, and in-process job workload. PostgreSQL and supporting services are
 outside that budget. Measure warm idle and representative requests separately;
 do not claim the target from a framework benchmark or a process at startup.
 
-Keep the persistence choice open until a small PostgreSQL 18 trial compares
-typed, parameterized SQL and an ORM on a representative authorized read and an
-atomic medication stock update. Compare query clarity, schema checking,
+Use an ORM-backed PostgreSQL 18 persistence layer. Before selecting the ORM,
+compare stable Diesel Async and SeaORM on a representative authorized read and
+an atomic medication stock update. Compare query clarity, schema checking,
 transaction safety, integration-test setup, and measured application memory;
-do not infer memory savings from the abstraction alone. Cover the chosen paths
+do not infer memory savings from the abstraction alone. Use parameterized raw
+SQL only where the selected ORM cannot express a PostgreSQL-specific operation
+clearly, with the owning domain and an integration test. Cover the chosen paths
 with PostgreSQL integration tests. Keep API and browser parity tests at the
 HTTP and UI boundaries, independent of the persistence implementation. Before
 product implementation, review one shared foundation contract for workspace
-crates, persistence choice, auth context, response and error types, router
+crates, the ORM selection, auth context, response and error types, router
 wiring, and migrations. Keep shared manifests, schema, router, and
 cross-domain abstractions under one integration owner.
 

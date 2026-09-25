@@ -13,8 +13,14 @@ Planning baseline: `781c3a297ffe24ae5b70f893d55b568eab1216fc`.
   supporting services are excluded.
 - API tests precede broad UI parity tests; product implementation follows both
   baselines except the bounded Leptos foundation ruling below.
-- Persistence remains undecided until typed, parameterized SQL and an ORM are
-  compared against representative PostgreSQL 18 operations and memory data.
+- Persistence will be ORM-backed. Select between stable Diesel Async and
+  SeaORM after representative PostgreSQL 18 operations and application-memory
+  measurements; reserve parameterized SQL for narrow ORM gaps.
+
+Ruling: ORM-backed persistence is required by the active cutover goal — a
+PostgreSQL 18 trial chooses the ORM before Rust API implementation — the cost
+if wrong is reworking the persistence boundary, not dropping the ORM
+requirement without a new product decision.
 
 Ruling: start one isolated Leptos SSR login-page foundation before the full
 API and browser baselines close — the user explicitly requested an early UI
@@ -108,3 +114,17 @@ the memory target are not yet verified. The first combined contract run exposed
 a reused pause period in the new test's shared fixture; after the test resumed
 both schedules before its cursor, the complete integrated corpus passed
 228/0/12 across 31 groups.
+
+API Task 7 audit at `670786ae`: the 228/0/12 Rails-backed run does not close
+the baseline gate. The independent audit identified missing exact-set coverage
+for health-history reports, an untested direct-write-purpose disk-token route,
+and an unresolved `show_hidden` OpenAPI/Rails discrepancy. The 12 ignored
+cases remain classified Rails defects or owned gaps, not green parity proof.
+General browser-test writing waits for Task 7 reconciliation and handoff.
+
+Browser/PWA read-only inventory: first journeys are session boundaries,
+parent medication assignment, and offline dose queue/replay. Source inspection
+found the service worker caches `/offline` while the authenticated shell is
+`/households/:slug/offline`; a real controlled offline navigation test must
+establish the Rails baseline before this is treated as a confirmed runtime
+defect or as a Rust parity requirement.
