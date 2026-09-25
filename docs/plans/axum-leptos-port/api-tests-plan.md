@@ -91,3 +91,10 @@ retained non-v1 route, and relevant existing request and domain specs. Resolve
 missing or duplicate coverage. Verify the complete API suite against Rails
 and report expected Rust red status separately. Produce the UI test phase
 handoff with fixtures, commands, known gaps, and unresolved rulings.
+
+For the retained web AI suggestion action, Rust parity requires two separate
+server configurations: run `rtk task contract:web-json-actions-rust` against an
+enabled target and `rtk task contract:web-json-actions-disabled-rust` against a
+feature-disabled target. The generic Rust contract run ignores the disabled
+case and cannot establish feature-gate parity by itself. Count this route as
+ported only when both commands pass against their matching configurations.
