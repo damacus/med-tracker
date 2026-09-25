@@ -213,3 +213,21 @@ after these additions. Twelve ordinary cases remain ignored with recorded
 reasons; the separately enabled feature-disabled AI case passed. Rust
 formatting, Clippy, documentation build, and inventory JSON validation pass.
 This is Rails baseline evidence, not a passing Rust API implementation.
+
+Platform support-access contract expansion (`f0b04db8`; independent review
+clean): the web contract now checks held-household denial with the visible
+authorisation alert, and an expired session's late DELETE creates one
+session-specific expiry audit event rather than an explicit end event.
+Focused Rails passed 4/4. The held no-row-write assertion remains in the
+Rails request spec because the public UI has no support-session listing;
+forced-RLS behaviour remains a PostgreSQL operational check.
+
+Offline queued-write CSRF contract (`e619b690`; independent review clean):
+the retained web tests now run with the production-style CSRF overlay.
+Missing and wrong tokens return 401 with observer-visible takes and stock
+unchanged; a valid rendered token creates one take and decrements stock once.
+Focused Rails passed 6/6. The combined runner enables the same overlay for
+the retained target. The subsequent integrated Rails-backed contract run
+passed all 32 target groups with the 12 recorded ignored cases; the separate
+feature-disabled AI case passed. API contract expansion is paused while the
+first Rust medication read implementation proceeds.
