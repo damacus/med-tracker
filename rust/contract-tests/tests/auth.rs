@@ -114,6 +114,62 @@ fn selected_session_revocation_invalidates_its_bearer() {
 }
 
 #[test]
+fn other_account_session_revocation_preserves_both_bearers() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let foreign_sessions = target.get("/api/v1/auth/sessions", Some(&fixture.foreign_access_token));
+    assert_eq!(foreign_sessions.status().as_u16(), 200);
+    let foreign_listing: Value = foreign_sessions.json().expect("foreign session listing");
+    let foreign_session_id = foreign_listing["data"]
+        .as_array()
+        .expect("foreign sessions")
+        .iter()
+        .find(|session| session["device_name"] == "contract-foreign")
+        .expect("foreign account session")["id"]
+        .as_i64()
+        .expect("foreign session ID");
+    assert_ne!(foreign_session_id, fixture.session_id);
+
+    let denied = target.delete(
+        &format!("/api/v1/auth/sessions/{foreign_session_id}"),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(denied.status().as_u16(), 404);
+    let foreign_after = target.get("/api/v1/auth/sessions", Some(&fixture.foreign_access_token));
+    assert_eq!(foreign_after.status().as_u16(), 200);
+    let foreign_after: Value = foreign_after.json().expect("foreign session after denial");
+    assert!(foreign_after["data"]
+        .as_array()
+        .expect("foreign sessions after denial")
+        .iter()
+        .any(|session| session["id"] == foreign_session_id));
+    assert!(!foreign_after["data"]
+        .as_array()
+        .expect("foreign sessions after denial")
+        .iter()
+        .any(|session| session["id"] == fixture.session_id));
+
+    let denied = target.delete(
+        &format!("/api/v1/auth/sessions/{}", fixture.session_id),
+        Some(&fixture.foreign_access_token),
+    );
+    assert_eq!(denied.status().as_u16(), 404);
+    let owner_after = target.get("/api/v1/auth/sessions", Some(&fixture.access_token));
+    assert_eq!(owner_after.status().as_u16(), 200);
+    let owner_after: Value = owner_after.json().expect("owner session after denial");
+    assert!(owner_after["data"]
+        .as_array()
+        .expect("owner sessions after denial")
+        .iter()
+        .any(|session| session["id"] == fixture.session_id));
+    assert!(!owner_after["data"]
+        .as_array()
+        .expect("owner sessions after denial")
+        .iter()
+        .any(|session| session["id"] == foreign_session_id));
+}
+
+#[test]
 fn logout_revokes_the_current_bearer_and_is_idempotent_without_one() {
     let fixture = fixture();
     let target = Target::from_env();

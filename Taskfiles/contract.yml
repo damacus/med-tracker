@@ -98,6 +98,17 @@ tasks:
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test auth --test envelopes task_6n_ --no-fail-fast -- --test-threads=1
 
+  run-auth-session-boundary:
+    desc: Run cross-account session revocation contract case
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test auth other_account_session_revocation_preserves_both_bearers -- --test-threads=1
+
   run-portability:
     desc: Run portable household export and import contract cases
     requires:
@@ -464,6 +475,11 @@ tasks:
     cmds:
       - fish rust/contract-tests/run.fish rails auth-boundaries
 
+  auth-session-boundary-rails:
+    desc: Run cross-account session revocation case against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails auth-session-boundary
+
   invitations-rails:
     desc: Run household invitation cases against isolated Rails
     cmds:
@@ -700,6 +716,14 @@ tasks:
       CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
       - fish rust/contract-tests/run.fish rust auth-boundaries
+
+  auth-session-boundary-rust:
+    desc: Run cross-account session revocation case against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust auth-session-boundary
 
   invitations-rust:
     desc: Run household invitation cases against a Rust URL
