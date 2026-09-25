@@ -17,6 +17,13 @@ runner generates a disposable authentication signing key before Compose
 starts; deployment must supply its own stable `AUTH_SESSION_SECRET` and
 trusted `PUBLIC_BASE_URL`.
 
+`task api:browser-rails` runs the medication browser journey against a
+disposable Rails fixture before porting that UI. Its Playwright sidecar shares
+the Rails container's network namespace and uses loopback port 3000. This
+baseline does not build the Rust API. Screenshots are written separately to
+`docs/screenshots/journey-medication-rails/`; Rails browser results must not
+be reported as Rust UI parity.
+
 The service currently handles collection and single-record medication GETs for
 Rails `ApiSession` and mobile OAuth bearer tokens. It checks the token digest, expiry,
 revocation, verified account, active user and membership, permissions version,
@@ -65,6 +72,16 @@ Standalone web dashboard login, MFA/passkey completion, password reset,
 explicit consent cancellation, `ApiSession.touch_last_used!`,
 app/integration credentials and most other API routes remain incomplete.
 The service is not a drop-in replacement for the complete Rails application.
+
+Direct-dose contract corrections verified by the 36-case HTTP acceptance run:
+reusing a client UUID
+with contradictory dose data returns 409 with the generic `conflict` error
+code. An explicitly supplied unit that disagrees with the source is rejected
+with 422 on creation and 409 on conflicting replay. Rails currently returns
+an existing UUID before validating the new payload and silently ignores the
+submitted unit. Those defects are not Rust requirements. The root OpenAPI
+document remains Rails-owned; its cutover reconciliation must include these
+deliberate corrections.
 
 Authenticated medication list and show reads write `api.request` rows through
 SeaORM under the restricted role. Successful reads use a `success` outcome; a scoped

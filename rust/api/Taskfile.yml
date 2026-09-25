@@ -30,6 +30,14 @@ tasks:
     cmds:
       - fish rust/contract-tests/run.fish rails medication-read-api
 
+  browser-rails:
+    cmds:
+      - fish rust/contract-tests/run.fish rails browser-journey-rails
+
+  web-session-acceptance:
+    cmds:
+      - fish rust/contract-tests/run.fish rails web-session-api
+
   contract-runner-test:
     cmds:
       - fish rust/contract-tests/runner_compose_test.fish
@@ -78,6 +86,15 @@ tasks:
     cmds:
       - fish rust/contract-tests/remove_image.fish {{ .CONTRACT_PROJECT }}
 
+  contract-web-session-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test web_session_api -- --test-threads=1
+
   contract-browser-test:
     requires:
       vars: [CONTRACT_PROJECT]
@@ -92,6 +109,17 @@ tasks:
   contract-network-diagnostics:
     cmds:
       - fish rust/contract-tests/network_diagnostics.fish
+
+  contract-browser-rails:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - mkdir -p docs/screenshots/journey-medication-rails
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test build rails-browser-tests
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rails-browser-tests node --test tests/medication-journey.test.mjs
 
   contract-subnet-check:
     requires:

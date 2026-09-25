@@ -3,9 +3,32 @@
 Plan: `docs/plans/axum-leptos-port/plan.md`
 
 Current goal: [goal.md](goal.md). The user authorized the workflow-first
-milestones and continued execution on 25 September. The app-level objective
-and paused status cannot be changed by the available tools; repository records
-are updated and work continues in this turn under that explicit instruction.
+milestones and continued execution on 25 September. The app-level full
+cutover-readiness goal now reports active. The previous turn made concrete
+progress: reviewed secure entry was committed and pushed as `2a8b4c1b`.
+
+## Direct dose checkpoint
+
+Direct medication-take POST and history GET now pass independent requirements
+and code-quality review. The stable combined run passed 36 HTTP cases and five
+existing OAuth browser cases. Dose coverage includes exact stock arithmetic,
+schedule and assignment sources, tracked inventory, authorization, request and
+clinical audit records, concurrent retries and cross-household UUID conflicts.
+See [dose review](journey-dose-review.md) and
+[runner evidence](journey-dose-runner-report.md).
+
+Known Rails defects are corrected: contradictory UUID retries return 409 and
+contradictory supplied units are rejected. These are deliberate changes to
+reconcile with the shared OpenAPI document before cutover. The passing browser
+cases cover secure entry; the first-party Rust dose journey remains next.
+Its [session and shared API boundary](journey-web-boundary.md) and
+[tests](journey-web-api-tests-brief.md) are prepared. The Rails browser baseline
+also identified missing Escape focus restoration, which Rust must correct.
+The final Rails browser baseline passes both desktop/mobile dose, stock and
+history journeys plus the invalid-login/foreign-record denial case. Its two
+strict focus cases still fail and remain required corrections. The dedicated
+web-session HTTP baseline fails all four cases at the missing standalone
+login CSRF form, establishing RED for the next implementation.
 
 ## Secure entry checkpoint
 

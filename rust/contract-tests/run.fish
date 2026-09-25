@@ -183,7 +183,7 @@ function run_contract
         or return $status
         set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner-subnet.compose.yaml"
     end
-    if test "$argv[2]" = medication-read-api
+    if contains -- "$argv[2]" medication-read-api web-session-api browser-journey-rails
         set -gx CONTRACT_AUTH_SESSION_SECRET (rtk proxy openssl rand -hex 32)
         or return $status
         set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner.compose.yaml"
@@ -200,7 +200,7 @@ function run_contract
     end
     if test "$argv[2]" = lookup
         set_lookup_adapter_environment
-    else if contains -- "$argv[2]" platform web-profile web-devices retained
+    else if contains -- "$argv[2]" platform web-profile web-devices retained browser-journey-rails
         set_web_device_environment
     else if test "$argv[2]" = web_json_read
         set_web_json_read_adapter_environment
@@ -225,13 +225,23 @@ function run_contract
     set -l fixture_seconds (math (date +%s) - $startup_at)
     echo "Contract fixture ready after $fixture_seconds seconds"
 
-    if test "$argv[2]" = medication-read-api
+    if test "$argv[2]" = browser-journey-rails
+        set -g contract_api_image true
+        rtk task api:contract-browser-rails CONTRACT_PROJECT=$contract_project
+        return $status
+    end
+
+    if contains -- "$argv[2]" medication-read-api web-session-api
         set -g contract_api_image true
         rtk task api:contract-up CONTRACT_PROJECT=$contract_project
         or return $status
         rtk task api:contract-ready CONTRACT_PROJECT=$contract_project
         or return $status
-        rtk task api:contract-test CONTRACT_PROJECT=$contract_project
+        if test "$argv[2]" = web-session-api
+            rtk task api:contract-web-session-test CONTRACT_PROJECT=$contract_project
+        else
+            rtk task api:contract-test CONTRACT_PROJECT=$contract_project
+        end
         or return $status
         if test "$CONTRACT_BROWSER_TESTS" = true
             rtk task api:contract-browser-test CONTRACT_PROJECT=$contract_project
