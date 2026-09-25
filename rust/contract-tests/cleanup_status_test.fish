@@ -30,7 +30,7 @@ function check_status -a run_status cleanup_status expected_status
     set -lx CONTRACT_FAKE_REMOVE_OWNER 0
     set -lx CONTRACT_FAKE_RUN_STATUS $run_status
     set -lx CONTRACT_FAKE_CLEANUP_STATUS $cleanup_status
-    fish --no-config rust/contract-tests/run.fish rails > $test_dir/output 2>&1
+    fish --no-config rust/contract-tests/run.fish rails admin > $test_dir/output 2>&1
     set -l actual_status $status
     set -l run_dir (cat $test_dir/latest-run)
     set -a status_test_run_dirs $run_dir
@@ -53,7 +53,7 @@ function check_missing_owner
     set -lx CONTRACT_FAKE_REMOVE_OWNER 1
     set -lx CONTRACT_FAKE_RUN_STATUS 0
     set -lx CONTRACT_FAKE_CLEANUP_STATUS 0
-    fish --no-config rust/contract-tests/run.fish rails >$test_dir/output 2>&1
+    fish --no-config rust/contract-tests/run.fish rails admin >$test_dir/output 2>&1
     set -l actual_status $status
     set -l run_dir (cat $test_dir/latest-run)
     set -a status_test_run_dirs $run_dir

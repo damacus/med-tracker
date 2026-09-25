@@ -27,6 +27,40 @@ function cleanup_contract_on_exit --on-event fish_exit
     end
 end
 
+function wait_for_contract_web -a base_url
+    for attempt in (seq 30)
+        rtk proxy curl --fail --silent --show-error --max-time 2 --output /dev/null "$base_url/up" 2>/dev/null
+        and return 0
+        sleep 1
+    end
+    echo "Contract web server did not become ready at $base_url/up" >&2
+    return 1
+end
+
+function run_rails_contract_targets -a base_url fixture_path mailpit_url project run_dir
+    set -l failed_targets
+    set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports portability sync replay oauth envelopes
+    rtk task contract:run BASE_URL="$base_url" FIXTURE_PATH="$fixture_path" MAILPIT_URL="$mailpit_url" TEST_TARGET=lib
+    or set -a failed_targets lib
+    for target in $targets
+        if test "$target" != auth
+            rtk task contract:restart-web CONTRACT_PROJECT=$project CONTRACT_RUN_DIR=$run_dir
+            or return $status
+            set -l port (rtk task test:port CONTRACT_PROJECT=$project)
+            or return $status
+            set base_url "http://127.0.0.1:$port"
+            wait_for_contract_web $base_url
+            or return $status
+        end
+        rtk task contract:run BASE_URL="$base_url" FIXTURE_PATH="$fixture_path" MAILPIT_URL="$mailpit_url" TEST_TARGET=$target
+        or set -a failed_targets $target
+    end
+    if test (count $failed_targets) -gt 0
+        echo "Contract targets failed: "(string join ', ' $failed_targets) >&2
+        return 1
+    end
+end
+
 if test "$mode" != rails; and test "$mode" != rust
     echo 'Expected rails or rust mode' >&2
     exit 2
@@ -118,7 +152,7 @@ function run_contract
         else if test "$argv[2]" = health-event-replacement-atomicity
             rtk task contract:run-health-event-replacement-atomicity BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else
-            rtk task contract:run BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path" MAILPIT_URL="$mailpit_url"
+            run_rails_contract_targets "http://127.0.0.1:$port" "$contract_fixture_path" "$mailpit_url" $contract_project $contract_run_dir
         end
     else
         if test "$argv[2]" = admin

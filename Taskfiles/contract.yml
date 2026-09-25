@@ -6,6 +6,7 @@ tasks:
     desc: Verify per-run database and cleanup isolation
     cmds:
       - fish rust/contract-tests/cleanup_status_test.fish
+      - fish rust/contract-tests/runner_isolation_test.fish
       - fish rust/contract-tests/isolation_test.fish
 
   cleanup:
@@ -45,6 +46,12 @@ tasks:
     cmds:
       - curl --fail --silent --show-error --output /dev/null --request DELETE '{{ .MAILPIT_URL }}/api/v1/messages'
 
+  restart-web:
+    requires:
+      vars: [CONTRACT_PROJECT, CONTRACT_RUN_DIR]
+    cmds:
+      - fish rust/contract-tests/restart_web.fish '{{ .CONTRACT_PROJECT }}' '{{ .CONTRACT_RUN_DIR }}'
+
   run:
     desc: Run API black-box cases against a checked target and fixture
     requires:
@@ -55,7 +62,7 @@ tasks:
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
       CONTRACT_MAILPIT_URL: '{{ .MAILPIT_URL }}'
     cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --lib --test auth --test admin --test invitations --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test reports --test portability --test sync --test replay --test oauth --test envelopes --no-fail-fast -- --test-threads=1
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml {{ if eq .TEST_TARGET "lib" }}--lib{{ else if .TEST_TARGET }}--test {{ .TEST_TARGET }}{{ else }}--lib --test auth --test admin --test invitations --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test reports --test portability --test sync --test replay --test oauth --test envelopes{{ end }} --no-fail-fast -- --test-threads=1
 
   run-portability:
     desc: Run portable household export and import contract cases
