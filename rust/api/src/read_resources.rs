@@ -10,7 +10,7 @@ use crate::{
     audit, authenticate, database_error, decimal_string, granted_people, if_none_match_matches,
     representation_etag, ApiError, AppState, AuthContext, Pagination,
 };
-use axum::extract::{Path, Query, State};
+use axum::extract::{rejection::QueryRejection, Path, Query, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -240,7 +240,7 @@ fn assignment_scope(
         )
 }
 
-fn location_value(location: stock_location::Model) -> Value {
+pub(super) fn location_value(location: stock_location::Model) -> Value {
     json!({
         "id": location.id,
         "portable_id": location.portable_id,
@@ -253,10 +253,25 @@ fn location_value(location: stock_location::Model) -> Value {
 pub(super) async fn locations_index(
     State(state): State<AppState>,
     Path(household_id): Path<i64>,
-    Query(pagination): Query<Pagination>,
+    pagination: Result<Query<Pagination>, QueryRejection>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
     let (db, context) = request_context(&state, &headers, household_id).await?;
+    let pagination = match pagination {
+        Ok(Query(pagination)) => pagination,
+        Err(_) => {
+            return audited_error_response(
+                db,
+                &context,
+                "api/v1/locations",
+                "LocationPolicy",
+                "index",
+                ApiError::invalid_pagination(),
+                true,
+            )
+            .await;
+        }
+    };
     let (db, page) = match parse_location_page(db, pagination) {
         Ok(value) => value,
         Err((db, error)) => {

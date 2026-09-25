@@ -653,6 +653,15 @@ impl Target {
             .expect("target must respond")
     }
 
+    pub fn post_raw_json_authorized(&self, path: &str, token: &str, body: &str) -> Response {
+        self.require_local_write();
+        self.authorize(self.client.post(self.url(path)), Some(token))
+            .header("Content-Type", "application/json")
+            .body(body.to_owned())
+            .send()
+            .expect("target must respond")
+    }
+
     pub fn post_json_with_header(
         &self,
         path: &str,

@@ -1,5 +1,7 @@
 use medtracker_contract_tests::{fixture, Target};
+use postgres::{Client, NoTls};
 use serde_json::Value;
+use std::env;
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 fn keys(value: &Value) -> Vec<&str> {
@@ -51,6 +53,47 @@ fn assert_error(body: &Value) {
     assert!(body["error"]["request_id"]
         .as_str()
         .is_some_and(|value| !value.is_empty()));
+    if let Some(errors) = body["error"].get("errors") {
+        for messages in errors.as_object().expect("validation errors").values() {
+            assert!(messages
+                .as_array()
+                .expect("error messages")
+                .iter()
+                .all(Value::is_string));
+        }
+    }
+}
+
+fn assert_invalid_pagination(query: &str) {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let path = format!(
+        "/api/v1/households/{}/locations?{query}",
+        fixture.household_id
+    );
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 422, "{query}");
+    assert_error(&response.json().expect("pagination error JSON"));
+}
+
+#[test]
+fn list_locations_rejects_noninteger_page() {
+    assert_invalid_pagination("page=abc");
+}
+
+#[test]
+fn list_locations_rejects_noninteger_per_page() {
+    assert_invalid_pagination("per_page=abc");
+}
+
+#[test]
+fn list_locations_rejects_overflowing_page() {
+    assert_invalid_pagination("page=9223372036854775808");
+}
+
+#[test]
+fn list_locations_rejects_overflowing_per_page() {
+    assert_invalid_pagination("per_page=9223372036854775808");
 }
 
 #[test]
@@ -122,6 +165,10 @@ fn get_location_matches_openapi_resource_and_errors() {
     let base = format!("/api/v1/households/{}/locations", fixture.household_id);
     let path = format!("{base}/{}", fixture.primary_location_portable_id);
 
+    let unauthenticated = target.get(&path, None);
+    assert_eq!(unauthenticated.status().as_u16(), 401);
+    assert_error(&unauthenticated.json().expect("unauthorized JSON"));
+
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
     assert!(response.headers().get("etag").is_some());
@@ -150,4 +197,80 @@ fn get_location_matches_openapi_resource_and_errors() {
     assert_eq!(missing.status().as_u16(), 404);
     let error: Value = missing.json().expect("error JSON");
     assert_error(&error);
+
+    let wrong_household = target.get(
+        &format!(
+            "/api/v1/households/{}/locations/{}",
+            fixture.foreign_household_id, fixture.foreign_location_portable_id
+        ),
+        Some(&fixture.access_token),
+    );
+    assert!([403, 404].contains(&wrong_household.status().as_u16()));
+    assert_error(&wrong_household.json().expect("foreign household JSON"));
+}
+
+#[test]
+fn list_locations_applies_timestamp_filter_and_pagination_bounds() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let base = format!("/api/v1/households/{}/locations", fixture.household_id);
+    let mut db = Client::connect(
+        &env::var("CONTRACT_AUDIT_DATABASE_URL").expect("contract database URL"),
+        NoTls,
+    )
+    .expect("contract database");
+    let id: i64 = db.query_one(
+        "INSERT INTO locations (household_id, name, created_at, updated_at) VALUES ($1, $2, now(), now()) RETURNING id",
+        &[&fixture.household_id, &"OpenAPI pagination fixture"],
+    ).expect("pagination location").get(0);
+    let path = format!("{base}?page=2&per_page=1");
+    let page1 = target.get(
+        &format!("{base}?page=1&per_page=1"),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(page1.status().as_u16(), 200);
+    let page1: Value = page1.json().expect("page 1 JSON");
+    let page2 = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(page2.status().as_u16(), 200);
+    let page2: Value = page2.json().expect("page 2 JSON");
+    assert_eq!(keys(&page2), ["data", "meta"]);
+    assert_eq!(page2["meta"]["page"], 2);
+    assert_eq!(page2["meta"]["per_page"], 1);
+    assert!(page2["meta"]["total_count"]
+        .as_u64()
+        .is_some_and(|n| n >= 2));
+    assert_eq!(page2["data"].as_array().expect("page 2 data").len(), 1);
+    assert_location(&page2["data"][0]);
+    assert_eq!(page1["meta"]["total_count"], page2["meta"]["total_count"]);
+    assert_ne!(page1["data"][0]["id"], page2["data"][0]["id"]);
+
+    let max_page = target.get(&format!("{base}?per_page=100"), Some(&fixture.access_token));
+    assert_eq!(max_page.status().as_u16(), 200);
+    let max_page: Value = max_page.json().expect("maximum page JSON");
+    assert_eq!(max_page["meta"]["per_page"], 100);
+    assert!(
+        max_page["data"]
+            .as_array()
+            .expect("maximum page data")
+            .len()
+            <= 100
+    );
+
+    let old = target.get(
+        &format!("{base}?updated_since=2000-01-01T00%3A00%3A00Z"),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(old.status().as_u16(), 200);
+    let old: Value = old.json().expect("old filter JSON");
+    assert!(old["meta"]["total_count"].as_u64().is_some_and(|n| n >= 2));
+    let future = target.get(
+        &format!("{base}?updated_since=2100-01-01T00%3A00%3A00Z"),
+        Some(&fixture.access_token),
+    );
+    assert_eq!(future.status().as_u16(), 200);
+    let future: Value = future.json().expect("future filter JSON");
+    assert_eq!(future["meta"]["total_count"], 0);
+    assert_eq!(future["data"], serde_json::json!([]));
+    db.execute("DELETE FROM locations WHERE id = $1", &[&id])
+        .expect("cleanup pagination location");
 }

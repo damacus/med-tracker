@@ -2,6 +2,7 @@ mod audit;
 mod audit_logs;
 mod dose;
 mod entities;
+mod locations;
 mod medication_forecast;
 mod medication_management;
 mod oauth;
@@ -120,11 +121,22 @@ fn api_router(state: AppState) -> Router {
         )
         .route(
             "/api/v1/households/{household_id}/locations",
-            get(read_resources::locations_index),
+            get(read_resources::locations_index).post(locations::create),
         )
         .route(
             "/api/v1/households/{household_id}/locations/{id}",
-            get(read_resources::locations_show),
+            get(read_resources::locations_show)
+                .patch(locations::patch)
+                .put(locations::put)
+                .delete(locations::delete),
+        )
+        .route(
+            "/api/v1/households/{household_id}/locations/{location_id}/location_memberships",
+            axum::routing::post(locations::create_membership),
+        )
+        .route(
+            "/api/v1/households/{household_id}/locations/{location_id}/location_memberships/{id}",
+            axum::routing::delete(locations::delete_membership),
         )
         .route(
             "/api/v1/households/{household_id}/people/{id}",
