@@ -56,6 +56,17 @@ is no host API port to serialize. On this host, concurrent runs use checked
 explicit subnets because Docker's default address pools are exhausted.
 Formatting checks, unit tests, and review can run independently.
 
+When repeated build freezes hold up another writer, the orchestrator may
+create a detached acceptance worktree containing the exact tracked diff and
+untracked source from a short joint freeze. Verify its file manifest against
+the original before releasing the writers. The runner works only in that
+immutable snapshot and records its HEAD, content manifest, image identities,
+fixture hashes and outcomes. Reports remain in the main worktree. Results
+apply to the snapshot; later source changes need the relevant checks again.
+The orchestrator removes the disposable worktree after its runs and evidence
+capture finish. This isolates acceptance without splitting writer ownership
+or requiring cherry-picks.
+
 ## Acceptance and escalation
 
 Each brief defines paths, behaviour, checks, report location, and exclusions.

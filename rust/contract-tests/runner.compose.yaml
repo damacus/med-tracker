@@ -50,7 +50,7 @@ services:
         target: /contract-run
         read_only: true
       - type: bind
-        source: ./docs/screenshots/journey-auth
+        source: ${CONTRACT_RUST_BROWSER_SCREENSHOT_DIR:-./docs/screenshots/journey-auth}
         target: /screenshots
     environment:
       BASE_URL: http://127.0.0.1:39998

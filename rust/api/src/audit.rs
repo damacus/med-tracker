@@ -13,6 +13,27 @@ pub async fn record_medication_read(
     status: StatusCode,
     authorized: bool,
 ) -> Result<String, DbErr> {
+    record_resource_read(
+        db,
+        context,
+        "api/v1/medications",
+        "MedicationPolicy",
+        action,
+        status,
+        authorized,
+    )
+    .await
+}
+
+pub async fn record_resource_read(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    controller: &str,
+    policy_class: &str,
+    action: &str,
+    status: StatusCode,
+    authorized: bool,
+) -> Result<String, DbErr> {
     let request_id = Uuid::new_v4().to_string();
     let (authentication_method, session_reference) = match context.credential_kind {
         CredentialKind::ApiSession => (
@@ -40,7 +61,7 @@ pub async fn record_medication_read(
         "request_id": request_id
     });
     if authorized {
-        audit_context["policy_class"] = json!("MedicationPolicy");
+        audit_context["policy_class"] = json!(policy_class);
         audit_context["policy_query"] = json!(format!("{action}?"));
     }
     let now = Utc::now().naive_utc();
@@ -52,7 +73,7 @@ pub async fn record_medication_read(
         request_id: Set(Some(request_id.clone())),
         metadata: Set(json!({
             "http_method": "GET",
-            "controller": "api/v1/medications",
+            "controller": controller,
             "action": action,
             "outcome": if status.as_u16() < 400 { "success" } else { "failure" },
             "status": status.as_u16()

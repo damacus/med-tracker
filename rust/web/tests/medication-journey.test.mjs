@@ -160,6 +160,7 @@ for (const viewport of [
       const recordedDose = history.getByText(medicationName, { exact: true }).locator('..');
       assert.ok(await recordedDose.getByText('1.25 ml', { exact: true }).isVisible());
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+      await history.scrollIntoViewIfNeeded();
       await screenshot(page, `journey-history-${viewport.name}.png`);
     } finally {
       await context.close();

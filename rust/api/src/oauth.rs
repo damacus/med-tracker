@@ -357,7 +357,6 @@ fn valid_request(request: &AuthorizationRequest, client: &Client) -> bool {
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/.well-known/oauth-authorization-server", get(discovery))
-        .route("/api/v1/capabilities", get(capabilities))
         .route("/authorize", get(authorize).post(consent))
         .route("/login", get(login).post(login_post))
         .route("/logout", post(logout))
@@ -365,9 +364,14 @@ pub fn routes() -> Router<AppState> {
         .route("/households/{slug}/dashboard", get(dashboard))
         .route("/token", post(token))
         .route("/revoke", post(revoke))
-        .route("/api/v1/auth/households", get(households))
         .route("/reset-password-request", get(reset_password_unavailable))
         .route("/auth.css", get(styles))
+}
+
+pub fn api_routes() -> Router<AppState> {
+    Router::new()
+        .route("/api/v1/capabilities", get(capabilities))
+        .route("/api/v1/auth/households", get(households))
 }
 
 async fn reset_password_unavailable() -> Response {
@@ -1398,53 +1402,60 @@ async fn revoke(State(state): State<AppState>, Json(input): Json<RevokeInput>) -
 }
 
 async fn households(State(state): State<AppState>, headers: HeaderMap) -> Response {
-    let Some(token) = headers
-        .get(header::AUTHORIZATION)
-        .and_then(|h| h.to_str().ok())
-        .and_then(|h| h.strip_prefix("Bearer "))
-    else {
-        return crate::ApiError::unauthorized().into_response();
-    };
-    if token.len() > 256 || token.is_empty() {
-        return crate::ApiError::unauthorized().into_response();
-    }
     let db = match transaction(&state).await {
         Ok(db) => db,
         Err(error) => return error,
     };
-    let grant = oauth_grant::Entity::find()
-        .filter(oauth_grant::Column::TokenHash.eq(digest(token)))
-        .filter(oauth_grant::Column::ClientKind.eq("mobile"))
-        .filter(oauth_grant::Column::RevokedAt.is_null())
-        .one(&db)
-        .await;
-    let grant = match grant {
-        Ok(Some(grant)) => grant,
-        Ok(None) => return crate::ApiError::unauthorized().into_response(),
-        Err(error) => return database_error(error).into_response(),
-    };
-    let account_id = grant.account_id;
     let now = Utc::now().naive_utc();
-    let inactivity =
-        configured_lifetime_days("SESSION_INACTIVITY_TIMEOUT_DAYS", 30, 1).unwrap_or(0);
-    let maximum = configured_lifetime_days("SESSION_MAX_AGE_DAYS", 0, 0).unwrap_or(-1);
-    if grant.expires_in <= now
-        || !grant
-            .scopes
-            .split_whitespace()
-            .any(|scope| scope == "medtracker")
-        || inactivity < 1
-        || maximum < 0
-        || !grant
-            .last_used_at
-            .is_some_and(|time| time > now - Duration::days(inactivity))
-        || !grant
-            .authenticated_at
-            .is_some_and(|time| maximum == 0 || time > now - Duration::days(maximum))
-        || !matches!(account_available(&db, account_id).await, Ok(true))
-    {
-        return crate::ApiError::unauthorized().into_response();
-    }
+    let (account_id, grant) = if headers.contains_key(header::AUTHORIZATION) {
+        let Some(token) = headers
+            .get(header::AUTHORIZATION)
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.strip_prefix("Bearer "))
+            .filter(|value| !value.is_empty() && value.len() <= 256)
+        else {
+            return crate::ApiError::unauthorized().into_response();
+        };
+        let grant = oauth_grant::Entity::find()
+            .filter(oauth_grant::Column::TokenHash.eq(digest(token)))
+            .filter(oauth_grant::Column::ClientKind.eq("mobile"))
+            .filter(oauth_grant::Column::RevokedAt.is_null())
+            .one(&db)
+            .await;
+        let grant = match grant {
+            Ok(Some(grant)) => grant,
+            Ok(None) => return crate::ApiError::unauthorized().into_response(),
+            Err(error) => return database_error(error).into_response(),
+        };
+        let inactivity =
+            configured_lifetime_days("SESSION_INACTIVITY_TIMEOUT_DAYS", 30, 1).unwrap_or(0);
+        let maximum = configured_lifetime_days("SESSION_MAX_AGE_DAYS", 0, 0).unwrap_or(-1);
+        if grant.expires_in <= now
+            || !grant
+                .scopes
+                .split_whitespace()
+                .any(|scope| scope == "medtracker")
+            || inactivity < 1
+            || maximum < 0
+            || !grant
+                .last_used_at
+                .is_some_and(|time| time > now - Duration::days(inactivity))
+            || !grant
+                .authenticated_at
+                .is_some_and(|time| maximum == 0 || time > now - Duration::days(maximum))
+            || !matches!(account_available(&db, grant.account_id).await, Ok(true))
+        {
+            return crate::ApiError::unauthorized().into_response();
+        }
+        (grant.account_id, Some(grant))
+    } else {
+        let session = match browser_session(&state, &db, &headers).await {
+            Ok(Some(session)) => session,
+            Ok(None) => return crate::ApiError::unauthorized().into_response(),
+            Err(error) => return error,
+        };
+        (session.account_id, None)
+    };
     if let Err(error) = tenant_setting(&db, "med_tracker.current_account_id", account_id).await {
         return database_error(error).into_response();
     }
@@ -1476,11 +1487,13 @@ async fn households(State(state): State<AppState>, headers: HeaderMap) -> Respon
         let h = households.get(&m.household_id)?;
         Some(json!({"id": h.id, "slug": h.slug, "name": h.name, "role": m.role, "membership_id": m.id}))
     }).collect();
-    let mut active: oauth_grant::ActiveModel = grant.into();
-    active.last_used_at = Set(Some(now));
-    active.updated_at = Set(now);
-    if let Err(error) = active.update(&db).await {
-        return database_error(error).into_response();
+    if let Some(grant) = grant {
+        let mut active: oauth_grant::ActiveModel = grant.into();
+        active.last_used_at = Set(Some(now));
+        active.updated_at = Set(now);
+        if let Err(error) = active.update(&db).await {
+            return database_error(error).into_response();
+        }
     }
     if let Err(error) = db.commit().await {
         return database_error(error).into_response();

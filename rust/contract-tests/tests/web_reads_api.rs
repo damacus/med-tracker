@@ -16,6 +16,81 @@ struct TemporaryGrant {
     id: i64,
 }
 
+struct TemporaryMinor {
+    db: postgres::Client,
+    person_id: i64,
+    original_type: i32,
+    original_birth_date: Option<String>,
+    original_capacity: bool,
+    restored: bool,
+}
+
+impl TemporaryMinor {
+    fn for_viewer(fixture: &Fixture) -> Self {
+        let url = env::var("CONTRACT_AUDIT_DATABASE_URL").expect("contract database URL");
+        let mut db = postgres::Client::connect(&url, postgres::NoTls).expect("contract database");
+        let previous = db
+            .query_one(
+                "SELECT id, person_type, date_of_birth::text, has_capacity FROM people WHERE id = (SELECT person_id FROM household_memberships WHERE id = $1)",
+                &[&fixture.view_membership_id],
+            )
+            .expect("viewer person");
+        let person_id = previous.get("id");
+        let original_type = previous.get("person_type");
+        let original_birth_date = previous.get("date_of_birth");
+        let original_capacity = previous.get("has_capacity");
+        db.execute(
+            "UPDATE people SET person_type = 1, date_of_birth = (CURRENT_DATE - INTERVAL '10 years')::date, has_capacity = false WHERE id = $1",
+            &[&person_id],
+        )
+        .expect("make viewer under 18");
+        Self {
+            db,
+            person_id,
+            original_type,
+            original_birth_date,
+            original_capacity,
+            restored: false,
+        }
+    }
+
+    fn restore(&mut self) {
+        let updated = self
+            .db
+            .execute(
+                "UPDATE people SET person_type = $2, date_of_birth = $3::text::date, has_capacity = $4 WHERE id = $1",
+                &[
+                    &self.person_id,
+                    &self.original_type,
+                    &self.original_birth_date,
+                    &self.original_capacity,
+                ],
+            )
+            .expect("restore viewer person");
+        assert_eq!(updated, 1);
+        self.restored = true;
+    }
+}
+
+impl Drop for TemporaryMinor {
+    fn drop(&mut self) {
+        if self.restored {
+            return;
+        }
+        if let Err(error) = self.db.execute(
+            "UPDATE people SET person_type = $2, date_of_birth = $3::text::date, has_capacity = $4 WHERE id = $1",
+            &[
+                &self.person_id,
+                &self.original_type,
+                &self.original_birth_date,
+                &self.original_capacity,
+            ],
+        ) {
+            eprintln!("failed to restore temporary minor: {error}");
+        }
+    }
+}
+
 impl TemporaryGrant {
     fn create(fixture: &Fixture) -> Self {
         let url = env::var("CONTRACT_AUDIT_DATABASE_URL").expect("contract database URL");
@@ -95,6 +170,44 @@ fn body(response: Response, expected_status: u16) -> Value {
 
 fn rows(response: &Value) -> &[Value] {
     response["data"].as_array().expect("collection data")
+}
+
+fn assert_request_audit(
+    fixture: &Fixture,
+    request_id: &str,
+    controller: &str,
+    status: u16,
+    actor_account_id: i64,
+    actor_membership_id: i64,
+) {
+    let url = env::var("CONTRACT_AUDIT_DATABASE_URL").expect("contract database URL");
+    let mut db = postgres::Client::connect(&url, postgres::NoTls).expect("contract database");
+    let events = db
+        .query(
+            "SELECT event_type, actor_account_id, actor_membership_id, metadata::text FROM security_audit_events WHERE request_id = $1 AND event_type = 'api.request'",
+            &[&request_id],
+        )
+        .expect("request audit events");
+    assert_eq!(events.len(), 1, "one audit event for {request_id}");
+    let event = &events[0];
+    assert_eq!(event.get::<_, String>("event_type"), "api.request");
+    assert_eq!(
+        event.get::<_, Option<i64>>("actor_account_id"),
+        Some(actor_account_id)
+    );
+    assert_eq!(
+        event.get::<_, Option<i64>>("actor_membership_id"),
+        Some(actor_membership_id)
+    );
+    let metadata_text: String = event.get("metadata");
+    let metadata: Value = serde_json::from_str(&metadata_text).expect("audit metadata JSON");
+    assert_eq!(metadata["http_method"], "GET");
+    assert_eq!(metadata["controller"], controller);
+    assert_eq!(metadata["action"], "index");
+    assert_eq!(metadata["status"], status);
+    assert_eq!(metadata["outcome"], "failure");
+    assert!(!metadata_text.contains(&fixture.web_managed_person_name));
+    assert!(!metadata_text.contains(&fixture.managed_medication_name));
 }
 
 #[test]
@@ -318,4 +431,61 @@ fn revoking_a_person_grant_removes_that_person_and_linked_sources_on_next_read()
             404
         );
     }
+}
+
+#[test]
+fn invalid_updated_since_is_audited_without_exposing_clinical_data() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let response = target.get(
+        &format!(
+            "{}?updated_since=not-a-timestamp",
+            path(fixture.household_id, "schedules")
+        ),
+        Some(&fixture.access_token),
+    );
+    let request_id = response.headers()["x-request-id"]
+        .to_str()
+        .expect("request id")
+        .to_owned();
+    let error = body(response, 422);
+    assert_eq!(error["error"]["code"], "unprocessable_content");
+    assert!(!error.to_string().contains(&fixture.web_managed_person_name));
+    assert!(!error.to_string().contains(&fixture.managed_medication_name));
+    assert_request_audit(
+        &fixture,
+        &request_id,
+        "api/v1/schedules",
+        422,
+        fixture.account_id,
+        fixture.owner_membership_id,
+    );
+}
+
+#[test]
+fn non_adult_schedule_index_denial_is_audited_without_exposing_clinical_data() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let mut minor = TemporaryMinor::for_viewer(&fixture);
+    let response = target.get(
+        &path(fixture.household_id, "schedules"),
+        Some(&fixture.view_access_token),
+    );
+    let request_id = response.headers()["x-request-id"]
+        .to_str()
+        .expect("request id")
+        .to_owned();
+    let error = body(response, 403);
+    assert_eq!(error["error"]["code"], "forbidden");
+    assert!(!error.to_string().contains(&fixture.web_managed_person_name));
+    assert!(!error.to_string().contains(&fixture.managed_medication_name));
+    assert_request_audit(
+        &fixture,
+        &request_id,
+        "api/v1/schedules",
+        403,
+        fixture.view_account_id,
+        fixture.view_membership_id,
+    );
+    minor.restore();
 }

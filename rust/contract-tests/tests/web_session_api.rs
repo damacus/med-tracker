@@ -30,6 +30,46 @@ struct SecondaryActorSetup {
     secondary_person_id: i64,
 }
 
+struct SuspendedMembership {
+    db: postgres::Client,
+    membership_id: i64,
+    original_status: String,
+}
+
+impl SuspendedMembership {
+    fn new(account_id: i64, household_id: i64) -> Self {
+        let mut db = database();
+        let row = db
+            .query_one(
+                "SELECT id, status FROM household_memberships WHERE account_id = $1 AND household_id = $2",
+                &[&account_id, &household_id],
+            )
+            .unwrap();
+        let membership_id = row.get(0);
+        let original_status: String = row.get(1);
+        assert_eq!(original_status, "active");
+        db.execute(
+            "UPDATE household_memberships SET status = 'suspended' WHERE id = $1",
+            &[&membership_id],
+        )
+        .unwrap();
+        Self {
+            db,
+            membership_id,
+            original_status,
+        }
+    }
+}
+
+impl Drop for SuspendedMembership {
+    fn drop(&mut self) {
+        let _ = self.db.execute(
+            "UPDATE household_memberships SET status = $1 WHERE id = $2",
+            &[&self.original_status, &self.membership_id],
+        );
+    }
+}
+
 impl SecondaryActorSetup {
     fn new(fixture: &Fixture) -> Self {
         let mut db = database();
@@ -414,6 +454,94 @@ fn standalone_login_creates_cookie_for_shared_reads_and_invalid_bearer_takes_pre
         .unwrap()
         .contains(&fixture.managed_medication_name));
     assert!(!login.old_cookie.contains(&fixture.access_token));
+}
+
+#[test]
+fn browser_cookie_lists_only_current_operational_households_with_bearer_precedence() {
+    let fixture = fixture();
+    let browser = BrowserClient::new();
+    let login = browser.login(&fixture.primary_email);
+    let path = "/api/v1/auth/households";
+    let cookie_response = browser.get(path);
+    assert_eq!(cookie_response.status().as_u16(), 200);
+    let cookie_listing: Value = cookie_response.json().unwrap();
+    assert_eq!(cookie_listing["account_id"], fixture.account_id);
+    let households = cookie_listing["data"].as_array().unwrap();
+    assert!(households.iter().any(|row| {
+        row["id"] == fixture.household_id
+            && row["slug"] == fixture.household_slug
+            && row["name"] == fixture.household_name
+            && row["role"] == "owner"
+            && row["membership_id"] == fixture.owner_membership_id
+    }));
+    assert!(households
+        .iter()
+        .any(|row| row["id"] == fixture.medication_read_household_id));
+    assert!(!households
+        .iter()
+        .any(|row| row["id"] == fixture.foreign_household_id));
+    for row in households {
+        for key in ["id", "slug", "name", "role", "membership_id"] {
+            assert!(!row[key].is_null(), "missing household {key}");
+        }
+    }
+    let listing_text = cookie_listing.to_string();
+    for secret in [
+        "access_token",
+        "refresh_token",
+        login.old_cookie.as_str(),
+        fixture.access_token.as_str(),
+    ] {
+        assert!(!listing_text.contains(secret));
+    }
+
+    let after_suspension = {
+        let _suspended =
+            SuspendedMembership::new(fixture.account_id, fixture.medication_read_household_id);
+        browser.get(path)
+    };
+    assert_eq!(after_suspension.status().as_u16(), 200);
+    let current: Value = after_suspension.json().unwrap();
+    let current = current["data"].as_array().unwrap();
+    assert!(current.iter().any(|row| row["id"] == fixture.household_id));
+    assert!(!current
+        .iter()
+        .any(|row| row["id"] == fixture.medication_read_household_id));
+
+    let invalid_bearer = browser
+        .client
+        .get(browser.url(path))
+        .bearer_auth("explicitly-invalid")
+        .header(header::COOKIE, &login.old_cookie)
+        .send()
+        .unwrap();
+    assert_eq!(invalid_bearer.status().as_u16(), 401);
+    assert!(invalid_bearer
+        .json::<Value>()
+        .unwrap()
+        .get("data")
+        .is_none());
+
+    let logout = browser
+        .client
+        .post(browser.url("/logout"))
+        .header("X-CSRF-Token", &login.csrf)
+        .header(
+            header::ORIGIN,
+            browser.origin.origin().ascii_serialization(),
+        )
+        .form(&[("authenticity_token", login.csrf.as_str())])
+        .send()
+        .unwrap();
+    assert!(matches!(logout.status().as_u16(), 302 | 303));
+    let revoked = browser
+        .client
+        .get(browser.url(path))
+        .header(header::COOKIE, &login.old_cookie)
+        .send()
+        .unwrap();
+    assert_eq!(revoked.status().as_u16(), 401);
+    assert!(revoked.json::<Value>().unwrap().get("data").is_none());
 }
 
 #[test]

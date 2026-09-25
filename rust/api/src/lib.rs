@@ -3,6 +3,8 @@ mod dose;
 mod entities;
 mod medication_forecast;
 mod oauth;
+mod read_entities;
+mod read_resources;
 
 use axum::extract::{Path, Query, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
@@ -62,10 +64,16 @@ pub async fn connect(url: &str) -> Result<AppState, sea_orm::DbErr> {
 }
 
 pub fn router(state: AppState) -> Router {
-    let csrf_state = state.clone();
     Router::new()
         .route("/up", get(|| async { StatusCode::OK }))
-        .merge(oauth::routes())
+        .merge(oauth::routes().with_state(state.clone()))
+        .merge(api_router(state))
+}
+
+fn api_router(state: AppState) -> Router {
+    let csrf_state = state.clone();
+    Router::new()
+        .merge(oauth::api_routes())
         .route("/api/v1/households/{household_id}/medications", get(index))
         .route(
             "/api/v1/households/{household_id}/medication_takes",
@@ -74,6 +82,30 @@ pub fn router(state: AppState) -> Router {
         .route(
             "/api/v1/households/{household_id}/medications/{id}",
             get(show),
+        )
+        .route(
+            "/api/v1/households/{household_id}/people",
+            get(read_resources::people_index),
+        )
+        .route(
+            "/api/v1/households/{household_id}/people/{id}",
+            get(read_resources::people_show),
+        )
+        .route(
+            "/api/v1/households/{household_id}/schedules",
+            get(read_resources::schedules_index),
+        )
+        .route(
+            "/api/v1/households/{household_id}/schedules/{id}",
+            get(read_resources::schedules_show),
+        )
+        .route(
+            "/api/v1/households/{household_id}/person_medications",
+            get(read_resources::person_medications_index),
+        )
+        .route(
+            "/api/v1/households/{household_id}/person_medications/{id}",
+            get(read_resources::person_medications_show),
         )
         .layer(middleware::from_fn_with_state(csrf_state, cookie_api_csrf))
         .with_state(state)
