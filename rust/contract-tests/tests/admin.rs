@@ -68,13 +68,26 @@ fn audit_event(target: &Target, fixture: &Fixture, id: &str, event_type: &str) -
         .expect("request-correlated audit event")
 }
 
-fn assert_api_error(response: Response, status: u16, code: &str) {
+fn assert_api_error(response: Response, status: u16, code: &str) -> Value {
     assert_eq!(response.status().as_u16(), status);
+    assert_eq!(
+        response.headers()["content-type"]
+            .to_str()
+            .expect("JSON content type")
+            .split(';')
+            .next()
+            .unwrap(),
+        "application/json"
+    );
     let request_id = request_id(&response);
     let payload = body(response);
     assert_eq!(payload["error"]["code"], code);
     assert_eq!(payload["error"]["request_id"], request_id);
+    assert!(payload["error"]["message"]
+        .as_str()
+        .is_some_and(|message| !message.is_empty()));
     assert!(payload.get("data").is_none());
+    payload
 }
 
 fn app_token(list: &Value, id: i64) -> &Value {
@@ -328,6 +341,7 @@ fn task_6a2_app_token_validation_and_duplicate_names() {
     let target = Target::from_env();
     let fixture = fixture();
     let tokens = path(&fixture, "app_tokens");
+    let before = body(target.get(&tokens, Some(&fixture.access_token)))["data"].clone();
     assert_api_error(
         target.post_json_authorized(&tokens, &fixture.access_token, &json!({})),
         400,
@@ -338,9 +352,7 @@ fn task_6a2_app_token_validation_and_duplicate_names() {
         &fixture.access_token,
         &json!({"api_app_token": {"name": " "}}),
     );
-    assert_eq!(response.status().as_u16(), 422);
-    let error = body(response)["error"].clone();
-    assert_eq!(error["code"], "validation_failed");
+    let error = assert_api_error(response, 422, "validation_failed")["error"].clone();
     assert!(error["errors"]["name"].is_array());
     for expiry in [Value::Null, json!("forever"), json!("2999-01-01T00:00:00Z")] {
         let response = target.post_json_authorized(
@@ -348,9 +360,11 @@ fn task_6a2_app_token_validation_and_duplicate_names() {
             &fixture.access_token,
             &json!({"api_app_token": {"name": "Invalid lifetime", "expires_at": expiry}}),
         );
-        assert_eq!(response.status().as_u16(), 422);
-        assert_eq!(body(response)["error"]["code"], "validation_failed");
+        let error = assert_api_error(response, 422, "validation_failed")["error"].clone();
+        assert!(error["errors"]["expires_at"].is_array());
     }
+    let after = body(target.get(&tokens, Some(&fixture.access_token)))["data"].clone();
+    assert_eq!(after, before);
 
     let request = json!({"api_app_token": {"name": "Repeated display name"}});
     let first = target.post_json_authorized(&tokens, &fixture.access_token, &request);
@@ -419,6 +433,18 @@ fn task_6a2_audit_access_order_query_bounds_and_sensitive_redaction() {
         .as_str()
         .unwrap()
         .to_owned();
+    std::thread::sleep(std::time::Duration::from_millis(1100));
+    let later_response = target.post_json_authorized(
+        &path(&fixture, "app_tokens"),
+        &fixture.access_token,
+        &json!({"api_app_token": {"name": "Audit order probe"}}),
+    );
+    assert_eq!(later_response.status().as_u16(), 201);
+    let later_request_id = request_id(&later_response);
+    let later_raw = body(later_response)["data"]["token"]
+        .as_str()
+        .unwrap()
+        .to_owned();
 
     for actor in [
         &fixture.access_token,
@@ -432,18 +458,30 @@ fn task_6a2_audit_access_order_query_bounds_and_sensitive_redaction() {
         assert!(!rows.is_empty());
         assert!(rows.len() <= 100);
         assert!(result.get("meta").is_none());
-        assert!(rows.windows(2).all(|pair| {
-            pair[0]["created_at"].as_str().unwrap() >= pair[1]["created_at"].as_str().unwrap()
-        }));
         assert!(!result.to_string().contains(secret));
         assert!(!result.to_string().contains(&raw));
-        let token_event = rows
+        assert!(!result.to_string().contains(&later_raw));
+        let (earlier_position, token_event) = rows
             .iter()
-            .find(|row| {
+            .enumerate()
+            .find(|(_, row)| {
                 row["request_id"] == token_request_id
                     && row["event_type"] == "auth_token/api_app_token/created"
             })
             .expect("token issuance audit with request correlation");
+        let (later_position, later_event) = rows
+            .iter()
+            .enumerate()
+            .find(|(_, row)| {
+                row["request_id"] == later_request_id
+                    && row["event_type"] == "auth_token/api_app_token/created"
+            })
+            .expect("later token issuance audit with request correlation");
+        assert!(
+            later_event["created_at"].as_str().unwrap()
+                > token_event["created_at"].as_str().unwrap()
+        );
+        assert!(later_position < earlier_position);
         assert_eq!(token_event["actor_account_id"], fixture.account_id);
         assert_eq!(
             token_event["actor_membership_id"],
@@ -476,6 +514,7 @@ fn task_6a2_audit_access_order_query_bounds_and_sensitive_redaction() {
     assert_eq!(response.status().as_u16(), 200);
     let changes = body(response);
     assert!(!changes.to_string().contains(&raw));
+    assert!(!changes.to_string().contains(&later_raw));
 }
 
 #[test]
