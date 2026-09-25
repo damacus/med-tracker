@@ -56,6 +56,11 @@ fixture = ActiveRecord::Base.transaction do
     device_name: 'contract-platform-audit'
   )
   foreign_account, foreign_household, = create_household(nonce, 'foreign')
+  web_device_account, web_device_household, = create_household(nonce, 'web-device')
+  web_device_membership = web_device_account.household_memberships.find_by!(household: web_device_household)
+  _web_device_session, web_device_access_token, = ApiSession.issue_for(
+    account: web_device_account, household_membership: web_device_membership, device_name: 'contract-web-device'
+  )
   retained_account, retained_household, = create_household(nonce, 'retained')
   retained_location = Location.create!(household: retained_household, name: "Contract retained shelf #{nonce}")
   retained_medication = Medication.create!(household: retained_household, location: retained_location,
@@ -728,6 +733,10 @@ fixture = ActiveRecord::Base.transaction do
                      expires_in: 1.hour.from_now, scopes: 'patient/Patient.rs', revoked_at: Time.current)
 
   {
+    web_device_household_id: web_device_household.id,
+    web_device_household_slug: web_device_household.slug,
+    web_device_email: web_device_account.email,
+    web_device_access_token: web_device_access_token,
     retained_household_slug: retained_household.slug,
     retained_household_id: retained_household.id,
     retained_email: retained_account.email,

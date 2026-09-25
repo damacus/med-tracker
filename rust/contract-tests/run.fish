@@ -61,18 +61,21 @@ end
 
 function run_rails_contract_targets -a base_url fixture_path mailpit_url project run_dir
     set -l failed_targets
-    set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports fhir platform lookup portability retained profile web_profile sync replay oauth devices mcp uploads envelopes
+    set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports fhir platform lookup portability retained profile web_profile sync replay oauth devices web_devices mcp uploads envelopes
     rtk task contract:run BASE_URL="$base_url" FIXTURE_PATH="$fixture_path" MAILPIT_URL="$mailpit_url" TEST_TARGET=lib
     or set -a failed_targets lib
     set -l previous_target
     for target in $targets
         if test "$target" = lookup
             set_lookup_adapter_environment
+        else if test "$target" = web_devices
+            clear_lookup_adapter_environment
+            set_web_device_environment
         else
             clear_lookup_adapter_environment
         end
         if test "$target" != auth
-            if test "$target" = lookup; or test "$previous_target" = lookup
+            if test "$target" = lookup; or test "$previous_target" = lookup; or test "$target" = web_devices; or test "$previous_target" = web_devices
                 rtk task test:server CONTRACT_PROJECT=$project
             else
                 rtk task contract:restart-web CONTRACT_PROJECT=$project CONTRACT_RUN_DIR=$run_dir
@@ -102,6 +105,10 @@ function set_lookup_adapter_environment
     set -gx CONTRACT_NHS_DMD_CLIENT_ID contract-id
     set -gx CONTRACT_NHS_DMD_CLIENT_SECRET contract-secret
     set -gx CONTRACT_RUBYOPT -r/app/rust/contract-tests/test_support/nhs_dmd_webmock
+end
+
+function set_web_device_environment
+    set -gx CONTRACT_RUBYOPT -r/app/rust/contract-tests/test_support/csrf
 end
 
 function clear_lookup_adapter_environment
@@ -138,6 +145,8 @@ function run_contract
     set -lx CONTRACT_AI_MEDICATION_HELP_ENABLED true
     if test "$argv[2]" = lookup
         set_lookup_adapter_environment
+    else if test "$argv[2]" = web-devices
+        set_web_device_environment
     else
         clear_lookup_adapter_environment
     end
@@ -216,6 +225,8 @@ function run_contract
             rtk task contract:run-mcp BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = uploads
             rtk task contract:run-uploads BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+        else if test "$argv[2]" = web-devices
+            rtk task contract:run-web-devices BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = care
             rtk task contract:run-care BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = sync
@@ -278,6 +289,8 @@ function run_contract
             rtk task contract:run-mcp BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = uploads
             rtk task contract:run-uploads BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
+        else if test "$argv[2]" = web-devices
+            rtk task contract:run-web-devices BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else
             rtk task contract:run BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN" MAILPIT_URL="$mailpit_url"
         end
