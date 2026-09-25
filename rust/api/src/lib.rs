@@ -119,6 +119,14 @@ fn api_router(state: AppState) -> Router {
             get(read_resources::people_index),
         )
         .route(
+            "/api/v1/households/{household_id}/locations",
+            get(read_resources::locations_index),
+        )
+        .route(
+            "/api/v1/households/{household_id}/locations/{id}",
+            get(read_resources::locations_show),
+        )
+        .route(
             "/api/v1/households/{household_id}/people/{id}",
             get(read_resources::people_show),
         )
@@ -283,6 +291,15 @@ impl ApiError {
             status: StatusCode::UNPROCESSABLE_ENTITY,
             code: "unprocessable_content",
             message: "updated_since must be ISO8601",
+            preserve_activity: false,
+        }
+    }
+
+    fn invalid_pagination() -> Self {
+        Self {
+            status: StatusCode::UNPROCESSABLE_ENTITY,
+            code: "unprocessable_content",
+            message: "page must be positive and per_page must be between 1 and 100",
             preserve_activity: false,
         }
     }

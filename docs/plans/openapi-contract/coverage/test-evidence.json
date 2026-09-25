@@ -1,0 +1,40 @@
+{
+  "listLocations": {
+    "state": "partial_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_locations.rs",
+    "statuses_tested": [200, 401, 422],
+    "behaviours_tested": [
+      "bearer required",
+      "household records exclude a foreign household",
+      "collection and pagination metadata have only documented properties",
+      "location required fields and basic numeric ID, UUID, RFC3339 constraints",
+      "page=1 and per_page=1",
+      "page=0, page=-1, per_page=0, per_page=101 rejected",
+      "invalid and empty updated_since rejected"
+    ],
+    "not_yet_tested": [
+      "403 and 404 responses",
+      "429 response and Retry-After header",
+      "valid updated_since filtering",
+      "later pages and boundary per_page=100",
+      "all authorization roles and meanings of visible location"
+    ]
+  },
+  "getLocation": {
+    "state": "partial_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_locations.rs",
+    "statuses_tested": [200, 404],
+    "behaviours_tested": [
+      "numeric and portable resource IDs",
+      "response envelope has only documented properties",
+      "location required fields and basic numeric ID, UUID, RFC3339 constraints",
+      "ETag response header present",
+      "foreign household resource returns JSON 404"
+    ],
+    "not_yet_tested": [
+      "401, 403 and 429 responses",
+      "Retry-After header on 429",
+      "all authorization roles and meanings of visible location"
+    ]
+  }
+}
