@@ -30,6 +30,11 @@ pub struct Fixture {
     pub platform_unrelated_household_slug: String,
     pub profile_household_id: i64,
     pub avatar_household_id: i64,
+    pub avatar_household_slug: String,
+    pub avatar_email: String,
+    pub avatar_person_id: i64,
+    pub avatar_hidden_person_id: i64,
+    pub avatar_invalid_household_slug: String,
     pub avatar_access_token: String,
     pub avatar_invalid_household_id: i64,
     pub avatar_invalid_access_token: String,
@@ -80,10 +85,12 @@ pub struct Fixture {
     pub primary_email: String,
     pub user_id: i64,
     pub household_id: i64,
+    pub household_slug: String,
     pub household_name: String,
     pub owner_membership_id: i64,
     pub revoked_owner_app_token_id: i64,
     pub foreign_household_id: i64,
+    pub foreign_household_slug: String,
     pub foreign_membership_id: i64,
     pub foreign_app_token_id: i64,
     pub foreign_access_token: String,
@@ -308,6 +315,15 @@ impl Target {
             .expect("target must respond")
     }
 
+    pub fn get_html_with_header(&self, path: &str, name: &'static str, value: &str) -> Response {
+        self.client
+            .get(self.url(path))
+            .header("Accept", "text/html")
+            .header(name, value)
+            .send()
+            .expect("target must respond")
+    }
+
     pub fn get_from_local_client(&self, path: &str, client_ip: &str) -> Response {
         self.require_local_write();
         self.client
@@ -370,6 +386,22 @@ impl Target {
         self.client
             .delete(self.url(path))
             .header("Accept", "text/html")
+            .form(fields)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn post_html_form_from_local_client(
+        &self,
+        path: &str,
+        fields: &[(String, String)],
+        client_ip: &str,
+    ) -> Response {
+        self.require_local_write();
+        self.client
+            .post(self.url(path))
+            .header("Accept", "text/html")
+            .header("X-Forwarded-For", client_ip)
             .form(fields)
             .send()
             .expect("target must respond")
