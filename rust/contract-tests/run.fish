@@ -243,7 +243,7 @@ function run_contract
         end
         set -l api_rss (ps -o rss= -p $contract_api_pid | string trim)
         echo "Medication API debug idle RSS KiB: $api_rss"
-        rtk task contract:run-medication-read-api BASE_URL=http://127.0.0.1:39998 FIXTURE_PATH="$contract_fixture_path"
+        rtk task contract:run-medication-read-api BASE_URL=http://127.0.0.1:39998 FIXTURE_PATH="$contract_fixture_path" AUDIT_DATABASE_URL="$DATABASE_URL"
         return $status
     end
 

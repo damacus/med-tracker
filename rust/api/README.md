@@ -30,11 +30,26 @@ location, stock flags, and collection pagination fields. Stock forecasts use
 the Rails daily consumption rule for active schedules and person medication
 assignments. Related rows are fetched in bounded batches for each response
 page. The forecast uses UTC by default and honours an explicit IANA `TZ` zone.
-The Rails `api.request` audit event, non-`ApiSession` credentials, and other API
+`ApiSession.touch_last_used!`, non-`ApiSession` credentials, and other API
 routes are not implemented. The service is not a drop-in replacement for the
 complete Rails API.
 
-The forecast slice passed eight focused HTTP cases and the conditional-read
-slice passed seven, each against the disposable PostgreSQL 18 fixture. A debug
-idle sample used 13,232 KiB of resident memory. This does not establish memory
-use under representative load or a release-build memory budget.
+Authenticated medication list and show reads write `api.request` rows through
+SeaORM under the restricted role. Successful reads use a `success` outcome; a scoped
+record miss records a 404 `failure`; rejected sessions and household bindings
+do not write a request event. Audit insertion and the read share a transaction,
+so an audit insertion failure yields a server error and rolls back the request.
+The current slice generates a request ID for the audit row but does not yet
+return a matching `X-Request-Id` response header. Transport IP and exception
+`error` outcomes remain to be ported. Other post-authentication failures,
+including invalid `updated_since` filters, are not yet audited. An authorized
+conditional 304 writes a successful read event before committing.
+The disposable fixture is loaded from `db/schema.rb`, which does not recreate
+the migration-defined audit ledger trigger and view. The focused test verifies
+the audit source row directly; ledger append still needs a migrated-database
+check.
+
+The combined Rust server passed 12 of 12 focused HTTP cases against disposable
+PostgreSQL 18. A debug idle sample used 13,376 KiB of resident memory. This
+does not establish memory use under representative load or a release-build
+memory budget.
