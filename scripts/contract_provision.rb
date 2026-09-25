@@ -85,6 +85,32 @@ fixture = ActiveRecord::Base.transaction do
   retained_schedule = Schedule.create!(household: retained_household, person: retained_account.person,
                                        medication: retained_medication, dose_amount: '1', dose_unit: 'ml',
                                        frequency: 'Daily', start_date: '2026-01-01', end_date: '2099-12-31')
+  offline_future_account, offline_future_household, = create_household(nonce, 'offline-future')
+  offline_future_location = Location.create!(household: offline_future_household,
+                                             name: "Contract offline future shelf #{nonce}")
+  offline_future_medication = Medication.create!(household: offline_future_household,
+                                                 location: offline_future_location,
+                                                 name: "Contract offline future medicine #{nonce}",
+                                                 dose_amount: '1', dose_unit: 'ml', current_supply: '50')
+  offline_future_schedule = Schedule.create!(household: offline_future_household, person: offline_future_account.person,
+                                             medication: offline_future_medication, dose_amount: '1', dose_unit: 'ml',
+                                             frequency: 'Daily', start_date: '2026-01-01', end_date: '2099-12-31')
+  offline_eligibility_account, offline_eligibility_household, = create_household(nonce, 'offline-eligibility')
+  offline_eligibility_location = Location.create!(household: offline_eligibility_household,
+                                                  name: "Contract offline eligibility shelf #{nonce}")
+  offline_schedule = lambda do |label, **attributes|
+    medication = Medication.create!(household: offline_eligibility_household, location: offline_eligibility_location,
+                                    name: "Contract offline #{label} medicine #{nonce}", dose_amount: '1',
+                                    dose_unit: 'ml', current_supply: '50')
+    Schedule.create!(household: offline_eligibility_household, person: offline_eligibility_account.person,
+                     medication: medication, dose_amount: '1', dose_unit: 'ml', frequency: 'Daily',
+                     start_date: Date.yesterday, end_date: 1.year.from_now.to_date, **attributes)
+  end
+  offline_inactive_schedule = offline_schedule.call('inactive', active: false)
+  offline_cooldown_schedule = offline_schedule.call('cooldown', min_hours_between_doses: 8)
+  offline_cooldown_schedule.medication_takes.create!(taken_at: 1.hour.ago, dose_amount: 1, dose_unit: 'ml')
+  offline_expired_schedule = offline_schedule.call('expired', start_date: 3.days.ago.to_date,
+                                                                end_date: Date.yesterday)
   web_ai_paid_account, web_ai_paid_household, = create_household(nonce, 'web-ai-paid')
   web_ai_paid_household.update!(subscription_plan: 'family_plus')
   web_ai_paid_member, = create_admin_member(web_ai_paid_household, nonce, 'web-ai-paid-member')
@@ -819,6 +845,16 @@ fixture = ActiveRecord::Base.transaction do
     retained_schedule_id: retained_schedule.id,
     retained_medication_id: retained_medication.id,
     retained_foreign_household_slug: foreign_household.slug,
+    offline_future_household_slug: offline_future_household.slug,
+    offline_future_household_id: offline_future_household.id,
+    offline_future_email: offline_future_account.email,
+    offline_future_schedule_id: offline_future_schedule.id,
+    offline_future_medication_id: offline_future_medication.id,
+    offline_eligibility_household_slug: offline_eligibility_household.slug,
+    offline_eligibility_email: offline_eligibility_account.email,
+    offline_inactive_schedule_id: offline_inactive_schedule.id,
+    offline_cooldown_schedule_id: offline_cooldown_schedule.id,
+    offline_expired_schedule_id: offline_expired_schedule.id,
     web_household_slug: household.slug,
     web_foreign_barcode: web_foreign_barcode,
     web_foreign_display: web_foreign_display,
