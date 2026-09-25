@@ -1068,6 +1068,7 @@ fixture = ActiveRecord::Base.transaction do
     managed_health_event_title: managed_health_event.title,
     managed_side_effect_title: managed_side_effect.title,
     earlier_health_event_id: earlier_health_event.id,
+    earlier_health_event_title: earlier_health_event.title,
     hidden_health_event_portable_id: hidden_health_event.portable_id,
     foreign_health_event_portable_id: foreign_health_event.portable_id,
     hidden_schedule_id: hidden_schedule.id,
