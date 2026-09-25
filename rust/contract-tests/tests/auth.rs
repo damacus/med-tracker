@@ -1,5 +1,17 @@
 use medtracker_contract_tests::{fixture, Target};
-use serde_json::Value;
+use serde_json::{json, Value};
+
+fn assert_denial(response: reqwest::blocking::Response, status: u16, code: &str) {
+    assert_eq!(response.status().as_u16(), status);
+    let request_id = response.headers()["x-request-id"]
+        .to_str()
+        .expect("request ID")
+        .to_owned();
+    let body: Value = response.json().expect("JSON denial");
+    assert_eq!(body["error"]["code"], code);
+    assert_eq!(body["error"]["request_id"], request_id);
+    assert!(body.get("data").is_none());
+}
 
 #[test]
 fn capabilities_are_public() {
@@ -111,4 +123,112 @@ fn logout_revokes_the_current_bearer_and_is_idempotent_without_one() {
     assert_eq!(response.status().as_u16(), 401);
     let response = target.delete("/api/v1/auth/logout", None);
     assert_eq!(response.status().as_u16(), 204);
+}
+
+#[test]
+fn task_6n_deactivated_user_cannot_use_prior_session_or_app_token() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let path = format!(
+        "/api/v1/households/{}/me",
+        fixture.auth_deactivated_household_id
+    );
+    for token in [
+        &fixture.auth_deactivated_access_token,
+        &fixture.auth_deactivated_app_token,
+    ] {
+        assert_denial(target.get(&path, Some(token)), 401, "unauthorized");
+        assert_denial(
+            target.get("/api/v1/auth/households", Some(token)),
+            401,
+            "unauthorized",
+        );
+    }
+}
+
+#[test]
+fn task_6n_inactive_user_cannot_use_still_issued_session() {
+    let fixture = fixture();
+    let path = format!(
+        "/api/v1/households/{}/me",
+        fixture.auth_inactive_household_id
+    );
+    assert_denial(
+        Target::from_env().get(&path, Some(&fixture.auth_inactive_access_token)),
+        401,
+        "unauthorized",
+    );
+}
+
+#[test]
+fn task_6n_nonoperational_households_and_suspended_membership_deny_prior_session() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    for state in ["held", "offboarded", "purged"] {
+        let context = &fixture.auth_operational_states[state];
+        let household_id = context["household_id"].as_i64().expect("household ID");
+        let token = context["access_token"].as_str().expect("access token");
+        let path = format!("/api/v1/households/{household_id}/medications");
+        assert_denial(target.get(&path, Some(token)), 401, "unauthorized");
+    }
+    let path = format!(
+        "/api/v1/households/{}/me",
+        fixture.auth_suspended_household_id
+    );
+    assert_denial(
+        target.get(&path, Some(&fixture.auth_suspended_access_token)),
+        401,
+        "unauthorized",
+    );
+}
+
+#[test]
+fn task_6n_absent_requested_membership_is_forbidden() {
+    let fixture = fixture();
+    let path = format!("/api/v1/households/{}/me", fixture.foreign_household_id);
+    assert_denial(
+        Target::from_env().get(&path, Some(&fixture.access_token)),
+        403,
+        "forbidden",
+    );
+}
+
+#[test]
+fn task_6n_role_change_invalidates_prior_session_and_app_token() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let me_path = format!("/api/v1/households/{}/me", fixture.auth_role_household_id);
+    for token in [
+        &fixture.auth_role_member_access_token,
+        &fixture.auth_role_member_app_token,
+        &fixture.auth_role_member_oauth_token,
+    ] {
+        assert_eq!(target.get(&me_path, Some(token)).status().as_u16(), 200);
+    }
+    let path = format!(
+        "/api/v1/households/{}/admin/memberships/{}",
+        fixture.auth_role_household_id, fixture.auth_role_member_membership_id
+    );
+    let response = target.patch_json(
+        &path,
+        &fixture.auth_role_owner_access_token,
+        &json!({"household_membership": {"role": "administrator"}}),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    let body: Value = response.json().expect("updated membership");
+    assert_eq!(body["data"]["role"], "administrator");
+    for token in [
+        &fixture.auth_role_member_access_token,
+        &fixture.auth_role_member_app_token,
+        &fixture.auth_role_member_oauth_token,
+    ] {
+        assert_denial(target.get(&me_path, Some(token)), 401, "unauthorized");
+    }
+    assert_eq!(
+        target
+            .get(&me_path, Some(&fixture.auth_role_owner_access_token))
+            .status()
+            .as_u16(),
+        200
+    );
 }

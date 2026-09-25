@@ -628,6 +628,48 @@ fixture = ActiveRecord::Base.transaction do
   )
   AccountLockout.create!(account: locked_account, key: SecureRandom.hex(16), deadline: 30.minutes.from_now)
 
+  deactivated_account, deactivated_household, deactivated_user = create_household(nonce, 'auth-deactivated')
+  deactivated_membership = deactivated_account.household_memberships.active.sole
+  _deactivated_session, deactivated_access_token, = ApiSession.issue_for(
+    account: deactivated_account, household_membership: deactivated_membership, device_name: 'contract-deactivated'
+  )
+  _deactivated_app_token, deactivated_app_token = ApiAppToken.issue_for(
+    account: deactivated_account, household_membership: deactivated_membership, name: 'Contract deactivated'
+  )
+  deactivated_user.deactivate!
+
+  inactive_account, inactive_household, inactive_user = create_household(nonce, 'auth-inactive')
+  inactive_membership = inactive_account.household_memberships.active.sole
+  _inactive_session, inactive_access_token, = ApiSession.issue_for(
+    account: inactive_account, household_membership: inactive_membership, device_name: 'contract-inactive'
+  )
+  inactive_user.update!(active: false)
+
+  operational_states = %i[held offboarded purged].to_h do |state|
+    operational_account, operational_household, = create_household(nonce, "auth-#{state}")
+    operational_membership = operational_account.household_memberships.active.sole
+    _operational_session, operational_token, = ApiSession.issue_for(
+      account: operational_account, household_membership: operational_membership, device_name: "contract-#{state}"
+    )
+    operational_household.update!(lifecycle_state: state)
+    [state, { household_id: operational_household.id, access_token: operational_token }]
+  end
+
+  suspended_account, suspended_household, = create_household(nonce, 'auth-suspended')
+  suspended_membership, suspended_access_token = create_admin_member(suspended_household, nonce, 'auth-suspended-member')
+  suspended_membership.update!(status: :suspended)
+
+  role_account, role_household, = create_household(nonce, 'auth-role-change')
+  role_owner_membership = role_account.household_memberships.active.sole
+  _role_owner_session, role_owner_access_token, = ApiSession.issue_for(
+    account: role_account, household_membership: role_owner_membership, device_name: 'contract-role-owner'
+  )
+  role_member_membership, role_member_access_token = create_admin_member(role_household, nonce, 'auth-role-member')
+  _role_member_app, role_member_app_token = ApiAppToken.issue_for(
+    account: role_member_membership.account, household_membership: role_member_membership,
+    name: 'Contract role member'
+  )
+
   oauth_client_id = "contract-mobile-#{nonce}"
   oauth_redirect_uri = 'io.damacus.medtracker.contract:/oauth2redirect'
   oauth_application = OauthApplication.create!(name: 'Contract mobile', client_id: oauth_client_id, client_kind: :mobile,
@@ -663,6 +705,12 @@ fixture = ActiveRecord::Base.transaction do
                                               redirect_uri: 'https://client.example/callback',
                                               scopes: 'patient/Patient.rs patient/Medication.rs',
                                               token_endpoint_auth_method: 'none')
+  role_member_oauth_token = "contract-auth-role-#{SecureRandom.urlsafe_base64(48)}"
+  OauthGrant.create!(account: role_member_membership.account, oauth_application: fhir_application,
+                     household_membership: role_member_membership, person: role_member_membership.person,
+                     permissions_version: role_member_membership.permissions_version,
+                     token_hash: OauthGrant.digest(role_member_oauth_token),
+                     expires_in: 1.hour.from_now, scopes: 'patient/Patient.rs')
   fhir_patient_scope_token = "contract-fhir-patient-#{SecureRandom.urlsafe_base64(48)}"
   OauthGrant.create!(account: account, oauth_application: fhir_application,
                      household_membership: membership, person: managed_person,
@@ -816,6 +864,20 @@ fixture = ActiveRecord::Base.transaction do
     logout_access_token: logout_access_token,
     expired_access_token: expired_access_token,
     locked_access_token: locked_access_token,
+    auth_deactivated_household_id: deactivated_household.id,
+    auth_deactivated_access_token: deactivated_access_token,
+    auth_deactivated_app_token: deactivated_app_token,
+    auth_inactive_household_id: inactive_household.id,
+    auth_inactive_access_token: inactive_access_token,
+    auth_operational_states: operational_states,
+    auth_suspended_household_id: suspended_household.id,
+    auth_suspended_access_token: suspended_access_token,
+    auth_role_household_id: role_household.id,
+    auth_role_member_membership_id: role_member_membership.id,
+    auth_role_owner_access_token: role_owner_access_token,
+    auth_role_member_access_token: role_member_access_token,
+    auth_role_member_app_token: role_member_app_token,
+    auth_role_member_oauth_token: role_member_oauth_token,
     oauth_client_id: oauth_client_id,
     oauth_redirect_uri: oauth_redirect_uri,
     user_person_id: account.person.id,
