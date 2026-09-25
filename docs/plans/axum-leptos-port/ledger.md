@@ -27,6 +27,12 @@ smoke — the Rails suite is the behaviour source, and the user rejected an
 invented substitute — the cost if wrong is later reworking this small smoke
 when the full authenticated login journey is ported.
 
+Ruling: the portable Chromium smoke excludes OIDC/SSO provider buttons while
+allowing `Continue with Passkey` — Rails reveals that separate passkey control
+in a real browser although the existing no-OIDC system spec uses a broad
+`Continue with` matcher under its test setup — the cost if wrong is missing a
+newly named OIDC provider button until the full authentication browser suite.
+
 | Owner | Exclusive paths | Reserved shared paths |
 | --- | --- | --- |
 | API contract writers | Their separate worktrees; `rust/contract-tests/**`, `rust/parity-matrix.md`, API fixture and contract-task changes | No `rust/web/**` edits |

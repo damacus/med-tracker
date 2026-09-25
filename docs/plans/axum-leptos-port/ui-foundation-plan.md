@@ -30,9 +30,11 @@ Port the existing login-page example in `spec/system/user_sessions_spec.rb`
 a target-independent Playwright browser smoke under `rust/web/tests/`. In a
 fresh browser context at `/login`, preserve its assertions inside `main`:
 email field, password field, `Sign In to Dashboard` button, and `Forgot?`
-link. Also preserve `Welcome back` and absent `Continue with` OIDC button from
-`spec/features/security/oidc_security_spec.rb` for the no-credentials
-configuration. Use accessible locators for the fields and controls. Run at
+link. Also preserve `Welcome back` and the absence of an OIDC/SSO provider
+button from `spec/features/security/oidc_security_spec.rb` for the
+no-credentials configuration. In real Chromium, Rails may reveal the separate
+`Continue with Passkey` control; that control is outside the OIDC assertion.
+Use accessible locators for the fields and controls. Run at
 desktop 1400×900 and mobile 390×844. Run the portable contract against an
 isolated Rails test server and record the exact baseline result. Point it at
 the absent Rust target and record the connection failure as expected red.
