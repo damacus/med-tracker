@@ -63,7 +63,7 @@ tasks:
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
       CONTRACT_MAILPIT_URL: '{{ .MAILPIT_URL }}'
     cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml {{ if eq .TEST_TARGET "lib" }}--lib{{ else if .TEST_TARGET }}--test {{ .TEST_TARGET }}{{ else }}--lib --test auth --test admin --test invitations --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test reports --test portability --test profile --test sync --test replay --test oauth --test devices --test envelopes{{ end }} --no-fail-fast -- --test-threads=1
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml {{ if eq .TEST_TARGET "lib" }}--lib{{ else if .TEST_TARGET }}--test {{ .TEST_TARGET }}{{ else }}--lib --test auth --test admin --test invitations --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test reports --test fhir --test portability --test profile --test sync --test replay --test oauth --test devices --test envelopes{{ end }} --no-fail-fast -- --test-threads=1
 
   run-portability:
     desc: Run portable household export and import contract cases

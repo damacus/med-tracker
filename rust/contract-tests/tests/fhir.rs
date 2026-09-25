@@ -202,18 +202,30 @@ fn search_filters_and_pagination_are_observable_without_order_assumptions() {
         ),
     ];
     for (kind, query, id) in cases {
-        assert!(
-            has_id(&search(&target, &fixture, kind, &query), id),
-            "{kind} filter"
-        );
+        let rows = search(&target, &fixture, kind, &query);
+        if kind == "MedicationAdministration" {
+            assert!(has_id(&rows, id));
+            assert!(!has_id(&rows, &fixture.hidden_take_portable_id));
+            assert!(rows
+                .iter()
+                .all(|row| row["subject"]["reference"] == format!("Patient/{person}")));
+        } else {
+            assert_eq!(
+                rows.len(),
+                1,
+                "{kind} filter must select one fixture resource"
+            );
+            assert_eq!(rows[0]["id"], id);
+        }
     }
     let medication_resource = resource(&target, &fixture, "Medication", medication);
-    if let Some(form) = medication_resource["form"]["text"].as_str() {
-        assert!(has_id(
-            &search(&target, &fixture, "Medication", &format!("form={form}")),
-            medication
-        ));
-    }
+    assert_eq!(medication_resource["form"]["text"], "Analgesic");
+    let medication_by_form = search(&target, &fixture, "Medication", "form=Analgesic");
+    assert_eq!(medication_by_form.len(), 1);
+    assert_eq!(medication_by_form[0]["id"], medication.as_str());
+    let medication_by_code = search(&target, &fixture, "Medication", "code=123456");
+    assert_eq!(medication_by_code.len(), 1);
+    assert_eq!(medication_by_code[0]["id"], medication.as_str());
     let administration = resource(
         &target,
         &fixture,
@@ -221,15 +233,14 @@ fn search_filters_and_pagination_are_observable_without_order_assumptions() {
         &fixture.managed_take_portable_id,
     );
     let taken_on = &administration["effectiveDateTime"].as_str().unwrap()[..10];
-    assert!(has_id(
-        &search(
-            &target,
-            &fixture,
-            "MedicationAdministration",
-            &format!("date={taken_on}")
-        ),
-        &fixture.managed_take_portable_id
-    ));
+    let dated = search(
+        &target,
+        &fixture,
+        "MedicationAdministration",
+        &format!("patient=Patient/{person}&date={taken_on}"),
+    );
+    assert_eq!(dated.len(), 1);
+    assert_eq!(dated[0]["id"], fixture.managed_take_portable_id);
     let page = read(
         target.get(
             &format!("{BASE}/Patient?_count=1"),
@@ -246,6 +257,17 @@ fn search_filters_and_pagination_are_observable_without_order_assumptions() {
         .find(|link| link["relation"] == "next")
         .unwrap();
     let next_url = url::Url::parse(next["url"].as_str().unwrap()).unwrap();
+    let target_origin = url::Url::parse(&std::env::var("CONTRACT_BASE_URL").unwrap()).unwrap();
+    assert_eq!(next_url.origin(), target_origin.origin());
+    assert_eq!(next_url.path(), format!("{BASE}/Patient"));
+    let next_query: Vec<_> = next_url.query_pairs().collect();
+    assert_eq!(next_query.len(), 2);
+    assert!(next_query
+        .iter()
+        .any(|(name, value)| name == "_count" && value == "1"));
+    assert!(next_query
+        .iter()
+        .any(|(name, value)| name == "page" && value == "2"));
     let next_path = format!("{}?{}", next_url.path(), next_url.query().unwrap());
     let second = read(target.get(&next_path, Some(&fixture.access_token)), 200);
     assert_eq!(entries(&second, "Patient").len(), 1);
@@ -328,6 +350,12 @@ fn authentication_scope_and_household_boundaries_hide_private_resources() {
         "MedicationStatement",
         "MedicationAdministration",
     ] {
+        outcome(
+            target.get(&format!("{BASE}/{kind}"), None),
+            401,
+            "security",
+            &fixture.foreign_person_name,
+        );
         let body = read(
             target.get(
                 &format!("{BASE}/{kind}?_count=100"),
@@ -372,15 +400,27 @@ fn authentication_scope_and_household_boundaries_hide_private_resources() {
     let scoped_rows = entries(&scoped, "Patient");
     assert!(has_id(&scoped_rows, &fixture.managed_person_portable_id));
     assert!(!has_id(&scoped_rows, &fixture.hidden_person_portable_id));
-    outcome(
-        target.get(
-            &format!("{BASE}/Medication"),
-            Some(&fixture.fhir_patient_scope_token),
+    for (kind, id) in [
+        ("Medication", &fixture.managed_medication_portable_id),
+        ("MedicationRequest", &fixture.managed_schedule_portable_id),
+        (
+            "MedicationStatement",
+            &fixture.managed_assignment_portable_id,
         ),
-        403,
-        "security",
-        &fixture.foreign_person_name,
-    );
+        (
+            "MedicationAdministration",
+            &fixture.managed_take_portable_id,
+        ),
+    ] {
+        for path in [format!("{BASE}/{kind}"), format!("{BASE}/{kind}/{id}")] {
+            outcome(
+                target.get(&path, Some(&fixture.fhir_patient_scope_token)),
+                403,
+                "security",
+                &fixture.foreign_person_name,
+            );
+        }
+    }
     outcome(
         target.get(&patient_path, Some(&fixture.fhir_revoked_scope_token)),
         401,
