@@ -136,7 +136,7 @@ function set_web_json_read_adapter_environment
 end
 
 function set_web_json_adapter_environment
-    set -gx CONTRACT_RUBYOPT -r/app/rust/contract-tests/test_support/ai_suggestion_adapter
+    set -gx CONTRACT_RUBYOPT '-r/app/rust/contract-tests/test_support/ai_suggestion_adapter -r/app/rust/contract-tests/test_support/csrf'
 end
 
 function uses_web_csrf -a target

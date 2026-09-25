@@ -419,6 +419,16 @@ impl Target {
             .expect("target must respond")
     }
 
+    pub fn delete_web_json(&self, path: &str, csrf: &str) -> Response {
+        self.require_local_write();
+        self.client
+            .delete(self.url(path))
+            .header("Accept", "application/json")
+            .header("X-CSRF-Token", csrf)
+            .send()
+            .expect("target must respond")
+    }
+
     pub fn post_form(&self, path: &str, fields: &[(&str, &str)]) -> Response {
         self.require_local_write();
         self.client
@@ -519,6 +529,26 @@ impl Target {
             .json(body)
             .send()
             .expect("target must respond")
+    }
+
+    pub fn post_web_json(
+        &self,
+        path: &str,
+        csrf: &str,
+        client_ip: Option<&str>,
+        body: &serde_json::Value,
+    ) -> Response {
+        self.require_local_write();
+        let request = self
+            .client
+            .post(self.url(path))
+            .header("Accept", "application/json")
+            .header("X-CSRF-Token", csrf);
+        let request = match client_ip {
+            Some(client_ip) => request.header("X-Forwarded-For", client_ip),
+            None => request,
+        };
+        request.json(body).send().expect("target must respond")
     }
 
     pub fn post_json_from_web_client(

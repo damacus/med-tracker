@@ -5,7 +5,25 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 static LOGIN_CLIENT: AtomicUsize = AtomicUsize::new(1);
 
-fn sign_in(target: &Target, email: &str) {
+fn csrf_from_html(html: &str) -> String {
+    let document = Html::parse_document(html);
+    for (selector, attribute) in [
+        ("meta[name='csrf-token']", "content"),
+        ("input[name='authenticity_token']", "value"),
+    ] {
+        let selector = Selector::parse(selector).expect("CSRF selector");
+        if let Some(token) = document
+            .select(&selector)
+            .next()
+            .and_then(|element| element.value().attr(attribute))
+        {
+            return token.to_string();
+        }
+    }
+    panic!("CSRF token missing")
+}
+
+fn sign_in(target: &Target, email: &str, slug: &str) -> String {
     let response = target.get_html("/login");
     assert_eq!(response.status().as_u16(), 200);
     let document = Html::parse_document(&response.text().expect("login HTML"));
@@ -24,6 +42,9 @@ fn sign_in(target: &Target, email: &str) {
     let client_ip = format!("198.18.3.{}", LOGIN_CLIENT.fetch_add(1, Ordering::Relaxed));
     let response = target.post_html_form_from_client("/login", &client_ip, &fields);
     assert_eq!(response.status().as_u16(), 302);
+    let response = target.get_html(&format!("/households/{slug}/dashboard"));
+    assert_eq!(response.status().as_u16(), 200);
+    csrf_from_html(&response.text().expect("dashboard HTML"))
 }
 
 fn ai_path(slug: &str) -> String {
@@ -50,11 +71,100 @@ fn person_ids(snapshot: &Value) -> Vec<i64> {
 }
 
 #[test]
+fn paid_ai_suggestion_requires_valid_csrf() {
+    let fixture = fixture();
+    let path = ai_path(&fixture.web_ai_paid_slug);
+    let body = json!({"medication": {"name": "Calpol Six Plus"}});
+
+    let missing = Target::from_env();
+    sign_in(
+        &missing,
+        &fixture.web_ai_paid_email,
+        &fixture.web_ai_paid_slug,
+    );
+    let response = missing.post_json(&path, &body);
+    assert_eq!(response.status().as_u16(), 401);
+    assert!(!response
+        .text()
+        .expect("denial JSON")
+        .contains("Paracetamol pain and fever relief"));
+
+    let wrong = Target::from_env();
+    sign_in(
+        &wrong,
+        &fixture.web_ai_paid_email,
+        &fixture.web_ai_paid_slug,
+    );
+    let response = wrong.post_web_json(&path, "wrong-token", None, &body);
+    assert_eq!(response.status().as_u16(), 401);
+    assert!(!response
+        .text()
+        .expect("denial JSON")
+        .contains("Paracetamol pain and fever relief"));
+}
+
+#[test]
+fn person_delete_requires_valid_csrf_and_preserves_public_snapshot() {
+    let fixture = fixture();
+    let path = person_path(&fixture.web_people_slug, fixture.web_people_view_target_id);
+    let observer = Target::from_env();
+    sign_in(
+        &observer,
+        &fixture.web_people_view_member_email,
+        &fixture.web_people_slug,
+    );
+    let before = snapshot(&observer, &fixture.web_people_slug);
+    assert!(person_ids(&before).contains(&fixture.web_people_view_target_id));
+
+    let missing = Target::from_env();
+    sign_in(
+        &missing,
+        &fixture.web_people_email,
+        &fixture.web_people_slug,
+    );
+    let response = missing.delete_json(&path);
+    assert_eq!(response.status().as_u16(), 401);
+    let after_missing = snapshot(&observer, &fixture.web_people_slug);
+    assert_eq!(before["data"]["people"], after_missing["data"]["people"]);
+
+    let foreign_path = person_path(
+        &fixture.web_people_foreign_slug,
+        fixture.web_people_foreign_id,
+    );
+    let foreign_observer = Target::from_env();
+    sign_in(
+        &foreign_observer,
+        &fixture.web_people_foreign_email,
+        &fixture.web_people_foreign_slug,
+    );
+    let foreign_before = snapshot(&foreign_observer, &fixture.web_people_foreign_slug);
+    assert!(person_ids(&foreign_before).contains(&fixture.web_people_foreign_id));
+    let wrong = Target::from_env();
+    sign_in(
+        &wrong,
+        &fixture.web_people_foreign_email,
+        &fixture.web_people_foreign_slug,
+    );
+    let response = wrong.delete_web_json(&foreign_path, "wrong-token");
+    assert_eq!(response.status().as_u16(), 401);
+    let foreign_after = snapshot(&foreign_observer, &fixture.web_people_foreign_slug);
+    assert_eq!(
+        foreign_before["data"]["people"],
+        foreign_after["data"]["people"]
+    );
+}
+
+#[test]
 fn ai_suggestion_requires_login_and_paid_entitlement() {
     let fixture = fixture();
     let unauthenticated = Target::from_env();
-    let response = unauthenticated.post_json(
+    let login = unauthenticated.get_html("/login");
+    assert_eq!(login.status().as_u16(), 200);
+    let anonymous_csrf = csrf_from_html(&login.text().expect("login HTML"));
+    let response = unauthenticated.post_web_json(
         &ai_path(&fixture.web_ai_paid_slug),
+        &anonymous_csrf,
+        None,
         &json!({"medication": {"name": "Calpol Six Plus"}}),
     );
     assert_eq!(response.status().as_u16(), 302);
@@ -64,9 +174,11 @@ fn ai_suggestion_requires_login_and_paid_entitlement() {
         .starts_with("/login"));
 
     let free = Target::from_env();
-    sign_in(&free, &fixture.web_ai_free_email);
-    let response = free.post_json(
+    let csrf = sign_in(&free, &fixture.web_ai_free_email, &fixture.web_ai_free_slug);
+    let response = free.post_web_json(
         &ai_path(&fixture.web_ai_free_slug),
+        &csrf,
+        None,
         &json!({"medication": {"name": "Calpol Six Plus"}}),
     );
     assert_eq!(response.status().as_u16(), 404);
@@ -76,9 +188,15 @@ fn ai_suggestion_requires_login_and_paid_entitlement() {
 fn paid_ai_suggestion_is_sourced_and_foreign_household_is_hidden() {
     let fixture = fixture();
     let target = Target::from_env();
-    sign_in(&target, &fixture.web_ai_paid_email);
-    let response = target.post_json(
+    let csrf = sign_in(
+        &target,
+        &fixture.web_ai_paid_email,
+        &fixture.web_ai_paid_slug,
+    );
+    let response = target.post_web_json(
         &ai_path(&fixture.web_ai_paid_slug),
+        &csrf,
+        None,
         &json!({"medication": {"name": "Calpol Six Plus"}}),
     );
     assert_eq!(response.status().as_u16(), 200);
@@ -112,8 +230,10 @@ fn paid_ai_suggestion_is_sourced_and_foreign_household_is_hidden() {
     );
     assert_eq!(body["errors"], json!([]));
 
-    let foreign = target.post_json(
+    let foreign = target.post_web_json(
         &ai_path(&fixture.web_ai_free_slug),
+        &csrf,
+        None,
         &json!({"medication": {"name": "Calpol Six Plus"}}),
     );
     assert_eq!(foreign.status().as_u16(), 302);
@@ -127,12 +247,18 @@ fn paid_ai_suggestion_is_sourced_and_foreign_household_is_hidden() {
 fn paid_member_without_medication_authority_cannot_request_ai_suggestion() {
     let fixture = fixture();
     let member = Target::from_env();
-    sign_in(&member, &fixture.web_ai_paid_member_email);
+    let csrf = sign_in(
+        &member,
+        &fixture.web_ai_paid_member_email,
+        &fixture.web_ai_paid_slug,
+    );
     let household = snapshot(&member, &fixture.web_ai_paid_slug);
     assert!(household["meta"]["generated_at"].is_string());
 
-    let response = member.post_json(
+    let response = member.post_web_json(
         &ai_path(&fixture.web_ai_paid_slug),
+        &csrf,
+        None,
         &json!({"medication": {"name": "Calpol Six Plus"}}),
     );
     assert_eq!(response.status().as_u16(), 302);
@@ -146,14 +272,14 @@ fn paid_member_without_medication_authority_cannot_request_ai_suggestion() {
 fn ai_suggestions_throttle_by_ip() {
     let fixture = fixture();
     let target = Target::from_env();
-    sign_in(&target, &fixture.web_ai_ip_email);
+    let csrf = sign_in(&target, &fixture.web_ai_ip_email, &fixture.web_ai_ip_slug);
     let path = ai_path(&fixture.web_ai_ip_slug);
     let body = json!({"medication": {"name": "Calpol Six Plus"}});
     for _ in 0..10 {
-        let response = target.post_json_from_web_client(&path, "198.18.0.41", &body);
+        let response = target.post_web_json(&path, &csrf, Some("198.18.0.41"), &body);
         assert_eq!(response.status().as_u16(), 200);
     }
-    let response = target.post_json_from_web_client(&path, "198.18.0.41", &body);
+    let response = target.post_web_json(&path, &csrf, Some("198.18.0.41"), &body);
     assert_eq!(response.status().as_u16(), 429);
     assert!(
         response.headers()["retry-after"]
@@ -169,14 +295,19 @@ fn ai_suggestions_throttle_by_ip() {
 fn ai_suggestions_throttle_by_account_across_ips() {
     let fixture = fixture();
     let target = Target::from_env();
-    sign_in(&target, &fixture.web_ai_user_email);
+    let csrf = sign_in(
+        &target,
+        &fixture.web_ai_user_email,
+        &fixture.web_ai_user_slug,
+    );
     let path = ai_path(&fixture.web_ai_user_slug);
     let body = json!({"medication": {"name": "Calpol Six Plus"}});
     for index in 1..=20 {
-        let response = target.post_json_from_web_client(&path, &format!("198.18.1.{index}"), &body);
+        let response =
+            target.post_web_json(&path, &csrf, Some(&format!("198.18.1.{index}")), &body);
         assert_eq!(response.status().as_u16(), 200, "request {index}");
     }
-    let response = target.post_json_from_web_client(&path, "198.18.1.21", &body);
+    let response = target.post_web_json(&path, &csrf, Some("198.18.1.21"), &body);
     assert_eq!(response.status().as_u16(), 429);
     assert!(
         response.headers()["retry-after"]
@@ -193,7 +324,10 @@ fn person_delete_requires_login_and_preserves_unauthorized_state() {
     let fixture = fixture();
     let path = person_path(&fixture.web_people_slug, fixture.web_people_delete_id);
     let unauthenticated = Target::from_env();
-    let response = unauthenticated.delete_json(&path);
+    let login = unauthenticated.get_html("/login");
+    assert_eq!(login.status().as_u16(), 200);
+    let anonymous_csrf = csrf_from_html(&login.text().expect("login HTML"));
+    let response = unauthenticated.delete_web_json(&path, &anonymous_csrf);
     assert_eq!(response.status().as_u16(), 302);
     assert!(response.headers()["location"]
         .to_str()
@@ -201,35 +335,43 @@ fn person_delete_requires_login_and_preserves_unauthorized_state() {
         .starts_with("/login"));
 
     let member = Target::from_env();
-    sign_in(&member, &fixture.web_people_member_email);
+    let member_csrf = sign_in(
+        &member,
+        &fixture.web_people_member_email,
+        &fixture.web_people_slug,
+    );
     let before = snapshot(&member, &fixture.web_people_slug);
     assert!(!person_ids(&before).contains(&fixture.web_people_delete_id));
-    let response = member.delete_json(&path);
+    let response = member.delete_web_json(&path, &member_csrf);
     assert_eq!(response.status().as_u16(), 404);
     let after = snapshot(&member, &fixture.web_people_slug);
     assert_eq!(person_ids(&before), person_ids(&after));
 
     let owner = Target::from_env();
-    sign_in(&owner, &fixture.web_people_email);
+    let owner_csrf = sign_in(&owner, &fixture.web_people_email, &fixture.web_people_slug);
     let before = snapshot(&owner, &fixture.web_people_slug);
     assert!(person_ids(&before).contains(&fixture.web_people_delete_id));
-    let foreign = owner.delete_json(&person_path(
-        &fixture.web_people_slug,
-        fixture.web_people_foreign_id,
-    ));
+    let foreign = owner.delete_web_json(
+        &person_path(&fixture.web_people_slug, fixture.web_people_foreign_id),
+        &owner_csrf,
+    );
     assert_eq!(foreign.status().as_u16(), 404);
     let after = snapshot(&owner, &fixture.web_people_slug);
     assert_eq!(person_ids(&before), person_ids(&after));
 
     let foreign_owner = Target::from_env();
-    sign_in(&foreign_owner, &fixture.web_people_foreign_email);
+    sign_in(
+        &foreign_owner,
+        &fixture.web_people_foreign_email,
+        &fixture.web_people_foreign_slug,
+    );
     let foreign_before = snapshot(&foreign_owner, &fixture.web_people_foreign_slug);
     assert!(person_ids(&foreign_before).contains(&fixture.web_people_foreign_id));
     let foreign_path = person_path(
         &fixture.web_people_foreign_slug,
         fixture.web_people_foreign_id,
     );
-    let denied = owner.delete_json(&foreign_path);
+    let denied = owner.delete_web_json(&foreign_path, &owner_csrf);
     assert_eq!(denied.status().as_u16(), 302);
     let foreign_after = snapshot(&foreign_owner, &fixture.web_people_foreign_slug);
     assert_eq!(person_ids(&foreign_before), person_ids(&foreign_after));
@@ -239,19 +381,23 @@ fn person_delete_requires_login_and_preserves_unauthorized_state() {
 fn view_granted_member_can_see_person_but_cannot_delete_them() {
     let fixture = fixture();
     let member = Target::from_env();
-    sign_in(&member, &fixture.web_people_view_member_email);
+    let member_csrf = sign_in(
+        &member,
+        &fixture.web_people_view_member_email,
+        &fixture.web_people_slug,
+    );
     let before = snapshot(&member, &fixture.web_people_slug);
     assert!(person_ids(&before).contains(&fixture.web_people_view_target_id));
 
     let owner = Target::from_env();
-    sign_in(&owner, &fixture.web_people_email);
+    sign_in(&owner, &fixture.web_people_email, &fixture.web_people_slug);
     let owner_before = snapshot(&owner, &fixture.web_people_slug);
     assert!(person_ids(&owner_before).contains(&fixture.web_people_view_target_id));
 
-    let response = member.delete_json(&person_path(
-        &fixture.web_people_slug,
-        fixture.web_people_view_target_id,
-    ));
+    let response = member.delete_web_json(
+        &person_path(&fixture.web_people_slug, fixture.web_people_view_target_id),
+        &member_csrf,
+    );
     assert_eq!(response.status().as_u16(), 302);
     let after = snapshot(&member, &fixture.web_people_slug);
     assert_eq!(person_ids(&before), person_ids(&after));
@@ -267,13 +413,13 @@ fn view_granted_member_can_see_person_but_cannot_delete_them() {
 fn person_delete_returns_no_content_and_removes_visible_person() {
     let fixture = fixture();
     let target = Target::from_env();
-    sign_in(&target, &fixture.web_people_email);
+    let csrf = sign_in(&target, &fixture.web_people_email, &fixture.web_people_slug);
     let before = snapshot(&target, &fixture.web_people_slug);
     assert!(person_ids(&before).contains(&fixture.web_people_delete_id));
-    let response = target.delete_json(&person_path(
-        &fixture.web_people_slug,
-        fixture.web_people_delete_id,
-    ));
+    let response = target.delete_web_json(
+        &person_path(&fixture.web_people_slug, fixture.web_people_delete_id),
+        &csrf,
+    );
     assert_eq!(response.status().as_u16(), 204);
     assert!(response.text().expect("empty response").is_empty());
     let after = snapshot(&target, &fixture.web_people_slug);
@@ -284,7 +430,7 @@ fn person_delete_returns_no_content_and_removes_visible_person() {
 fn person_with_administration_history_returns_json_validation_and_retains_history() {
     let fixture = fixture();
     let target = Target::from_env();
-    sign_in(&target, &fixture.web_people_email);
+    let csrf = sign_in(&target, &fixture.web_people_email, &fixture.web_people_slug);
     let before = snapshot(&target, &fixture.web_people_slug);
     assert!(person_ids(&before).contains(&fixture.web_people_history_id));
     let takes = before["data"]["medication_takes"]
@@ -293,10 +439,10 @@ fn person_with_administration_history_returns_json_validation_and_retains_histor
     assert!(takes
         .iter()
         .any(|take| take["schedule_id"] == fixture.web_people_history_schedule_id));
-    let response = target.delete_json(&person_path(
-        &fixture.web_people_slug,
-        fixture.web_people_history_id,
-    ));
+    let response = target.delete_web_json(
+        &person_path(&fixture.web_people_slug, fixture.web_people_history_id),
+        &csrf,
+    );
     assert_eq!(response.status().as_u16(), 422);
     let error: Value = response.json().expect("validation JSON");
     assert!(error
@@ -316,9 +462,15 @@ fn person_with_administration_history_returns_json_validation_and_retains_histor
 fn feature_disabled_hides_paid_ai_suggestion() {
     let fixture = fixture();
     let target = Target::from_env();
-    sign_in(&target, &fixture.web_ai_paid_email);
-    let response = target.post_json(
+    let csrf = sign_in(
+        &target,
+        &fixture.web_ai_paid_email,
+        &fixture.web_ai_paid_slug,
+    );
+    let response = target.post_web_json(
         &ai_path(&fixture.web_ai_paid_slug),
+        &csrf,
+        None,
         &json!({"medication": {"name": "Calpol Six Plus"}}),
     );
     assert_eq!(response.status().as_u16(), 404);
