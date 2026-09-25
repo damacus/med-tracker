@@ -69,6 +69,40 @@ fixture = ActiveRecord::Base.transaction do
   retained_schedule = Schedule.create!(household: retained_household, person: retained_account.person,
                                        medication: retained_medication, dose_amount: '1', dose_unit: 'ml',
                                        frequency: 'Daily', start_date: '2026-01-01', end_date: '2099-12-31')
+  web_ai_paid_account, web_ai_paid_household, = create_household(nonce, 'web-ai-paid')
+  web_ai_paid_household.update!(subscription_plan: 'family_plus')
+  web_ai_free_account, web_ai_free_household, = create_household(nonce, 'web-ai-free')
+  web_ai_ip_account, web_ai_ip_household, = create_household(nonce, 'web-ai-ip')
+  web_ai_ip_household.update!(subscription_plan: 'family_plus')
+  web_ai_user_account, web_ai_user_household, = create_household(nonce, 'web-ai-user')
+  web_ai_user_household.update!(subscription_plan: 'family_plus')
+  web_people_account, web_people_household, = create_household(nonce, 'web-people')
+  web_people_membership = web_people_account.household_memberships.find_by!(household: web_people_household)
+  web_people_delete = web_people_household.people.create!(name: "Contract web delete #{nonce}",
+                                                           date_of_birth: 30.years.ago.to_date,
+                                                           person_type: :adult, has_capacity: true)
+  web_people_history = web_people_household.people.create!(name: "Contract web history #{nonce}",
+                                                            date_of_birth: 30.years.ago.to_date,
+                                                            person_type: :adult, has_capacity: true)
+  [web_people_delete, web_people_history].each do |person|
+    PersonAccessGrant.create!(household: web_people_household, household_membership: web_people_membership,
+                              person: person, access_level: :manage, relationship_type: :family_member,
+                              granted_by_membership: web_people_membership)
+  end
+  web_people_member, = create_admin_member(web_people_household, nonce, 'web-people-member')
+  web_people_foreign_account, web_people_foreign_household, = create_household(nonce, 'web-people-foreign')
+  web_people_foreign = web_people_foreign_account.person
+  web_people_location = Location.create!(household: web_people_household, name: "Contract web shelf #{nonce}")
+  web_people_medication = Medication.create!(household: web_people_household, location: web_people_location,
+                                             name: "Contract web medicine #{nonce}", dose_amount: '1',
+                                             dose_unit: 'ml', current_supply: '50')
+  web_people_schedule = Schedule.create!(household: web_people_household, person: web_people_history,
+                                         medication: web_people_medication, dose_amount: '1', dose_unit: 'ml',
+                                         frequency: 'Daily', start_date: '2026-01-01', end_date: '2099-12-31')
+  MedicationTake.create!(household: web_people_household, schedule: web_people_schedule,
+                         taken_at: Time.current, dose_amount: '1', dose_unit: 'ml',
+                         taken_from_medication: web_people_medication,
+                         taken_from_location: web_people_location)
   portable_source_account, portable_source_household, = create_household(nonce, 'portable-source')
   portable_target_account, portable_target_household, = create_household(nonce, 'portable-target')
   profile_account, profile_household, = create_household(nonce, 'profile')
@@ -757,6 +791,23 @@ fixture = ActiveRecord::Base.transaction do
     web_feed_email: feed_account.email,
     web_managed_person_name: managed_person.name,
     web_hidden_person_name: hidden_person.name,
+    web_ai_paid_slug: web_ai_paid_household.slug,
+    web_ai_paid_email: web_ai_paid_account.email,
+    web_ai_free_slug: web_ai_free_household.slug,
+    web_ai_free_email: web_ai_free_account.email,
+    web_ai_ip_slug: web_ai_ip_household.slug,
+    web_ai_ip_email: web_ai_ip_account.email,
+    web_ai_user_slug: web_ai_user_household.slug,
+    web_ai_user_email: web_ai_user_account.email,
+    web_people_slug: web_people_household.slug,
+    web_people_email: web_people_account.email,
+    web_people_delete_id: web_people_delete.id,
+    web_people_history_id: web_people_history.id,
+    web_people_history_schedule_id: web_people_schedule.id,
+    web_people_foreign_slug: web_people_foreign_household.slug,
+    web_people_foreign_email: web_people_foreign_account.email,
+    web_people_foreign_id: web_people_foreign.id,
+    web_people_member_email: web_people_member.account.email,
     profile_household_id: profile_household.id,
     avatar_household_id: avatar_household.id,
     web_avatar_household_slug: web_avatar_household.slug,

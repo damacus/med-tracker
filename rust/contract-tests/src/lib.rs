@@ -39,6 +39,23 @@ pub struct Fixture {
     pub web_feed_email: String,
     pub web_managed_person_name: String,
     pub web_hidden_person_name: String,
+    pub web_ai_paid_slug: String,
+    pub web_ai_paid_email: String,
+    pub web_ai_free_slug: String,
+    pub web_ai_free_email: String,
+    pub web_ai_ip_slug: String,
+    pub web_ai_ip_email: String,
+    pub web_ai_user_slug: String,
+    pub web_ai_user_email: String,
+    pub web_people_slug: String,
+    pub web_people_email: String,
+    pub web_people_delete_id: i64,
+    pub web_people_history_id: i64,
+    pub web_people_history_schedule_id: i64,
+    pub web_people_foreign_slug: String,
+    pub web_people_foreign_email: String,
+    pub web_people_foreign_id: i64,
+    pub web_people_member_email: String,
     pub profile_household_id: i64,
     pub avatar_household_id: i64,
     pub web_avatar_household_slug: String,
@@ -379,6 +396,15 @@ impl Target {
             .expect("target must respond")
     }
 
+    pub fn delete_json(&self, path: &str) -> Response {
+        self.require_local_write();
+        self.client
+            .delete(self.url(path))
+            .header("Accept", "application/json")
+            .send()
+            .expect("target must respond")
+    }
+
     pub fn post_form(&self, path: &str, fields: &[(&str, &str)]) -> Response {
         self.require_local_write();
         self.client
@@ -445,6 +471,15 @@ impl Target {
             .expect("target must respond")
     }
 
+    pub fn post_html_form_from_client(
+        &self,
+        path: &str,
+        client_ip: &str,
+        fields: &[(String, String)],
+    ) -> Response {
+        self.post_html_form_from_local_client(path, fields, client_ip)
+    }
+
     pub fn web_form_request(
         &self,
         method: &str,
@@ -467,6 +502,22 @@ impl Target {
         self.client
             .post(self.url(path))
             .header("Accept", "application/json")
+            .json(body)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn post_json_from_web_client(
+        &self,
+        path: &str,
+        client_ip: &str,
+        body: &serde_json::Value,
+    ) -> Response {
+        self.require_local_write();
+        self.client
+            .post(self.url(path))
+            .header("Accept", "application/json")
+            .header("X-Forwarded-For", client_ip)
             .json(body)
             .send()
             .expect("target must respond")
