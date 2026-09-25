@@ -63,8 +63,21 @@ and eligible-stock choices avoid duplicating medication rules in the web UI.
 The original missing-page failures, URL/source mismatch and taper regression
 were demonstrated against earlier Rust snapshots before final acceptance.
 
-The next bounded delivery is medication management: create/edit medication,
-stock operations and permission checks, followed by corresponding web forms.
+The current delivery is medication management: create/edit medication,
+stock operations and permission checks, with the full onboarding wizard,
+edit and refill forms developed in parallel. The shared Rails browser
+baseline passes both management journeys. Rust onboarding and supporting
+read tests demonstrate missing routes and capability fields (eight and
+three failing cases respectively); implementation remains outstanding.
+
+Medication management now passes 72 consolidated API cases, seven login
+browser cases and seven existing medication browser cases. Medication and
+tracked stock changes emit attributed sync events, including person metadata
+for recorded doses. Replays and rejected writes do not emit duplicate domain
+events in the covered cases. Next complete atomic wizard
+creation and refill through the shared API and run the same browser journeys
+against Rust. Keep test, API and UI writers on disjoint paths while immutable
+Compose snapshots provide independent execution and review.
 An exact effective-dose preview and clearer alternate-stock confirmation
 remain UI parity gaps; the first journey does not establish full web parity.
 
