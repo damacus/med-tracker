@@ -564,20 +564,7 @@ fn portable_bundle_dry_run_apply_and_public_readback() {
         fixture.portable_target_household_id,
         &fixture.portable_target_mobile_token,
     );
-    for collection in [
-        "people",
-        "locations",
-        "medications",
-        "dosage_options",
-        "schedules",
-        "medication_takes",
-        "notification_preferences",
-    ] {
-        assert_eq!(
-            rows(&replayed, collection).len(),
-            rows(&target_after, collection).len()
-        );
-    }
+    assert_eq!(replayed["records"], target_after["records"]);
 }
 
 #[test]
