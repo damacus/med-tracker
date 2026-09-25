@@ -1349,9 +1349,10 @@ paths:
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_none_match'
       responses:
         '200':
-          description: Medication resource.
+          description: Medication resource. The ETag hashes the serialized response, including derived fields that can change without a medication update.
           headers:
             ETag:
               $ref: '#/components/headers/etag'
@@ -1359,6 +1360,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MedicationResponse'
+        '304':
+          description: Medication has not changed since the supplied ETag.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -4158,6 +4164,13 @@ components:
       name: If-Match
       in: header
       required: false
+      schema:
+        type: string
+    if_none_match:
+      name: If-None-Match
+      in: header
+      required: false
+      description: Return an empty 304 response when a visible medication's serialized response still matches this ETag.
       schema:
         type: string
     portable_passphrase:
