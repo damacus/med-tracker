@@ -44,6 +44,106 @@ end
 fixture = ActiveRecord::Base.transaction do
   account, household, user = create_household(nonce, 'primary')
   foreign_account, foreign_household, = create_household(nonce, 'foreign')
+  portable_source_account, portable_source_household, = create_household(nonce, 'portable-source')
+  portable_target_account, portable_target_household, = create_household(nonce, 'portable-target')
+  portable_source_membership = portable_source_account.household_memberships.find_by!(household: portable_source_household)
+  portable_target_membership = portable_target_account.household_memberships.find_by!(household: portable_target_household)
+  _portable_source_session, portable_source_access_token, = ApiSession.issue_for(
+    account: portable_source_account, household_membership: portable_source_membership,
+    device_name: 'contract-portable-source'
+  )
+  _portable_target_session, portable_target_access_token, = ApiSession.issue_for(
+    account: portable_target_account, household_membership: portable_target_membership,
+    device_name: 'contract-portable-target'
+  )
+  _portable_target_app, portable_target_app_token = ApiAppToken.issue_for(
+    account: portable_target_account, household_membership: portable_target_membership,
+    name: 'Contract portable target app'
+  )
+  _portable_member, portable_member_access_token = create_admin_member(portable_target_household, nonce,
+                                                                        'portable-member')
+  portable_revoked_membership, portable_revoked_access_token = create_admin_member(
+    portable_target_household, nonce, 'portable-revoked'
+  )
+  portable_revoked_membership.update!(status: :revoked)
+  portable_locked_membership, portable_locked_access_token = create_admin_member(
+    portable_target_household, nonce, 'portable-locked'
+  )
+  AccountLockout.create!(account_id: portable_locked_membership.account_id, key: SecureRandom.hex(16),
+                         deadline: 30.minutes.from_now)
+  portable_source_person = portable_source_household.people.create!(name: "Contract portable patient #{nonce}",
+                                                                     date_of_birth: '1990-01-01',
+                                                                     person_type: :adult, has_capacity: true)
+  PersonAccessGrant.create!(household: portable_source_household,
+                            household_membership: portable_source_membership, person: portable_source_person,
+                            access_level: :manage, relationship_type: :family_member,
+                            granted_by_membership: portable_source_membership)
+  portable_source_location = Location.create!(household: portable_source_household,
+                                              name: "Contract portable shelf #{nonce}")
+  LocationMembership.create!(household: portable_source_household, person: portable_source_person,
+                             location: portable_source_location)
+  portable_source_medication = Medication.create!(household: portable_source_household,
+                                                  location: portable_source_location,
+                                                  name: "Contract portable medicine #{nonce}", dose_amount: '2',
+                                                  dose_unit: 'ml', current_supply: '20')
+  portable_source_dosage = portable_source_medication.dosage_records.create!(amount: '2', unit: 'ml',
+                                                                              frequency: 'Daily',
+                                                                              default_max_daily_doses: 4,
+                                                                              default_min_hours_between_doses: '4',
+                                                                              default_dose_cycle: :daily)
+  portable_source_schedule = Schedule.create!(household: portable_source_household,
+                                              person: portable_source_person, medication: portable_source_medication,
+                                              source_dosage_option: portable_source_dosage,
+                                              dose_amount: '2', dose_unit: 'ml', frequency: 'Daily',
+                                              start_date: '2026-01-01', end_date: '2099-12-31')
+  MedicationTake.create!(household: portable_source_household, schedule: portable_source_schedule,
+                         taken_at: Time.zone.parse('2026-02-25 12:00:00'), dose_amount: '2', dose_unit: 'ml',
+                         taken_from_medication: portable_source_medication,
+                         taken_from_location: portable_source_location)
+  NotificationPreference.create!(household: portable_source_household, person: portable_source_person,
+                                 enabled: true)
+  portable_review_partner = Medication.create!(household: portable_source_household,
+                                               location: portable_source_location,
+                                               name: "Contract portable review partner #{nonce}",
+                                               dose_amount: '1', dose_unit: 'tablet')
+  portable_review_evidence = MedicationReviewEvidenceRecord.create!(source_name: 'Contract source',
+                                                                     source_record_id: "contract-portable-#{nonce}",
+                                                                     source_url: 'https://example.test/evidence',
+                                                                     retrieved_on: '2026-02-25',
+                                                                     product_name: 'Contract medicine',
+                                                                     label_section: 'warnings',
+                                                                     evidence_text: 'Contract reviewed pair',
+                                                                     risk_level: 'high', match_confidence: 'high',
+                                                                     match_status: 'not_pairwise')
+  MedicationReviewPrompt.create!(household: portable_source_household, person: portable_source_person,
+                                 primary_medication: portable_source_medication,
+                                 interacting_medication: portable_review_partner,
+                                 evidence_record: portable_review_evidence, risk_level: 'high',
+                                 match_confidence: 'high', primary_medication_name: portable_source_medication.name,
+                                 interacting_medication_name: portable_review_partner.name,
+                                 evidence_source_name: portable_review_evidence.source_name,
+                                 evidence_source_url: portable_review_evidence.source_url,
+                                 evidence_source_checked_on: portable_review_evidence.retrieved_on,
+                                 evidence_source_version: 'contract-v1',
+                                 evidence_source_effective_on: portable_review_evidence.retrieved_on,
+                                 matched_term: 'Contract medicine', match_type: 'reviewed_pair',
+                                 source_instruction: 'Discuss with a practitioner',
+                                 match_reason: 'Contract pair', evidence_text: portable_review_evidence.evidence_text,
+                                 status: 'needs_review')
+  portable_source_household.locations.find_each do |location|
+    location.update!(name: "Contract portable source #{location.name} #{nonce}")
+  end
+  portable_payload = PortableData::Exporter.new(household: portable_source_household,
+                                                membership: portable_source_membership,
+                                                passphrase: 'contract portable secret').payload
+  portable_numeric_payload = portable_payload.deep_dup
+  portable_numeric_payload[:records][:people].first[:id] = portable_source_person.id
+  portable_conflict_payload = portable_payload.deep_dup
+  portable_target_location = Location.create!(household: portable_target_household,
+                                              name: "Contract portable target shelf #{nonce}")
+  portable_conflict_payload[:records][:locations].first[:name] = portable_target_location.name
+  portable_malformed_payload = portable_payload.deep_dup
+  portable_malformed_payload[:records][:people] = 'invalid collection'
   foreign_membership = foreign_account.household_memberships.find_by!(household: foreign_household)
   foreign_app_token, = ApiAppToken.issue_for(account: foreign_account, household_membership: foreign_membership,
                                             name: 'Contract foreign app token')
@@ -408,6 +508,11 @@ fixture = ActiveRecord::Base.transaction do
   oauth_application = OauthApplication.create!(name: 'Contract mobile', client_id: oauth_client_id, client_kind: :mobile,
                                                redirect_uri: oauth_redirect_uri, scopes: 'medtracker offline_access',
                                                token_endpoint_auth_method: 'none')
+  portable_target_mobile_token = "contract-portable-target-#{SecureRandom.urlsafe_base64(48)}"
+  OauthGrant.create!(account: portable_target_account, oauth_application: oauth_application, client_kind: :mobile,
+                     scopes: 'medtracker offline_access', expires_in: 1.hour.from_now,
+                     authenticated_at: Time.current, last_used_at: Time.current,
+                     token_hash: OauthGrant.digest(portable_target_mobile_token))
   care_access_token = "contract-care-#{SecureRandom.urlsafe_base64(48)}"
   OauthGrant.create!(account: care_account, oauth_application: oauth_application, client_kind: :mobile,
                      scopes: 'medtracker offline_access', expires_in: 1.hour.from_now,
@@ -425,6 +530,26 @@ fixture = ActiveRecord::Base.transaction do
                      token_hash: OauthGrant.digest(invitation_mobile_oauth_token))
 
   {
+    portable_source_household_id: portable_source_household.id,
+    portable_source_access_token: portable_source_access_token,
+    portable_source_person_name: portable_source_person.name,
+    portable_source_person_portable_id: portable_source_person.portable_id,
+    portable_source_location_portable_id: portable_source_location.portable_id,
+    portable_source_medication_portable_id: portable_source_medication.portable_id,
+    portable_source_schedule_portable_id: portable_source_schedule.portable_id,
+    portable_target_household_id: portable_target_household.id,
+    portable_target_access_token: portable_target_access_token,
+    portable_target_app_token: portable_target_app_token,
+    portable_target_mobile_token: portable_target_mobile_token,
+    portable_member_access_token: portable_member_access_token,
+    portable_revoked_access_token: portable_revoked_access_token,
+    portable_locked_access_token: portable_locked_access_token,
+    portable_numeric_bundle: PortableData::Encryptor.encrypt(portable_numeric_payload,
+                                                              passphrase: 'contract portable secret'),
+    portable_conflict_bundle: PortableData::Encryptor.encrypt(portable_conflict_payload,
+                                                               passphrase: 'contract portable secret'),
+    portable_malformed_bundle: PortableData::Encryptor.encrypt(portable_malformed_payload,
+                                                                passphrase: 'contract portable secret'),
     access_token: access_token,
     account_id: account.id,
     primary_email: account.email,
