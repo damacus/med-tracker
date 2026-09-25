@@ -54,6 +54,17 @@ tasks:
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test admin -- --test-threads=1
 
+  run-admin-tokens-audit:
+    desc: Run app token and audit listing contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test admin -- task_6a2_ --test-threads=1
+
   run-replay:
     desc: Run offline medication take and response replay contract cases
     requires:
@@ -261,6 +272,11 @@ tasks:
     cmds:
       - fish rust/contract-tests/run.fish rails admin
 
+  admin-tokens-audit-rails:
+    desc: Run app token and audit listing cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails admin-tokens-audit
+
   oauth-rails:
     desc: Run OAuth contract cases against isolated Rails
     cmds:
@@ -361,6 +377,14 @@ tasks:
       CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
       - fish rust/contract-tests/run.fish rust admin
+
+  admin-tokens-audit-rust:
+    desc: Run app token and audit listing cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust admin-tokens-audit
 
   sync-rust:
     desc: Run sync cases against a Rust URL after provisioning isolated fixtures
