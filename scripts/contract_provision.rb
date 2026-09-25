@@ -61,6 +61,22 @@ fixture = ActiveRecord::Base.transaction do
   _web_device_session, web_device_access_token, = ApiSession.issue_for(
     account: web_device_account, household_membership: web_device_membership, device_name: 'contract-web-device'
   )
+  push_api_account, push_api_household, = create_household(nonce, 'push-api')
+  push_api_membership = push_api_account.household_memberships.find_by!(household: push_api_household)
+  _push_api_session, push_api_access_token, = ApiSession.issue_for(
+    account: push_api_account, household_membership: push_api_membership, device_name: 'contract-push-api'
+  )
+  push_web_account, push_web_household, = create_household(nonce, 'push-web')
+  push_observer_account, push_observer_household, = create_household(nonce, 'push-observer')
+  push_observer_membership = push_observer_account.household_memberships.find_by!(household: push_observer_household)
+  _push_observer_session, push_observer_access_token, = ApiSession.issue_for(
+    account: push_observer_account, household_membership: push_observer_membership, device_name: 'contract-push-observer'
+  )
+  push_fatal_account, push_fatal_household, = create_household(nonce, 'push-fatal')
+  push_fatal_membership = push_fatal_account.household_memberships.find_by!(household: push_fatal_household)
+  _push_fatal_session, push_fatal_access_token, = ApiSession.issue_for(
+    account: push_fatal_account, household_membership: push_fatal_membership, device_name: 'contract-push-fatal'
+  )
   retained_account, retained_household, = create_household(nonce, 'retained')
   retained_location = Location.create!(household: retained_household, name: "Contract retained shelf #{nonce}")
   retained_medication = Medication.create!(household: retained_household, location: retained_location,
@@ -786,6 +802,17 @@ fixture = ActiveRecord::Base.transaction do
     web_device_household_slug: web_device_household.slug,
     web_device_email: web_device_account.email,
     web_device_access_token: web_device_access_token,
+    push_api_household_id: push_api_household.id,
+    push_api_access_token: push_api_access_token,
+    push_web_household_id: push_web_household.id,
+    push_web_household_slug: push_web_household.slug,
+    push_web_email: push_web_account.email,
+    push_observer_household_id: push_observer_household.id,
+    push_observer_access_token: push_observer_access_token,
+    push_fatal_household_id: push_fatal_household.id,
+    push_fatal_household_slug: push_fatal_household.slug,
+    push_fatal_email: push_fatal_account.email,
+    push_fatal_access_token: push_fatal_access_token,
     retained_household_slug: retained_household.slug,
     retained_household_id: retained_household.id,
     retained_email: retained_account.email,

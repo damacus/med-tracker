@@ -61,7 +61,7 @@ end
 
 function run_rails_contract_targets -a base_url fixture_path mailpit_url project run_dir
     set -l failed_targets
-    set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports fhir platform lookup web_json_read portability retained web_json_actions profile web_profile sync replay oauth devices web_devices mcp uploads envelopes
+    set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports fhir platform lookup web_json_read portability retained web_json_actions profile web_profile sync replay oauth devices web_devices push_delivery mcp uploads envelopes
     rtk task contract:run BASE_URL="$base_url" FIXTURE_PATH="$fixture_path" MAILPIT_URL="$mailpit_url" TEST_TARGET=lib
     or set -a failed_targets lib
     set -l previous_target
@@ -76,11 +76,14 @@ function run_rails_contract_targets -a base_url fixture_path mailpit_url project
         else if test "$target" = web_json_actions
             clear_contract_adapter_environment
             set_web_json_adapter_environment
+        else if test "$target" = push_delivery
+            clear_contract_adapter_environment
+            set_push_delivery_environment
         else
             clear_contract_adapter_environment
         end
         if test "$target" != auth
-            if contains -- "$target" lookup web_json_read web_json_actions; or contains -- "$previous_target" lookup web_json_read web_json_actions; or uses_web_csrf $target; or uses_web_csrf $previous_target
+            if contains -- "$target" lookup web_json_read web_json_actions push_delivery; or contains -- "$previous_target" lookup web_json_read web_json_actions push_delivery; or uses_web_csrf $target; or uses_web_csrf $previous_target
                 rtk task test:server CONTRACT_PROJECT=$project
             else
                 rtk task contract:restart-web CONTRACT_PROJECT=$project CONTRACT_RUN_DIR=$run_dir
@@ -140,6 +143,10 @@ function uses_web_csrf -a target
     contains -- $target platform web_profile web_devices
 end
 
+function set_push_delivery_environment
+    set -gx CONTRACT_RUBYOPT '-r/app/rust/contract-tests/test_support/csrf -r/app/rust/contract-tests/test_support/push_delivery_adapter'
+end
+
 function clear_contract_adapter_environment
     set -e CONTRACT_NHS_DMD_CLIENT_ID CONTRACT_NHS_DMD_CLIENT_SECRET CONTRACT_RUBYOPT
 end
@@ -180,10 +187,12 @@ function run_contract
         set_lookup_adapter_environment
     else if contains -- "$argv[2]" platform web-profile web-devices
         set_web_device_environment
-    else if test "$argv[2]" = web_json_read
-        set_web_json_read_adapter_environment
-    else if test "$argv[2]" = web-json-actions; or test "$argv[2]" = web-json-actions-disabled
-        set_web_json_adapter_environment
+        else if test "$argv[2]" = web_json_read
+            set_web_json_read_adapter_environment
+        else if test "$argv[2]" = web-json-actions; or test "$argv[2]" = web-json-actions-disabled
+            set_web_json_adapter_environment
+        else if test "$argv[2]" = push-delivery
+            set_push_delivery_environment
     else
         clear_contract_adapter_environment
     end
@@ -273,6 +282,8 @@ function run_contract
             rtk task contract:run-uploads BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = web-devices
             rtk task contract:run-web-devices BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+        else if test "$argv[2]" = push-delivery
+            rtk task contract:run-push-delivery BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = care
             rtk task contract:run-care BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = sync
@@ -345,6 +356,8 @@ function run_contract
             rtk task contract:run-uploads BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = web-devices
             rtk task contract:run-web-devices BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
+        else if test "$argv[2]" = push-delivery
+            rtk task contract:run-push-delivery BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else
             rtk task contract:run BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN" MAILPIT_URL="$mailpit_url"
         end
