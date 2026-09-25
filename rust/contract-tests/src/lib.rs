@@ -9,6 +9,10 @@ use url::{Host, Url};
 
 #[derive(Deserialize)]
 pub struct Fixture {
+    pub web_device_household_id: i64,
+    pub web_device_household_slug: String,
+    pub web_device_email: String,
+    pub web_device_access_token: String,
     pub retained_household_slug: String,
     pub retained_household_id: i64,
     pub retained_email: String,
@@ -418,6 +422,23 @@ impl Target {
             .post(self.url(path))
             .header("Accept", "text/html")
             .header("X-Forwarded-For", client_ip)
+            .form(fields)
+            .send()
+            .expect("target must respond")
+    }
+
+    pub fn web_form_request(
+        &self,
+        method: &str,
+        path: &str,
+        accept: &str,
+        fields: &[(String, String)],
+    ) -> Response {
+        self.require_local_write();
+        let method = reqwest::Method::from_bytes(method.as_bytes()).expect("HTTP method");
+        self.client
+            .request(method, self.url(path))
+            .header("Accept", accept)
             .form(fields)
             .send()
             .expect("target must respond")
