@@ -238,8 +238,9 @@ fixture = ActiveRecord::Base.transaction do
   portable_malformed_payload = portable_payload.deep_dup
   portable_malformed_payload[:records][:people] = 'invalid collection'
   foreign_membership = foreign_account.household_memberships.find_by!(household: foreign_household)
-  foreign_app_token, = ApiAppToken.issue_for(account: foreign_account, household_membership: foreign_membership,
-                                            name: 'Contract foreign app token')
+  foreign_app_token, foreign_app_token_raw = ApiAppToken.issue_for(
+    account: foreign_account, household_membership: foreign_membership, name: 'Contract foreign app token'
+  )
   _foreign_session, foreign_access_token, = ApiSession.issue_for(
     account: foreign_account, household_membership: foreign_membership, device_name: 'contract-foreign'
   )
@@ -826,6 +827,7 @@ fixture = ActiveRecord::Base.transaction do
     foreign_household_slug: foreign_household.slug,
     foreign_membership_id: foreign_membership.id,
     foreign_app_token_id: foreign_app_token.id,
+    foreign_app_token: foreign_app_token_raw,
     foreign_access_token: foreign_access_token,
     fhir_patient_scope_token: fhir_patient_scope_token,
     fhir_revoked_scope_token: fhir_revoked_scope_token,

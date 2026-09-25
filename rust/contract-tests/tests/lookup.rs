@@ -241,7 +241,7 @@ fn lookup_requires_authentication_and_household_access() {
     let path = lookup_path(fixture.household_id);
     assert_error(target.get(&path, None), 401, "unauthorized");
     assert_error(
-        target.get(&path, Some(&fixture.foreign_access_token)),
+        target.get(&path, Some(&fixture.foreign_app_token)),
         403,
         "forbidden",
     );
@@ -311,7 +311,7 @@ fn suggestions_require_authentication_and_household_access() {
     let body = json!({"medication": {"name": "Contract medicine"}});
     assert_error(target.post_json(&path, &body), 401, "unauthorized");
     assert_error(
-        target.post_json_authorized(&path, &fixture.foreign_access_token, &body),
+        target.post_json_authorized(&path, &fixture.foreign_app_token, &body),
         403,
         "forbidden",
     );

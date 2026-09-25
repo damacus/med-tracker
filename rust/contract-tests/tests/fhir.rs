@@ -179,6 +179,24 @@ fn search_filters_and_pagination_are_observable_without_order_assumptions() {
     let fixture = fixture();
     let person = &fixture.managed_person_portable_id;
     let medication = &fixture.managed_medication_portable_id;
+    let request_status = resource(
+        &target,
+        &fixture,
+        "MedicationRequest",
+        &fixture.managed_schedule_portable_id,
+    )["status"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let statement_status = resource(
+        &target,
+        &fixture,
+        "MedicationStatement",
+        &fixture.managed_assignment_portable_id,
+    )["status"]
+        .as_str()
+        .unwrap()
+        .to_owned();
     let cases = [
         (
             "Patient",
@@ -187,12 +205,12 @@ fn search_filters_and_pagination_are_observable_without_order_assumptions() {
         ),
         (
             "MedicationRequest",
-            format!("patient=Patient/{person}&medication=Medication/{medication}&status=active"),
+            format!("patient=Patient/{person}&medication=Medication/{medication}&status={request_status}"),
             fixture.managed_schedule_portable_id.as_str(),
         ),
         (
             "MedicationStatement",
-            format!("subject=Patient/{person}&medication=Medication/{medication}&status=active"),
+            format!("subject=Patient/{person}&medication=Medication/{medication}&status={statement_status}"),
             fixture.managed_assignment_portable_id.as_str(),
         ),
         (
@@ -219,21 +237,26 @@ fn search_filters_and_pagination_are_observable_without_order_assumptions() {
                     .as_str()
                     .is_some_and(|name| name.contains("Contract managed"))));
             } else if kind == "MedicationRequest" || kind == "MedicationStatement" {
+                let status = if kind == "MedicationRequest" {
+                    &request_status
+                } else {
+                    &statement_status
+                };
                 assert!(rows.iter().all(|row| {
                     row["subject"]["reference"] == format!("Patient/{person}")
                         && row["medicationReference"]["reference"]
                             == format!("Medication/{medication}")
-                        && row["status"] == "active"
+                        && row["status"] == *status
                 }));
             }
         }
     }
     let active_requests = search(&target, &fixture, "MedicationRequest", "status=active");
     let stopped_requests = search(&target, &fixture, "MedicationRequest", "status=stopped");
-    assert!(has_id(
-        &active_requests,
-        &fixture.managed_schedule_portable_id
-    ));
+    assert_eq!(
+        has_id(&active_requests, &fixture.managed_schedule_portable_id),
+        request_status == "active"
+    );
     assert!(!has_id(
         &active_requests,
         &fixture.fhir_stopped_schedule_portable_id
@@ -242,16 +265,16 @@ fn search_filters_and_pagination_are_observable_without_order_assumptions() {
         &stopped_requests,
         &fixture.fhir_stopped_schedule_portable_id
     ));
-    assert!(!has_id(
-        &stopped_requests,
-        &fixture.managed_schedule_portable_id
-    ));
+    assert_eq!(
+        has_id(&stopped_requests, &fixture.managed_schedule_portable_id),
+        request_status == "stopped"
+    );
     let active_statements = search(&target, &fixture, "MedicationStatement", "status=active");
     let stopped_statements = search(&target, &fixture, "MedicationStatement", "status=stopped");
-    assert!(has_id(
-        &active_statements,
-        &fixture.managed_assignment_portable_id
-    ));
+    assert_eq!(
+        has_id(&active_statements, &fixture.managed_assignment_portable_id),
+        statement_status == "active"
+    );
     assert!(!has_id(
         &active_statements,
         &fixture.fhir_stopped_assignment_portable_id
@@ -260,10 +283,10 @@ fn search_filters_and_pagination_are_observable_without_order_assumptions() {
         &stopped_statements,
         &fixture.fhir_stopped_assignment_portable_id
     ));
-    assert!(!has_id(
-        &stopped_statements,
-        &fixture.managed_assignment_portable_id
-    ));
+    assert_eq!(
+        has_id(&stopped_statements, &fixture.managed_assignment_portable_id),
+        statement_status == "stopped"
+    );
     let completed_administrations = search(
         &target,
         &fixture,

@@ -99,6 +99,7 @@ pub struct Fixture {
     pub foreign_household_slug: String,
     pub foreign_membership_id: i64,
     pub foreign_app_token_id: i64,
+    pub foreign_app_token: String,
     pub foreign_access_token: String,
     pub fhir_patient_scope_token: String,
     pub fhir_revoked_scope_token: String,
