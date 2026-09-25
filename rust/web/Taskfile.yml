@@ -1,6 +1,9 @@
 version: '3'
 
 tasks:
+  deps:
+    cmds:
+      - npm ci --offline
   fmt:
     cmds:
       - cargo fmt --check
