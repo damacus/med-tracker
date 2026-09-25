@@ -48,10 +48,12 @@ newly named OIDC provider button until the full authentication browser suite.
   operations and the existing RSpec inventory.
 - Tranche 1: in progress. Reviewed API contract slices through web JSON reads,
   web JSON actions, cross-account session denial, platform/web profile CSRF,
-  and push delivery are integrated. The complete combined Rails run last had
-  one FHIR fixture-state failure; the corrected focused FHIR suite passed 5/5,
-  and combined rerun is pending. Web JSON action CSRF and known Rails
-  privacy/image defects remain explicit gaps.
+  web JSON action CSRF, and push delivery are integrated. The full isolated
+  Rails contract corpus passed with 227 tests, 0 failures, and 13 ignored
+  cases after the FHIR fixture and shared-stock expectations were corrected.
+  The feature-disabled AI case also passed in its separate target. Known
+  Rails privacy, clinical-input, and image-representation defects remain
+  explicit gaps; a sync change-feed privacy regression is in progress.
 - Tranche 2: full browser/PWA parity pending. The bounded Leptos login-page
   foundation is integrated and passed its desktop/mobile Rust browser smoke;
   it does not close this tranche or prove authentication, PWA, or visual parity.
@@ -65,10 +67,16 @@ wrong`. Do not mark a task complete from a test run without its independent
 review and recorded result.
 
 Accepted API slices: platform/web profile CSRF (`aaf11f35`, independent review
-clean); push delivery (`fd82ca4f`, independent review clean). Push delivery's
-combined-run target list was corrected after the fake runner first failed;
-the full isolation and failure-aggregation test then passed. These are contract
-tests against Rails, not a Rust API implementation.
+clean); push delivery (`fd82ca4f`, independent review clean); web JSON action
+CSRF (`8b96cda8`, independent review clean). Push delivery's combined-run
+target list was corrected after the fake runner first failed; the full
+isolation and failure-aggregation test then passed. The full Rails corpus
+first failed because the web scan test expected the fixture's original stock
+after earlier dose tests mutated it. The corrected test (`f9a8bf0c`) compares
+the web scan with an authorised live API read, allowing only the two endpoints'
+documented decimal display difference; focused Rails passed 7/7 and the full
+corpus passed 227/0/13. These are contract tests against Rails, not a Rust API
+implementation.
 
 Bounded Leptos foundation Task 1: complete (`b14a8351..a86710ab`, independent
 review found no actionable issue after checking the report and four
@@ -79,3 +87,5 @@ installed with `10fa0129`. The corrected portable browser smoke did not have
 a strict failing-test-before-production sequence, which the writer reported.
 The visible `Forgot?` link currently leads to an unimplemented reset route;
 that journey and visual parity remain in the later browser tranche.
+Fresh integrated screenshots are saved under
+`docs/screenshots/leptos-foundation/` (`840fd64b`).
