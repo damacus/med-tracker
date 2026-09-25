@@ -8,9 +8,23 @@ if test "$argv[1]" = proxy
         echo $run_dir
     else if test "$argv[2]" = curl
         if set -q CONTRACT_FAKE_TRACE
+            if test "$CONTRACT_FAKE_FAIL_STEP" = ready
+                echo probe >>$CONTRACT_FAKE_TRACE
+                exit 22
+            end
             echo ready >>$CONTRACT_FAKE_TRACE
         end
         exit 0
+    else if test "$argv[2]" = docker; and set -q CONTRACT_FAKE_COMPOSE_PORT_RESULT
+        switch $CONTRACT_FAKE_COMPOSE_PORT_RESULT
+            case error
+                exit 27
+            case empty
+                exit 0
+            case '*'
+                echo $CONTRACT_FAKE_COMPOSE_PORT_RESULT
+                exit 0
+        end
     else
         command $argv[2..-1]
     end
@@ -28,19 +42,41 @@ end
 
 switch $task_name
     case contract:cleanup
+        if set -q CONTRACT_FAKE_TRACE
+            echo cleanup >>$CONTRACT_FAKE_TRACE
+        end
         exit $CONTRACT_FAKE_CLEANUP_STATUS
     case contract:restart-web
         if set -q CONTRACT_FAKE_TRACE
             echo restart >>$CONTRACT_FAKE_TRACE
         end
+        if test "$CONTRACT_FAKE_FAIL_STEP" = restart
+            exit 31
+        end
     case test:port
         set -l port 43017
+        set -l call_number 1
         if set -q CONTRACT_FAKE_TRACE
             if test -f $CONTRACT_FAKE_TRACE
                 set -l previous (string match -r '^port$' < $CONTRACT_FAKE_TRACE | count)
                 set port (math 43017 + $previous)
+                set call_number (math $previous + 1)
             end
             echo port >>$CONTRACT_FAKE_TRACE
+        end
+        if test "$call_number" = "$CONTRACT_FAKE_FAIL_AT"
+            switch $CONTRACT_FAKE_FAIL_STEP
+                case port_exit
+                    exit 31
+                case port_empty
+                    exit 0
+                case port_text
+                    echo unavailable
+                    exit 0
+                case port_invalid
+                    echo 70000
+                    exit 0
+            end
         end
         echo $port
     case contract:run
