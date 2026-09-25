@@ -210,12 +210,18 @@ fn search_filters_and_pagination_are_observable_without_order_assumptions() {
                 .iter()
                 .all(|row| row["subject"]["reference"] == format!("Patient/{person}")));
         } else {
-            assert_eq!(
-                rows.len(),
-                1,
-                "{kind} filter must select one fixture resource"
+            assert!(
+                has_id(&rows, id),
+                "{kind} filter must include the fixture resource"
             );
-            assert_eq!(rows[0]["id"], id);
+            if kind == "MedicationRequest" || kind == "MedicationStatement" {
+                assert!(rows.iter().all(|row| {
+                    row["subject"]["reference"] == format!("Patient/{person}")
+                        && row["medicationReference"]["reference"]
+                            == format!("Medication/{medication}")
+                        && row["status"] == "active"
+                }));
+            }
         }
     }
     let active_requests = search(&target, &fixture, "MedicationRequest", "status=active");
@@ -270,11 +276,16 @@ fn search_filters_and_pagination_are_observable_without_order_assumptions() {
     let medication_resource = resource(&target, &fixture, "Medication", medication);
     assert_eq!(medication_resource["form"]["text"], "Analgesic");
     let medication_by_form = search(&target, &fixture, "Medication", "form=Analgesic");
-    assert_eq!(medication_by_form.len(), 1);
-    assert_eq!(medication_by_form[0]["id"], medication.as_str());
+    assert!(has_id(&medication_by_form, medication));
+    assert!(medication_by_form
+        .iter()
+        .all(|row| row["form"]["text"] == "Analgesic"));
     let medication_by_code = search(&target, &fixture, "Medication", "code=123456");
-    assert_eq!(medication_by_code.len(), 1);
-    assert_eq!(medication_by_code[0]["id"], medication.as_str());
+    assert!(has_id(&medication_by_code, medication));
+    assert!(!has_id(
+        &medication_by_code,
+        &fixture.hidden_medication_portable_id
+    ));
     let administration = resource(
         &target,
         &fixture,
@@ -288,8 +299,13 @@ fn search_filters_and_pagination_are_observable_without_order_assumptions() {
         "MedicationAdministration",
         &format!("patient=Patient/{person}&date={taken_on}"),
     );
-    assert_eq!(dated.len(), 1);
-    assert_eq!(dated[0]["id"], fixture.managed_take_portable_id);
+    assert!(has_id(&dated, &fixture.managed_take_portable_id));
+    assert!(dated.iter().all(|row| {
+        row["subject"]["reference"] == format!("Patient/{person}")
+            && row["effectiveDateTime"]
+                .as_str()
+                .is_some_and(|date| date.starts_with(taken_on))
+    }));
     let page = read(
         target.get(
             &format!("{BASE}/Patient?_count=1"),

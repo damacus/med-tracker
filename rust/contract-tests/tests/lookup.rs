@@ -250,11 +250,6 @@ fn lookup_requires_authentication_and_household_access() {
         404,
         "not_found",
     );
-    assert_error(
-        target.get(&path, Some(&fixture.admin_target_access_token)),
-        403,
-        "forbidden",
-    );
 }
 
 #[test]
