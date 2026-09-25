@@ -2,6 +2,33 @@
 
 Plan: `docs/plans/axum-leptos-port/plan.md`
 
+Current goal: [goal.md](goal.md). The user authorized the workflow-first
+milestones and continued execution on 25 September. The app-level objective
+and paused status cannot be changed by the available tools; repository records
+are updated and work continues in this turn under that explicit instruction.
+
+## Secure entry checkpoint
+
+The Rust public mobile OAuth path now supports CSRF-protected password login,
+consent, S256 PKCE exchange, refresh rotation, revocation, household selection
+and medication reads with the issued token. Unsupported enrolled factors fail
+closed. The combined run passed 30 HTTP and five actual browser checks with
+matching complete before/after runtime manifests. See
+[runner evidence](journey-auth-runner-report.md),
+[independent review](journey-auth-review.md), and the
+[product boundaries](journey-auth-product-report.md).
+
+Screenshots exposed an inherited unstyled Leptos form that the original
+presence-only browser assertions missed. Responsive form styles and geometry
+checks now cover desktop/mobile, keyboard login errors and usable consent.
+This does not establish full Rails visual or authentication parity.
+
+Next: [direct dose and stock/history journey](journey-dose-brief.md), including
+the missing first-party web sign-in boundary. MFA/passkey/recovery completion,
+password reset and consent cancellation remain open. The full migration,
+PWA, API and combined-memory gates remain in [goal.md](goal.md) and
+[issue 2299](https://github.com/damacus/med-tracker/issues/2299).
+
 ## Current execution override — 25 September 2026
 
 The user's subsequent instruction authorized bounded Rust implementation while
@@ -50,6 +77,11 @@ claims. Requirements and code-quality review found no actionable source issue.
 Next delivery milestone: medication viewing, dose recording, and updated
 stock/history as one usable journey. Broader inventory work is a cutover
 checklist, not the primary measure of progress.
+
+Assigned next: [secure journey entry](journey-auth-brief.md), implementing
+real login/OAuth issuance and household selection before direct dose/history.
+The existing OAuth corpus supplies the first red; no new broad inventory is
+required. The full cutover objective is preserved in [goal.md](goal.md).
 
 Planning baseline: `781c3a297ffe24ae5b70f893d55b568eab1216fc`.
 

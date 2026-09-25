@@ -30,15 +30,58 @@ entity!(api_session, "api_sessions", {
 
 entity!(oauth_grant, "oauth_grants", {
     account_id: i64,
+    oauth_application_id: i64,
     client_kind: String,
+    code: Option<String>,
+    code_challenge: Option<String>,
+    code_challenge_method: Option<String>,
+    redirect_uri: Option<String>,
     token_hash: Option<String>,
+    refresh_token_hash: Option<String>,
     expires_in: DateTime,
     revoked_at: Option<DateTime>,
     scopes: String,
     authenticated_at: Option<DateTime>,
     last_used_at: Option<DateTime>,
+    device_name: Option<String>,
+    created_at: DateTime,
     updated_at: DateTime,
 });
+
+entity!(oauth_application, "oauth_applications", {
+    client_id: String,
+    client_kind: String,
+    name: String,
+    redirect_uri: String,
+    scopes: String,
+    token_endpoint_auth_method: String,
+    client_secret: Option<String>,
+    client_secret_hash: Option<String>,
+});
+
+entity!(otp_key, "account_otp_keys", {});
+
+entity!(webauthn_key, "account_webauthn_keys", {
+    account_id: i64,
+});
+
+pub mod recovery_code {
+    use sea_orm::entity::prelude::*;
+
+    #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+    #[sea_orm(table_name = "account_recovery_codes")]
+    pub struct Model {
+        #[sea_orm(primary_key, auto_increment = false)]
+        pub id: i64,
+        #[sea_orm(primary_key, auto_increment = false)]
+        pub code: String,
+    }
+
+    #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+    pub enum Relation {}
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
 
 entity!(security_audit_event, "security_audit_events", {
     household_id: i64,
@@ -53,7 +96,27 @@ entity!(security_audit_event, "security_audit_events", {
     updated_at: DateTime,
 });
 
-entity!(account, "accounts", { status: i32, });
+entity!(account, "accounts", { status: i32, email: String, password_hash: Option<String>, });
+
+pub mod active_session_key {
+    use sea_orm::entity::prelude::*;
+
+    #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+    #[sea_orm(table_name = "account_active_session_keys")]
+    pub struct Model {
+        #[sea_orm(primary_key, auto_increment = false)]
+        pub account_id: i64,
+        #[sea_orm(primary_key, auto_increment = false)]
+        pub session_id: String,
+        pub created_at: DateTime,
+        pub last_use: DateTime,
+    }
+
+    #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+    pub enum Relation {}
+
+    impl ActiveModelBehavior for ActiveModel {}
+}
 
 pub mod account_lockout {
     use sea_orm::entity::prelude::*;
@@ -75,6 +138,8 @@ pub mod account_lockout {
 entity!(household, "households", {
     status: String,
     lifecycle_state: String,
+    slug: String,
+    name: String,
 });
 
 entity!(membership, "household_memberships", {

@@ -184,6 +184,8 @@ function run_contract
         set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner-subnet.compose.yaml"
     end
     if test "$argv[2]" = medication-read-api
+        set -gx CONTRACT_AUTH_SESSION_SECRET (rtk proxy openssl rand -hex 32)
+        or return $status
         set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner.compose.yaml"
         set -gx CONTRACT_FIXTURE_DIR (rtk proxy realpath "$contract_run_dir")
     end
@@ -230,7 +232,12 @@ function run_contract
         rtk task api:contract-ready CONTRACT_PROJECT=$contract_project
         or return $status
         rtk task api:contract-test CONTRACT_PROJECT=$contract_project
-        return $status
+        or return $status
+        if test "$CONTRACT_BROWSER_TESTS" = true
+            rtk task api:contract-browser-test CONTRACT_PROJECT=$contract_project
+            or return $status
+        end
+        return 0
     end
 
     set -l mail_port (rtk task contract:mail-port CONTRACT_PROJECT=$contract_project)

@@ -1,7 +1,119 @@
 use medtracker_contract_tests::{fixture, Target};
 use scraper::{Html, Selector};
 use serde_json::Value;
+use std::env;
 use url::Url;
+
+fn audit_database() -> postgres::Client {
+    let url = env::var("CONTRACT_AUDIT_DATABASE_URL").expect("contract audit database URL");
+    postgres::Client::connect(&url, postgres::NoTls).expect("contract audit database")
+}
+
+fn grant_id_for_code(code: &str) -> i64 {
+    audit_database()
+        .query_one("SELECT id FROM oauth_grants WHERE code = $1", &[&code])
+        .expect("issued authorization grant")
+        .get(0)
+}
+
+fn grant_activity(id: i64) -> (f64, f64) {
+    let row = audit_database()
+        .query_one(
+            "SELECT EXTRACT(EPOCH FROM last_used_at)::double precision, EXTRACT(EPOCH FROM authenticated_at)::double precision FROM oauth_grants WHERE id = $1",
+            &[&id],
+        )
+        .expect("authorization grant activity");
+    (row.get(0), row.get(1))
+}
+
+fn authorization_path(client_id: &str, redirect_uri: &str) -> String {
+    let mut query = url::form_urlencoded::Serializer::new(String::new());
+    query
+        .append_pair("response_type", "code")
+        .append_pair("response_mode", "query")
+        .append_pair("client_id", client_id)
+        .append_pair("redirect_uri", redirect_uri)
+        .append_pair("scope", "medtracker offline_access")
+        .append_pair("state", "contract-security-state")
+        .append_pair(
+            "code_challenge",
+            "sIEAmHTSAwOYncK3AzYmthevluqX_MuVU227zeLfBY0",
+        )
+        .append_pair("code_challenge_method", "S256");
+    format!("/authorize?{}", query.finish())
+}
+
+fn login_csrf(target: &Target) -> String {
+    let login = target.get_html("/login");
+    assert_eq!(login.status().as_u16(), 200);
+    let document = Html::parse_document(&login.text().expect("login HTML"));
+    let selector =
+        Selector::parse("form[action='/login'] input[name='authenticity_token']").unwrap();
+    document
+        .select(&selector)
+        .next()
+        .and_then(|input| input.value().attr("value"))
+        .expect("login CSRF token")
+        .to_string()
+}
+
+fn consent_for_primary_account() -> (Target, String, Vec<(String, String)>) {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let path = authorization_path(&fixture.oauth_client_id, &fixture.oauth_redirect_uri);
+    let start = target.get_html(&path);
+    assert_eq!(start.status().as_u16(), 302);
+    assert_eq!(start.headers()["location"], "/login");
+    let csrf = login_csrf(&target);
+    let login = target.post_html_form(
+        "/login",
+        &[
+            ("email".to_string(), fixture.primary_email),
+            ("password".to_string(), "password".to_string()),
+            ("authenticity_token".to_string(), csrf),
+        ],
+    );
+    assert_eq!(login.status().as_u16(), 302);
+    let path = login.headers()["location"]
+        .to_str()
+        .expect("consent redirect");
+    assert!(path.starts_with("/authorize?"));
+    let consent = target.get_html(path);
+    assert_eq!(consent.status().as_u16(), 200);
+    let document = Html::parse_document(&consent.text().expect("consent HTML"));
+    let selector = Selector::parse("form#authorize-form").unwrap();
+    let form = document.select(&selector).next().expect("consent form");
+    let action = form.value().attr("action").expect("consent action");
+    let inputs = Selector::parse("input[name]").unwrap();
+    let fields = form
+        .select(&inputs)
+        .filter(|input| input.value().attr("type") != Some("submit"))
+        .map(|input| {
+            (
+                input.value().attr("name").unwrap().to_string(),
+                input.value().attr("value").unwrap_or("").to_string(),
+            )
+        })
+        .collect();
+    (target, action.to_string(), fields)
+}
+
+fn assert_no_authorization_code(response: reqwest::blocking::Response, redirect_uri: &str) {
+    let status = response.status().as_u16();
+    assert!(
+        (300..500).contains(&status),
+        "authorization denial status: {status}"
+    );
+    if let Some(location) = response.headers().get("location") {
+        let location = location.to_str().expect("denial redirect");
+        if location.starts_with(redirect_uri) {
+            let callback = Url::parse(location).expect("native denial callback");
+            assert!(!callback.query_pairs().any(|(key, _)| key == "code"));
+        } else {
+            assert!(!location.contains("code="));
+        }
+    }
+}
 
 #[test]
 fn discovery_advertises_authorization_code_pkce_and_local_endpoints() {
@@ -180,6 +292,7 @@ fn issued_code_enforces_pkce_and_supports_refresh_rotation_and_revocation() {
         .get("code")
         .expect("issued authorization code");
     assert!(!code.is_empty());
+    let grant_id = grant_id_for_code(code);
 
     let wrong_verifier = "another-contract-verifier-with-more-than-forty-three-characters";
     let rejected = target.post_form(
@@ -198,6 +311,39 @@ fn issued_code_enforces_pkce_and_supports_refresh_rotation_and_revocation() {
     assert!(!rejected_body.contains(code));
     assert!(!rejected_body.contains(wrong_verifier));
 
+    for (field, value) in [
+        ("client_id", "contract-unknown-mobile-client"),
+        ("redirect_uri", "io.damacus.medtracker.contract:/other"),
+    ] {
+        let attempted = target.post_form(
+            "/token",
+            &[
+                ("grant_type", "authorization_code"),
+                (
+                    "client_id",
+                    if field == "client_id" {
+                        value
+                    } else {
+                        &fixture.oauth_client_id
+                    },
+                ),
+                (
+                    "redirect_uri",
+                    if field == "redirect_uri" {
+                        value
+                    } else {
+                        &fixture.oauth_redirect_uri
+                    },
+                ),
+                ("code", code),
+                ("code_verifier", verifier),
+            ],
+        );
+        assert_eq!(attempted.status().as_u16(), 400, "{field}");
+        let body = attempted.text().expect("binding denial");
+        assert!(!body.contains("access_token"), "{field}");
+    }
+
     let redeemed = target.post_form(
         "/token",
         &[
@@ -212,14 +358,52 @@ fn issued_code_enforces_pkce_and_supports_refresh_rotation_and_revocation() {
     let tokens: Value = redeemed.json().expect("issued token JSON");
     let access = tokens["access_token"].as_str().expect("access token");
     let refresh = tokens["refresh_token"].as_str().expect("refresh token");
+    let spent = target.post_form(
+        "/token",
+        &[
+            ("grant_type", "authorization_code"),
+            ("client_id", &fixture.oauth_client_id),
+            ("redirect_uri", &fixture.oauth_redirect_uri),
+            ("code", code),
+            ("code_verifier", verifier),
+        ],
+    );
+    assert_eq!(spent.status().as_u16(), 400);
+    let spent_body = spent.text().expect("spent code denial");
+    assert!(!spent_body.contains("access_token"));
+    assert!(!spent_body.contains("refresh_token"));
+    let households = target.get("/api/v1/auth/households", Some(access));
+    assert_eq!(households.status().as_u16(), 200);
+    let listing: Value = households.json().expect("issued token households");
+    assert_eq!(listing["account_id"], fixture.account_id);
+    let selected = listing["data"].as_array().expect("operational households");
+    assert!(selected
+        .iter()
+        .any(|household| household["id"] == fixture.household_id));
+    assert!(!selected
+        .iter()
+        .any(|household| household["id"] == fixture.foreign_household_id));
+    let medication_path = format!("/api/v1/households/{}/medications", fixture.household_id);
+    let medication_list = target.get(&medication_path, Some(access));
+    assert_eq!(medication_list.status().as_u16(), 200);
+    let medications: Value = medication_list
+        .json()
+        .expect("issued token medication list");
+    assert!(medications["data"]
+        .as_array()
+        .expect("medication list")
+        .iter()
+        .any(|medication| medication["id"] == fixture.managed_medication_id));
+    let foreign_path = format!(
+        "/api/v1/households/{}/medications",
+        fixture.foreign_household_id
+    );
     assert_eq!(
-        target
-            .get("/api/v1/auth/households", Some(access))
-            .status()
-            .as_u16(),
-        200
+        target.get(&foreign_path, Some(access)).status().as_u16(),
+        403
     );
 
+    let activity_before_refresh = grant_activity(grant_id);
     let rotated = target.post_form(
         "/token",
         &[
@@ -229,6 +413,7 @@ fn issued_code_enforces_pkce_and_supports_refresh_rotation_and_revocation() {
         ],
     );
     assert_eq!(rotated.status().as_u16(), 200);
+    assert_eq!(grant_activity(grant_id), activity_before_refresh);
     let fresh_tokens: Value = rotated.json().expect("rotated token JSON");
     let fresh_access = fresh_tokens["access_token"]
         .as_str()
@@ -297,4 +482,153 @@ fn unknown_refresh_token_does_not_issue_a_new_access_token() {
     let body = response.text().expect("OAuth error body");
     assert!(!body.contains("access_token"));
     assert!(!body.contains(refresh));
+}
+
+#[test]
+fn password_post_without_login_csrf_cannot_resume_mobile_authorization() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let path = authorization_path(&fixture.oauth_client_id, &fixture.oauth_redirect_uri);
+    let start = target.get_html(&path);
+    assert_eq!(start.status().as_u16(), 302);
+    login_csrf(&target);
+
+    let response = target.post_html_form(
+        "/login",
+        &[
+            ("email".to_string(), fixture.primary_email),
+            ("password".to_string(), "password".to_string()),
+        ],
+    );
+    if let Some(location) = response.headers().get("location") {
+        let location = location.to_str().expect("login redirect");
+        assert!(!location.starts_with("/authorize?"));
+        assert!(!location.starts_with(&fixture.oauth_redirect_uri));
+    }
+    let retry = target.get_html(&path);
+    assert_eq!(retry.status().as_u16(), 302);
+    assert_eq!(retry.headers()["location"], "/login");
+}
+
+#[test]
+fn enrolled_second_factor_blocks_password_only_mobile_authorization() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let path = authorization_path(&fixture.oauth_client_id, &fixture.oauth_redirect_uri);
+    let start = target.get_html(&path);
+    assert_eq!(start.status().as_u16(), 302);
+    assert_eq!(start.headers()["location"], "/login");
+    let csrf = login_csrf(&target);
+    let response = target.post_html_form(
+        "/login",
+        &[
+            ("email".to_string(), fixture.oauth_mfa_email),
+            ("password".to_string(), "password".to_string()),
+            ("authenticity_token".to_string(), csrf),
+        ],
+    );
+    if let Some(location) = response.headers().get("location") {
+        let location = location.to_str().expect("second factor redirect");
+        assert!(!location.starts_with(&fixture.oauth_redirect_uri));
+    }
+    let authorize = target.get_html(&path);
+    assert_ne!(authorize.status().as_u16(), 200);
+    if let Some(location) = authorize.headers().get("location") {
+        let location = location.to_str().expect("authorization redirect");
+        assert!(!location.starts_with(&fixture.oauth_redirect_uri));
+    }
+}
+
+#[test]
+fn consent_post_without_csrf_cannot_issue_a_code() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let path = authorization_path(&fixture.oauth_client_id, &fixture.oauth_redirect_uri);
+    let start = target.get_html(&path);
+    assert_eq!(start.status().as_u16(), 302);
+    assert_eq!(start.headers()["location"], "/login");
+    let csrf = login_csrf(&target);
+    let login = target.post_html_form(
+        "/login",
+        &[
+            ("email".to_string(), fixture.primary_email),
+            ("password".to_string(), "password".to_string()),
+            ("authenticity_token".to_string(), csrf),
+        ],
+    );
+    assert_eq!(login.status().as_u16(), 302);
+    let consent_path = login.headers()["location"]
+        .to_str()
+        .expect("consent redirect")
+        .to_string();
+    assert!(consent_path.starts_with("/authorize?"));
+    let consent = target.get_html(&consent_path);
+    assert_eq!(consent.status().as_u16(), 200);
+    let document = Html::parse_document(&consent.text().expect("consent HTML"));
+    let selector = Selector::parse("form#authorize-form").unwrap();
+    let form = document.select(&selector).next().expect("consent form");
+    let action = form.value().attr("action").expect("consent action");
+    let inputs = Selector::parse("input[name]").unwrap();
+    let fields: Vec<(String, String)> = form
+        .select(&inputs)
+        .filter(|input| {
+            input.value().attr("type") != Some("submit")
+                && input.value().attr("name") != Some("authenticity_token")
+        })
+        .map(|input| {
+            (
+                input.value().attr("name").unwrap().to_string(),
+                input.value().attr("value").unwrap_or("").to_string(),
+            )
+        })
+        .collect();
+    let denied = target.post_html_form(action, &fields);
+    if let Some(location) = denied.headers().get("location") {
+        let location = location
+            .to_str()
+            .expect("consent redirect after CSRF denial");
+        assert!(!location.starts_with(&fixture.oauth_redirect_uri));
+    }
+    assert_ne!(denied.status().as_u16(), 200);
+}
+
+#[test]
+fn consent_rejects_unregistered_client_redirect_and_scope_without_issuing_codes() {
+    let fixture = fixture();
+    for (field, value) in [
+        ("client_id", "contract-unknown-mobile-client"),
+        ("redirect_uri", "io.damacus.medtracker.contract:/other"),
+        ("scope[]", "contract-unsupported-scope"),
+    ] {
+        let (target, action, mut fields) = consent_for_primary_account();
+        fields.retain(|(name, _)| name != field);
+        fields.push((field.to_string(), value.to_string()));
+        let denied = target.post_html_form(&action, &fields);
+        if field == "redirect_uri" {
+            if let Some(location) = denied.headers().get("location") {
+                assert!(!location
+                    .to_str()
+                    .expect("denial redirect")
+                    .starts_with(value));
+            }
+        }
+        assert_no_authorization_code(denied, &fixture.oauth_redirect_uri);
+    }
+}
+
+#[test]
+fn consent_requires_an_s256_challenge_before_issuing_a_code() {
+    let fixture = fixture();
+    for (field, value) in [
+        ("code_challenge", None),
+        ("code_challenge_method", Some("plain")),
+    ] {
+        let (target, action, mut fields) = consent_for_primary_account();
+        fields.retain(|(name, _)| name != field);
+        if let Some(value) = value {
+            fields.push((field.to_string(), value.to_string()));
+        }
+        let denied = target.post_html_form(&action, &fields);
+        assert_no_authorization_code(denied, &fixture.oauth_redirect_uri);
+    }
 }

@@ -1,6 +1,7 @@
 mod audit;
 mod entities;
 mod medication_forecast;
+mod oauth;
 
 use axum::extract::{Path, Query, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
@@ -27,6 +28,7 @@ use std::time::Duration;
 #[derive(Clone)]
 pub struct AppState {
     db: DatabaseConnection,
+    oauth: oauth::OAuthState,
 }
 
 pub async fn connect(url: &str) -> Result<AppState, sea_orm::DbErr> {
@@ -53,12 +55,14 @@ pub async fn connect(url: &str) -> Result<AppState, sea_orm::DbErr> {
         ));
     }
     transaction.rollback().await?;
-    Ok(AppState { db })
+    let oauth = oauth::OAuthState::from_env().map_err(sea_orm::DbErr::Custom)?;
+    Ok(AppState { db, oauth })
 }
 
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/up", get(|| async { StatusCode::OK }))
+        .merge(oauth::routes())
         .route("/api/v1/households/{household_id}/medications", get(index))
         .route(
             "/api/v1/households/{household_id}/medications/{id}",

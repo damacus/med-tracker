@@ -11,6 +11,8 @@ services:
       DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract
       API_LISTEN_ADDR: 0.0.0.0:39998
       SESSION_MAX_AGE_DAYS: "30"
+      PUBLIC_BASE_URL: http://127.0.0.1:39998
+      AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
     depends_on:
       db-test:
         condition: service_healthy
@@ -33,3 +35,24 @@ services:
       CONTRACT_BASE_URL: http://127.0.0.1:39998
       CONTRACT_FIXTURE_PATH: /contract-run/fixture.json
       CONTRACT_AUDIT_DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract
+
+  rust-browser-tests:
+    profiles: [test]
+    image: medtracker-contract-browser:${CONTRACT_PROJECT}
+    build:
+      context: ./rust/web
+      dockerfile: Dockerfile.smoke
+    network_mode: service:rust-api
+    shm_size: 1gb
+    volumes:
+      - type: bind
+        source: ${CONTRACT_FIXTURE_DIR}
+        target: /contract-run
+        read_only: true
+      - type: bind
+        source: ./docs/screenshots/journey-auth
+        target: /screenshots
+    environment:
+      BASE_URL: http://127.0.0.1:39998
+      CONTRACT_FIXTURE_PATH: /contract-run/fixture.json
+      SCREENSHOT_DIR: /screenshots
