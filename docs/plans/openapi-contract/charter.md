@@ -35,6 +35,16 @@ ambiguities explicitly instead of importing requirements from Rails source.
 Existing schema and fixture tooling may be used to provision isolated data;
 they are not an alternative behavioural specification.
 
+For the active 89-operation completion goal, carry forward the user's original
+feature-parity objective and choice to preserve existing rules. When OpenAPI
+omits a rule, inspect the specific Rails controller, policy or service and
+document the existing rule in OpenAPI before deriving tests. This is the stated
+default for the unanswered optional global clarification, not a new user reply.
+Do not inventory or translate Rails tests. Report conflicts, suspected defects
+and genuinely new product or security decisions; do not encode known bugs as
+required compatibility. This supersedes the blanket prohibition on consulting
+Rails for unspecified semantics above while retaining OpenAPI-first acceptance.
+
 ## Evidence and reporting
 
 Record each documented operation and its relevant schema/security/status/error

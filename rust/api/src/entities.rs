@@ -26,6 +26,25 @@ entity!(api_session, "api_sessions", {
     access_expires_at: DateTime,
     revoked_at: Option<DateTime>,
     permissions_version: i32,
+    refresh_expires_at: DateTime,
+    last_used_at: DateTime,
+    device_name: Option<String>,
+    user_agent: Option<String>,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
+entity!(api_app_token, "api_app_tokens", {
+    account_id: i64,
+    household_membership_id: i64,
+    token_digest: String,
+    permissions_version: i32,
+    name: String,
+    expires_at: DateTime,
+    revoked_at: Option<DateTime>,
+    last_used_at: DateTime,
+    created_at: DateTime,
+    updated_at: DateTime,
 });
 
 entity!(oauth_grant, "oauth_grants", {

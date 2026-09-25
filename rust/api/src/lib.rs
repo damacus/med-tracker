@@ -1,5 +1,6 @@
 mod audit;
 mod audit_logs;
+mod auth_sessions;
 mod dosage_options;
 mod dose;
 mod entities;
@@ -139,6 +140,7 @@ fn api_router(state: AppState) -> Router {
     let csrf_state = state.clone();
     Router::new()
         .merge(oauth::api_routes())
+        .merge(auth_sessions::routes())
         .route(
             "/api/v1/households/{household_id}/medications",
             get(index).post(medication_management::create),

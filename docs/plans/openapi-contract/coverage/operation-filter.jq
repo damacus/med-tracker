@@ -34,7 +34,7 @@ def deref($spec):
       })),
     security: ($op.security // $spec.security),
     parameters: (($op.parameters // []) | map(. | deref($spec) | {name,in,required,schema})),
-    implementation: (if $test then {state:"route_present_partial_behaviour_verified",source:$source} elif $source then {state:"route_present_behaviour_unverified",source:$source} else {state:"route_absent",source:null} end),
+    implementation: (if $test and $test.state == "full_runtime_verified" then {state:"route_present_full_behaviour_verified",source:$source} elif $test then {state:"route_present_partial_behaviour_verified",source:$source} elif $source then {state:"route_present_behaviour_unverified",source:$source} else {state:"route_absent",source:null} end),
     contract_tests: ($test // {state:"unverified",source:null}),
-    gap: (if $test then {classification:"unassessed",detail:"Only the listed response statuses and behaviour assertions are verified."} elif $source then {classification:"unassessed",detail:"Route presence does not verify schema, security, status, or error behaviour."} else {classification:"implementation",detail:"No Rust API route registered for this documented method and path."} end)
+    gap: (if $test and $test.state == "full_runtime_verified" then {classification:"none",detail:"Documented operation contract is verified by the listed HTTP assertions and shared helper tests."} elif $test then {classification:"unassessed",detail:"Only the listed response statuses and behaviour assertions are verified."} elif $source then {classification:"unassessed",detail:"Route presence does not verify schema, security, status, or error behaviour."} else {classification:"implementation",detail:"No Rust API route registered for this documented method and path."} end)
   }
