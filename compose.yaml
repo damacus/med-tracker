@@ -105,8 +105,10 @@ services:
       test:
         aliases: [mail-test]
     ports:
-      - "8025" # Web UI
-      - "1025" # SMTP
+      - target: 8025 # Web UI
+        host_ip: 127.0.0.1
+      - target: 1025 # SMTP
+        host_ip: 127.0.0.1
     restart: unless-stopped
 
   db-test:
