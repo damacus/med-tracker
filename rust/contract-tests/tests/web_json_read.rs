@@ -193,25 +193,46 @@ fn finder_uses_deterministic_nhs_and_open_food_facts_fallbacks() {
         target.get(&format!("{finder}?q=contractupstream"), None),
         200,
     );
-    assert!(
-        nhs["results"]
-            .as_array()
-            .expect("NHS results")
-            .iter()
-            .any(|row| row["code"] == "contract-upstream-500"
-                && row["system"] == "https://dmd.nhs.uk")
-    );
+    let nhs_results = nhs["results"].as_array().expect("NHS results");
+    let nhs_tablets = nhs_results
+        .iter()
+        .find(|row| row["code"] == "contract-upstream-500")
+        .expect("deterministic NHS tablets");
+    assert_eq!(nhs_tablets["display"], "Contractupstream 500mg tablets");
+    assert_eq!(nhs_tablets["system"], "https://dmd.nhs.uk");
+    assert_eq!(nhs_tablets["concept_class"], "AMPP");
+    assert_eq!(nhs["review_guidance"], json!({ "status": "available" }));
+    for result in nhs_results {
+        assert_eq!(result["review_prompts"], json!([]));
+        assert_eq!(result["review_prompt_filter"], json!({ "hidden_count": 0 }));
+    }
 
     let off_barcode = json_body(target.get(&format!("{finder}?q=5021265221301"), None), 200);
     assert_eq!(off_barcode["barcode"], "5021265221301");
-    assert_eq!(off_barcode["results"][0]["category"], "Supplement");
-    assert_eq!(off_barcode["results"][0]["package_quantity"], 30);
     let off_text = json_body(
         target.get(&format!("{finder}?q=vitamin%20contract"), None),
         200,
     );
-    assert_eq!(off_text["results"][0]["source_label"], "Open Food Facts");
-    assert_eq!(off_text["results"][0]["package_unit"], "tablet");
+    for response in [&off_barcode, &off_text] {
+        let results = response["results"].as_array().expect("supplement results");
+        assert_eq!(results.len(), 1);
+        let result = &results[0];
+        assert_eq!(result["code"], json!(null));
+        assert_eq!(result["barcode"], "5021265221301");
+        assert_eq!(result["name"], "Contract Vitamin");
+        assert_eq!(result["description"], "Daily multivitamin food supplement");
+        assert_eq!(
+            result["display"],
+            "Contract Vitamin (Contract Brand) 30 tablets"
+        );
+        assert_eq!(result["system"], "https://world.openfoodfacts.org");
+        assert_eq!(result["concept_class"], "Supplement");
+        assert_eq!(result["category"], "Supplement");
+        assert_eq!(result["package_size"], "30 tablets");
+        assert_eq!(result["package_quantity"], 30);
+        assert_eq!(result["package_unit"], "tablet");
+        assert_eq!(result["source_label"], "Open Food Facts");
+    }
 
     let unavailable = json_body(
         target.get(&format!("{finder}?q=contractunavailable"), None),
