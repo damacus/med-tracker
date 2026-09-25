@@ -103,10 +103,12 @@ and combined verification. Root workspace manifests and lockfiles, the shared
 router, database/schema files, and API integration are reserved for a named
 coordinator task after independent review. The UI writer must not edit them.
 
-The foundation check navigates the current Rails `/login` page and verifies
-its accessible sign-in heading and labelled email and password controls in a
-real browser, records the absent Rust target failure, then runs the same smoke
-against a minimal Axum-hosted Leptos SSR shell. Authentication submission,
+The foundation check ports the login-page assertions from
+`spec/system/user_sessions_spec.rb` and the public heading/OIDC-absence
+assertions from `spec/features/security/oidc_security_spec.rb` into one
+target-independent browser smoke. It runs against Rails first, records the
+absent Rust target failure, then runs against a minimal Axum-hosted Leptos SSR
+shell. Authentication submission,
 mobile navigation, PWA behaviour, and visual parity remain later browser
 tasks. Review the isolated UI commit before serial integration, then run its
 smoke and affected API contract checks in the integration worktree.
