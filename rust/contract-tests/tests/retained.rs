@@ -29,6 +29,26 @@ fn offline_path(fixture: &Fixture, suffix: &str) -> String {
     )
 }
 
+fn retained_stock(snapshot: &Value, medication_id: i64) -> &str {
+    snapshot["data"]["medications"]
+        .as_array()
+        .expect("medications")
+        .iter()
+        .find(|medication| medication["id"] == medication_id)
+        .expect("retained medication")["current_supply"]
+        .as_str()
+        .expect("current supply")
+}
+
+fn take_count(snapshot: &Value, client_uuid: &str) -> usize {
+    snapshot["data"]["medication_takes"]
+        .as_array()
+        .expect("medication takes")
+        .iter()
+        .filter(|take| take["client_uuid"] == client_uuid)
+        .count()
+}
+
 #[test]
 fn public_pwa_assets_publish_manifest_and_worker_version() {
     let target = Target::from_env();
@@ -72,6 +92,7 @@ fn public_pwa_assets_publish_manifest_and_worker_version() {
         .to_str()
         .expect("worker content type")
         .starts_with("text/javascript"));
+    assert_eq!(response.headers()["cache-control"], "public, max-age=3600");
     let worker = response.text().expect("service worker");
     assert!(worker.contains("const CACHE_VERSION = 'v3'"));
     assert!(worker.contains("self.addEventListener('fetch'"));
@@ -109,7 +130,24 @@ fn offline_snapshot_requires_web_session_and_hides_foreign_household() {
         .iter()
         .find(|schedule| schedule["id"] == fixture.retained_schedule_id)
         .expect("retained schedule");
-    assert!(managed["offline_eligibility"]["allowed"].is_boolean());
+    assert!(managed["person_id"].as_i64().expect("person id") > 0);
+    assert_eq!(managed["medication_id"], fixture.retained_medication_id);
+    assert_eq!(managed["dose_amount"], "1.0");
+    assert_eq!(managed["dose_unit"], "ml");
+    assert_eq!(managed["frequency"], "Daily");
+    assert_eq!(managed["start_date"], "2026-01-01");
+    assert_eq!(managed["end_date"], "2099-12-31");
+    assert_eq!(managed["active"], true);
+    let eligibility = &managed["offline_eligibility"];
+    assert_eq!(eligibility["allowed"], true);
+    assert!(eligibility["reason"].is_null());
+    assert_eq!(eligibility["dose_amount"], "1.0");
+    assert_eq!(eligibility["dose_unit"], "ml");
+    let generated_at = snapshot["meta"]["generated_at"]
+        .as_str()
+        .expect("generated at");
+    let valid_until = format!("{}T23:59:59{}", &generated_at[..10], &generated_at[19..]);
+    assert_eq!(eligibility["valid_until"], valid_until);
     assert!(!snapshot.to_string().contains(&fixture.foreign_person_name));
 
     let foreign_path = format!(
@@ -149,16 +187,63 @@ fn offline_queued_take_replays_by_client_uuid_and_rejects_missing_source() {
         "dose_amount": "1",
         "taken_from_medication_id": fixture.retained_medication_id
     });
+    assert_eq!(
+        retained_stock(&snapshot, fixture.retained_medication_id),
+        "50.0"
+    );
+    assert_eq!(take_count(&snapshot, &client_uuid), 0);
+
+    let unauthenticated = Target::from_env().post_json(&path, &body);
+    assert_eq!(unauthenticated.status().as_u16(), 302);
+    assert!(unauthenticated.headers()["location"]
+        .to_str()
+        .expect("login redirect")
+        .starts_with("/login"));
+
+    let foreign_path = format!(
+        "/households/{}/offline/medication_takes",
+        fixture.retained_foreign_household_slug
+    );
+    let foreign = target.post_json(&foreign_path, &body);
+    assert_eq!(foreign.status().as_u16(), 302);
+    let before: Value = target
+        .get(&offline_path(&fixture, "/snapshot"), None)
+        .json()
+        .expect("unchanged offline snapshot");
+    assert_eq!(
+        retained_stock(&before, fixture.retained_medication_id),
+        "50.0"
+    );
+    assert_eq!(take_count(&before, &client_uuid), 0);
+
     let response = target.post_json(&path, &body);
     assert_eq!(response.status().as_u16(), 201);
     let created: Value = response.json().expect("created take");
     assert_eq!(created["data"]["client_uuid"], client_uuid);
     let take_id = created["data"]["id"].clone();
+    let after_create: Value = target
+        .get(&offline_path(&fixture, "/snapshot"), None)
+        .json()
+        .expect("snapshot after create");
+    assert_eq!(
+        retained_stock(&after_create, fixture.retained_medication_id),
+        "49.0"
+    );
+    assert_eq!(take_count(&after_create, &client_uuid), 1);
 
     let response = target.post_json(&path, &body);
     assert_eq!(response.status().as_u16(), 200);
     let replayed: Value = response.json().expect("replayed take");
     assert_eq!(replayed["data"]["id"], take_id);
+    let after_replay: Value = target
+        .get(&offline_path(&fixture, "/snapshot"), None)
+        .json()
+        .expect("snapshot after replay");
+    assert_eq!(
+        retained_stock(&after_replay, fixture.retained_medication_id),
+        "49.0"
+    );
+    assert_eq!(take_count(&after_replay, &client_uuid), 1);
 
     let invalid_uuid = format!(
         "00000000-0000-4001-8000-{:012x}",
