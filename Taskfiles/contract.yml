@@ -7,6 +7,7 @@ tasks:
     cmds:
       - fish rust/contract-tests/cleanup_status_test.fish
       - fish rust/contract-tests/runner_isolation_test.fish
+      - fish rust/contract-tests/runner_failure_test.fish
       - fish rust/contract-tests/isolation_test.fish
 
   cleanup:

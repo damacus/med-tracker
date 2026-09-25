@@ -37,6 +37,23 @@ function wait_for_contract_web -a base_url
     return 1
 end
 
+function contract_web_port -a project
+    set -l port (rtk task test:port CONTRACT_PROJECT=$project)
+    or begin
+        echo "Contract web port lookup failed for $project" >&2
+        return 1
+    end
+    if test (count $port) -ne 1; or not string match -rq '^[0-9]{1,5}$' -- $port
+        echo "Invalid contract web port for $project: $port" >&2
+        return 1
+    end
+    if test $port -lt 1; or test $port -gt 65535
+        echo "Invalid contract web port for $project: $port" >&2
+        return 1
+    end
+    echo $port
+end
+
 function run_rails_contract_targets -a base_url fixture_path mailpit_url project run_dir
     set -l failed_targets
     set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports portability sync replay oauth envelopes
@@ -45,8 +62,12 @@ function run_rails_contract_targets -a base_url fixture_path mailpit_url project
     for target in $targets
         if test "$target" != auth
             rtk task contract:restart-web CONTRACT_PROJECT=$project CONTRACT_RUN_DIR=$run_dir
-            or return $status
-            set -l port (rtk task test:port CONTRACT_PROJECT=$project)
+            or begin
+                set -l restart_status $status
+                echo "Contract web restart failed before $target" >&2
+                return $restart_status
+            end
+            set -l port (contract_web_port $project)
             or return $status
             set base_url "http://127.0.0.1:$port"
             wait_for_contract_web $base_url
@@ -105,7 +126,7 @@ function run_contract
     or return $status
 
     if test "$mode" = rails
-        set -l port (rtk task test:port CONTRACT_PROJECT=$contract_project)
+        set -l port (contract_web_port $contract_project)
         or return $status
         if test "$argv[2]" = admin
             rtk task contract:run-admin BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"

@@ -38,7 +38,7 @@ or begin; cat $test_dir/output >&2; echo "Expected target failure to survive cle
 set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports portability sync replay oauth envelopes
 set -l trace (cat $test_dir/trace)
 set -l runs (string match 'run:*' -- $trace)
-test (count $trace) -eq 63
+test (count $trace) -eq 64; and test "$trace[-1]" = cleanup
 or begin; cat $test_dir/trace >&2; echo 'Full runner did not refresh each restarted target' >&2; exit 1; end
 test (count $runs) -eq (math (count $targets) + 1)
 or begin; cat $test_dir/trace >&2; echo 'Full runner did not run all targets' >&2; exit 1; end
