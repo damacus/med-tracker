@@ -61,7 +61,7 @@ end
 
 function run_rails_contract_targets -a base_url fixture_path mailpit_url project run_dir
     set -l failed_targets
-    set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports fhir platform lookup portability retained profile web_profile sync replay oauth devices web_devices mcp uploads envelopes
+    set -l targets auth admin invitations care medication_stock dosage_health schedules assignments doses reviews reports fhir platform lookup web_json_read portability retained profile web_profile sync replay oauth devices web_devices mcp uploads envelopes
     rtk task contract:run BASE_URL="$base_url" FIXTURE_PATH="$fixture_path" MAILPIT_URL="$mailpit_url" TEST_TARGET=lib
     or set -a failed_targets lib
     set -l previous_target
@@ -71,11 +71,13 @@ function run_rails_contract_targets -a base_url fixture_path mailpit_url project
         else if test "$target" = web_devices
             clear_lookup_adapter_environment
             set_web_device_environment
+        else if test "$target" = web_json_read
+            set_web_json_read_adapter_environment
         else
             clear_lookup_adapter_environment
         end
         if test "$target" != auth
-            if test "$target" = lookup; or test "$previous_target" = lookup; or test "$target" = web_devices; or test "$previous_target" = web_devices
+            if contains -- "$target" lookup web_devices web_json_read; or contains -- "$previous_target" lookup web_devices web_json_read
                 rtk task test:server CONTRACT_PROJECT=$project
             else
                 rtk task contract:restart-web CONTRACT_PROJECT=$project CONTRACT_RUN_DIR=$run_dir
@@ -109,6 +111,11 @@ end
 
 function set_web_device_environment
     set -gx CONTRACT_RUBYOPT -r/app/rust/contract-tests/test_support/csrf
+end
+
+function set_web_json_read_adapter_environment
+    set_lookup_adapter_environment
+    set -gx CONTRACT_RUBYOPT '-r/app/rust/contract-tests/test_support/nhs_dmd_webmock -r/app/rust/contract-tests/test_support/web_json_read_webmock'
 end
 
 function clear_lookup_adapter_environment
@@ -147,6 +154,8 @@ function run_contract
         set_lookup_adapter_environment
     else if test "$argv[2]" = web-devices
         set_web_device_environment
+    else if test "$argv[2]" = web_json_read
+        set_web_json_read_adapter_environment
     else
         clear_lookup_adapter_environment
     end
@@ -205,6 +214,8 @@ function run_contract
             rtk task contract:run-platform BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = lookup
             rtk task contract:run-lookup BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+        else if test "$argv[2]" = web_json_read
+            rtk task contract:run-web-json-read BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = portability
             rtk task contract:run-portability BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = retained
@@ -281,6 +292,8 @@ function run_contract
             rtk task contract:run-platform BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = lookup
             rtk task contract:run-lookup BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
+        else if test "$argv[2]" = web_json_read
+            rtk task contract:run-web-json-read BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = portability
             rtk task contract:run-portability BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = retained
