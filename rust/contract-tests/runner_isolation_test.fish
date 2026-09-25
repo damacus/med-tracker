@@ -49,7 +49,7 @@ for index in (seq (count $targets))
     or begin; cat $test_dir/trace >&2; echo "Wrong target at index $index" >&2; exit 1; end
     if test $index -lt (count $targets)
         set -l next_index (math $index + 1)
-        if not contains -- "$targets[$index]" lookup web_devices web_json_read web_json_actions; and not contains -- "$targets[$next_index]" lookup web_devices web_json_read web_json_actions
+        if not contains -- "$targets[$index]" lookup platform web_profile web_devices web_json_read web_json_actions; and not contains -- "$targets[$next_index]" lookup platform web_profile web_devices web_json_read web_json_actions
             set -a expected_trace restart
         end
         set -a expected_trace port ready "run:$targets[$next_index]:http://127.0.0.1:"(math 43016 + $next_index)

@@ -100,14 +100,32 @@ fn issue_app_token(target: &Target, fixture: &Fixture, csrf: &str) -> (String, S
     (raw_token, revoke_path)
 }
 
+fn assert_app_token_absent(target: &Target, fixture: &Fixture, name: &str) {
+    let path = format!(
+        "/api/v1/households/{}/admin/app_tokens",
+        fixture.household_id
+    );
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let body: Value = response.json().expect("app token list JSON");
+    let rows = body["data"].as_array().expect("app token list");
+    assert!(!rows.iter().any(|row| row["name"] == name));
+}
+
 #[test]
 fn web_token_requires_session_and_is_issued_once_then_revoked() {
     let target = Target::from_env();
     let fixture = fixture();
     let path = format!("{}/api_tokens", profile_path(&fixture.household_slug));
+    let login = target.get_html("/login");
+    assert_eq!(login.status().as_u16(), 200);
+    let anonymous_token = token_from_html(&login.text().expect("login HTML"));
     let response = target.post_html_form(
         &path,
-        &[("api_app_token[name]".to_owned(), "denied".to_owned())],
+        &[
+            ("api_app_token[name]".to_owned(), "denied".to_owned()),
+            ("authenticity_token".to_owned(), anonymous_token),
+        ],
     );
     assert_eq!(response.status().as_u16(), 302);
     assert!(response.headers()["location"]
@@ -149,6 +167,27 @@ fn web_token_requires_session_and_is_issued_once_then_revoked() {
         target.get(&me_path, Some(&raw_token)).status().as_u16(),
         401
     );
+
+    let wrong = target.post_html_form(
+        &path,
+        &[
+            (
+                "api_app_token[name]".to_owned(),
+                "Contract wrong CSRF".to_owned(),
+            ),
+            (
+                "api_app_token[household_membership_id]".to_owned(),
+                fixture.owner_membership_id.to_string(),
+            ),
+            ("authenticity_token".to_owned(), "wrong-token".to_owned()),
+        ],
+    );
+    assert_eq!(wrong.status().as_u16(), 303);
+    assert!(wrong.headers()["location"]
+        .to_str()
+        .expect("login redirect")
+        .ends_with("/login"));
+    assert_app_token_absent(&target, &fixture, "Contract wrong CSRF");
 }
 
 #[test]
@@ -177,7 +216,7 @@ fn web_token_rejects_foreign_membership_and_blank_name() {
     let foreign = target.post_html_form(
         &path,
         &[
-            ("authenticity_token".to_owned(), csrf),
+            ("authenticity_token".to_owned(), csrf.clone()),
             ("api_app_token[name]".to_owned(), "foreign".to_owned()),
             (
                 "api_app_token[household_membership_id]".to_owned(),
@@ -188,9 +227,32 @@ fn web_token_rejects_foreign_membership_and_blank_name() {
     assert_eq!(foreign.status().as_u16(), 404);
     let revoke_foreign = target.post_html_form(
         &format!("{path}/{}", fixture.foreign_app_token_id),
-        &[("_method".to_owned(), "delete".to_owned())],
+        &[
+            ("_method".to_owned(), "delete".to_owned()),
+            ("authenticity_token".to_owned(), csrf),
+        ],
     );
     assert_eq!(revoke_foreign.status().as_u16(), 404);
+
+    let missing = target.post_html_form(
+        &path,
+        &[
+            (
+                "api_app_token[name]".to_owned(),
+                "Contract missing CSRF".to_owned(),
+            ),
+            (
+                "api_app_token[household_membership_id]".to_owned(),
+                fixture.owner_membership_id.to_string(),
+            ),
+        ],
+    );
+    assert_eq!(missing.status().as_u16(), 303);
+    assert!(missing.headers()["location"]
+        .to_str()
+        .expect("login redirect")
+        .ends_with("/login"));
+    assert_app_token_absent(&target, &fixture, "Contract missing CSRF");
 }
 
 #[test]
