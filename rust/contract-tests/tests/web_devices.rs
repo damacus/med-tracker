@@ -65,6 +65,11 @@ fn json(response: Response) -> Value {
     response.json().expect("JSON response")
 }
 
+fn assert_login_redirect(response: Response) {
+    assert_eq!(response.status().as_u16(), 302);
+    assert_eq!(response.headers()["location"], "/login");
+}
+
 #[test]
 fn web_native_device_tokens_require_session_and_csrf_and_keep_account_ownership() {
     let fixture = fixture();
@@ -114,16 +119,84 @@ fn web_native_device_tokens_require_session_and_csrf_and_keep_account_ownership(
         "form[action='/login'] input[name='authenticity_token']",
         "value",
     );
-    let denied = web_request(
+    let preference_api = format!(
+        "/api/v1/households/{}/notification_preference",
+        fixture.web_device_household_id
+    );
+    assert_eq!(
+        target
+            .get(&preference_api, Some(&fixture.web_device_access_token))
+            .status()
+            .as_u16(),
+        404
+    );
+    assert_login_redirect(web_request(
         &target,
         "POST",
         &path,
         &anonymous_csrf,
         "application/json",
         &[("device_token", &token), ("platform", "ios")],
+    ));
+    assert_login_redirect(web_request(
+        &target,
+        "DELETE",
+        &format!("{path}/{token}"),
+        &anonymous_csrf,
+        "application/json",
+        &[],
+    ));
+    let push_path = web_path(&fixture, "push_subscription");
+    let endpoint = format!(
+        "https://fcm.googleapis.com/fcm/send/contract-web-{}",
+        fixture.web_device_household_id
     );
-    assert_eq!(denied.status().as_u16(), 302);
-    assert_eq!(denied.headers()["location"], "/login");
+    assert_login_redirect(web_request(
+        &target,
+        "POST",
+        &push_path,
+        &anonymous_csrf,
+        "application/json",
+        &[
+            ("endpoint", &endpoint),
+            ("keys[p256dh]", "public-key"),
+            ("keys[auth]", "auth-secret"),
+        ],
+    ));
+    assert_login_redirect(web_request(
+        &target,
+        "DELETE",
+        &push_path,
+        &anonymous_csrf,
+        "application/json",
+        &[("endpoint", &endpoint)],
+    ));
+    assert_login_redirect(web_request(
+        &target,
+        "POST",
+        &format!("{push_path}/test"),
+        &anonymous_csrf,
+        "application/json",
+        &[],
+    ));
+    let preference_path = web_path(&fixture, "notification_preference");
+    for method in ["PATCH", "PUT"] {
+        assert_login_redirect(web_request(
+            &target,
+            method,
+            &preference_path,
+            &anonymous_csrf,
+            "application/json",
+            &[("notification_preference[enabled]", "0")],
+        ));
+    }
+    assert_eq!(
+        target
+            .get(&preference_api, Some(&fixture.web_device_access_token))
+            .status()
+            .as_u16(),
+        404
+    );
     let csrf = login(&target, &fixture);
 
     let created = web_request(
@@ -448,6 +521,7 @@ fn web_notification_preference_turbo_and_html_updates_have_public_readback() {
     let preference = json(read)["data"].clone();
     assert_eq!(preference["enabled"], false);
     assert_eq!(preference["morning_time"], "07:30:00");
+    assert_eq!(preference["afternoon_time"], "13:30:00");
 
     let html = web_request(
         &target,
@@ -469,6 +543,8 @@ fn web_notification_preference_turbo_and_html_updates_have_public_readback() {
         json(target.get(&api_path, Some(&fixture.web_device_access_token)))["data"].clone();
     assert_eq!(updated["enabled"], true);
     assert_eq!(updated["dose_due_enabled"], true);
+    assert_eq!(updated["morning_time"], "07:30:00");
+    assert_eq!(updated["afternoon_time"], "13:30:00");
     assert_eq!(updated["id"], preference["id"]);
     let section_path = format!("{preference_path}?section=notifications");
     let replaced = web_request(
@@ -490,5 +566,8 @@ fn web_notification_preference_turbo_and_html_updates_have_public_readback() {
     let replaced_preference =
         json(target.get(&api_path, Some(&fixture.web_device_access_token)))["data"].clone();
     assert_eq!(replaced_preference["enabled"], false);
+    assert_eq!(replaced_preference["dose_due_enabled"], true);
+    assert_eq!(replaced_preference["morning_time"], "07:30:00");
+    assert_eq!(replaced_preference["afternoon_time"], "13:30:00");
     assert_eq!(replaced_preference["id"], preference["id"]);
 }
