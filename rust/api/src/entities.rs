@@ -127,6 +127,16 @@ entity!(native_device_token, "native_device_tokens", {
     updated_at: DateTime,
 });
 
+entity!(push_subscription, "push_subscriptions", {
+    account_id: i64,
+    endpoint: String,
+    p256dh: String,
+    auth: String,
+    user_agent: Option<String>,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
 pub mod active_session_key {
     use sea_orm::entity::prelude::*;
 

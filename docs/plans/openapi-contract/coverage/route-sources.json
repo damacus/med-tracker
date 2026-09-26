@@ -44,5 +44,7 @@
   "updateNotificationPreference": "rust/api/src/notification_preferences.rs:324",
   "replaceNotificationPreference": "rust/api/src/notification_preferences.rs:333",
   "createNativeDeviceToken": "rust/api/src/native_device_tokens.rs:119",
-  "deleteNativeDeviceToken": "rust/api/src/native_device_tokens.rs:222"
+  "deleteNativeDeviceToken": "rust/api/src/native_device_tokens.rs:222",
+  "createPushSubscription": "rust/api/src/push_subscriptions.rs:152",
+  "deletePushSubscription": "rust/api/src/push_subscriptions.rs:247"
 }

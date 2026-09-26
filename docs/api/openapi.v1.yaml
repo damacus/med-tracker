@@ -3325,6 +3325,7 @@ paths:
         - Household
         - Devices
       summary: Register a web push subscription.
+      description: Registers an endpoint for the authenticated account, or updates that account's existing endpoint and returns an empty 201 response. An endpoint held by another account fails validation without transferring ownership. The endpoint must use HTTPS, contain no user information or IP address, and use fcm.googleapis.com, updates.push.services.mozilla.com, web.push.apple.com, or a subdomain of notify.windows.com or push.apple.com.
       parameters:
         - $ref: '#/components/parameters/household_id'
       requestBody:
@@ -3336,6 +3337,8 @@ paths:
       responses:
         '201':
           description: Push subscription registered.
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3350,6 +3353,7 @@ paths:
         - Household
         - Devices
       summary: Revoke a web push subscription.
+      description: Removes the authenticated account's matching endpoint when present and returns an empty 204 response. Repeating the request or naming another account's endpoint also returns 204. The endpoint query parameter is required; an existing endpoint can be revoked even if it no longer meets the registration allowlist.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/push_subscription_endpoint'
@@ -4277,10 +4281,10 @@ components:
       name: endpoint
       in: query
       required: true
+      description: Existing endpoint to revoke; provider allowlist validation does not apply to deletion.
       schema:
         type: string
-        format: uri
-        pattern: '^https://'
+        minLength: 1
     page:
       name: page
       in: query
@@ -8384,9 +8388,11 @@ components:
         p256dh:
           type: string
           minLength: 1
+          pattern: '.*\S.*'
         auth:
           type: string
           minLength: 1
+          pattern: '.*\S.*'
     PushSubscriptionAttributes:
       type: object
       additionalProperties: false
@@ -8397,6 +8403,7 @@ components:
         endpoint:
           type: string
           format: uri
+          description: HTTPS URL on a supported Web Push provider host, without user information or an IP address.
           pattern: '^https://'
         keys:
           $ref: '#/components/schemas/PushSubscriptionKeys'

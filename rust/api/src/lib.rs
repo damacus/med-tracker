@@ -11,6 +11,7 @@ mod native_device_tokens;
 mod notification_preferences;
 mod oauth;
 mod people;
+mod push_subscriptions;
 mod rate_limit;
 mod read_entities;
 mod read_resources;
@@ -225,6 +226,10 @@ fn api_router(state: AppState) -> Router {
         .route(
             "/api/v1/households/{household_id}/native_device_tokens/{id}",
             axum::routing::delete(native_device_tokens::delete),
+        )
+        .route(
+            "/api/v1/households/{household_id}/push_subscription",
+            axum::routing::post(push_subscriptions::create).delete(push_subscriptions::delete),
         )
         .route(
             "/api/v1/households/{household_id}/people/{id}",
