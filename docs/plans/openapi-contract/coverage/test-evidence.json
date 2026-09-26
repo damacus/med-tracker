@@ -195,7 +195,7 @@
     ]
   },
   "listDosageOptions": {
-    "state": "partial_runtime_verified",
+    "state": "full_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_dosage_options.rs",
     "statuses_tested": [
       200,
@@ -215,14 +215,13 @@
       "nonloopback 429 body and shared headers",
       "household app-token owner, administrator and member reads; invalid, inactive, revoked, expired and stale app tokens 401; SMART integration grant 401",
       "wrong-household 403, missing-household 404, and foreign app token 403",
-      "six required dosage response fields have database NOT NULL constraints; Rails migration and isolated PostgreSQL tests reject NULL without changing valid records"
+      "six required dosage response fields have database NOT NULL constraints; Rails migration and isolated PostgreSQL tests reject NULL without changing valid records",
+      "shared app-token household-state proof: same valid token GET 200, archived issuing household 401, restored household 200; existing assertions verify all five methods use shared authentication"
     ],
-    "not_yet_tested": [
-      "non-operational issuing-household app-token denial"
-    ]
+    "not_yet_tested": []
   },
   "createDosageOption": {
-    "state": "partial_runtime_verified",
+    "state": "full_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_dosage_options.rs",
     "statuses_tested": [
       201,
@@ -245,14 +244,13 @@
       "nonloopback 429 rejects create before mutation",
       "app-token owner create succeeds, active member create denied 403, and wrong-household create denied 403",
       "foreign parent medication create returns 404",
-      "database NOT NULL constraints reject six required-field NULL values with PostgreSQL 23502"
+      "database NOT NULL constraints reject six required-field NULL values with PostgreSQL 23502",
+      "shared app-token household-state proof: same valid token GET 200, archived issuing household 401, restored household 200; existing assertions verify all five methods use shared authentication"
     ],
-    "not_yet_tested": [
-      "non-operational issuing-household app-token denial"
-    ]
+    "not_yet_tested": []
   },
   "getDosageOption": {
-    "state": "partial_runtime_verified",
+    "state": "full_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_dosage_options.rs",
     "statuses_tested": [
       200,
@@ -268,14 +266,13 @@
       "foreign-household dosage ID under own household 404",
       "nonloopback 429",
       "app-token owner and member detail reads succeed; wrong-household detail returns 403",
-      "database NOT NULL constraints preserve six required fields in returned records"
+      "database NOT NULL constraints preserve six required fields in returned records",
+      "shared app-token household-state proof: same valid token GET 200, archived issuing household 401, restored household 200; existing assertions verify all five methods use shared authentication"
     ],
-    "not_yet_tested": [
-      "non-operational issuing-household app-token denial"
-    ]
+    "not_yet_tested": []
   },
   "updateDosageOption": {
-    "state": "partial_runtime_verified",
+    "state": "full_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_dosage_options.rs",
     "statuses_tested": [
       200,
@@ -299,14 +296,13 @@
       "parent and dosage versions/sync events correlate to HTTP request ID; updates validate the complete resulting dosage record",
       "nonloopback 429 rejects update before mutation",
       "app-token administrator PATCH succeeds and wrong-household PATCH returns 403",
-      "database NOT NULL constraints prevent incomplete persisted records while invalid request fields still return 422"
+      "database NOT NULL constraints prevent incomplete persisted records while invalid request fields still return 422",
+      "shared app-token household-state proof: same valid token GET 200, archived issuing household 401, restored household 200; existing assertions verify all five methods use shared authentication"
     ],
-    "not_yet_tested": [
-      "non-operational issuing-household app-token denial"
-    ]
+    "not_yet_tested": []
   },
   "replaceDosageOption": {
-    "state": "partial_runtime_verified",
+    "state": "full_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_dosage_options.rs",
     "statuses_tested": [
       200,
@@ -328,11 +324,10 @@
       "PUT can reset last tracked inventory to null/zero/null while preserving required dosage fields",
       "nonloopback 429 rejects replacement before mutation",
       "app-token owner PUT succeeds and wrong-household PUT returns 403",
-      "database NOT NULL constraints prevent incomplete persisted records while invalid request fields still return 422"
+      "database NOT NULL constraints prevent incomplete persisted records while invalid request fields still return 422",
+      "shared app-token household-state proof: same valid token GET 200, archived issuing household 401, restored household 200; existing assertions verify all five methods use shared authentication"
     ],
-    "not_yet_tested": [
-      "non-operational issuing-household app-token denial"
-    ]
+    "not_yet_tested": []
   },
   "listSessions": {
     "state": "full_runtime_verified",
@@ -399,5 +394,96 @@
     "limitations_outside_contract": [
       "every possible concurrent request interleaving was not exercised"
     ]
+  },
+  "getCurrentProfile": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_people.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      404,
+      429
+    ],
+    "behaviours_tested": [
+      "current profile is the authenticated account's linked person even when the selected active household differs from the person's home; asserts actual numeric and portable location IDs",
+      "strict Me, person and account response shapes; member role; no ETag",
+      "shared four-operation HTTP proof: missing/invalid bearer 401, wrong household 403, unknown household 404; endpoint is rate-limited with 429",
+      "nonloopback rate test observes the rate-limit response headers/body on capabilities and 429 on this operation",
+      "shared rate-limit body/header semantics reuse existing limiter tests; this operation has a direct nonloopback HTTP 429 wiring assertion"
+    ],
+    "not_yet_tested": []
+  },
+  "createPerson": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_people.rs",
+    "statuses_tested": [
+      201,
+      400,
+      401,
+      403,
+      404,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "owner create returns strict Person resource and ETag; normalizes email; creates Home location membership and manage grant with correlated audit, sync, version and permissions-version changes",
+      "first person in a household creates an audited and synchronized Home location and location membership",
+      "manage-granted member can create; view-only and no-manage members are forbidden",
+      "minor/dependent adult creation forces no capacity; minor carer relationship and grant point to the same relationship; dependent creation restores missing carer self-grant and links the new grant",
+      "missing/nonobject person wrapper returns 400; empty wrapper and invalid attributes return 422; rejected writes preserve measured domain side-effect counts",
+      "duplicate email returns 422 without changing measured side effects; concurrent duplicate requests produce exactly one 201 and one 422",
+      "shared four-operation HTTP proof: invalid bearer 401, wrong household 403, unknown household 404; endpoint is rate-limited with 429",
+      "shared rate-limit body/header semantics reuse existing limiter tests; this operation has a direct nonloopback HTTP 429 wiring assertion",
+      "owner and administrator share one authorization branch; owner and manage-granted member successful writes plus administrator validation/race requests verify authorization and shared write behavior without claiming a separate administrator-201 case"
+    ],
+    "not_yet_tested": []
+  },
+  "updatePerson": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_people.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "PATCH by numeric ID merges supplied name without If-Match, preserves omitted fields, and returns strict Person resource and ETag",
+      "update sync and audit events correlate to request ID; unchanged PATCH/PUT do not emit person change events",
+      "PATCH normalizes email and merges date changes; invalid updates return 422 without changing person or events",
+      "hidden person returns 404 and view-only grant returns 403",
+      "missing/nonobject person wrapper returns 400",
+      "shared four-operation HTTP proof: invalid bearer 401, wrong household 403, unknown household 404; endpoint is rate-limited with 429",
+      "shared rate-limit body/header semantics reuse existing limiter tests; this operation has a direct nonloopback HTTP 429 wiring assertion",
+      "shared update helper is exercised by PATCH numeric ID and PUT portable ID; manage-grant authorization is independent of membership role"
+    ],
+    "not_yet_tested": []
+  },
+  "updatePersonWithPut": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_people.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "PUT by portable ID merges supplied name without If-Match, preserves omitted fields, and returns strict Person resource and ETag",
+      "update sync and audit events correlate to request ID; unchanged PATCH/PUT do not emit person change events",
+      "PUT normalizes/clears email and preserves an omitted date change; invalid updates return 422 without changing person or events",
+      "missing/nonobject person wrapper returns 400",
+      "shared four-operation HTTP proof: invalid bearer 401, wrong household 403, unknown household 404; endpoint is rate-limited with 429",
+      "shared rate-limit body/header semantics reuse existing limiter tests; this operation has a direct nonloopback HTTP 429 wiring assertion",
+      "shared update helper is exercised by PATCH numeric ID and PUT portable ID; manage-grant authorization is independent of membership role"
+    ],
+    "not_yet_tested": []
   }
 }

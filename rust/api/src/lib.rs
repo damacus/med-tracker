@@ -8,6 +8,7 @@ mod locations;
 mod medication_forecast;
 mod medication_management;
 mod oauth;
+mod people;
 mod rate_limit;
 mod read_entities;
 mod read_resources;
@@ -187,8 +188,9 @@ fn api_router(state: AppState) -> Router {
         )
         .route(
             "/api/v1/households/{household_id}/people",
-            get(read_resources::people_index),
+            get(read_resources::people_index).post(people::create),
         )
+        .route("/api/v1/households/{household_id}/me", get(people::show_me))
         .route(
             "/api/v1/households/{household_id}/locations",
             get(read_resources::locations_index).post(locations::create),
@@ -210,7 +212,9 @@ fn api_router(state: AppState) -> Router {
         )
         .route(
             "/api/v1/households/{household_id}/people/{id}",
-            get(read_resources::people_show),
+            get(read_resources::people_show)
+                .patch(people::patch)
+                .put(people::put),
         )
         .route(
             "/api/v1/households/{household_id}/schedules",
@@ -412,7 +416,7 @@ async fn restricted_role(db: &DatabaseTransaction) -> Result<(), sea_orm::DbErr>
     Ok(())
 }
 
-async fn tenant_setting(
+pub(crate) async fn tenant_setting(
     db: &DatabaseTransaction,
     name: &str,
     value: i64,

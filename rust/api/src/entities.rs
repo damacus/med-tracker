@@ -169,11 +169,13 @@ entity!(membership, "household_memberships", {
     role: String,
     status: String,
     revoked_at: Option<DateTime>,
+    updated_at: DateTime,
 });
 
 entity!(user, "users", {
     person_id: i64,
     active: bool,
+    email_address: String,
 });
 
 entity!(person, "people", {
@@ -189,6 +191,11 @@ entity!(grant, "person_access_grants", {
     access_level: String,
     expires_at: Option<DateTime>,
     revoked_at: Option<DateTime>,
+    relationship_type: String,
+    granted_by_membership_id: Option<i64>,
+    carer_relationship_id: Option<i64>,
+    created_at: DateTime,
+    updated_at: DateTime,
 });
 
 entity!(schedule, "schedules", {

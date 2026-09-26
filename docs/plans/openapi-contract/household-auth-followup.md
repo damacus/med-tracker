@@ -20,9 +20,9 @@ the distinction between an invalid credential (401), an active credential for
 another household (403), and a foreign resource absent from the selected
 household's scope (404).
 
-Operational issuing-household rejection is implemented but still lacks a
-dedicated app-token HTTP assertion. Keep that limitation in the evidence map;
-do not treat the passing groups as proof of every authentication state.
+Operational issuing-household rejection is now proven by the same-token
+200/401/200 test through active, archived and restored household states.
+The final 14/14 dosage run closes this prerequisite; see `coverage/report.md`.
 
 Integration scope intent is resolved by existing source: `OauthApplication`
 limits integration clients to SMART read scopes; `medtracker` is mobile-only.

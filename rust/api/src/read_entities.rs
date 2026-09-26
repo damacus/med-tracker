@@ -20,6 +20,7 @@ macro_rules! read_entity {
 }
 
 read_entity!(person, "people", {
+    account_id: Option<i64>,
     household_id: i64,
     portable_id: String,
     name: String,
@@ -27,6 +28,17 @@ read_entity!(person, "people", {
     date_of_birth: Option<Date>,
     person_type: i32,
     has_capacity: bool,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
+read_entity!(carer_relationship, "carer_relationships", {
+    household_id: i64,
+    carer_id: i64,
+    patient_id: i64,
+    relationship_type: Option<String>,
+    active: bool,
+    created_at: DateTime,
     updated_at: DateTime,
 });
 

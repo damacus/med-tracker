@@ -229,6 +229,7 @@ paths:
         - Household
         - People
       summary: Read the current account and person profile for a household session.
+      description: The person is the authenticated user's own profile, even when the selected membership belongs to another household. membership_role is the role of the selected household membership.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
@@ -277,6 +278,21 @@ paths:
         - Household
         - People
       summary: Create a person in the household.
+      description: |
+        Requires an active household owner or administrator, or a member with an
+        active manage grant for a person in this household. Name and date of birth
+        are required; email is trimmed, lowercased and unique when present.
+        person_type defaults to adult and has_capacity defaults to true. A minor
+        or dependent adult always has has_capacity false and needs an active
+        carer. When the actor's membership is linked to a person, creating a
+        minor or dependent adult delegates family-member manage access to that
+        carer. Otherwise a person without capacity is rejected with 422.
+        A successful create assigns the household Home location, creates the
+        actor's manage grant, increments the affected membership permissions
+        version, and records person audit and sync changes in one transaction.
+        Age and person_type must agree. Invalid or duplicate email returns 422.
+        Malformed JSON or a missing person wrapper returns 400; a present wrapper
+        with invalid attributes returns 422.
       parameters:
         - $ref: '#/components/parameters/household_id'
       requestBody:
@@ -295,6 +311,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PersonResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -337,6 +355,16 @@ paths:
         - Household
         - People
       summary: Update a person.
+      description: |
+        Requires an active manage grant for the selected person. A person outside
+        the actor's visible scope returns 404; a visible person without manage
+        access returns 403. Supplied attributes are merged with the existing
+        record; omitted attributes are retained. Email is normalized and must
+        remain unique. A minor or dependent adult always has has_capacity false,
+        and a person without capacity must have an active carer. Age and
+        person_type must agree. A changed update records person audit and
+        sync changes. If-Match is not required. Malformed JSON or a missing
+        person wrapper returns 400; invalid supplied attributes return 422.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/id'
@@ -356,6 +384,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PersonResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -372,6 +402,11 @@ paths:
         - Household
         - People
       summary: Update a person using the PUT route.
+      description: |
+        PUT has the same merged-attribute, authorization, validation, audit and
+        sync behaviour as PATCH. Omitted attributes are retained and If-Match is
+        not required. Malformed JSON or a missing person wrapper returns 400;
+        invalid supplied attributes return 422.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/id'
@@ -391,6 +426,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PersonResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -4454,6 +4491,7 @@ components:
     PersonAttributes:
       type: object
       additionalProperties: false
+      minProperties: 1
       properties:
         name:
           type: string

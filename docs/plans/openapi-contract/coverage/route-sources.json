@@ -35,5 +35,9 @@
   "getPersonMedication": "rust/api/src/lib.rs:228",
   "listSessions": "rust/api/src/auth_sessions.rs:56",
   "deleteSession": "rust/api/src/auth_sessions.rs:57",
-  "logoutSession": "rust/api/src/auth_sessions.rs:58"
+  "logoutSession": "rust/api/src/auth_sessions.rs:58",
+  "getCurrentProfile": "rust/api/src/people.rs:343",
+  "createPerson": "rust/api/src/people.rs:393",
+  "updatePerson": "rust/api/src/people.rs:938",
+  "updatePersonWithPut": "rust/api/src/people.rs:947"
 }
