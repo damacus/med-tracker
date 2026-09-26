@@ -339,7 +339,7 @@ pub(super) async fn create(
             return invalid(db, &context).await;
         }
         let remaining = previous - quantity;
-        let unit = dosage.unit.clone().unwrap_or_default();
+        let unit = dosage.unit.clone();
         let dosage_portable_id = dosage.portable_id.clone();
         let mut active: dosage::ActiveModel = dosage.into();
         active.current_supply = Set(Some(remaining));

@@ -24,8 +24,8 @@ use axum::{extract::Request, Json, Router};
 use base64::{engine::general_purpose::URL_SAFE, Engine as _};
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use entities::{
-    account, account_lockout, api_session, grant, household, location, medication, membership,
-    oauth_grant, person, person_medication, schedule, user,
+    account, account_lockout, api_app_token, api_session, grant, household, location, medication,
+    membership, oauth_grant, person, person_medication, schedule, user,
 };
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, ConnectOptions, ConnectionTrait, Database,
@@ -436,6 +436,7 @@ struct AuthContext {
 
 enum CredentialKind {
     ApiSession,
+    ApiAppToken,
     OauthGrant,
     BrowserSession,
 }
@@ -458,17 +459,49 @@ async fn authenticate(
         .ok_or_else(ApiError::unauthorized)?;
     let digest = format!("{:x}", Sha256::digest(token.as_bytes()));
     let session = api_session::Entity::find()
-        .filter(api_session::Column::AccessTokenDigest.eq(digest))
+        .filter(api_session::Column::AccessTokenDigest.eq(&digest))
         .one(db)
         .await
         .map_err(database_error)?;
-    let Some(session) = session else {
-        return authenticate_mobile_oauth(db, token, household_id).await;
+    let app = if session.is_none() {
+        api_app_token::Entity::find()
+            .filter(api_app_token::Column::TokenDigest.eq(digest))
+            .one(db)
+            .await
+            .map_err(database_error)?
+    } else {
+        None
     };
-    if session.revoked_at.is_some() || session.access_expires_at <= Utc::now().naive_utc() {
-        return Err(ApiError::unauthorized());
-    }
-    let account = account::Entity::find_by_id(session.account_id)
+    let now = Utc::now().naive_utc();
+    let (account_id, membership_id, permissions_version, credential_reference, credential_kind) =
+        if let Some(session) = session {
+            if session.revoked_at.is_some() || session.access_expires_at <= now {
+                return Err(ApiError::unauthorized());
+            }
+            (
+                session.account_id,
+                session
+                    .household_membership_id
+                    .ok_or_else(ApiError::unauthorized)?,
+                session.permissions_version,
+                session.id.to_string(),
+                CredentialKind::ApiSession,
+            )
+        } else if let Some(app) = &app {
+            if app.revoked_at.is_some() || !auth_sessions::app_unexpired(app, now) {
+                return Err(ApiError::unauthorized());
+            }
+            (
+                app.account_id,
+                app.household_membership_id,
+                app.permissions_version,
+                app.id.to_string(),
+                CredentialKind::ApiAppToken,
+            )
+        } else {
+            return authenticate_mobile_oauth(db, token, household_id).await;
+        };
+    let account = account::Entity::find_by_id(account_id)
         .one(db)
         .await
         .map_err(database_error)?
@@ -486,9 +519,6 @@ async fn authenticate(
     tenant_setting(db, "med_tracker.current_account_id", account.id)
         .await
         .map_err(database_error)?;
-    let membership_id = session
-        .household_membership_id
-        .ok_or_else(ApiError::unauthorized)?;
     let membership = membership::Entity::find_by_id(membership_id)
         .one(db)
         .await
@@ -497,9 +527,19 @@ async fn authenticate(
     if membership.account_id != account.id
         || membership.status != "active"
         || membership.revoked_at.is_some()
-        || membership.permissions_version != session.permissions_version
+        || membership.permissions_version != permissions_version
     {
         return Err(ApiError::unauthorized());
+    }
+    if app.is_some() {
+        let home = household::Entity::find_by_id(membership.household_id)
+            .one(db)
+            .await
+            .map_err(database_error)?
+            .ok_or_else(ApiError::unauthorized)?;
+        if home.status != "active" || home.lifecycle_state != "active" {
+            return Err(ApiError::unauthorized());
+        }
     }
     let person = person::Entity::find()
         .filter(person::Column::AccountId.eq(account.id))
@@ -534,11 +574,19 @@ async fn authenticate(
     tenant_setting(db, "med_tracker.current_membership_id", membership.id)
         .await
         .map_err(database_error)?;
+    if let Some(app) = app {
+        if app.last_used_at < now - ChronoDuration::minutes(5) {
+            let mut active: api_app_token::ActiveModel = app.into();
+            active.last_used_at = Set(now);
+            active.updated_at = Set(now);
+            active.update(db).await.map_err(database_error)?;
+        }
+    }
     Ok(AuthContext {
         account_id: account.id,
         user_id: user.id,
-        credential_reference: session.id.to_string(),
-        credential_kind: CredentialKind::ApiSession,
+        credential_reference,
+        credential_kind,
         membership,
     })
 }

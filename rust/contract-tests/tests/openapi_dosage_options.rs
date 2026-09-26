@@ -25,6 +25,62 @@ fn database() -> postgres::Client {
     .expect("contract database")
 }
 
+struct DisposableApps {
+    db: postgres::Client,
+    ids: Vec<i64>,
+}
+
+impl DisposableApps {
+    fn new() -> Self {
+        Self {
+            db: database(),
+            ids: Vec::new(),
+        }
+    }
+
+    fn issue(&mut self, account_id: i64, membership_id: i64) -> (i64, String) {
+        let raw = format!(
+            "mt_app_contract_{}",
+            OffsetDateTime::now_utc().unix_timestamp_nanos()
+        );
+        let id: i64 = self.db.query_one(
+            "INSERT INTO api_app_tokens (account_id, household_membership_id, token_digest, permissions_version, name, expires_at, last_used_at, created_at, updated_at) VALUES ($1, $2, encode(digest($3, 'sha256'), 'hex'), (SELECT permissions_version FROM household_memberships WHERE id = $2), 'Dosage contract', now() + interval '1 day', now() - interval '10 minutes', now(), now()) RETURNING id",
+            &[&account_id, &membership_id, &raw],
+        ).expect("app token insert").get(0);
+        self.ids.push(id);
+        (id, raw)
+    }
+
+    fn for_membership(&mut self, membership_id: i64) -> (i64, String) {
+        let account_id: i64 = self
+            .db
+            .query_one(
+                "SELECT account_id FROM household_memberships WHERE id = $1",
+                &[&membership_id],
+            )
+            .expect("member account")
+            .get(0);
+        self.issue(account_id, membership_id)
+    }
+
+    fn member_id_for_session(&mut self, raw: &str) -> i64 {
+        self.db.query_one(
+            "SELECT household_membership_id FROM api_sessions WHERE access_token_digest = encode(digest($1, 'sha256'), 'hex')",
+            &[&raw],
+        ).expect("session membership").get(0)
+    }
+}
+
+impl Drop for DisposableApps {
+    fn drop(&mut self) {
+        for id in &self.ids {
+            self.db
+                .execute("DELETE FROM api_app_tokens WHERE id = $1", &[id])
+                .expect("app token cleanup");
+        }
+    }
+}
+
 fn parent_state(id: i64) -> (Option<f64>, Option<String>, String, Option<String>, String) {
     let row = database()
         .query_one(
@@ -707,7 +763,7 @@ fn rejects_invalid_quantities_and_duplicate_defaults_without_side_effects() {
 }
 
 #[test]
-fn update_validates_entire_legacy_record_and_can_repair_missing_field() {
+fn database_rejects_null_required_fields_without_changing_valid_dosage() {
     let fixture = fixture();
     let target = Target::from_env();
     let parent = new_parent(&target, &fixture);
@@ -719,36 +775,258 @@ fn update_validates_entire_legacy_record_and_can_repair_missing_field() {
     assert_eq!(response.status().as_u16(), 201);
     let created: Value = response.json().unwrap();
     let id = created["data"]["id"].as_i64().unwrap();
-    database()
-        .execute("UPDATE dosages SET unit = NULL WHERE id = $1", &[&id])
-        .unwrap();
     let path = format!("{}/{}", base(&fixture), id);
-    let versions = version_count("MedicationDosageOption", id);
+    let before: Value = target
+        .get(&path, Some(&fixture.access_token))
+        .json()
+        .unwrap();
+    let mut db = database();
+    for field in [
+        "amount",
+        "unit",
+        "frequency",
+        "default_max_daily_doses",
+        "default_min_hours_between_doses",
+        "default_dose_cycle",
+    ] {
+        let error = db
+            .execute(
+                &format!("UPDATE dosages SET {field} = NULL WHERE id = $1"),
+                &[&id],
+            )
+            .unwrap_err();
+        assert_eq!(
+            error.code().map(|code| code.code()),
+            Some("23502"),
+            "{field}"
+        );
+    }
+    let after: Value = target
+        .get(&path, Some(&fixture.access_token))
+        .json()
+        .unwrap();
+    assert_eq!(after, before);
+}
+
+#[test]
+fn household_app_tokens_obey_owner_admin_member_scope_and_audit_identity() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let mut apps = DisposableApps::new();
+    let (owner_id, owner) = apps.for_membership(fixture.owner_membership_id);
+    let before_touch: String = apps
+        .db
+        .query_one(
+            "SELECT last_used_at::text FROM api_app_tokens WHERE id = $1",
+            &[&owner_id],
+        )
+        .unwrap()
+        .get(0);
+    let member_id = apps.member_id_for_session(&fixture.view_access_token);
+    let (_, member) = apps.for_membership(member_id);
+    let collection = base(&fixture);
+    let visible = format!("{collection}/{}", fixture.managed_dosage_portable_id);
+    let hidden = format!("{collection}/{}", fixture.hidden_dosage_portable_id);
+    for token in [&owner, &fixture.manager_app_token, &member] {
+        assert_eq!(target.get(&collection, Some(token)).status().as_u16(), 200);
+        assert_eq!(target.get(&visible, Some(token)).status().as_u16(), 200);
+    }
+    assert_error(target.get(&hidden, Some(&member)), 404);
+    assert_error(
+        target.post_json_authorized(&collection, &member, &valid_request(&fixture)),
+        403,
+    );
     assert_error(
         target.patch_json(
-            &path,
-            &fixture.access_token,
+            &visible,
+            &member,
             &json!({"dosage_option": {"amount": "2"}}),
         ),
-        422,
+        403,
     );
-    assert_eq!(version_count("MedicationDosageOption", id), versions);
-    let row = database()
+    assert_error(
+        target.put_json(
+            &visible,
+            &member,
+            &json!({"dosage_option": {"amount": "2"}}),
+        ),
+        403,
+    );
+    let parent = new_parent(&target, &fixture);
+    let response =
+        target.post_json_authorized(&collection, &owner, &request_for_parent(&fixture, parent));
+    assert_eq!(response.status().as_u16(), 201);
+    let request_id = response.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let created: Value = response.json().unwrap();
+    let path = format!("{collection}/{}", created["data"]["id"]);
+    let audit = apps.db.query_one(
+        "SELECT audit_context->>'authentication_method', audit_context->>'session_reference' FROM security_audit_events WHERE request_id = $1 AND event_type = 'api.request'",
+        &[&request_id],
+    ).expect("app token request audit");
+    assert_eq!(audit.get::<_, String>(0), "api_app_token");
+    assert_eq!(
+        audit.get::<_, String>(1),
+        format!("api_app_token:{owner_id}")
+    );
+    let touched: String = apps
+        .db
         .query_one(
-            "SELECT amount::text, unit FROM dosages WHERE id = $1",
-            &[&id],
+            "SELECT last_used_at::text FROM api_app_tokens WHERE id = $1",
+            &[&owner_id],
+        )
+        .unwrap()
+        .get(0);
+    assert_ne!(before_touch, touched);
+    assert_eq!(target.get(&path, Some(&owner)).status().as_u16(), 200);
+    let untouched: String = apps
+        .db
+        .query_one(
+            "SELECT last_used_at::text FROM api_app_tokens WHERE id = $1",
+            &[&owner_id],
+        )
+        .unwrap()
+        .get(0);
+    assert_eq!(touched, untouched);
+    assert_eq!(
+        target
+            .patch_json(
+                &path,
+                &fixture.manager_app_token,
+                &json!({"dosage_option": {"amount": "2"}})
+            )
+            .status()
+            .as_u16(),
+        200
+    );
+    assert_eq!(
+        target
+            .put_json(&path, &owner, &json!({"dosage_option": {"amount": "3"}}))
+            .status()
+            .as_u16(),
+        200
+    );
+}
+
+#[test]
+fn household_app_tokens_reject_invalid_state_and_foreign_households() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let mut apps = DisposableApps::new();
+    let collection = base(&fixture);
+    let (expired_id, expired) = apps.for_membership(fixture.owner_membership_id);
+    apps.db.execute("UPDATE api_app_tokens SET created_at = now() - interval '1 day', expires_at = now() - interval '1 second' WHERE id = $1", &[&expired_id]).unwrap();
+    let (old_id, old) = apps.for_membership(fixture.owner_membership_id);
+    apps.db.execute("UPDATE api_app_tokens SET created_at = now() - interval '13 months', expires_at = now() + interval '1 day' WHERE id = $1", &[&old_id]).unwrap();
+    let (revoked_id, revoked) = apps.for_membership(fixture.owner_membership_id);
+    apps.db
+        .execute(
+            "UPDATE api_app_tokens SET revoked_at = now() WHERE id = $1",
+            &[&revoked_id],
         )
         .unwrap();
-    assert_eq!(row.get::<_, String>(0), "1.25");
-    assert_eq!(row.get::<_, Option<String>>(1), None);
-    let repaired = target.put_json(
-        &path,
-        &fixture.access_token,
-        &json!({"dosage_option": {"unit": "tablet"}}),
+    let (stale_id, stale) = apps.for_membership(fixture.owner_membership_id);
+    apps.db
+        .execute(
+            "UPDATE api_app_tokens SET permissions_version = permissions_version + 1 WHERE id = $1",
+            &[&stale_id],
+        )
+        .unwrap();
+    let (_, mismatched) = apps.issue(fixture.account_id, fixture.foreign_membership_id);
+    let suspended_member: i64 = apps.db.query_one(
+        "SELECT id FROM household_memberships WHERE status = 'suspended' AND household_id = $1 LIMIT 1",
+        &[&fixture.auth_suspended_household_id],
+    ).unwrap().get(0);
+    let (_, suspended) = apps.for_membership(suspended_member);
+    let revoked_member_id = apps.member_id_for_session(&fixture.portable_revoked_access_token);
+    let (_, revoked_member) = apps.for_membership(revoked_member_id);
+    let locked_member: i64 = apps.db.query_one(
+        "SELECT hm.id FROM household_memberships hm JOIN account_lockouts l ON l.account_id = hm.account_id WHERE l.deadline > now() LIMIT 1", &[],
+    ).unwrap().get(0);
+    let (_, locked) = apps.for_membership(locked_member);
+    let inactive_member: i64 = apps
+        .db
+        .query_one(
+            "SELECT id FROM household_memberships WHERE household_id = $1 LIMIT 1",
+            &[&fixture.auth_inactive_household_id],
+        )
+        .unwrap()
+        .get(0);
+    let (_, inactive) = apps.for_membership(inactive_member);
+    for token in [
+        expired.as_str(),
+        old.as_str(),
+        revoked.as_str(),
+        stale.as_str(),
+        mismatched.as_str(),
+        suspended.as_str(),
+        revoked_member.as_str(),
+        locked.as_str(),
+        inactive.as_str(),
+        fixture.auth_deactivated_app_token.as_str(),
+        fixture.fhir_patient_scope_token.as_str(),
+    ] {
+        assert_error(target.get(&collection, Some(token)), 401);
+    }
+    let (_, owner) = apps.for_membership(fixture.owner_membership_id);
+    assert_error(
+        target.get(
+            &format!(
+                "/api/v1/households/{}/dosage_options",
+                fixture.foreign_household_id
+            ),
+            Some(&owner),
+        ),
+        403,
     );
-    assert_eq!(repaired.status().as_u16(), 200);
-    let body: Value = repaired.json().unwrap();
-    assert_eq!(body["data"]["unit"], "tablet");
+    assert_error(
+        target.get(
+            &format!("/api/v1/households/{}/dosage_options", i64::MAX),
+            Some(&owner),
+        ),
+        404,
+    );
+    let foreign_collection = format!(
+        "/api/v1/households/{}/dosage_options",
+        fixture.foreign_household_id
+    );
+    let foreign_detail = format!(
+        "{foreign_collection}/{}",
+        fixture.foreign_dosage_portable_id
+    );
+    assert_error(
+        target.post_json_authorized(&foreign_collection, &owner, &valid_request(&fixture)),
+        403,
+    );
+    assert_error(target.get(&foreign_detail, Some(&owner)), 403);
+    let update = json!({"dosage_option": {"amount": "3"}});
+    assert_error(target.patch_json(&foreign_detail, &owner, &update), 403);
+    assert_error(target.put_json(&foreign_detail, &owner, &update), 403);
+    assert_error(
+        target.get(&collection, Some(&fixture.foreign_app_token)),
+        403,
+    );
+    assert_eq!(
+        target
+            .get(
+                &format!(
+                    "/api/v1/households/{}/dosage_options",
+                    fixture.foreign_household_id
+                ),
+                Some(&fixture.foreign_app_token)
+            )
+            .status()
+            .as_u16(),
+        200
+    );
+    let mut foreign = valid_request(&fixture);
+    foreign["dosage_option"]["medication_id"] = json!(fixture.foreign_medication_id.to_string());
+    assert_error(
+        target.post_json_authorized(&collection, &owner, &foreign),
+        404,
+    );
 }
 
 #[test]

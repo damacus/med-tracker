@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_19_131000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_26_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -424,21 +424,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_131000) do
   end
 
   create_table "dosages", force: :cascade do |t|
-    t.decimal "amount"
+    t.decimal "amount", null: false
     t.datetime "created_at", null: false
     t.decimal "current_supply", precision: 10, scale: 2
-    t.integer "default_dose_cycle"
+    t.integer "default_dose_cycle", null: false
     t.boolean "default_for_adults", default: false, null: false
     t.boolean "default_for_children", default: false, null: false
-    t.integer "default_max_daily_doses"
-    t.decimal "default_min_hours_between_doses", precision: 4, scale: 1
+    t.integer "default_max_daily_doses", null: false
+    t.decimal "default_min_hours_between_doses", precision: 4, scale: 1, null: false
     t.string "description"
-    t.string "frequency"
+    t.string "frequency", null: false
     t.bigint "household_id", null: false
     t.bigint "medication_id", null: false
     t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
     t.decimal "reorder_threshold", precision: 10, scale: 2
-    t.string "unit"
+    t.string "unit", null: false
     t.datetime "updated_at", null: false
     t.index ["household_id", "portable_id"], name: "index_dosages_on_household_id_and_portable_id", unique: true
     t.index ["household_id"], name: "index_dosages_on_household_id"

@@ -3,8 +3,13 @@
 Source findings after the first dosage checkpoint. Permissions, visibility,
 validation, default-conflict rollback, parent inventory, audit and sync changes
 have since passed the eleven-group acceptance run documented in
-`dosage-completion-review.md`. The remaining decisions are legacy nullable
-response handling and the shared credential work in `household-auth-followup.md`.
+`dosage-completion-review.md`. On 26 September the user explicitly chose to
+reject missing required fields and challenged the nullable database schema.
+Required fields must be enforced with database NOT NULL constraints and matching
+ORM types. The proposed special legacy-data API error is withdrawn. Invalid
+writes remain 422. Schema enforcement and matching Rust types are implemented;
+`dosage-schema-report.md` records verification. The shared credential work is
+described in `household-auth-followup.md`, including its remaining HTTP case.
 The findings below retain the source rationale; they are not an instruction to
 repeat the completed implementation.
 
@@ -33,9 +38,10 @@ repeat the completed implementation.
   `Medication#sync_inventory_from_dosage_records!` and its reset/restock helpers.
   Keep these related changes atomic and use a consistent parent-before-child
   lock order with location deletion.
-- Validated new records require the non-null fields in OpenAPI. Nullable legacy
-  database records need an explicit compatibility/data-quality resolution;
-  neither invented dosage values nor silently hiding records is acceptable.
+- New records and successful updates require valid non-null required fields.
+  PostgreSQL validates each NOT NULL constraint during migration. Existing nulls
+  cause migration failure and transactional rollback without invented dosage
+  values or deleted records. No invalid production data has been observed.
 
 Sources: `app/policies/medication_dosage_option_policy.rb`,
 `app/policies/dosage_policy.rb`, `app/policies/medication_policy.rb`,

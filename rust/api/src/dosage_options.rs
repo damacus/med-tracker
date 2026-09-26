@@ -335,19 +335,15 @@ async fn dosage_row(
 }
 
 fn dosage_value(record: dosage::Model, medication_portable_id: &str) -> Result<Value, ApiError> {
-    let amount = record.amount.ok_or_else(ApiError::internal)?;
-    let unit = record.unit.ok_or_else(ApiError::internal)?;
-    let frequency = record.frequency.ok_or_else(ApiError::internal)?;
-    let max_doses = record
-        .default_max_daily_doses
-        .ok_or_else(ApiError::internal)?;
-    let min_hours = record
-        .default_min_hours_between_doses
-        .ok_or_else(ApiError::internal)?;
+    let amount = record.amount;
+    let unit = record.unit;
+    let frequency = record.frequency;
+    let max_doses = record.default_max_daily_doses;
+    let min_hours = record.default_min_hours_between_doses;
     let cycle = match record.default_dose_cycle {
-        Some(0) => "daily",
-        Some(1) => "weekly",
-        Some(2) => "monthly",
+        0 => "daily",
+        1 => "weekly",
+        2 => "monthly",
         _ => return Err(ApiError::internal()),
     };
     Ok(json!({
@@ -370,14 +366,14 @@ fn dosage_snapshot(record: &dosage::Model) -> Value {
         "id": record.id,
         "portable_id": record.portable_id,
         "medication_id": record.medication_id,
-        "amount": record.amount.map(|value| value.to_string()),
+        "amount": record.amount.to_string(),
         "unit": record.unit,
         "frequency": record.frequency,
         "description": record.description,
         "default_for_adults": record.default_for_adults,
         "default_for_children": record.default_for_children,
         "default_max_daily_doses": record.default_max_daily_doses,
-        "default_min_hours_between_doses": record.default_min_hours_between_doses.map(|value| value.to_string()),
+        "default_min_hours_between_doses": record.default_min_hours_between_doses.to_string(),
         "default_dose_cycle": record.default_dose_cycle,
         "current_supply": record.current_supply.map(|value| value.to_string()),
         "reorder_threshold": record.reorder_threshold.map(|value| value.to_string())
@@ -385,22 +381,12 @@ fn dosage_snapshot(record: &dosage::Model) -> Value {
 }
 
 fn valid_persisted_dosage(record: &dosage::Model) -> bool {
-    record.amount.is_some_and(|value| value > Decimal::ZERO)
-        && record
-            .unit
-            .as_deref()
-            .is_some_and(|value| !value.trim().is_empty())
-        && record
-            .frequency
-            .as_deref()
-            .is_some_and(|value| !value.trim().is_empty())
-        && record
-            .default_max_daily_doses
-            .is_some_and(|value| value > 0)
-        && record
-            .default_min_hours_between_doses
-            .is_some_and(|value| value >= Decimal::ZERO)
-        && matches!(record.default_dose_cycle, Some(0..=2))
+    record.amount > Decimal::ZERO
+        && !record.unit.trim().is_empty()
+        && !record.frequency.trim().is_empty()
+        && record.default_max_daily_doses > 0
+        && record.default_min_hours_between_doses >= Decimal::ZERO
+        && matches!(record.default_dose_cycle, 0..=2)
         && record
             .current_supply
             .is_none_or(|value| value >= Decimal::ZERO)
@@ -682,15 +668,21 @@ pub(super) async fn create(
     let active = dosage::ActiveModel {
         household_id: Set(household_id),
         medication_id: Set(medication.id),
-        amount: Set(attrs.amount),
-        unit: Set(attrs.unit),
-        frequency: Set(attrs.frequency),
+        amount: Set(attrs.amount.expect("validated create amount")),
+        unit: Set(attrs.unit.expect("validated create unit")),
+        frequency: Set(attrs.frequency.expect("validated create frequency")),
         description: Set(attrs.description),
         default_for_adults: Set(attrs.default_for_adults.unwrap_or(false)),
         default_for_children: Set(attrs.default_for_children.unwrap_or(false)),
-        default_max_daily_doses: Set(attrs.default_max_daily_doses),
-        default_min_hours_between_doses: Set(attrs.default_min_hours_between_doses),
-        default_dose_cycle: Set(attrs.default_dose_cycle),
+        default_max_daily_doses: Set(attrs
+            .default_max_daily_doses
+            .expect("validated create maximum doses")),
+        default_min_hours_between_doses: Set(attrs
+            .default_min_hours_between_doses
+            .expect("validated create minimum hours")),
+        default_dose_cycle: Set(attrs
+            .default_dose_cycle
+            .expect("validated create dose cycle")),
         current_supply: Set(attrs.current_supply.unwrap_or(None)),
         reorder_threshold: Set(attrs.reorder_threshold.unwrap_or(None)),
         created_at: Set(now),
@@ -879,13 +871,13 @@ async fn update(
     let before = dosage_snapshot(&record);
     let mut active: dosage::ActiveModel = record.into();
     if let Some(value) = attrs.amount {
-        active.amount = Set(Some(value));
+        active.amount = Set(value);
     }
     if let Some(value) = attrs.unit {
-        active.unit = Set(Some(value));
+        active.unit = Set(value);
     }
     if let Some(value) = attrs.frequency {
-        active.frequency = Set(Some(value));
+        active.frequency = Set(value);
     }
     if let Some(value) = attrs.description {
         active.description = Set(Some(value));
@@ -897,13 +889,13 @@ async fn update(
         active.default_for_children = Set(value);
     }
     if let Some(value) = attrs.default_max_daily_doses {
-        active.default_max_daily_doses = Set(Some(value));
+        active.default_max_daily_doses = Set(value);
     }
     if let Some(value) = attrs.default_min_hours_between_doses {
-        active.default_min_hours_between_doses = Set(Some(value));
+        active.default_min_hours_between_doses = Set(value);
     }
     if let Some(value) = attrs.default_dose_cycle {
-        active.default_dose_cycle = Set(Some(value));
+        active.default_dose_cycle = Set(value);
     }
     if let Some(value) = attrs.current_supply {
         active.current_supply = Set(value);
