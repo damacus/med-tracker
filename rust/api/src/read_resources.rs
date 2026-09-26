@@ -344,7 +344,7 @@ pub(super) async fn locations_show(
     .await
 }
 
-fn today() -> NaiveDate {
+pub(super) fn today() -> NaiveDate {
     let timezone = std::env::var("TZ")
         .ok()
         .and_then(|value| value.parse::<chrono_tz::Tz>().ok())
@@ -352,7 +352,7 @@ fn today() -> NaiveDate {
     Utc::now().with_timezone(&timezone).date_naive()
 }
 
-fn age(birth_date: Option<NaiveDate>, reference: NaiveDate) -> Option<i32> {
+pub(super) fn age(birth_date: Option<NaiveDate>, reference: NaiveDate) -> Option<i32> {
     birth_date.map(|birth_date| {
         let birthday_passed =
             (reference.month(), reference.day()) >= (birth_date.month(), birth_date.day());
@@ -450,7 +450,12 @@ pub(super) async fn people_show(
                 .one(&db)
                 .await
         }
-        Err(_) => Ok(None),
+        Err(_) => {
+            person_scope(household_id, &context)
+                .filter(person::Column::PortableId.eq(&id))
+                .one(&db)
+                .await
+        }
     }
     .map_err(database_error)?;
     let row = match record {
@@ -625,7 +630,7 @@ pub(super) async fn person_medications_show(
     .await
 }
 
-async fn serialize_people(
+pub(super) async fn serialize_people(
     db: &DatabaseTransaction,
     records: Vec<person::Model>,
 ) -> Result<Vec<Value>, ApiError> {

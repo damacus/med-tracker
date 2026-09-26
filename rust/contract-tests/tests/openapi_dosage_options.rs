@@ -81,6 +81,51 @@ impl Drop for DisposableApps {
     }
 }
 
+struct HouseholdStateGuard {
+    db: postgres::Client,
+    household_id: i64,
+    status: String,
+    lifecycle_state: String,
+}
+
+impl HouseholdStateGuard {
+    fn deactivate(household_id: i64) -> Self {
+        let mut db = database();
+        let household = db
+            .query_one(
+                "SELECT status, lifecycle_state FROM households WHERE id = $1",
+                &[&household_id],
+            )
+            .expect("issuing household state");
+        let status: String = household.get(0);
+        let lifecycle_state: String = household.get(1);
+        assert_eq!(status, "active");
+        assert_eq!(lifecycle_state, "active");
+        db.execute(
+            "UPDATE households SET status = 'archived' WHERE id = $1",
+            &[&household_id],
+        )
+        .expect("deactivate issuing household");
+        Self {
+            db,
+            household_id,
+            status,
+            lifecycle_state,
+        }
+    }
+}
+
+impl Drop for HouseholdStateGuard {
+    fn drop(&mut self) {
+        self.db
+            .execute(
+                "UPDATE households SET status = $1, lifecycle_state = $2 WHERE id = $3",
+                &[&self.status, &self.lifecycle_state, &self.household_id],
+            )
+            .expect("restore issuing household state");
+    }
+}
+
 fn parent_state(id: i64) -> (Option<f64>, Option<String>, String, Option<String>, String) {
     let row = database()
         .query_one(
@@ -1026,6 +1071,35 @@ fn household_app_tokens_reject_invalid_state_and_foreign_households() {
     assert_error(
         target.post_json_authorized(&collection, &owner, &foreign),
         404,
+    );
+}
+
+#[test]
+fn household_app_tokens_are_rejected_when_issuing_household_is_archived() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let mut apps = DisposableApps::new();
+    let (_, app_token) = apps.for_membership(fixture.owner_membership_id);
+    let household_path = base(&fixture);
+    assert_eq!(
+        target
+            .get(&household_path, Some(&app_token))
+            .status()
+            .as_u16(),
+        200
+    );
+    let state = HouseholdStateGuard::deactivate(fixture.household_id);
+    let response = target.get(&household_path, Some(&app_token));
+    assert_eq!(response.status().as_u16(), 401);
+    let body: Value = response.json().expect("error JSON");
+    assert_eq!(body["error"]["code"], "unauthorized");
+    drop(state);
+    assert_eq!(
+        target
+            .get(&household_path, Some(&app_token))
+            .status()
+            .as_u16(),
+        200
     );
 }
 

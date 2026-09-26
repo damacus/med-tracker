@@ -17,6 +17,28 @@ criteria and must not be counted as specification coverage.
 
 ## Ownership and execution
 
+### Execution update: 26 September 2026
+
+The user approved separate, parallel test and production lanes to accelerate
+delivery. This supersedes the single-writer restriction below and in earlier
+team instructions for this work. A separate test owner owns contract-test
+files; use Luna for clear cases and Sol when permissions or fixture complexity
+requires judgement. Sol owns production files and necessary OpenAPI clarifications. The orchestrator
+owns integration, independent review and the evidence ledger. Shared files
+have one assigned owner; agents do not edit each other's files.
+
+Agree each API family's acceptance checklist before implementation. The test
+lane demonstrates failing behaviour before the production lane changes code;
+source analysis and design proceed in parallel with test writing. Reuse shared
+authentication and tenant-isolation proofs, with endpoint wiring assertions.
+Run focused checks during development and broad applicable gates once before
+publication. Keep one batch brief and the existing evidence ledger.
+
+First close the remaining dosage authentication scenario, then complete the
+four profile/person operations in `people-followup.md`. OpenSpec housekeeping
+is deferred. Use adaptive model routing and conserve quota without weakening
+acceptance criteria.
+
 One Sol implementation agent owns API changes, specification-derived tests,
 necessary API test tooling, and its coverage/evidence report. The orchestrator
 coordinates, reviews, and integrates. No additional implementation or test
