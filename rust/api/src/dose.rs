@@ -329,6 +329,10 @@ async fn audit(
             "api_session",
             format!("api_session:{}", context.credential_reference),
         ),
+        CredentialKind::ApiAppToken => (
+            "api_app_token",
+            format!("api_app_token:{}", context.credential_reference),
+        ),
         CredentialKind::OauthGrant => (
             "oauth",
             format!("oauth_grant:{}", context.credential_reference),
@@ -1136,6 +1140,10 @@ fn domain_audit_context(context: &AuthContext, request_id: &str) -> Value {
             "api_session",
             format!("api_session:{}", context.credential_reference),
         ),
+        CredentialKind::ApiAppToken => (
+            "api_app_token",
+            format!("api_app_token:{}", context.credential_reference),
+        ),
         CredentialKind::OauthGrant => (
             "oauth",
             format!("oauth_grant:{}", context.credential_reference),
@@ -1207,7 +1215,7 @@ pub(super) fn selected_tracked_dosage<'a>(
                 same_dosage_signature(option, source_option)
             }
         } else {
-            option.amount == source_amount && option.unit.as_deref() == source_unit
+            Some(option.amount) == source_amount && Some(option.unit.as_str()) == source_unit
         }
     });
     let selected = matches.next()?;
@@ -1309,15 +1317,8 @@ async fn decrement_stock(
     let supply = selected_option
         .current_supply
         .ok_or_else(ApiError::internal)?;
-    let needed = quantity(
-        proposed.amount,
-        selected_option.unit.as_deref().unwrap_or(""),
-    );
-    if !sufficient_stock(
-        Some(supply),
-        proposed.amount,
-        selected_option.unit.as_deref().unwrap_or(""),
-    ) {
+    let needed = quantity(proposed.amount, &selected_option.unit);
+    if !sufficient_stock(Some(supply), proposed.amount, &selected_option.unit) {
         return Err(error(
             StatusCode::UNPROCESSABLE_ENTITY,
             "Cannot take medication: out of stock",

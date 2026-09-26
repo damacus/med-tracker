@@ -76,10 +76,10 @@ impl Disposable {
 
     fn integration(&mut self, fixture: &Fixture) -> (i64, String) {
         let client_id = token("contract-client");
-        let application: i64 = self.db.query_one("INSERT INTO oauth_applications (client_id, client_kind, name, redirect_uri, scopes, token_endpoint_auth_method, created_at, updated_at) VALUES ($1, 'integration', 'Contract integration', 'https://example.invalid/callback', 'medtracker', 'none', now(), now()) RETURNING id", &[&client_id]).expect("integration client").get(0);
+        let application: i64 = self.db.query_one("INSERT INTO oauth_applications (client_id, client_kind, name, redirect_uri, scopes, token_endpoint_auth_method, created_at, updated_at) VALUES ($1, 'integration', 'Contract integration', 'https://example.invalid/callback', 'patient/*.rs', 'none', now(), now()) RETURNING id", &[&client_id]).expect("integration client").get(0);
         self.applications.push(application);
         let token = token("contract-integration");
-        let id: i64 = self.db.query_one("INSERT INTO oauth_grants (account_id, oauth_application_id, client_kind, household_membership_id, person_id, permissions_version, scopes, expires_in, token_hash, created_at, updated_at) VALUES ($1, $2, 'integration', $3, $4, (SELECT permissions_version FROM household_memberships WHERE id = $3), 'medtracker', now() + interval '1 hour', translate(encode(digest($5, 'sha256'), 'base64'), '+/', '-_'), now(), now()) RETURNING id", &[&fixture.account_id, &application, &fixture.owner_membership_id, &fixture.user_person_id, &token]).expect("integration grant").get(0);
+        let id: i64 = self.db.query_one("INSERT INTO oauth_grants (account_id, oauth_application_id, client_kind, household_membership_id, person_id, permissions_version, scopes, expires_in, token_hash, created_at, updated_at) VALUES ($1, $2, 'integration', $3, $4, (SELECT permissions_version FROM household_memberships WHERE id = $3), 'patient/*.rs', now() + interval '1 hour', translate(encode(digest($5, 'sha256'), 'base64'), '+/', '-_'), now(), now()) RETURNING id", &[&fixture.account_id, &application, &fixture.owner_membership_id, &fixture.user_person_id, &token]).expect("integration grant").get(0);
         self.grants.push(id);
         (id, token)
     }

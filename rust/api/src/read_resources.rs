@@ -1042,7 +1042,7 @@ async fn eligible_stock_by_source(
                             && crate::dose::sufficient_stock(
                                 option.current_supply,
                                 *amount,
-                                option.unit.as_deref().unwrap_or(""),
+                                &option.unit,
                             )
                     })
                 } else {

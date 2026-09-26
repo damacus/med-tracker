@@ -75,7 +75,7 @@ fn app_age_months() -> Option<u32> {
     }
 }
 
-fn app_unexpired(row: &api_app_token::Model, now: chrono::NaiveDateTime) -> bool {
+pub(super) fn app_unexpired(row: &api_app_token::Model, now: chrono::NaiveDateTime) -> bool {
     app_age_months().is_some_and(|months| app_unexpired_for_months(row, now, months))
 }
 

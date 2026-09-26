@@ -91,6 +91,10 @@ pub async fn record_resource_request_with_id(
             "api_session",
             format!("api_session:{}", context.credential_reference),
         ),
+        CredentialKind::ApiAppToken => (
+            "api_app_token",
+            format!("api_app_token:{}", context.credential_reference),
+        ),
         CredentialKind::OauthGrant => (
             "oauth",
             format!("oauth_grant:{}", context.credential_reference),

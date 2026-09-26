@@ -1,10 +1,10 @@
 # Household credential prerequisite
 
-Before claiming full dosage or subsequent household-operation parity, resolve
-the shared credential gap. `rust/api/src/lib.rs#authenticate` currently looks up
-an API session, then falls back to mobile OAuth. It has no household app-token
-branch, although `Api::V1::BaseController` accepts `ApiAppToken`. Account-level
-session management now accepts app tokens, but that is a separate code path.
+The shared credential gap is implemented and independently reviewed on
+26 September 2026. `rust/api/src/lib.rs#authenticate` now accepts household
+app tokens alongside API sessions and mobile OAuth. The final dosage HTTP run
+passed 13/13 groups (`mtcontract-2407927431414afe`); account-session regression
+passed 8/8 (`mtcontract-df1315fee61146cb`).
 
 Preserve the existing active-account/user, lockout, membership, operational
 household, permissions-version, expiry and requested-household checks. Reuse
@@ -14,20 +14,24 @@ revoked, stale-version and other-household denial through HTTP. Use shared
 helper evidence plus endpoint wiring checks rather than duplicate every test
 for every route.
 
-The dosage evidence map also retains foreign-medication create rejection and
-wrong-household requests. Close these with focused wiring assertions alongside
-the shared-auth HTTP run, using existing foreign fixture identifiers. Retain
+The dosage HTTP run also proves foreign-medication create rejection and
+wrong-household requests across all five methods. Retain
 the distinction between an invalid credential (401), an active credential for
 another household (403), and a foreign resource absent from the selected
 household's scope (404).
 
-Inspect integration OAuth deliberately. Rails `BaseController#valid_session?`
-accepts membership-bound OAuth grants via `active_for_membership?`; that helper
-alone does not enforce scopes. Do not infer that every OAuth scope authorizes
-every ordinary API operation, or copy a demonstrated scope-bypass defect.
-Document the intended API credential/scoping rule before implementation and
-surface any unresolved product/security choice. This finding is from source
-inspection, not a demonstrated runtime exploit.
+Operational issuing-household rejection is implemented but still lacks a
+dedicated app-token HTTP assertion. Keep that limitation in the evidence map;
+do not treat the passing groups as proof of every authentication state.
+
+Integration scope intent is resolved by existing source: `OauthApplication`
+limits integration clients to SMART read scopes; `medtracker` is mobile-only.
+`docs/api/smart-on-fhir.md` explicitly separates SMART from first-party `/api/v1`.
+Keep ordinary API integration-token denial and test a legitimate SMART scope.
+Rails `BaseController#valid_session?` accepts membership-bound OAuth grants via
+`active_for_membership?`, which alone does not enforce scopes. Do not port that
+potential scope bypass. This is a source finding, not a demonstrated runtime
+exploit. Account-level logout may still revoke a known SMART credential.
 
 Sources: `app/controllers/api/v1/base_controller.rb`, `app/models/api_app_token.rb`,
 `app/models/oauth_grant.rb`, `rust/api/src/lib.rs`, and

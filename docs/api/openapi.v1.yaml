@@ -16,6 +16,18 @@ info:
     peer unless a deployment explicitly configures trusted proxy IPs through
     API_TRUSTED_PROXY_IPS. A configured loopback proxy is not exempt, and untrusted
     forwarding headers do not set the client IP.
+    Ordinary household operations accept a valid API session, household app token,
+    or mobile OAuth bearer with the medtracker scope. SMART integration grants
+    authorize SMART/FHIR access, not ordinary household operations. A household
+    app token is bound to its issuing account and membership; the account and user
+    must remain active and unlocked, the membership must be active with its original
+    permissions version, and the household must be operational. App tokens expire
+    at the earlier of their stored expiry and the configured calendar-month maximum
+    age from issuance. Missing, invalid, expired, revoked, stale or otherwise
+    inactive credentials return 401. A valid credential routed to another existing
+    household returns 403; a missing household returns 404. A resource outside an
+    authorized household is hidden with 404. Successful app-token use refreshes
+    last_used_at at most once every five minutes.
 servers:
   - url: /api/v1
 security:
@@ -4180,6 +4192,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: opaque
+      description: Household API sessions, household app tokens, and mobile OAuth medtracker access tokens authorize ordinary household operations. SMART integration grants do not.
   parameters:
     idempotency_key:
       name: Idempotency-Key

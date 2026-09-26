@@ -201,6 +201,7 @@
       200,
       401,
       403,
+      404,
       422,
       429
     ],
@@ -211,12 +212,13 @@
       "past/future updated_since filters",
       "invalid page, per_page and timestamp 422",
       "missing/invalid bearer 401",
-      "nonloopback 429 body and shared headers"
+      "nonloopback 429 body and shared headers",
+      "household app-token owner, administrator and member reads; invalid, inactive, revoked, expired and stale app tokens 401; SMART integration grant 401",
+      "wrong-household 403, missing-household 404, and foreign app token 403",
+      "six required dosage response fields have database NOT NULL constraints; Rails migration and isolated PostgreSQL tests reject NULL without changing valid records"
     ],
     "not_yet_tested": [
-      "wrong-household 403 and 404 variants",
-      "legacy nullable dosage response contract pending user decision",
-      "shared household app-token authentication gap"
+      "non-operational issuing-household app-token denial"
     ]
   },
   "createDosageOption": {
@@ -227,6 +229,7 @@
       400,
       401,
       403,
+      404,
       422,
       429
     ],
@@ -239,12 +242,13 @@
       "adult default uniqueness 422 leaves parent and sync/version evidence unchanged",
       "creation clears parent single-dose value; tracked options aggregate parent stock and reorder threshold, preserve or raise last-restock baseline, and emit correlated parent/dosage sync and version evidence",
       "aggregate overflow 422 rolls back option, parent and events",
-      "nonloopback 429 rejects create before mutation"
+      "nonloopback 429 rejects create before mutation",
+      "app-token owner create succeeds, active member create denied 403, and wrong-household create denied 403",
+      "foreign parent medication create returns 404",
+      "database NOT NULL constraints reject six required-field NULL values with PostgreSQL 23502"
     ],
     "not_yet_tested": [
-      "foreign medication 404",
-      "wrong-household 403 variant",
-      "shared household app-token authentication gap"
+      "non-operational issuing-household app-token denial"
     ]
   },
   "getDosageOption": {
@@ -262,12 +266,12 @@
       "active member reads visible option and receives 404 for hidden medication option",
       "missing/invalid bearer 401",
       "foreign-household dosage ID under own household 404",
-      "nonloopback 429"
+      "nonloopback 429",
+      "app-token owner and member detail reads succeed; wrong-household detail returns 403",
+      "database NOT NULL constraints preserve six required fields in returned records"
     ],
     "not_yet_tested": [
-      "wrong-household 403",
-      "legacy nullable dosage response contract pending user decision",
-      "shared household app-token authentication gap"
+      "non-operational issuing-household app-token denial"
     ]
   },
   "updateDosageOption": {
@@ -292,12 +296,13 @@
       "malformed JSON 400; empty attributes, extra fields, null description, wrong types and storage precision failures 422",
       "adult default conflict 422 rolls back row and parent evidence",
       "tracked inventory update aggregates parent totals, excludes untracked thresholds, preserves last-restock high water mark, resets after last tracked option becomes null",
-      "parent and dosage versions/sync events correlate to HTTP request ID; incomplete legacy row requires repair before successful update",
-      "nonloopback 429 rejects update before mutation"
+      "parent and dosage versions/sync events correlate to HTTP request ID; updates validate the complete resulting dosage record",
+      "nonloopback 429 rejects update before mutation",
+      "app-token administrator PATCH succeeds and wrong-household PATCH returns 403",
+      "database NOT NULL constraints prevent incomplete persisted records while invalid request fields still return 422"
     ],
     "not_yet_tested": [
-      "wrong-household 403",
-      "shared household app-token authentication gap"
+      "non-operational issuing-household app-token denial"
     ]
   },
   "replaceDosageOption": {
@@ -320,12 +325,13 @@
       "active member write denied 403",
       "malformed JSON 400; empty attributes, extra fields, null description, wrong types and storage precision failures 422",
       "child default conflict 422 rolls back row and parent version/event counts",
-      "put can repair a missing required field in a legacy row and can reset last tracked inventory to null/zero/null",
-      "nonloopback 429 rejects replacement before mutation"
+      "PUT can reset last tracked inventory to null/zero/null while preserving required dosage fields",
+      "nonloopback 429 rejects replacement before mutation",
+      "app-token owner PUT succeeds and wrong-household PUT returns 403",
+      "database NOT NULL constraints prevent incomplete persisted records while invalid request fields still return 422"
     ],
     "not_yet_tested": [
-      "wrong-household 403",
-      "shared household app-token authentication gap"
+      "non-operational issuing-household app-token denial"
     ]
   },
   "listSessions": {
