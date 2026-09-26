@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.33](https://github.com/damacus/med-tracker/compare/v0.5.32...v0.5.33) (2026-09-26)
+
+
+### Bug Fixes
+
+* **auth:** complete mobile sign-in consent ([#2287](https://github.com/damacus/med-tracker/issues/2287)) ([b6ebc98](https://github.com/damacus/med-tracker/commit/b6ebc9882896c5f5a31434aa8150496def41c79d))
+* **deps:** update dependency androidx.core:core-ktx to v1.19.1 ([#2291](https://github.com/damacus/med-tracker/issues/2291)) ([ef75b17](https://github.com/damacus/med-tracker/commit/ef75b17e616b19b8ec74b79960b656041f9416c9))
+
 ## [0.5.32](https://github.com/damacus/med-tracker/compare/v0.5.31...v0.5.32) (2026-09-23)
 
 
