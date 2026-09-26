@@ -577,5 +577,43 @@
       "raw token is absent from request audit metadata; direct nonloopback rate-limit wiring"
     ],
     "not_yet_tested": []
+  },
+  "createPushSubscription": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_push_subscriptions.rs",
+    "statuses_tested": [
+      201,
+      400,
+      401,
+      403,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "empty 201 account-owned registration and replay update keys/user-agent while retaining one row and the original endpoint",
+      "strict wrapper, key shape and nonblank values; supported HTTPS provider allowlist with exact and subdomain host boundaries, no credentials, IPs or lookalike hosts",
+      "global endpoint uniqueness rejects foreign claims; concurrent accounts produce one owner and one 422",
+      "raw endpoint and keys absent from audit metadata and errors; direct authentication/household denials and nonloopback 429"
+    ],
+    "not_yet_tested": []
+  },
+  "deletePushSubscription": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_push_subscriptions.rs",
+    "statuses_tested": [
+      204,
+      400,
+      401,
+      403,
+      429
+    ],
+    "behaviours_tested": [
+      "query encoding preserves endpoint containing percent escapes and ampersands; empty 204 revocation is idempotent",
+      "foreign-account deletion through its own household preserves the owner's record",
+      "missing, blank and duplicate endpoint query parameters return 400",
+      "existing unsupported-provider endpoint can be revoked without applying registration allowlist",
+      "secret-free audit metadata, authentication/household denials and direct nonloopback 429"
+    ],
+    "not_yet_tested": []
   }
 }

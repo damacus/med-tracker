@@ -183,7 +183,7 @@ function run_contract
         or return $status
         set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner-subnet.compose.yaml"
     end
-    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens browser-journey-rails browser-journey-rust web-reads-rails
+    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions browser-journey-rails browser-journey-rust web-reads-rails
         set -gx CONTRACT_AUTH_SESSION_SECRET (rtk proxy openssl rand -hex 32)
         or return $status
         set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner.compose.yaml"
@@ -250,7 +250,7 @@ function run_contract
         return $status
     end
 
-    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens
+    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions
         set -g contract_api_image true
         rtk task api:contract-up CONTRACT_PROJECT=$contract_project
         or return $status
@@ -268,6 +268,8 @@ function run_contract
             rtk task api:contract-openapi-notifications-test CONTRACT_PROJECT=$contract_project
         else if test "$argv[2]" = openapi-native-tokens
             rtk task api:contract-openapi-native-tokens-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = openapi-push-subscriptions
+            rtk task api:contract-openapi-push-subscriptions-test CONTRACT_PROJECT=$contract_project
         else if test "$argv[2]" = web-session-api
             rtk task api:contract-web-session-test CONTRACT_PROJECT=$contract_project
         else if test "$argv[2]" = web-reads-api

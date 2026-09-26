@@ -1,12 +1,22 @@
 # OpenAPI-first API checkpoint
 
-Specification: `docs/api/openapi.v1.yaml`, SHA-256 `400a4f53570ee545e0bb31628079b9efea176601536ebad1e9836f8f97acdc14`. The operation map is `operations.jsonl`; `operation-filter.jq`, `route-sources.json`, and `test-evidence.json` are its inputs. Rebuild it with:
+Specification: `docs/api/openapi.v1.yaml`, SHA-256 `208094ec9fa099f3ba2cba952875bc9d43d2795960a095c73c2acdc184704fa4`. The operation map is `operations.jsonl`; `operation-filter.jq`, `route-sources.json`, and `test-evidence.json` are its inputs. Rebuild it with:
 
 ```fish
 yq -o=json '.' docs/api/openapi.v1.yaml | jq -c --slurpfile routes docs/plans/openapi-contract/coverage/route-sources.json --slurpfile evidence docs/plans/openapi-contract/coverage/test-evidence.json -f docs/plans/openapi-contract/coverage/operation-filter.jq > docs/plans/openapi-contract/coverage/operations.jsonl
 ```
 
-The parsed specification has 118 HTTP operations, all with operation IDs, across 77 paths. It has 227 component schemas, 12 component responses and 771 response cases. Global server base is `/api/v1`; 117 operations inherit bearer authentication, while `getCapabilities` is public. The Rust route scan finds 72 documented method/path pairs without a route, 21 with a route but without complete spec-traced proof, eight location operations with partial runtime proof, and 17 fully verified operations (three account-session, five dosage, four profile/person, three notification preference and two native device token). Of the original 89-operation baseline, 17 are now complete and 72 remain. A route match or older Rails-derived test is not credited as OpenAPI coverage.
+The parsed specification has 118 HTTP operations, all with operation IDs, across 77 paths. It has 227 component schemas, 12 component responses and 772 response cases. Global server base is `/api/v1`; 117 operations inherit bearer authentication, while `getCapabilities` is public. The Rust route scan finds 70 documented method/path pairs without a route, 21 with a route but without complete spec-traced proof, eight location operations with partial runtime proof, and 19 fully verified operations (three account-session, five dosage, four profile/person, three notification preference, two native device token and two web push subscription). Of the original 89-operation baseline, 19 are now complete and 70 remain. A route match or older Rails-derived test is not credited as OpenAPI coverage.
+
+## Web push subscriptions
+
+The next two-operation tranche completed web push registration and revocation.
+All five HTTP groups passed in `mtcontract-48617928f63f4ae9`, log
+`1790424187_task_api_694219.log` in the tee directory below. Independent review
+and focused Rust/runner checks passed; see `push-subscriptions-batch.md`.
+Proof covers provider allowlist boundaries, account-owned replay, unique
+concurrent claims, encoded-query deletion, revocation of existing unsupported
+provider records, secret redaction and rate limits. No push delivery was added.
 
 ## Notification preferences and native device tokens
 
@@ -56,7 +66,7 @@ The limiter uses an atomic mutex over at most 65,536 live IP/rule buckets per pr
 
 ## Remaining gaps
 
-- **Implementation:** 72 documented method/path pairs still have no Rust route. Their identities remain in `operations.jsonl`.
+- **Implementation:** 70 documented method/path pairs still have no Rust route. Their identities remain in `operations.jsonl`.
 - **Untested behaviour:** 21 other route matches have no spec-traced runtime assertion. Eight location methods remain partial; `test-evidence.json` lists their remaining cases. All five dosage operations now have full bounded contract proof.
 - **Outside this API tranche:** Approved permission, retention and rate rules were documented from Rails policy, controller and initializer sources before Rust tests. Browser support sessions remain outside bearer authority. Fixture SQL only provisions isolated records. The Rails dosage schema changed in this remediation; no Rails controller, model or UI behavior changed. Web-only Rack Attack rules and other API operations remain separate work.
 
