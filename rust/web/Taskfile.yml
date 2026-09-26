@@ -1,0 +1,21 @@
+version: '3'
+
+tasks:
+  deps:
+    cmds:
+      - npm ci --offline
+  fmt:
+    cmds:
+      - cargo fmt --check
+  lint:
+    cmds:
+      - cargo clippy --all-targets -- -D warnings
+  test:
+    cmds:
+      - cargo test
+  smoke:
+    cmds:
+      - npm run smoke
+  serve:
+    cmds:
+      - cargo run

@@ -1,0 +1,447 @@
+[
+  {
+    "operation_id": "listSessions",
+    "method": "get",
+    "path": "/auth/sessions"
+  },
+  {
+    "operation_id": "deleteSession",
+    "method": "delete",
+    "path": "/auth/sessions/{id}"
+  },
+  {
+    "operation_id": "logoutSession",
+    "method": "delete",
+    "path": "/auth/logout"
+  },
+  {
+    "operation_id": "getCurrentProfile",
+    "method": "get",
+    "path": "/households/{household_id}/me"
+  },
+  {
+    "operation_id": "createPerson",
+    "method": "post",
+    "path": "/households/{household_id}/people"
+  },
+  {
+    "operation_id": "updatePerson",
+    "method": "patch",
+    "path": "/households/{household_id}/people/{id}"
+  },
+  {
+    "operation_id": "updatePersonWithPut",
+    "method": "put",
+    "path": "/households/{household_id}/people/{id}"
+  },
+  {
+    "operation_id": "resendHouseholdInvitation",
+    "method": "post",
+    "path": "/households/{household_id}/admin/invitations/{id}/resend"
+  },
+  {
+    "operation_id": "acceptHouseholdInvitation",
+    "method": "post",
+    "path": "/invitations/accept"
+  },
+  {
+    "operation_id": "downloadCurrentAvatar",
+    "method": "get",
+    "path": "/households/{household_id}/profile/avatar"
+  },
+  {
+    "operation_id": "uploadCurrentAvatar",
+    "method": "put",
+    "path": "/households/{household_id}/profile/avatar"
+  },
+  {
+    "operation_id": "deleteCurrentAvatar",
+    "method": "delete",
+    "path": "/households/{household_id}/profile/avatar"
+  },
+  {
+    "operation_id": "getHouseholdProfile",
+    "method": "get",
+    "path": "/households/{household_id}/profile"
+  },
+  {
+    "operation_id": "updateHouseholdProfile",
+    "method": "patch",
+    "path": "/households/{household_id}/profile"
+  },
+  {
+    "operation_id": "updateHouseholdProfileWithPut",
+    "method": "put",
+    "path": "/households/{household_id}/profile"
+  },
+  {
+    "operation_id": "getHealthHistoryReport",
+    "method": "get",
+    "path": "/households/{household_id}/reports/health_history"
+  },
+  {
+    "operation_id": "downloadHealthHistoryReport",
+    "method": "get",
+    "path": "/households/{household_id}/reports/health_history.pdf"
+  },
+  {
+    "operation_id": "getMedicationReviewReport",
+    "method": "get",
+    "path": "/households/{household_id}/reports/medication_reviews"
+  },
+  {
+    "operation_id": "downloadMedicationReviewReport",
+    "method": "get",
+    "path": "/households/{household_id}/reports/medication_reviews.pdf"
+  },
+  {
+    "operation_id": "listMedicationReviewPrompts",
+    "method": "get",
+    "path": "/households/{household_id}/medication_review_prompts"
+  },
+  {
+    "operation_id": "getMedicationReviewPrompt",
+    "method": "get",
+    "path": "/households/{household_id}/medication_review_prompts/{id}"
+  },
+  {
+    "operation_id": "updateMedicationReviewPrompt",
+    "method": "patch",
+    "path": "/households/{household_id}/medication_review_prompts/{id}"
+  },
+  {
+    "operation_id": "updateMedicationReviewPromptWithPut",
+    "method": "put",
+    "path": "/households/{household_id}/medication_review_prompts/{id}"
+  },
+  {
+    "operation_id": "listDosageOptions",
+    "method": "get",
+    "path": "/households/{household_id}/dosage_options"
+  },
+  {
+    "operation_id": "createDosageOption",
+    "method": "post",
+    "path": "/households/{household_id}/dosage_options"
+  },
+  {
+    "operation_id": "getDosageOption",
+    "method": "get",
+    "path": "/households/{household_id}/dosage_options/{id}"
+  },
+  {
+    "operation_id": "updateDosageOption",
+    "method": "patch",
+    "path": "/households/{household_id}/dosage_options/{id}"
+  },
+  {
+    "operation_id": "replaceDosageOption",
+    "method": "put",
+    "path": "/households/{household_id}/dosage_options/{id}"
+  },
+  {
+    "operation_id": "listHealthEvents",
+    "method": "get",
+    "path": "/households/{household_id}/health_events"
+  },
+  {
+    "operation_id": "createHealthEvent",
+    "method": "post",
+    "path": "/households/{household_id}/health_events"
+  },
+  {
+    "operation_id": "getHealthEvent",
+    "method": "get",
+    "path": "/households/{household_id}/health_events/{id}"
+  },
+  {
+    "operation_id": "updateHealthEvent",
+    "method": "patch",
+    "path": "/households/{household_id}/health_events/{id}"
+  },
+  {
+    "operation_id": "replaceHealthEvent",
+    "method": "put",
+    "path": "/households/{household_id}/health_events/{id}"
+  },
+  {
+    "operation_id": "listMedicationPausePeriods",
+    "method": "get",
+    "path": "/households/{household_id}/medication_pause_periods"
+  },
+  {
+    "operation_id": "createMedicationPausePeriod",
+    "method": "post",
+    "path": "/households/{household_id}/medication_pause_periods"
+  },
+  {
+    "operation_id": "resumeMedicationPausePeriod",
+    "method": "post",
+    "path": "/households/{household_id}/medication_pause_periods/{id}/resume"
+  },
+  {
+    "operation_id": "listScheduleDoseOccurrences",
+    "method": "get",
+    "path": "/households/{household_id}/schedules/{schedule_id}/dose_occurrences"
+  },
+  {
+    "operation_id": "recordScheduleDoseNotTaken",
+    "method": "post",
+    "path": "/households/{household_id}/schedules/{schedule_id}/dose_occurrences/not_taken"
+  },
+  {
+    "operation_id": "reopenScheduleDoseOccurrence",
+    "method": "patch",
+    "path": "/households/{household_id}/schedules/{schedule_id}/dose_occurrences/reopen"
+  },
+  {
+    "operation_id": "takeScheduleDoseOccurrence",
+    "method": "post",
+    "path": "/households/{household_id}/schedules/{schedule_id}/dose_occurrences/take"
+  },
+  {
+    "operation_id": "listPersonMedicationDoseOccurrences",
+    "method": "get",
+    "path": "/households/{household_id}/person_medications/{person_medication_id}/dose_occurrences"
+  },
+  {
+    "operation_id": "recordPersonMedicationDoseNotTaken",
+    "method": "post",
+    "path": "/households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/not_taken"
+  },
+  {
+    "operation_id": "reopenPersonMedicationDoseOccurrence",
+    "method": "patch",
+    "path": "/households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/reopen"
+  },
+  {
+    "operation_id": "takePersonMedicationDoseOccurrence",
+    "method": "post",
+    "path": "/households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/take"
+  },
+  {
+    "operation_id": "createSchedule",
+    "method": "post",
+    "path": "/households/{household_id}/schedules"
+  },
+  {
+    "operation_id": "updateSchedule",
+    "method": "patch",
+    "path": "/households/{household_id}/schedules/{id}"
+  },
+  {
+    "operation_id": "replaceSchedule",
+    "method": "put",
+    "path": "/households/{household_id}/schedules/{id}"
+  },
+  {
+    "operation_id": "pauseSchedule",
+    "method": "patch",
+    "path": "/households/{household_id}/schedules/{id}/pause"
+  },
+  {
+    "operation_id": "resumeSchedule",
+    "method": "patch",
+    "path": "/households/{household_id}/schedules/{id}/resume"
+  },
+  {
+    "operation_id": "createPersonMedication",
+    "method": "post",
+    "path": "/households/{household_id}/person_medications"
+  },
+  {
+    "operation_id": "updatePersonMedication",
+    "method": "patch",
+    "path": "/households/{household_id}/person_medications/{id}"
+  },
+  {
+    "operation_id": "replacePersonMedication",
+    "method": "put",
+    "path": "/households/{household_id}/person_medications/{id}"
+  },
+  {
+    "operation_id": "pausePersonMedication",
+    "method": "patch",
+    "path": "/households/{household_id}/person_medications/{id}/pause"
+  },
+  {
+    "operation_id": "resumePersonMedication",
+    "method": "patch",
+    "path": "/households/{household_id}/person_medications/{id}/resume"
+  },
+  {
+    "operation_id": "reorderPersonMedication",
+    "method": "patch",
+    "path": "/households/{household_id}/person_medications/{id}/reorder"
+  },
+  {
+    "operation_id": "getNotificationPreference",
+    "method": "get",
+    "path": "/households/{household_id}/notification_preference"
+  },
+  {
+    "operation_id": "updateNotificationPreference",
+    "method": "patch",
+    "path": "/households/{household_id}/notification_preference"
+  },
+  {
+    "operation_id": "replaceNotificationPreference",
+    "method": "put",
+    "path": "/households/{household_id}/notification_preference"
+  },
+  {
+    "operation_id": "createNativeDeviceToken",
+    "method": "post",
+    "path": "/households/{household_id}/native_device_tokens"
+  },
+  {
+    "operation_id": "deleteNativeDeviceToken",
+    "method": "delete",
+    "path": "/households/{household_id}/native_device_tokens/{id}"
+  },
+  {
+    "operation_id": "createPushSubscription",
+    "method": "post",
+    "path": "/households/{household_id}/push_subscription"
+  },
+  {
+    "operation_id": "deletePushSubscription",
+    "method": "delete",
+    "path": "/households/{household_id}/push_subscription"
+  },
+  {
+    "operation_id": "testPushSubscription",
+    "method": "post",
+    "path": "/households/{household_id}/push_subscription/test"
+  },
+  {
+    "operation_id": "searchMedicationLookup",
+    "method": "get",
+    "path": "/households/{household_id}/medication_lookup"
+  },
+  {
+    "operation_id": "generateAiMedicationSuggestions",
+    "method": "post",
+    "path": "/households/{household_id}/ai_medication_suggestions"
+  },
+  {
+    "operation_id": "exportPortableHouseholdBundle",
+    "method": "get",
+    "path": "/households/{household_id}/portable_export"
+  },
+  {
+    "operation_id": "getMobileSnapshot",
+    "method": "get",
+    "path": "/households/{household_id}/mobile_snapshot"
+  },
+  {
+    "operation_id": "dryRunPortableImport",
+    "method": "post",
+    "path": "/households/{household_id}/portable_imports/dry_run"
+  },
+  {
+    "operation_id": "createPortableImport",
+    "method": "post",
+    "path": "/households/{household_id}/portable_imports"
+  },
+  {
+    "operation_id": "getDataExport",
+    "method": "get",
+    "path": "/households/{household_id}/data_exports/{mode}"
+  },
+  {
+    "operation_id": "getSyncSnapshot",
+    "method": "get",
+    "path": "/households/{household_id}/sync/snapshot"
+  },
+  {
+    "operation_id": "getSyncChanges",
+    "method": "get",
+    "path": "/households/{household_id}/sync/changes"
+  },
+  {
+    "operation_id": "createSyncBatch",
+    "method": "post",
+    "path": "/households/{household_id}/sync/batches"
+  },
+  {
+    "operation_id": "getHouseholdAdminSettings",
+    "method": "get",
+    "path": "/households/{household_id}/admin/settings"
+  },
+  {
+    "operation_id": "updateHouseholdAdminSettings",
+    "method": "patch",
+    "path": "/households/{household_id}/admin/settings"
+  },
+  {
+    "operation_id": "replaceHouseholdAdminSettings",
+    "method": "put",
+    "path": "/households/{household_id}/admin/settings"
+  },
+  {
+    "operation_id": "listMemberships",
+    "method": "get",
+    "path": "/households/{household_id}/admin/memberships"
+  },
+  {
+    "operation_id": "updateMembership",
+    "method": "patch",
+    "path": "/households/{household_id}/admin/memberships/{id}"
+  },
+  {
+    "operation_id": "replaceMembership",
+    "method": "put",
+    "path": "/households/{household_id}/admin/memberships/{id}"
+  },
+  {
+    "operation_id": "deleteMembership",
+    "method": "delete",
+    "path": "/households/{household_id}/admin/memberships/{id}"
+  },
+  {
+    "operation_id": "listInvitations",
+    "method": "get",
+    "path": "/households/{household_id}/admin/invitations"
+  },
+  {
+    "operation_id": "createInvitation",
+    "method": "post",
+    "path": "/households/{household_id}/admin/invitations"
+  },
+  {
+    "operation_id": "deleteInvitation",
+    "method": "delete",
+    "path": "/households/{household_id}/admin/invitations/{id}"
+  },
+  {
+    "operation_id": "listPersonAccessGrants",
+    "method": "get",
+    "path": "/households/{household_id}/admin/person_access_grants"
+  },
+  {
+    "operation_id": "createPersonAccessGrant",
+    "method": "post",
+    "path": "/households/{household_id}/admin/person_access_grants"
+  },
+  {
+    "operation_id": "deletePersonAccessGrant",
+    "method": "delete",
+    "path": "/households/{household_id}/admin/person_access_grants/{id}"
+  },
+  {
+    "operation_id": "listAppTokens",
+    "method": "get",
+    "path": "/households/{household_id}/admin/app_tokens"
+  },
+  {
+    "operation_id": "createAppToken",
+    "method": "post",
+    "path": "/households/{household_id}/admin/app_tokens"
+  },
+  {
+    "operation_id": "deleteAppToken",
+    "method": "delete",
+    "path": "/households/{household_id}/admin/app_tokens/{id}"
+  }
+]

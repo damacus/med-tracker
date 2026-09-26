@@ -1,0 +1,4209 @@
+{
+  "source_glob": "spec/**/*_spec.rb",
+  "source_count": 826,
+  "classification_status": "provisional",
+  "items": [
+    {
+      "path": "spec/architecture/controller_concerns_spec.rb",
+      "category": "Rails-only",
+      "review": false,
+      "rationale": "Static guard against a single-use Rails controller concern; no retained user-visible contract."
+    },
+    {
+      "path": "spec/architecture/domain_boundaries_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+    },
+    {
+      "path": "spec/architecture/job_framework_api_collisions_spec.rb",
+      "category": "Rails-only",
+      "review": false,
+      "rationale": "Static guard against Rails Active Job helper method collisions; no retained user-visible contract."
+    },
+    {
+      "path": "spec/architecture/tenant_safety_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+    },
+    {
+      "path": "spec/components/admin/ambiguous_person_access_grants/index_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/admin/audit_logs/index_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/admin/audit_logs/show_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/admin/carer_relationships/form_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/admin/carer_relationships/index_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/admin/dashboard/index_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/admin/people/index_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/admin/users/pagination_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/admin/users/search_form_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/admin/users/users_table_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/barcode_scanner_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/dashboard/experimental_base_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/dashboard/index_view_performance_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/dashboard/index_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/dashboard/person_task_card_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/dashboard/timeline_item_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/global_search/palette_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/icons/calendar_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/icons/chevron_right_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/icons/hand_package_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/icons/inventory_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/icons/medication_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/icons/passkey_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/layouts/auth_layout_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/layouts/current_user_context_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/layouts/demo_notice_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/layouts/flash_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/layouts/mobile_menu_i18n_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/layouts/mobile_menu_irish_i18n_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/layouts/mobile_menu_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/layouts/mobile_rail_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/layouts/navigation_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/layouts/navigation_surface_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/layouts/profile_menu_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/layouts/sidebar_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/locations/index_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/locations/show_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/m3/button_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/m3/input_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/m3/link_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/m3/select_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/m3/selectable_option_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medication_assignments/modal_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medication_pauses/history_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medication_workflow/person_selection_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medications/dose_history_component_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medications/finder_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medications/form_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medications/index_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medications/inventory_scan_modal_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medications/list_item_component_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medications/prior_day_take_action_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medications/related_medications_prompt_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medications/search_component_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medications/show_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medications/standard_dosage_component_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medications/supply_status_card_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medications/take_action_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medications/warnings_component_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/medications/wizard/modal_wrapper_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/modal_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/people/add_medication_landing_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/people/person_card_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/people/show_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/person_medications/card_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/person_medications/form_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/person_medications/modal_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/reports/export_panel_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/reports/filter_form_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/reports/health_history_report_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/reports/medication_review_report_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/reports/pdf_document_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/ruby_ui/accordion_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "RubyUI rendering and helper implementation evidence; capture visible behaviour in browser tests."
+    },
+    {
+      "path": "spec/components/ruby_ui/action_style_helpers_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "RubyUI rendering and helper implementation evidence; capture visible behaviour in browser tests."
+    },
+    {
+      "path": "spec/components/ruby_ui/alert_dialog_content_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "RubyUI rendering and helper implementation evidence; capture visible behaviour in browser tests."
+    },
+    {
+      "path": "spec/components/ruby_ui/alert_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "RubyUI rendering and helper implementation evidence; capture visible behaviour in browser tests."
+    },
+    {
+      "path": "spec/components/ruby_ui/badge_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "RubyUI rendering and helper implementation evidence; capture visible behaviour in browser tests."
+    },
+    {
+      "path": "spec/components/ruby_ui/button_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "RubyUI rendering and helper implementation evidence; capture visible behaviour in browser tests."
+    },
+    {
+      "path": "spec/components/ruby_ui/calendar_prev_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "RubyUI rendering and helper implementation evidence; capture visible behaviour in browser tests."
+    },
+    {
+      "path": "spec/components/ruby_ui/dialog_content_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "RubyUI rendering and helper implementation evidence; capture visible behaviour in browser tests."
+    },
+    {
+      "path": "spec/components/ruby_ui/div_wrapper_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "RubyUI rendering and helper implementation evidence; capture visible behaviour in browser tests."
+    },
+    {
+      "path": "spec/components/ruby_ui/dropdown_menu_item_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "RubyUI rendering and helper implementation evidence; capture visible behaviour in browser tests."
+    },
+    {
+      "path": "spec/components/ruby_ui/input_otp_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "RubyUI rendering and helper implementation evidence; capture visible behaviour in browser tests."
+    },
+    {
+      "path": "spec/components/ruby_ui/link_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "RubyUI rendering and helper implementation evidence; capture visible behaviour in browser tests."
+    },
+    {
+      "path": "spec/components/ruby_ui/select_content_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "RubyUI rendering and helper implementation evidence; capture visible behaviour in browser tests."
+    },
+    {
+      "path": "spec/components/ruby_ui/sheet_content_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "RubyUI rendering and helper implementation evidence; capture visible behaviour in browser tests."
+    },
+    {
+      "path": "spec/components/schedules/card/actions_component_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/schedules/card/dose_status_component_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/schedules/card/header_component_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/schedules/card_i18n_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/schedules/card_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/schedules/form_component_size_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/schedules/form_translations_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/schedules/index_view_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/schedules/modal_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/shared/empty_state_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/shared/medication_icon_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/shared/metric_card_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/shared/person_avatar_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/shared/stock_badge_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/shared/supply_meter_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/profiles/experiments_card_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/profiles/notifications_card_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/profiles/show_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/profiles/theme_picker_card_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/profiles/version_info_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/rodauth/add_recovery_codes_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/rodauth/login_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/rodauth/otp_auth_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/rodauth/otp_disable_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/rodauth/otp_setup_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/rodauth/recovery_auth_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/rodauth/recovery_codes_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/rodauth/two_factor_auth_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/rodauth/two_factor_manage_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/rodauth/unlock_account_request_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/rodauth/unlock_account_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/rodauth/webauthn_auth_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/components/views/rodauth/webauthn_setup_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/concerns/authentication_oidc_spec.rb",
+      "category": "browser",
+      "review": true,
+      "rationale": "OIDC MFA session state, two-factor prompt, and professional-title effects need browser parity; Rails concern mechanics are implementation-only."
+    },
+    {
+      "path": "spec/config/authentication/passkey_configuration_spec.rb",
+      "category": "browser",
+      "review": true,
+      "rationale": "Discoverable passkey registration and verified passkey login need browser parity; Rails schema and Rodauth method checks are implementation-only."
+    },
+    {
+      "path": "spec/config/database_role_config_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+    },
+    {
+      "path": "spec/config/i18n_ambiguous_person_access_grant_locale_coverage_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+    },
+    {
+      "path": "spec/config/i18n_iconography_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+    },
+    {
+      "path": "spec/config/json_spec.rb",
+      "category": "operational",
+      "review": false,
+      "rationale": "Dependency automation policy for repository maintenance; no application behavior to port."
+    },
+    {
+      "path": "spec/config/med_tracker/application_host_authorization_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Production APP_URL host allowlist and health-route exceptions require an isolated production-configuration check; parity matrix row 154 records the gap."
+    },
+    {
+      "path": "spec/config/med_tracker/application_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+    },
+    {
+      "path": "spec/config/observability/database_pool_operations_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+    },
+    {
+      "path": "spec/config/observability/open_telemetry_config_exporter_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+    },
+    {
+      "path": "spec/config/observability/open_telemetry_config_trace_sampling_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+    },
+    {
+      "path": "spec/config/shared_database_login_compatibility_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+    },
+    {
+      "path": "spec/config/solid_queue_runtime_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+    },
+    {
+      "path": "spec/config/yaml_compose_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+    },
+    {
+      "path": "spec/controllers/api/v1/base_controller_spec.rb",
+      "category": "API",
+      "review": false,
+      "rationale": "Public bearer, membership, tenant and canonical error outcomes are covered by auth.rs and envelopes.rs; mocked around-action details remain Rails-only."
+    },
+    {
+      "path": "spec/controllers/application_controller_controller_action_length_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "Rails controller, middleware, or authentication integration check; port its public behaviour through API or browser tests."
+    },
+    {
+      "path": "spec/controllers/locations_controller_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "Rails strong-parameter implementation check for name and description; verify equivalent create/update field allowlist through HTTP or browser tests."
+    },
+    {
+      "path": "spec/database/fresh_schema_row_level_security_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Disposable fresh-schema row-level security and runtime-role isolation must be verified for the Rust database setup."
+    },
+    {
+      "path": "spec/domain/dose_amount_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/domain/dose_cycle_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/domain/dose_timing_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/domain/schedule_frequency_phrase_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/features/accessibility/heading_order_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/admin/audit_logs_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/authentication/invite_only_signup_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/authentication/passkey_registration_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/authentication/signup_verification_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/authentication_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/csp_compliance_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/dashboard_authorization_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/medication_lookup_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/medication_stock_tracking_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/observability/active_job_trace_continuity_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/observability/database_pool_metrics_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/observability/fail_open_medication_operation_contract_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/observability/telemetry_pipeline_integration_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/observability/test_mode_output_characterization_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/person_medications_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/profiles/two_factor_management_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/schedules/schedule_card_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/security/oidc_security_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/features/signup_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/helpers/tenant_dom_targets_helper_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/initializers/content_security_policy_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+    },
+    {
+      "path": "spec/initializers/oidc_security_spec.rb",
+      "category": "Rails-only",
+      "review": true,
+      "rationale": "Rails configuration, migration, route, or architecture implementation check; review observable effects separately."
+    },
+    {
+      "path": "spec/jobs/application_job_observability_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/jobs/application_job_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/jobs/expire_household_exports_job_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/jobs/expire_support_access_sessions_job_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/jobs/low_stock_notification_job_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/jobs/low_stock_notification_job_workflow_correlation_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/jobs/medication_reminder_job_concurrency_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/jobs/medication_reminder_job_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/jobs/medication_review_evidence_refresh_job_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/jobs/missed_dose_notification_job_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/jobs/nhs_dmd_import_job_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/jobs/nhs_dmd_import_reconciliation_job_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/jobs/observability_canary_job_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/jobs/schedule_daily_reminders_job_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/active_support/parameter_filter_mobile_spec.rb",
+      "category": "operational",
+      "review": true
+    },
+    {
+      "path": "spec/lib/api_contract/openapi_route_coverage_spec.rb",
+      "category": "operational",
+      "review": true
+    },
+    {
+      "path": "spec/lib/authentication_lifetime_spec.rb",
+      "category": "operational",
+      "review": true
+    },
+    {
+      "path": "spec/lib/documentation_links_spec.rb",
+      "category": "operational",
+      "review": true
+    },
+    {
+      "path": "spec/lib/hosted_restore/rehearsal_documentation_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/hosted_restore/rehearsal_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/mailpit_delivery_spec.rb",
+      "category": "operational",
+      "review": true
+    },
+    {
+      "path": "spec/lib/observability/context_enricher_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/correlation_context_lifecycle_contract_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/deployed_canary_production_acceptance_queries_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/deployed_canary_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/diagnostic_event_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/domain_event_publisher_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/event_mapper_signal_registry_census_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/event_mapper_signal_registry_enforcement_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/event_mapper_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/job_completion_subscriber_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/job_event_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/job_retry_subscriber_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/notification_stage_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/operational_event_application_observability_documentation_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/operational_event_privacy_contract_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/operational_event_schema_contract_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/process_log_formatter_production_process_logging_configuration_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/process_log_formatter_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/publisher_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/request_completion_subscriber_production_request_logging_configuration_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/request_completion_subscriber_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/request_event_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/observability/storage_event_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/otel/allowlisted_span_exporter_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/otel/critical_path_sampler_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/otel/database_connection_pool_metrics_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/otel/exception_recorder_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/otel/sensitive_data_scrubbing_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/lib/pdf_text_extractor_spec.rb",
+      "category": "operational",
+      "review": true
+    },
+    {
+      "path": "spec/lib/production_storage_configuration_spec.rb",
+      "category": "operational",
+      "review": true
+    },
+    {
+      "path": "spec/lib/production_storage_spec.rb",
+      "category": "operational",
+      "review": true
+    },
+    {
+      "path": "spec/lib/rodauth_main_spec.rb",
+      "category": "API",
+      "review": true,
+      "rationale": "SMART OAuth scope and token behavior need portable HTTP coverage; login, consent, MFA, and OIDC results also need browser coverage."
+    },
+    {
+      "path": "spec/lib/schema_inventory_spec.rb",
+      "category": "operational",
+      "review": true
+    },
+    {
+      "path": "spec/lib/system_metadata_spec.rb",
+      "category": "operational",
+      "review": true
+    },
+    {
+      "path": "spec/lib/theme_token_contract_spec.rb",
+      "category": "operational",
+      "review": true
+    },
+    {
+      "path": "spec/mailers/invitation_mailer_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/mailers/rodauth_mailer_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/mcp/med_tracker_mcp/context_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/mcp/med_tracker_mcp/tools_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/migrations/add_carer_relationship_source_to_person_access_grants_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Preserve ambiguous legacy grant provenance and structural rollback; verify that the cutover does not invent carer ownership."
+    },
+    {
+      "path": "spec/migrations/add_portable_ids_to_health_events_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Preserve existing health events while backfilling portable IDs through forced row-level security."
+    },
+    {
+      "path": "spec/migrations/add_portable_ids_to_mobile_domain_records_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Backfill missing portable IDs across populated mobile-domain tables without changing existing IDs on retry."
+    },
+    {
+      "path": "spec/migrations/add_window_end_to_medication_dose_occurrences_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Backfill dose occurrence window ends across households under tenant isolation without losing history."
+    },
+    {
+      "path": "spec/migrations/allow_account_linked_person_rls_login_lookup_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Install login lookup policy only after runtime roles exist; verify account-linked person visibility under the cutover role."
+    },
+    {
+      "path": "spec/migrations/backfill_legacy_medication_pause_periods_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Preserve completed and open pause history while adding missing legacy periods idempotently."
+    },
+    {
+      "path": "spec/migrations/backfill_missing_household_memberships_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Preserve account-linked memberships, active owner roles, and carer access grants during data migration."
+    },
+    {
+      "path": "spec/migrations/bound_api_app_token_lifetimes_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Backfill existing app-token expiry from issuance without extending already expired credentials."
+    },
+    {
+      "path": "spec/migrations/configure_audit_object_lock_exporter_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Preserve ledger export and delivery access while denying clinical reads and evidence mutation."
+    },
+    {
+      "path": "spec/migrations/configure_audit_verifier_role_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Preserve audit verifier read access and deny clinical reads or changes to audit evidence."
+    },
+    {
+      "path": "spec/migrations/configure_database_runtime_roles_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Verify runtime role bootstrapping and safe failure when required database roles are unavailable."
+    },
+    {
+      "path": "spec/migrations/create_household_medication_take_purge_function_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Preserve tenant and operator scoped take-purge refusal, exact deletion count, retry, and context restoration."
+    },
+    {
+      "path": "spec/migrations/create_tamper_evident_audit_ledger_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Backfill existing audit evidence into a legacy epoch and preserve the live ledger head."
+    },
+    {
+      "path": "spec/migrations/enforce_one_active_nhs_dmd_import_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Reconcile interrupted or duplicate import runs before enforcing one active catalogue import."
+    },
+    {
+      "path": "spec/migrations/enforce_strict_household_tenant_boundary_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Validate relationship household ownership before backfill, restore forced RLS on failure, and reject cross-tenant links."
+    },
+    {
+      "path": "spec/migrations/grant_audit_verifier_complete_visibility_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Allow complete audit evidence verification without clinical reads, row-security bypass, or evidence mutation."
+    },
+    {
+      "path": "spec/migrations/register_android_oauth_clients_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Preserve exact public Android OAuth callbacks without modifying existing integrations."
+    },
+    {
+      "path": "spec/migrations/repair_rls_hidden_audit_sources_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Repair forced-RLS hidden audit evidence without changing existing entries; roll back transient policies on failure."
+    },
+    {
+      "path": "spec/migrations/retire_api_oidc_nonces_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Refuse deletion of a populated nonce table and retain structural rollback for legacy data."
+    },
+    {
+      "path": "spec/migrations/retire_nhs_dmd_archive_path_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Refuse dropping nonempty catalogue archive paths and preserve column rollback."
+    },
+    {
+      "path": "spec/models/account_preferences_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/account_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/api_app_token_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/api_session_household_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/api_session_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/app_settings_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/audit_ledger_entry_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/authorization_context_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/barcode_catalog_entry_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/carer_relationship_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/concerns/otel_instrumented_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/concerns/timing_restrictions_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/current_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/demo_mode_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/dosage_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/dose_constraints_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/health_event_medication_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/health_event_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/household_export_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/household_invitation_grant_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/household_invitation_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/household_membership_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/household_owned_domain_models_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/household_purge_run_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/household_retention_hold_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/household_row_level_security_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/household_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/household_tenant_integrity_constraints_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/location_membership_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/location_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_assignment_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_daily_consumption_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_dosage_option_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_dosage_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_dose_occurrence_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_dose_occurrence_window_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_movicol_fixture_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_pause_period_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_review_evidence_record_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_review_evidence_refresh_run_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_review_prompt_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_stock_consumption_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_stock_quantity_formatter_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_take_inventory_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_take_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_take_stock_decrement_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_take_stock_mutation_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/medication_take_stock_source_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/native_device_token_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/nhs_dmd_barcode_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/nhs_dmd_import_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/notification_preference_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/oauth_application_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/oauth_grant_mobile_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/oauth_grant_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/person_access_grant_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/person_avatar_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/person_medication_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/person_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/platform_admin_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/portable_identifiable_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/push_subscription_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/schedule_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/supply_level_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/support_access_session_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/models/user_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/admin_dashboard_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/admin_nhs_dmd_import_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/admin_people_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/app_settings_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/application_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/audit_log_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/carer_relationship_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/dashboard_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/dosage_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/health_event_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/household_invitation_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/location_membership_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/location_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/medication_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/medication_take_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/notification_preference_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/person_access_grant_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/person_medication_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/person_policy_household_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/person_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/platform_household_membership_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/policy_helpers_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/report_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/schedule_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/support_access_session_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/policies/user_policy_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/presenters/dashboard_presenter_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/presenters/medications/dose_options_payload_presenter_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/presenters/medications/supply_status_presenter_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/presenters/schedules/card_presenter_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/presenters/schedules/dosage_options_presenter_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/presenters/schedules/form_payload_presenter_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/requests/active_storage_direct_uploads_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/admin/ambiguous_person_access_grants_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/admin/audit_logs_rate_limiting_spec.rb",
+      "category": "API",
+      "review": true,
+      "rationale": "Admin audit-log HTTP 429 and Retry-After behavior is observable; add a portable rate-limit contract before clearing review."
+    },
+    {
+      "path": "spec/requests/admin/audit_logs_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/admin/dashboard_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/admin/households_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/admin/invitations_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/admin/nhs_dmd_imports_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/admin/people_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/admin/settings_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/admin/user_mutation_boundary_spec.rb",
+      "category": "API",
+      "review": true,
+      "rationale": "Role-change invalidation of prior API session, app token and household-bound OAuth grant is covered by auth.rs; web forms, redirects, owner governance and support UI remain for browser tests."
+    },
+    {
+      "path": "spec/requests/admin_create_update_turbo_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/admin_mfa_gate_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/admin_turbo_actions_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/admin_users_index_performance_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Rails 100-user admin index response-time budget; establish a representative Rust workload benchmark before clearing review."
+    },
+    {
+      "path": "spec/requests/admin_users_index_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/ai_medication_rate_limiting_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/ai_medication_suggestions_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/fhir/r4_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/fhir/smart_access_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/fhir/smart_configuration_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/admin_api_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/auth/sessions_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/capabilities_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/contract_types_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/data_exports_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/domain_parity_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/dose_occurrences_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/dose_outcome_access_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/dose_outcome_corrections_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/dose_outcome_writes_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/error_envelope_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/idempotency_concurrency_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/invitation_acceptance_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/invitation_resend_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/location_membership_writes_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/location_writes_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/locations_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/me_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/medication_pause_periods_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/medication_review_prompts_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/medication_review_reports_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/medication_takes_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/medications_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/notification_preferences_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/people_controller_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/person_medications_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/portable_data_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/portable_dose_occurrences_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/profile_avatars_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/profile_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/protected_reports_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/rate_limiting_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/resources_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/routine_dose_occurrences_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/schedules_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/stock_removals_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/sync_assignment_actions_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/sync_assignments_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/sync_care_records_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/sync_dose_occurrences_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/sync_inventory_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/sync_medication_takes_concurrency_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/sync_outcome_reads_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/sync_outcome_writes_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/sync_pause_periods_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/sync_replay_permissions_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/sync_safety_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/sync_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/api/v1/write_resources_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/close_account_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/dashboard_home_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/deactivated_users_authentication_spec.rb",
+      "category": "API",
+      "review": true,
+      "rationale": "Deactivated-user API session and app-token denial is covered by auth.rs; Rodauth login and existing web-session behavior remain for browser tests, and audit-failure persistence stays Rails-only."
+    },
+    {
+      "path": "spec/requests/doctor_carer_prescription_workflow_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/dosages_frequency_suggestions_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/dosages_wizard_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/dose_occurrences_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/dose_outcome_corrections_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/form_validation_feedback_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/global_search_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/health_events_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/household_operational_boundaries_spec.rb",
+      "category": "API",
+      "review": true,
+      "rationale": "Held, offboarded and purged household API denial is covered by auth.rs; web tenant selection and platform support-mode navigation remain for browser tests."
+    },
+    {
+      "path": "spec/requests/invitations_controller_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/invitations_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/location_memberships_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/location_memberships_turbo_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/locations_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/login_layout_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/mcp/server_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/medication_assignments_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medication_lookup_rate_limiting_spec.rb",
+      "category": "API",
+      "review": false,
+      "rationale": "JSON finder rate limiting and Retry-After behavior are covered by rust/contract-tests/tests/web_json_read.rs and parity matrix row 152."
+    },
+    {
+      "path": "spec/requests/medication_pause_context_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medication_review_prompts_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medication_stock_removals_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medication_stock_source_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medication_timing_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medication_workflow_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medications_category_filter_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medications_create_scope_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medications_destroy_turbo_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medications_dose_options_update_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medications_edit_return_to_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medications_finder_spec.rb",
+      "category": "API",
+      "review": true,
+      "rationale": "HTTP Permissions-Policy camera header for the finder is observable; add a portable response-header contract before clearing review."
+    },
+    {
+      "path": "spec/requests/medications_log_administration_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medications_nhs_guidance_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medications_open_food_facts_search_spec.rb",
+      "category": "API",
+      "review": true,
+      "rationale": "Portable JSON finder now asserts Open Food Facts name, description, display, source, barcode, category, and package fields for barcode and text results. Review remains for browser interaction and accessibility."
+    },
+    {
+      "path": "spec/requests/medications_refill_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medications_reorder_status_turbo_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medications_schedule_discoverability_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medications_search_spec.rb",
+      "category": "API",
+      "review": true,
+      "rationale": "Portable JSON finder now asserts NHS display, concept class, available guidance, and empty prompt/filter shape for clean results. Review remains for a positive PIL URL, an accessible Warfarin-Ibuprofen evidence prompt, and guidance-unavailable response using deterministic fixtures."
+    },
+    {
+      "path": "spec/requests/medications_single_dose_switch_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/medications_stock_check_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/mobile_oauth_authorization_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/mobile_oauth_concurrency_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/modal_rendering_contract_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/native_device_tokens_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/notification_preferences_turbo_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/observability_exception_capture_spec.rb",
+      "category": "operational",
+      "review": true,
+      "rationale": "Injected request failure records a trace exception; verify equivalent Rust operational telemetry before clearing review."
+    },
+    {
+      "path": "spec/requests/offline_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/optimistic_ui_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/people_carer_relationships_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/people_edit_return_to_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/people_show_actions_turbo_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/people_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/person_avatars_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/person_medications_edit_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/person_medications_policy_scope_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/person_medications_reorder_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/platform/settings_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/platform/support_access_sessions_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/platform/users_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/profile_api_tokens_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/profile_data_exports_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/profiles_show_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/push_subscriptions_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/pwa_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/redirect_back_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/reports_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/request_sign_in_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/routine_dose_occurrences_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/routine_dose_outcome_corrections_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/schedules_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/schedules_workflow_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/session_expiry_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/smart_oauth_authorization_spec.rb",
+      "category": "API",
+      "review": false
+    },
+    {
+      "path": "spec/requests/test_setup_spec.rb",
+      "category": "Rails-only",
+      "review": false,
+      "rationale": "RSpec fixture assignment and test-session helper behavior; it does not define an application route contract."
+    },
+    {
+      "path": "spec/requests/timeline_refresh_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/toast_notifications_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/two_factor_soft_enforcement_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/webauthn_remove_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/requests/webauthn_setup_spec.rb",
+      "category": "browser",
+      "review": true
+    },
+    {
+      "path": "spec/routing/active_storage_routes_spec.rb",
+      "category": "Rails-only",
+      "review": false,
+      "rationale": "Rails route-matcher implementation check; direct-upload POST and disk-token PUT absence are covered over HTTP by rust/contract-tests/tests/uploads.rs and parity matrix row 143."
+    },
+    {
+      "path": "spec/scripts/compare_ruby_ui_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/scripts/curated_product_yaml_builder_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/scripts/grocery_vitamin_search_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/scripts/verify_otlp_trace_resources_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/security/oidc_security_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/security/omni_auth/strategies/open_id_connect_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/security/zitadel_oidc_spec.rb",
+      "category": "browser",
+      "review": true,
+      "rationale": "OIDC single sign-out, claim mapping, and MFA outcomes need browser parity; this spec currently checks Rails source strings."
+    },
+    {
+      "path": "spec/seeds/audit_evidence_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/seeds/oauth_application_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/seeds/seeds_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/serializers/api/v1/dosage_option_serializer_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/serializers/api/v1/health_event_serializer_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/serializers/api/v1/location_serializer_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/serializers/api/v1/me_serializer_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/serializers/api/v1/medication_pause_period_serializer_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/serializers/api/v1/medication_serializer_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/serializers/api/v1/medication_take_serializer_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/serializers/api/v1/notification_preference_serializer_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/serializers/api/v1/person_medication_serializer_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/serializers/api/v1/person_serializer_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/serializers/api/v1/schedule_serializer_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/serializers/fhir/r4/serializer_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/adjust_medication_inventory_service_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/admin/ambiguous_person_access_grants_index_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/admin/audit_logs_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/admin/bootstrap_service_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/admin/carer_relationship_options_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/admin/carer_relationships_index_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/admin/dashboard_metrics_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/admin/invitations_index_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/admin/user_lifecycle_updater_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/admin/user_provisioner_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/admin/users_index_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/ai_medication/audit_logger_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/ai_medication/ruby_llm_assistant_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/ai_medication/source_page_client_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/ai_medication/suggestion_service_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/ai_medication/suggestion_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/ai_medication/suggestion_validator_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/ai_medication/tools/extract_medication_guidance_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/ai_medication/tools/fetch_medication_source_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/ai_medication/tools/search_medication_sources_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/ai_medication/trusted_source_allowlist_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/api/change_recorder_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/api/consistent_sync_read_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/api/idempotency_store_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/api/sync/medication_pause_period_operation_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/api/sync/medication_take_operation_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/api/sync_boundaries_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/api/sync_snapshot_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/api_auth_state_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/audit/backlog_monitor_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/audit/checkpoint_signer_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/audit/context_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/audit/entry_filter_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/audit/event_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/audit/evidence_exporter_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/audit/fhir_audit_event_mapper_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/audit/object_lock/configuration_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/audit/object_lock/delivery_exporter_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/audit/object_lock/runner_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/audit/object_lock/s3_adapter_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/audit/verification/command_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/audit/verification/database_verifier_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/audit/verification/issue_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/audit/verification/worm_verifier_factory_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/audit/verification/worm_verifier_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/audit_actor_resolver_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/auth_token_audit_logger_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/barcode_catalog/curated_products_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/barcode_catalog/import_csv_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/barcode_catalog/lookup_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/barcode_catalog/resolver_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/bulk_adjust_medication_inventory_service_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/canary/mobile_client_registration_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/care_delegation/assign_concurrency_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/care_delegation/assign_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/care_delegation/revoke_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/demo_baseline/loader_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/demo_reset/auxiliary_databases_reset_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/demo_reset/disk_storage_cleaner_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/demo_reset/preflight_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/demo_reset/primary_database_reset_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/demo_reset/runner_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/demo_reset/s3_storage_cleaner_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/demo_reset/storage_cleaner_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/demo_reset/verifier_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/dependent_relationship_assigner_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/external_lookup/audit_logger_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/family_dashboard/schedule_query_outcomes_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/family_dashboard/schedule_query_routine_outcomes_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/family_dashboard/schedule_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/fixture_household_setup_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/global_search/locations_results_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/global_search/medications_results_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/global_search/people_results_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/global_search/person_medications_results_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/global_search/record_results_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/global_search/result_builder_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/global_search/schedules_results_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/global_search_commands_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/global_search_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/health_events/pattern_summary_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/hosted_restore/audit_verifier_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/hosted_restore/runtime_verifier_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/households/access_change_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/households/export_expiry_processor_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/households/hosted_export_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/households/hosted_export_transfer_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/households/lifecycle_cutoff_lock_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/households/lifecycle_cutoff_lock_with_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/households/local_migrator_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/households/purger_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/households/retention_hold_manager_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/households/shared_login_identity_preserver_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/inventory_dosage_option_resolver_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/inventory_locations_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/locations_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_administration/historical_data_migration_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_administration/occurrence_projection_routine_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_administration/occurrence_projection_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_administration/occurrence_resolver_administration_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_administration/occurrence_resolver_concurrency_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_administration/occurrence_resolver_routine_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_administration/occurrence_resolver_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_administration/pause_period_service_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_administration/record_dose_observability_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_administration/record_dose_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_administration/restore_history_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_administration/resume_period_service_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_administration_history_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_assignment_creator_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_dose_decision_context_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_finder_search_responder_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_friendly_name_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_interaction_lookup_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_inventory_matcher_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_onboarding_builder_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_onboarding_create_service_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_onboarding_plan_builder_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_onboarding_prefill_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_options_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_params_normalizer_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_pause_periods/interval_projection_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_plan_classifier_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_reminder_eligibility_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_reorder_status_service_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_review_benchmark_runner_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_review_benchmark_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_review_evidence_corpus_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_review_prompt_sync_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_review_source_instruction_classifier_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_review_terminology_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_stock_match_resolver_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_stock_source_resolver_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_timeline_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_trade_family_resolver_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/medication_workflow_people_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/nhs_dmd/archive_store_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/nhs_dmd/barcode_import_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/nhs_dmd/barcode_lookup_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/nhs_dmd/client_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/nhs_dmd/dosage_form_filter_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/nhs_dmd/release_archive_extractor_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/nhs_dmd/release_archive_import_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/nhs_dmd/release_import_counts_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/nhs_dmd/release_import_progress_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/nhs_dmd/release_import_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/nhs_dmd/search_result_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/nhs_dmd/search_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/nhs_dmd/strength_filter_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/nhs_dmd/vmp_resolver_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/nhs_website_content/client_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/nhs_website_content/medicine_guidance_lookup_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/nlm/rx_class_client_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/nlm/rx_class_snapshot_builder_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/offline_dose_eligibility_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/open_fda/drug_label_client_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/open_fda/evidence_attributes_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/open_fda/medication_review_evidence_importer_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/open_fda/medication_review_evidence_refresh_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/open_fda/snapshot_builder_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/open_fda/snapshot_client_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/open_fda/snapshot_manifest_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/open_food_facts/barcode_lookup_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/open_food_facts/client_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/open_food_facts/result_builder_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/open_food_facts/search_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/open_products_facts/barcode_lookup_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/open_products_facts/client_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/open_products_facts/result_builder_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/paid_feature_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/people_index_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/person_medication_reorder_service_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/person_show_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/portable_data/encryptor_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/portable_data/exporter_dose_occurrences_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/portable_data/exporter_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/portable_data/imported_person_access_granter_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/portable_data/importer_dose_occurrences_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/portable_data/importer_pause_periods_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/portable_data/importer_routine_outcomes_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/portable_data/importer_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/primary_location_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/push_notification_service_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/remove_medication_stock_service_concurrency_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/remove_medication_stock_service_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/reports/date_range_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/reports/dose_occurrence_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/reports/dose_outcome_summary_routine_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/reports/gp_date_range_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/reports/gp_health_history_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/reports/health_history_pdf_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/reports/health_history_query_outcomes_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/reports/health_history_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/reports/index_query_outcomes_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/reports/index_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/reports/medication_review_pdf_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/reports/pdf_page_text_extractor_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/reports/pdf_renderer_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/reports/sghtmltopdf_contract_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/reports/today_taken_medications_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/restock_medication_service_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/schedule_workflow_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/schedules_index_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/smart_insights/context_routine_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/smart_insights/context_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/smart_insights/detectors/adherence_streak_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/smart_insights/detectors/base_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/smart_insights/detectors/inventory_risk_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/smart_insights/detectors/missed_dose_pattern_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/smart_insights/detectors/missed_routine_cycles_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/smart_insights/detectors/prn_usage_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/smart_insights/detectors/schedule_hygiene_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/smart_insights/detectors/timing_consistency_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/smart_insights/index_query_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/smart_insights/insight_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/smart_insights/result_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/spec_fixture_loader_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/storage/recovery_set_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/storage/restore_verifier_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/services/storage_migration/backfill_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/storage_migration/command_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/storage_migration/lifecycle_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/support_access_sessions/creator_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/support_access_sessions/expiry_processor_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/services/tenant_context_spec.rb",
+      "category": "Rust domain",
+      "review": false
+    },
+    {
+      "path": "spec/system/admin_dashboard_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/admin_invites_users_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/admin_manages_carer_relationships_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/admin_manages_users_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/appearance_mode_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/authenticated_no_household_chrome_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/authorization/admin_access_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/authorization/carer_access_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/authorization/clinician_access_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/authorization/medication_takes_authorization_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/authorization/medications_authorization_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/authorization/person_medications_authorization_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/barcode_scanner_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/dashboard_dose_outcomes_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/dashboard_person_selector_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/dashboard_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/demo_mode_notice_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/enlarged_text_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/global_search_recovery_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/global_search_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/historical_dose_recording_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/locations/delete_location_dialog_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/locations/member_removal_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/medication_finder_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/medication_pause_workflow_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/medication_review_filters_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/medications/add_schedule_workflow_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/medications/delete_medication_dialog_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/medications/dose_options_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/medications/new_medication_layout_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/medications/refill_inventory_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/medications/reorder_workflow_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/medications/stock_check_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/medications/stock_removals_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/medications_visibility_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/mobile_navigation_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/mobile_overflow_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/mobile_ui_audit_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/navigation_flow_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/navigation_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/nurse_shift_medication_recording_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/offline_eligibility_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/offline_medication_takes_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/offline_stock_selection_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/offline_sync_recovery_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/passkey_login_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/people_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/person_medication_actions_delete_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/person_medication_workflow_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/platform_owner_promotion_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/profile_editing_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/profile_experiments_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/profile_tabs_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/record_dose_dialog_accessibility_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/report_exports_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/routine_dose_outcomes_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/routine_dose_reports_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/schedules/add_schedule_modal_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/schedules/dosage_selection_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/schedules/dose_cycle_defaults_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/schedules/workflow_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/session_expiry_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/two_factor_soft_enforcement_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/user_sessions_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/web_dose_corrections_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/web_dose_outcomes_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/web_routine_dose_corrections_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/system/web_routine_dose_outcomes_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/tasks/rake/hosted_restore/runtime_verifier_rake_tasks_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/tasks/rake/household_lifecycle_tasks_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/tasks/rake/task_canary_demo_reset_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/tasks/rake/task_canary_register_mobile_clients_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/tasks/rake/task_households_migrate_local_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/tasks/rake/task_med_tracker_bootstrap_admin_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/tasks/rake/task_pre_0_5_database_upgrade_preflight_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/tasks/rake/task_storage_verify_restore_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/tasks/rake/task_support_access_expire_spec.rb",
+      "category": "operational",
+      "review": false
+    },
+    {
+      "path": "spec/views/reports/index_spec.rb",
+      "category": "browser",
+      "review": false
+    },
+    {
+      "path": "spec/views/rodauth/login_spec.rb",
+      "category": "browser",
+      "review": false
+    }
+  ]
+}

@@ -31,6 +31,7 @@
 /public/assets
 /coverage
 /client-tools/target/
+/rust/contract-tests/target/
 
 # Ignore master key for decrypting credentials and more.
 /config/master.key
@@ -77,3 +78,4 @@ vendor/**/*
 /mobile/android/local.properties
 /mobile/android/.idea/
 /mobile/android/*.iml
+/rust/api/target/

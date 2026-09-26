@@ -2,7 +2,32 @@ openapi: 3.0.3
 info:
   title: MedTracker API
   version: v1
-  description: Hosted MedTracker API contract for mobile clients, API clients, and portable migration.
+  description: |
+    Hosted MedTracker API contract for mobile clients, API clients, and portable migration.
+    API requests are limited per client IP to 300 requests in each five-minute window. GET
+    household data exports are also limited to 10 per minute; POST sync batches to 30 per
+    minute; GET medication lookup to 60 per minute; POST AI medication suggestions to 10 per
+    minute; and GET household admin audit logs to 100 per minute. Limits use epoch-aligned
+    fixed windows. The first exceeded limit rejects the request with 429 and Retry-After,
+    RateLimit-Limit, RateLimit-Remaining and RateLimit-Reset response headers. Counters are
+    local to each server process. Counter storage is bounded; a new client is rejected with
+    429 while the store is full of live counters. Expired counters are reclaimed. Health
+    checks and direct loopback clients are exempt in production. The client IP is the socket
+    peer unless a deployment explicitly configures trusted proxy IPs through
+    API_TRUSTED_PROXY_IPS. A configured loopback proxy is not exempt, and untrusted
+    forwarding headers do not set the client IP.
+    Ordinary household operations accept a valid API session, household app token,
+    or mobile OAuth bearer with the medtracker scope. SMART integration grants
+    authorize SMART/FHIR access, not ordinary household operations. A household
+    app token is bound to its issuing account and membership; the account and user
+    must remain active and unlocked, the membership must be active with its original
+    permissions version, and the household must be operational. App tokens expire
+    at the earlier of their stored expiry and the configured calendar-month maximum
+    age from issuance. Missing, invalid, expired, revoked, stale or otherwise
+    inactive credentials return 401. A valid credential routed to another existing
+    household returns 403; a missing household returns 404. A resource outside an
+    authorized household is hidden with 404. Successful app-token use refreshes
+    last_used_at at most once every five minutes.
 servers:
   - url: /api/v1
 security:
@@ -19,11 +44,39 @@ tags:
   - name: Capabilities
     description: API capability discovery.
   - name: Authentication
-    description: Login, session, and credential lifecycle operations.
+    description: |
+      Login, session, and credential lifecycle operations. Account-level session
+      management accepts a valid API session, household app token, or mobile OAuth
+      access token. API sessions and app tokens see only nonrevoked API sessions
+      belonging to their own account; access or refresh expiration on a listed
+      session does not remove it until revocation. Mobile OAuth access tokens
+      see only nonrevoked grants for their own account whose token exists and
+      whose login remains within configured inactivity and maximum-age windows.
+      Deletion uses the credential's session namespace and returns 404
+      for a session outside that account or namespace. A credential used to manage
+      sessions must itself be unexpired, unrevoked and authorized for an active
+      account and, where applicable, active membership. An app token also expires
+      at the earlier of stored expiry or creation plus the configured maximum
+      number of calendar months (12 by default). Mobile session refresh expiry
+      is the earlier of last use plus configured inactivity days or authentication
+      plus configured maximum age when that limit is enabled. Listing touches
+      the current credential before serializing it. Logout revokes the current
+      API session, app token or OAuth grant (mobile or integration); absent, invalid or already
+      revoked credentials receive an empty 204 without affecting other records.
+      Successful revocations persist their revoked time and an audit event in the
+      same database transaction; repeating an idempotent logout adds no event.
   - name: People
     description: Household people and current-profile operations.
   - name: Locations
-    description: Household location records.
+    description: |
+      Active household members can read all locations in their selected household. Only
+      household owners and administrators can create, update or delete locations and
+      location memberships. A bearer API credential does not convey browser support-session
+      authority. A membership change additionally needs a manage grant for the selected
+      person. A person outside the caller's view scope is not found (404); a visible person
+      without a manage grant is forbidden (403). Missing or invalid credentials return 401,
+      a denied household returns 403, and a resource outside the authorized household scope
+      returns 404.
   - name: Medications
     description: Medication records and inventory/reorder actions.
   - name: Dosage options
@@ -113,6 +166,12 @@ paths:
         - Account
         - Authentication
       summary: List active API sessions for the current account.
+      description: |
+        Return only the caller's nonrevoked sessions in descending creation order.
+        API-session and app-token credentials list API sessions, including devices
+        whose access or refresh token has expired; mobile OAuth credentials list
+        mobile grants within the configured login lifetime. Never expose access
+        or refresh tokens or their digests.
       responses:
         '200':
           description: API session collection.
@@ -131,6 +190,11 @@ paths:
         - Account
         - Authentication
       summary: Revoke an API session.
+      description: |
+        Revoke only a session belonging to the authenticated account and the
+        credential's session namespace. API-session and app-token credentials
+        address API sessions; mobile OAuth credentials address mobile grants.
+        A missing, revoked, or other-account session returns 404.
       parameters:
         - $ref: '#/components/parameters/id'
       responses:
@@ -148,7 +212,11 @@ paths:
       tags:
         - Account
         - Authentication
-      summary: Revoke the current API session or app token.
+      summary: Revoke the current API session, app token or OAuth grant.
+      description: |
+        Revoke the bearer API session, app token or OAuth grant when it is
+        known. An absent, invalid, or already revoked bearer is an idempotent
+        no-op and returns an empty 204 response.
       responses:
         '204':
           description: Credential revoked.
@@ -161,6 +229,7 @@ paths:
         - Household
         - People
       summary: Read the current account and person profile for a household session.
+      description: The person is the authenticated user's own profile, even when the selected membership belongs to another household. membership_role is the role of the selected household membership.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
@@ -209,6 +278,21 @@ paths:
         - Household
         - People
       summary: Create a person in the household.
+      description: |
+        Requires an active household owner or administrator, or a member with an
+        active manage grant for a person in this household. Name and date of birth
+        are required; email is trimmed, lowercased and unique when present.
+        person_type defaults to adult and has_capacity defaults to true. A minor
+        or dependent adult always has has_capacity false and needs an active
+        carer. When the actor's membership is linked to a person, creating a
+        minor or dependent adult delegates family-member manage access to that
+        carer. Otherwise a person without capacity is rejected with 422.
+        A successful create assigns the household Home location, creates the
+        actor's manage grant, increments the affected membership permissions
+        version, and records person audit and sync changes in one transaction.
+        Age and person_type must agree. Invalid or duplicate email returns 422.
+        Malformed JSON or a missing person wrapper returns 400; a present wrapper
+        with invalid attributes returns 422.
       parameters:
         - $ref: '#/components/parameters/household_id'
       requestBody:
@@ -227,6 +311,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PersonResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -269,6 +355,16 @@ paths:
         - Household
         - People
       summary: Update a person.
+      description: |
+        Requires an active manage grant for the selected person. A person outside
+        the actor's visible scope returns 404; a visible person without manage
+        access returns 403. Supplied attributes are merged with the existing
+        record; omitted attributes are retained. Email is normalized and must
+        remain unique. A minor or dependent adult always has has_capacity false,
+        and a person without capacity must have an active carer. Age and
+        person_type must agree. A changed update records person audit and
+        sync changes. If-Match is not required. Malformed JSON or a missing
+        person wrapper returns 400; invalid supplied attributes return 422.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/id'
@@ -288,6 +384,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PersonResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -304,6 +402,11 @@ paths:
         - Household
         - People
       summary: Update a person using the PUT route.
+      description: |
+        PUT has the same merged-attribute, authorization, validation, audit and
+        sync behaviour as PATCH. Omitted attributes are retained and If-Match is
+        not required. Malformed JSON or a missing person wrapper returns 400;
+        invalid supplied attributes return 422.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/id'
@@ -323,6 +426,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PersonResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -995,6 +1100,7 @@ paths:
         - Household
         - Locations
       summary: List visible locations.
+      description: Active members can list every location in their selected household.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/page'
@@ -1021,6 +1127,7 @@ paths:
       operationId: createLocation
       tags: [Household, Locations]
       summary: Create household storage.
+      description: Only an active household owner or administrator can create a location.
       parameters:
         - $ref: '#/components/parameters/household_id'
       requestBody:
@@ -1060,6 +1167,7 @@ paths:
         - Household
         - Locations
       summary: Read a location.
+      description: Active members can read a location in their selected household.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
@@ -1085,6 +1193,7 @@ paths:
       operationId: updateLocation
       tags: [Household, Locations]
       summary: Update household storage with its current version.
+      description: Only an active household owner or administrator can update an in-scope location. If-Match must equal the current location ETag.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
@@ -1129,6 +1238,13 @@ paths:
       operationId: deleteLocation
       tags: [Household, Locations]
       summary: Delete storage only when retained history permits it.
+      description: |
+        Only an active household owner or administrator can delete an in-scope location,
+        using the current If-Match ETag. Direct or indirect medication takes, saved dose
+        outcomes, or medication pause periods retained through the location's medications,
+        schedules or person assignments prevent deletion with 422. Otherwise the location,
+        its memberships, medications, dosage options, schedules and person assignments are
+        removed atomically. A failed deletion leaves every related row unchanged.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
@@ -1160,6 +1276,7 @@ paths:
       operationId: updateLocationWithPut
       tags: [Household, Locations]
       summary: Update household storage with its current version.
+      description: Only an active household owner or administrator can update an in-scope location. If-Match must equal the current location ETag.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
@@ -1205,6 +1322,11 @@ paths:
       operationId: createLocationMembership
       tags: [Household, Locations]
       summary: Assign a managed person to a location or replay the existing assignment.
+      description: |
+        Only an active household owner or administrator can assign a person to an in-scope
+        location. The person must be visible to the caller and have a current manage grant;
+        a person outside view scope returns 404, while a visible person without manage
+        access returns 403. Replaying the same assignment returns the existing resource.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - name: location_id
@@ -1244,6 +1366,11 @@ paths:
       operationId: deleteLocationMembership
       tags: [Household, Locations]
       summary: Remove a managed person from the selected location.
+      description: |
+        Only an active household owner or administrator can remove an assignment from an
+        in-scope location. The assigned person must be visible to the caller and have a
+        current manage grant; out-of-scope person or assignment returns 404, and a visible
+        person without manage access returns 403.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - name: id
@@ -1349,9 +1476,10 @@ paths:
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
+        - $ref: '#/components/parameters/if_none_match'
       responses:
         '200':
-          description: Medication resource.
+          description: Medication resource. The ETag hashes the serialized response, including derived fields that can change without a medication update.
           headers:
             ETag:
               $ref: '#/components/headers/etag'
@@ -1359,6 +1487,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MedicationResponse'
+        '304':
+          description: Medication has not changed since the supplied ETag.
+          headers:
+            ETag:
+              $ref: '#/components/headers/etag'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1608,6 +1741,7 @@ paths:
         - Household
         - Dosage options
       summary: List medication dosage options.
+      description: Active household members receive options only for medications they can read. Owners and administrators can read every medication in their household. Other members can read a medication linked to a person with an active view grant, or an unlinked medication they created. Options for medications outside that scope are omitted from the collection and its total count.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/page'
@@ -1636,6 +1770,7 @@ paths:
         - Household
         - Dosage options
       summary: Create a medication dosage option.
+      description: Household owners and administrators may create options for medications in their household. Amount must be greater than zero; minimum hours, current supply, and reorder threshold must be nonnegative; unit and frequency must contain non-whitespace text. Only one option per medication may be the adult default and only one may be the child default; a duplicate returns 422 without changing either option. Creation clears the parent medication's single-dose amount and refreshes its sync version. If the option has current supply, the parent inventory is recalculated from all options with current supply, including their reorder thresholds and last-restock baseline. The option and parent changes are atomic.
       parameters:
         - $ref: '#/components/parameters/household_id'
       requestBody:
@@ -1673,6 +1808,7 @@ paths:
         - Household
         - Dosage options
       summary: Read a medication dosage option.
+      description: Active household members may read an option only if they can read its parent medication. Owners and administrators can read every medication in their household. Other members require an active person view grant linked to the medication or must have created an unlinked medication. An option outside this visibility scope returns 404.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
@@ -1700,6 +1836,7 @@ paths:
         - Household
         - Dosage options
       summary: Update a medication dosage option.
+      description: Household owners and administrators may update options for medications in their household. The resulting full record must have positive amount, nonnegative minimum hours, current supply and reorder threshold, and non-whitespace unit and frequency. An incomplete legacy record returns 422 until the request repairs its missing fields. A duplicate adult or child default returns 422 and rolls back the update. Changing a tracked option's inventory recalculates parent stock, reorder threshold, and last-restock baseline atomically; when no options retain current supply, parent stock and baseline become null and reorder threshold becomes zero. If-Match is optional; a stale supplied value returns 409.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
@@ -1740,6 +1877,7 @@ paths:
         - Household
         - Dosage options
       summary: Replace a medication dosage option.
+      description: Household owners and administrators may replace option attributes for medications in their household. The same validation, default uniqueness, optional If-Match, and atomic parent inventory synchronization rules as PATCH apply.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'
@@ -3040,6 +3178,7 @@ paths:
         - Household
         - Notification preferences
       summary: Read the signed-in person's notification preference.
+      description: Returns the signed-in person's preference in its own household. Returns 404 when no preference exists or the person is outside view scope.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
@@ -3066,6 +3205,7 @@ paths:
         - Household
         - Notification preferences
       summary: Update the signed-in person's notification preference.
+      description: Creates the preference with database defaults if absent. Supplied attributes replace their current values; omitted attributes are preserved. A null time clears that time.
       parameters:
         - $ref: '#/components/parameters/household_id'
       requestBody:
@@ -3084,6 +3224,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NotificationPreferenceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3097,7 +3239,8 @@ paths:
       tags:
         - Household
         - Notification preferences
-      summary: Replace the signed-in person's notification preference.
+      summary: Update the signed-in person's notification preference with PUT.
+      description: Creates the preference with database defaults if absent. Supplied attributes replace their current values; omitted attributes are preserved. A null time clears that time.
       parameters:
         - $ref: '#/components/parameters/household_id'
       requestBody:
@@ -3116,6 +3259,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NotificationPreferenceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3131,6 +3276,7 @@ paths:
         - Household
         - Devices
       summary: Register a native device token.
+      description: Registers the token for the authenticated account, or updates that account's existing token and returns an empty 201 response. A token held by another account fails validation without transferring ownership.
       parameters:
         - $ref: '#/components/parameters/household_id'
       requestBody:
@@ -3142,6 +3288,8 @@ paths:
       responses:
         '201':
           description: Device token registered.
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3157,6 +3305,7 @@ paths:
         - Household
         - Devices
       summary: Revoke a native device token.
+      description: Removes the authenticated account's token when present. Repeating the request returns an empty 204 response, including when another account owns the token.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/native_device_token'
@@ -3176,6 +3325,7 @@ paths:
         - Household
         - Devices
       summary: Register a web push subscription.
+      description: Registers an endpoint for the authenticated account, or updates that account's existing endpoint and returns an empty 201 response. An endpoint held by another account fails validation without transferring ownership. The endpoint must use HTTPS, contain no user information or IP address, and use fcm.googleapis.com, updates.push.services.mozilla.com, web.push.apple.com, or a subdomain of notify.windows.com or push.apple.com.
       parameters:
         - $ref: '#/components/parameters/household_id'
       requestBody:
@@ -3187,6 +3337,8 @@ paths:
       responses:
         '201':
           description: Push subscription registered.
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3201,6 +3353,7 @@ paths:
         - Household
         - Devices
       summary: Revoke a web push subscription.
+      description: Removes the authenticated account's matching endpoint when present and returns an empty 204 response. Repeating the request or naming another account's endpoint also returns 204. The endpoint query parameter is required; an existing endpoint can be revoked even if it no longer meets the registration allowlist.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/push_subscription_endpoint'
@@ -4091,6 +4244,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: opaque
+      description: Household API sessions, household app tokens, and mobile OAuth medtracker access tokens authorize ordinary household operations. SMART integration grants do not.
   parameters:
     idempotency_key:
       name: Idempotency-Key
@@ -4127,10 +4281,10 @@ components:
       name: endpoint
       in: query
       required: true
+      description: Existing endpoint to revoke; provider allowlist validation does not apply to deletion.
       schema:
         type: string
-        format: uri
-        pattern: '^https://'
+        minLength: 1
     page:
       name: page
       in: query
@@ -4158,6 +4312,13 @@ components:
       name: If-Match
       in: header
       required: false
+      schema:
+        type: string
+    if_none_match:
+      name: If-None-Match
+      in: header
+      required: false
+      description: Return an empty 304 response when a visible medication's serialized response still matches this ETag.
       schema:
         type: string
     portable_passphrase:
@@ -4266,6 +4427,21 @@ components:
       headers:
         Retry-After:
           $ref: '#/components/headers/retry_after'
+        RateLimit-Limit:
+          description: Maximum requests allowed by the matched limit.
+          schema:
+            type: integer
+            minimum: 1
+        RateLimit-Remaining:
+          description: Requests remaining in the matched window.
+          schema:
+            type: integer
+            enum: [0]
+        RateLimit-Reset:
+          description: Unix timestamp in seconds when the matched window resets.
+          schema:
+            type: integer
+            minimum: 1
       content:
         application/json:
           schema:
@@ -4330,6 +4506,7 @@ components:
     PersonAttributes:
       type: object
       additionalProperties: false
+      minProperties: 1
       properties:
         name:
           type: string
@@ -8180,13 +8357,14 @@ components:
       properties:
         apns_environment:
           type: string
-          description: APNs environment from the signed iOS entitlement. Omit for legacy clients.
+          description: APNs environment from the signed iOS entitlement. Omission preserves an existing token's value and is allowed for legacy clients.
           enum:
             - sandbox
             - production
         device_token:
           type: string
           minLength: 1
+          pattern: '.*\S.*'
         platform:
           type: string
           enum:
@@ -8210,9 +8388,11 @@ components:
         p256dh:
           type: string
           minLength: 1
+          pattern: '.*\S.*'
         auth:
           type: string
           minLength: 1
+          pattern: '.*\S.*'
     PushSubscriptionAttributes:
       type: object
       additionalProperties: false
@@ -8223,6 +8403,7 @@ components:
         endpoint:
           type: string
           format: uri
+          description: HTTPS URL on a supported Web Push provider host, without user information or an IP address.
           pattern: '^https://'
         keys:
           $ref: '#/components/schemas/PushSubscriptionKeys'

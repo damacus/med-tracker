@@ -1,0 +1,22 @@
+[package]
+name = "medtracker-api"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+axum = "0.8.6"
+base64 = "0.22"
+bcrypt = "0.17"
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
+hmac = "0.12"
+medtracker-web = { path = "../web" }
+sea-orm = { version = "=2.0.3", default-features = false, features = ["macros", "runtime-tokio-rustls", "sqlx-postgres", "with-chrono", "with-json", "with-rust_decimal"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
+tower = "0.5"
+url = "2"
+uuid = { version = "1", features = ["v4"] }

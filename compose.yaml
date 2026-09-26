@@ -105,8 +105,10 @@ services:
       test:
         aliases: [mail-test]
     ports:
-      - "8025" # Web UI
-      - "1025" # SMTP
+      - target: 8025 # Web UI
+        host_ip: 127.0.0.1
+      - target: 1025 # SMTP
+        host_ip: 127.0.0.1
     restart: unless-stopped
 
   db-test:
@@ -117,6 +119,7 @@ services:
     networks: [test]
     volumes:
       - ./compose/init-roles.sql:/docker-entrypoint-initdb.d/001-init-roles.sql:ro
+      - ./compose/contract-db.sql:/contract-db.sql:ro
     healthcheck:
       interval: 5s
       timeout: 3s
@@ -136,7 +139,7 @@ services:
         condition: service_healthy
     environment: &rails_env_test
       RAILS_ENV: test
-      DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker
+      DATABASE_URL: ${CONTRACT_DATABASE_URL:-postgresql://medtracker:medtracker_password@db-test:5432/medtracker}
       DATABASE_ROLE: ${TEST_MIGRATION_DATABASE_ROLE:-}
       SMTP_ADDRESS: mail-test
       APP_URL: ${TEST_APP_URL:-http://localhost:3000}
@@ -161,6 +164,10 @@ services:
       file: compose/base.yml
       service: rails
     profiles: [test]
+    command: rails server -b 0.0.0.0
+    ports: !override
+      - target: 3000
+        host_ip: 127.0.0.1
     networks: [test]
     build:
       target: test
@@ -174,6 +181,11 @@ services:
     environment:
       <<: *rails_env_test
       DATABASE_ROLE: ${TEST_DATABASE_ROLE:-}
+      CONTRACT_RATE_LIMITING: ${CONTRACT_RATE_LIMITING:-false}
+      MEDTRACKER_AI_MEDICATION_HELP_ENABLED: ${CONTRACT_AI_MEDICATION_HELP_ENABLED:-false}
+      NHS_DMD_CLIENT_ID: ${CONTRACT_NHS_DMD_CLIENT_ID:-}
+      NHS_DMD_CLIENT_SECRET: ${CONTRACT_NHS_DMD_CLIENT_SECRET:-}
+      RUBYOPT: ${CONTRACT_RUBYOPT:-}
     volumes:
       - .:/app
       - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro

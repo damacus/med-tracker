@@ -1,0 +1,150 @@
+#!/usr/bin/env fish
+
+if test "$argv[1]" = proxy
+    if test "$argv[2]" = mktemp
+        set -l run_dir (command mktemp $argv[3..-1])
+        or exit $status
+        echo $run_dir > $CONTRACT_FAKE_RUN_DIR_FILE
+        echo $run_dir
+    else if test "$argv[2]" = curl
+        if set -q CONTRACT_FAKE_TRACE
+            if test "$CONTRACT_FAKE_FAIL_STEP" = ready
+                echo probe >>$CONTRACT_FAKE_TRACE
+                exit 22
+            end
+            echo ready >>$CONTRACT_FAKE_TRACE
+        end
+        exit 0
+    else if test "$argv[2]" = docker; and set -q CONTRACT_FAKE_COMPOSE_PORT_RESULT
+        switch $CONTRACT_FAKE_COMPOSE_PORT_RESULT
+            case error
+                exit 27
+            case empty
+                exit 0
+            case '*'
+                echo $CONTRACT_FAKE_COMPOSE_PORT_RESULT
+                exit 0
+        end
+    else
+        command $argv[2..-1]
+    end
+    exit $status
+end
+
+if test "$argv[1]" != task
+    exit 2
+end
+
+set -l task_name $argv[2]
+if test "$task_name" = --force
+    set task_name $argv[3]
+end
+
+switch $task_name
+    case api:contract-up api:contract-ready api:contract-test api:contract-openapi-dosages-test api:contract-openapi-people-test api:contract-openapi-sessions-test api:contract-openapi-notifications-test api:contract-openapi-native-tokens-test api:contract-openapi-push-subscriptions-test api:contract-web-session-test api:contract-web-reads-test api:contract-web-reads-rails-test api:contract-browser-test api:contract-browser-rails api:contract-browser-rust api:contract-image-remove api:contract-subnet-check
+        if set -q CONTRACT_FAKE_TRACE
+            echo $task_name >>$CONTRACT_FAKE_TRACE
+        end
+        if test "$task_name" = api:contract-test; and test "$CONTRACT_FAKE_REQUIRE_RELATIVE_CLEANUP" = 1
+            test -d "$CONTRACT_FIXTURE_DIR"
+            or exit 44
+            set -q CONTRACT_RUN_DIR
+            and exit 45
+            contains -- rust/contract-tests/runner-subnet.compose.yaml (string split : -- "$COMPOSE_FILE")
+            or exit 46
+        end
+        if test "$task_name" = api:contract-browser-rust
+            test "$CONTRACT_RUST_BROWSER_SCREENSHOT_DIR" = ./docs/screenshots/journey-medication-rust
+            or exit 47
+            test -d "$CONTRACT_FIXTURE_DIR"
+            or exit 48
+            contains -- rust/contract-tests/runner.compose.yaml (string split : -- "$COMPOSE_FILE")
+            or exit 49
+        end
+        if test "$CONTRACT_FAKE_FAIL_STEP" = "$task_name"
+            exit 42
+        end
+        exit 0
+    case contract:cleanup
+        if set -q CONTRACT_FAKE_TRACE
+            echo cleanup >>$CONTRACT_FAKE_TRACE
+        end
+        if test "$CONTRACT_FAKE_REQUIRE_RELATIVE_CLEANUP" = 1
+            set -l run_dir_arg (string match 'CONTRACT_RUN_DIR=*' -- $argv)
+            string match -rq '^CONTRACT_RUN_DIR=tmp/contract-tests/run\.[A-Za-z0-9]{6}$' -- $run_dir_arg
+            or exit 43
+        end
+        exit $CONTRACT_FAKE_CLEANUP_STATUS
+    case contract:restart-web
+        if set -q CONTRACT_FAKE_TRACE
+            echo restart >>$CONTRACT_FAKE_TRACE
+        end
+        if test "$CONTRACT_FAKE_FAIL_STEP" = restart
+            exit 31
+        end
+    case test:port
+        set -l port 43017
+        set -l call_number 1
+        if set -q CONTRACT_FAKE_TRACE
+            if test -f $CONTRACT_FAKE_TRACE
+                set -l previous (string match -r '^port$' < $CONTRACT_FAKE_TRACE | count)
+                set port (math 43017 + $previous)
+                set call_number (math $previous + 1)
+            end
+            echo port >>$CONTRACT_FAKE_TRACE
+        end
+        if test "$call_number" = "$CONTRACT_FAKE_FAIL_AT"
+            switch $CONTRACT_FAKE_FAIL_STEP
+                case port_exit
+                    exit 31
+                case port_empty
+                    exit 0
+                case port_text
+                    echo unavailable
+                    exit 0
+                case port_invalid
+                    echo 70000
+                    exit 0
+            end
+        end
+        echo $port
+    case contract:run
+        set -l target all
+        set -l base_url
+        for arg in $argv
+            if string match -q 'TEST_TARGET=*' -- $arg
+                set target (string replace 'TEST_TARGET=' '' -- $arg)
+            else if string match -q 'BASE_URL=*' -- $arg
+                set base_url (string replace 'BASE_URL=' '' -- $arg)
+            end
+        end
+        if set -q CONTRACT_FAKE_TRACE
+            echo "run:$target:$base_url" >>$CONTRACT_FAKE_TRACE
+        end
+        if test "$CONTRACT_FAKE_REMOVE_OWNER" = 1
+            set -l run_dir (cat $CONTRACT_FAKE_RUN_DIR_FILE)
+            echo '{"probe":true}' >$run_dir/fixture.json
+            command rm $run_dir/owner
+        end
+        if test "$target" = "$CONTRACT_FAKE_FAIL_TARGET"
+            exit 23
+        end
+        exit $CONTRACT_FAKE_RUN_STATUS
+    case contract:run-web-json-actions-disabled
+        for arg in $argv
+            if string match -q 'BASE_URL=*' -- $arg
+                set -l base_url (string replace 'BASE_URL=' '' -- $arg)
+                if set -q CONTRACT_FAKE_TRACE
+                    echo "run:web_json_actions_disabled:$base_url" >>$CONTRACT_FAKE_TRACE
+                end
+            end
+        end
+        exit $CONTRACT_FAKE_RUN_STATUS
+    case 'contract:run*' contract:oauth
+        if test "$CONTRACT_FAKE_REMOVE_OWNER" = 1
+            set -l run_dir (cat $CONTRACT_FAKE_RUN_DIR_FILE)
+            echo '{"probe":true}' >$run_dir/fixture.json
+            command rm $run_dir/owner
+        end
+        exit $CONTRACT_FAKE_RUN_STATUS
+end

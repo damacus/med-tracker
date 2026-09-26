@@ -1,0 +1,6 @@
+services:
+  web-test:
+    volumes:
+      - type: bind
+        source: ${CONTRACT_STORAGE_ROOT}
+        target: /app/tmp/storage
