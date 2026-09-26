@@ -485,5 +485,97 @@
       "shared update helper is exercised by PATCH numeric ID and PUT portable ID; manage-grant authorization is independent of membership role"
     ],
     "not_yet_tested": []
+  },
+  "getNotificationPreference": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_notification_preferences.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      404,
+      429
+    ],
+    "behaviours_tested": [
+      "own-person exact resource shape, defaults, portable identifier and timestamp formats, nullable times and ETag",
+      "missing preference and absent view grant return 404; view grant permits reading; wrong household is denied",
+      "direct nonloopback 429 wiring with shared limiter and authentication proof"
+    ],
+    "not_yet_tested": []
+  },
+  "updateNotificationPreference": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_notification_preferences.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "creates missing preference using database defaults; strict wrapper, attribute, boolean and time validation",
+      "view-only grant cannot write; invalid and denied requests preserve state",
+      "no-op preserves ETag, timestamps and version/sync counts",
+      "create and update sync events contain person_portable_id; production shares correlated audit/version helpers",
+      "direct nonloopback 429; PATCH and PUT share the same implementation and complementary merge/create assertions"
+    ],
+    "not_yet_tested": []
+  },
+  "replaceNotificationPreference": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_notification_preferences.rs",
+    "statuses_tested": [
+      200,
+      400,
+      403,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "PUT merges fields, preserves omitted booleans and normalises HH:MM to HH:MM:SS; null clears a time",
+      "malformed wrapper and invalid attributes rejected without mutation, including leap seconds and invalid minute values",
+      "wrong-household write denied and direct nonloopback 429",
+      "same update/authentication/create helper as PATCH; shared proofs avoid redundant permutations"
+    ],
+    "not_yet_tested": []
+  },
+  "createNativeDeviceToken": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_native_device_tokens.rs",
+    "statuses_tested": [
+      201,
+      400,
+      401,
+      403,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "empty 201 registration and replay upsert preserve a single account-owned row; platform, APNs environment and user agent update correctly",
+      "omitted APNs environment preserves the existing value; strict attributes, platform/environment enums and nonblank token validation reject without persistence",
+      "global token uniqueness rejects another account with 422 and permits claim after owner revocation",
+      "two concurrent account claims produce one 201, one 422 and one persisted owner",
+      "request audit and error envelopes do not contain raw device tokens; direct nonloopback rate-limit wiring and shared authentication helpers"
+    ],
+    "not_yet_tested": []
+  },
+  "deleteNativeDeviceToken": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_native_device_tokens.rs",
+    "statuses_tested": [
+      204,
+      401,
+      403,
+      429
+    ],
+    "behaviours_tested": [
+      "empty 204 revocation is idempotent for missing and previously deleted tokens",
+      "deletion through another authenticated account's own household returns 204 without removing the owner's token",
+      "missing authentication and wrong-household access denied without mutation",
+      "raw token is absent from request audit metadata; direct nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
   }
 }

@@ -117,6 +117,16 @@ entity!(security_audit_event, "security_audit_events", {
 
 entity!(account, "accounts", { status: i32, email: String, password_hash: Option<String>, });
 
+entity!(native_device_token, "native_device_tokens", {
+    account_id: i64,
+    device_token: String,
+    platform: String,
+    apns_environment: Option<String>,
+    user_agent: Option<String>,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
 pub mod active_session_key {
     use sea_orm::entity::prelude::*;
 

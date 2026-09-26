@@ -7,6 +7,8 @@ mod entities;
 mod locations;
 mod medication_forecast;
 mod medication_management;
+mod native_device_tokens;
+mod notification_preferences;
 mod oauth;
 mod people;
 mod rate_limit;
@@ -209,6 +211,20 @@ fn api_router(state: AppState) -> Router {
         .route(
             "/api/v1/households/{household_id}/locations/{location_id}/location_memberships/{id}",
             axum::routing::delete(locations::delete_membership),
+        )
+        .route(
+            "/api/v1/households/{household_id}/notification_preference",
+            get(notification_preferences::show)
+                .patch(notification_preferences::patch)
+                .put(notification_preferences::put),
+        )
+        .route(
+            "/api/v1/households/{household_id}/native_device_tokens",
+            axum::routing::post(native_device_tokens::create),
+        )
+        .route(
+            "/api/v1/households/{household_id}/native_device_tokens/{id}",
+            axum::routing::delete(native_device_tokens::delete),
         )
         .route(
             "/api/v1/households/{household_id}/people/{id}",

@@ -39,6 +39,16 @@ four profile/person operations in `people-followup.md`. OpenSpec housekeeping
 is deferred. Use adaptive model routing and conserve quota without weakening
 acceptance criteria.
 
+### Budgeted follow-on: 26 September 2026
+
+After the dosage/person batch reached 12 of the original 89 operations, the
+user authorised the next low-risk work within five percentage points of
+allowance. Start usage was 94%. Select notification preferences (three
+operations), then native device token registration/revocation (two operations)
+after rechecking usage. The two batch briefs define acceptance and preserve
+parallel, non-overlapping production and test ownership. Stop after these five
+operations and publish verified work. OpenSpec housekeeping remains deferred.
+
 One Sol implementation agent owns API changes, specification-derived tests,
 necessary API test tooling, and its coverage/evidence report. The orchestrator
 coordinates, reviews, and integrates. No additional implementation or test
