@@ -3178,6 +3178,7 @@ paths:
         - Household
         - Notification preferences
       summary: Read the signed-in person's notification preference.
+      description: Returns the signed-in person's preference in its own household. Returns 404 when no preference exists or the person is outside view scope.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
@@ -3204,6 +3205,7 @@ paths:
         - Household
         - Notification preferences
       summary: Update the signed-in person's notification preference.
+      description: Creates the preference with database defaults if absent. Supplied attributes replace their current values; omitted attributes are preserved. A null time clears that time.
       parameters:
         - $ref: '#/components/parameters/household_id'
       requestBody:
@@ -3222,6 +3224,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NotificationPreferenceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3235,7 +3239,8 @@ paths:
       tags:
         - Household
         - Notification preferences
-      summary: Replace the signed-in person's notification preference.
+      summary: Update the signed-in person's notification preference with PUT.
+      description: Creates the preference with database defaults if absent. Supplied attributes replace their current values; omitted attributes are preserved. A null time clears that time.
       parameters:
         - $ref: '#/components/parameters/household_id'
       requestBody:
@@ -3254,6 +3259,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NotificationPreferenceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3269,6 +3276,7 @@ paths:
         - Household
         - Devices
       summary: Register a native device token.
+      description: Registers the token for the authenticated account, or updates that account's existing token and returns an empty 201 response. A token held by another account fails validation without transferring ownership.
       parameters:
         - $ref: '#/components/parameters/household_id'
       requestBody:
@@ -3280,6 +3288,8 @@ paths:
       responses:
         '201':
           description: Device token registered.
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3295,6 +3305,7 @@ paths:
         - Household
         - Devices
       summary: Revoke a native device token.
+      description: Removes the authenticated account's token when present. Repeating the request returns an empty 204 response, including when another account owns the token.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/native_device_token'
@@ -8342,13 +8353,14 @@ components:
       properties:
         apns_environment:
           type: string
-          description: APNs environment from the signed iOS entitlement. Omit for legacy clients.
+          description: APNs environment from the signed iOS entitlement. Omission preserves an existing token's value and is allowed for legacy clients.
           enum:
             - sandbox
             - production
         device_token:
           type: string
           minLength: 1
+          pattern: '.*\S.*'
         platform:
           type: string
           enum:

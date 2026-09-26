@@ -39,5 +39,10 @@
   "getCurrentProfile": "rust/api/src/people.rs:343",
   "createPerson": "rust/api/src/people.rs:393",
   "updatePerson": "rust/api/src/people.rs:938",
-  "updatePersonWithPut": "rust/api/src/people.rs:947"
+  "updatePersonWithPut": "rust/api/src/people.rs:947",
+  "getNotificationPreference": "rust/api/src/notification_preferences.rs:280",
+  "updateNotificationPreference": "rust/api/src/notification_preferences.rs:324",
+  "replaceNotificationPreference": "rust/api/src/notification_preferences.rs:333",
+  "createNativeDeviceToken": "rust/api/src/native_device_tokens.rs:119",
+  "deleteNativeDeviceToken": "rust/api/src/native_device_tokens.rs:222"
 }

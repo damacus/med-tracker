@@ -135,6 +135,40 @@ tasks:
     cmds:
       - fish rust/contract-tests/run.fish rails openapi-locations
 
+  contract-openapi-notifications-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_notification_preferences -- --test-threads=1
+
+  openapi-notifications-acceptance:
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-notifications
+
+  openapi-notifications-fmt:
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_notification_preferences.rs
+
+  contract-openapi-native-tokens-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_native_device_tokens -- --test-threads=1
+
+  openapi-native-tokens-acceptance:
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-native-tokens
+
+  openapi-native-tokens-fmt:
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_native_device_tokens.rs
+
   contract-openapi-dosages-test:
     requires:
       vars: [CONTRACT_PROJECT]

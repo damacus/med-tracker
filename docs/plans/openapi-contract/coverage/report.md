@@ -1,12 +1,18 @@
 # OpenAPI-first API checkpoint
 
-Specification: `docs/api/openapi.v1.yaml`, SHA-256 `ee8a795c53a2092988063b7822c5a3d294a607c1f6d9da50216d64f7d6eb70f0`. The operation map is `operations.jsonl`; `operation-filter.jq`, `route-sources.json`, and `test-evidence.json` are its inputs. Rebuild it with:
+Specification: `docs/api/openapi.v1.yaml`, SHA-256 `400a4f53570ee545e0bb31628079b9efea176601536ebad1e9836f8f97acdc14`. The operation map is `operations.jsonl`; `operation-filter.jq`, `route-sources.json`, and `test-evidence.json` are its inputs. Rebuild it with:
 
 ```fish
 yq -o=json '.' docs/api/openapi.v1.yaml | jq -c --slurpfile routes docs/plans/openapi-contract/coverage/route-sources.json --slurpfile evidence docs/plans/openapi-contract/coverage/test-evidence.json -f docs/plans/openapi-contract/coverage/operation-filter.jq > docs/plans/openapi-contract/coverage/operations.jsonl
 ```
 
-The parsed specification has 118 HTTP operations, all with operation IDs, across 77 paths. It has 227 component schemas, 12 component responses and 768 response cases. Global server base is `/api/v1`; 117 operations inherit bearer authentication, while `getCapabilities` is public. The Rust route scan finds 77 documented method/path pairs without a route, 21 with a route but without complete spec-traced proof, eight location operations with partial runtime proof, and 12 fully verified operations (three account-session, five dosage and four profile/person). Of the original 89-operation baseline, 12 are now complete and 77 remain. A route match or older Rails-derived test is not credited as OpenAPI coverage.
+The parsed specification has 118 HTTP operations, all with operation IDs, across 77 paths. It has 227 component schemas, 12 component responses and 771 response cases. Global server base is `/api/v1`; 117 operations inherit bearer authentication, while `getCapabilities` is public. The Rust route scan finds 72 documented method/path pairs without a route, 21 with a route but without complete spec-traced proof, eight location operations with partial runtime proof, and 17 fully verified operations (three account-session, five dosage, four profile/person, three notification preference and two native device token). Of the original 89-operation baseline, 17 are now complete and 72 remain. A route match or older Rails-derived test is not credited as OpenAPI coverage.
+
+## Notification preferences and native device tokens
+
+The budgeted follow-on completed five missing operations using separate Sol production and Luna test lanes. Notification preferences passed both HTTP groups in `mtcontract-26b8a402e0c5404a`, log `1790412885_task_api_624fdf.log`; native tokens passed all five groups in `mtcontract-0e56dfe2180546b4`, log `1790413923_task_api_08f7e1.log`. Logs are under `/Users/damacus/Library/Application Support/rtk/tee/`. Both isolated projects were cleaned up. Initial missing-route RED, review corrections, exact scope and intermediate test mistakes are recorded in `notification-preferences-batch.md` and `native-device-tokens-batch.md`.
+
+Preferences verify defaults, merged updates, nullable and strict time values, view/manage permissions, no-op stability and private person-scoped sync metadata. Native tokens verify account-owned replay updates, global uniqueness, one-winner concurrent claims, foreign-account nonmutation, idempotent deletion, empty success bodies and audit redaction. All five operations have direct nonloopback 429 assertions; common auth, audit and limiter helpers reuse existing proofs. Independent requirements/code review passed. Formatting, Clippy, 15 API unit tests, selected contract compilation and runner dispatch/cleanup checks passed. No dependencies, Rails application code or database schema changed in this batch.
 
 ## Profile and person evidence
 
@@ -50,7 +56,7 @@ The limiter uses an atomic mutex over at most 65,536 live IP/rule buckets per pr
 
 ## Remaining gaps
 
-- **Implementation:** 77 documented method/path pairs still have no Rust route. Their identities remain in `operations.jsonl`.
+- **Implementation:** 72 documented method/path pairs still have no Rust route. Their identities remain in `operations.jsonl`.
 - **Untested behaviour:** 21 other route matches have no spec-traced runtime assertion. Eight location methods remain partial; `test-evidence.json` lists their remaining cases. All five dosage operations now have full bounded contract proof.
 - **Outside this API tranche:** Approved permission, retention and rate rules were documented from Rails policy, controller and initializer sources before Rust tests. Browser support sessions remain outside bearer authority. Fixture SQL only provisions isolated records. The Rails dosage schema changed in this remediation; no Rails controller, model or UI behavior changed. Web-only Rack Attack rules and other API operations remain separate work.
 

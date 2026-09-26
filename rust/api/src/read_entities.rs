@@ -104,6 +104,17 @@ read_entity!(notification_preference, "notification_preferences", {
     household_id: i64,
     person_id: i64,
     portable_id: String,
+    enabled: bool,
+    dose_due_enabled: bool,
+    missed_dose_enabled: bool,
+    low_stock_enabled: bool,
+    private_text_enabled: bool,
+    morning_time: Option<Time>,
+    afternoon_time: Option<Time>,
+    evening_time: Option<Time>,
+    night_time: Option<Time>,
+    created_at: DateTime,
+    updated_at: DateTime,
 });
 
 read_entity!(pause_period, "medication_pause_periods", {
