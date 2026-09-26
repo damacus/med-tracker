@@ -1,6 +1,15 @@
 version: "3"
 
 tasks:
+  rust-port:
+    desc: Check Rust API, web and contract-test compilation
+    cmds:
+      - task: :api:fmt
+      - task: :api:clippy
+      - task: :api:test
+      - cargo test --manifest-path rust/web/Cargo.toml
+      - cargo check --manifest-path rust/contract-tests/Cargo.toml --all-targets
+
   test:
     desc: Test CI scripts with Node, without Rails or Docker
     cmds:

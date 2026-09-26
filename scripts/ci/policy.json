@@ -2,6 +2,7 @@
   "jobs": {
     "rails": ["scan_ruby", "scan_js", "lint", "test_non_system", "coverage", "test_system", "production_image_medication_search"],
     "rust": ["client_tools"],
+    "rust_port": ["rust_port"],
     "docs": ["docs_check"],
     "markdown": ["markdown_check"],
     "api_clients": ["api_clients"],
@@ -20,6 +21,8 @@
     {"pattern": "^docs/api/openapi\\.v1\\.yaml$", "suites": ["api_clients", "android_if_present"]},
     {"pattern": "^client-tools/openapi-generator/", "suites": ["api_clients"]},
     {"pattern": "^client-tools/(?!openapi-generator/)", "suites": ["rust"]},
+    {"pattern": "^rust/", "suites": ["rust_port"]},
+    {"pattern": "^(Taskfiles/contract\\.yml|scripts/contract_provision\\.rb|scripts/compose_port\\.fish)$", "suites": ["rails", "rust_port"]},
     {"pattern": "^(app/|bin/|config/|db/|lib/|public/|spec/|test/|data/|vendor/|sorbet/|compose/|\\.kamal/|script/)", "suites": ["rails"]},
     {"pattern": "^(app/(components|views|javascript|assets)/|public/|config/routes\\.rb$|config/initializers/content_security_policy\\.rb$|db/seeds\\.rb$|spec/fixtures/|Taskfiles/lighthouse\\.yml$|bin/lighthouse_score_gate\\.js$)", "suites": ["rails", "lighthouse"]},
     {"pattern": "^(Gemfile(?:\\.lock)?|package(?:-lock)?\\.json|Dockerfile|compose\\.yaml|config\\.ru|Rakefile|Procfile\\.dev|Taskfile\\.test\\.yml|run|\\.rspec|\\.ruby-version|\\.simplecov|\\.rubocop\\.yml|\\.dockerignore)$", "suites": ["rails"]},
