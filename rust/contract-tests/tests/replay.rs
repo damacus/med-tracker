@@ -45,7 +45,8 @@ fn fresh_source(target: &Target, fixture: &Fixture) -> (String, i64) {
         &json!({"medication": {
             "name": format!("Replay medicine {}", OffsetDateTime::now_utc().unix_timestamp_nanos()),
             "location_id": fixture.primary_location_id,
-            "dose_amount": "1.25", "dose_unit": "ml", "current_supply": "20.0"
+            "dose_amount": "1.25", "dose_unit": "ml", "current_supply": "20.0",
+            "reorder_threshold": "5.00"
         }}),
     );
     assert_eq!(medication.status().as_u16(), 201);
@@ -368,6 +369,34 @@ fn invisible_client_uuid_collision_does_not_disclose_the_existing_take() {
             .count(),
         1
     );
+
+    let hidden_source_id = &fixture.hidden_schedule_portable_id;
+    let hidden_medication_id = fixture.hidden_medication_id;
+    let hidden_medication_stock_before = stock(&target, &fixture, hidden_medication_id);
+    let hidden_source = target.post_json_authorized(
+        &path(&fixture, "sync/batches"),
+        &fixture.delegated_access_token,
+        &batch_body(take_operation(
+            &hidden_source_id,
+            hidden_uuid,
+            hidden_medication_id,
+        )),
+    );
+    assert_eq!(hidden_source.status().as_u16(), 404);
+    let hidden_source_error = body(hidden_source);
+    assert_eq!(hidden_source_error["error"]["code"], "not_found");
+    assert!(!hidden_source_error.to_string().contains(hidden_uuid));
+    assert_eq!(
+        stock(&target, &fixture, hidden_medication_id),
+        hidden_medication_stock_before
+    );
+    assert_eq!(
+        take_rows(&target, &fixture)
+            .iter()
+            .filter(|row| row["client_uuid"] == hidden_uuid)
+            .count(),
+        1
+    );
 }
 
 #[test]
@@ -385,13 +414,34 @@ fn saved_validation_error_replays_without_creating_a_take() {
     let route = path(&fixture, "sync/batches");
     let first = target.post_json_with_key(&route, &fixture.access_token, &key, &payload);
     assert_eq!(first.status().as_u16(), 422);
+    let first_request_id = first.headers()["x-request-id"].to_str().unwrap().to_owned();
     let saved = body(first);
-    assert_eq!(saved["error"]["code"], "medication_take_invalid");
+    assert_eq!(saved["error"]["code"], "unprocessable_content");
     assert!(saved["data"].is_null());
+    assert_eq!(saved["error"]["request_id"], first_request_id);
     let second = target.post_json_with_key(&route, &fixture.access_token, &key, &payload);
     assert_eq!(second.status().as_u16(), 422);
     assert_eq!(second.headers()["Idempotency-Replayed"], "true");
-    assert_eq!(body(second), saved);
+    let second_request_id = second.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    assert_ne!(second_request_id, first_request_id);
+    let replayed = body(second);
+    assert_eq!(replayed["error"]["code"], saved["error"]["code"]);
+    assert_eq!(replayed["error"]["message"], saved["error"]["message"]);
+    assert_eq!(replayed["error"]["request_id"], second_request_id);
+    let mut original_semantics = saved.clone();
+    original_semantics["error"]
+        .as_object_mut()
+        .unwrap()
+        .remove("request_id");
+    let mut replayed_semantics = replayed;
+    replayed_semantics["error"]
+        .as_object_mut()
+        .unwrap()
+        .remove("request_id");
+    assert_eq!(replayed_semantics, original_semantics);
     assert_eq!(
         stock(&target, &fixture, fixture.managed_medication_id),
         before

@@ -15,8 +15,8 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, DatabaseTransaction, DbErr, EntityTrait, QueryFilter,
-    QueryOrder, QuerySelect, Set, TransactionTrait,
+    ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, DatabaseTransaction, DbErr,
+    EntityTrait, QueryFilter, QueryOrder, QuerySelect, Set, TransactionTrait,
 };
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
@@ -106,7 +106,7 @@ fn attributes(body: &Value, create: bool) -> Option<(Option<String>, Option<Opti
     let name = match inner.get("name") {
         Some(value) => {
             let value = value.as_str()?;
-            if value.is_empty() {
+            if value.trim().is_empty() {
                 return None;
             }
             Some(value.to_owned())
@@ -120,6 +120,18 @@ fn attributes(body: &Value, create: bool) -> Option<(Option<String>, Option<Opti
         None => None,
     };
     Some((name, description))
+}
+
+fn attribute_errors(body: &Value, create: bool) -> Value {
+    match body.get("location").and_then(|value| value.get("name")) {
+        Some(Value::String(value)) if value.trim().is_empty() => {
+            json!({"name": ["can't be blank"]})
+        }
+        Some(Value::String(_)) => json!({"location": ["is invalid"]}),
+        Some(_) => json!({"name": ["is invalid"]}),
+        None if create => json!({"name": ["can't be blank"]}),
+        None => json!({"location": ["is invalid"]}),
+    }
 }
 
 async fn location(
@@ -143,6 +155,238 @@ fn representation(record: stock_location::Model) -> (Value, String) {
     let body = json!({"data": location_value(record)});
     let etag = representation_etag(&body);
     (body, etag)
+}
+
+pub(super) async fn apply_sync_operation(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    operation: &crate::sync_batch::SyncOperation,
+    request_id: &str,
+) -> Result<crate::sync_batch::SyncResult, ApiError> {
+    if !manager(context) {
+        return Err(ApiError::forbidden());
+    }
+    let household_id = context.membership.household_id;
+    let request = json!({"location": operation.attributes});
+    match operation.action.as_str() {
+        "create" => {
+            let Some((Some(name), description)) = attributes(&request, true) else {
+                return Err(sync_error(
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    "unprocessable_content",
+                    "Location attributes are invalid",
+                ));
+            };
+            let now = Utc::now().naive_utc();
+            let record = stock_location::ActiveModel {
+                household_id: Set(household_id),
+                name: Set(name),
+                description: Set(description.unwrap_or(None)),
+                created_at: Set(now),
+                updated_at: Set(now),
+                ..Default::default()
+            }
+            .insert(db)
+            .await
+            .map_err(sync_write_error)?;
+            location_change(
+                db,
+                context,
+                request_id,
+                &record,
+                "create",
+                "create",
+                None,
+                Some(snapshot(&record)),
+            )
+            .await?;
+            Ok(sync_result(record, true))
+        }
+        "update" | "delete" => {
+            let id = operation.id.as_deref().ok_or_else(|| {
+                sync_error(
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    "unprocessable_content",
+                    "Location ID is required",
+                )
+            })?;
+            if !valid_identifier(id) {
+                return Err(ApiError::not_found());
+            }
+            let record = location(db, household_id, id, true)
+                .await?
+                .ok_or_else(ApiError::not_found)?;
+            let if_match = operation
+                .if_match
+                .as_deref()
+                .filter(|tag| !tag.is_empty())
+                .ok_or_else(|| {
+                    sync_error(
+                        StatusCode::PRECONDITION_REQUIRED,
+                        "precondition_required",
+                        "if_match is required",
+                    )
+                })?;
+            if if_match != representation(record.clone()).1 {
+                return Err(sync_error(
+                    StatusCode::CONFLICT,
+                    "sync_conflict",
+                    "Record has changed since it was last read",
+                ));
+            }
+            if operation.action == "update" {
+                let Some((name, description)) = attributes(&request, false) else {
+                    return Err(sync_error(
+                        StatusCode::UNPROCESSABLE_ENTITY,
+                        "unprocessable_content",
+                        "Location attributes are invalid",
+                    ));
+                };
+                if name.as_ref().is_none_or(|name| name == &record.name)
+                    && description
+                        .as_ref()
+                        .is_none_or(|description| description == &record.description)
+                {
+                    return Ok(sync_result(record, true));
+                }
+                let before = snapshot(&record);
+                let mut active: stock_location::ActiveModel = record.into();
+                if let Some(name) = name {
+                    active.name = Set(name);
+                }
+                if let Some(description) = description {
+                    active.description = Set(description);
+                }
+                active.updated_at = Set(Utc::now().naive_utc());
+                let changed = active.update(db).await.map_err(sync_write_error)?;
+                location_change(
+                    db,
+                    context,
+                    request_id,
+                    &changed,
+                    "update",
+                    "update",
+                    Some(before),
+                    Some(snapshot(&changed)),
+                )
+                .await?;
+                Ok(sync_result(changed, true))
+            } else {
+                if !operation.attributes.is_empty() {
+                    return Err(sync_error(
+                        StatusCode::UNPROCESSABLE_ENTITY,
+                        "unprocessable_content",
+                        "Location attributes are invalid",
+                    ));
+                }
+                let cascade = delete_dependents(db, &record)
+                    .await
+                    .map_err(sync_write_error)?
+                    .ok_or_else(|| {
+                        sync_error(
+                            StatusCode::UNPROCESSABLE_ENTITY,
+                            "unprocessable_content",
+                            "Location cannot be deleted while administration history exists",
+                        )
+                    })?;
+                record_cascade_effects(db, context, request_id, &cascade).await?;
+                location_change(
+                    db,
+                    context,
+                    request_id,
+                    &record,
+                    "destroy",
+                    "delete",
+                    Some(snapshot(&record)),
+                    None,
+                )
+                .await?;
+                Ok(sync_result(record, false))
+            }
+        }
+        _ => Err(sync_error(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "sync_operation_unsupported",
+            "Operation is not supported offline",
+        )),
+    }
+}
+
+pub(super) async fn authorize_sync_replay(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    operation: &crate::sync_batch::SyncOperation,
+    saved: &Value,
+) -> Result<(), ApiError> {
+    if !manager(context) {
+        return Err(ApiError::forbidden());
+    }
+    let portable_id = saved
+        .get("record_portable_id")
+        .and_then(Value::as_str)
+        .ok_or_else(ApiError::forbidden)?;
+    if operation.action == "delete" {
+        let found = api_tombstone::Entity::find()
+            .filter(api_tombstone::Column::HouseholdId.eq(context.membership.household_id))
+            .filter(api_tombstone::Column::RecordType.eq("Location"))
+            .filter(api_tombstone::Column::RecordPortableId.eq(portable_id))
+            .one(db)
+            .await
+            .map_err(database_error)?;
+        if found.is_none() {
+            return Err(ApiError::forbidden());
+        }
+    } else if location(db, context.membership.household_id, portable_id, false)
+        .await?
+        .is_none()
+    {
+        return Err(ApiError::forbidden());
+    }
+    Ok(())
+}
+
+fn sync_result(record: stock_location::Model, live: bool) -> crate::sync_batch::SyncResult {
+    let etag = live.then(|| representation(record.clone()).1);
+    crate::sync_batch::SyncResult {
+        record_type: "Location",
+        record_id: Some(record.id),
+        record_portable_id: Some(record.portable_id),
+        etag,
+        replayed: None,
+    }
+}
+
+fn sync_error(status: StatusCode, code: &'static str, message: &'static str) -> ApiError {
+    ApiError {
+        status,
+        code,
+        message,
+        preserve_activity: false,
+    }
+}
+
+fn sync_write_error(error: DbErr) -> ApiError {
+    if matches!(
+        error.sql_err(),
+        Some(sea_orm::SqlErr::UniqueConstraintViolation(_))
+    ) {
+        sync_error(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "unprocessable_content",
+            "Location attributes are invalid",
+        )
+    } else if matches!(
+        error.sql_err(),
+        Some(sea_orm::SqlErr::ForeignKeyConstraintViolation(_))
+    ) {
+        sync_error(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "unprocessable_content",
+            "Location cannot be deleted while retained records exist",
+        )
+    } else {
+        database_error(error)
+    }
 }
 
 fn snapshot(record: &stock_location::Model) -> Value {
@@ -459,7 +703,7 @@ pub(super) async fn create(
             StatusCode::UNPROCESSABLE_ENTITY,
             "validation_failed",
             "Validation failed",
-            Some(json!({"location": ["is invalid"]})),
+            Some(attribute_errors(&body, true)),
         )
         .await;
     };
@@ -687,7 +931,7 @@ async fn update(
             StatusCode::UNPROCESSABLE_ENTITY,
             "validation_failed",
             "Validation failed",
-            Some(json!({"location": ["is invalid"]})),
+            Some(attribute_errors(&request, false)),
         )
         .await;
     };
@@ -971,6 +1215,139 @@ async fn record_cascade_effects(
         .await?;
     }
     Ok(())
+}
+
+pub(super) async fn delete_medication_tree(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    request_id: &str,
+    medication: &medication::Model,
+) -> Result<bool, ApiError> {
+    let household_id = context.membership.household_id;
+    if medication.household_id != household_id {
+        return Err(ApiError::not_found());
+    }
+    let schedules = schedule::Entity::find()
+        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .filter(schedule::Column::MedicationId.eq(medication.id))
+        .order_by_asc(schedule::Column::Id)
+        .lock_exclusive()
+        .all(db)
+        .await
+        .map_err(database_error)?;
+    let assignments = person_medication::Entity::find()
+        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .filter(person_medication::Column::MedicationId.eq(medication.id))
+        .order_by_asc(person_medication::Column::Id)
+        .lock_exclusive()
+        .all(db)
+        .await
+        .map_err(database_error)?;
+    let dosages = dosage::Entity::find()
+        .filter(dosage::Column::HouseholdId.eq(household_id))
+        .filter(dosage::Column::MedicationId.eq(medication.id))
+        .order_by_asc(dosage::Column::Id)
+        .lock_exclusive()
+        .all(db)
+        .await
+        .map_err(database_error)?;
+    let schedule_ids: Vec<i64> = schedules.iter().map(|row| row.id).collect();
+    let assignment_ids: Vec<i64> = assignments.iter().map(|row| row.id).collect();
+    let mut takes =
+        Condition::any().add(medication_take::Column::TakenFromMedicationId.eq(medication.id));
+    if !schedule_ids.is_empty() {
+        takes = takes.add(medication_take::Column::ScheduleId.is_in(schedule_ids.clone()));
+    }
+    if !assignment_ids.is_empty() {
+        takes =
+            takes.add(medication_take::Column::PersonMedicationId.is_in(assignment_ids.clone()));
+    }
+    if medication_take::Entity::find()
+        .filter(takes)
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .is_some()
+    {
+        return Ok(false);
+    }
+    if !schedule_ids.is_empty() || !assignment_ids.is_empty() {
+        let mut sources = Condition::any();
+        let mut pauses = Condition::any();
+        if !schedule_ids.is_empty() {
+            sources = sources.add(dose_occurrence::Column::ScheduleId.is_in(schedule_ids.clone()));
+            pauses = pauses.add(pause_period::Column::ScheduleId.is_in(schedule_ids.clone()));
+        }
+        if !assignment_ids.is_empty() {
+            sources = sources
+                .add(dose_occurrence::Column::PersonMedicationId.is_in(assignment_ids.clone()));
+            pauses =
+                pauses.add(pause_period::Column::PersonMedicationId.is_in(assignment_ids.clone()));
+        }
+        if dose_occurrence::Entity::find()
+            .filter(sources)
+            .one(db)
+            .await
+            .map_err(database_error)?
+            .is_some()
+            || pause_period::Entity::find()
+                .filter(pauses)
+                .one(db)
+                .await
+                .map_err(database_error)?
+                .is_some()
+        {
+            return Ok(false);
+        }
+    }
+    let retained: bool = db.query_one_raw(sea_orm::Statement::from_sql_and_values(
+        sea_orm::DbBackend::Postgres,
+        "SELECT EXISTS (SELECT 1 FROM health_event_medications WHERE household_id = $1 AND medication_id = $2 UNION ALL SELECT 1 FROM medication_review_prompts WHERE household_id = $1 AND (primary_medication_id = $2 OR interacting_medication_id = $2)) AS retained",
+        [household_id.into(), medication.id.into()],
+    )).await.map_err(database_error)?.ok_or_else(ApiError::internal)?
+        .try_get("", "retained").map_err(|_| ApiError::internal())?;
+    if retained {
+        return Ok(false);
+    }
+    if !schedule_ids.is_empty() {
+        schedule::Entity::delete_many()
+            .filter(schedule::Column::Id.is_in(schedule_ids))
+            .exec(db)
+            .await
+            .map_err(database_error)?;
+    }
+    if !assignment_ids.is_empty() {
+        person_medication::Entity::delete_many()
+            .filter(person_medication::Column::Id.is_in(assignment_ids))
+            .exec(db)
+            .await
+            .map_err(database_error)?;
+    }
+    if !dosages.is_empty() {
+        dosage::Entity::delete_many()
+            .filter(dosage::Column::MedicationId.eq(medication.id))
+            .exec(db)
+            .await
+            .map_err(database_error)?;
+    }
+    medication::Entity::delete_by_id(medication.id)
+        .exec(db)
+        .await
+        .map_err(database_error)?;
+    record_cascade_effects(
+        db,
+        context,
+        request_id,
+        &CascadeSnapshot {
+            medications: vec![medication.clone()],
+            dosages,
+            schedules,
+            assignments,
+            memberships: Vec::new(),
+        },
+    )
+    .await?;
+    Ok(true)
 }
 
 async fn delete_dependents(

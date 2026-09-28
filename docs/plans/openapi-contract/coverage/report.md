@@ -7,12 +7,34 @@ yq -o=json '.' docs/api/openapi.v1.yaml | jq -c --slurpfile routes docs/plans/op
 ```
 
 The specification has 118 operations across 77 paths, with 227 component schemas,
-12 component responses and 775 response cases. Of those operations, 102 are fully
-verified and 16 remain incomplete, all recorded as absent at this checkpoint.
-The original 89-operation
-baseline is now 73 complete and 16 remaining. Both baseline files are retained;
+12 component responses and 775 response cases. All 118 operations now have
+passing family-level HTTP evidence. The complete final regression has passed
+all 39 groups: 404 tests, zero remaining failures after two test-only repairs.
+`final-acceptance.tsv` records each group's project, source digest and result;
+`final-acceptance-initial.tsv` retains the two original failing rows.
+Publication and final-commit CI are recorded on PR #2302.
+The original 89-operation baseline has passing evidence for all 89 operations.
+Both baseline files are retained;
 the operation IDs, methods and paths still match the fixed 118-operation scope.
 Route presence and older Rails-derived tests alone receive no completion credit.
+
+## Final API families
+
+The final families add health events, portable exports/imports, sync snapshots,
+change feeds and all 34 batch action pairs, medication lookup, AI suggestions,
+and test-push delivery. `../final-families-review.md` records independent review
+findings and isolated acceptance projects. External success/failure evidence
+uses deterministic provider doubles; live-provider delivery is not claimed.
+
+The user approved health-event reassignment with manage access to both people.
+The final health gate passed 5 focused tests and 12 legacy tests in
+`mtcontract-3988dc0ca26940d7`. It covers denied reassignment without mutation,
+old/new sync visibility and cached replay after the original grant is revoked.
+
+The final regression runner, `task api:complete-acceptance`, runs 39 isolated
+groups in two independent lanes. Authentication-mutating suites receive fresh
+fixtures. Each project records its source digest and performs its own cleanup.
+UI/PWA work, memory benchmarking, deployment and merging remain separate.
 
 ## Health-history and medication-review reports
 
@@ -304,10 +326,15 @@ Initial write-route RED: seven compiled tests failed on absent POST/PATCH/PUT/DE
 
 The limiter uses an atomic mutex over at most 65,536 live IP/rule buckets per process. An expiry heap reclaims old windows without scanning the map on each request; capacity saturation rejects new clients with 429. The socket peer is authoritative by default. `API_TRUSTED_PROXY_IPS` explicitly names trusted proxy IPs; forwarding headers from other peers are ignored. Direct loopback is exempt, while configured loopback proxies are counted even when forwarding headers are missing or malformed. The default deployment has no trusted proxy list. The limiter contains no test-only HTTP clock endpoint or raised production threshold.
 
-## Remaining gaps
+## Remaining completion gates
 
-- **Implementation:** 53 documented method/path pairs still have no Rust route. Their identities remain in `operations.jsonl`.
-- **Untested behaviour:** 10 other route matches have no spec-traced runtime assertion. Eight location methods remain partial; `test-evidence.json` lists their remaining cases. All five dosage operations now have full bounded contract proof.
-- **Outside this API tranche:** Approved permission, retention and rate rules were documented from Rails policy, controller and initializer sources before Rust tests. Browser support sessions remain outside bearer authority. Fixture SQL only provisions isolated records. The Rails dosage schema changed in this remediation; no Rails controller, model or UI behavior changed. Web-only Rack Attack rules and other API operations remain separate work.
+All 118 fixed-scope operations have family-level runtime evidence and the final
+39-group regression is green. Publication and final-commit CI are recorded on
+PR #2302; runtime evidence alone does not establish remote CI success.
+Historical checkpoint sections above describe the evidence at their respective
+publication dates; they do not change the current operation counts.
 
-The isolated runner still rebuilds broad API and contract-test sources. Its cost is a tooling follow-up; it did not narrow the spec-derived assertions.
+UI/PWA parity, memory benchmarking, deployment, merging and live-provider
+delivery remain outside this API goal. Rails-encrypted fixture imports are
+verified; an optional Rust-export-to-Rails-import runtime check remains blocked
+by automatic approval review pending user approval.

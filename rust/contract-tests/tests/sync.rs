@@ -1,7 +1,7 @@
-use medtracker_contract_tests::{fixture, Fixture, Target};
+use medtracker_contract_tests::{Fixture, Target, fixture};
 use reqwest::blocking::Response;
-use serde_json::{json, Value};
-use time::OffsetDateTime;
+use serde_json::{Value, json};
+use time::{Duration, OffsetDateTime};
 
 fn body(response: Response) -> Value {
     response.json().expect("JSON response")
@@ -20,9 +20,19 @@ fn batch(target: &Target, fixture: &Fixture, token: &str, operations: Value) -> 
 }
 
 fn resource(target: &Target, fixture: &Fixture, kind: &str, id: &str) -> (Value, String) {
+    resource_with_token(target, fixture, kind, id, &fixture.access_token)
+}
+
+fn resource_with_token(
+    target: &Target,
+    fixture: &Fixture,
+    kind: &str,
+    id: &str,
+    token: &str,
+) -> (Value, String) {
     let response = target.get(
         &format!("{}/{}", snapshot_path(fixture, kind), id),
-        Some(&fixture.access_token),
+        Some(token),
     );
     assert_eq!(response.status().as_u16(), 200);
     let etag = response.headers()["etag"].to_str().unwrap().to_owned();
@@ -58,9 +68,11 @@ fn assert_batch_error(response: Response, status: u16, code: &str) {
         .to_owned();
     let error = body(response)["error"].clone();
     assert_eq!(error["code"], code);
-    assert!(error["message"]
-        .as_str()
-        .is_some_and(|text| !text.is_empty()));
+    assert!(
+        error["message"]
+            .as_str()
+            .is_some_and(|text| !text.is_empty())
+    );
     assert_eq!(error["request_id"], request_id);
 }
 
@@ -276,9 +288,11 @@ fn batch_pause_periods_create_close_replay_and_roll_back() {
         .iter()
         .filter(|event| event["metadata"]["status"] == 422)
         .collect();
-    assert!(rollback_audit
-        .iter()
-        .all(|event| event["event_type"] == "api.request"));
+    assert!(
+        rollback_audit
+            .iter()
+            .all(|event| event["event_type"] == "api.request")
+    );
     for (index, (_, kind, id)) in sources.iter().enumerate() {
         assert_eq!(
             sync_action_resource(&target, household, token, kind, id),
@@ -558,8 +572,9 @@ fn batch_assignment_actions_pause_resume_and_reorder_with_current_versions() {
     let client_ip = sync_action_client_ip(household);
     let request = json!({"batch": {"operations": [schedule_pause, assignment_pause]}});
     let first = target.post_json_from_local_client(&route, token, &client_ip, Some(&key), &request);
-    assert_eq!(first.status().as_u16(), 201);
+    let first_status = first.status().as_u16();
     let original = body(first);
+    assert_eq!(first_status, 201, "batch response: {original}");
     let results = original["data"]["results"].as_array().unwrap();
     assert_eq!(results.len(), 2);
     for (index, (_, kind, record_type, id)) in sources.iter().enumerate() {
@@ -753,6 +768,80 @@ fn batch_updates_and_deletes_care_records_with_operation_etags() {
 }
 
 #[test]
+fn batch_replay_preserves_update_then_delete_results_after_resource_is_gone() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let name = format!(
+        "Sync replay deletion {}",
+        OffsetDateTime::now_utc().unix_timestamp_nanos()
+    );
+    let created = target.post_json_authorized(
+        &snapshot_path(&fixture, "locations"),
+        &fixture.access_token,
+        &json!({"location": {"name": name}}),
+    );
+    assert_eq!(created.status().as_u16(), 201);
+    let id = body(created)["data"]["portable_id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let (_, etag) = resource(&target, &fixture, "locations", &id);
+    let request = json!({"batch": {"operations": [
+        {"resource_type": "location", "action": "update", "id": id,
+            "if_match": etag, "attributes": {"name": name}},
+        {"resource_type": "location", "action": "delete", "id": id,
+            "if_match": etag, "attributes": {}}
+    ]}});
+    let route = sync_action_path(fixture.household_id, "sync/batches");
+    let client_ip = sync_action_client_ip(fixture.household_id);
+    let key = format!(
+        "b0000000-0000-4000-8000-{:012x}",
+        OffsetDateTime::now_utc().unix_timestamp_nanos() as u64 & 0xffff_ffff_ffff
+    );
+    let first = target.post_json_from_local_client(
+        &route,
+        &fixture.access_token,
+        &client_ip,
+        Some(&key),
+        &request,
+    );
+    assert_eq!(first.status().as_u16(), 201);
+    let first_request_id = first.headers()["x-request-id"].to_str().unwrap().to_owned();
+    let first_body = body(first);
+    let results = first_body["data"]["results"].as_array().unwrap();
+    assert_eq!(results.len(), 2);
+    assert_eq!(results[0]["action"], "update");
+    assert_eq!(results[0]["record_portable_id"], id);
+    assert_eq!(results[0]["etag"], etag);
+    assert_eq!(results[1]["action"], "delete");
+    assert_eq!(results[1]["record_portable_id"], id);
+    assert_eq!(results[1].get("etag"), None);
+    assert_eq!(
+        target
+            .get(
+                &format!("{}/{}", snapshot_path(&fixture, "locations"), id),
+                Some(&fixture.access_token)
+            )
+            .status()
+            .as_u16(),
+        404
+    );
+
+    let replay = target.post_json_from_local_client(
+        &route,
+        &fixture.access_token,
+        &client_ip,
+        Some(&key),
+        &request,
+    );
+    assert_eq!(replay.status().as_u16(), 201);
+    assert_eq!(replay.headers()["idempotency-replayed"], "true");
+    let replay_request_id = replay.headers()["x-request-id"].to_str().unwrap();
+    assert_ne!(replay_request_id, first_request_id);
+    assert_eq!(body(replay), first_body);
+}
+
+#[test]
 fn batch_validates_actions_versions_and_current_permissions() {
     let target = Target::from_env();
     let fixture = fixture();
@@ -851,6 +940,596 @@ fn batch_inventory_action_updates_stock_and_order_status() {
     let (ordered, current_etag) = resource(&target, &fixture, "medications", id);
     assert_eq!(ordered["reorder_status"], "ordered");
     assert_eq!(result["etag"], current_etag);
+}
+
+#[test]
+fn batch_applies_inventory_and_dosage_actions_with_readback() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let name = format!("Sync batch inventory {}", fixture.household_id);
+    let created = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "medication", "action": "create", "attributes": {
+            "name": name, "location_id": fixture.primary_location_portable_id,
+            "dose_amount": "1.25", "dose_unit": "ml", "current_supply": "20.00",
+            "reorder_threshold": "5.00"
+        }}]),
+    );
+    assert_eq!(created.status().as_u16(), 201);
+    let result = body(created)["data"]["results"][0].clone();
+    let medication_id = assert_batch_result(&result, 0, "create", "Medication");
+    let (medication, mut etag) = resource(&target, &fixture, "medications", &medication_id);
+    assert_eq!(medication["name"], name);
+    assert_eq!(
+        medication["current_supply"]
+            .as_str()
+            .unwrap()
+            .parse::<f64>()
+            .unwrap(),
+        20.0
+    );
+    assert_eq!(result["etag"], etag);
+
+    let updated = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "medication", "action": "update", "id": medication_id,
+            "if_match": etag, "attributes": {"description": "Batch inventory update"}}]),
+    );
+    assert_eq!(updated.status().as_u16(), 201);
+    let result = body(updated)["data"]["results"][0].clone();
+    assert_eq!(
+        assert_batch_result(&result, 0, "update", "Medication"),
+        medication_id
+    );
+    let (medication, next_etag) = resource(&target, &fixture, "medications", &medication_id);
+    assert_eq!(medication["description"], "Batch inventory update");
+    assert_eq!(result["etag"], next_etag);
+    etag = next_etag;
+
+    let adjusted = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "medication", "action": "adjust_inventory", "id": medication_id,
+            "if_match": etag, "attributes": {"new_quantity": "18.50", "reason": "Batch count"}}]),
+    );
+    assert_eq!(adjusted.status().as_u16(), 201);
+    let result = body(adjusted)["data"]["results"][0].clone();
+    assert_eq!(
+        assert_batch_result(&result, 0, "adjust_inventory", "Medication"),
+        medication_id
+    );
+    let (medication, next_etag) = resource(&target, &fixture, "medications", &medication_id);
+    assert_eq!(
+        medication["current_supply"]
+            .as_str()
+            .unwrap()
+            .parse::<f64>()
+            .unwrap(),
+        18.5
+    );
+    assert_eq!(result["etag"], next_etag);
+    etag = next_etag;
+
+    let ordered = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "medication", "action": "mark_as_ordered", "id": medication_id,
+            "if_match": etag, "attributes": {"supplier": "Batch pharmacy", "quantity": "7.50",
+                "expected_arrival_on": "2026-10-03"}}]),
+    );
+    assert_eq!(ordered.status().as_u16(), 201);
+    let result = body(ordered)["data"]["results"][0].clone();
+    assert_eq!(
+        assert_batch_result(&result, 0, "mark_as_ordered", "Medication"),
+        medication_id
+    );
+    let (medication, next_etag) = resource(&target, &fixture, "medications", &medication_id);
+    assert_eq!(medication["reorder_status"], "ordered");
+    assert_eq!(result["etag"], next_etag);
+    etag = next_etag;
+
+    let received = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "medication", "action": "mark_as_received", "id": medication_id,
+            "if_match": etag, "attributes": {}}]),
+    );
+    assert_eq!(received.status().as_u16(), 201);
+    let result = body(received)["data"]["results"][0].clone();
+    assert_eq!(
+        assert_batch_result(&result, 0, "mark_as_received", "Medication"),
+        medication_id
+    );
+    let (medication, etag) = resource(&target, &fixture, "medications", &medication_id);
+    assert_eq!(medication["reorder_status"], "received");
+    assert_eq!(result["etag"], etag);
+
+    let removed = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "medication", "action": "remove_stock", "id": medication_id,
+            "attributes": {"quantity": "1.25", "reason": "dropped",
+                "submission_id": "b1000000-0000-4000-8000-000000000021"}}]),
+    );
+    assert_eq!(removed.status().as_u16(), 201);
+    let result = body(removed)["data"]["results"][0].clone();
+    assert_eq!(
+        assert_batch_result(&result, 0, "remove_stock", "Medication"),
+        medication_id
+    );
+    let (medication, _) = resource(&target, &fixture, "medications", &medication_id);
+    assert_eq!(medication["current_supply"], "17.25");
+
+    let dosage = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "medication_dosage_option", "action": "create", "attributes": {
+            "medication_id": medication_id, "amount": "1.25", "unit": "tablet",
+            "frequency": "daily", "description": "Batch dosage option",
+            "default_max_daily_doses": 2, "default_min_hours_between_doses": "4.0",
+            "default_dose_cycle": "daily"
+        }}]),
+    );
+    assert_eq!(dosage.status().as_u16(), 201);
+    let result = body(dosage)["data"]["results"][0].clone();
+    let dosage_id = assert_batch_result(&result, 0, "create", "MedicationDosageOption");
+    let (option, etag) = resource(&target, &fixture, "dosage_options", &dosage_id);
+    assert_eq!(option["medication_id"], medication["id"]);
+    assert_eq!(option["amount"], "1.25");
+    assert_eq!(result["etag"], etag);
+
+    let updated_dosage = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "medication_dosage_option", "action": "update", "id": dosage_id,
+            "if_match": etag, "attributes": {"amount": "2.50"}}]),
+    );
+    assert_eq!(updated_dosage.status().as_u16(), 201);
+    let result = body(updated_dosage)["data"]["results"][0].clone();
+    assert_eq!(
+        assert_batch_result(&result, 0, "update", "MedicationDosageOption"),
+        dosage_id
+    );
+    let (option, etag) = resource(&target, &fixture, "dosage_options", &dosage_id);
+    assert_eq!(
+        option["amount"].as_str().unwrap().parse::<f64>().unwrap(),
+        2.5
+    );
+    assert_eq!(result["etag"], etag);
+
+    let delete_medication = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "medication", "action": "create", "attributes": {
+            "name": format!("Sync batch disposable {}", fixture.household_id),
+            "location_id": fixture.primary_location_portable_id, "reorder_threshold": "1.00"
+        }}]),
+    );
+    assert_eq!(delete_medication.status().as_u16(), 201);
+    let disposable_id = body(delete_medication)["data"]["results"][0]["record_portable_id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let (_, disposable_etag) = resource(&target, &fixture, "medications", &disposable_id);
+    let deleted = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "medication", "action": "delete", "id": disposable_id,
+            "if_match": disposable_etag, "attributes": {}}]),
+    );
+    assert_eq!(deleted.status().as_u16(), 201);
+    let result = body(deleted)["data"]["results"][0].clone();
+    assert_eq!(result["action"], "delete");
+    assert_eq!(result["record_type"], "Medication");
+    assert_eq!(result["record_portable_id"], disposable_id);
+    assert!(result.get("etag").is_none());
+    assert_eq!(
+        target
+            .get(
+                &format!(
+                    "{}/{}",
+                    snapshot_path(&fixture, "medications"),
+                    disposable_id
+                ),
+                Some(&fixture.access_token)
+            )
+            .status()
+            .as_u16(),
+        404
+    );
+}
+
+#[test]
+fn batch_applies_person_health_and_review_actions_with_readback() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let suffix = OffsetDateTime::now_utc().unix_timestamp_nanos();
+    let person_name = format!("Sync batch person {suffix}");
+    let email = format!("sync-batch-{suffix}@example.test");
+    let created = batch(
+        &target,
+        &fixture,
+        &fixture.manager_mobile_oauth_token,
+        json!([{"resource_type": "person", "action": "create", "attributes": {
+            "name": person_name, "email": email, "date_of_birth": "1980-01-01",
+            "person_type": "adult", "has_capacity": true
+        }}]),
+    );
+    assert_eq!(created.status().as_u16(), 201);
+    let result = body(created)["data"]["results"][0].clone();
+    let person_id = assert_batch_result(&result, 0, "create", "Person");
+    let (person, etag) = resource_with_token(
+        &target,
+        &fixture,
+        "people",
+        &person_id,
+        &fixture.manager_mobile_oauth_token,
+    );
+    assert_eq!(person["name"], person_name);
+    assert_eq!(person["email"], email);
+    assert_eq!(person["person_type"], "adult");
+    assert_eq!(person["has_capacity"], true);
+    assert_eq!(result["etag"], etag);
+
+    let updated_name = format!("{person_name} updated");
+    let updated = batch(
+        &target,
+        &fixture,
+        &fixture.manager_mobile_oauth_token,
+        json!([{"resource_type": "person", "action": "update", "id": person_id,
+            "if_match": etag, "attributes": {"name": updated_name}}]),
+    );
+    assert_eq!(updated.status().as_u16(), 201);
+    let result = body(updated)["data"]["results"][0].clone();
+    assert_eq!(
+        assert_batch_result(&result, 0, "update", "Person"),
+        person_id
+    );
+    let (person, etag) = resource_with_token(
+        &target,
+        &fixture,
+        "people",
+        &person_id,
+        &fixture.manager_mobile_oauth_token,
+    );
+    assert_eq!(person["name"], updated_name);
+    assert_eq!(person["email"], email);
+    assert_eq!(result["etag"], etag);
+
+    let health_event = target.post_json_authorized(
+        &snapshot_path(&fixture, "health_events"),
+        &fixture.access_token,
+        &json!({"health_event": {
+            "person_id": fixture.managed_person_portable_id,
+            "event_kind": "illness",
+            "severity": "mild",
+            "title": format!("Sync batch event {suffix}"),
+            "started_on": OffsetDateTime::now_utc().date().to_string()
+        }}),
+    );
+    assert_eq!(health_event.status().as_u16(), 201);
+    let health_event = body(health_event)["data"].clone();
+    let event_id = health_event["portable_id"].as_str().unwrap().to_owned();
+    let (_, event_etag) = resource(&target, &fixture, "health_events", &event_id);
+    let changed_title = format!("Sync batch event updated {suffix}");
+    let updated = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "health_event", "action": "update", "id": event_id,
+            "if_match": event_etag, "attributes": {"title": changed_title}}]),
+    );
+    assert_eq!(updated.status().as_u16(), 201);
+    let result = body(updated)["data"]["results"][0].clone();
+    assert_eq!(
+        assert_batch_result(&result, 0, "update", "HealthEvent"),
+        event_id
+    );
+    let (event, event_etag) = resource(&target, &fixture, "health_events", &event_id);
+    assert_eq!(event["title"], changed_title);
+    assert_eq!(result["etag"], event_etag);
+
+    let deleted = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "health_event", "action": "delete", "id": event_id,
+            "if_match": event_etag, "attributes": {}}]),
+    );
+    assert_eq!(deleted.status().as_u16(), 201);
+    let result = body(deleted)["data"]["results"][0].clone();
+    assert_eq!(result["action"], "delete");
+    assert_eq!(result["record_type"], "HealthEvent");
+    assert_eq!(result["record_portable_id"], event_id);
+    assert!(result.get("etag").is_none());
+    assert_eq!(
+        target
+            .get(
+                &format!("{}/{}", snapshot_path(&fixture, "health_events"), event_id),
+                Some(&fixture.access_token)
+            )
+            .status()
+            .as_u16(),
+        404
+    );
+
+    let prompt_path = format!(
+        "{}/{}",
+        snapshot_path(&fixture, "medication_review_prompts"),
+        fixture.edit_review_prompt_id
+    );
+    let prompt = target.get(&prompt_path, Some(&fixture.access_token));
+    assert_eq!(prompt.status().as_u16(), 200);
+    let prompt_etag = prompt.headers()["etag"].to_str().unwrap().to_owned();
+    let updated = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "medication_review_prompt", "action": "update",
+            "id": fixture.edit_review_prompt_id.to_string(), "if_match": prompt_etag,
+            "attributes": {"status": "not_relevant"}}]),
+    );
+    assert_eq!(updated.status().as_u16(), 201);
+    let result = body(updated)["data"]["results"][0].clone();
+    assert_eq!(result["action"], "update");
+    assert_eq!(result["record_type"], "MedicationReviewPrompt");
+    assert_eq!(
+        result["record_id"],
+        fixture.edit_review_prompt_id.to_string()
+    );
+    let updated_prompt = target.get(&prompt_path, Some(&fixture.access_token));
+    assert_eq!(updated_prompt.status().as_u16(), 200);
+    assert_eq!(body(updated_prompt)["data"]["status"], "not_relevant");
+}
+
+#[test]
+fn batch_creates_and_reopens_dose_occurrences_with_readback() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let today = OffsetDateTime::now_utc().date();
+    let start_date = (today - Duration::days(1)).to_string();
+    let end_date = (today + Duration::days(30)).to_string();
+    let schedule = target.post_json_authorized(
+        &snapshot_path(&fixture, "schedules"),
+        &fixture.access_token,
+        &json!({"schedule": {
+            "person_id": fixture.managed_person_portable_id,
+            "medication_id": fixture.managed_medication_portable_id,
+            "dose_amount": "1.25",
+            "dose_unit": "ml",
+            "frequency": "Daily",
+            "start_date": start_date,
+            "end_date": end_date,
+            "max_daily_doses": 1
+        }}),
+    );
+    assert_eq!(schedule.status().as_u16(), 201);
+    let schedule = body(schedule)["data"].clone();
+    let source_id = schedule["portable_id"].as_str().unwrap().to_owned();
+    let occurrence_path = format!(
+        "{}/dose_occurrences?start_date={today}&end_date={today}",
+        snapshot_path(&fixture, &format!("schedules/{}", schedule["id"]))
+    );
+    let occurrences = target.get(&occurrence_path, Some(&fixture.access_token));
+    assert_eq!(occurrences.status().as_u16(), 200);
+    let open = body(occurrences)["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["outcome"] == "open")
+        .expect("a due open schedule occurrence")
+        .clone();
+    let key = open["key"].as_str().unwrap().to_owned();
+
+    let marked = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "medication_dose_occurrence", "action": "create",
+            "attributes": {"source_type": "schedule", "source_id": source_id,
+                "occurrence_key": key, "outcome": "not_taken", "note": "Offline resting"}}]),
+    );
+    assert_eq!(marked.status().as_u16(), 201);
+    let result = body(marked)["data"]["results"][0].clone();
+    let occurrence_id = assert_batch_result(&result, 0, "create", "MedicationDoseOccurrence");
+    let rows = target.get(&occurrence_path, Some(&fixture.access_token));
+    assert_eq!(rows.status().as_u16(), 200);
+    let marked_row = body(rows)["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["key"] == key)
+        .expect("marked occurrence")
+        .clone();
+    assert_eq!(marked_row["outcome"], "not_taken");
+    assert_eq!(marked_row["note"], "Offline resting");
+    assert_eq!(result["etag"], marked_row["etag"]);
+
+    let reopened = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "medication_dose_occurrence", "action": "update",
+            "id": occurrence_id, "if_match": result["etag"],
+            "attributes": {"outcome": "open"}}]),
+    );
+    assert_eq!(reopened.status().as_u16(), 201);
+    let result = body(reopened)["data"]["results"][0].clone();
+    assert_eq!(
+        assert_batch_result(&result, 0, "update", "MedicationDoseOccurrence"),
+        occurrence_id
+    );
+    let rows = target.get(&occurrence_path, Some(&fixture.access_token));
+    assert_eq!(rows.status().as_u16(), 200);
+    let reopened_rows = body(rows);
+    let reopened_row = reopened_rows["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["key"] == key)
+        .expect("reopened occurrence");
+    assert_eq!(reopened_row["outcome"], "open");
+    assert!(reopened_row["note"].is_null());
+}
+
+#[test]
+fn batch_applies_schedule_and_person_medication_crud_with_readback() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let today = OffsetDateTime::now_utc().date();
+    let start_date = (today - Duration::days(1)).to_string();
+    let end_date = (today + Duration::days(30)).to_string();
+    let schedule_created = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "schedule", "action": "create", "attributes": {
+            "person_id": fixture.managed_person_portable_id,
+            "medication_id": fixture.managed_medication_portable_id,
+            "dose_amount": "1.25", "dose_unit": "ml", "frequency": "Every Monday",
+            "start_date": start_date, "end_date": end_date, "max_daily_doses": 2,
+            "min_hours_between_doses": "8.0", "dose_cycle": "weekly",
+            "schedule_type": "weekly", "schedule_config": {"weekdays": ["monday"], "times": ["08:00", "20:00"]},
+            "notes": "Batch-created schedule"
+        }}]),
+    );
+    assert_eq!(schedule_created.status().as_u16(), 201);
+    let result = body(schedule_created)["data"]["results"][0].clone();
+    let schedule_id = assert_batch_result(&result, 0, "create", "Schedule");
+    let (schedule, etag) = resource(&target, &fixture, "schedules", &schedule_id);
+    assert_eq!(schedule["notes"], "Batch-created schedule");
+    assert_eq!(result["etag"], etag);
+
+    let schedule_updated = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "schedule", "action": "update", "id": schedule_id,
+            "if_match": etag, "attributes": {"notes": "Batch-updated schedule"}}]),
+    );
+    assert_eq!(schedule_updated.status().as_u16(), 201);
+    let result = body(schedule_updated)["data"]["results"][0].clone();
+    assert_eq!(
+        assert_batch_result(&result, 0, "update", "Schedule"),
+        schedule_id
+    );
+    let (schedule, etag) = resource(&target, &fixture, "schedules", &schedule_id);
+    assert_eq!(schedule["notes"], "Batch-updated schedule");
+    assert_eq!(result["etag"], etag);
+
+    let schedule_deleted = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "schedule", "action": "delete", "id": schedule_id,
+            "if_match": etag, "attributes": {}}]),
+    );
+    assert_eq!(schedule_deleted.status().as_u16(), 201);
+    let result = body(schedule_deleted)["data"]["results"][0].clone();
+    assert_eq!(result["action"], "delete");
+    assert_eq!(result["record_type"], "Schedule");
+    assert_eq!(result["record_portable_id"], schedule_id);
+    assert!(result.get("etag").is_none());
+    assert_eq!(
+        target
+            .get(
+                &format!("{}/{}", snapshot_path(&fixture, "schedules"), schedule_id),
+                Some(&fixture.access_token)
+            )
+            .status()
+            .as_u16(),
+        404
+    );
+
+    let assignment_medication = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "medication", "action": "create", "attributes": {
+            "name": format!("Sync assignment medication {}", fixture.household_id),
+            "location_id": fixture.primary_location_portable_id, "reorder_threshold": "1.00"
+        }}]),
+    );
+    assert_eq!(assignment_medication.status().as_u16(), 201);
+    let assignment_medication_id =
+        body(assignment_medication)["data"]["results"][0]["record_portable_id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+    let assignment_created = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "person_medication", "action": "create", "attributes": {
+            "person_id": fixture.managed_person_portable_id,
+            "medication_id": assignment_medication_id,
+            "dose_amount": "1.25", "dose_unit": "ml", "administration_kind": "as_needed"
+        }}]),
+    );
+    assert_eq!(assignment_created.status().as_u16(), 201);
+    let result = body(assignment_created)["data"]["results"][0].clone();
+    let assignment_id = assert_batch_result(&result, 0, "create", "PersonMedication");
+    let (assignment, etag) = resource(&target, &fixture, "person_medications", &assignment_id);
+    assert_eq!(assignment["dose_amount"], "1.25");
+    assert_eq!(assignment["administration_kind"], "as_needed");
+    assert_eq!(result["etag"], etag);
+
+    let assignment_updated = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "person_medication", "action": "update", "id": assignment_id,
+            "if_match": etag, "attributes": {"notes": "Batch-updated assignment"}}]),
+    );
+    assert_eq!(assignment_updated.status().as_u16(), 201);
+    let result = body(assignment_updated)["data"]["results"][0].clone();
+    assert_eq!(
+        assert_batch_result(&result, 0, "update", "PersonMedication"),
+        assignment_id
+    );
+    let (assignment, etag) = resource(&target, &fixture, "person_medications", &assignment_id);
+    assert_eq!(assignment["notes"], "Batch-updated assignment");
+    assert_eq!(result["etag"], etag);
+
+    let assignment_deleted = batch(
+        &target,
+        &fixture,
+        &fixture.access_token,
+        json!([{"resource_type": "person_medication", "action": "delete", "id": assignment_id,
+            "if_match": etag, "attributes": {}}]),
+    );
+    assert_eq!(assignment_deleted.status().as_u16(), 201);
+    let result = body(assignment_deleted)["data"]["results"][0].clone();
+    assert_eq!(result["action"], "delete");
+    assert_eq!(result["record_type"], "PersonMedication");
+    assert_eq!(result["record_portable_id"], assignment_id);
+    assert!(result.get("etag").is_none());
+    assert_eq!(
+        target
+            .get(
+                &format!(
+                    "{}/{}",
+                    snapshot_path(&fixture, "person_medications"),
+                    assignment_id
+                ),
+                Some(&fixture.access_token)
+            )
+            .status()
+            .as_u16(),
+        404
+    );
 }
 
 #[test]
@@ -965,11 +1644,13 @@ fn batch_rolls_back_created_resource_after_a_late_stale_operation() {
         &snapshot_path(&fixture, "locations"),
         Some(&fixture.access_token),
     ));
-    assert!(locations["data"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .all(|row| row["name"] != "Discarded batch location"));
+    assert!(
+        locations["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|row| row["name"] != "Discarded batch location")
+    );
     let feed = changes(&target, &fixture, &fixture.access_token, cursor);
     assert_eq!(
         location_feed_identifiers(&feed),
@@ -1001,11 +1682,13 @@ fn location_feed_identifiers_detect_an_event_without_a_record_body() {
         "record_type": "Location", "record_portable_id": "22222222-2222-4222-8222-222222222222",
         "action": "delete", "metadata": {}
     }]});
-    assert!(leaked_change["changes"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .all(|row| row["record"]["name"] != "Discarded batch location"));
+    assert!(
+        leaked_change["changes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|row| row["record"]["name"] != "Discarded batch location")
+    );
     assert_eq!(location_feed_identifiers(&before), (vec![], vec![]));
     assert_eq!(
         location_feed_identifiers(&leaked_change),
@@ -1201,9 +1884,11 @@ fn sync_v2_uses_current_view_scope_and_exposes_portable_clinical_relations() {
     let data = &snapshot["data"];
     assert_eq!(data["format"], "medtracker.portable.v2");
     assert_eq!(data["scope"], "single_person");
-    assert!(data["cursor"]
-        .as_str()
-        .is_some_and(|cursor| !cursor.is_empty()));
+    assert!(
+        data["cursor"]
+            .as_str()
+            .is_some_and(|cursor| !cursor.is_empty())
+    );
     let collections = records(&snapshot);
     assert_portable_records(collections, true);
     assert_hidden_and_foreign_records_absent(collections, &fixture);
@@ -1262,9 +1947,11 @@ fn sync_v2_uses_current_view_scope_and_exposes_portable_clinical_relations() {
         occurrence["source_portable_id"],
         fixture.historical_schedule_portable_id
     );
-    assert!(occurrence["etag"]
-        .as_str()
-        .is_some_and(|tag| !tag.is_empty()));
+    assert!(
+        occurrence["etag"]
+            .as_str()
+            .is_some_and(|tag| !tag.is_empty())
+    );
     let period = collections["medication_pause_periods"]
         .as_array()
         .unwrap()
@@ -1568,9 +2255,11 @@ fn change_feed_retains_inclusive_ordered_writes_and_tombstone_metadata() {
     assert_eq!(response.status().as_u16(), 204);
 
     let feed = changes(&target, &fixture, &fixture.access_token, cursor);
-    assert!(feed["cursor"]
-        .as_str()
-        .is_some_and(|value| !value.is_empty()));
+    assert!(
+        feed["cursor"]
+            .as_str()
+            .is_some_and(|value| !value.is_empty())
+    );
     let events = feed["changes"].as_array().expect("changes array");
     let own_events: Vec<_> = events
         .iter()
@@ -1588,9 +2277,11 @@ fn change_feed_retains_inclusive_ordered_writes_and_tombstone_metadata() {
             fixture.managed_person_portable_id
         );
         assert!(event["id"].as_i64().is_some());
-        assert!(event["occurred_at"]
-            .as_str()
-            .is_some_and(|value| value.ends_with('Z')));
+        assert!(
+            event["occurred_at"]
+                .as_str()
+                .is_some_and(|value| value.ends_with('Z'))
+        );
     }
     assert!(events.windows(2).all(|pair| {
         let previous = pair[0]["occurred_at"].as_str().unwrap();
@@ -1603,11 +2294,13 @@ fn change_feed_retains_inclusive_ordered_writes_and_tombstone_metadata() {
         &fixture.access_token,
         own_events[0]["occurred_at"].as_str().unwrap(),
     );
-    assert!(inclusive["changes"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|row| row["id"] == own_events[0]["id"]));
+    assert!(
+        inclusive["changes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["id"] == own_events[0]["id"])
+    );
     let location_change =
         row_for_portable_id(&feed["changes"], location_id).expect("location create change");
     assert_eq!(location_change["record_type"], "Location");
@@ -1622,9 +2315,11 @@ fn change_feed_retains_inclusive_ordered_writes_and_tombstone_metadata() {
     assert_eq!(tombstone["action"], "delete");
     assert_eq!(tombstone["metadata"]["portable_id"], location_id);
     assert!(tombstone["id"].as_i64().is_some());
-    assert!(tombstone["deleted_at"]
-        .as_str()
-        .is_some_and(|value| value.ends_with('Z')));
+    assert!(
+        tombstone["deleted_at"]
+            .as_str()
+            .is_some_and(|value| value.ends_with('Z'))
+    );
     assert!(second_tombstone["id"].as_i64() > tombstone["id"].as_i64());
     let tombstones = feed["tombstones"].as_array().unwrap();
     assert!(tombstones.windows(2).all(|pair| {
@@ -1840,11 +2535,11 @@ fn change_feed_hides_ungranted_person_events_and_tombstones() {
     let visible_pause_response =
         target.patch_json(&visible_pause, &fixture.access_token, &json!({}));
     assert_eq!(visible_pause_response.status().as_u16(), 200);
-    let visible_pause_id = body(visible_pause_response)["data"]["current_pause_period"]
-        ["portable_id"]
-        .as_str()
-        .expect("visible pause ID")
-        .to_owned();
+    let visible_pause_id =
+        body(visible_pause_response)["data"]["current_pause_period"]["portable_id"]
+            .as_str()
+            .expect("visible pause ID")
+            .to_owned();
     let hidden_pause = format!(
         "{}/{}{}",
         snapshot_path(&fixture, "schedules"),
@@ -1854,11 +2549,11 @@ fn change_feed_hides_ungranted_person_events_and_tombstones() {
     let hidden_pause_response =
         target.patch_json(&hidden_pause, &fixture.feed_access_token, &json!({}));
     assert_eq!(hidden_pause_response.status().as_u16(), 200);
-    let hidden_pause_id = body(hidden_pause_response)["data"]["current_pause_period"]
-        ["portable_id"]
-        .as_str()
-        .expect("hidden pause ID")
-        .to_owned();
+    let hidden_pause_id =
+        body(hidden_pause_response)["data"]["current_pause_period"]["portable_id"]
+            .as_str()
+            .expect("hidden pause ID")
+            .to_owned();
 
     let hidden_assignment_path = format!(
         "{}/{}",

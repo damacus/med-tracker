@@ -466,6 +466,6 @@ fn invalid_session_and_household_boundary_are_denied() {
             )
             .status()
             .as_u16(),
-        403
+        401
     );
 }

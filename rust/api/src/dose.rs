@@ -378,7 +378,7 @@ fn success_response(
     response
 }
 
-fn take_etag(take: &medication_take::Model) -> String {
+pub(super) fn take_etag(take: &medication_take::Model) -> String {
     let input = format!(
         "MedicationTake:{}:{}",
         take.id,
@@ -387,7 +387,59 @@ fn take_etag(take: &medication_take::Model) -> String {
     format!("\"{:x}\"", Sha256::digest(input.as_bytes()))
 }
 
-async fn serialize(
+pub(super) async fn authorize_sync_replay(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    operation: &crate::sync_batch::SyncOperation,
+    saved: &Value,
+) -> Result<(), ApiError> {
+    let portable_id = saved
+        .get("record_portable_id")
+        .and_then(Value::as_str)
+        .ok_or_else(ApiError::forbidden)?;
+    let take = medication_take::Entity::find()
+        .filter(medication_take::Column::HouseholdId.eq(context.membership.household_id))
+        .filter(medication_take::Column::PortableId.eq(portable_id))
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(ApiError::forbidden)?;
+    let source = if let Some(id) = take.schedule_id {
+        schedule::Entity::find_by_id(id)
+            .one(db)
+            .await
+            .map_err(database_error)?
+            .filter(|row| row.household_id == context.membership.household_id)
+            .map(|row| ("schedule", row.id, row.portable_id, row.person_id))
+    } else if let Some(id) = take.person_medication_id {
+        person_medication::Entity::find_by_id(id)
+            .one(db)
+            .await
+            .map_err(database_error)?
+            .filter(|row| row.household_id == context.membership.household_id)
+            .map(|row| ("person_medication", row.id, row.portable_id, row.person_id))
+    } else {
+        None
+    }
+    .ok_or_else(ApiError::forbidden)?;
+    if !allowed_person(db, context, source.3, true).await?
+        || operation
+            .attributes
+            .get("source_type")
+            .and_then(Value::as_str)
+            != Some(source.0)
+        || !operation
+            .attributes
+            .get("source_id")
+            .and_then(Value::as_str)
+            .is_some_and(|id| id == source.2 || id.parse::<i64>().ok() == Some(source.1))
+    {
+        return Err(ApiError::forbidden());
+    }
+    Ok(())
+}
+
+pub(super) async fn serialize(
     db: &DatabaseTransaction,
     takes: &[medication_take::Model],
 ) -> Result<Vec<Value>, ApiError> {
@@ -1712,7 +1764,21 @@ pub(super) async fn create_in_transaction(
             .await
             .map_err(database_error)?
         {
-            if !replay_matches(db, context, household_id, &existing, attributes).await? {
+            let replay =
+                match replay_matches(db, context, household_id, &existing, attributes).await {
+                    Ok(replay) => replay,
+                    Err(problem) if problem.status == StatusCode::FORBIDDEN => {
+                        prepare(db, context, household_id, attributes).await?;
+                        return Err(ApiError {
+                            status: StatusCode::CONFLICT,
+                            code: "idempotency_key_unavailable",
+                            message: "Medication take idempotency key is unavailable",
+                            preserve_activity: false,
+                        });
+                    }
+                    Err(problem) => return Err(problem),
+                };
+            if !replay {
                 return Err(error(
                     StatusCode::CONFLICT,
                     "client_uuid was already used for a different dose",

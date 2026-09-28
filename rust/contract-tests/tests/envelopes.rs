@@ -1,5 +1,8 @@
-use medtracker_contract_tests::{fixture, Target};
-use serde_json::{json, Value};
+use medtracker_contract_tests::{Target, fixture};
+use reqwest::blocking::Client;
+use serde_json::{Value, json};
+use std::env;
+use std::time::Duration;
 
 fn assert_error(
     response: reqwest::blocking::Response,
@@ -73,10 +76,12 @@ fn invalid_profile_preference_is_rejected_without_changing_account_state() {
     let path = format!("/api/v1/households/{}/profile", fixture.household_id);
     let before = target.get(&path, Some(&fixture.access_token));
     assert_eq!(before.status().as_u16(), 200);
-    assert!(before.headers()["cache-control"]
-        .to_str()
-        .unwrap()
-        .contains("no-store"));
+    assert!(
+        before.headers()["cache-control"]
+            .to_str()
+            .unwrap()
+            .contains("no-store")
+    );
     let original: Value = before.json().expect("JSON profile");
     assert_eq!(
         original["data"]["account_id"],
@@ -104,21 +109,21 @@ fn invalid_profile_preference_is_rejected_without_changing_account_state() {
 #[test]
 fn rate_limited_api_response_has_retry_metadata() {
     let fixture = fixture();
-    let target = Target::from_env();
-    let path = format!(
-        "/api/v1/households/{}/data_exports/health_data",
+    let origin = env::var("CONTRACT_RATE_BASE_URL").expect("non-loopback API base URL");
+    let url = format!(
+        "{origin}/api/v1/households/{}/data_exports/health_data",
         fixture.household_id
     );
-    let client_ip = format!(
-        "198.18.{}.{}",
-        (fixture.household_id / 256) % 256,
-        fixture.household_id % 256
-    );
+    let client = Client::builder()
+        .no_proxy()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .expect("HTTP client");
     for _ in 0..10 {
-        let response = target.get_from_local_client(&path, &client_ip);
+        let response = client.get(&url).send().expect("data export request");
         assert_eq!(response.status().as_u16(), 401);
     }
-    let response = target.get_from_local_client(&path, &client_ip);
+    let response = client.get(&url).send().expect("rate-limited data export");
     assert_eq!(response.status().as_u16(), 429);
     assert_eq!(response.headers()["ratelimit-limit"], "10");
     assert_eq!(response.headers()["ratelimit-remaining"], "0");

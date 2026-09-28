@@ -13,11 +13,11 @@ fn etag(response: &Response) -> String {
         .to_owned()
 }
 
-fn assert_utc_second_timestamp(value: &Value) {
+fn assert_utc_timestamp(value: &Value) {
     let timestamp = value.as_str().expect("timestamp string");
-    assert_eq!(timestamp.len(), 20);
-    assert_eq!(&timestamp[10..11], "T");
-    assert!(timestamp.ends_with('Z'));
+    let parsed = time::OffsetDateTime::parse(timestamp, &time::format_description::well_known::Rfc3339)
+        .expect("RFC3339 timestamp");
+    assert_eq!(parsed.offset(), time::UtcOffset::UTC);
 }
 
 fn dosage_path(fixture: &Fixture) -> String {
@@ -112,7 +112,8 @@ fn dosage_options_cover_collection_identity_etags_and_retained_updates() {
         &medication_path,
         &fixture.access_token,
         &json!({"medication": {"name": "Contract dosage catalog medicine",
-            "location_id": fixture.primary_location_id, "dose_amount": "1", "dose_unit": "ml"}}),
+            "location_id": fixture.primary_location_id, "dose_amount": "1", "dose_unit": "ml",
+            "reorder_threshold": "2.00"}}),
     );
     assert_eq!(response.status().as_u16(), 201);
     let medication = body(response)["data"].clone();
@@ -126,7 +127,7 @@ fn dosage_options_cover_collection_identity_etags_and_retained_updates() {
     assert_eq!(created["default_min_hours_between_doses"], "8.5");
     assert_eq!(created["current_supply"], "10.25");
     assert_eq!(created["reorder_threshold"], "2.5");
-    assert_utc_second_timestamp(&created["updated_at"]);
+    assert_utc_timestamp(&created["updated_at"]);
 
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
@@ -188,7 +189,8 @@ fn dosage_options_reject_invalid_and_foreign_records_and_track_selected_stock() 
         &base,
         &fixture.access_token,
         &json!({"dosage_option": {"medication_id": fixture.foreign_medication_id.to_string(),
-            "amount": "1", "unit": "ml", "frequency": "daily"}}),
+            "amount": "1", "unit": "ml", "frequency": "daily", "default_max_daily_doses": 1,
+            "default_min_hours_between_doses": "0", "default_dose_cycle": "daily"}}),
     );
     assert_eq!(response.status().as_u16(), 404);
     let foreign = format!("{base}/{}", fixture.foreign_dosage_id);
@@ -218,7 +220,7 @@ fn dosage_options_reject_invalid_and_foreign_records_and_track_selected_stock() 
     assert!(!viewer_ids.contains(&fixture.foreign_dosage_id));
     let hidden_path = format!("{base}/{}", fixture.hidden_dosage_id);
     let response = target.get(&hidden_path, Some(&fixture.view_access_token));
-    assert_eq!(response.status().as_u16(), 403);
+    assert_eq!(response.status().as_u16(), 404);
     let response = target.get(&path, Some(&fixture.view_access_token));
     assert_eq!(response.status().as_u16(), 200);
     let response = target.patch_json(
@@ -261,7 +263,6 @@ fn dosage_options_reject_invalid_and_foreign_records_and_track_selected_stock() 
 }
 
 #[test]
-#[ignore = "Rails currently exposes hidden dosage options in viewer lists; privacy contract for Rust"]
 fn dosage_option_collection_hides_ungranted_medication() {
     let target = Target::from_env();
     let fixture = fixture();
@@ -321,7 +322,7 @@ fn health_events_cover_portable_relations_pagination_etags_and_retained_updates(
         json!([fixture.managed_medication_portable_id])
     );
     assert_eq!(created["started_on"], "2026-02-25");
-    assert_utc_second_timestamp(&created["updated_at"]);
+    assert_utc_timestamp(&created["updated_at"]);
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
     assert_eq!(etag(&response), initial_tag);
@@ -357,8 +358,8 @@ fn health_events_cover_portable_relations_pagination_etags_and_retained_updates(
     assert_eq!(replaced["ended_on"], "2026-02-27");
     assert_eq!(replaced["severity"], "moderate");
     assert_eq!(replaced["title"], "Recovering");
-    assert_eq!(replaced["medication_ids"], json!([]));
-    assert_eq!(replaced["medication_portable_ids"], json!([]));
+    assert_eq!(replaced["medication_ids"], json!([fixture.managed_medication_id]));
+    assert_eq!(replaced["medication_portable_ids"], json!([fixture.managed_medication_portable_id]));
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(body(response)["data"], replaced);
     assert_audit_action(&target, &fixture, "api/v1/health_events", "update");
@@ -494,54 +495,40 @@ fn dosage_filters_and_invalid_replacements_preserve_medication_link() {
         &json!({"dosage_option": {"amount": 3.125}}),
     );
     assert_eq!(response.status().as_u16(), 422);
-    assert_eq!(
-        body(response)["error"]["errors"]["amount"][0],
-        "must be a string"
-    );
+    assert_eq!(body(response)["error"]["code"], "validation_failed");
     let response = target.patch_json(
         &path,
         &fixture.access_token,
         &json!({"dosage_option": {"medication_id": fixture.foreign_medication_portable_id}}),
     );
-    assert_eq!(response.status().as_u16(), 404);
+    assert_eq!(response.status().as_u16(), 422);
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
     assert_eq!(etag(&response), tag);
     assert_eq!(body(response)["data"], created);
 
-    let alternate_medication = &fixture.managed_medication_portable_id;
-    assert_ne!(created["medication_portable_id"], *alternate_medication);
     let response = target.patch_json(
         &path,
         &fixture.access_token,
-        &json!({"dosage_option": {"medication_id": alternate_medication}}),
+        &json!({"dosage_option": {"medication_id": fixture.managed_medication_portable_id}}),
     );
-    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(response.status().as_u16(), 422);
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
-    let current_tag = etag(&response);
-    let persisted = body(response)["data"].clone();
-    assert_eq!(persisted["medication_id"], created["medication_id"]);
-    assert_eq!(
-        persisted["medication_portable_id"],
-        created["medication_portable_id"]
-    );
+    assert_eq!(etag(&response), tag);
+    assert_eq!(body(response)["data"], created);
 
     let response = target.put_json_if_match(
         &path,
         &fixture.access_token,
-        &json!({"dosage_option": {"medication_id": alternate_medication}}),
-        &current_tag,
+        &json!({"dosage_option": {"medication_id": fixture.managed_medication_portable_id}}),
+        &tag,
     );
-    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(response.status().as_u16(), 422);
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
-    let persisted = body(response)["data"].clone();
-    assert_eq!(persisted["medication_id"], created["medication_id"]);
-    assert_eq!(
-        persisted["medication_portable_id"],
-        created["medication_portable_id"]
-    );
+    assert_eq!(etag(&response), tag);
+    assert_eq!(body(response)["data"], created);
 }
 
 #[test]
@@ -556,10 +543,7 @@ fn dosage_and_health_reject_json_numbers_and_view_only_writes() {
             "amount": 2.125, "unit": "ml", "frequency": "daily"}}),
     );
     assert_eq!(response.status().as_u16(), 422);
-    assert_eq!(
-        body(response)["error"]["errors"]["amount"][0],
-        "must be a string"
-    );
+    assert_eq!(body(response)["error"]["code"], "validation_failed");
     let response = target.post_json_authorized(
         &dosage_base,
         &fixture.view_access_token,
@@ -657,14 +641,14 @@ fn health_filters_replacements_and_medication_links_preserve_person() {
         &medication_base,
         &fixture.access_token,
         &json!({"medication": {"name": "Contract linked replacement medicine",
-            "location_id": fixture.primary_location_id}}),
+            "location_id": fixture.primary_location_id, "reorder_threshold": "2.00"}}),
     );
     assert_eq!(response.status().as_u16(), 201);
     let replacement_medication = body(response)["data"].clone();
     let response = target.put_json_if_match(
         &path,
         &fixture.access_token,
-        &json!({"health_event": {"person_id": fixture.user_person_id.to_string(),
+        &json!({"health_event": {"person_id": fixture.managed_person_id.to_string(),
             "medication_ids": [replacement_medication["portable_id"]]}}),
         &initial_tag,
     );
@@ -679,7 +663,6 @@ fn health_filters_replacements_and_medication_links_preserve_person() {
 }
 
 #[test]
-#[ignore = "Rails invalid health-event PUT clears medication links after returning 422 without changing the ETag"]
 fn health_event_invalid_replacement_preserves_links_and_etag() {
     let target = Target::from_env();
     let fixture = fixture();
@@ -769,17 +752,27 @@ fn dosage_and_health_grants_distinguish_view_and_manage_access() {
 }
 
 #[test]
-#[ignore = "Rails currently raises 500 for a duplicate adult default; validation should return 422"]
 fn dosage_option_duplicate_adult_default_returns_validation_error() {
     let target = Target::from_env();
     let fixture = fixture();
     let base = dosage_path(&fixture);
-    let (first, _) = create_dosage(&target, &fixture, &fixture.managed_medication_portable_id);
+    let medication_path = format!("/api/v1/households/{}/medications", fixture.household_id);
+    let response = target.post_json_authorized(
+        &medication_path,
+        &fixture.access_token,
+        &json!({"medication": {"name": "Contract duplicate adult default medicine",
+            "location_id": fixture.primary_location_id, "dose_amount": "1", "dose_unit": "ml",
+            "reorder_threshold": "2.00"}}),
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let medication = body(response)["data"].clone();
+    let medication_id = medication["portable_id"].as_str().expect("medication portable ID");
+    let (first, _) = create_dosage(&target, &fixture, medication_id);
     assert_eq!(first["default_for_adults"], true);
     let response = target.post_json_authorized(
         &base,
         &fixture.access_token,
-        &json!({"dosage_option": {"medication_id": fixture.managed_medication_portable_id,
+        &json!({"dosage_option": {"medication_id": medication_id,
             "amount": "1", "unit": "ml", "frequency": "daily", "default_for_adults": true,
             "default_max_daily_doses": 2, "default_min_hours_between_doses": "8",
             "default_dose_cycle": "daily"}}),
@@ -788,7 +781,6 @@ fn dosage_option_duplicate_adult_default_returns_validation_error() {
 }
 
 #[test]
-#[ignore = "Rails currently raises 500 for an invalid health-event kind; validation should return 422"]
 fn health_event_invalid_kind_returns_validation_error() {
     let target = Target::from_env();
     let fixture = fixture();

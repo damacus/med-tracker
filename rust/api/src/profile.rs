@@ -9,7 +9,7 @@ use crate::read_resources::{age, today};
 use crate::sync_events::{lock_household, record_change, SyncRecord};
 use crate::{authenticate, database_error, ApiError, AppState, AuthContext};
 use axum::body::Body;
-use axum::extract::multipart::MultipartRejection;
+use axum::extract::multipart::{MultipartError, MultipartRejection};
 use axum::extract::{rejection::JsonRejection, DefaultBodyLimit, Multipart, Path, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::middleware::{self, Next};
@@ -306,14 +306,18 @@ async fn profile_failure(
     method: &str,
     status: StatusCode,
     code: &str,
+    errors: Option<Value>,
     key: Option<&ProfileKey<'_>>,
 ) -> Result<Response, ApiError> {
     let request_id = Uuid::new_v4().to_string();
-    let body = json!({"error": {
+    let mut body = json!({"error": {
         "code":code,
-        "message":"Profile attributes are invalid",
+        "message":if code == "validation_failed" { "Validation failed" } else { "Profile attributes are invalid" },
         "request_id":request_id
     }});
+    if let Some(errors) = errors {
+        body["error"]["errors"] = errors;
+    }
     if let Some(key) = key {
         mutation_idempotency::store(
             &db,
@@ -497,7 +501,18 @@ async fn update(
     let attrs = match parse(&body) {
         Ok(value) => value,
         Err((status, code)) => {
-            return profile_failure(db, &current, method, status, code, key.as_ref()).await;
+            let errors = if code == "validation_failed" {
+                if body["profile"]["time_zone"].as_str().is_some_and(|value| {
+                    !value.is_empty() && value.parse::<chrono_tz::Tz>().is_err()
+                }) {
+                    Some(json!({"time_zone":["Time zone is not included in the list"]}))
+                } else {
+                    Some(json!({"mobile_shortcuts":["Mobile shortcuts is invalid"]}))
+                }
+            } else {
+                None
+            };
+            return profile_failure(db, &current, method, status, code, errors, key.as_ref()).await;
         }
     };
     let mut account = account::Entity::find_by_id(current.account_id)
@@ -529,6 +544,7 @@ async fn update(
                     method,
                     StatusCode::UNPROCESSABLE_ENTITY,
                     "validation_failed",
+                    None,
                     key.as_ref(),
                 )
                 .await;
@@ -854,6 +870,14 @@ enum UploadError {
     ValidationFailed,
 }
 
+fn multipart_upload_error(error: MultipartError) -> UploadError {
+    if error.status() == StatusCode::PAYLOAD_TOO_LARGE {
+        UploadError::ValidationFailed
+    } else {
+        UploadError::BadRequest
+    }
+}
+
 async fn uploaded_avatar(
     input: Result<Multipart, MultipartRejection>,
 ) -> Result<UploadedAvatar, UploadError> {
@@ -861,7 +885,7 @@ async fn uploaded_avatar(
     let Some(field) = multipart
         .next_field()
         .await
-        .map_err(|_| UploadError::BadRequest)?
+        .map_err(multipart_upload_error)?
     else {
         return Err(UploadError::BadRequest);
     };
@@ -879,12 +903,12 @@ async fn uploaded_avatar(
     let bytes = field
         .bytes()
         .await
-        .map_err(|_| UploadError::BadRequest)?
+        .map_err(multipart_upload_error)?
         .to_vec();
     if multipart
         .next_field()
         .await
-        .map_err(|_| UploadError::BadRequest)?
+        .map_err(multipart_upload_error)?
         .is_some()
     {
         return Err(UploadError::ValidationFailed);
