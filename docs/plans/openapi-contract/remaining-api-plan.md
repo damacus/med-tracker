@@ -1,23 +1,22 @@
 # Complete the remaining API operations
 
-The active user goal is to complete the remaining 89 API operations. The exact
-baseline is preserved in `remaining-89-baseline.json`, extracted from the
-verified inventory at commit `863585e0`. Adding routes alone does not complete
+The active user goal is to complete all 118 documented API operations. The fixed
+scope is preserved in `fixed-118-baseline.json`; the original 89-operation
+baseline remains in `remaining-89-baseline.json` for comparison. Adding routes alone does not complete
 this goal: each operation requires implemented behaviour and specification-led
 runtime evidence for its requests, responses, access controls and failure paths.
 
 ## Execution
 
-Continue the existing one-writer charter. The implementation agent owns tests,
-handlers and its evidence report; the orchestrator independently reviews and
-publishes verified checkpoints. Keep the original journey/UI workspace intact.
+Use separate production and test ownership: Sol implements handlers and owns
+shared integration files; Luna writes bounded tests, escalating complex diagnosis
+to Sol. The orchestrator independently reviews and publishes verified checkpoints.
+Keep the original journey/UI workspace intact.
 
-Start with dosage-option list, create, detail, PATCH and PUT. Then work through
-related groups: session management and profiles; people; schedules and person
-medication assignments; dose occurrences and pause periods; health events and
-review prompts; notifications and device registration; household administration
-and invitations; reports and external medication services; sync, exports and
-imports. Adjust order for real dependencies without dropping any baseline item.
+Continue after household administration settings with medication workflows,
+administration, personal records, data exchange and reports, then external
+integrations. Verify already-present operations alongside each related family.
+Adjust order for real dependencies without dropping any fixed-scope item.
 
 For each group, inspect the current OpenAPI operations and existing implementation,
 write failing acceptance tests, implement the missing behaviour, review security
@@ -35,6 +34,6 @@ medical values or simulated delivery of external side effects.
 Track each baseline operation against the current operation map and test evidence.
 Record route presence separately from proven behaviour. Shared helpers must have
 direct tests, and endpoint wiring must have HTTP evidence. Publish scoped passing
-checkpoints, but leave the goal active until all 89 baseline operations satisfy
+checkpoints, but leave the goal active until all 118 documented operations satisfy
 their documented behaviour and required gates. No UI/PWA or memory-budget success
 is implied by completion of this API goal.

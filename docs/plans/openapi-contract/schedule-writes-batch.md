@@ -21,11 +21,20 @@ unknown recurrence types returning 500, invalid times being accepted, or
 inaccessible dosage options being disclosed through a validation response.
 Resolve and document the storage/type constraints before deriving tests;
 reject unrepresentable decimal amounts rather than silently rounding.
-Inspect the documented meaning of person_id on update before choosing its
-behaviour; the source currently checks its visibility but ignores reassignment.
+The person association is immutable on update: the current numeric or portable
+identifier is accepted, a different visible person returns 422, and hidden or
+foreign identifiers return 404. Document this instead of silently ignoring an
+attempted reassignment. Minimum hours retain decimal-string transport but must
+represent an exact positive whole number fitting the integer storage column;
+fractional values return 422 rather than being truncated. No database type
+migration is included in this batch.
 
 Pause/resume and period history follow as a separate medication batch.
 Sol owns production, specification clarification and shared runner wiring;
 Luna owns the focused black-box test file. Compile and demonstrate initial
 RED before production changes, then expand tests in parallel. Independent
 review, isolated acceptance and publication precede completion credit.
+
+Unchanged updates preserve timestamps and ETags and create no version or sync
+event, while retaining request audits and idempotent responses. This intentionally
+avoids the spurious unchanged-save events possible in Rails SyncTrackable.

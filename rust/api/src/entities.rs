@@ -248,13 +248,17 @@ entity!(schedule, "schedules", {
     start_date: Option<Date>,
     end_date: Option<Date>,
     max_daily_doses: Option<i32>,
-    min_hours_between_doses: Option<Decimal>,
+    min_hours_between_doses: Option<i32>,
     source_dosage_option_id: Option<i64>,
     dose_cycle: Option<i32>,
     dose_amount: Option<Decimal>,
     dose_unit: Option<String>,
     schedule_type: i32,
     schedule_config: serde_json::Value,
+    frequency: Option<String>,
+    notes: Option<String>,
+    created_at: DateTime,
+    updated_at: DateTime,
 });
 
 entity!(person_medication, "person_medications", {
@@ -271,6 +275,9 @@ entity!(person_medication, "person_medications", {
     max_daily_doses: Option<i32>,
     dose_amount: Option<Decimal>,
     dose_unit: Option<String>,
+    notes: Option<String>,
+    position: i32,
+    created_at: DateTime,
     updated_at: DateTime,
 });
 

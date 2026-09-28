@@ -680,5 +680,230 @@
       "direct nonloopback rate-limit wiring; shared limiter response and window proofs"
     ],
     "not_yet_tested": []
+  },
+  "listPersonMedications": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_person_medication_writes.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict collection and resource response fields and formats",
+      "pagination and timestamp filtering; invalid filters rejected",
+      "person read visibility, cross-household boundaries and hidden resource protection",
+      "numeric and portable resource identifiers; direct authentication and rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "getPersonMedication": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_person_medication_writes.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      404,
+      429
+    ],
+    "behaviours_tested": [
+      "strict collection and resource response fields and formats",
+      "pagination and timestamp filtering; invalid filters rejected",
+      "person read visibility, cross-household boundaries and hidden resource protection",
+      "numeric and portable resource identifiers; direct authentication and rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "createPersonMedication": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_person_medication_writes.rs",
+    "statuses_tested": [
+      201,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict create schema and response; numeric-string and portable links",
+      "default dose and matching dosage option; duplicate assignment prevention and position",
+      "authorized manage grants, hidden references and cross-household isolation",
+      "invalid input nonmutation, exact decimal precision and whole-hour validation",
+      "correlated version, sync and request audit records",
+      "shared keyed replay, changed payload and account conflicts; keyed validation replay",
+      "direct nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "updatePersonMedication": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_person_medication_writes.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict resource and envelope fields, identifiers, decimal strings and timestamp formats",
+      "current person management grants required even for owner and administrator; view-only and foreign boundaries",
+      "partial PATCH and PUT preserve omitted values; person association cannot be moved",
+      "invalid values preserve body, ETag and domain records; exact storage precision and integer-hour validation",
+      "source dosage visibility and snapshot matching; existing source binding preserved",
+      "optional If-Match and stale conflicts; concurrent same-ETag writes have one winner",
+      "shared keyed response replay and changed-content conflicts, including authorized validation errors",
+      "unchanged updates preserve body and ETag without version or sync changes; request audits remain",
+      "direct authentication and nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "replacePersonMedication": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_person_medication_writes.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict resource and envelope fields, identifiers, decimal strings and timestamp formats",
+      "current person management grants required even for owner and administrator; view-only and foreign boundaries",
+      "partial PATCH and PUT preserve omitted values; person association cannot be moved",
+      "invalid values preserve body, ETag and domain records; exact storage precision and integer-hour validation",
+      "source dosage visibility and snapshot matching; existing source binding preserved",
+      "optional If-Match and stale conflicts; concurrent same-ETag writes have one winner",
+      "shared keyed response replay and changed-content conflicts, including authorized validation errors",
+      "unchanged updates preserve body and ETag without version or sync changes; request audits remain",
+      "direct authentication and nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "listSchedules": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_schedule_writes.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict collection and resource response fields and formats",
+      "pagination and timestamp filtering; invalid filters rejected",
+      "person read visibility, cross-household boundaries and hidden resource protection",
+      "numeric and portable resource identifiers; direct authentication and rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "getSchedule": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_schedule_writes.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      404,
+      429
+    ],
+    "behaviours_tested": [
+      "strict collection and resource response fields and formats",
+      "pagination and timestamp filtering; invalid filters rejected",
+      "person read visibility, cross-household boundaries and hidden resource protection",
+      "numeric and portable resource identifiers; direct authentication and rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "createSchedule": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_schedule_writes.rs",
+    "statuses_tested": [
+      201,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict create schema and response, dates, dose and recurrence validation",
+      "valid weekday aliases; invalid weekday and time rejection",
+      "effective active state respects date range and remains distinct from paused state",
+      "current manage grants, source dosage visibility and snapshot matching",
+      "invalid input nonmutation, exact decimal precision and whole-hour validation",
+      "correlated versions, sync events and request audit records",
+      "shared keyed replay and changed-content conflict, including authorized validation errors",
+      "direct authentication and nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "updateSchedule": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_schedule_writes.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict resource and envelope fields, identifiers, decimal strings and timestamp formats",
+      "current person management grants required even for owner and administrator; view-only and foreign boundaries",
+      "partial PATCH and PUT preserve omitted values; person association cannot be moved",
+      "invalid values preserve body, ETag and domain records; exact storage precision and integer-hour validation",
+      "source dosage visibility and snapshot matching; existing source binding preserved",
+      "optional If-Match and stale conflicts; concurrent same-ETag writes have one winner",
+      "shared keyed response replay and changed-content conflicts, including authorized validation errors",
+      "unchanged updates preserve body and ETag without version or sync changes; request audits remain",
+      "direct authentication and nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "replaceSchedule": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_schedule_writes.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict resource and envelope fields, identifiers, decimal strings and timestamp formats",
+      "current person management grants required even for owner and administrator; view-only and foreign boundaries",
+      "partial PATCH and PUT preserve omitted values; person association cannot be moved",
+      "invalid values preserve body, ETag and domain records; exact storage precision and integer-hour validation",
+      "source dosage visibility and snapshot matching; existing source binding preserved",
+      "optional If-Match and stale conflicts; concurrent same-ETag writes have one winner",
+      "shared keyed response replay and changed-content conflicts, including authorized validation errors",
+      "unchanged updates preserve body and ETag without version or sync changes; request audits remain",
+      "direct authentication and nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
   }
 }
