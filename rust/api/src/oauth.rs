@@ -41,6 +41,10 @@ pub struct OAuthState {
 }
 
 impl OAuthState {
+    pub(super) fn occurrence_key_secret(&self) -> Arc<[u8]> {
+        self.secret.clone()
+    }
+
     pub fn from_env() -> Result<Self, String> {
         let secret = std::env::var("AUTH_SESSION_SECRET")
             .map_err(|_| "AUTH_SESSION_SECRET missing".to_owned())?;

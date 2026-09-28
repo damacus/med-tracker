@@ -1196,5 +1196,261 @@
       "direct nonloopback rate-limit wiring"
     ],
     "not_yet_tested": []
+  },
+  "listScheduleDoseOccurrences": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_dose_occurrences.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      404,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict 16-field projection, stable source-bound signed keys and at most 31 inclusive query dates",
+      "timed, weekly/monthly, paused, as-needed and retired-source behaviour",
+      "existing unlinked takes overlay open outcomes without creating versions or sync events",
+      "current grants and household/source non-disclosure",
+      "direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "listPersonMedicationDoseOccurrences": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_dose_occurrences.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      404,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict 16-field projection, stable source-bound signed keys and at most 31 inclusive query dates",
+      "timed, weekly/monthly, paused, as-needed and retired-source behaviour",
+      "existing unlinked takes overlay open outcomes without creating versions or sync events",
+      "current grants and household/source non-disclosure",
+      "direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "recordScheduleDoseNotTaken": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_dose_occurrences.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict wrapper, reason and note validation with nonmutation",
+      "record-only success and view denial; cross-source/tampered key rejection",
+      "repeated decisions, conflicts, keyed validation and success replay",
+      "one occurrence version/sync change; separately audited replay requests",
+      "direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "recordPersonMedicationDoseNotTaken": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_dose_occurrences.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict wrapper, reason and note validation with nonmutation",
+      "record-only success and view denial; cross-source/tampered key rejection",
+      "repeated decisions, conflicts, keyed validation and success replay",
+      "one occurrence version/sync change; separately audited replay requests",
+      "direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "reopenScheduleDoseOccurrence": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_dose_occurrences.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      428,
+      429
+    ],
+    "behaviours_tested": [
+      "manage-only reopening and required/current ETag",
+      "decision metadata clearing and stable source identity",
+      "strict input and household/source non-disclosure",
+      "direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "reopenPersonMedicationDoseOccurrence": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_dose_occurrences.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      428,
+      429
+    ],
+    "behaviours_tested": [
+      "manage-only reopening and required/current ETag",
+      "decision metadata clearing and stable source identity",
+      "strict input and household/source non-disclosure",
+      "direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "takeScheduleDoseOccurrence": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_dose_occurrences.rs; rust/contract-tests/tests/dose_write_api.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      428,
+      429
+    ],
+    "behaviours_tested": [
+      "record-only authority, strict administration validation and occurrence-window binding",
+      "take, stock decrement and outcome transition share one transaction",
+      "concurrent takes produce one success and one conflict with exactly one decrement",
+      "same UUID/content replays; changed content conflicts",
+      "timestamps canonicalized to PostgreSQL microseconds before storage/replay",
+      "replacement of not-taken outcome requires current ETag; direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "takePersonMedicationDoseOccurrence": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_dose_occurrences.rs; rust/contract-tests/tests/dose_write_api.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      428,
+      429
+    ],
+    "behaviours_tested": [
+      "record-only authority, strict administration validation and occurrence-window binding",
+      "take, stock decrement and outcome transition share one transaction",
+      "concurrent takes produce one success and one conflict with exactly one decrement",
+      "same UUID/content replays; changed content conflicts",
+      "timestamps canonicalized to PostgreSQL microseconds before storage/replay",
+      "replacement of not-taken outcome requires current ETag; direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "listMedicationReviewPrompts": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_review_prompts.rs",
+    "statuses_tested": [
+      200,
+      401,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "exact collection and snapshot shapes, queue filters and visibility scope",
+      "on-demand curated and automatic ingredient/class snapshots without duplicates",
+      "source changes leave existing snapshots immutable",
+      "no-action-only evidence excluded; explicit warning in another matched sentence retained",
+      "no-store and direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "getMedicationReviewPrompt": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_review_prompts.rs",
+    "statuses_tested": [
+      200,
+      401,
+      404,
+      429
+    ],
+    "behaviours_tested": [
+      "strict snapshot fields and decimal-string identifiers",
+      "opaque ETag, no-store, invalid/hidden/foreign prompt non-disclosure",
+      "direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "updateMedicationReviewPrompt": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_review_prompts.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      428,
+      429
+    ],
+    "behaviours_tested": [
+      "strict partial updates, practitioner requirements and forbidden snapshot fields",
+      "required/current ETag and one-winner concurrent updates",
+      "fresh manage authority before keyed replay",
+      "redacted status-transition audit without practitioner names or notes",
+      "immutable evidence snapshots, no-store and direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "updateMedicationReviewPromptWithPut": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_review_prompts.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      428,
+      429
+    ],
+    "behaviours_tested": [
+      "strict partial updates, practitioner requirements and forbidden snapshot fields",
+      "required/current ETag and one-winner concurrent updates",
+      "fresh manage authority before keyed replay",
+      "redacted status-transition audit without practitioner names or notes",
+      "immutable evidence snapshots, no-store and direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
   }
 }

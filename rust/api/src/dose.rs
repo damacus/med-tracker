@@ -131,7 +131,7 @@ fn app_zone() -> chrono_tz::Tz {
         .unwrap_or(chrono_tz::UTC)
 }
 
-fn local_date(time: NaiveDateTime) -> NaiveDate {
+pub(super) fn local_date(time: NaiveDateTime) -> NaiveDate {
     local_date_in_zone(time, app_zone())
 }
 
@@ -696,8 +696,10 @@ fn parse_input_time(value: Option<&Value>) -> Result<NaiveDateTime, ApiError> {
         .and_then(Value::as_str)
         .ok_or_else(|| error(StatusCode::UNPROCESSABLE_ENTITY, "taken_at is invalid"))?;
     DateTime::parse_from_rfc3339(raw)
+        .ok()
+        .and_then(|value| DateTime::<Utc>::from_timestamp_micros(value.timestamp_micros()))
         .map(|value| value.naive_utc())
-        .map_err(|_| error(StatusCode::UNPROCESSABLE_ENTITY, "taken_at is invalid"))
+        .ok_or_else(|| error(StatusCode::UNPROCESSABLE_ENTITY, "taken_at is invalid"))
 }
 
 fn string_field<'a>(value: &'a Value, field: &str) -> Result<&'a str, ApiError> {
@@ -1593,7 +1595,7 @@ pub async fn create(
     }
 }
 
-async fn create_in_transaction(
+pub(super) async fn create_in_transaction(
     db: &DatabaseTransaction,
     context: &AuthContext,
     household_id: i64,
@@ -1750,7 +1752,7 @@ async fn create_in_transaction(
 
 #[cfg(test)]
 mod tests {
-    use super::{cycle_bounds_in_zone, valid_numeric_10_2};
+    use super::{cycle_bounds_in_zone, parse_input_time, valid_numeric_10_2};
     use chrono::NaiveDate;
     use sea_orm::prelude::Decimal;
     use std::str::FromStr;
@@ -1764,6 +1766,16 @@ mod tests {
             Decimal::from_str("100000000.00").unwrap()
         ));
         assert!(!valid_numeric_10_2(Decimal::from_str("1.001").unwrap()));
+    }
+
+    #[test]
+    fn taken_at_replay_uses_postgresql_microsecond_precision() {
+        let input = serde_json::json!("2026-09-28T10:11:12.123456789Z");
+        let expected = NaiveDate::from_ymd_opt(2026, 9, 28)
+            .unwrap()
+            .and_hms_micro_opt(10, 11, 12, 123456)
+            .unwrap();
+        assert_eq!(parse_input_time(Some(&input)).unwrap(), expected);
     }
 
     #[test]
