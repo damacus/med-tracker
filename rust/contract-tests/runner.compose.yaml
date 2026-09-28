@@ -75,6 +75,8 @@ services:
       APNS_KEY_ID: CONTRACTKEY
       APNS_PRIVATE_KEY: ${CONTRACT_APNS_PRIVATE_KEY:?Disposable APNs signing key required}
       AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
+      CONTRACT_DASHBOARD_NOW: ${CONTRACT_DASHBOARD_NOW:-}
+      CONTRACT_PROJECT: ${CONTRACT_PROJECT:?Isolated contract project required}
     depends_on:
       db-test:
         condition: service_healthy
