@@ -4,6 +4,7 @@ mod audit_logs;
 mod auth_sessions;
 mod dosage_options;
 mod dose;
+mod dose_occurrences;
 mod entities;
 mod locations;
 mod medication_forecast;
@@ -19,6 +20,8 @@ mod push_subscriptions;
 mod rate_limit;
 mod read_entities;
 mod read_resources;
+mod review_evidence;
+mod review_prompts;
 mod schedule_writes;
 mod stock_removals;
 mod sync_events;
@@ -267,6 +270,22 @@ fn api_router(state: AppState) -> Router {
             axum::routing::patch(pause_lifecycle::resume_schedule),
         )
         .route(
+            "/api/v1/households/{household_id}/schedules/{id}/dose_occurrences",
+            get(dose_occurrences::list_schedule),
+        )
+        .route(
+            "/api/v1/households/{household_id}/schedules/{id}/dose_occurrences/not_taken",
+            axum::routing::post(dose_occurrences::not_taken_schedule),
+        )
+        .route(
+            "/api/v1/households/{household_id}/schedules/{id}/dose_occurrences/reopen",
+            axum::routing::patch(dose_occurrences::reopen_schedule),
+        )
+        .route(
+            "/api/v1/households/{household_id}/schedules/{id}/dose_occurrences/take",
+            axum::routing::post(dose_occurrences::take_schedule),
+        )
+        .route(
             "/api/v1/households/{household_id}/person_medications",
             get(read_resources::person_medications_index).post(person_medication_writes::create),
         )
@@ -285,6 +304,22 @@ fn api_router(state: AppState) -> Router {
             axum::routing::patch(pause_lifecycle::resume_assignment),
         )
         .route(
+            "/api/v1/households/{household_id}/person_medications/{id}/dose_occurrences",
+            get(dose_occurrences::list_assignment),
+        )
+        .route(
+            "/api/v1/households/{household_id}/person_medications/{id}/dose_occurrences/not_taken",
+            axum::routing::post(dose_occurrences::not_taken_assignment),
+        )
+        .route(
+            "/api/v1/households/{household_id}/person_medications/{id}/dose_occurrences/reopen",
+            axum::routing::patch(dose_occurrences::reopen_assignment),
+        )
+        .route(
+            "/api/v1/households/{household_id}/person_medications/{id}/dose_occurrences/take",
+            axum::routing::post(dose_occurrences::take_assignment),
+        )
+        .route(
             "/api/v1/households/{household_id}/person_medications/{id}/reorder",
             axum::routing::patch(pause_lifecycle::reorder_assignment),
         )
@@ -296,6 +331,7 @@ fn api_router(state: AppState) -> Router {
             "/api/v1/households/{household_id}/medication_pause_periods/{id}/resume",
             axum::routing::post(pause_lifecycle::resume),
         )
+        .merge(review_prompts::routes())
         .layer(middleware::from_fn_with_state(csrf_state, cookie_api_csrf))
         .with_state(state)
 }

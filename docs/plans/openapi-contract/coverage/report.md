@@ -7,12 +7,49 @@ yq -o=json '.' docs/api/openapi.v1.yaml | jq -c --slurpfile routes docs/plans/op
 ```
 
 The specification has 118 operations across 77 paths, with 227 component schemas,
-12 component responses and 772 response cases. Of those operations, 47 are fully
-verified and 71 remain incomplete: 53 absent routes, 10 present but unverified,
+12 component responses and 772 response cases. Of those operations, 59 are fully
+verified and 59 remain incomplete: 41 absent routes, 10 present but unverified,
 and eight partially verified location operations. The original 89-operation
-baseline is now 36 complete and 53 remaining. Both baseline files are retained;
+baseline is now 48 complete and 41 remaining. Both baseline files are retained;
 the operation IDs, methods and paths still match the fixed 118-operation scope.
 Route presence and older Rails-derived tests alone receive no completion credit.
+
+## Dose occurrences and medication review prompts
+
+Eight occurrence operations passed 10/10 isolated HTTP tests in
+`mtcontract-0ce0f4bf373e4c8f`. Four review-prompt operations passed 10/10 in
+`mtcontract-14380f860c934074`. The existing medication regression run passed
+33/33 (9 read, 9 stock, 6 dose-write and 9 OpenAPI tests) in
+`mtcontract-d15159ddd61f4752`. All tasks exited 0 and all three projects and
+their storage were cleaned up. Exact summaries were observed in command-session
+output; RTK retained build-only traces `1790592886_task_api_65d42c.log`,
+`1790592886_task_api_ef73e2.log` and `1790592886_task_api_69b9f1.log`.
+
+Initial missing-route RED logs are `1790591117_task_api_6bc10e.log` for dose
+occurrences and `1790591434_task_api_d030d0.log` for review prompts. Tests cover
+strict schemas, source and household boundaries, record versus manage grants,
+ETags, concurrent transitions, stock nonduplication, audit and sync effects,
+fresh-authority replay, validation nonmutation and all twelve rate-limit paths.
+
+Occurrence projection retains existing unlinked takes and saved outcomes;
+reads do not create history. Keys use a stable configured signing secret and
+source identity. Clients must refetch opaque occurrence keys at cutover;
+Rails MessageVerifier transport compatibility is not claimed. Query bounds
+limit historical reads. A London daylight-saving regression proved the correct
+gap shift. Identical UUID replay now canonicalizes timestamp precision to
+PostgreSQL microseconds; a changed dose payload still conflicts.
+
+Review listing creates missing snapshots from stored curated and automatic
+ingredient/class evidence. Snapshots remain immutable after source updates.
+Terminology and aliases are bundled from the Rails repository. A deliberate
+Rails bug correction retains explicit warnings when another matching sentence
+says no adjustment is needed, while retaining the original evidence excerpt.
+No-action-only evidence remains excluded. No live-provider result is claimed.
+
+Independent production and fixture review passed. Formatting, Clippy, API check,
+19 unit tests, selected compilation, runner dispatch/cleanup checks and docs
+build passed. The fixed 118 operation IDs, methods and paths are unchanged.
+Next administration tests are prepared separately and receive no credit here.
 
 ## Medication validation and pause history
 
