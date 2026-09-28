@@ -889,15 +889,15 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       )
     end
 
-    it 'types API app token administration without advertising unsupported validation' do
+    it 'types API app token administration responses' do
       collection_path = '/households/{household_id}/admin/app_tokens'
       collection = described_class.operation(collection_path, 'get')
       create = described_class.operation(collection_path, 'post')
       revoke = described_class.operation("#{collection_path}/{id}", 'delete')
 
       expect(collection.fetch('responses').keys).to include('200', '401', '403', '404', '429')
-      expect(create.fetch('responses').keys).to include('201', '400', '401', '403', '404', '409', '429')
-      expect(create.fetch('responses')).not_to include('422')
+      expect(create.fetch('responses').keys).to include('201', '400', '401', '403', '404', '409', '422', '429')
+      expect(create.dig('responses', '422', '$ref')).to eq('#/components/responses/ValidationFailed')
       expect(revoke.fetch('responses').keys).to include('204', '401', '403', '404', '409', '429')
     end
 
