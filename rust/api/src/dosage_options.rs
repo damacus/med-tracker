@@ -42,7 +42,7 @@ struct Attributes {
     reorder_threshold: Option<Option<Decimal>>,
 }
 
-fn valid_identifier(value: &str) -> bool {
+pub(super) fn valid_identifier(value: &str) -> bool {
     let numeric = value
         .as_bytes()
         .first()
@@ -57,7 +57,7 @@ fn valid_identifier(value: &str) -> bool {
             }))
 }
 
-fn parse_decimal(value: &Value) -> Option<Decimal> {
+pub(super) fn parse_decimal(value: &Value) -> Option<Decimal> {
     let text = value.as_str()?;
     let unsigned = text.strip_prefix('-').unwrap_or(text);
     let mut parts = unsigned.split('.');
@@ -76,7 +76,7 @@ fn parse_decimal(value: &Value) -> Option<Decimal> {
     Decimal::from_str_exact(text).ok()
 }
 
-fn storage_decimal(value: Decimal, integer_digits: i64, scale: u32) -> Option<Decimal> {
+pub(super) fn storage_decimal(value: Decimal, integer_digits: i64, scale: u32) -> Option<Decimal> {
     let bound = Decimal::from(10_i64.pow(integer_digits as u32));
     (value > -bound && value < bound && value.normalize().scale() <= scale).then_some(value)
 }

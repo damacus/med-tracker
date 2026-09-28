@@ -13,10 +13,12 @@ mod native_device_tokens;
 mod notification_preferences;
 mod oauth;
 mod people;
+mod person_medication_writes;
 mod push_subscriptions;
 mod rate_limit;
 mod read_entities;
 mod read_resources;
+mod schedule_writes;
 mod stock_removals;
 mod sync_events;
 mod web_pages;
@@ -247,19 +249,23 @@ fn api_router(state: AppState) -> Router {
         )
         .route(
             "/api/v1/households/{household_id}/schedules",
-            get(read_resources::schedules_index),
+            get(read_resources::schedules_index).post(schedule_writes::create),
         )
         .route(
             "/api/v1/households/{household_id}/schedules/{id}",
-            get(read_resources::schedules_show),
+            get(read_resources::schedules_show)
+                .patch(schedule_writes::patch)
+                .put(schedule_writes::put),
         )
         .route(
             "/api/v1/households/{household_id}/person_medications",
-            get(read_resources::person_medications_index),
+            get(read_resources::person_medications_index).post(person_medication_writes::create),
         )
         .route(
             "/api/v1/households/{household_id}/person_medications/{id}",
-            get(read_resources::person_medications_show),
+            get(read_resources::person_medications_show)
+                .patch(person_medication_writes::patch)
+                .put(person_medication_writes::put),
         )
         .layer(middleware::from_fn_with_state(csrf_state, cookie_api_csrf))
         .with_state(state)

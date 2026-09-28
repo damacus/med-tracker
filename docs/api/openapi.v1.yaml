@@ -7191,6 +7191,7 @@ components:
           $ref: '#/components/schemas/PaginationMeta'
     ScheduleCreateRequest:
       type: object
+      description: Dose amounts must fit two decimal places. Minimum hours are decimal strings representing a positive whole number because storage uses integer hours.
       additionalProperties: false
       required:
         - schedule
@@ -7258,6 +7259,7 @@ components:
           $ref: '#/components/schemas/ScheduleAttributes'
     ScheduleAttributes:
       type: object
+      description: Updates merge supplied fields. A supplied person_id must identify the current person; a different visible person is rejected. Dose amounts must fit two decimal places. Minimum hours are decimal strings representing a positive whole number because storage uses integer hours.
       additionalProperties: false
       minProperties: 1
       properties:
@@ -7314,6 +7316,7 @@ components:
             pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
         weekdays:
           type: array
+          description: Each weekday is a full English name, its three-letter abbreviation, or a numeric string from 0 through 7. Names ignore surrounding whitespace and case; unrecognised values are rejected.
           items:
             type: string
             minLength: 1
@@ -7329,6 +7332,7 @@ components:
             $ref: '#/components/schemas/ScheduleTaperStep'
     ScheduleTaperStep:
       type: object
+      description: The end date must be on or after the start date.
       additionalProperties: false
       required:
         - start_date
@@ -7454,6 +7458,7 @@ components:
           $ref: '#/components/schemas/PaginationMeta'
     PersonMedicationCreateRequest:
       type: object
+      description: Dose amounts must fit two decimal places. Minimum hours are decimal strings representing a positive whole number because storage uses integer hours.
       additionalProperties: false
       required:
         - person_medication
@@ -7504,6 +7509,7 @@ components:
           $ref: '#/components/schemas/PersonMedicationAttributes'
     PersonMedicationAttributes:
       type: object
+      description: Updates merge supplied fields. A supplied person_id must identify the current person; a different visible person is rejected. Dose amounts must fit two decimal places. Minimum hours are decimal strings representing a positive whole number because storage uses integer hours.
       additionalProperties: false
       minProperties: 1
       properties:

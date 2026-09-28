@@ -110,7 +110,7 @@ fn source_from_schedule(value: schedule::Model) -> Source {
         dose_amount: value.dose_amount,
         dose_unit: value.dose_unit,
         max_daily_doses: value.max_daily_doses,
-        min_hours_between_doses: value.min_hours_between_doses,
+        min_hours_between_doses: value.min_hours_between_doses.map(Decimal::from),
         dose_cycle: value.dose_cycle,
         source_dosage_option_id: value.source_dosage_option_id,
         schedule_type: Some(value.schedule_type),
@@ -207,38 +207,6 @@ fn effective_source(source: &mut Source, date: NaiveDate) {
     {
         source.min_hours_between_doses = None;
     }
-}
-
-pub(super) fn schedule_stock_dose(
-    schedule: &crate::read_entities::schedule::Model,
-    date: NaiveDate,
-) -> Option<(Decimal, String)> {
-    if !schedule.active || schedule.retired_at.is_some() {
-        return None;
-    }
-    let mut source = Source {
-        kind: "schedule",
-        id: schedule.id,
-        active: schedule.active,
-        retired: false,
-        person_id: schedule.person_id,
-        medication_id: schedule.medication_id,
-        dose_amount: schedule.dose_amount,
-        dose_unit: schedule.dose_unit.clone(),
-        max_daily_doses: schedule.max_daily_doses,
-        min_hours_between_doses: schedule.min_hours_between_doses.map(Decimal::from),
-        dose_cycle: schedule.dose_cycle,
-        source_dosage_option_id: schedule.source_dosage_option_id,
-        schedule_type: Some(schedule.schedule_type),
-        schedule_config: Some(schedule.schedule_config.clone()),
-        start_date: schedule.start_date,
-        end_date: schedule.end_date,
-    };
-    if !applies_on(&source, date) {
-        return None;
-    }
-    effective_source(&mut source, date);
-    Some((source.dose_amount?, source.dose_unit?))
 }
 
 async fn source(

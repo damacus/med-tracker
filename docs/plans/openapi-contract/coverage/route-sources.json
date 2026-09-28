@@ -29,10 +29,10 @@
   "createLocationMembership": "rust/api/src/lib.rs:204",
   "deleteLocationMembership": "rust/api/src/lib.rs:208",
   "getPerson": "rust/api/src/lib.rs:212",
-  "listSchedules": "rust/api/src/lib.rs:216",
-  "getSchedule": "rust/api/src/lib.rs:220",
-  "listPersonMedications": "rust/api/src/lib.rs:224",
-  "getPersonMedication": "rust/api/src/lib.rs:228",
+  "listSchedules": "rust/api/src/lib.rs:251",
+  "getSchedule": "rust/api/src/lib.rs:255",
+  "listPersonMedications": "rust/api/src/lib.rs:261",
+  "getPersonMedication": "rust/api/src/lib.rs:265",
   "listSessions": "rust/api/src/auth_sessions.rs:56",
   "deleteSession": "rust/api/src/auth_sessions.rs:57",
   "logoutSession": "rust/api/src/auth_sessions.rs:58",
@@ -49,5 +49,11 @@
   "deletePushSubscription": "rust/api/src/push_subscriptions.rs:247",
   "getHouseholdAdminSettings": "rust/api/src/lib.rs:196",
   "updateHouseholdAdminSettings": "rust/api/src/lib.rs:197",
-  "replaceHouseholdAdminSettings": "rust/api/src/lib.rs:198"
+  "replaceHouseholdAdminSettings": "rust/api/src/lib.rs:198",
+  "createSchedule": "rust/api/src/lib.rs:251",
+  "updateSchedule": "rust/api/src/lib.rs:255",
+  "replaceSchedule": "rust/api/src/lib.rs:255",
+  "createPersonMedication": "rust/api/src/lib.rs:261",
+  "updatePersonMedication": "rust/api/src/lib.rs:265",
+  "replacePersonMedication": "rust/api/src/lib.rs:265"
 }
