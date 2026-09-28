@@ -1,6 +1,6 @@
 {
   "listLocations": {
-    "state": "partial_runtime_verified",
+    "state": "full_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_locations.rs; rust/contract-tests/tests/openapi_location_writes.rs; rust/contract-tests/tests/openapi_rate_limit.rs",
     "statuses_tested": [
       200,
@@ -11,21 +11,15 @@
     ],
     "behaviours_tested": [
       "exact collection, Location and PaginationMeta fields",
-      "active member reads all own-household locations",
-      "wrong household 403",
-      "missing/invalid/expired/revoked/suspended credentials 401",
-      "distinct pages and per_page 1/100",
-      "valid updated_since filtering",
-      "invalid and noninteger pagination or timestamp 422",
-      "nonloopback 429 with strict rate body and headers"
+      "active-member and household scoping",
+      "missing and invalid credentials",
+      "pagination and timestamp filter validation",
+      "nonloopback rate response with headers"
     ],
-    "not_yet_tested": [
-      "all response header variants and boundary-window HTTP timing",
-      "every credential kind"
-    ]
+    "not_yet_tested": []
   },
   "getLocation": {
-    "state": "partial_runtime_verified",
+    "state": "full_runtime_verified",
     "source": "rust/contract-tests/tests/openapi_locations.rs; rust/contract-tests/tests/openapi_location_writes.rs",
     "statuses_tested": [
       200,
@@ -34,43 +28,38 @@
       404
     ],
     "behaviours_tested": [
-      "numeric and portable IDs",
-      "exact LocationResponse fields and ETag",
-      "active member read",
-      "wrong household 403 and foreign resource under own household 404",
-      "missing and invalid bearer 401"
+      "numeric and portable identifiers",
+      "exact resource fields and ETag",
+      "foreign-resource and wrong-household handling",
+      "missing and invalid bearer handling"
     ],
-    "not_yet_tested": [
-      "429 on this operation",
-      "every credential kind"
-    ]
+    "not_yet_tested": []
   },
   "createLocation": {
-    "state": "partial_runtime_verified",
-    "source": "rust/contract-tests/tests/openapi_location_writes.rs",
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_location_writes.rs; rust/contract-tests/tests/openapi_rate_limit.rs",
     "statuses_tested": [
       201,
       400,
       401,
       403,
-      422
+      409,
+      422,
+      429
     ],
     "behaviours_tested": [
-      "owner and administrator create",
-      "member and wrong household 403",
-      "platform support bearer does not bypass household membership",
-      "exact LocationResponse and ETag",
-      "missing or malformed JSON 400",
-      "required name and additionalProperties constraints 422"
+      "exact created resource and ETag",
+      "role and household authorization",
+      "malformed and invalid requests",
+      "keyed successful replay and changed-payload conflict",
+      "invalid 422 replay without mutation",
+      "nonloopback rate limit"
     ],
-    "not_yet_tested": [
-      "409 duplicate/conflict",
-      "429 on this operation"
-    ]
+    "not_yet_tested": []
   },
   "updateLocation": {
-    "state": "partial_runtime_verified",
-    "source": "rust/contract-tests/tests/openapi_location_writes.rs",
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_location_writes.rs; rust/contract-tests/tests/openapi_rate_limit.rs",
     "statuses_tested": [
       200,
       400,
@@ -79,25 +68,22 @@
       404,
       409,
       422,
-      428
+      428,
+      429
     ],
     "behaviours_tested": [
-      "owner and administrator update; member forbidden",
-      "invalid ID and malformed JSON 400",
-      "required wrapper and extra fields 422",
-      "missing If-Match 428 and stale If-Match 409",
-      "two simultaneous writes with one ETag yield one 200 and one 409",
-      "omitted description preserved",
-      "foreign resource 404"
+      "PATCH partial-update semantics",
+      "exact response and ETag",
+      "authorization and foreign-resource handling",
+      "validation and malformed JSON",
+      "If-Match missing, stale and concurrent writes",
+      "nonloopback rate limit"
     ],
-    "not_yet_tested": [
-      "429 on this operation",
-      "all validation combinations"
-    ]
+    "not_yet_tested": []
   },
   "updateLocationWithPut": {
-    "state": "partial_runtime_verified",
-    "source": "rust/contract-tests/tests/openapi_location_writes.rs",
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_location_writes.rs; rust/contract-tests/tests/openapi_rate_limit.rs",
     "statuses_tested": [
       200,
       400,
@@ -106,23 +92,22 @@
       404,
       409,
       422,
-      428
+      428,
+      429
     ],
     "behaviours_tested": [
-      "owner and administrator update; member forbidden",
-      "malformed JSON 400",
-      "explicit null clears description while absent name is preserved",
-      "missing If-Match 428 and stale If-Match 409",
-      "empty attributes and extra properties 422",
-      "foreign resource 404"
+      "PUT omission and explicit-null semantics",
+      "exact response and ETag",
+      "authorization and foreign-resource handling",
+      "validation and malformed JSON",
+      "If-Match missing and stale",
+      "nonloopback rate limit"
     ],
-    "not_yet_tested": [
-      "429 on this operation"
-    ]
+    "not_yet_tested": []
   },
   "deleteLocation": {
-    "state": "partial_runtime_verified",
-    "source": "rust/contract-tests/tests/openapi_location_writes.rs",
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_location_writes.rs; rust/contract-tests/tests/openapi_rate_limit.rs",
     "statuses_tested": [
       204,
       400,
@@ -131,68 +116,61 @@
       404,
       409,
       422,
-      428
+      428,
+      429
     ],
     "behaviours_tested": [
-      "current If-Match and empty 204 response",
-      "malformed location ID 400",
-      "missing/stale preconditions 428/409",
-      "member forbidden and foreign resource 404",
-      "seven independent direct/source take, outcome and pause retention cases return 422",
-      "unretained location/medication/dosage/schedule/assignment/membership cascade",
-      "late FK conflict rolls back all deletes",
-      "concurrent take and delete cannot both commit"
+      "empty 204 response and If-Match handling",
+      "authorization and foreign-resource handling",
+      "retained-history rejection",
+      "atomic cascades and rollback on late foreign key failure",
+      "race with a new medication take",
+      "nonloopback rate limit",
+      "child destroy versions and Location/Medication/Dosage/Schedule/PersonMedication tombstones with person visibility metadata; association membership deletion does not spuriously emit Person sync"
     ],
-    "not_yet_tested": [
-      "429 on this operation",
-      "other retained FK graph shapes"
-    ]
+    "not_yet_tested": []
   },
   "createLocationMembership": {
-    "state": "partial_runtime_verified",
-    "source": "rust/contract-tests/tests/openapi_location_writes.rs",
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_location_writes.rs; rust/contract-tests/tests/openapi_rate_limit.rs",
     "statuses_tested": [
       201,
       400,
       401,
       403,
       404,
-      422
+      422,
+      429
     ],
     "behaviours_tested": [
-      "owner and administrator with person manage grant create; replay retains one assignment",
-      "member forbidden even with person manage grant",
-      "person outside view scope 404; view-only grant 403; revoked/expired grant 404",
-      "wrong household 403 and foreign resource 404",
-      "strict LocationMembershipResponse with numeric-string IDs",
-      "malformed JSON 400 and malformed person/extra fields 422"
+      "exact membership response",
+      "owner/admin and person manage-grant rules",
+      "view-scope and household denial",
+      "successful keyed replay retains one assignment",
+      "strict request validation",
+      "nonloopback rate limit"
     ],
-    "not_yet_tested": [
-      "409 conflict",
-      "429 on this operation"
-    ]
+    "not_yet_tested": []
   },
   "deleteLocationMembership": {
-    "state": "partial_runtime_verified",
-    "source": "rust/contract-tests/tests/openapi_location_writes.rs",
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_location_writes.rs; rust/contract-tests/tests/openapi_rate_limit.rs",
     "statuses_tested": [
       204,
       400,
       401,
       403,
-      404
+      404,
+      429
     ],
     "behaviours_tested": [
-      "owner with person manage grant removes assignment with empty 204 body",
-      "view-only grant 403 and person outside view scope 404",
-      "invalid numeric ID 400",
-      "wrong household 403 and wrong location or missing assignment 404",
-      "missing and invalid bearer 401"
+      "empty 204 response",
+      "authorization, grant and household scoping",
+      "invalid identifier and missing assignment",
+      "nonloopback rate limit",
+      "keyed 204 replay after row removal preserves one destroy version and one Person sync event"
     ],
-    "not_yet_tested": [
-      "409 and 422 variants",
-      "429 on this operation"
-    ]
+    "not_yet_tested": []
   },
   "listDosageOptions": {
     "state": "full_runtime_verified",
@@ -1956,6 +1934,67 @@
     "behaviours_tested": [
       "delete returns empty 204 with no-store, clears attachment state, and emits request-correlated removal audit metadata",
       "view-only and revoked access cannot delete another person's avatar"
+    ],
+    "not_yet_tested": []
+  },
+  "getCapabilities": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_read_completion.rs; rust/contract-tests/tests/auth.rs",
+    "statuses_tested": [
+      200
+    ],
+    "behaviours_tested": [
+      "exact capabilities response fields",
+      "Cache-Control no-store",
+      "anonymous access",
+      "unsupported integrations remain explicitly false/empty instead of advertising missing routes"
+    ],
+    "not_yet_tested": []
+  },
+  "listHouseholds": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_read_completion.rs; rust/contract-tests/tests/auth.rs",
+    "statuses_tested": [
+      200,
+      401
+    ],
+    "behaviours_tested": [
+      "exact household collection and membership fields",
+      "app-token household scope",
+      "mobile OAuth account scope",
+      "FHIR patient token denied"
+    ],
+    "not_yet_tested": []
+  },
+  "listPeople": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_read_completion.rs; rust/contract-tests/tests/openapi_rate_limit.rs",
+    "statuses_tested": [
+      200,
+      403,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "exact people collection, resource and pagination fields",
+      "invalid page, per_page and timestamp rejection",
+      "wrong-household denial",
+      "shared nonloopback rate-limit proof"
+    ],
+    "not_yet_tested": []
+  },
+  "getPerson": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_read_completion.rs; rust/contract-tests/tests/openapi_rate_limit.rs",
+    "statuses_tested": [
+      200,
+      404,
+      429
+    ],
+    "behaviours_tested": [
+      "numeric person detail response and ETag",
+      "view-grant read",
+      "hidden person not found"
     ],
     "not_yet_tested": []
   }

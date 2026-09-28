@@ -4,6 +4,7 @@ use serde_json::{json, Value};
 use std::env;
 use std::sync::{Arc, Barrier};
 use std::thread;
+use std::time::{SystemTime, UNIX_EPOCH};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 fn database() -> Client {
@@ -66,6 +67,34 @@ fn location_body(response: reqwest::blocking::Response, status: u16) -> (Value, 
     )
     .expect("RFC3339 timestamp");
     (body, etag)
+}
+
+fn delete_json_with_key(path: &str, token: &str, key: &str) -> reqwest::blocking::Response {
+    let origin =
+        url::Url::parse(&env::var("CONTRACT_BASE_URL").expect("CONTRACT_BASE_URL is required"))
+            .expect("target URL");
+    let local = match origin.host() {
+        Some(url::Host::Domain("localhost")) => true,
+        Some(url::Host::Ipv4(ip)) => ip.is_loopback(),
+        Some(url::Host::Ipv6(ip)) => ip.is_loopback(),
+        _ => false,
+    };
+    assert!(local, "contract write requests require a loopback target");
+    assert!(path.starts_with('/') && !path.starts_with("//"));
+    let url = origin.join(path).expect("request path");
+    assert_eq!(url.origin(), origin.origin());
+    reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .redirect(reqwest::redirect::Policy::none())
+        .no_proxy()
+        .build()
+        .expect("HTTP client")
+        .delete(url)
+        .header("Accept", "application/json")
+        .bearer_auth(token)
+        .header("Idempotency-Key", key)
+        .send()
+        .expect("target must respond")
 }
 
 struct TemporaryLocation {
@@ -151,7 +180,7 @@ impl TemporaryMedicationGraph {
             &[&household_id, &location.id, &name],
         ).expect("temporary medication").get(0);
         let dosage_id: i64 = location.db.query_one(
-            "INSERT INTO dosages (household_id, medication_id, created_at, updated_at) VALUES ($1, $2, now(), now()) RETURNING id",
+            "INSERT INTO dosages (household_id, medication_id, amount, unit, frequency, default_dose_cycle, default_max_daily_doses, default_min_hours_between_doses, created_at, updated_at) VALUES ($1, $2, 1.0, 'tablet', 'daily', 0, 1, 0.0, now(), now()) RETURNING id",
             &[&household_id, &medication_id],
         ).expect("temporary dosage option").get(0);
         let schedule_id: i64 = location.db.query_one(
@@ -284,6 +313,204 @@ fn create_location_obeys_documented_request_and_response() {
         200,
     );
     assert_eq!(read["data"], body["data"]);
+
+    let duplicate = error(
+        target.post_json_authorized(
+            &base,
+            &fixture.access_token,
+            &json!({"location":{"name":"oPENaPI CREATED LOCATION"}}),
+        ),
+        422,
+    );
+    assert_eq!(duplicate["error"]["code"], "validation_failed");
+    assert!(duplicate["error"]["errors"]["name"]
+        .as_array()
+        .is_some_and(|messages| messages.iter().any(|message| {
+            message
+                .as_str()
+                .is_some_and(|text| text.contains("already been taken"))
+        })));
+    let duplicate_count: i64 = database()
+        .query_one(
+            "SELECT count(*) FROM locations WHERE household_id = $1 AND lower(name) = lower($2)",
+            &[&fixture.household_id, &name],
+        )
+        .expect("case-insensitive duplicate location count")
+        .get(0);
+    assert_eq!(duplicate_count, 1);
+}
+
+#[test]
+fn keyed_location_create_replays_without_duplicate_resource_or_domain_events() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let base = format!("/api/v1/households/{}/locations", fixture.household_id);
+    let suffix = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock")
+        .as_nanos();
+    let name = format!("OpenAPI keyed location {suffix}");
+    let key = format!("location-create-{}-{suffix}", fixture.household_id);
+    let payload = json!({"location":{"name":name,"description":"Keyed create replay"}});
+
+    let first = target.post_json_with_key(&base, &fixture.access_token, &key, &payload);
+    let (created, _) = location_body(first, 201);
+    let id = created["data"]["id"].as_i64().expect("created location ID");
+    let mut temporary = TemporaryLocation::from_created(id);
+    assert_eq!(created["data"]["name"], name);
+    assert_eq!(created["data"]["description"], "Keyed create replay");
+    let sync_count: i64 = temporary
+        .db
+        .query_one(
+            "SELECT count(*) FROM api_change_events WHERE record_type = 'Location' AND record_id = $1",
+            &[&id],
+        )
+        .expect("created location sync event count")
+        .get(0);
+    let version_count: i64 = temporary
+        .db
+        .query_one(
+            "SELECT count(*) FROM versions WHERE item_type = 'Location' AND item_id = $1",
+            &[&id],
+        )
+        .expect("created location version count")
+        .get(0);
+    assert_eq!(sync_count, 1);
+    assert_eq!(version_count, 1);
+
+    let replay = target.post_json_with_key(&base, &fixture.access_token, &key, &payload);
+    assert_eq!(replay.status().as_u16(), 201);
+    assert_eq!(replay.headers()["idempotency-replayed"], "true");
+    let replay: Value = replay.json().expect("location create replay JSON");
+    assert_eq!(replay, created);
+    let resource_count: i64 = temporary
+        .db
+        .query_one(
+            "SELECT count(*) FROM locations WHERE household_id = $1 AND name = $2",
+            &[&fixture.household_id, &name],
+        )
+        .expect("single keyed location row")
+        .get(0);
+    assert_eq!(resource_count, 1);
+    let sync_count_after: i64 = temporary
+        .db
+        .query_one(
+            "SELECT count(*) FROM api_change_events WHERE record_type = 'Location' AND record_id = $1",
+            &[&id],
+        )
+        .expect("location sync count after replay")
+        .get(0);
+    let version_count_after: i64 = temporary
+        .db
+        .query_one(
+            "SELECT count(*) FROM versions WHERE item_type = 'Location' AND item_id = $1",
+            &[&id],
+        )
+        .expect("location version count after replay")
+        .get(0);
+    assert_eq!(sync_count_after, sync_count);
+    assert_eq!(version_count_after, version_count);
+
+    let changed = target.post_json_with_key(
+        &base,
+        &fixture.access_token,
+        &key,
+        &json!({"location":{"name":format!("{name} changed")}}),
+    );
+    let changed = error(changed, 409);
+    assert_eq!(changed["error"]["code"], "idempotency_key_reused");
+    assert_eq!(temporary.name(), name);
+}
+
+#[test]
+fn invalid_keyed_location_create_replays_without_mutation() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let base = format!("/api/v1/households/{}/locations", fixture.household_id);
+    let suffix = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock")
+        .as_nanos();
+    let key = format!("location-invalid-create-{}-{suffix}", fixture.household_id);
+    let invalid = json!({"location":{"name":""}});
+    let mut db = database();
+    let locations_before: i64 = db
+        .query_one(
+            "SELECT count(*) FROM locations WHERE household_id = $1",
+            &[&fixture.household_id],
+        )
+        .expect("location count before invalid request")
+        .get(0);
+    let versions_before: i64 = db
+        .query_one(
+            "SELECT count(*) FROM versions WHERE household_id = $1 AND item_type = 'Location'",
+            &[&fixture.household_id],
+        )
+        .expect("location version count before invalid request")
+        .get(0);
+    let sync_before: i64 = db
+        .query_one(
+            "SELECT count(*) FROM api_change_events WHERE household_id = $1 AND record_type = 'Location'",
+            &[&fixture.household_id],
+        )
+        .expect("location sync count before invalid request")
+        .get(0);
+
+    let first_response = target.post_json_with_key(&base, &fixture.access_token, &key, &invalid);
+    let first_header_request_id = first_response.headers()["x-request-id"]
+        .to_str()
+        .expect("first request ID header")
+        .to_owned();
+    let first = error(first_response, 422);
+    assert_eq!(first["error"]["code"], "validation_failed");
+    let replay = target.post_json_with_key(&base, &fixture.access_token, &key, &invalid);
+    assert_eq!(replay.status().as_u16(), 422);
+    assert_eq!(replay.headers()["idempotency-replayed"], "true");
+    let replay_header_request_id = replay.headers()["x-request-id"]
+        .to_str()
+        .expect("replay request ID header")
+        .to_owned();
+    let replay: Value = replay.json().expect("invalid location replay JSON");
+    assert_eq!(first["error"]["request_id"], first_header_request_id);
+    assert_eq!(replay["error"]["request_id"], replay_header_request_id);
+    assert_ne!(replay["error"]["request_id"], first["error"]["request_id"]);
+    for field in ["code", "message", "errors"] {
+        assert_eq!(replay["error"][field], first["error"][field]);
+    }
+
+    let changed = target.post_json_with_key(
+        &base,
+        &fixture.access_token,
+        &key,
+        &json!({"location":{"name":format!("Changed invalid key {suffix}")}}),
+    );
+    let changed = error(changed, 409);
+    assert_eq!(changed["error"]["code"], "idempotency_key_reused");
+
+    let locations_after: i64 = db
+        .query_one(
+            "SELECT count(*) FROM locations WHERE household_id = $1",
+            &[&fixture.household_id],
+        )
+        .expect("location count after invalid request")
+        .get(0);
+    let versions_after: i64 = db
+        .query_one(
+            "SELECT count(*) FROM versions WHERE household_id = $1 AND item_type = 'Location'",
+            &[&fixture.household_id],
+        )
+        .expect("location version count after invalid request")
+        .get(0);
+    let sync_after: i64 = db
+        .query_one(
+            "SELECT count(*) FROM api_change_events WHERE household_id = $1 AND record_type = 'Location'",
+            &[&fixture.household_id],
+        )
+        .expect("location sync count after invalid request")
+        .get(0);
+    assert_eq!(locations_after, locations_before);
+    assert_eq!(versions_after, versions_before);
+    assert_eq!(sync_after, sync_before);
 }
 
 #[test]
@@ -719,13 +946,80 @@ fn membership_create_replays_and_delete_is_scoped_to_location() {
     );
     assert_eq!(temporary.membership_count(fixture.managed_person_id), 1);
     let path = format!("{base}/{id}");
-    let removed = target.delete(&path, Some(&fixture.access_token));
+    let membership_id = id.parse::<i64>().expect("membership numeric ID");
+    let versions_before: i64 = temporary
+        .db
+        .query_one(
+            "SELECT count(*) FROM versions WHERE item_type = 'LocationMembership' AND item_id = $1",
+            &[&membership_id],
+        )
+        .expect("membership version count before delete")
+        .get(0);
+    let sync_before: i64 = temporary
+        .db
+        .query_one(
+            "SELECT count(*) FROM api_change_events WHERE record_type = 'Person' AND record_id = $1",
+            &[&fixture.managed_person_id],
+        )
+        .expect("person sync count before delete")
+        .get(0);
+    let key = format!(
+        "location-membership-delete-{}-{membership_id}",
+        fixture.household_id
+    );
+    let removed = delete_json_with_key(&path, &fixture.access_token, &key);
     assert_eq!(removed.status().as_u16(), 204);
     assert!(removed
         .text()
         .expect("empty membership delete response")
         .is_empty());
     assert_eq!(temporary.membership_count(fixture.managed_person_id), 0);
+
+    let versions_after_delete: i64 = temporary
+        .db
+        .query_one(
+            "SELECT count(*) FROM versions WHERE item_type = 'LocationMembership' AND item_id = $1",
+            &[&membership_id],
+        )
+        .expect("membership version count after delete")
+        .get(0);
+    let sync_after_delete: i64 = temporary
+        .db
+        .query_one(
+            "SELECT count(*) FROM api_change_events WHERE record_type = 'Person' AND record_id = $1",
+            &[&fixture.managed_person_id],
+        )
+        .expect("person sync count after delete")
+        .get(0);
+    assert_eq!(versions_after_delete, versions_before + 1);
+    assert_eq!(sync_after_delete, sync_before + 1);
+
+    let replay = delete_json_with_key(&path, &fixture.access_token, &key);
+    assert_eq!(replay.status().as_u16(), 204);
+    assert_eq!(replay.headers()["idempotency-replayed"], "true");
+    assert!(replay
+        .text()
+        .expect("empty membership delete replay")
+        .is_empty());
+    assert_eq!(temporary.membership_count(fixture.managed_person_id), 0);
+    let versions_after_replay: i64 = temporary
+        .db
+        .query_one(
+            "SELECT count(*) FROM versions WHERE item_type = 'LocationMembership' AND item_id = $1",
+            &[&membership_id],
+        )
+        .expect("membership version count after replay")
+        .get(0);
+    let sync_after_replay: i64 = temporary
+        .db
+        .query_one(
+            "SELECT count(*) FROM api_change_events WHERE record_type = 'Person' AND record_id = $1",
+            &[&fixture.managed_person_id],
+        )
+        .expect("person sync count after replay")
+        .get(0);
+    assert_eq!(versions_after_replay, versions_after_delete);
+    assert_eq!(sync_after_replay, sync_after_delete);
     error(target.delete(&path, Some(&fixture.access_token)), 404);
 }
 
@@ -1090,6 +1384,51 @@ fn location_delete_cascades_unretained_storage_in_one_transaction() {
         fixture.managed_person_id,
         "OpenAPI cascade location",
     );
+    let medication_portable_id: String = graph
+        .location
+        .db
+        .query_one(
+            "SELECT portable_id FROM medications WHERE id = $1",
+            &[&graph.medication_id],
+        )
+        .expect("cascade medication portable ID")
+        .get(0);
+    let dosage_portable_id: String = graph
+        .location
+        .db
+        .query_one(
+            "SELECT portable_id FROM dosages WHERE id = $1",
+            &[&graph.dosage_id],
+        )
+        .expect("cascade dosage portable ID")
+        .get(0);
+    let schedule_portable_id: String = graph
+        .location
+        .db
+        .query_one(
+            "SELECT portable_id FROM schedules WHERE id = $1",
+            &[&graph.schedule_id],
+        )
+        .expect("cascade schedule portable ID")
+        .get(0);
+    let assignment_portable_id: String = graph
+        .location
+        .db
+        .query_one(
+            "SELECT portable_id FROM person_medications WHERE id = $1",
+            &[&graph.assignment_id],
+        )
+        .expect("cascade assignment portable ID")
+        .get(0);
+    let person_sync_before: i64 = graph
+        .location
+        .db
+        .query_one(
+            "SELECT count(*) FROM api_change_events WHERE household_id = $1 AND record_type = 'Person' AND record_id = $2",
+            &[&fixture.household_id, &fixture.managed_person_id],
+        )
+        .expect("person sync count before cascade")
+        .get(0);
     let path = graph.location.path(fixture.household_id);
     let (_, etag) = location_body(target.get(&path, Some(&fixture.access_token)), 200);
     let response = target.delete_if_match(&path, &fixture.access_token, &etag);
@@ -1105,6 +1444,101 @@ fn location_delete_cascades_unretained_storage_in_one_transaction() {
     ] {
         assert_eq!(graph.count(table, id), 0, "{table} should be deleted");
     }
+
+    for (record_type, portable_id) in [
+        ("Medication", medication_portable_id.as_str()),
+        ("MedicationDosageOption", dosage_portable_id.as_str()),
+        ("Schedule", schedule_portable_id.as_str()),
+        ("PersonMedication", assignment_portable_id.as_str()),
+    ] {
+        let tombstones: i64 = graph
+            .location
+            .db
+            .query_one(
+                "SELECT count(*) FROM api_tombstones WHERE household_id = $1 AND record_type = $2 AND record_portable_id = $3 AND action = 'delete'",
+                &[&fixture.household_id, &record_type, &portable_id],
+            )
+            .expect("cascade tombstone count")
+            .get(0);
+        assert_eq!(tombstones, 1, "{record_type} delete tombstone");
+    }
+    for (record_type, portable_id) in [
+        ("Schedule", &schedule_portable_id),
+        ("PersonMedication", &assignment_portable_id),
+    ] {
+        let metadata_text: String = graph
+            .location
+            .db
+            .query_one(
+                "SELECT metadata::text FROM api_tombstones WHERE household_id = $1 AND record_type = $2 AND record_portable_id = $3",
+                &[&fixture.household_id, &record_type, portable_id],
+            )
+            .expect("source tombstone metadata")
+            .get(0);
+        let metadata: Value = serde_json::from_str(&metadata_text).expect("source tombstone JSON");
+        assert_eq!(
+            metadata["person_portable_id"],
+            fixture.managed_person_portable_id,
+            "{record_type} person visibility"
+        );
+    }
+    let medication_metadata_text: String = graph
+        .location
+        .db
+        .query_one(
+            "SELECT metadata::text FROM api_tombstones WHERE household_id = $1 AND record_type = 'Medication' AND record_portable_id = $2",
+            &[&fixture.household_id, &medication_portable_id],
+        )
+        .expect("medication tombstone metadata")
+        .get(0);
+    let medication_metadata: Value =
+        serde_json::from_str(&medication_metadata_text).expect("medication tombstone JSON");
+    assert_eq!(
+        medication_metadata["sync_person_portable_ids"],
+        json!([fixture.managed_person_portable_id])
+    );
+    assert!(!medication_metadata
+        .to_string()
+        .contains(&fixture.foreign_email));
+    let location_tombstones: i64 = graph
+        .location
+        .db
+        .query_one(
+            "SELECT count(*) FROM api_tombstones WHERE household_id = $1 AND record_type = 'Location' AND record_portable_id = $2 AND action = 'delete'",
+            &[&fixture.household_id, &graph.location.portable_id],
+        )
+        .expect("location tombstone count")
+        .get(0);
+    assert_eq!(location_tombstones, 1);
+
+    for (item_type, item_id) in [
+        ("MedicationDosageOption", graph.dosage_id),
+        ("Schedule", graph.schedule_id),
+        ("PersonMedication", graph.assignment_id),
+        ("LocationMembership", graph.membership_id),
+    ] {
+        let destroys: i64 = graph
+            .location
+            .db
+            .query_one(
+                "SELECT count(*) FROM versions WHERE household_id = $1 AND item_type = $2 AND item_id = $3 AND event = 'destroy'",
+                &[&fixture.household_id, &item_type, &item_id],
+            )
+            .expect("cascade destroy version count")
+            .get(0);
+        assert_eq!(destroys, 1, "{item_type} destroy version");
+    }
+
+    let person_sync_after: i64 = graph
+        .location
+        .db
+        .query_one(
+            "SELECT count(*) FROM api_change_events WHERE household_id = $1 AND record_type = 'Person' AND record_id = $2",
+            &[&fixture.household_id, &fixture.managed_person_id],
+        )
+        .expect("person sync count after cascade")
+        .get(0);
+    assert_eq!(person_sync_after, person_sync_before);
 }
 
 #[test]

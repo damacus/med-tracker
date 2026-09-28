@@ -410,7 +410,7 @@ or begin; echo 'Admin settings runner skipped cleanup after failure' >&2; exit 1
 contains -- api:contract-image-remove $trace
 or begin; echo 'Admin settings runner skipped image cleanup after failure' >&2; exit 1; end
 
-for target in openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-invitations openapi-invitations-legacy openapi-profile openapi-profile-storage openapi-rate-limit openapi-medications openapi-medications-focused
+for target in openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-invitations openapi-invitations-legacy openapi-profile openapi-profile-storage openapi-read-completion openapi-rate-limit openapi-medications openapi-medications-focused
     set -e CONTRACT_FAKE_FAIL_STEP
     set -l selected_step (string join -- '' api:contract- $target -test)
     if test "$target" = openapi-invitations-legacy

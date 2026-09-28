@@ -84,6 +84,26 @@ pub(super) async fn invitation_actor(
     })
 }
 
+pub(super) async fn household_read_scope(
+    db: &DatabaseTransaction,
+    headers: &HeaderMap,
+) -> Result<(i64, Option<i64>), ApiError> {
+    let credential = authenticate(db, headers).await?.credential;
+    let household_id = if let Credential::App(row) = &credential {
+        Some(
+            membership::Entity::find_by_id(row.household_membership_id)
+                .one(db)
+                .await
+                .map_err(database_error)?
+                .ok_or_else(ApiError::unauthorized)?
+                .household_id,
+        )
+    } else {
+        None
+    };
+    Ok((credential.account_id(), household_id))
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/api/v1/auth/sessions", get(index))

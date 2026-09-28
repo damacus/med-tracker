@@ -1,13 +1,17 @@
-use crate::entities::{dosage, grant, household, medication, medication_take, person};
-use crate::medication_management::{error_response, finish, request_context};
-use crate::read_entities::{
-    dose_occurrence, location_membership, pause_period, person_medication, schedule, stock_location,
+use crate::entities::{
+    api_tombstone, dosage, grant, medication, medication_take, person, person_medication, schedule,
 };
+use crate::medication_management::{
+    error_response, finish_with_request_id, record_version, request_context,
+};
+use crate::mutation_idempotency::{self, Lookup, StoredResponse};
+use crate::read_entities::{dose_occurrence, location_membership, pause_period, stock_location};
 use crate::read_resources::location_value;
-use crate::{database_error, representation_etag, ApiError, AppState, AuthContext};
+use crate::sync_events::{record_change, SyncRecord};
+use crate::{audit, database_error, representation_etag, ApiError, AppState, AuthContext};
 use axum::extract::{rejection::JsonRejection, Path, State};
-use axum::http::{header, HeaderMap, StatusCode};
-use axum::response::Response;
+use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
+use axum::response::{IntoResponse, Response};
 use axum::Json;
 use chrono::Utc;
 use sea_orm::{
@@ -15,6 +19,8 @@ use sea_orm::{
     QueryOrder, QuerySelect, Set, TransactionTrait,
 };
 use serde_json::{json, Value};
+use std::collections::{HashMap, HashSet};
+use uuid::Uuid;
 
 fn manager(context: &AuthContext) -> bool {
     matches!(context.membership.role.as_str(), "owner" | "administrator")
@@ -40,27 +46,6 @@ async fn failure(
         code,
         message,
         None,
-    )
-    .await
-}
-
-async fn validation(
-    db: DatabaseTransaction,
-    context: &AuthContext,
-    method: &str,
-    action: &str,
-) -> Result<Response, ApiError> {
-    error_response(
-        db,
-        context,
-        method,
-        "api/v1/locations",
-        "LocationPolicy",
-        action,
-        StatusCode::UNPROCESSABLE_ENTITY,
-        "validation_failed",
-        "Validation failed",
-        Some(json!({"location": ["is invalid"]})),
     )
     .await
 }
@@ -160,6 +145,235 @@ fn representation(record: stock_location::Model) -> (Value, String) {
     (body, etag)
 }
 
+fn snapshot(record: &stock_location::Model) -> Value {
+    json!({"id": record.id, "household_id": record.household_id, "portable_id": record.portable_id, "name": record.name, "description": record.description, "created_at": record.created_at, "updated_at": record.updated_at})
+}
+
+async fn tombstone(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    record_type: &str,
+    record_id: i64,
+    portable_id: &str,
+    extra_metadata: Value,
+) -> Result<(), ApiError> {
+    let now = Utc::now().naive_utc();
+    let mut metadata =
+        json!({"record_type": record_type, "record_id": record_id, "portable_id": portable_id});
+    if let (Some(base), Some(extra)) = (metadata.as_object_mut(), extra_metadata.as_object()) {
+        base.extend(extra.clone());
+    }
+    api_tombstone::ActiveModel {
+        household_id: Set(context.membership.household_id),
+        household_membership_id: Set(Some(context.membership.id)),
+        account_id: Set(Some(context.account_id)),
+        action: Set("delete".to_owned()),
+        record_type: Set(record_type.to_owned()),
+        record_portable_id: Set(portable_id.to_owned()),
+        metadata: Set(metadata),
+        deleted_at: Set(now),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(db)
+    .await
+    .map_err(database_error)?;
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn location_change(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    request_id: &str,
+    record: &stock_location::Model,
+    version_event: &str,
+    sync_action: &str,
+    before: Option<Value>,
+    after: Option<Value>,
+) -> Result<(), ApiError> {
+    record_version(
+        db,
+        context,
+        request_id,
+        "Location",
+        record.id,
+        version_event,
+        before,
+        after,
+    )
+    .await?;
+    if sync_action == "delete" {
+        tombstone(
+            db,
+            context,
+            "Location",
+            record.id,
+            &record.portable_id,
+            json!({}),
+        )
+        .await
+    } else {
+        record_change(
+            db,
+            context,
+            request_id,
+            SyncRecord {
+                record_type: "Location",
+                record_id: record.id,
+                portable_id: &record.portable_id,
+                action: sync_action,
+                person_portable_id: None,
+            },
+        )
+        .await
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn keyed_replay(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    headers: &HeaderMap,
+    method: &str,
+    path: &str,
+    body: &Value,
+    action: &str,
+    controller: &str,
+    policy: &str,
+) -> Result<Option<Response>, ApiError> {
+    let Some(key) = mutation_idempotency::key(headers) else {
+        return Ok(None);
+    };
+    let digest = mutation_idempotency::digest(method, path, body);
+    match mutation_idempotency::lookup(db, context, key, method, path, &digest).await? {
+        Lookup::New => Ok(None),
+        Lookup::Replay(saved) => {
+            let mut saved = *saved;
+            let status = StatusCode::from_u16(saved.response_status as u16)
+                .map_err(|_| ApiError::internal())?;
+            let request_id = audit::record_resource_request(
+                db, context, method, controller, policy, action, status, true,
+            )
+            .await
+            .map_err(database_error)?;
+            if status.is_client_error() && saved.response_body.get("error").is_some() {
+                saved.response_body["error"]["request_id"] = json!(request_id);
+            }
+            let mut response = mutation_idempotency::replay(saved)?;
+            response.headers_mut().insert(
+                "x-request-id",
+                HeaderValue::from_str(&request_id).map_err(|_| ApiError::internal())?,
+            );
+            Ok(Some(response))
+        }
+        Lookup::Conflict => {
+            let request_id = audit::record_resource_request(
+                db,
+                context,
+                method,
+                controller,
+                policy,
+                action,
+                StatusCode::CONFLICT,
+                true,
+            )
+            .await
+            .map_err(database_error)?;
+            let mut response = (StatusCode::CONFLICT, Json(json!({"error":{"code":"idempotency_key_reused","message":"Idempotency key has already been used for a different request","request_id":request_id}}))).into_response();
+            response.headers_mut().insert(
+                "x-request-id",
+                HeaderValue::from_str(&request_id).map_err(|_| ApiError::internal())?,
+            );
+            Ok(Some(response))
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn store_keyed(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    headers: &HeaderMap,
+    method: &str,
+    path: &str,
+    request: &Value,
+    status: StatusCode,
+    body: &Value,
+    request_id: &str,
+    etag: Option<&str>,
+) -> Result<(), ApiError> {
+    if let Some(key) = mutation_idempotency::key(headers) {
+        mutation_idempotency::store(
+            db,
+            context,
+            StoredResponse {
+                key,
+                method,
+                path,
+                digest: &mutation_idempotency::digest(method, path, request),
+                status,
+                body: body.clone(),
+                request_id,
+                etag,
+            },
+        )
+        .await?;
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn keyed_failure(
+    db: DatabaseTransaction,
+    context: &AuthContext,
+    headers: &HeaderMap,
+    method: &str,
+    path: &str,
+    request: &Value,
+    controller: &str,
+    policy: &str,
+    action: &str,
+    status: StatusCode,
+    code: &str,
+    message: &str,
+    errors: Option<Value>,
+) -> Result<Response, ApiError> {
+    let request_id = Uuid::new_v4().to_string();
+    let mut body = json!({"error": {"code": code, "message": message, "request_id": request_id}});
+    if let Some(errors) = errors {
+        body["error"]["errors"] = errors;
+    }
+    store_keyed(
+        &db,
+        context,
+        headers,
+        method,
+        path,
+        request,
+        status,
+        &body,
+        &request_id,
+        None,
+    )
+    .await?;
+    finish_with_request_id(
+        db,
+        context,
+        &request_id,
+        method,
+        controller,
+        policy,
+        action,
+        status,
+        true,
+        body,
+        None,
+    )
+    .await
+}
+
 async fn manager_context(
     state: &AppState,
     headers: &HeaderMap,
@@ -167,7 +381,10 @@ async fn manager_context(
     method: &str,
     action: &str,
 ) -> Result<Result<(DatabaseTransaction, AuthContext), Response>, ApiError> {
-    let (db, context) = request_context(state, headers, household_id).await?;
+    let (db, _) = request_context(state, headers, household_id).await?;
+    let (_, context) =
+        mutation_idempotency::lock_household_and_reauthenticate(state, &db, headers, household_id)
+            .await?;
     if manager(&context) {
         Ok(Ok((db, context)))
     } else {
@@ -211,8 +428,40 @@ pub(super) async fn create(
             .await;
         }
     };
+    let path = format!("/api/v1/households/{household_id}/locations");
+    if let Some(response) = keyed_replay(
+        &db,
+        &context,
+        &headers,
+        "POST",
+        &path,
+        &body,
+        "create",
+        "api/v1/locations",
+        "LocationPolicy",
+    )
+    .await?
+    {
+        db.commit().await.map_err(database_error)?;
+        return Ok(response);
+    }
     let Some((Some(name), description)) = attributes(&body, true) else {
-        return validation(db, &context, "POST", "create").await;
+        return keyed_failure(
+            db,
+            &context,
+            &headers,
+            "POST",
+            &path,
+            &body,
+            "api/v1/locations",
+            "LocationPolicy",
+            "create",
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "validation_failed",
+            "Validation failed",
+            Some(json!({"location": ["is invalid"]})),
+        )
+        .await;
     };
     let now = Utc::now().naive_utc();
     let active = stock_location::ActiveModel {
@@ -236,30 +485,62 @@ pub(super) async fn create(
             ) =>
         {
             savepoint.rollback().await.map_err(database_error)?;
-            return failure(
+            return keyed_failure(
                 db,
                 &context,
+                &headers,
                 "POST",
+                &path,
+                &body,
+                "api/v1/locations",
+                "LocationPolicy",
                 "create",
-                StatusCode::CONFLICT,
-                "conflict",
-                "Location already exists",
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "validation_failed",
+                "Validation failed",
+                Some(json!({"name": ["has already been taken"]})),
             )
             .await;
         }
         Err(error) => return Err(database_error(error)),
     };
-    let (body, etag) = representation(record);
-    finish(
+    let request_id = Uuid::new_v4().to_string();
+    location_change(
+        &db,
+        &context,
+        &request_id,
+        &record,
+        "create",
+        "create",
+        None,
+        Some(snapshot(&record)),
+    )
+    .await?;
+    let (response_body, etag) = representation(record);
+    store_keyed(
+        &db,
+        &context,
+        &headers,
+        "POST",
+        &path,
+        &body,
+        StatusCode::CREATED,
+        &response_body,
+        &request_id,
+        Some(&etag),
+    )
+    .await?;
+    finish_with_request_id(
         db,
         &context,
+        &request_id,
         "POST",
         "api/v1/locations",
         "LocationPolicy",
         "create",
         StatusCode::CREATED,
         true,
-        body,
+        response_body,
         Some(&etag),
     )
     .await
@@ -278,15 +559,53 @@ async fn update(
             Ok(value) => value,
             Err(response) => return Ok(response),
         };
+    let Json(request) = match payload {
+        Ok(body) => body,
+        Err(_) => {
+            return failure(
+                db,
+                &context,
+                method,
+                "update",
+                StatusCode::BAD_REQUEST,
+                "bad_request",
+                "Invalid JSON request body",
+            )
+            .await;
+        }
+    };
+    let path = format!("/api/v1/households/{household_id}/locations/{id}");
+    if let Some(response) = keyed_replay(
+        &db,
+        &context,
+        &headers,
+        method,
+        &path,
+        &request,
+        "update",
+        "api/v1/locations",
+        "LocationPolicy",
+    )
+    .await?
+    {
+        db.commit().await.map_err(database_error)?;
+        return Ok(response);
+    }
     if !valid_identifier(&id) {
-        return failure(
+        return keyed_failure(
             db,
             &context,
+            &headers,
             method,
+            &path,
+            &request,
+            "api/v1/locations",
+            "LocationPolicy",
             "update",
             StatusCode::BAD_REQUEST,
             "bad_request",
             "Invalid resource ID",
+            None,
         )
         .await;
     }
@@ -306,26 +625,38 @@ async fn update(
         .get(header::IF_MATCH)
         .and_then(|value| value.to_str().ok())
     else {
-        return failure(
+        return keyed_failure(
             db,
             &context,
+            &headers,
             method,
+            &path,
+            &request,
+            "api/v1/locations",
+            "LocationPolicy",
             "update",
             StatusCode::PRECONDITION_REQUIRED,
             "precondition_required",
             "If-Match is required",
+            None,
         )
         .await;
     };
     if if_match.is_empty() {
-        return failure(
+        return keyed_failure(
             db,
             &context,
+            &headers,
             method,
+            &path,
+            &request,
+            "api/v1/locations",
+            "LocationPolicy",
             "update",
             StatusCode::PRECONDITION_REQUIRED,
             "precondition_required",
             "If-Match is required",
+            None,
         )
         .await;
     }
@@ -342,24 +673,60 @@ async fn update(
         )
         .await;
     }
-    let Json(body) = match payload {
-        Ok(body) => body,
-        Err(_) => {
-            return failure(
-                db,
-                &context,
-                method,
-                "update",
-                StatusCode::BAD_REQUEST,
-                "bad_request",
-                "Invalid JSON request body",
-            )
-            .await
-        }
+    let Some((name, description)) = attributes(&request, false) else {
+        return keyed_failure(
+            db,
+            &context,
+            &headers,
+            method,
+            &path,
+            &request,
+            "api/v1/locations",
+            "LocationPolicy",
+            "update",
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "validation_failed",
+            "Validation failed",
+            Some(json!({"location": ["is invalid"]})),
+        )
+        .await;
     };
-    let Some((name, description)) = attributes(&body, false) else {
-        return validation(db, &context, method, "update").await;
-    };
+    let changed = name.as_ref().is_some_and(|value| value != &record.name)
+        || description
+            .as_ref()
+            .is_some_and(|value| value != &record.description);
+    if !changed {
+        let request_id = Uuid::new_v4().to_string();
+        let (response_body, etag) = representation(record);
+        store_keyed(
+            &db,
+            &context,
+            &headers,
+            method,
+            &path,
+            &request,
+            StatusCode::OK,
+            &response_body,
+            &request_id,
+            Some(&etag),
+        )
+        .await?;
+        return finish_with_request_id(
+            db,
+            &context,
+            &request_id,
+            method,
+            "api/v1/locations",
+            "LocationPolicy",
+            "update",
+            StatusCode::OK,
+            true,
+            response_body,
+            Some(&etag),
+        )
+        .await;
+    }
+    let before = snapshot(&record);
     let mut active: stock_location::ActiveModel = record.into();
     if let Some(name) = name {
         active.name = Set(name);
@@ -381,30 +748,62 @@ async fn update(
             ) =>
         {
             savepoint.rollback().await.map_err(database_error)?;
-            return failure(
+            return keyed_failure(
                 db,
                 &context,
+                &headers,
                 method,
+                &path,
+                &request,
+                "api/v1/locations",
+                "LocationPolicy",
                 "update",
-                StatusCode::CONFLICT,
-                "conflict",
-                "Location already exists",
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "validation_failed",
+                "Validation failed",
+                Some(json!({"name": ["has already been taken"]})),
             )
             .await;
         }
         Err(error) => return Err(database_error(error)),
     };
-    let (body, etag) = representation(record);
-    finish(
+    let request_id = Uuid::new_v4().to_string();
+    location_change(
+        &db,
+        &context,
+        &request_id,
+        &record,
+        "update",
+        "update",
+        Some(before),
+        Some(snapshot(&record)),
+    )
+    .await?;
+    let (response_body, etag) = representation(record);
+    store_keyed(
+        &db,
+        &context,
+        &headers,
+        method,
+        &path,
+        &request,
+        StatusCode::OK,
+        &response_body,
+        &request_id,
+        Some(&etag),
+    )
+    .await?;
+    finish_with_request_id(
         db,
         &context,
+        &request_id,
         method,
         "api/v1/locations",
         "LocationPolicy",
         "update",
         StatusCode::OK,
         true,
-        body,
+        response_body,
         Some(&etag),
     )
     .await
@@ -428,10 +827,156 @@ pub(super) async fn put(
     update(state, household_id, id, headers, payload, "PUT").await
 }
 
+struct CascadeSnapshot {
+    medications: Vec<medication::Model>,
+    dosages: Vec<dosage::Model>,
+    schedules: Vec<schedule::Model>,
+    assignments: Vec<person_medication::Model>,
+    memberships: Vec<location_membership::Model>,
+}
+
+async fn record_cascade_effects(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    request_id: &str,
+    cascade: &CascadeSnapshot,
+) -> Result<(), ApiError> {
+    let person_ids: HashSet<i64> = cascade
+        .schedules
+        .iter()
+        .map(|row| row.person_id)
+        .chain(cascade.assignments.iter().map(|row| row.person_id))
+        .collect();
+    let people = if person_ids.is_empty() {
+        Vec::new()
+    } else {
+        person::Entity::find()
+            .filter(person::Column::Id.is_in(person_ids))
+            .all(db)
+            .await
+            .map_err(database_error)?
+    };
+    let person_portable_ids: HashMap<i64, String> = people
+        .into_iter()
+        .map(|row| (row.id, row.portable_id))
+        .collect();
+    for row in &cascade.memberships {
+        record_version(
+            db,
+            context,
+            request_id,
+            "LocationMembership",
+            row.id,
+            "destroy",
+            Some(json!({"id": row.id, "household_id": row.household_id, "location_id": row.location_id, "person_id": row.person_id, "created_at": row.created_at, "updated_at": row.updated_at})),
+            None,
+        )
+        .await?;
+    }
+    for row in &cascade.schedules {
+        record_version(
+            db, context, request_id, "Schedule", row.id, "destroy",
+            Some(json!({"id":row.id,"household_id":row.household_id,"portable_id":row.portable_id,"person_id":row.person_id,"medication_id":row.medication_id,"source_dosage_option_id":row.source_dosage_option_id,"dose_amount":row.dose_amount,"dose_unit":row.dose_unit,"frequency":row.frequency,"dose_cycle":row.dose_cycle,"start_date":row.start_date,"end_date":row.end_date,"active":row.active,"notes":row.notes,"created_at":row.created_at,"updated_at":row.updated_at,"schedule_type":row.schedule_type,"schedule_config":row.schedule_config,"max_daily_doses":row.max_daily_doses,"min_hours_between_doses":row.min_hours_between_doses,"retired_at":row.retired_at})),
+            None,
+        ).await?;
+        let person_metadata = person_portable_ids.get(&row.person_id).map_or_else(
+            || json!({}),
+            |portable_id| json!({"person_portable_id": portable_id}),
+        );
+        tombstone(
+            db,
+            context,
+            "Schedule",
+            row.id,
+            &row.portable_id,
+            person_metadata,
+        )
+        .await?;
+    }
+    for row in &cascade.assignments {
+        record_version(
+            db, context, request_id, "PersonMedication", row.id, "destroy",
+            Some(json!({"id":row.id,"household_id":row.household_id,"portable_id":row.portable_id,"person_id":row.person_id,"medication_id":row.medication_id,"source_dosage_option_id":row.source_dosage_option_id,"dose_amount":row.dose_amount,"dose_unit":row.dose_unit,"active":row.active,"notes":row.notes,"created_at":row.created_at,"updated_at":row.updated_at,"dose_cycle":row.dose_cycle,"administration_kind":row.administration_kind,"position":row.position,"max_daily_doses":row.max_daily_doses,"min_hours_between_doses":row.min_hours_between_doses,"retired_at":row.retired_at})),
+            None,
+        ).await?;
+        let person_metadata = person_portable_ids.get(&row.person_id).map_or_else(
+            || json!({}),
+            |portable_id| json!({"person_portable_id": portable_id}),
+        );
+        tombstone(
+            db,
+            context,
+            "PersonMedication",
+            row.id,
+            &row.portable_id,
+            person_metadata,
+        )
+        .await?;
+    }
+    for row in &cascade.dosages {
+        record_version(
+            db, context, request_id, "MedicationDosageOption", row.id, "destroy",
+            Some(json!({"id":row.id,"household_id":row.household_id,"medication_id":row.medication_id,"portable_id":row.portable_id,"amount":row.amount,"unit":row.unit,"current_supply":row.current_supply,"reorder_threshold":row.reorder_threshold,"frequency":row.frequency,"description":row.description,"default_for_adults":row.default_for_adults,"default_for_children":row.default_for_children,"default_max_daily_doses":row.default_max_daily_doses,"default_min_hours_between_doses":row.default_min_hours_between_doses,"default_dose_cycle":row.default_dose_cycle,"created_at":row.created_at,"updated_at":row.updated_at})),
+            None,
+        ).await?;
+        tombstone(
+            db,
+            context,
+            "MedicationDosageOption",
+            row.id,
+            &row.portable_id,
+            json!({}),
+        )
+        .await?;
+    }
+    for row in &cascade.medications {
+        let mut visible_people: Vec<&str> = cascade
+            .schedules
+            .iter()
+            .filter(|source| source.medication_id == row.id)
+            .filter_map(|source| {
+                person_portable_ids
+                    .get(&source.person_id)
+                    .map(String::as_str)
+            })
+            .chain(
+                cascade
+                    .assignments
+                    .iter()
+                    .filter(|source| source.medication_id == row.id)
+                    .filter_map(|source| {
+                        person_portable_ids
+                            .get(&source.person_id)
+                            .map(String::as_str)
+                    }),
+            )
+            .collect();
+        visible_people.sort_unstable();
+        visible_people.dedup();
+        let visibility = if !visible_people.is_empty() {
+            json!({"sync_person_portable_ids": visible_people})
+        } else if let Some(creator) = row.created_by_membership_id {
+            json!({"sync_creator_membership_id": creator.to_string()})
+        } else {
+            json!({})
+        };
+        tombstone(
+            db,
+            context,
+            "Medication",
+            row.id,
+            &row.portable_id,
+            visibility,
+        )
+        .await?;
+    }
+    Ok(())
+}
+
 async fn delete_dependents(
     db: &DatabaseTransaction,
     record: &stock_location::Model,
-) -> Result<bool, DbErr> {
+) -> Result<Option<CascadeSnapshot>, DbErr> {
     let medications = medication::Entity::find()
         .filter(medication::Column::HouseholdId.eq(record.household_id))
         .filter(medication::Column::LocationId.eq(record.id))
@@ -462,6 +1007,22 @@ async fn delete_dependents(
     };
     let schedule_ids: Vec<i64> = schedules.iter().map(|schedule| schedule.id).collect();
     let assignment_ids: Vec<i64> = assignments.iter().map(|assignment| assignment.id).collect();
+    let dosages = if medication_ids.is_empty() {
+        Vec::new()
+    } else {
+        dosage::Entity::find()
+            .filter(dosage::Column::MedicationId.is_in(medication_ids.clone()))
+            .order_by_asc(dosage::Column::Id)
+            .lock_exclusive()
+            .all(db)
+            .await?
+    };
+    let memberships = location_membership::Entity::find()
+        .filter(location_membership::Column::LocationId.eq(record.id))
+        .order_by_asc(location_membership::Column::Id)
+        .lock_exclusive()
+        .all(db)
+        .await?;
 
     let mut takes =
         Condition::any().add(medication_take::Column::TakenFromLocationId.eq(record.id));
@@ -482,7 +1043,7 @@ async fn delete_dependents(
         .await?
         .is_some()
     {
-        return Ok(true);
+        return Ok(None);
     }
 
     let mut sources = Condition::any();
@@ -500,7 +1061,7 @@ async fn delete_dependents(
             .await?
             .is_some()
         {
-            return Ok(true);
+            return Ok(None);
         }
         let mut pauses = Condition::any();
         if !schedule_ids.is_empty() {
@@ -516,7 +1077,7 @@ async fn delete_dependents(
             .await?
             .is_some()
         {
-            return Ok(true);
+            return Ok(None);
         }
     }
 
@@ -545,7 +1106,13 @@ async fn delete_dependents(
     stock_location::Entity::delete_by_id(record.id)
         .exec(db)
         .await?;
-    Ok(false)
+    Ok(Some(CascadeSnapshot {
+        medications,
+        dosages,
+        schedules,
+        assignments,
+        memberships,
+    }))
 }
 
 pub(super) async fn delete(
@@ -558,24 +1125,42 @@ pub(super) async fn delete(
             Ok(value) => value,
             Err(response) => return Ok(response),
         };
+    let path = format!("/api/v1/households/{household_id}/locations/{id}");
+    let request = json!({});
+    if let Some(response) = keyed_replay(
+        &db,
+        &context,
+        &headers,
+        "DELETE",
+        &path,
+        &request,
+        "destroy",
+        "api/v1/locations",
+        "LocationPolicy",
+    )
+    .await?
+    {
+        db.commit().await.map_err(database_error)?;
+        return Ok(response);
+    }
     if !valid_identifier(&id) {
-        return failure(
+        return keyed_failure(
             db,
             &context,
+            &headers,
             "DELETE",
+            &path,
+            &request,
+            "api/v1/locations",
+            "LocationPolicy",
             "destroy",
             StatusCode::BAD_REQUEST,
             "bad_request",
             "Invalid resource ID",
+            None,
         )
         .await;
     }
-    household::Entity::find_by_id(household_id)
-        .lock_exclusive()
-        .one(&db)
-        .await
-        .map_err(database_error)?
-        .ok_or_else(ApiError::not_found)?;
     let Some(record) = location(&db, household_id, &id, true).await? else {
         return failure(
             db,
@@ -592,26 +1177,38 @@ pub(super) async fn delete(
         .get(header::IF_MATCH)
         .and_then(|value| value.to_str().ok())
     else {
-        return failure(
+        return keyed_failure(
             db,
             &context,
+            &headers,
             "DELETE",
+            &path,
+            &request,
+            "api/v1/locations",
+            "LocationPolicy",
             "destroy",
             StatusCode::PRECONDITION_REQUIRED,
             "precondition_required",
             "If-Match is required",
+            None,
         )
         .await;
     };
     if if_match.is_empty() {
-        return failure(
+        return keyed_failure(
             db,
             &context,
+            &headers,
             "DELETE",
+            &path,
+            &request,
+            "api/v1/locations",
+            "LocationPolicy",
             "destroy",
             StatusCode::PRECONDITION_REQUIRED,
             "precondition_required",
             "If-Match is required",
+            None,
         )
         .await;
     }
@@ -629,18 +1226,27 @@ pub(super) async fn delete(
         .await;
     }
     let savepoint = db.begin().await.map_err(database_error)?;
-    match delete_dependents(&savepoint, &record).await {
-        Ok(false) => savepoint.commit().await.map_err(database_error)?,
-        Ok(true) => {
+    let cascade = match delete_dependents(&savepoint, &record).await {
+        Ok(Some(cascade)) => {
+            savepoint.commit().await.map_err(database_error)?;
+            cascade
+        }
+        Ok(None) => {
             savepoint.rollback().await.map_err(database_error)?;
-            return failure(
+            return keyed_failure(
                 db,
                 &context,
+                &headers,
                 "DELETE",
+                &path,
+                &request,
+                "api/v1/locations",
+                "LocationPolicy",
                 "destroy",
                 StatusCode::UNPROCESSABLE_ENTITY,
                 "validation_failed",
                 "Location cannot be deleted while administration history exists",
+                None,
             )
             .await;
         }
@@ -651,29 +1257,63 @@ pub(super) async fn delete(
             ) =>
         {
             savepoint.rollback().await.map_err(database_error)?;
-            return failure(
+            return keyed_failure(
                 db,
                 &context,
+                &headers,
                 "DELETE",
+                &path,
+                &request,
+                "api/v1/locations",
+                "LocationPolicy",
                 "destroy",
                 StatusCode::UNPROCESSABLE_ENTITY,
                 "validation_failed",
                 "Location cannot be deleted while retained records exist",
+                None,
             )
             .await;
         }
         Err(error) => return Err(database_error(error)),
-    }
-    finish(
+    };
+    let request_id = Uuid::new_v4().to_string();
+    record_cascade_effects(&db, &context, &request_id, &cascade).await?;
+    location_change(
+        &db,
+        &context,
+        &request_id,
+        &record,
+        "destroy",
+        "delete",
+        Some(snapshot(&record)),
+        None,
+    )
+    .await?;
+    let response_body = json!({});
+    store_keyed(
+        &db,
+        &context,
+        &headers,
+        "DELETE",
+        &path,
+        &request,
+        StatusCode::NO_CONTENT,
+        &response_body,
+        &request_id,
+        None,
+    )
+    .await?;
+    finish_with_request_id(
         db,
         &context,
+        &request_id,
         "DELETE",
         "api/v1/locations",
         "LocationPolicy",
         "destroy",
         StatusCode::NO_CONTENT,
         true,
-        json!({}),
+        response_body,
         None,
     )
     .await
@@ -744,20 +1384,113 @@ pub(super) async fn create_membership(
             .await
         }
     };
+    let path =
+        format!("/api/v1/households/{household_id}/locations/{location_id}/location_memberships");
+    if let Some(response) = keyed_replay(
+        &db,
+        &context,
+        &headers,
+        "POST",
+        &path,
+        &body,
+        "create",
+        "api/v1/location_memberships",
+        "LocationMembershipPolicy",
+    )
+    .await?
+    {
+        db.commit().await.map_err(database_error)?;
+        return Ok(response);
+    }
     let Some(outer) = body.as_object() else {
-        return validation(db, &context, "POST", "create_membership").await;
+        return keyed_failure(
+            db,
+            &context,
+            &headers,
+            "POST",
+            &path,
+            &body,
+            "api/v1/location_memberships",
+            "LocationMembershipPolicy",
+            "create",
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "validation_failed",
+            "Validation failed",
+            Some(json!({"location_membership": ["is invalid"]})),
+        )
+        .await;
     };
     let Some(inner) = outer.get("location_membership").and_then(Value::as_object) else {
-        return validation(db, &context, "POST", "create_membership").await;
+        return keyed_failure(
+            db,
+            &context,
+            &headers,
+            "POST",
+            &path,
+            &body,
+            "api/v1/location_memberships",
+            "LocationMembershipPolicy",
+            "create",
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "validation_failed",
+            "Validation failed",
+            Some(json!({"location_membership": ["is invalid"]})),
+        )
+        .await;
     };
     if outer.len() != 1 || inner.len() != 1 {
-        return validation(db, &context, "POST", "create_membership").await;
+        return keyed_failure(
+            db,
+            &context,
+            &headers,
+            "POST",
+            &path,
+            &body,
+            "api/v1/location_memberships",
+            "LocationMembershipPolicy",
+            "create",
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "validation_failed",
+            "Validation failed",
+            Some(json!({"location_membership": ["is invalid"]})),
+        )
+        .await;
     }
     let Some(person_id) = inner.get("person_id").and_then(Value::as_str) else {
-        return validation(db, &context, "POST", "create_membership").await;
+        return keyed_failure(
+            db,
+            &context,
+            &headers,
+            "POST",
+            &path,
+            &body,
+            "api/v1/location_memberships",
+            "LocationMembershipPolicy",
+            "create",
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "validation_failed",
+            "Validation failed",
+            Some(json!({"location_membership": ["is invalid"]})),
+        )
+        .await;
     };
     if !valid_identifier(person_id) {
-        return validation(db, &context, "POST", "create_membership").await;
+        return keyed_failure(
+            db,
+            &context,
+            &headers,
+            "POST",
+            &path,
+            &body,
+            "api/v1/location_memberships",
+            "LocationMembershipPolicy",
+            "create",
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "validation_failed",
+            "Validation failed",
+            Some(json!({"location_membership": ["is invalid"]})),
+        )
+        .await;
     }
     let query = person::Entity::find().filter(person::Column::HouseholdId.eq(household_id));
     let query = if let Ok(id) = person_id.parse::<i64>() {
@@ -810,33 +1543,71 @@ pub(super) async fn create_membership(
         .one(&db)
         .await
         .map_err(database_error)?;
-    let membership = if let Some(existing) = existing {
-        existing
+    let (membership, created) = if let Some(existing) = existing {
+        (existing, false)
     } else {
         let now = Utc::now().naive_utc();
-        location_membership::ActiveModel {
-            household_id: Set(household_id),
-            location_id: Set(location.id),
-            person_id: Set(person.id),
-            created_at: Set(now),
-            updated_at: Set(now),
-            ..Default::default()
-        }
-        .insert(&db)
-        .await
-        .map_err(database_error)?
+        (
+            location_membership::ActiveModel {
+                household_id: Set(household_id),
+                location_id: Set(location.id),
+                person_id: Set(person.id),
+                created_at: Set(now),
+                updated_at: Set(now),
+                ..Default::default()
+            }
+            .insert(&db)
+            .await
+            .map_err(database_error)?,
+            true,
+        )
     };
-    let body = membership_body(membership, &location, &person);
-    finish(
+    let request_id = Uuid::new_v4().to_string();
+    if created {
+        record_version(&db, &context, &request_id, "LocationMembership", membership.id, "create", None,
+            Some(json!({"id":membership.id,"household_id":membership.household_id,"location_id":membership.location_id,"person_id":membership.person_id,"created_at":membership.created_at,"updated_at":membership.updated_at}))).await?;
+        let mut active: person::ActiveModel = person.clone().into();
+        active.updated_at = Set(Utc::now().naive_utc());
+        active.update(&db).await.map_err(database_error)?;
+        record_change(
+            &db,
+            &context,
+            &request_id,
+            SyncRecord {
+                record_type: "Person",
+                record_id: person.id,
+                portable_id: &person.portable_id,
+                action: "update",
+                person_portable_id: Some(&person.portable_id),
+            },
+        )
+        .await?;
+    }
+    let response_body = membership_body(membership, &location, &person);
+    store_keyed(
+        &db,
+        &context,
+        &headers,
+        "POST",
+        &path,
+        &body,
+        StatusCode::CREATED,
+        &response_body,
+        &request_id,
+        None,
+    )
+    .await?;
+    finish_with_request_id(
         db,
         &context,
+        &request_id,
         "POST",
         "api/v1/location_memberships",
         "LocationMembershipPolicy",
         "create",
         StatusCode::CREATED,
         true,
-        body,
+        response_body,
         None,
     )
     .await
@@ -883,6 +1654,26 @@ pub(super) async fn delete_membership(
         )
         .await;
     };
+    let path = format!(
+        "/api/v1/households/{household_id}/locations/{location_id}/location_memberships/{id}"
+    );
+    let request = json!({});
+    if let Some(response) = keyed_replay(
+        &db,
+        &context,
+        &headers,
+        "DELETE",
+        &path,
+        &request,
+        "destroy",
+        "api/v1/location_memberships",
+        "LocationMembershipPolicy",
+    )
+    .await?
+    {
+        db.commit().await.map_err(database_error)?;
+        return Ok(response);
+    }
     let member_id = id.parse::<i64>().map_err(|_| ApiError::not_found())?;
     let Some(membership) = location_membership::Entity::find_by_id(member_id)
         .filter(location_membership::Column::HouseholdId.eq(household_id))
@@ -929,18 +1720,67 @@ pub(super) async fn delete_membership(
         }
         Some(true) => {}
     }
+    let person = person::Entity::find_by_id(membership.person_id)
+        .one(&db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(ApiError::not_found)?;
+    let before = json!({"id":membership.id,"household_id":membership.household_id,"location_id":membership.location_id,"person_id":membership.person_id,"created_at":membership.created_at,"updated_at":membership.updated_at});
     let active: location_membership::ActiveModel = membership.into();
     active.delete(&db).await.map_err(database_error)?;
-    finish(
+    let request_id = Uuid::new_v4().to_string();
+    record_version(
+        &db,
+        &context,
+        &request_id,
+        "LocationMembership",
+        member_id,
+        "destroy",
+        Some(before),
+        None,
+    )
+    .await?;
+    let mut person_active: person::ActiveModel = person.clone().into();
+    person_active.updated_at = Set(Utc::now().naive_utc());
+    person_active.update(&db).await.map_err(database_error)?;
+    record_change(
+        &db,
+        &context,
+        &request_id,
+        SyncRecord {
+            record_type: "Person",
+            record_id: person.id,
+            portable_id: &person.portable_id,
+            action: "update",
+            person_portable_id: Some(&person.portable_id),
+        },
+    )
+    .await?;
+    let response_body = json!({});
+    store_keyed(
+        &db,
+        &context,
+        &headers,
+        "DELETE",
+        &path,
+        &request,
+        StatusCode::NO_CONTENT,
+        &response_body,
+        &request_id,
+        None,
+    )
+    .await?;
+    finish_with_request_id(
         db,
         &context,
+        &request_id,
         "DELETE",
         "api/v1/location_memberships",
         "LocationMembershipPolicy",
         "destroy",
         StatusCode::NO_CONTENT,
         true,
-        json!({}),
+        response_body,
         None,
     )
     .await

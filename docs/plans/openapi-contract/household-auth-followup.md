@@ -33,6 +33,16 @@ Rails `BaseController#valid_session?` accepts membership-bound OAuth grants via
 potential scope bypass. This is a source finding, not a demonstrated runtime
 exploit. Account-level logout may still revoke a known SMART credential.
 
+For `GET /api/v1/auth/households`, API sessions and mobile OAuth grants may
+list the account's operational households. A household app token is bound to
+its issuing membership, so the Rust response must contain only that household.
+Rails `Auth::SessionsController#households` currently enumerates every account
+membership even for a household app token, exposing other household names and
+roles. The Rust bound is an intentional correction to that metadata leak.
+Delegated integration OAuth grants remain unauthorized on this first-party
+route. Prove the app-token bound with two operational households under the same
+account, plus one integration-credential rejection.
+
 Sources: `app/controllers/api/v1/base_controller.rb`, `app/models/api_app_token.rb`,
 `app/models/oauth_grant.rb`, `rust/api/src/lib.rs`, and
 `rust/api/src/auth_sessions.rs`.
