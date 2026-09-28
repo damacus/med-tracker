@@ -1,3 +1,4 @@
+use crate::dosage_options::parse_decimal;
 use crate::entities::{
     api_change_event, api_tombstone, dosage, grant, location, medication, person,
     person_medication, schedule, version,
@@ -7,7 +8,7 @@ use crate::{
     audit, authenticate, database_error, representation_etag, scope, serialize_many, ApiError,
     AppState, AuthContext,
 };
-use axum::extract::{Path, State};
+use axum::extract::{rejection::JsonRejection, Path, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -220,11 +221,9 @@ async fn valid_location(
     let Some(value) = attributes.get("location_id") else {
         return Ok(true);
     };
-    let id = value
-        .as_i64()
-        .or_else(|| value.as_str().and_then(|value| value.parse::<i64>().ok()));
+    let id = value.as_i64();
     let Some(id) = id else {
-        return Ok(false);
+        return Ok(true);
     };
     Ok(location::Entity::find_by_id(id)
         .one(db)
@@ -252,7 +251,7 @@ fn decimal_field(value: &Value, field: &str) -> Result<Option<Decimal>, &'static
 }
 
 pub(super) fn valid_stock_decimal(value: Decimal) -> bool {
-    value >= Decimal::ZERO && value.scale() <= 2 && value < Decimal::from(100_000_000)
+    value >= Decimal::ZERO && value.normalize().scale() <= 2 && value < Decimal::from(100_000_000)
 }
 
 pub(super) fn medication_snapshot(record: &medication::Model) -> Value {
@@ -435,6 +434,47 @@ fn validate_attributes(
     attributes: &Value,
     existing: Option<&medication::Model>,
 ) -> Result<(), (&'static str, &'static str)> {
+    const FIELDS: &[&str] = &[
+        "name",
+        "friendly_name",
+        "barcode",
+        "dmd_code",
+        "dmd_system",
+        "dmd_concept_class",
+        "category",
+        "description",
+        "dose_amount",
+        "dose_unit",
+        "current_supply",
+        "reorder_threshold",
+        "warnings",
+        "location_id",
+        "default_schedule_type",
+    ];
+    let Some(object) = attributes.as_object() else {
+        return Err(("medication", "must be an object"));
+    };
+    if object.is_empty() && existing.is_some() {
+        return Err(("medication", "must include an attribute"));
+    }
+    if object.keys().any(|key| !FIELDS.contains(&key.as_str())) {
+        return Err(("medication", "contains an unknown attribute"));
+    }
+    for field in [
+        "friendly_name",
+        "barcode",
+        "dmd_code",
+        "dmd_system",
+        "dmd_concept_class",
+        "category",
+        "description",
+        "dose_unit",
+        "warnings",
+    ] {
+        if attributes.get(field).is_some_and(Value::is_null) {
+            return Err((field, "must be a string"));
+        }
+    }
     if existing.is_none() || attributes.get("name").is_some() {
         let name = scalar_string(attributes, "name").map_err(|error| ("name", error))?;
         if name.as_deref().is_none_or(|name| name.trim().is_empty()) {
@@ -444,9 +484,28 @@ fn validate_attributes(
     if existing.is_none() && location_id(attributes).is_none() {
         return Err(("location_id", "can't be blank"));
     }
+    if attributes.get("location_id").is_some()
+        && !attributes
+            .get("location_id")
+            .and_then(Value::as_i64)
+            .is_some_and(|id| id > 0)
+    {
+        return Err(("location_id", "must be a positive integer"));
+    }
+    if existing.is_none() && attributes.get("reorder_threshold").is_none() {
+        return Err(("reorder_threshold", "can't be blank"));
+    }
     for field in ["dose_amount", "current_supply", "reorder_threshold"] {
         if attributes.get(field).is_none() {
             continue;
+        }
+        if let Some(value) = attributes.get(field).filter(|value| !value.is_null()) {
+            if !value.is_string() {
+                return Err((field, "must be a string"));
+            }
+            if parse_decimal(value).is_none() {
+                return Err((field, "is not a valid decimal"));
+            }
         }
         let value = decimal_field(attributes, field).map_err(|error| (field, error))?;
         if let Some(value) = value {
@@ -671,9 +730,27 @@ pub(super) async fn create(
     State(state): State<AppState>,
     Path(household_id): Path<i64>,
     headers: HeaderMap,
-    Json(body): Json<Value>,
+    body: Result<Json<Value>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     let (db, context) = request_context(&state, &headers, household_id).await?;
+    let body = match body {
+        Ok(Json(body)) => body,
+        Err(_) => {
+            return error_response(
+                db,
+                &context,
+                "POST",
+                "api/v1/medications",
+                "MedicationPolicy",
+                "create",
+                StatusCode::BAD_REQUEST,
+                "bad_request",
+                "Invalid JSON request body",
+                None,
+            )
+            .await;
+        }
+    };
     if !may_create(&db, &context).await? {
         return error_response(
             db,
@@ -689,7 +766,32 @@ pub(super) async fn create(
         )
         .await;
     }
-    let attributes = body.get("medication").unwrap_or(&Value::Null);
+    let Some(attributes) = body.get("medication").filter(|value| value.is_object()) else {
+        return error_response(
+            db,
+            &context,
+            "POST",
+            "api/v1/medications",
+            "MedicationPolicy",
+            "create",
+            StatusCode::BAD_REQUEST,
+            "bad_request",
+            "medication is required",
+            None,
+        )
+        .await;
+    };
+    if body.as_object().is_none_or(|object| object.len() != 1) {
+        return validation_response(
+            db,
+            &context,
+            "POST",
+            "create",
+            "medication",
+            "contains an unknown root field",
+        )
+        .await;
+    }
     if !valid_location(&db, household_id, attributes).await? {
         return error_response(
             db,
@@ -803,10 +905,28 @@ async fn update_medication(
     household_id: i64,
     id: String,
     headers: HeaderMap,
-    body: Value,
+    body: Result<Json<Value>, JsonRejection>,
     method: &str,
 ) -> Result<Response, ApiError> {
     let (db, context) = request_context(&state, &headers, household_id).await?;
+    let body = match body {
+        Ok(Json(body)) => body,
+        Err(_) => {
+            return error_response(
+                db,
+                &context,
+                method,
+                "api/v1/medications",
+                "MedicationPolicy",
+                "update",
+                StatusCode::BAD_REQUEST,
+                "bad_request",
+                "Invalid JSON request body",
+                None,
+            )
+            .await;
+        }
+    };
     let Some(found) = visible_medication(&db, &context, &id).await? else {
         return error_response(
             db,
@@ -862,7 +982,32 @@ async fn update_medication(
         )
         .await;
     }
-    let attributes = body.get("medication").unwrap_or(&Value::Null);
+    let Some(attributes) = body.get("medication").filter(|value| value.is_object()) else {
+        return error_response(
+            db,
+            &context,
+            method,
+            "api/v1/medications",
+            "MedicationPolicy",
+            "update",
+            StatusCode::BAD_REQUEST,
+            "bad_request",
+            "medication is required",
+            None,
+        )
+        .await;
+    };
+    if body.as_object().is_none_or(|object| object.len() != 1) {
+        return validation_response(
+            db,
+            &context,
+            method,
+            "update",
+            "medication",
+            "contains an unknown root field",
+        )
+        .await;
+    }
     if !valid_location(&db, household_id, attributes).await? {
         return error_response(
             db,
@@ -1015,7 +1160,7 @@ pub(super) async fn patch(
     State(state): State<AppState>,
     Path((household_id, id)): Path<(i64, String)>,
     headers: HeaderMap,
-    Json(body): Json<Value>,
+    body: Result<Json<Value>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     update_medication(state, household_id, id, headers, body, "PATCH").await
 }
@@ -1024,7 +1169,7 @@ pub(super) async fn put(
     State(state): State<AppState>,
     Path((household_id, id)): Path<(i64, String)>,
     headers: HeaderMap,
-    Json(body): Json<Value>,
+    body: Result<Json<Value>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     update_medication(state, household_id, id, headers, body, "PUT").await
 }

@@ -762,7 +762,8 @@ fn delegated_creator_can_read_unlinked_medication_without_exposing_it_to_other_m
         &base,
         &fixture.delegated_access_token,
         &json!({"medication": {"name": "Contract delegated medicine",
-            "location_id": fixture.primary_location_id, "dose_amount": "1.25", "dose_unit": "ml"}}),
+            "location_id": fixture.primary_location_id, "dose_amount": "1.25", "dose_unit": "ml",
+            "reorder_threshold": "1.00"}}),
     );
     assert_eq!(response.status().as_u16(), 201);
     let created = body(response)["data"].clone();

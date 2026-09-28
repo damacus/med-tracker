@@ -12,6 +12,7 @@ mod mutation_idempotency;
 mod native_device_tokens;
 mod notification_preferences;
 mod oauth;
+mod pause_lifecycle;
 mod people;
 mod person_medication_writes;
 mod push_subscriptions;
@@ -23,7 +24,7 @@ mod stock_removals;
 mod sync_events;
 mod web_pages;
 
-use axum::extract::{Path, Query, State};
+use axum::extract::{rejection::QueryRejection, Path, Query, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
@@ -258,6 +259,14 @@ fn api_router(state: AppState) -> Router {
                 .put(schedule_writes::put),
         )
         .route(
+            "/api/v1/households/{household_id}/schedules/{id}/pause",
+            axum::routing::patch(pause_lifecycle::pause_schedule),
+        )
+        .route(
+            "/api/v1/households/{household_id}/schedules/{id}/resume",
+            axum::routing::patch(pause_lifecycle::resume_schedule),
+        )
+        .route(
             "/api/v1/households/{household_id}/person_medications",
             get(read_resources::person_medications_index).post(person_medication_writes::create),
         )
@@ -266,6 +275,26 @@ fn api_router(state: AppState) -> Router {
             get(read_resources::person_medications_show)
                 .patch(person_medication_writes::patch)
                 .put(person_medication_writes::put),
+        )
+        .route(
+            "/api/v1/households/{household_id}/person_medications/{id}/pause",
+            axum::routing::patch(pause_lifecycle::pause_assignment),
+        )
+        .route(
+            "/api/v1/households/{household_id}/person_medications/{id}/resume",
+            axum::routing::patch(pause_lifecycle::resume_assignment),
+        )
+        .route(
+            "/api/v1/households/{household_id}/person_medications/{id}/reorder",
+            axum::routing::patch(pause_lifecycle::reorder_assignment),
+        )
+        .route(
+            "/api/v1/households/{household_id}/medication_pause_periods",
+            get(pause_lifecycle::index).post(pause_lifecycle::create),
+        )
+        .route(
+            "/api/v1/households/{household_id}/medication_pause_periods/{id}/resume",
+            axum::routing::post(pause_lifecycle::resume),
         )
         .layer(middleware::from_fn_with_state(csrf_state, cookie_api_csrf))
         .with_state(state)
@@ -886,7 +915,7 @@ struct Pagination {
 async fn index(
     State(state): State<AppState>,
     Path(household_id): Path<i64>,
-    Query(pagination): Query<Pagination>,
+    pagination: Result<Query<Pagination>, QueryRejection>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
     let db = state.db.begin().await.map_err(database_error)?;
@@ -899,8 +928,33 @@ async fn index(
             return Err(error);
         }
     };
-    let page = pagination.page.unwrap_or(1).max(1);
-    let per_page = pagination.per_page.unwrap_or(20).clamp(1, 100);
+    let pagination = match pagination {
+        Ok(Query(pagination)) => pagination,
+        Err(_) => {
+            if matches!(context.credential_kind, CredentialKind::OauthGrant) {
+                db.commit().await.map_err(database_error)?;
+            }
+            return Err(ApiError::invalid_pagination());
+        }
+    };
+    if pagination.page.is_some_and(|page| page < 1)
+        || pagination
+            .per_page
+            .is_some_and(|per_page| !(1..=100).contains(&per_page))
+    {
+        if matches!(context.credential_kind, CredentialKind::OauthGrant) {
+            db.commit().await.map_err(database_error)?;
+        }
+        return Err(ApiError::invalid_pagination());
+    }
+    if pagination.updated_since.as_deref() == Some("") {
+        if matches!(context.credential_kind, CredentialKind::OauthGrant) {
+            db.commit().await.map_err(database_error)?;
+        }
+        return Err(ApiError::invalid_filter());
+    }
+    let page = pagination.page.unwrap_or(1);
+    let per_page = pagination.per_page.unwrap_or(20);
     let updated_since = pagination
         .updated_since
         .filter(|value| !value.is_empty())

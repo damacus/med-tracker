@@ -905,5 +905,296 @@
       "direct authentication and nonloopback rate-limit wiring"
     ],
     "not_yet_tested": []
+  },
+  "listMedicationPausePeriods": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_pause_lifecycle.rs",
+    "statuses_tested": [
+      200,
+      401,
+      404,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict field types, portable identifiers, nullable actor strings and timestamps",
+      "source filters, newest-first SQL pagination and malformed-query rejection",
+      "visible and retired source history; foreign source isolation; batched actor reads",
+      "direct nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "createMedicationPausePeriod": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_pause_lifecycle.rs",
+    "statuses_tested": [
+      201,
+      400,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict wrapper/fields/reasons; client timestamps rejected without mutation",
+      "server-owned timestamp and actor, period versions and source sync events",
+      "owner and administrator need current manage grants; view-only denied",
+      "keyed replay and changed-payload conflicts; repeat open pause does not duplicate history",
+      "concurrent same-key requests create one period and one source update",
+      "strict response, request auditing and direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "resumeMedicationPausePeriod": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_pause_lifecycle.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      404,
+      409,
+      429
+    ],
+    "behaviours_tested": [
+      "bodyless request and optional current ETag; stale ETag conflicts without mutation",
+      "recording context retained; resume actor/time and version recorded",
+      "completed old-period retry leaves a newer open pause intact",
+      "unauthenticated, view-only, foreign and retired source boundaries",
+      "direct nonloopback rate-limit wiring; shared idempotency implementation"
+    ],
+    "not_yet_tested": []
+  },
+  "pauseSchedule": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_pause_lifecycle.rs",
+    "statuses_tested": [
+      200,
+      403,
+      429
+    ],
+    "behaviours_tested": [
+      "current person manage grant required including owner and administrator; view-only denied",
+      "source-scoped atomic pause/resume with retained period history and request audit",
+      "legacy reason_not_recorded context and repeated transitions preserve period identity",
+      "bodyless HTTP requests accepted; shared hidden-source and retired-source checks",
+      "direct nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "resumeSchedule": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_pause_lifecycle.rs",
+    "statuses_tested": [
+      200,
+      403,
+      429
+    ],
+    "behaviours_tested": [
+      "current person manage grant required including owner and administrator; view-only denied",
+      "source-scoped atomic pause/resume with retained period history and request audit",
+      "legacy reason_not_recorded context and repeated transitions preserve period identity",
+      "bodyless HTTP requests accepted; shared hidden-source and retired-source checks",
+      "direct nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "pausePersonMedication": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_pause_lifecycle.rs",
+    "statuses_tested": [
+      200,
+      403,
+      429
+    ],
+    "behaviours_tested": [
+      "current person manage grant required including owner and administrator; view-only denied",
+      "source-scoped atomic pause/resume with retained period history and request audit",
+      "legacy reason_not_recorded context and repeated transitions preserve period identity",
+      "bodyless HTTP requests accepted; shared hidden-source and retired-source checks",
+      "direct nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "resumePersonMedication": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_pause_lifecycle.rs",
+    "statuses_tested": [
+      200,
+      403,
+      429
+    ],
+    "behaviours_tested": [
+      "current person manage grant required including owner and administrator; view-only denied",
+      "source-scoped atomic pause/resume with retained period history and request audit",
+      "legacy reason_not_recorded context and repeated transitions preserve period identity",
+      "bodyless HTTP requests accepted; shared hidden-source and retired-source checks",
+      "direct nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "reorderPersonMedication": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_pause_lifecycle.rs",
+    "statuses_tested": [
+      200,
+      403,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "atomic adjacent position swap within a person, both resources persist the swap",
+      "invalid direction rejected and view-only/current owner-grant restrictions enforced",
+      "shared source isolation and retired-source guards; transactional version/sync writes",
+      "direct nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "listMedications": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_medications.rs; medication_read_api.rs; medication_stock.rs; dose_write_api.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict collection/resource fields, numeric/portable identifiers and scalar formats",
+      "existing visibility, tenant, stock and dose-safety runtime scenarios retained",
+      "invalid pagination and filters rejected rather than silently clamped",
+      "direct nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "getMedication": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_medications.rs; medication_read_api.rs; medication_stock.rs; dose_write_api.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      404,
+      429
+    ],
+    "behaviours_tested": [
+      "strict collection/resource fields, numeric/portable identifiers and scalar formats",
+      "existing visibility, tenant, stock and dose-safety runtime scenarios retained",
+      "invalid pagination and filters rejected rather than silently clamped",
+      "direct nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "listMedicationTakes": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_medications.rs; medication_read_api.rs; medication_stock.rs; dose_write_api.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict collection/resource fields, numeric/portable identifiers and scalar formats",
+      "existing visibility, tenant, stock and dose-safety runtime scenarios retained",
+      "invalid pagination and filters rejected rather than silently clamped",
+      "direct nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "createMedication": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_medications.rs; medication_read_api.rs; medication_stock.rs; dose_write_api.rs",
+    "statuses_tested": [
+      201,
+      400,
+      401,
+      403,
+      404,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict required/unknown fields, scalar types and nullable decimal exceptions",
+      "malformed JSON and missing wrappers produce structured 400 envelopes with request IDs",
+      "invalid requests preserve resource body, ETag and collection state",
+      "strict decimal spelling and exact stock storage precision; no dose float scale restriction",
+      "existing medication authorization, optimistic concurrency, stock and audit scenarios",
+      "direct nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "updateMedication": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_medications.rs; medication_read_api.rs; medication_stock.rs; dose_write_api.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict required/unknown fields, scalar types and nullable decimal exceptions",
+      "malformed JSON and missing wrappers produce structured 400 envelopes with request IDs",
+      "invalid requests preserve resource body, ETag and collection state",
+      "strict decimal spelling and exact stock storage precision; no dose float scale restriction",
+      "existing medication authorization, optimistic concurrency, stock and audit scenarios",
+      "direct nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "replaceMedication": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_medications.rs; medication_read_api.rs; medication_stock.rs; dose_write_api.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict required/unknown fields, scalar types and nullable decimal exceptions",
+      "malformed JSON and missing wrappers produce structured 400 envelopes with request IDs",
+      "invalid requests preserve resource body, ETag and collection state",
+      "strict decimal spelling and exact stock storage precision; no dose float scale restriction",
+      "existing medication authorization, optimistic concurrency, stock and audit scenarios",
+      "direct nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "createMedicationTake": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_medications.rs; medication_read_api.rs; medication_stock.rs; dose_write_api.rs",
+    "statuses_tested": [
+      201,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict response and required request fields; unknown keys rejected before mutation",
+      "malformed JSON and missing wrappers produce structured 400 error envelopes",
+      "source identifier, UUID, unit, stock identifier and decimal type validation",
+      "representable trailing decimal zeros accepted; excessive precision rejected",
+      "invalid writes preserve take count, stock resource body and ETag",
+      "existing dose safety, timing, stock, authorization, replay and concurrency scenarios",
+      "direct nonloopback rate-limit wiring"
+    ],
+    "not_yet_tested": []
   }
 }

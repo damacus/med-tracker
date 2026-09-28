@@ -1,10 +1,14 @@
+use crate::dosage_options::{parse_decimal, valid_identifier};
 use crate::entities::{
     dosage, grant, location, medication, medication_take, person_medication, schedule,
     security_audit_event,
 };
 use crate::sync_events::{record_change, SyncRecord};
 use crate::{authenticate, decimal_string, scope, ApiError, AppState, AuthContext, CredentialKind};
-use axum::extract::{Path, Query, State};
+use axum::extract::{
+    rejection::{JsonRejection, QueryRejection},
+    Path, Query, State,
+};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -505,7 +509,7 @@ async fn serialize(
 pub async fn index(
     State(state): State<AppState>,
     Path(household_id): Path<i64>,
-    Query(pagination): Query<Pagination>,
+    pagination: Result<Query<Pagination>, QueryRejection>,
     headers: HeaderMap,
 ) -> Response {
     let request_id = Uuid::new_v4().to_string();
@@ -519,6 +523,24 @@ pub async fn index(
             if error.preserve_activity {
                 let _ = db.commit().await;
             }
+            return request_error_response(error, &request_id);
+        }
+    };
+    let pagination = match pagination {
+        Ok(Query(pagination)) => pagination,
+        Err(_) => {
+            let error = ApiError::invalid_pagination();
+            let _ = audit(
+                &db,
+                &context,
+                &request_id,
+                "index",
+                "GET",
+                error.status,
+                false,
+            )
+            .await;
+            let _ = db.commit().await;
             return request_error_response(error, &request_id);
         }
     };
@@ -566,8 +588,18 @@ async fn index_in_transaction(
     household_id: i64,
     pagination: Pagination,
 ) -> Result<Value, ApiError> {
-    let page = pagination.page.unwrap_or(1).max(1);
-    let per_page = pagination.per_page.unwrap_or(20).clamp(1, 100);
+    if pagination.page.is_some_and(|page| page < 1)
+        || pagination
+            .per_page
+            .is_some_and(|per_page| !(1..=100).contains(&per_page))
+    {
+        return Err(ApiError::invalid_pagination());
+    }
+    if pagination.updated_since.as_deref() == Some("") {
+        return Err(ApiError::invalid_filter());
+    }
+    let page = pagination.page.unwrap_or(1);
+    let per_page = pagination.per_page.unwrap_or(20);
     let updated_since = pagination
         .updated_since
         .filter(|v| !v.is_empty())
@@ -635,21 +667,21 @@ struct ProposedTake {
 }
 
 fn valid_numeric_10_2(amount: Decimal) -> bool {
-    amount > Decimal::ZERO && amount.scale() <= 2 && amount < Decimal::from(100_000_000)
+    amount > Decimal::ZERO && amount.normalize().scale() <= 2 && amount < Decimal::from(100_000_000)
 }
 
 fn decimal_from_json(value: Option<&Value>) -> Result<Option<Decimal>, ApiError> {
     let Some(value) = value else {
         return Ok(None);
     };
-    let Some(raw) = value.as_str() else {
+    if value.as_str().is_none() {
         return Err(error(
             StatusCode::UNPROCESSABLE_ENTITY,
             "dose_amount must be a string",
         ));
-    };
-    let amount = Decimal::from_str(raw)
-        .map_err(|_| error(StatusCode::UNPROCESSABLE_ENTITY, "Invalid dose configured"))?;
+    }
+    let amount = parse_decimal(value)
+        .ok_or_else(|| error(StatusCode::UNPROCESSABLE_ENTITY, "Invalid dose configured"))?;
     if !valid_numeric_10_2(amount) {
         return Err(error(
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -1489,7 +1521,7 @@ pub async fn create(
     State(state): State<AppState>,
     Path(household_id): Path<i64>,
     headers: HeaderMap,
-    Json(body): Json<Value>,
+    body: Result<Json<Value>, JsonRejection>,
 ) -> Response {
     let request_id = Uuid::new_v4().to_string();
     let db = match state.db.begin().await {
@@ -1505,7 +1537,12 @@ pub async fn create(
             return request_error_response(error, &request_id);
         }
     };
-    let result = create_in_transaction(&db, &context, household_id, &body, &request_id).await;
+    let result = match body {
+        Ok(Json(body)) => {
+            create_in_transaction(&db, &context, household_id, &body, &request_id).await
+        }
+        Err(_) => Err(error(StatusCode::BAD_REQUEST, "Invalid JSON request body")),
+    };
     match result {
         Ok((status, take)) => {
             let data = match serialize(&db, std::slice::from_ref(&take)).await {
@@ -1567,6 +1604,68 @@ async fn create_in_transaction(
         .get("medication_take")
         .filter(|value| value.is_object())
         .ok_or_else(|| error(StatusCode::BAD_REQUEST, "medication_take is required"))?;
+    if body.as_object().is_none_or(|object| object.len() != 1) {
+        return Err(error(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "unknown request field",
+        ));
+    }
+    let allowed = [
+        "client_uuid",
+        "source_type",
+        "source_id",
+        "taken_at",
+        "dose_amount",
+        "dose_unit",
+        "taken_from_medication_id",
+    ];
+    if attributes
+        .as_object()
+        .is_some_and(|object| object.keys().any(|key| !allowed.contains(&key.as_str())))
+    {
+        return Err(error(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "unknown medication_take field",
+        ));
+    }
+    if !attributes
+        .get("source_id")
+        .and_then(Value::as_str)
+        .is_some_and(valid_identifier)
+        || !attributes
+            .get("source_type")
+            .and_then(Value::as_str)
+            .is_some_and(|kind| matches!(kind, "schedule" | "person_medication"))
+    {
+        return Err(error(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "invalid medication source",
+        ));
+    }
+    if attributes
+        .get("client_uuid")
+        .is_some_and(|value| !value.as_str().is_some_and(|id| Uuid::parse_str(id).is_ok()))
+    {
+        return Err(error(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "invalid client_uuid",
+        ));
+    }
+    if attributes
+        .get("dose_unit")
+        .is_some_and(|value| !value.as_str().is_some_and(|unit| !unit.is_empty()))
+    {
+        return Err(error(StatusCode::UNPROCESSABLE_ENTITY, "invalid dose_unit"));
+    }
+    if attributes
+        .get("taken_from_medication_id")
+        .is_some_and(|value| !value.as_i64().is_some_and(|id| id > 0))
+    {
+        return Err(error(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "invalid taken_from_medication_id",
+        ));
+    }
     lock_row(db, "households", household_id).await?;
     let current_membership = crate::entities::membership::Entity::find_by_id(context.membership.id)
         .one(db)

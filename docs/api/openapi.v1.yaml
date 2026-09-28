@@ -2125,7 +2125,7 @@ paths:
       operationId: createMedicationPausePeriod
       tags: [Household, Schedules]
       summary: Pause a medication source with a reason.
-      description: Requires manage access. The start is server acceptance time; client timestamps are ignored. An already open period is returned unchanged. No edit or backdating operation is provided.
+      description: Requires manage access. The start is server acceptance time; client timestamps are rejected with 422. An already open period is returned unchanged. No edit or backdating operation is provided.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/idempotency_key'
@@ -3069,6 +3069,7 @@ paths:
         - Household
         - Person medications
       summary: Reorder a person medication assignment.
+      description: Direction must be up or down; invalid directions return 422 without changing the order.
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/resource_id'

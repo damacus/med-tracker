@@ -409,7 +409,7 @@ or begin; echo 'Admin settings runner skipped cleanup after failure' >&2; exit 1
 contains -- api:contract-image-remove $trace
 or begin; echo 'Admin settings runner skipped image cleanup after failure' >&2; exit 1; end
 
-for target in openapi-person-medication-writes openapi-schedule-writes
+for target in openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-medications openapi-medications-focused
     set -e CONTRACT_FAKE_FAIL_STEP
     set -l selected_step (string join -- '' api:contract- $target -test)
     command rm -f $test_dir/trace
@@ -438,4 +438,4 @@ for target in openapi-person-medication-writes openapi-schedule-writes
     or begin; echo "$target runner skipped image cleanup after failure" >&2; exit 1; end
 end
 
-echo 'Medication, web reads, dosage, people, notification, native token, push subscription, admin settings, assignment, schedule and Rails browser runner sequences and failure cleanup passed'
+echo 'Medication, web reads, dosage, people, notification, native token, push subscription, admin settings, assignment, schedule, pause lifecycle and Rails browser runner sequences and failure cleanup passed'

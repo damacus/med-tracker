@@ -261,6 +261,24 @@ entity!(schedule, "schedules", {
     updated_at: DateTime,
 });
 
+entity!(pause_period, "medication_pause_periods", {
+    household_id: i64,
+    portable_id: String,
+    schedule_id: Option<i64>,
+    person_medication_id: Option<i64>,
+    reason: String,
+    note: Option<String>,
+    legacy_context: bool,
+    imported_context: bool,
+    imported_actor_references: serde_json::Value,
+    recorded_by_membership_id: Option<i64>,
+    resumed_by_membership_id: Option<i64>,
+    started_at: Option<DateTime>,
+    ended_at: Option<DateTime>,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
 entity!(person_medication, "person_medications", {
     household_id: i64,
     portable_id: String,

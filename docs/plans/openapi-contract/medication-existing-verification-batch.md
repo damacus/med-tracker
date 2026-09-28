@@ -24,3 +24,10 @@ Rust/runner gates and publication are required before counting the seven
 operations complete. Preserve the original 89-operation baseline separately;
 these already-present operations can improve the 118 count without changing
 the original baseline count.
+
+Initial source review found ignored unknown write fields and clamped invalid
+pagination. Add focused RED cases for strict create/update schemas, missing
+required fields, malformed wrappers and JSON, invalid-input nonmutation, and
+both collection pagination boundaries. Reuse the strict parsing helpers already
+verified for other resource families. Existing happy-path tests alone cannot
+close these operations.

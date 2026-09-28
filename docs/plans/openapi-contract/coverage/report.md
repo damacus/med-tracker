@@ -1,18 +1,51 @@
 # OpenAPI-first API checkpoint
 
-Specification: `docs/api/openapi.v1.yaml`, SHA-256 `25bc5bfeccb72343296fa250944b7460fb8a5a624695ab081bf2f490a5d9b1fd`. The operation map is `operations.jsonl`; `operation-filter.jq`, `route-sources.json`, and `test-evidence.json` are its inputs. Rebuild it with:
+Specification: `docs/api/openapi.v1.yaml`, SHA-256 `89a0710edb76ba096c0e5e79c931aef9004577ac2b41d4eaecdd64cdbfbe2016`. The operation map is `operations.jsonl`; `operation-filter.jq`, `route-sources.json`, and `test-evidence.json` are its inputs. Rebuild it with:
 
 ```fish
 yq -o=json '.' docs/api/openapi.v1.yaml | jq -c --slurpfile routes docs/plans/openapi-contract/coverage/route-sources.json --slurpfile evidence docs/plans/openapi-contract/coverage/test-evidence.json -f docs/plans/openapi-contract/coverage/operation-filter.jq > docs/plans/openapi-contract/coverage/operations.jsonl
 ```
 
 The specification has 118 operations across 77 paths, with 227 component schemas,
-12 component responses and 772 response cases. Of those operations, 32 are fully
-verified and 86 remain incomplete: 61 absent routes, 17 present but unverified,
+12 component responses and 772 response cases. Of those operations, 47 are fully
+verified and 71 remain incomplete: 53 absent routes, 10 present but unverified,
 and eight partially verified location operations. The original 89-operation
-baseline is now 28 complete and 61 remaining. Both baseline files are retained;
+baseline is now 36 complete and 53 remaining. Both baseline files are retained;
 the operation IDs, methods and paths still match the fixed 118-operation scope.
 Route presence and older Rails-derived tests alone receive no completion credit.
+
+## Medication validation and pause history
+
+This batch verifies seven existing medication/take operations and adds eight
+pause-history, pause/resume and ordering operations. The combined medication
+Task returned exit 0 in `mtcontract-765d769dce6a4deb`: all four selected binaries
+completed (nine read, nine stock, six dose-write and nine OpenAPI tests).
+Pause acceptance returned exit 0 in `mtcontract-9e299c71c4af4a4f` with all ten
+defined tests selected. Both projects were cleaned up. The complete green test
+summaries were not retained in RTK tee files; successful task completion was
+observed. Medication build trace: `1790590703_task_api_1afb52.log`.
+
+Medication strict-request RED is retained in `1790589638_task_api_9b6f8c.log`.
+It exposed unknown take fields creating records, invalid scalar inputs changing
+resources and malformed JSON bypassing structured errors. Validation now
+rejects unknown fields, forbidden nulls, invalid identifiers and decimal forms;
+exactly representable trailing zeros remain valid. Invalid pagination returns
+422. Three older expectations were corrected to the fixed schema: required
+reorder threshold, invalid pagination and unknown source-type enum rejection.
+
+Pause missing-route RED is retained in `1790588499_task_api_89fa45.log`;
+bodyless-request RED is in `1790589365_task_api_1a8aec.log`. Tests cover current
+person grants even for owners, administrator success, history and actor fields,
+repeated and concurrent pauses, stale ETags, old-period resume safety, bodyless
+requests, ordering persistence and all eight rate-limit paths. Period history
+uses database pagination and batched actor loading. Period versions and source
+sync events remain distinct. Client timestamps and invalid reorder directions
+are explicitly rejected rather than silently ignored.
+
+Independent code and test review passed. API check, Clippy, formatting, 15 unit
+tests, selected compilation, runner dispatch/failure cleanup and documentation
+checks passed. No Rails application code, database schema or UI files changed.
+Occurrence work is prepared separately and receives no credit in this batch.
 
 ## Assignment and schedule management
 
@@ -117,8 +150,8 @@ The limiter uses an atomic mutex over at most 65,536 live IP/rule buckets per pr
 
 ## Remaining gaps
 
-- **Implementation:** 61 documented method/path pairs still have no Rust route. Their identities remain in `operations.jsonl`.
-- **Untested behaviour:** 17 other route matches have no spec-traced runtime assertion. Eight location methods remain partial; `test-evidence.json` lists their remaining cases. All five dosage operations now have full bounded contract proof.
+- **Implementation:** 53 documented method/path pairs still have no Rust route. Their identities remain in `operations.jsonl`.
+- **Untested behaviour:** 10 other route matches have no spec-traced runtime assertion. Eight location methods remain partial; `test-evidence.json` lists their remaining cases. All five dosage operations now have full bounded contract proof.
 - **Outside this API tranche:** Approved permission, retention and rate rules were documented from Rails policy, controller and initializer sources before Rust tests. Browser support sessions remain outside bearer authority. Fixture SQL only provisions isolated records. The Rails dosage schema changed in this remediation; no Rails controller, model or UI behavior changed. Web-only Rack Attack rules and other API operations remain separate work.
 
 The isolated runner still rebuilds broad API and contract-test sources. Its cost is a tooling follow-up; it did not narrow the spec-derived assertions.
