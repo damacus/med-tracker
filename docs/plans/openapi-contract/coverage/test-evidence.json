@@ -1452,5 +1452,220 @@
       "immutable evidence snapshots, no-store and direct rate-limit wiring"
     ],
     "not_yet_tested": []
+  },
+  "listAppTokens": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_app_tokens.rs; rust/contract-tests/tests/admin.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      429
+    ],
+    "behaviours_tested": [
+      "exact token summary without secret or digest",
+      "owner and administrator account-scoped listing within selected household",
+      "revoked tokens remain listed; current authority and direct shared rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "createAppToken": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_app_tokens.rs; rust/contract-tests/tests/admin.rs",
+    "statuses_tested": [
+      201,
+      400,
+      401,
+      403,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict request schema and expiry bounds; invalid requests do not issue tokens",
+      "cryptographically random one-time secret, stored digest and current permission version",
+      "redacted creation audit and no-store response",
+      "keyed receipt contains no secret; same request returns token_already_issued without duplicate issuance; mismatched key conflicts",
+      "current authority and endpoint rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "deleteAppToken": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_app_tokens.rs; rust/contract-tests/tests/admin.rs",
+    "statuses_tested": [
+      204,
+      401,
+      403,
+      404,
+      429
+    ],
+    "behaviours_tested": [
+      "own-account and household scoped revocation",
+      "immediate bearer invalidation; repeat revocation does not duplicate domain audit",
+      "structured malformed identifier errors and empty 204 response",
+      "fresh authority and direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "listMemberships": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_memberships.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      429
+    ],
+    "behaviours_tested": [
+      "exact nine-field resource and household collection",
+      "owner and administrator access; member and cross-household boundaries",
+      "direct shared rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "updateMembership": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_memberships.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict partial updates preserve omitted fields; invalid writes do not mutate membership",
+      "real permission changes increment version and invalidate existing credentials; no-op keeps version",
+      "owner transition and last-owner protection",
+      "reactivation clears revocation marker without restoring stale credentials",
+      "success, no_change and rejected audit outcomes",
+      "keyed replay avoids repeat mutation and changed payload/account conflicts",
+      "structured malformed IDs and direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "replaceMembership": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_memberships.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict partial updates preserve omitted fields; invalid writes do not mutate membership",
+      "real permission changes increment version and invalidate existing credentials; no-op keeps version",
+      "owner transition and last-owner protection",
+      "reactivation clears revocation marker without restoring stale credentials",
+      "success, no_change and rejected audit outcomes",
+      "keyed replay avoids repeat mutation and changed payload/account conflicts",
+      "structured malformed IDs and direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "deleteMembership": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_memberships.rs",
+    "statuses_tested": [
+      204,
+      401,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "revocation invalidates API sessions and app tokens, including stock-write access",
+      "two concurrent owner removals leave one active owner",
+      "same-household manager rules and protected last owner",
+      "keyed replay avoids repeat mutation; conflicting account/key rejected",
+      "audit outcomes, structured malformed IDs and direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "listAuditLogs": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_audit_logs.rs; rust/contract-tests/tests/medication_stock.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      429
+    ],
+    "behaviours_tested": [
+      "exact seven-field event shape and newest-first bounded collection",
+      "owner and administrator access; member and tenant isolation",
+      "request-correlated audit metadata without bearer secrets",
+      "direct shared rate-limit wiring; existing newest-hundred regression"
+    ],
+    "not_yet_tested": []
+  },
+  "listPersonAccessGrants": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_person_grants.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      429
+    ],
+    "behaviours_tested": [
+      "exact eight-field administrative resource including expired and revoked grants",
+      "owner/administrator and cross-household boundaries",
+      "direct shared rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "createPersonAccessGrant": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_person_grants.rs",
+    "statuses_tested": [
+      201,
+      400,
+      401,
+      403,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict attributes and scoped membership/person; invalid and duplicate writes do not create access",
+      "past expiry remains accepted and represented without active access",
+      "concurrent duplicate creation creates one grant and increments permissions once",
+      "credential invalidation and structured success/rejected audits",
+      "keyed replay preserves original grant without duplicate audit/version change; payload/account conflicts",
+      "correlated conflict request ID and endpoint rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "deletePersonAccessGrant": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_person_grants.rs",
+    "statuses_tested": [
+      204,
+      401,
+      403,
+      404,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "scoped manager revocation; relationship-owned grants cannot be revoked directly",
+      "member, foreign, malformed and missing targets rejected without mutation",
+      "first revoke increments version and invalidates credentials",
+      "repeat revoke preserves timestamp/version and records no_change",
+      "structured audit outcomes and direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
   }
 }

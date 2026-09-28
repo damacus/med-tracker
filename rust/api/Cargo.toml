@@ -10,6 +10,7 @@ base64 = "0.22"
 bcrypt = "0.17"
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
+getrandom = "0.3"
 hmac = "0.12"
 medtracker-web = { path = "../web" }
 sea-orm = { version = "=2.0.3", default-features = false, features = ["macros", "runtime-tokio-rustls", "sqlx-postgres", "with-chrono", "with-json", "with-rust_decimal"] }

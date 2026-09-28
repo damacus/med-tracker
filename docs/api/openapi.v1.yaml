@@ -1609,6 +1609,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimited'
     post:
@@ -1707,6 +1709,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimited'
   /households/{household_id}/medications/{id}/mark_as_received:
@@ -4170,8 +4174,10 @@ paths:
         - Household administration
         - App tokens
       summary: Create an API app token.
+      description: The secret is returned once. Reusing a successful request's Idempotency-Key returns a conflict without exposing the secret again; a caller needing a replacement must use a new key.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/idempotency_key'
       requestBody:
         required: true
         content:
@@ -4195,6 +4201,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/RateLimited'
   /households/{household_id}/admin/app_tokens/{id}:
@@ -4207,6 +4215,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/household_id'
         - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/idempotency_key'
       responses:
         '204':
           description: API app token revoked.
