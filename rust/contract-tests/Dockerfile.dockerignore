@@ -9,4 +9,8 @@
 !rust/web/src/**
 !rust/contract-tests/
 !rust/contract-tests/**
+!vendor/
+!vendor/fonts/
+!vendor/fonts/NotoSans-Regular.ttf
+!vendor/fonts/OFL-1.1.txt
 **/target/

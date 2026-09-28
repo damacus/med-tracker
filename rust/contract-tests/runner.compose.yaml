@@ -18,6 +18,7 @@ services:
       SMTP_STARTTLS: "false"
       ACTIVE_STORAGE_ROOT: /app/tmp/storage
       ACTIVE_STORAGE_SERVICE_NAME: test
+      REPORT_PDF_FONT_PATH: /src/vendor/fonts/NotoSans-Regular.ttf
       AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
     depends_on:
       db-test:
@@ -43,6 +44,7 @@ services:
       CONTRACT_MAILPIT_URL: http://mail-test:8025
       CONTRACT_MAIL_FAILURE_BASE_URL: http://rust-api-mail-fail:39999
       CONTRACT_AVATAR_FAILURE_BASE_URL: http://rust-api-storage-fail:39997
+      CONTRACT_REPORT_FAILURE_BASE_URL: http://rust-api-report-fail:39996
       CONTRACT_FIXTURE_PATH: /contract-run/fixture.json
       CONTRACT_AUDIT_DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract
 
@@ -62,6 +64,7 @@ services:
       SMTP_STARTTLS: "false"
       ACTIVE_STORAGE_ROOT: /app/tmp/storage
       ACTIVE_STORAGE_SERVICE_NAME: test
+      REPORT_PDF_FONT_PATH: /src/vendor/fonts/NotoSans-Regular.ttf
       AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
     depends_on:
       db-test:
@@ -88,12 +91,40 @@ services:
       SMTP_STARTTLS: "false"
       ACTIVE_STORAGE_ROOT: /proc/medtracker-avatar-unwritable
       ACTIVE_STORAGE_SERVICE_NAME: test
+      REPORT_PDF_FONT_PATH: /src/vendor/fonts/NotoSans-Regular.ttf
       AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
     depends_on:
       db-test:
         condition: service_healthy
     healthcheck:
       test: [CMD, curl, --fail, --silent, http://127.0.0.1:39997/up]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  rust-api-report-fail:
+    profiles: [test]
+    image: medtracker-contract-runner:${CONTRACT_PROJECT}
+    command: /src/rust/api/target/debug/medtracker-api
+    networks: [test]
+    environment:
+      DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract
+      API_LISTEN_ADDR: 0.0.0.0:39996
+      SESSION_MAX_AGE_DAYS: "30"
+      PUBLIC_BASE_URL: http://127.0.0.1:39996
+      APP_URL: http://127.0.0.1:39998
+      SMTP_ADDRESS: mail-test
+      SMTP_PORT: "1025"
+      SMTP_STARTTLS: "false"
+      ACTIVE_STORAGE_ROOT: /app/tmp/storage
+      ACTIVE_STORAGE_SERVICE_NAME: test
+      REPORT_PDF_FONT_PATH: /nonexistent/font.ttf
+      AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
+    depends_on:
+      db-test:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:39996/up]
       interval: 2s
       timeout: 2s
       retries: 30

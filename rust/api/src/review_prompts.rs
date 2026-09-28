@@ -116,7 +116,7 @@ fn tag(record: &review_prompt::Model) -> String {
     format!("\"{:x}\"", Sha256::digest(canonical.as_bytes()))
 }
 
-fn value(record: &review_prompt::Model) -> Value {
+pub(super) fn value(record: &review_prompt::Model) -> Value {
     json!({
         "id": record.id.to_string(),
         "person_id": record.person_id.to_string(),
@@ -148,7 +148,10 @@ fn value(record: &review_prompt::Model) -> Value {
     })
 }
 
-async fn actor_adult(db: &DatabaseTransaction, context: &AuthContext) -> Result<bool, ApiError> {
+pub(super) async fn actor_adult(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+) -> Result<bool, ApiError> {
     let Some(actor_id) = context.membership.person_id else {
         return Ok(false);
     };
@@ -171,7 +174,7 @@ async fn actor_adult(db: &DatabaseTransaction, context: &AuthContext) -> Result<
         && (actor.person_type == 0 || adult_by_age))
 }
 
-async fn person_access(
+pub(super) async fn person_access(
     db: &DatabaseTransaction,
     context: &AuthContext,
     person_id: i64,
@@ -213,7 +216,7 @@ fn today_in_app_zone() -> NaiveDate {
     Utc::now().with_timezone(&timezone).date_naive()
 }
 
-async fn sync(db: &DatabaseTransaction, context: &AuthContext) -> Result<(), ApiError> {
+pub(super) async fn sync(db: &DatabaseTransaction, context: &AuthContext) -> Result<(), ApiError> {
     let household_id = context.membership.household_id;
     let people = person::Entity::find()
         .filter(person::Column::HouseholdId.eq(household_id))

@@ -7,12 +7,32 @@ yq -o=json '.' docs/api/openapi.v1.yaml | jq -c --slurpfile routes docs/plans/op
 ```
 
 The specification has 118 operations across 77 paths, with 227 component schemas,
-12 component responses and 775 response cases. Of those operations, 98 are fully
-verified and 20 remain incomplete, all recorded as absent at this checkpoint.
+12 component responses and 775 response cases. Of those operations, 102 are fully
+verified and 16 remain incomplete, all recorded as absent at this checkpoint.
 The original 89-operation
-baseline is now 69 complete and 20 remaining. Both baseline files are retained;
+baseline is now 73 complete and 16 remaining. Both baseline files are retained;
 the operation IDs, methods and paths still match the fixed 118-operation scope.
 Route presence and older Rails-derived tests alone receive no completion credit.
+
+## Health-history and medication-review reports
+
+Four report operations passed 11/11 selected acceptance tests in
+`mtcontract-8bf50975aa5a4b99`: five OpenAPI scenarios and six existing report
+scenarios. The unrelated data-export scenario is explicitly assigned to the
+export family. The runner exited 0 and cleaned up. Tests cover strict JSON,
+person access, filters, no-store responses, correlated download audits and
+missing-font 503 failures without a successful download audit.
+
+Poppler extracted the selected health-event and medication-review content and
+rasterized each PDF's first page. Human visual inspection is not claimed. The
+test extractor changed because lopdf 0.40 rejects valid CMap metadata emitted by
+printpdf 0.12.8. Production rendering runs outside the async executor and includes
+the report's clinical fields, evidence provenance and existing explanatory text.
+The bundled font and its licence are included in the runner image.
+
+The exact staged snapshot passed formatting, Clippy, 20 unit tests and runner
+checks. Capabilities now advertise the verified JSON/PDF reports. Full API
+acceptance and CI on the final overall commit remain outstanding.
 
 ## Read contracts and location lifecycle
 

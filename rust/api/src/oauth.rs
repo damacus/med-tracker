@@ -454,7 +454,7 @@ async fn capabilities(State(state): State<AppState>) -> Response {
         "stock_removals": {"actions": ["create", "index"], "submission_id_required": true, "max_page_size": 100},
         "location_management": {"actions": ["create", "update", "destroy"], "version_required": true, "person_memberships": ["create", "destroy"], "memberships_online_only": true},
         "medication_reviews": {"actions": ["index", "show", "update"], "version_required": true, "max_page_size": 100},
-        "reports": {"formats": [], "health_history": false, "medication_reviews": false, "selected_person_required": true, "health_history_max_span_days": 366},
+        "reports": {"formats": ["json", "pdf"], "health_history": true, "medication_reviews": true, "selected_person_required": true, "health_history_max_span_days": 366},
         "profile": {"actions": ["show", "update"], "online_only": true, "avatar": {"actions": ["show", "update", "destroy"], "max_bytes": 5_242_880, "content_types": ["image/png", "image/jpeg", "image/webp"]}},
         "invitations": {"actions": ["accept", "resend"], "online_only": true, "acceptance_session_required": true},
         "portable_formats": [],

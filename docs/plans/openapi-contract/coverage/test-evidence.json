@@ -1997,5 +1997,83 @@
       "hidden person not found"
     ],
     "not_yet_tested": []
+  },
+  "getHealthHistoryReport": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_reports.rs; rust/contract-tests/tests/reports.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      422
+    ],
+    "behaviours_tested": [
+      "closed report/person/chronology/take schemas",
+      "selected person manage access, hidden and foreign data exclusion",
+      "date span and filter validation without download audit",
+      "current medicines, chronology and optional medication takes",
+      "no-store and correlated successful download audit"
+    ],
+    "not_yet_tested": []
+  },
+  "downloadHealthHistoryReport": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_reports.rs; rust/contract-tests/tests/reports.rs",
+    "statuses_tested": [
+      200,
+      401,
+      422,
+      503
+    ],
+    "behaviours_tested": [
+      "PDF content type, filename and no-store",
+      "selected person, event, linked medication, ongoing duration and disclaimer in Poppler-extracted text",
+      "first page rasterizes to PNG",
+      "shared JSON/PDF person authorization implementation",
+      "missing font returns structured 503 with no successful download audit",
+      "invalid PDF filters rejected"
+    ],
+    "not_yet_tested": []
+  },
+  "getMedicationReviewReport": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_reports.rs; rust/contract-tests/tests/reports.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      422
+    ],
+    "behaviours_tested": [
+      "closed report and prompt schemas with immutable evidence snapshots",
+      "adult actor and selected person view access with hidden/foreign exclusion",
+      "status filtering including explicitly requested hidden low-signal prompts",
+      "invalid filters without successful download audit",
+      "no-store and correlated JSON download audit"
+    ],
+    "not_yet_tested": []
+  },
+  "downloadMedicationReviewReport": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_reports.rs; rust/contract-tests/tests/reports.rs",
+    "statuses_tested": [
+      200,
+      401,
+      422,
+      503
+    ],
+    "behaviours_tested": [
+      "PDF content type, filename and no-store",
+      "Poppler-extracted person, medication, evidence, source, risk and clinical boundary text",
+      "first page rasterizes to PNG",
+      "shared JSON/PDF person authorization implementation",
+      "missing font returns structured 503 without successful download audit",
+      "invalid PDF filters rejected"
+    ],
+    "not_yet_tested": []
   }
 }
