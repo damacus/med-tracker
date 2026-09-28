@@ -55,5 +55,13 @@
   "replaceSchedule": "rust/api/src/lib.rs:255",
   "createPersonMedication": "rust/api/src/lib.rs:261",
   "updatePersonMedication": "rust/api/src/lib.rs:265",
-  "replacePersonMedication": "rust/api/src/lib.rs:265"
+  "replacePersonMedication": "rust/api/src/lib.rs:265",
+  "pauseSchedule": "rust/api/src/lib.rs:262",
+  "resumeSchedule": "rust/api/src/lib.rs:266",
+  "pausePersonMedication": "rust/api/src/lib.rs:280",
+  "resumePersonMedication": "rust/api/src/lib.rs:284",
+  "reorderPersonMedication": "rust/api/src/lib.rs:288",
+  "listMedicationPausePeriods": "rust/api/src/lib.rs:292",
+  "createMedicationPausePeriod": "rust/api/src/lib.rs:292",
+  "resumeMedicationPausePeriod": "rust/api/src/lib.rs:296"
 }

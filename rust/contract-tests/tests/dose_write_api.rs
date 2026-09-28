@@ -242,10 +242,7 @@ fn authorized_household_can_list_direct_dose_history() {
         &format!("{collection_path}?page=0&per_page=500"),
         Some(&fixture.access_token),
     );
-    assert_eq!(paged.status().as_u16(), 200);
-    let paged: Value = paged.json().unwrap();
-    assert_eq!(paged["meta"]["page"], 1);
-    assert_eq!(paged["meta"]["per_page"], 100);
+    assert_eq!(paged.status().as_u16(), 422);
     let filtered = target.get(
         &format!("{collection_path}?updated_since=2000-01-01T00:00:00Z"),
         Some(&fixture.access_token),
@@ -570,7 +567,7 @@ fn invalid_time_source_unit_and_stock_selection_leave_no_partial_take() {
             "valid",
             fixture.dose_write_medication_id,
             None,
-            404,
+            422,
         ),
         (
             3,

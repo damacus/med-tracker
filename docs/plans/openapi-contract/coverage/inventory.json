@@ -1,6 +1,6 @@
 {
   "spec": "docs/api/openapi.v1.yaml",
-  "sha256": "25bc5bfeccb72343296fa250944b7460fb8a5a624695ab081bf2f490a5d9b1fd",
+  "sha256": "89a0710edb76ba096c0e5e79c931aef9004577ac2b41d4eaecdd64cdbfbe2016",
   "server_base": "/api/v1",
   "operation_count": 118,
   "unique_paths": 77,
@@ -18,14 +18,14 @@
   },
   "notes": "Route presence and behavioural proof are separate; unverified entries are not coverage.",
   "route_inventory": {
-    "absent": 61,
-    "present_behaviour_unverified": 17,
+    "absent": 53,
+    "present_behaviour_unverified": 10,
     "present_partial_behaviour_verified": 8,
-    "present_full_behaviour_verified": 32
+    "present_full_behaviour_verified": 47
   },
   "response_cases": 772,
   "coverage_note": "A route match is not spec behavioural coverage; existing tests are not credited without assertion traceability.",
   "component_schemas": 227,
   "component_responses": 12,
-  "tested_operations_full": 32
+  "tested_operations_full": 47
 }

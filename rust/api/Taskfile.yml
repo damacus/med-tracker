@@ -203,6 +203,64 @@ tasks:
     cmds:
       - rustfmt rust/contract-tests/tests/openapi_schedule_writes.rs
 
+  contract-openapi-pause-lifecycle-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_pause_lifecycle -- --test-threads=1
+
+  openapi-pause-lifecycle-acceptance:
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-pause-lifecycle
+
+  openapi-pause-lifecycle-fmt:
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_pause_lifecycle.rs
+
+  openapi-pause-lifecycle-fmt:write:
+    cmds:
+      - rustfmt rust/contract-tests/tests/openapi_pause_lifecycle.rs
+
+  contract-openapi-medications-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test medication_read_api -- --test-threads=1
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test medication_stock -- --test-threads=1
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test dose_write_api -- --test-threads=1
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_medications -- --test-threads=1
+
+  openapi-medications-acceptance:
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-medications
+
+  contract-openapi-medications-focused-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_medications -- --test-threads=1
+
+  openapi-medications-focused-acceptance:
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-medications-focused
+
+  openapi-medications-fmt:
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_medications.rs
+
+  openapi-medications-fmt:write:
+    cmds:
+      - rustfmt rust/contract-tests/tests/openapi_medications.rs
+
   openapi-notifications-acceptance:
     cmds:
       - fish rust/contract-tests/run.fish rails openapi-notifications
