@@ -7,12 +7,33 @@ yq -o=json '.' docs/api/openapi.v1.yaml | jq -c --slurpfile routes docs/plans/op
 ```
 
 The specification has 118 operations across 77 paths, with 227 component schemas,
-12 component responses and 775 response cases. Of those operations, 86 are fully
-verified and 32 remain incomplete: 20 absent routes, four present but unverified,
-and eight partially verified location operations. The original 89-operation
+12 component responses and 775 response cases. Of those operations, 98 are fully
+verified and 20 remain incomplete, all recorded as absent at this checkpoint.
+The original 89-operation
 baseline is now 69 complete and 20 remaining. Both baseline files are retained;
 the operation IDs, methods and paths still match the fixed 118-operation scope.
 Route presence and older Rails-derived tests alone receive no completion credit.
+
+## Read contracts and location lifecycle
+
+Twelve operations passed review and focused acceptance in
+`mtcontract-f3f5dd6e397d4c14`: 20/20 location-write tests and 3/3 read-contract
+tests, exit 0 with cleanup. Earlier eight location-read tests remain applicable;
+their handlers are unchanged. Shared credential and rate-limit proofs are reused
+with endpoint assertions. These twelve operations are outside the retained
+original remaining-89 baseline, whose count is unchanged.
+
+Capabilities now have the documented shape and leave unsupported features
+explicitly false or empty. App-token household listing is restricted to its
+issuing household; mobile OAuth retains account scope. People pagination rejects
+invalid queries. Location writes cover keyed success/error replay, fresh request
+IDs, validation, concurrency, retention and rollback. Cascaded deletion now
+records child versions and tombstones with the correct visibility metadata;
+association membership deletion does not create an unrelated Person sync event.
+
+The exact staged snapshot passed formatting, Clippy, 20 unit tests and runner
+lint/dispatch/failure-cleanup checks. No unfinished report, health-event or
+external-integration implementation is included in this checkpoint.
 
 ## Invitations and household profile/avatar
 

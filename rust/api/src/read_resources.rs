@@ -389,11 +389,26 @@ async fn require_adult_schedule_index(
 pub(super) async fn people_index(
     State(state): State<AppState>,
     Path(household_id): Path<i64>,
-    Query(pagination): Query<Pagination>,
+    pagination: Result<Query<Pagination>, QueryRejection>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
     let (db, context) = request_context(&state, &headers, household_id).await?;
-    let (db, page) = match parse_page(db, pagination) {
+    let pagination = match pagination {
+        Ok(Query(pagination)) => pagination,
+        Err(_) => {
+            return audited_error_response(
+                db,
+                &context,
+                "api/v1/people",
+                "PersonPolicy",
+                "index",
+                ApiError::invalid_pagination(),
+                true,
+            )
+            .await;
+        }
+    };
+    let (db, page) = match parse_location_page(db, pagination) {
         Ok(value) => value,
         Err((db, error)) => {
             return audited_error_response(

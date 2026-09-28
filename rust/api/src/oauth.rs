@@ -447,7 +447,21 @@ async fn capabilities(State(state): State<AppState>) -> Response {
             "discovery_url": format!("{base}/.well-known/oauth-authorization-server"), "household_binding": "account",
             "inactivity_timeout_days": configured_lifetime_days("SESSION_INACTIVITY_TIMEOUT_DAYS", 30, 1).unwrap_or(0),
             "maximum_age_days": configured_lifetime_days("SESSION_MAX_AGE_DAYS", 0, 0).unwrap_or(0), "clients": clients
-        }}, "administration": {"household": true}, "profile": {"online_only": true}
+        }},
+        "administration": {"household": true, "fresh_mfa_required": false, "app_tokens": true, "audit_logs": true, "invitations": true, "person_access_grants": true},
+        "medication_pause_periods": {"supported": true, "reasons": ["out_of_supply", "temporarily_not_needed", "clinician_advice", "side_effects", "other"], "effective_time": "server_acceptance"},
+        "dose_outcomes": {"source_types": ["schedule", "person_medication"], "max_read_days": 31, "actions": ["not_taken", "reopen", "take"], "replacement_requires_version": true},
+        "stock_removals": {"actions": ["create", "index"], "submission_id_required": true, "max_page_size": 100},
+        "location_management": {"actions": ["create", "update", "destroy"], "version_required": true, "person_memberships": ["create", "destroy"], "memberships_online_only": true},
+        "medication_reviews": {"actions": ["index", "show", "update"], "version_required": true, "max_page_size": 100},
+        "reports": {"formats": [], "health_history": false, "medication_reviews": false, "selected_person_required": true, "health_history_max_span_days": 366},
+        "profile": {"actions": ["show", "update"], "online_only": true, "avatar": {"actions": ["show", "update", "destroy"], "max_bytes": 5_242_880, "content_types": ["image/png", "image/jpeg", "image/webp"]}},
+        "invitations": {"actions": ["accept", "resend"], "online_only": true, "acceptance_session_required": true},
+        "portable_formats": [],
+        "backups": {"encrypted_migration_bundle": false, "unencrypted_zip": false, "health_data_json": false},
+        "fhir": {"version": "R4", "resources": []},
+        "sync": {"portable_ids": true, "numeric_ids": "backward_compatible", "mobile_snapshot": false, "dry_run_import": false, "idempotency_keys": true, "etag_conflicts": true, "change_feed": false, "batch_mutations": false, "tombstones": false, "operations": [], "online_only_resources": ["account", "profile", "avatar", "invitation", "household_membership", "person_access_grant", "location_membership", "report", "api_session", "api_app_token"]},
+        "client_tools": {"cli": {"supported": false, "status": "available", "binary": "medtracker", "api_boundary": "/api/v1", "distribution": "github_release"}, "mcp_server": {"supported": false, "transport": "streamable_http", "endpoint": "/mcp", "stdio_binary": "medtracker-mcp", "tools": [], "resources": []}, "diagnostics": ["request_id", "retry_after"]}
     }}))).into_response()
 }
 
@@ -1353,48 +1367,11 @@ async fn households(State(state): State<AppState>, headers: HeaderMap) -> Respon
         Ok(db) => db,
         Err(error) => return error,
     };
-    let now = Utc::now().naive_utc();
-    let (account_id, grant) = if headers.contains_key(header::AUTHORIZATION) {
-        let Some(token) = headers
-            .get(header::AUTHORIZATION)
-            .and_then(|value| value.to_str().ok())
-            .and_then(|value| value.strip_prefix("Bearer "))
-            .filter(|value| !value.is_empty() && value.len() <= 256)
-        else {
-            return crate::ApiError::unauthorized().into_response();
-        };
-        let grant = oauth_grant::Entity::find()
-            .filter(oauth_grant::Column::TokenHash.eq(digest(token)))
-            .filter(oauth_grant::Column::ClientKind.eq("mobile"))
-            .filter(oauth_grant::Column::RevokedAt.is_null())
-            .one(&db)
-            .await;
-        let grant = match grant {
-            Ok(Some(grant)) => grant,
-            Ok(None) => return crate::ApiError::unauthorized().into_response(),
-            Err(error) => return database_error(error).into_response(),
-        };
-        let inactivity =
-            configured_lifetime_days("SESSION_INACTIVITY_TIMEOUT_DAYS", 30, 1).unwrap_or(0);
-        let maximum = configured_lifetime_days("SESSION_MAX_AGE_DAYS", 0, 0).unwrap_or(-1);
-        if grant.expires_in <= now
-            || !grant
-                .scopes
-                .split_whitespace()
-                .any(|scope| scope == "medtracker")
-            || inactivity < 1
-            || maximum < 0
-            || !grant
-                .last_used_at
-                .is_some_and(|time| time > now - Duration::days(inactivity))
-            || !grant
-                .authenticated_at
-                .is_some_and(|time| maximum == 0 || time > now - Duration::days(maximum))
-            || !matches!(account_available(&db, grant.account_id).await, Ok(true))
-        {
-            return crate::ApiError::unauthorized().into_response();
+    let (account_id, credential_household_id) = if headers.contains_key(header::AUTHORIZATION) {
+        match crate::auth_sessions::household_read_scope(&db, &headers).await {
+            Ok(scope) => scope,
+            Err(error) => return error.into_response(),
         }
-        (grant.account_id, Some(grant))
     } else {
         let session = match browser_session(&state, &db, &headers).await {
             Ok(Some(session)) => session,
@@ -1406,10 +1383,15 @@ async fn households(State(state): State<AppState>, headers: HeaderMap) -> Respon
     if let Err(error) = tenant_setting(&db, "med_tracker.current_account_id", account_id).await {
         return database_error(error).into_response();
     }
-    let memberships = membership::Entity::find()
+    let mut membership_query = membership::Entity::find()
         .filter(membership::Column::AccountId.eq(account_id))
         .filter(membership::Column::Status.eq("active"))
-        .filter(membership::Column::RevokedAt.is_null())
+        .filter(membership::Column::RevokedAt.is_null());
+    if let Some(household_id) = credential_household_id {
+        membership_query =
+            membership_query.filter(membership::Column::HouseholdId.eq(household_id));
+    }
+    let memberships = membership_query
         .order_by_asc(membership::Column::Id)
         .all(&db)
         .await;
@@ -1434,14 +1416,6 @@ async fn households(State(state): State<AppState>, headers: HeaderMap) -> Respon
         let h = households.get(&m.household_id)?;
         Some(json!({"id": h.id, "slug": h.slug, "name": h.name, "role": m.role, "membership_id": m.id}))
     }).collect();
-    if let Some(grant) = grant {
-        let mut active: oauth_grant::ActiveModel = grant.into();
-        active.last_used_at = Set(Some(now));
-        active.updated_at = Set(now);
-        if let Err(error) = active.update(&db).await {
-            return database_error(error).into_response();
-        }
-    }
     if let Err(error) = db.commit().await {
         return database_error(error).into_response();
     }
