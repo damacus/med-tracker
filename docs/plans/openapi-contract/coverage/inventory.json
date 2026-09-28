@@ -18,14 +18,14 @@
   },
   "notes": "Route presence and behavioural proof are separate; unverified entries are not coverage.",
   "route_inventory": {
-    "absent": 31,
+    "absent": 20,
     "present_behaviour_unverified": 4,
     "present_partial_behaviour_verified": 8,
-    "present_full_behaviour_verified": 75
+    "present_full_behaviour_verified": 86
   },
   "response_cases": 775,
   "coverage_note": "A route match is not spec behavioural coverage; existing tests are not credited without assertion traceability.",
   "component_schemas": 227,
   "component_responses": 12,
-  "tested_operations_full": 75
+  "tested_operations_full": 86
 }

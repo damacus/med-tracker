@@ -1766,5 +1766,197 @@
       "audit and sync effects, fresh authority after household lock, direct rate-limit wiring"
     ],
     "not_yet_tested": []
+  },
+  "listInvitations": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_invitations.rs; rust/contract-tests/tests/invitations.rs; rust/contract-tests/tests/openapi_rate_limit.rs; rust/contract-tests/tests/auth.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      429
+    ],
+    "behaviours_tested": [
+      "exact collection and seven-field invitation summary; verifies token and digest are absent and token-shaped material is not serialized",
+      "manager list succeeds; missing bearer and wrong/view-only/foreign-household access are rejected",
+      "dedicated auth tests establish shared bearer and household authorization behavior; status list here records direct invitation probes",
+      "shared nonloopback rate test directly observes 429 on list route"
+    ],
+    "not_yet_tested": []
+  },
+  "createInvitation": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_invitations.rs; rust/contract-tests/tests/invitations.rs; rust/contract-tests/tests/openapi_rate_limit.rs; rust/contract-tests/tests/auth.rs",
+    "statuses_tested": [
+      201,
+      400,
+      401,
+      403,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict wrapper and allowed request fields; invalid email, role, duplicate email, and unknown field return validation errors",
+      "created response has exact summary shape, pending state, no acceptance/revocation time, and no secret material",
+      "created invitation has one correlated domain audit; readback lists the created invitation without secrets",
+      "dedicated auth tests establish shared bearer and household authorization behavior; status list here records direct invitation probes",
+      "shared nonloopback rate test directly observes 429 on create route",
+      "keyed create replay returns the same response; changed payload under the same key returns 409; only one invitation row and creation audit result",
+      "keyed 422 validation rejection replays with fresh matching body/header request IDs, changed payload conflicts, and no invitation is written; final invitation target 6/6 in mtcontract-356be5db04ee44af"
+    ],
+    "not_yet_tested": []
+  },
+  "deleteInvitation": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_invitations.rs; rust/contract-tests/tests/invitations.rs; rust/contract-tests/tests/openapi_rate_limit.rs; rust/contract-tests/tests/auth.rs",
+    "statuses_tested": [
+      204,
+      403,
+      404,
+      409,
+      429
+    ],
+    "behaviours_tested": [
+      "successful revoke returns an empty 204, persists revoked state, keeps the revoked invitation listed, and writes one revoke audit",
+      "view-only/foreign access is forbidden and unknown invitation ID is not found",
+      "dedicated auth tests establish shared bearer and household authorization behavior; status list here records direct invitation probes",
+      "shared nonloopback rate test directly observes 429 on delete route",
+      "keyed delete replay returns empty 204; changing the resource under the same key returns 409; audit is written only for original revoke"
+    ],
+    "not_yet_tested": []
+  },
+  "resendHouseholdInvitation": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_invitations.rs; rust/contract-tests/tests/invitations.rs",
+    "statuses_tested": [
+      200,
+      403,
+      404,
+      422,
+      503
+    ],
+    "behaviours_tested": [
+      "expired invitation token rotates once; same idempotency key replays the same response without another email or audit",
+      "old token becomes unavailable; replacement token can be accepted and acceptance is idempotent",
+      "delivery enqueue failure returns structured 503 and leaves token digest, expiry, timestamps, audit/version state, and outbound email unchanged",
+      "legacy target also exercises authority recheck before cached resend replay"
+    ],
+    "not_yet_tested": []
+  },
+  "acceptHouseholdInvitation": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_invitations.rs; rust/contract-tests/tests/invitations.rs; rust/contract-tests/tests/auth.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      422
+    ],
+    "behaviours_tested": [
+      "matching user session accepts; same token retry returns the same membership without duplicate membership/person/audit/sync changes",
+      "wrong identity, expired/revoked/unknown token, app token, and delegated/mobile OAuth credential cannot accept",
+      "strict acceptance fields; invalid payload leaves membership and professional relationship/grant state unchanged",
+      "accepted professional invitation creates the linked relationship and access grant; public response contains no token material",
+      "dedicated auth tests establish shared bearer and credential-kind behavior; status list here records direct invitation probes"
+    ],
+    "not_yet_tested": []
+  },
+  "getHouseholdProfile": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_profile.rs; rust/contract-tests/tests/profile.rs; rust/contract-tests/tests/auth.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403
+    ],
+    "behaviours_tested": [
+      "exact profile response shape and private no-store behavior; linked person and account IDs are serialized as expected",
+      "profile read is self-scoped; current manage/view access is checked, while view-authorized linked person reads remain available",
+      "legacy profile target directly checks missing bearer, wrong household, view access, and revoked access; shared auth tests cover common bearer and tenant rules"
+    ],
+    "not_yet_tested": []
+  },
+  "updateHouseholdProfile": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_profile.rs; rust/contract-tests/tests/profile.rs",
+    "statuses_tested": [
+      200,
+      400,
+      403,
+      409,
+      422
+    ],
+    "behaviours_tested": [
+      "PATCH has exact shape and partial updates preserve omitted profile fields and unrelated account preferences",
+      "date-of-birth changes update person timestamp and correlate one version and sync event to request ID",
+      "malformed/missing wrapper and invalid/unknown fields return errors without changing stored profile",
+      "same idempotency key replays once; changed payload conflicts without duplicate version or sync event",
+      "current person grant revocation prevents subsequent profile mutation"
+    ],
+    "not_yet_tested": []
+  },
+  "updateHouseholdProfileWithPut": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_profile.rs; rust/contract-tests/tests/profile.rs",
+    "statuses_tested": [
+      200,
+      403
+    ],
+    "behaviours_tested": [
+      "PUT applies only supplied fields and preserves omitted profile values",
+      "keyed PUT replay returns the same response without repeating the update",
+      "view-only and revoked profile access cannot update",
+      "PUT route uses the profile put handler; its profile validation and persistence path is reviewed alongside the tested PATCH implementation"
+    ],
+    "not_yet_tested": []
+  },
+  "downloadCurrentAvatar": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_profile.rs; rust/contract-tests/tests/profile.rs",
+    "statuses_tested": [
+      200,
+      403,
+      404,
+      503
+    ],
+    "behaviours_tested": [
+      "private avatar download preserves media type, disposition filename and exact bytes; responses are no-store",
+      "unlinked/view-only or revoked access does not expose another person's avatar; removed avatar is not found",
+      "storage-failure endpoint returns avatar_unavailable 503 while the baseline attachment and bytes remain readable"
+    ],
+    "not_yet_tested": []
+  },
+  "uploadCurrentAvatar": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_profile.rs; rust/contract-tests/tests/profile.rs",
+    "statuses_tested": [
+      200,
+      400,
+      403,
+      422,
+      503
+    ],
+    "behaviours_tested": [
+      "required multipart part, PNG/JPEG/WebP content constraints and 5 MiB boundary are checked",
+      "invalid replacement leaves original downloadable bytes unchanged; successful replacement updates attached state",
+      "storage failure returns avatar_unavailable 503 without changing profile or attachment metadata",
+      "view-only and revoked access cannot upload; successful writes are not idempotency-cached"
+    ],
+    "not_yet_tested": []
+  },
+  "deleteCurrentAvatar": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_profile.rs; rust/contract-tests/tests/profile.rs",
+    "statuses_tested": [
+      204,
+      403
+    ],
+    "behaviours_tested": [
+      "delete returns empty 204 with no-store, clears attachment state, and emits request-correlated removal audit metadata",
+      "view-only and revoked access cannot delete another person's avatar"
+    ],
+    "not_yet_tested": []
   }
 }

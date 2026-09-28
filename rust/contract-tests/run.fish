@@ -183,7 +183,7 @@ function run_contract
         or return $status
         set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner-subnet.compose.yaml"
     end
-    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions openapi-admin-settings openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-medications openapi-medications-focused browser-journey-rails browser-journey-rust web-reads-rails
+    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions openapi-admin-settings openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-invitations openapi-invitations-legacy openapi-profile openapi-profile-storage openapi-rate-limit openapi-medications openapi-medications-focused browser-journey-rails browser-journey-rust web-reads-rails
         set -gx CONTRACT_AUTH_SESSION_SECRET (rtk proxy openssl rand -hex 32)
         or return $status
         set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner.compose.yaml"
@@ -250,7 +250,7 @@ function run_contract
         return $status
     end
 
-    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions openapi-admin-settings openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-medications openapi-medications-focused
+    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions openapi-admin-settings openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-invitations openapi-invitations-legacy openapi-profile openapi-profile-storage openapi-rate-limit openapi-medications openapi-medications-focused
         set -g contract_api_image true
         rtk task api:contract-up CONTRACT_PROJECT=$contract_project
         or return $status
@@ -266,6 +266,16 @@ function run_contract
             rtk task api:contract-openapi-audit-logs-test CONTRACT_PROJECT=$contract_project
         else if test "$argv[2]" = openapi-person-grants
             rtk task api:contract-openapi-person-grants-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = openapi-invitations
+            rtk task api:contract-openapi-invitations-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = openapi-invitations-legacy
+            rtk task api:contract-existing-invitations-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = openapi-rate-limit
+            rtk task api:contract-openapi-rate-limit-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = openapi-profile
+            rtk task api:contract-openapi-profile-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = openapi-profile-storage
+            rtk task api:contract-openapi-profile-storage-test CONTRACT_PROJECT=$contract_project
         else if test "$argv[2]" = openapi-review-prompts
             rtk task api:contract-openapi-review-prompts-test CONTRACT_PROJECT=$contract_project
         else if test "$argv[2]" = openapi-dose-occurrences

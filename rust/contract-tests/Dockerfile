@@ -12,5 +12,6 @@ RUN cargo build --locked --manifest-path rust/api/Cargo.toml; and cargo test --l
 FROM dependencies AS runner
 COPY rust/api rust/api
 COPY rust/web/src rust/web/src
+RUN find rust/api/src rust/web/src -type f -exec touch {} +; and cargo build --locked --manifest-path rust/api/Cargo.toml
 COPY rust/contract-tests rust/contract-tests
-RUN find rust/api/src rust/web/src rust/contract-tests/src rust/contract-tests/tests -type f -exec touch {} +; and cargo build --locked --manifest-path rust/api/Cargo.toml; and fish rust/contract-tests/run_medication_api_tests.fish --no-run
+RUN find rust/contract-tests/src rust/contract-tests/tests -type f -exec touch {} +; and cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --lib --no-run

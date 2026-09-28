@@ -453,6 +453,10 @@ fn invalid_avatar_replacement_keeps_existing_bytes() {
             "validation_failed",
         ),
         (
+            avatar_form(vec![b'x'; 5 * 1024 * 1024 + 128 * 1024], "huge.png", "image/png"),
+            "validation_failed",
+        ),
+        (
             multipart::Form::new().text("avatar", fixture.profile_signed_blob_id.clone()),
             "unprocessable_content",
         ),

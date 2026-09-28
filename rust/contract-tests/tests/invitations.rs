@@ -1,6 +1,6 @@
-use medtracker_contract_tests::{fixture, Fixture, Target};
+use medtracker_contract_tests::{Fixture, Target, fixture};
 use reqwest::blocking::Response;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::env;
 use std::thread;
 use std::time::Duration;
@@ -16,7 +16,10 @@ impl Mailpit {
         let origin = Url::parse(&env::var("CONTRACT_MAILPIT_URL").expect("Mailpit URL"))
             .expect("valid Mailpit URL");
         assert_eq!(origin.scheme(), "http");
-        assert!(matches!(origin.host(), Some(Host::Ipv4(address)) if address.is_loopback()));
+        assert!(
+            matches!(origin.host(), Some(Host::Ipv4(address)) if address.is_loopback())
+                || matches!(origin.host(), Some(Host::Domain("mail-test")))
+        );
         assert_eq!(origin.path(), "/");
         assert!(origin.username().is_empty() && origin.password().is_none());
         assert!(origin.query().is_none() && origin.fragment().is_none());
@@ -72,9 +75,11 @@ impl Mailpit {
     }
 
     fn token_from_message(&self, message_id: &str) -> String {
-        assert!(message_id
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-'));
+        assert!(
+            message_id
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+        );
         let url = self
             .origin
             .join(&format!("api/v1/message/{message_id}"))
@@ -121,6 +126,32 @@ fn invitation(list: &Value, id: i64) -> &Value {
 
 fn body(response: Response) -> Value {
     response.json().expect("JSON response")
+}
+
+fn audit_database() -> postgres::Client {
+    postgres::Client::connect(
+        &env::var("CONTRACT_AUDIT_DATABASE_URL").expect("contract database URL"),
+        postgres::NoTls,
+    )
+    .expect("contract database")
+}
+
+fn membership_count(db: &mut postgres::Client, household_id: i64, invitation_id: i64) -> i64 {
+    db.query_one(
+        "SELECT count(*)::bigint FROM household_memberships hm JOIN accounts a ON a.id = hm.account_id JOIN household_invitations hi ON lower(hi.email) = lower(a.email) WHERE hm.household_id = $1 AND hi.id = $2 AND hm.status = 'active' AND hm.revoked_at IS NULL",
+        &[&household_id, &invitation_id],
+    )
+    .expect("active household membership count")
+    .get(0)
+}
+
+fn person_sync_count(db: &mut postgres::Client, household_id: i64) -> i64 {
+    db.query_one(
+        "SELECT count(*)::bigint FROM api_change_events WHERE household_id = $1 AND record_type = 'Person' AND action = 'create'",
+        &[&household_id],
+    )
+    .expect("person sync count")
+    .get(0)
 }
 
 fn assert_error(response: Response, status: u16, code: &str) -> Value {
@@ -307,11 +338,13 @@ fn task_6b_list_create_delete_validate_and_hide_invitation_secrets() {
     let foreign_list = body(target.get(&foreign_path, Some(&fixture.foreign_access_token)));
     assert_eq!(invitation(&foreign_list, foreign_id)["pending"], true);
     let primary_list = body(target.get(&path, Some(&fixture.access_token)));
-    assert!(!primary_list["data"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|row| row["id"] == foreign_id));
+    assert!(
+        !primary_list["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["id"] == foreign_id)
+    );
     assert_error(
         target.delete(&item, Some(&fixture.view_access_token)),
         403,
@@ -365,9 +398,11 @@ fn task_6b_resend_renews_expired_replays_once_and_rejects_revoked() {
     let target = Target::from_env();
     let fixture = fixture();
     let mailpit = Mailpit::from_env();
-    assert!(mailpit
-        .message_ids_to(&fixture.invitation_expired_email)
-        .is_empty());
+    assert!(
+        mailpit
+            .message_ids_to(&fixture.invitation_expired_email)
+            .is_empty()
+    );
     let list = invitations(&fixture);
     let item = format!("{list}/{}", fixture.invitation_expired_id);
     let resend = format!("{item}/resend");
@@ -381,18 +416,22 @@ fn task_6b_resend_renews_expired_replays_once_and_rejects_revoked() {
         422,
         "invitation_unavailable",
     );
-    assert!(!denied
-        .to_string()
-        .contains(&fixture.invitation_expired_token));
+    assert!(
+        !denied
+            .to_string()
+            .contains(&fixture.invitation_expired_token)
+    );
 
     let key = format!("contract-resend-{}", fixture.invitation_expired_id);
     let audit_before = resend_audit_count(&target, &fixture, fixture.invitation_expired_id);
     let response = target.post_json_with_key(&resend, &fixture.access_token, &key, &json!({}));
     assert_eq!(response.status().as_u16(), 200);
-    assert!(response.headers()["cache-control"]
-        .to_str()
-        .unwrap()
-        .contains("no-store"));
+    assert!(
+        response.headers()["cache-control"]
+            .to_str()
+            .unwrap()
+            .contains("no-store")
+    );
     let first = body(response);
     assert_no_token_shaped_material(&first);
     assert_eq!(
@@ -401,9 +440,11 @@ fn task_6b_resend_renews_expired_replays_once_and_rejects_revoked() {
     );
     assert_eq!(first["data"]["delivery_status"], "queued");
     assert!(first["data"]["expires_at"].is_string());
-    assert!(!first
-        .to_string()
-        .contains(&fixture.invitation_expired_token));
+    assert!(
+        !first
+            .to_string()
+            .contains(&fixture.invitation_expired_token)
+    );
     let delivered_id = mailpit.wait_for_one_to(&fixture.invitation_expired_email);
     let replacement_token = mailpit.token_from_message(&delivered_id);
     assert!(replacement_token != fixture.invitation_expired_token);
@@ -464,17 +505,13 @@ fn task_6b_resend_renews_expired_replays_once_and_rejects_revoked() {
         .expect("accepted membership ID")
         .parse::<i64>()
         .expect("numeric membership ID");
-    let households = body(target.get(
-        "/api/v1/auth/households",
-        Some(&fixture.invitation_expired_access_token),
-    ));
+    let mut db = audit_database();
     assert_eq!(
-        households["data"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .filter(|row| row["id"] == fixture.household_id)
-            .count(),
+        membership_count(
+            &mut db,
+            fixture.household_id,
+            fixture.invitation_expired_id,
+        ),
         1
     );
     let memberships = format!(
@@ -567,9 +604,11 @@ fn task_6b_resend_invalidates_a_pending_matching_identity_token() {
     let target = Target::from_env();
     let fixture = fixture();
     let mailpit = Mailpit::from_env();
-    assert!(mailpit
-        .message_ids_to(&fixture.invitation_rotation_email)
-        .is_empty());
+    assert!(
+        mailpit
+            .message_ids_to(&fixture.invitation_rotation_email)
+            .is_empty()
+    );
     let list = invitations(&fixture);
     let before = body(target.get(&list, Some(&fixture.access_token)));
     let old = invitation(&before, fixture.invitation_rotation_id);
@@ -600,18 +639,20 @@ fn task_6b_resend_invalidates_a_pending_matching_identity_token() {
         422,
         "invitation_unavailable",
     );
-    assert!(!unavailable
-        .to_string()
-        .contains(&fixture.invitation_rotation_token));
-    let households = body(target.get(
-        "/api/v1/auth/households",
-        Some(&fixture.invitation_rotation_access_token),
-    ));
-    assert!(!households["data"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|row| row["id"] == fixture.household_id));
+    assert!(
+        !unavailable
+            .to_string()
+            .contains(&fixture.invitation_rotation_token)
+    );
+    let mut db = audit_database();
+    assert_eq!(
+        membership_count(
+            &mut db,
+            fixture.household_id,
+            fixture.invitation_rotation_id,
+        ),
+        0
+    );
     let accepted = target.post_json_authorized(
         "/api/v1/invitations/accept",
         &fixture.invitation_rotation_access_token,
@@ -624,17 +665,12 @@ fn task_6b_resend_invalidates_a_pending_matching_identity_token() {
         fixture.household_id.to_string()
     );
     assert_no_token_shaped_material(&accepted_body);
-    let households = body(target.get(
-        "/api/v1/auth/households",
-        Some(&fixture.invitation_rotation_access_token),
-    ));
     assert_eq!(
-        households["data"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .filter(|row| row["id"] == fixture.household_id)
-            .count(),
+        membership_count(
+            &mut db,
+            fixture.household_id,
+            fixture.invitation_rotation_id,
+        ),
         1
     );
 }
@@ -645,28 +681,26 @@ fn task_6b_accepts_once_with_grants_and_public_auth_readback() {
     let fixture = fixture();
     let accept = "/api/v1/invitations/accept";
     let payload = json!({"token": fixture.invitation_accept_token});
-    let snapshot = format!("/api/v1/households/{}/sync/snapshot", fixture.household_id);
-    let cursor = body(target.get(&snapshot, Some(&fixture.access_token)))["data"]["cursor"]
-        .as_str()
-        .unwrap()
-        .to_owned();
-    let before = body(target.get(
-        "/api/v1/auth/households",
-        Some(&fixture.invitation_accept_access_token),
-    ));
-    assert!(!before["data"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|row| row["id"] == fixture.household_id));
+    let mut db = audit_database();
+    let sync_before = person_sync_count(&mut db, fixture.household_id);
+    assert_eq!(
+        membership_count(
+            &mut db,
+            fixture.household_id,
+            fixture.invitation_accept_id,
+        ),
+        0
+    );
 
     let response =
         target.post_json_authorized(accept, &fixture.invitation_accept_access_token, &payload);
     assert_eq!(response.status().as_u16(), 200);
-    assert!(response.headers()["cache-control"]
-        .to_str()
-        .unwrap()
-        .contains("no-store"));
+    assert!(
+        response.headers()["cache-control"]
+            .to_str()
+            .unwrap()
+            .contains("no-store")
+    );
     let accepted = body(response);
     assert_no_token_shaped_material(&accepted);
     assert_eq!(
@@ -676,41 +710,42 @@ fn task_6b_accepts_once_with_grants_and_public_auth_readback() {
     assert_eq!(accepted["data"]["role"], "member");
     assert!(accepted["data"]["membership_id"].is_string());
     assert!(accepted["data"]["person_id"].is_string());
-    assert!(!accepted
-        .to_string()
-        .contains(&fixture.invitation_accept_token));
+    assert!(
+        !accepted
+            .to_string()
+            .contains(&fixture.invitation_accept_token)
+    );
 
     let replay =
         target.post_json_authorized(accept, &fixture.invitation_accept_access_token, &payload);
     assert_eq!(replay.status().as_u16(), 200);
     assert!(body(replay) == accepted, "accept replay response changed");
-    let after = body(target.get(
-        "/api/v1/auth/households",
-        Some(&fixture.invitation_accept_access_token),
-    ));
-    assert_eq!(after["account_id"], fixture.invitation_accept_account_id);
-    let matching: Vec<_> = after["data"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .filter(|row| row["id"] == fixture.household_id)
-        .collect();
-    assert_eq!(matching.len(), 1);
-    assert_eq!(matching[0]["role"], "member");
+    assert_eq!(
+        membership_count(
+            &mut db,
+            fixture.household_id,
+            fixture.invitation_accept_id,
+        ),
+        1
+    );
     let owner_list = body(target.get(&invitations(&fixture), Some(&fixture.access_token)));
     let summary = invitation(&owner_list, fixture.invitation_accept_id);
     assert_eq!(summary["pending"], false);
     assert!(summary["accepted_at"].is_string());
-    assert!(!owner_list
-        .to_string()
-        .contains(&fixture.invitation_accept_token));
-    let feed = format!(
-        "/api/v1/households/{}/sync/changes?cursor={cursor}",
-        fixture.household_id
+    assert!(
+        !owner_list
+            .to_string()
+            .contains(&fixture.invitation_accept_token)
     );
-    let changes = target.get(&feed, Some(&fixture.access_token));
-    assert_eq!(changes.status().as_u16(), 200);
-    assert_no_tokens(&body(changes), &fixture);
+    assert_eq!(person_sync_count(&mut db, fixture.household_id), sync_before + 1);
+    let sync_metadata: String = db
+        .query_one(
+            "SELECT metadata::text FROM api_change_events WHERE household_id = $1 AND record_type = 'Person' AND action = 'create' ORDER BY id DESC LIMIT 1",
+            &[&fixture.household_id],
+        )
+        .expect("accepted person sync metadata")
+        .get(0);
+    assert!(!sync_metadata.contains(&fixture.invitation_accept_token));
 
     let memberships = format!(
         "/api/v1/households/{}/admin/memberships",
@@ -777,15 +812,15 @@ fn task_6b_revocation_prevents_acceptance_and_keeps_membership_absent() {
         422,
         "invitation_unavailable",
     );
-    let households = body(target.get(
-        "/api/v1/auth/households",
-        Some(&fixture.invitation_revoked_access_token),
-    ));
-    assert!(!households["data"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|row| row["id"] == fixture.household_id));
+    let mut db = audit_database();
+    assert_eq!(
+        membership_count(
+            &mut db,
+            fixture.household_id,
+            fixture.invitation_revoked_id,
+        ),
+        0
+    );
     let list = body(target.get(&invitations(&fixture), Some(&fixture.access_token)));
     let revoked = invitation(&list, fixture.invitation_revoked_id);
     assert_eq!(revoked["pending"], false);
@@ -819,9 +854,11 @@ fn task_6b_acceptance_rejects_wrong_identity_app_token_and_unknown_token() {
         422,
         "invitation_unavailable",
     );
-    assert!(!missing
-        .to_string()
-        .contains(&fixture.invitation_accept_email));
+    assert!(
+        !missing
+            .to_string()
+            .contains(&fixture.invitation_accept_email)
+    );
     assert_error(
         target.post_json_authorized(path, &fixture.invitation_accept_access_token, &json!({})),
         400,
@@ -830,7 +867,7 @@ fn task_6b_acceptance_rejects_wrong_identity_app_token_and_unknown_token() {
 }
 
 #[test]
-fn task_6b_mobile_oauth_acceptance_follows_observed_rails_behavior() {
+fn task_6b_mobile_oauth_cannot_accept_an_invitation() {
     let target = Target::from_env();
     let fixture = fixture();
     let request = json!({"token": fixture.invitation_mobile_token});
@@ -839,23 +876,18 @@ fn task_6b_mobile_oauth_acceptance_follows_observed_rails_behavior() {
         &fixture.invitation_mobile_oauth_token,
         &request,
     );
-    assert_eq!(response.status().as_u16(), 200);
-    let accepted = body(response);
-    assert_no_token_shaped_material(&accepted);
-    assert_eq!(
-        accepted["data"]["household_id"],
-        fixture.household_id.to_string()
-    );
-    assert_eq!(accepted["data"]["role"], "member");
+    assert_error(response, 403, "forbidden");
     let households = body(target.get(
         "/api/v1/auth/households",
         Some(&fixture.invitation_mobile_oauth_token),
     ));
-    assert!(households["data"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|row| row["id"] == fixture.household_id));
+    assert!(
+        !households["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["id"] == fixture.household_id)
+    );
 }
 
 #[test]

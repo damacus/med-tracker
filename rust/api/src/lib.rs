@@ -7,6 +7,7 @@ mod dosage_options;
 mod dose;
 mod dose_occurrences;
 mod entities;
+mod invitations;
 mod locations;
 mod medication_forecast;
 mod medication_management;
@@ -19,6 +20,7 @@ mod pause_lifecycle;
 mod people;
 mod person_grants;
 mod person_medication_writes;
+mod profile;
 mod push_subscriptions;
 mod rate_limit;
 mod read_entities;
@@ -59,6 +61,8 @@ use std::time::Duration;
 pub struct AppState {
     db: DatabaseConnection,
     oauth: oauth::OAuthState,
+    invitation_mail: Arc<invitations::MailConfig>,
+    avatar_storage: profile::AvatarStorage,
     rate_limiter: Arc<rate_limit::RateLimiter>,
     trusted_proxy_ips: Arc<std::collections::HashSet<IpAddr>>,
 }
@@ -88,9 +92,14 @@ pub async fn connect(url: &str) -> Result<AppState, sea_orm::DbErr> {
     }
     transaction.rollback().await?;
     let oauth = oauth::OAuthState::from_env().map_err(sea_orm::DbErr::Custom)?;
+    let invitation_mail =
+        Arc::new(invitations::MailConfig::from_env().map_err(sea_orm::DbErr::Custom)?);
+    let avatar_storage = profile::AvatarStorage::from_env().map_err(sea_orm::DbErr::Custom)?;
     Ok(AppState {
         db,
         oauth,
+        invitation_mail,
+        avatar_storage,
         rate_limiter: Arc::new(rate_limit::RateLimiter::default()),
         trusted_proxy_ips: Arc::new(rate_limit::trusted_proxy_ips()),
     })
@@ -156,6 +165,7 @@ fn api_router(state: AppState) -> Router {
     Router::new()
         .merge(oauth::api_routes())
         .merge(auth_sessions::routes())
+        .merge(profile::routes())
         .route(
             "/api/v1/households/{household_id}/medications",
             get(index).post(medication_management::create),
@@ -231,6 +241,22 @@ fn api_router(state: AppState) -> Router {
         .route(
             "/api/v1/households/{household_id}/admin/person_access_grants/{id}",
             axum::routing::delete(person_grants::destroy),
+        )
+        .route(
+            "/api/v1/households/{household_id}/admin/invitations",
+            get(invitations::index).post(invitations::create),
+        )
+        .route(
+            "/api/v1/households/{household_id}/admin/invitations/{id}",
+            axum::routing::delete(invitations::destroy),
+        )
+        .route(
+            "/api/v1/households/{household_id}/admin/invitations/{id}/resend",
+            axum::routing::post(invitations::resend),
+        )
+        .route(
+            "/api/v1/invitations/accept",
+            axum::routing::post(invitations::accept),
         )
         .route(
             "/api/v1/households/{household_id}/people",

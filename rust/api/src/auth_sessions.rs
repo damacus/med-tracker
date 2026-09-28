@@ -51,6 +51,39 @@ struct Authenticated {
     user_id: i64,
 }
 
+pub(super) struct InvitationActor {
+    pub session: api_session::Model,
+    pub account: account::Model,
+    pub person: person::Model,
+}
+
+pub(super) async fn invitation_actor(
+    db: &DatabaseTransaction,
+    headers: &HeaderMap,
+) -> Result<InvitationActor, ApiError> {
+    let authenticated = authenticate(db, headers).await?;
+    let Credential::Session(session) = authenticated.credential else {
+        return Err(ApiError::forbidden());
+    };
+    let account = account::Entity::find_by_id(session.account_id)
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(ApiError::unauthorized)?;
+    let person = person::Entity::find()
+        .filter(person::Column::AccountId.eq(account.id))
+        .order_by_asc(person::Column::Id)
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(ApiError::unauthorized)?;
+    Ok(InvitationActor {
+        session,
+        account,
+        person,
+    })
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/api/v1/auth/sessions", get(index))
