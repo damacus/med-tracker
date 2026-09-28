@@ -1667,5 +1667,104 @@
       "structured audit outcomes and direct rate-limit wiring"
     ],
     "not_yet_tested": []
+  },
+  "listMedicationStockRemovals": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_stock_workflows.rs; rust/contract-tests/tests/medication_stock.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      404,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict stock history and pagination response",
+      "portable medication identity; missing and out-of-scope records",
+      "visible view-only member forbidden; owner inventory history",
+      "invalid pagination rejected without mutation and page limit enforced",
+      "direct shared rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "createMedicationStockRemoval": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_stock_workflows.rs; rust/contract-tests/tests/medication_stock.rs; rust/contract-tests/tests/medication_management_security_api.rs",
+    "statuses_tested": [
+      201,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict wrapper and fields, decimal precision, UUID, reason, optional non-null note and tracked dosage identity",
+      "submission replay preserves original history and rejects changed facts",
+      "concurrent removals never overdraw or duplicate stock changes",
+      "tracked dosage and parent supply consistency, audit and sync effects",
+      "fresh manager authority after household lock and direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "adjustMedicationInventory": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_stock_workflows.rs; rust/contract-tests/tests/medication_stock.rs; rust/contract-tests/tests/openapi_memberships.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "strict adjustment wrapper and decimal precision",
+      "invalid input leaves inventory unchanged",
+      "manager role and current credential boundaries",
+      "persisted quantity, audit and sync effects",
+      "direct shared rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "markMedicationAsOrdered": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_stock_workflows.rs; rust/contract-tests/tests/medication_stock.rs; rust/contract-tests/tests/openapi_memberships.rs",
+    "statuses_tested": [
+      200,
+      401,
+      404,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "documented medication response shape and persisted ordering state",
+      "strict order fields and valid dates/quantity; invalid writes do not mutate stored details",
+      "mark received accepts a bodyless request and does not invent stock",
+      "visible medication authorization, foreign records and revoked credentials",
+      "audit and sync effects, fresh authority after household lock, direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
+  },
+  "markMedicationAsReceived": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_stock_workflows.rs; rust/contract-tests/tests/medication_stock.rs; rust/contract-tests/tests/openapi_memberships.rs",
+    "statuses_tested": [
+      200,
+      401,
+      404,
+      429
+    ],
+    "behaviours_tested": [
+      "documented medication response shape and received state",
+      "bodyless request accepted without inventing stock",
+      "visible medication authorization, foreign records and revoked credentials",
+      "audit and sync effects, fresh authority after household lock, direct rate-limit wiring"
+    ],
+    "not_yet_tested": []
   }
 }

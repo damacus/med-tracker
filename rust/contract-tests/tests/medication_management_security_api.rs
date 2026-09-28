@@ -153,7 +153,7 @@ fn tracked_removal_requires_own_option_and_syncs_parent_supply() {
     let fixture = fixture();
     let medication_id = create_medication(&target, &fixture, "Contract tracked removal", "10.00");
     let mut db = database();
-    let insert = "INSERT INTO dosages (household_id, medication_id, amount, unit, frequency, current_supply, created_at, updated_at) VALUES ($1, $2, '1.25', 'ml', 'daily', $3::text::numeric, NOW(), NOW()) RETURNING id";
+    let insert = "INSERT INTO dosages (household_id, medication_id, amount, unit, frequency, current_supply, default_dose_cycle, default_max_daily_doses, default_min_hours_between_doses, created_at, updated_at) VALUES ($1, $2, '1.25', 'ml', 'daily', $3::text::numeric, 0, 4, 6.0, NOW(), NOW()) RETURNING id";
     let first_id: i64 = db
         .query_one(insert, &[&fixture.household_id, &medication_id, &"6.00"])
         .expect("first tracked option")

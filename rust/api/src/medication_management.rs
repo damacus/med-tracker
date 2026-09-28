@@ -3,6 +3,7 @@ use crate::entities::{
     api_change_event, api_tombstone, dosage, grant, location, medication, person,
     person_medication, schedule, version,
 };
+use crate::mutation_idempotency;
 use crate::sync_events::{lock_household, record_change, SyncRecord};
 use crate::{
     audit, authenticate, database_error, representation_etag, scope, serialize_many, ApiError,
@@ -1178,9 +1179,16 @@ pub(super) async fn adjust_inventory(
     State(state): State<AppState>,
     Path((household_id, id)): Path<(i64, String)>,
     headers: HeaderMap,
-    Json(body): Json<Value>,
+    body: Result<Json<Value>, JsonRejection>,
 ) -> Result<Response, ApiError> {
-    let (db, context) = request_context(&state, &headers, household_id).await?;
+    let (db, _) = request_context(&state, &headers, household_id).await?;
+    let (_, context) = mutation_idempotency::lock_household_and_reauthenticate(
+        &state,
+        &db,
+        &headers,
+        household_id,
+    )
+    .await?;
     let Some(found) = visible_medication(&db, &context, &id).await? else {
         return error_response(
             db,
@@ -1211,7 +1219,73 @@ pub(super) async fn adjust_inventory(
         )
         .await;
     }
-    let attributes = body.get("adjustment").unwrap_or(&Value::Null);
+    let Json(body) = match body {
+        Ok(value) => value,
+        Err(_) => {
+            return error_response(
+                db,
+                &context,
+                "PATCH",
+                "api/v1/medications",
+                "MedicationPolicy",
+                "adjust_inventory",
+                StatusCode::BAD_REQUEST,
+                "bad_request",
+                "Invalid request body",
+                None,
+            )
+            .await
+        }
+    };
+    let Some(outer) = body.as_object() else {
+        return error_response(
+            db,
+            &context,
+            "PATCH",
+            "api/v1/medications",
+            "MedicationPolicy",
+            "adjust_inventory",
+            StatusCode::BAD_REQUEST,
+            "bad_request",
+            "Invalid request body",
+            None,
+        )
+        .await;
+    };
+    let Some(attributes) = outer.get("adjustment").and_then(Value::as_object) else {
+        return error_response(
+            db,
+            &context,
+            "PATCH",
+            "api/v1/medications",
+            "MedicationPolicy",
+            "adjust_inventory",
+            StatusCode::BAD_REQUEST,
+            "bad_request",
+            "Invalid request body",
+            None,
+        )
+        .await;
+    };
+    if outer.len() != 1
+        || attributes
+            .keys()
+            .any(|key| !matches!(key.as_str(), "new_quantity" | "reason"))
+        || attributes
+            .get("reason")
+            .is_some_and(|value| !value.is_string())
+    {
+        return validation_response(
+            db,
+            &context,
+            "PATCH",
+            "adjust_inventory",
+            "adjustment",
+            "contains an unsupported field",
+        )
+        .await;
+    }
+    let attributes = &body["adjustment"];
     let quantity = match decimal_field(attributes, "new_quantity") {
         Ok(Some(value)) if valid_stock_decimal(value) => value,
         Err("must be a string") => {
@@ -1241,7 +1315,6 @@ pub(super) async fn adjust_inventory(
             .await
         }
     };
-    lock_household(&db, household_id).await?;
     lock_medication(&db, found.id).await?;
     let medication = visible_medication(&db, &context, &id)
         .await?
@@ -1306,7 +1379,14 @@ async fn reorder(
     } else {
         "mark_as_received"
     };
-    let (db, context) = request_context(&state, &headers, household_id).await?;
+    let (db, _) = request_context(&state, &headers, household_id).await?;
+    let (_, context) = mutation_idempotency::lock_household_and_reauthenticate(
+        &state,
+        &db,
+        &headers,
+        household_id,
+    )
+    .await?;
     let Some(found) = visible_medication(&db, &context, &id).await? else {
         return error_response(
             db,
@@ -1322,7 +1402,88 @@ async fn reorder(
         )
         .await;
     };
-    let details = body.get("order_details").unwrap_or(&Value::Null);
+    let Some(outer) = body.as_object() else {
+        return error_response(
+            db,
+            &context,
+            "PATCH",
+            "api/v1/medications",
+            "MedicationPolicy",
+            action,
+            StatusCode::BAD_REQUEST,
+            "bad_request",
+            "Invalid request body",
+            None,
+        )
+        .await;
+    };
+    if outer.keys().any(|key| key != "order_details") || (status == 2 && !outer.is_empty()) {
+        return validation_response(
+            db,
+            &context,
+            "PATCH",
+            action,
+            "order_details",
+            "contains an unsupported field",
+        )
+        .await;
+    }
+    let empty = json!({});
+    let details = outer.get("order_details").unwrap_or(&empty);
+    let Some(fields) = details.as_object() else {
+        return validation_response(
+            db,
+            &context,
+            "PATCH",
+            action,
+            "order_details",
+            "must be an object",
+        )
+        .await;
+    };
+    if fields.keys().any(|key| {
+        !matches!(
+            key.as_str(),
+            "supplier" | "quantity" | "expected_arrival_on"
+        )
+    }) || fields
+        .get("supplier")
+        .is_some_and(|value| !value.is_string())
+        || fields
+            .get("expected_arrival_on")
+            .is_some_and(|value| !value.is_string())
+    {
+        return validation_response(
+            db,
+            &context,
+            "PATCH",
+            action,
+            "order_details",
+            "contains an unsupported field",
+        )
+        .await;
+    }
+    if let Some(value) = fields.get("expected_arrival_on") {
+        let valid = value
+            .as_str()
+            .and_then(|raw| {
+                NaiveDate::parse_from_str(raw, "%Y-%m-%d")
+                    .ok()
+                    .filter(|date| date.format("%Y-%m-%d").to_string() == raw)
+            })
+            .is_some();
+        if !valid {
+            return validation_response(
+                db,
+                &context,
+                "PATCH",
+                action,
+                "expected_arrival_on",
+                "must be an ISO date",
+            )
+            .await;
+        }
+    }
     let quantity = match decimal_field(details, "quantity") {
         Ok(Some(quantity)) if !valid_stock_decimal(quantity) => {
             return validation_response(
@@ -1340,7 +1501,6 @@ async fn reorder(
             return validation_response(db, &context, "PATCH", action, "quantity", message).await
         }
     };
-    lock_household(&db, household_id).await?;
     lock_medication(&db, found.id).await?;
     let medication = visible_medication(&db, &context, &id)
         .await?
@@ -1411,8 +1571,16 @@ pub(super) async fn mark_as_ordered(
     State(state): State<AppState>,
     Path((household_id, id)): Path<(i64, String)>,
     headers: HeaderMap,
-    Json(body): Json<Value>,
+    body: axum::body::Bytes,
 ) -> Result<Response, ApiError> {
+    let body = if body.is_empty() {
+        json!({})
+    } else {
+        match serde_json::from_slice(&body) {
+            Ok(body) => body,
+            Err(_) => json!(null),
+        }
+    };
     reorder(state, household_id, id, headers, body, 1).await
 }
 
@@ -1420,7 +1588,15 @@ pub(super) async fn mark_as_received(
     State(state): State<AppState>,
     Path((household_id, id)): Path<(i64, String)>,
     headers: HeaderMap,
-    Json(body): Json<Value>,
+    body: axum::body::Bytes,
 ) -> Result<Response, ApiError> {
+    let body = if body.is_empty() {
+        json!({})
+    } else {
+        match serde_json::from_slice(&body) {
+            Ok(body) => body,
+            Err(_) => json!(null),
+        }
+    };
     reorder(state, household_id, id, headers, body, 2).await
 }

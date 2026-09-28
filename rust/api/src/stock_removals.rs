@@ -3,9 +3,13 @@ use crate::medication_management::{
     error_response, finish, finish_with_request_id, household_manager, lock_medication,
     record_version, request_context, valid_stock_decimal, visible_medication,
 };
-use crate::sync_events::{lock_household, record_change, SyncRecord};
+use crate::mutation_idempotency;
+use crate::sync_events::{record_change, SyncRecord};
 use crate::{database_error, ApiError, AppState, AuthContext};
-use axum::extract::{Path, Query, State};
+use axum::extract::{
+    rejection::{JsonRejection, QueryRejection},
+    Path, Query, State,
+};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
 use axum::Json;
@@ -102,10 +106,26 @@ async fn invalid(db: DatabaseTransaction, context: &AuthContext) -> Result<Respo
     .await
 }
 
+async fn malformed(db: DatabaseTransaction, context: &AuthContext) -> Result<Response, ApiError> {
+    error_response(
+        db,
+        context,
+        "POST",
+        "api/v1/stock_removals",
+        "MedicationPolicy",
+        "create",
+        StatusCode::BAD_REQUEST,
+        "bad_request",
+        "Invalid request body",
+        None,
+    )
+    .await
+}
+
 pub(super) async fn index(
     State(state): State<AppState>,
     Path((household_id, id)): Path<(i64, String)>,
-    Query(pagination): Query<Pagination>,
+    pagination: Result<Query<Pagination>, QueryRejection>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
     let (db, context) = request_context(&state, &headers, household_id).await?;
@@ -115,8 +135,15 @@ pub(super) async fn index(
     if !household_manager(&context) {
         return forbidden_or_missing(db, &context, "GET", "index", StatusCode::FORBIDDEN).await;
     }
-    let page = pagination.page.unwrap_or(1).max(1);
-    let per_page = pagination.per_page.unwrap_or(20).clamp(1, 100);
+    let Query(pagination) = match pagination {
+        Ok(value) => value,
+        Err(_) => return page_invalid(db, &context).await,
+    };
+    let page = pagination.page.unwrap_or(1);
+    let per_page = pagination.per_page.unwrap_or(20);
+    if page < 1 || !(1..=100).contains(&per_page) {
+        return page_invalid(db, &context).await;
+    }
     let query = history_query(household_id, medication.id);
     let total_count = query.clone().count(&db).await.map_err(database_error)?;
     let rows: Vec<Value> = query
@@ -139,6 +166,25 @@ pub(super) async fn index(
         StatusCode::OK,
         true,
         json!({"data": rows, "meta": {"page": page, "per_page": per_page, "total_count": total_count}}),
+        None,
+    )
+    .await
+}
+
+async fn page_invalid(
+    db: DatabaseTransaction,
+    context: &AuthContext,
+) -> Result<Response, ApiError> {
+    error_response(
+        db,
+        context,
+        "GET",
+        "api/v1/stock_removals",
+        "MedicationPolicy",
+        "index",
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "validation_failed",
+        "Invalid pagination",
         None,
     )
     .await
@@ -187,12 +233,13 @@ fn payload(attributes: &Value, quantity: Decimal) -> Option<Value> {
     {
         return None;
     }
-    let note = attributes
-        .get("note")
-        .and_then(Value::as_str)
-        .unwrap_or("")
-        .trim();
-    if note.len() > 1000 {
+    let note = match attributes.get("note") {
+        None => "",
+        Some(Value::String(value)) => value.as_str(),
+        Some(_) => return None,
+    }
+    .trim();
+    if note.chars().count() > 1000 {
         return None;
     }
     let submission_id = attributes.get("submission_id")?.as_str()?;
@@ -209,8 +256,15 @@ fn payload(attributes: &Value, quantity: Decimal) -> Option<Value> {
         return None;
     }
     let dosage_id = match attributes.get("dosage_id") {
-        None | Some(Value::Null) => "".to_owned(),
-        Some(Value::String(id)) if id.is_empty() || id.parse::<i64>().is_ok_and(|id| id > 0) => {
+        None => "".to_owned(),
+        Some(Value::String(id))
+            if id
+                .as_bytes()
+                .first()
+                .is_some_and(|byte| (b'1'..=b'9').contains(byte))
+                && id.bytes().all(|byte| byte.is_ascii_digit())
+                && id.parse::<i64>().is_ok() =>
+        {
             id.clone()
         }
         _ => return None,
@@ -242,33 +296,62 @@ async fn replay_event(
     medication_id: i64,
     submission_id: &str,
 ) -> Result<Option<version::Model>, ApiError> {
-    let events = history_query(household_id, medication_id)
-        .all(db)
+    let row = db.query_one_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "SELECT id FROM versions WHERE household_id = $1 AND item_type = 'MedicationStockRemoval' AND item_id = $2 AND event = 'stock_removal' AND CASE WHEN item_type = 'MedicationStockRemoval' THEN object::jsonb ->> 'submission_id' END = $3 ORDER BY id DESC LIMIT 1",
+        [household_id.into(), medication_id.into(), submission_id.into()],
+    )).await.map_err(database_error)?;
+    let Some(row) = row else {
+        return Ok(None);
+    };
+    let id: i64 = row.try_get("", "id").map_err(|_| ApiError::internal())?;
+    version::Entity::find_by_id(id)
+        .one(db)
         .await
-        .map_err(database_error)?;
-    Ok(events.into_iter().find(|event| {
-        event
-            .object
-            .as_deref()
-            .and_then(|raw| serde_json::from_str::<Value>(raw).ok())
-            .is_some_and(|object| object["submission_id"] == submission_id)
-    }))
+        .map_err(database_error)
 }
 
 pub(super) async fn create(
     State(state): State<AppState>,
     Path((household_id, id)): Path<(i64, String)>,
     headers: HeaderMap,
-    Json(body): Json<Value>,
+    body: Result<Json<Value>, JsonRejection>,
 ) -> Result<Response, ApiError> {
-    let (db, context) = request_context(&state, &headers, household_id).await?;
+    let (db, _) = request_context(&state, &headers, household_id).await?;
+    let (_, context) = mutation_idempotency::lock_household_and_reauthenticate(
+        &state,
+        &db,
+        &headers,
+        household_id,
+    )
+    .await?;
     let Some(found) = visible_medication(&db, &context, &id).await? else {
         return forbidden_or_missing(db, &context, "POST", "create", StatusCode::NOT_FOUND).await;
     };
     if !household_manager(&context) {
         return forbidden_or_missing(db, &context, "POST", "create", StatusCode::FORBIDDEN).await;
     }
-    let attributes = body.get("stock_removal").unwrap_or(&Value::Null);
+    let Json(body) = match body {
+        Ok(value) => value,
+        Err(_) => return malformed(db, &context).await,
+    };
+    let Some(outer) = body.as_object() else {
+        return malformed(db, &context).await;
+    };
+    let Some(attributes) = outer.get("stock_removal").and_then(Value::as_object) else {
+        return malformed(db, &context).await;
+    };
+    if outer.len() != 1
+        || attributes.keys().any(|key| {
+            !matches!(
+                key.as_str(),
+                "quantity" | "reason" | "note" | "dosage_id" | "submission_id"
+            )
+        })
+    {
+        return invalid(db, &context).await;
+    }
+    let attributes = &body["stock_removal"];
     let Some(quantity) = parse_quantity(attributes) else {
         return invalid(db, &context).await;
     };
@@ -290,7 +373,6 @@ pub(super) async fn create(
             return invalid(db, &context).await;
         }
     }
-    lock_household(&db, household_id).await?;
     lock_medication(&db, found.id).await?;
     if let Some(dosage_id) = dosage_id {
         lock_dosage(&db, dosage_id).await?;

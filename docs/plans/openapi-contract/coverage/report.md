@@ -7,12 +7,30 @@ yq -o=json '.' docs/api/openapi.v1.yaml | jq -c --slurpfile routes docs/plans/op
 ```
 
 The specification has 118 operations across 77 paths, with 227 component schemas,
-12 component responses and 775 response cases. Of those operations, 70 are fully
-verified and 48 remain incomplete: 31 absent routes, nine present but unverified,
+12 component responses and 775 response cases. Of those operations, 75 are fully
+verified and 43 remain incomplete: 31 absent routes, four present but unverified,
 and eight partially verified location operations. The original 89-operation
 baseline is now 58 complete and 31 remaining. Both baseline files are retained;
 the operation IDs, methods and paths still match the fixed 118-operation scope.
 Route presence and older Rails-derived tests alone receive no completion credit.
+
+## Stock workflows
+
+Five existing stock operations passed the complete focused run in
+`mtcontract-8b4d47a3218f4f6e`: 3/3 OpenAPI workflow tests, 9/9 existing medication
+stock tests and 5/5 medication security tests. The runner exited 0 and cleaned
+up its project and storage. Strict wrappers, unknown fields, nullable/type rules,
+pagination, bodyless received requests, decimal history, tracked-dosage supply,
+concurrent removals, submission replay, fresh authority, audit/sync effects and
+all five rate-limit paths are covered. Order details are checked in storage;
+the response retains its documented medication fields.
+
+Initial valid-path RED exposed missing-wrapper 422 responses where 400 was
+required. Earlier quoted-URL failures were test fixture errors and receive no
+production evidence credit. The final existing security fixture supplies the
+three required dosage fields instead of relying on nonexistent database defaults.
+Independent review and relevant static checks passed. These five operations are
+outside the retained original 89-operation baseline, whose count is unchanged.
 
 ## Memberships, app tokens, person grants and audit logs
 
@@ -45,8 +63,8 @@ immediately invalidates bearer access and returns an empty 204 response.
 OpenAPI changes are explicit: three missing 422 responses now describe existing
 schema validation for app-token creation, stock pagination and order details;
 app-token idempotency parameters and the one-time-secret exception are documented.
-The fixed 118 operation IDs, methods and paths remain unchanged. Stock and next
-family test preparation receives no additional completion credit here.
+The fixed 118 operation IDs, methods and paths remain unchanged. Next-family
+test preparation receives no additional completion credit here.
 
 ## Dose occurrences and medication review prompts
 
