@@ -1,6 +1,6 @@
-use medtracker_contract_tests::{fixture, Fixture, Target};
+use medtracker_contract_tests::{Fixture, Target, fixture};
 use reqwest::blocking::Response;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 fn body(response: Response) -> Value {
     response.json().expect("JSON response")
@@ -92,9 +92,11 @@ fn create_medication(target: &Target, fixture: &Fixture, name: &str) -> (Value, 
     assert_eq!(created["dose_amount"], "2.125");
     assert_eq!(created["current_supply"], "80.0");
     assert_eq!(created["reorder_threshold"], "10.25");
-    assert!(created["portable_id"]
-        .as_str()
-        .is_some_and(|id| !id.is_empty()));
+    assert!(
+        created["portable_id"]
+            .as_str()
+            .is_some_and(|id| !id.is_empty())
+    );
     assert_utc_second_timestamp(&created["updated_at"]);
     (created, created_etag)
 }
@@ -291,9 +293,11 @@ fn stock_removal_keeps_decimal_history_and_rejects_changed_replays() {
         first["medication_id"],
         medication["id"].as_i64().unwrap().to_string()
     );
-    assert!(first["actor_membership_id"]
-        .as_str()
-        .is_some_and(|id| !id.is_empty()));
+    assert!(
+        first["actor_membership_id"]
+            .as_str()
+            .is_some_and(|id| !id.is_empty())
+    );
     assert_utc_second_timestamp(&first["created_at"]);
     let response = target.post_json_authorized(&path, &fixture.access_token, &payload);
     assert_eq!(response.status().as_u16(), 201);
@@ -379,9 +383,11 @@ fn stock_removal_keeps_decimal_history_and_rejects_changed_replays() {
         Some(&fixture.access_token),
     );
     assert_eq!(response.status().as_u16(), 404);
-    assert!(!body(response)
-        .to_string()
-        .contains(&fixture.foreign_medication_name));
+    assert!(
+        !body(response)
+            .to_string()
+            .contains(&fixture.foreign_medication_name)
+    );
     let foreign_path = format!(
         "{}/{}/stock_removals",
         medications_path(&fixture),
@@ -389,9 +395,11 @@ fn stock_removal_keeps_decimal_history_and_rejects_changed_replays() {
     );
     let response = target.post_json_authorized(&foreign_path, &fixture.access_token, &payload);
     assert_eq!(response.status().as_u16(), 404);
-    assert!(!body(response)
-        .to_string()
-        .contains(&fixture.foreign_medication_name));
+    assert!(
+        !body(response)
+            .to_string()
+            .contains(&fixture.foreign_medication_name)
+    );
     let managed_path = format!(
         "{}/{}/stock_removals",
         medications_path(&fixture),
@@ -629,11 +637,13 @@ fn medication_filters_portable_ids_and_invalid_writes_preserve_state() {
         Some(&fixture.access_token),
     );
     assert_eq!(response.status().as_u16(), 200);
-    assert!(body(response)["data"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|item| item["id"] == created["id"]));
+    assert!(
+        body(response)["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item["id"] == created["id"])
+    );
     let response = target.get(
         &format!("{base}?updated_since=2099-01-01T00%3A00%3A00Z"),
         Some(&fixture.access_token),
@@ -674,7 +684,7 @@ fn medication_filters_portable_ids_and_invalid_writes_preserve_state() {
 }
 
 #[test]
-fn stock_history_caps_pages_at_portable_medication_identity() {
+fn stock_history_enforces_page_limit_at_portable_medication_identity() {
     let target = Target::from_env();
     let fixture = fixture();
     let (medication, _) = create_medication(&target, &fixture, "Contract portable stock medicine");
@@ -695,6 +705,14 @@ fn stock_history_caps_pages_at_portable_medication_identity() {
         &format!("{path}?per_page=1000"),
         Some(&fixture.access_token),
     );
+    assert_eq!(response.status().as_u16(), 422);
+    let error = body(response);
+    assert!(error["error"]["code"].is_string());
+    assert!(error["error"]["request_id"].is_string());
+    assert!(error["error"]["message"].is_string());
+    assert!(error.get("data").is_none());
+
+    let response = target.get(&format!("{path}?per_page=100"), Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
     let history = body(response);
     assert_eq!(history["meta"]["per_page"], 100);
@@ -747,9 +765,11 @@ fn reorder_actions_reject_invalid_quantities_and_foreign_records() {
             &json!({}),
         );
         assert_eq!(response.status().as_u16(), 404);
-        assert!(!body(response)
-            .to_string()
-            .contains(&fixture.foreign_medication_name));
+        assert!(
+            !body(response)
+                .to_string()
+                .contains(&fixture.foreign_medication_name)
+        );
     }
 }
 
@@ -776,16 +796,20 @@ fn delegated_creator_can_read_unlinked_medication_without_exposing_it_to_other_m
         Some(&fixture.delegated_access_token),
     );
     assert_eq!(response.status().as_u16(), 200);
-    assert!(body(response)["data"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|item| item["id"] == created["id"]));
+    assert!(
+        body(response)["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item["id"] == created["id"])
+    );
     let response = target.get(&path, Some(&fixture.view_access_token));
     assert_eq!(response.status().as_u16(), 404);
-    assert!(!body(response)
-        .to_string()
-        .contains("Contract delegated medicine"));
+    assert!(
+        !body(response)
+            .to_string()
+            .contains("Contract delegated medicine")
+    );
     let mut page = 1;
     loop {
         let response = target.get(
@@ -796,11 +820,13 @@ fn delegated_creator_can_read_unlinked_medication_without_exposing_it_to_other_m
         let collection = body(response);
         assert_eq!(collection["meta"]["page"], page);
         assert_eq!(collection["meta"]["per_page"], 1);
-        assert!(collection["data"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .all(|item| item["id"] != created["id"]));
+        assert!(
+            collection["data"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|item| item["id"] != created["id"])
+        );
         if page >= collection["meta"]["total_count"].as_u64().unwrap() {
             break;
         }
