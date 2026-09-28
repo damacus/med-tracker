@@ -1,18 +1,52 @@
 # OpenAPI-first API checkpoint
 
-Specification: `docs/api/openapi.v1.yaml`, SHA-256 `89a0710edb76ba096c0e5e79c931aef9004577ac2b41d4eaecdd64cdbfbe2016`. The operation map is `operations.jsonl`; `operation-filter.jq`, `route-sources.json`, and `test-evidence.json` are its inputs. Rebuild it with:
+Specification: `docs/api/openapi.v1.yaml`, SHA-256 `fc406eb86bfcc2cf733bab766b060bc3dc43bb7c130a656cacaa6f90c2219e8d`. The operation map is `operations.jsonl`; `operation-filter.jq`, `route-sources.json`, and `test-evidence.json` are its inputs. Rebuild it with:
 
 ```fish
 yq -o=json '.' docs/api/openapi.v1.yaml | jq -c --slurpfile routes docs/plans/openapi-contract/coverage/route-sources.json --slurpfile evidence docs/plans/openapi-contract/coverage/test-evidence.json -f docs/plans/openapi-contract/coverage/operation-filter.jq > docs/plans/openapi-contract/coverage/operations.jsonl
 ```
 
 The specification has 118 operations across 77 paths, with 227 component schemas,
-12 component responses and 772 response cases. Of those operations, 59 are fully
-verified and 59 remain incomplete: 41 absent routes, 10 present but unverified,
+12 component responses and 775 response cases. Of those operations, 70 are fully
+verified and 48 remain incomplete: 31 absent routes, nine present but unverified,
 and eight partially verified location operations. The original 89-operation
-baseline is now 48 complete and 41 remaining. Both baseline files are retained;
+baseline is now 58 complete and 31 remaining. Both baseline files are retained;
 the operation IDs, methods and paths still match the fixed 118-operation scope.
 Route presence and older Rails-derived tests alone receive no completion credit.
+
+## Memberships, app tokens, person grants and audit logs
+
+Eleven operations passed independent production and fixture review. The final
+combined grant and membership run passed 9/9 and 6/6 tests in
+`mtcontract-fb5bd356d0f140e6`; app tokens passed 5/5 new and 4/4 existing tests in
+`mtcontract-d1c31502b5e04884`; audit logs passed 2/2 in
+`mtcontract-54e9f47d2054466c`. All three runners exited 0 and cleaned up their
+isolated projects and storage. Exact summaries were observed in command-session
+output. API check, formatting, Clippy, 19 unit tests and runner lint passed;
+the runner success/failure/cleanup matrix also passed before the subsequent
+invitation-only additions, which are excluded from this checkpoint.
+
+Membership checks cover partial PATCH/PUT, no-op versions, current authority,
+credential invalidation, reactivation, two-owner concurrent revocation,
+structured identifiers, strict requests, audit outcomes, keyed replay and
+conflicts, and all four rate-limit paths. Grant checks cover tenant boundaries,
+relationship-owned revoke protection, past expiry, concurrent duplicate creation,
+version invalidation, stable repeated revocation, parsed rejected audit state,
+keyed replay and all three rate-limit paths. Audit checks include the strict
+seven-field response, manager access, tenant isolation and the shared limiter;
+the earlier medication regression proves the newest-hundred bound.
+
+App-token secrets are generated from OS randomness and stored as digests.
+Issuance responses are not cacheable. A keyed successful create stores only a
+receipt: retry returns `token_already_issued` without revealing or duplicating
+the secret. This deliberately corrects Rails caching the raw secret. Revocation
+immediately invalidates bearer access and returns an empty 204 response.
+
+OpenAPI changes are explicit: three missing 422 responses now describe existing
+schema validation for app-token creation, stock pagination and order details;
+app-token idempotency parameters and the one-time-secret exception are documented.
+The fixed 118 operation IDs, methods and paths remain unchanged. Stock and next
+family test preparation receives no additional completion credit here.
 
 ## Dose occurrences and medication review prompts
 

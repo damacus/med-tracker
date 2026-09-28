@@ -18,7 +18,7 @@
   "markMedicationAsReceived": "rust/api/src/lib.rs",
   "listMedicationStockRemovals": "rust/api/src/lib.rs",
   "createMedicationStockRemoval": "rust/api/src/lib.rs",
-  "listAuditLogs": "rust/api/src/lib.rs",
+  "listAuditLogs": "rust/api/src/audit_logs.rs",
   "listPeople": "rust/api/src/lib.rs",
   "listLocations": "rust/api/src/lib.rs",
   "createLocation": "rust/api/src/lib.rs",
@@ -75,5 +75,15 @@
   "listMedicationReviewPrompts": "rust/api/src/review_prompts.rs",
   "getMedicationReviewPrompt": "rust/api/src/review_prompts.rs",
   "updateMedicationReviewPrompt": "rust/api/src/review_prompts.rs",
-  "updateMedicationReviewPromptWithPut": "rust/api/src/review_prompts.rs"
+  "updateMedicationReviewPromptWithPut": "rust/api/src/review_prompts.rs",
+  "listAppTokens": "rust/api/src/app_tokens.rs",
+  "createAppToken": "rust/api/src/app_tokens.rs",
+  "deleteAppToken": "rust/api/src/app_tokens.rs",
+  "listMemberships": "rust/api/src/memberships.rs",
+  "updateMembership": "rust/api/src/memberships.rs",
+  "replaceMembership": "rust/api/src/memberships.rs",
+  "deleteMembership": "rust/api/src/memberships.rs",
+  "listPersonAccessGrants": "rust/api/src/person_grants.rs",
+  "createPersonAccessGrant": "rust/api/src/person_grants.rs",
+  "deletePersonAccessGrant": "rust/api/src/person_grants.rs"
 }

@@ -209,7 +209,13 @@ entity!(membership, "household_memberships", {
     role: String,
     status: String,
     revoked_at: Option<DateTime>,
+    joined_at: Option<DateTime>,
     updated_at: DateTime,
+});
+
+entity!(platform_admin, "platform_admins", {
+    account_id: i64,
+    status: String,
 });
 
 entity!(user, "users", {
@@ -222,6 +228,7 @@ entity!(person, "people", {
     account_id: Option<i64>,
     household_id: i64,
     portable_id: String,
+    name: String,
     person_type: i32,
     date_of_birth: Option<Date>,
 });

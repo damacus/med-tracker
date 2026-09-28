@@ -1,4 +1,5 @@
 mod admin_settings;
+mod app_tokens;
 mod audit;
 mod audit_logs;
 mod auth_sessions;
@@ -9,12 +10,14 @@ mod entities;
 mod locations;
 mod medication_forecast;
 mod medication_management;
+mod memberships;
 mod mutation_idempotency;
 mod native_device_tokens;
 mod notification_preferences;
 mod oauth;
 mod pause_lifecycle;
 mod people;
+mod person_grants;
 mod person_medication_writes;
 mod push_subscriptions;
 mod rate_limit;
@@ -202,6 +205,32 @@ fn api_router(state: AppState) -> Router {
             get(admin_settings::show)
                 .patch(admin_settings::patch)
                 .put(admin_settings::put),
+        )
+        .route(
+            "/api/v1/households/{household_id}/admin/app_tokens",
+            get(app_tokens::index).post(app_tokens::create),
+        )
+        .route(
+            "/api/v1/households/{household_id}/admin/app_tokens/{id}",
+            axum::routing::delete(app_tokens::destroy),
+        )
+        .route(
+            "/api/v1/households/{household_id}/admin/memberships",
+            get(memberships::index),
+        )
+        .route(
+            "/api/v1/households/{household_id}/admin/memberships/{id}",
+            axum::routing::patch(memberships::patch)
+                .put(memberships::put)
+                .delete(memberships::delete),
+        )
+        .route(
+            "/api/v1/households/{household_id}/admin/person_access_grants",
+            get(person_grants::index).post(person_grants::create),
+        )
+        .route(
+            "/api/v1/households/{household_id}/admin/person_access_grants/{id}",
+            axum::routing::delete(person_grants::destroy),
         )
         .route(
             "/api/v1/households/{household_id}/people",
@@ -498,7 +527,17 @@ impl ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        (self.status, Json(json!({"error": {"code": self.code, "message": self.message, "request_id": uuid::Uuid::new_v4().to_string()}}))).into_response()
+        let request_id = uuid::Uuid::new_v4().to_string();
+        let mut response = (
+            self.status,
+            Json(json!({"error": {"code": self.code, "message": self.message, "request_id": request_id}})),
+        )
+            .into_response();
+        response.headers_mut().insert(
+            "x-request-id",
+            HeaderValue::from_str(&request_id).expect("UUID request ID is a valid header"),
+        );
+        response
     }
 }
 

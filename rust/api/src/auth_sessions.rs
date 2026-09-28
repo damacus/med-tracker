@@ -67,7 +67,7 @@ fn bearer(headers: &HeaderMap) -> Option<&str> {
         .filter(|token| !token.is_empty())
 }
 
-fn app_age_months() -> Option<u32> {
+pub(super) fn app_age_months() -> Option<u32> {
     match std::env::var("API_APP_TOKEN_MAX_AGE_MONTHS") {
         Ok(value) => value.parse().ok().filter(|months| *months > 0),
         Err(std::env::VarError::NotPresent) => Some(12),

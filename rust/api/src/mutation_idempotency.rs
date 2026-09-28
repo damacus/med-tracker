@@ -93,7 +93,11 @@ pub(super) async fn lookup(
 pub(super) fn replay(saved: api_idempotency_key::Model) -> Result<Response, ApiError> {
     let status =
         StatusCode::from_u16(saved.response_status as u16).map_err(|_| ApiError::internal())?;
-    let mut response = (status, Json(saved.response_body)).into_response();
+    let mut response = if status == StatusCode::NO_CONTENT {
+        status.into_response()
+    } else {
+        (status, Json(saved.response_body)).into_response()
+    };
     response
         .headers_mut()
         .insert("idempotency-replayed", HeaderValue::from_static("true"));
