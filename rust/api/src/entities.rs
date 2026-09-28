@@ -115,7 +115,33 @@ entity!(security_audit_event, "security_audit_events", {
     updated_at: DateTime,
 });
 
-entity!(account, "accounts", { status: i32, email: String, password_hash: Option<String>, });
+entity!(account, "accounts", {
+    status: i32,
+    email: String,
+    password_hash: Option<String>,
+    preferences: Json,
+    updated_at: DateTime,
+});
+
+entity!(active_storage_blob, "active_storage_blobs", {
+    key: String,
+    filename: String,
+    content_type: Option<String>,
+    byte_size: i64,
+    checksum: Option<String>,
+    metadata: Option<String>,
+    service_name: String,
+    created_at: DateTime,
+});
+
+entity!(active_storage_attachment, "active_storage_attachments", {
+    name: String,
+    record_type: String,
+    record_id: i64,
+    blob_id: i64,
+    household_id: i64,
+    created_at: DateTime,
+});
 
 entity!(native_device_token, "native_device_tokens", {
     account_id: i64,
@@ -184,6 +210,30 @@ entity!(household, "households", {
     updated_at: DateTime,
 });
 
+entity!(household_invitation, "household_invitations", {
+    household_id: i64,
+    email: String,
+    membership_role: String,
+    token_digest: String,
+    invited_by_membership_id: i64,
+    expires_at: DateTime,
+    accepted_at: Option<DateTime>,
+    revoked_at: Option<DateTime>,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
+entity!(household_invitation_grant, "household_invitation_grants", {
+    household_id: i64,
+    household_invitation_id: i64,
+    person_id: i64,
+    access_level: String,
+    relationship_type: String,
+    expires_at: Option<DateTime>,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
 entity!(api_idempotency_key, "api_idempotency_keys", {
     household_id: i64,
     account_id: i64,
@@ -210,6 +260,7 @@ entity!(membership, "household_memberships", {
     status: String,
     revoked_at: Option<DateTime>,
     joined_at: Option<DateTime>,
+    created_at: DateTime,
     updated_at: DateTime,
 });
 
@@ -229,8 +280,12 @@ entity!(person, "people", {
     household_id: i64,
     portable_id: String,
     name: String,
+    email: Option<String>,
     person_type: i32,
     date_of_birth: Option<Date>,
+    has_capacity: bool,
+    created_at: DateTime,
+    updated_at: DateTime,
 });
 
 entity!(review_evidence, "medication_review_evidence_records", {

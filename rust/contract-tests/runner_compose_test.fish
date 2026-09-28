@@ -29,8 +29,9 @@ set -lx CONTRACT_TEST_SUBNET 192.168.240.0/28
 set -l api_url (string match -r 'CONTRACT_BASE_URL: http://127.0.0.1:39998' < rust/contract-tests/runner.compose.yaml)
 set -l shared_namespace (string match -m 1 -r 'network_mode: service:rust-api' < rust/contract-tests/runner.compose.yaml)
 set -l fixture_mount (string match -m 1 -r 'source: \$\{CONTRACT_FIXTURE_DIR\}' < rust/contract-tests/runner.compose.yaml)
+set -l mailpit_endpoint (string match -m 1 -r 'CONTRACT_MAILPIT_URL: http://mail-test:8025' < rust/contract-tests/runner.compose.yaml)
 set -l network_subnet (string match -r 'subnet: \$\{CONTRACT_TEST_SUBNET\}' < rust/contract-tests/runner-subnet.compose.yaml)
-test (count $api_url $shared_namespace $fixture_mount $network_subnet) -eq 4
+test (count $api_url $shared_namespace $fixture_mount $mailpit_endpoint $network_subnet) -eq 5
 or begin; echo 'Compose runner lacks its internal network namespace or fixture bind' >&2; exit 1; end
 set -l rails_read_namespace (string match -m 1 -r 'network_mode: service:web-test' < rust/contract-tests/runner.compose.yaml)
 set -l rails_read_database (string match -m 1 -r 'CONTRACT_AUDIT_DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract' < rust/contract-tests/runner.compose.yaml)
@@ -409,9 +410,12 @@ or begin; echo 'Admin settings runner skipped cleanup after failure' >&2; exit 1
 contains -- api:contract-image-remove $trace
 or begin; echo 'Admin settings runner skipped image cleanup after failure' >&2; exit 1; end
 
-for target in openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-medications openapi-medications-focused
+for target in openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-invitations openapi-invitations-legacy openapi-profile openapi-profile-storage openapi-rate-limit openapi-medications openapi-medications-focused
     set -e CONTRACT_FAKE_FAIL_STEP
     set -l selected_step (string join -- '' api:contract- $target -test)
+    if test "$target" = openapi-invitations-legacy
+        set selected_step api:contract-existing-invitations-test
+    end
     command rm -f $test_dir/trace
     fish --no-config rust/contract-tests/run.fish rails $target >$test_dir/output 2>&1
     set run_status $status

@@ -52,7 +52,7 @@ tasks:
 
   contract-runner-test:
     cmds:
-      - fish rust/contract-tests/runner_compose_test.fish
+      - fish --no-config rust/contract-tests/runner_compose_test.fish
 
   contract-runner-lint:
     cmds:
@@ -334,6 +334,75 @@ tasks:
   openapi-person-grants-acceptance:
     cmds:
       - fish --no-config rust/contract-tests/run.fish rails openapi-person-grants
+
+  contract-openapi-invitations-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test up -d --wait --no-build rust-api-mail-fail
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_invitations -- --test-threads=1
+
+  contract-existing-invitations-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test invitations -- --test-threads=1
+
+  openapi-invitations-acceptance:
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-invitations
+
+  openapi-invitations-legacy-acceptance:
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-invitations-legacy
+
+  contract-openapi-profile-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test up -d --wait --no-build rust-api-storage-fail
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_profile -- --test-threads=1
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test profile -- --test-threads=1
+
+  openapi-profile-acceptance:
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-profile
+
+  contract-openapi-profile-storage-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test up -d --wait --no-build rust-api-storage-fail
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_profile avatar_storage_failure_preserves_existing_attachment_and_profile_state -- --test-threads=1
+
+  openapi-profile-storage-acceptance:
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-profile-storage
+
+  contract-openapi-rate-limit-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_rate_limit -- --test-threads=1
+
+  openapi-rate-limit-acceptance:
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-rate-limit
 
   contract-openapi-medications-test:
     requires:

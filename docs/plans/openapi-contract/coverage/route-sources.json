@@ -85,5 +85,16 @@
   "deleteMembership": "rust/api/src/memberships.rs",
   "listPersonAccessGrants": "rust/api/src/person_grants.rs",
   "createPersonAccessGrant": "rust/api/src/person_grants.rs",
-  "deletePersonAccessGrant": "rust/api/src/person_grants.rs"
+  "deletePersonAccessGrant": "rust/api/src/person_grants.rs",
+  "listInvitations": "rust/api/src/invitations.rs",
+  "createInvitation": "rust/api/src/invitations.rs",
+  "deleteInvitation": "rust/api/src/invitations.rs",
+  "resendHouseholdInvitation": "rust/api/src/invitations.rs",
+  "acceptHouseholdInvitation": "rust/api/src/invitations.rs",
+  "getHouseholdProfile": "rust/api/src/profile.rs",
+  "updateHouseholdProfile": "rust/api/src/profile.rs",
+  "updateHouseholdProfileWithPut": "rust/api/src/profile.rs",
+  "downloadCurrentAvatar": "rust/api/src/profile.rs",
+  "uploadCurrentAvatar": "rust/api/src/profile.rs",
+  "deleteCurrentAvatar": "rust/api/src/profile.rs"
 }

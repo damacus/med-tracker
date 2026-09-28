@@ -7,12 +7,38 @@ yq -o=json '.' docs/api/openapi.v1.yaml | jq -c --slurpfile routes docs/plans/op
 ```
 
 The specification has 118 operations across 77 paths, with 227 component schemas,
-12 component responses and 775 response cases. Of those operations, 75 are fully
-verified and 43 remain incomplete: 31 absent routes, four present but unverified,
+12 component responses and 775 response cases. Of those operations, 86 are fully
+verified and 32 remain incomplete: 20 absent routes, four present but unverified,
 and eight partially verified location operations. The original 89-operation
-baseline is now 58 complete and 31 remaining. Both baseline files are retained;
+baseline is now 69 complete and 20 remaining. Both baseline files are retained;
 the operation IDs, methods and paths still match the fixed 118-operation scope.
 Route presence and older Rails-derived tests alone receive no completion credit.
+
+## Invitations and household profile/avatar
+
+Eleven operations passed independent review and isolated acceptance. Final
+invitation acceptance passed 6/6 in `mtcontract-356be5db04ee44af`; older invitation
+scenarios passed 8/8 in `mtcontract-0031f0aadffc4146`. Direct list/create/delete
+rate probes passed in `mtcontract-573d934362884cfc`. Profile/avatar passed 10/10
+in `mtcontract-8e4627295ae3484d`, with the additional GET storage-failure probe
+passing in `mtcontract-8c4efbcfcbfb4649`. All projects cleaned up successfully.
+
+Invitation checks include strict secret-free responses, current manager and
+credential authority, identity-bound acceptance, linked grants, correlated
+audit/sync effects, delivery failure rollback, successful keyed replay, and
+validation-error replay with fresh matching request IDs. Profile checks include
+partial updates, unrelated preference preservation, current grants, date-change
+versions/sync, keyed writes, multipart MIME/size boundaries, exact avatar bytes,
+replacement failure nonmutation and removal audit. PATCH and PUT share the same
+reviewed validation implementation; generic response codes are not manufactured
+as unreachable per-method probes.
+
+SMTP acceptance and database commit are separate operations, so crash-safe
+exactly-once delivery is not claimed. Avatar storage supports the existing disk
+services and rejects unsupported providers at startup; failed physical cleanup
+can leave orphaned bytes. The exact staged production snapshot passed formatting,
+Clippy and 20 unit tests. Runner dispatch/cleanup checks passed. Full API
+acceptance and CI on the final overall commit remain outstanding goal gates.
 
 ## Stock workflows
 
