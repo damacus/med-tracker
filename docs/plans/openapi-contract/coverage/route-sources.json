@@ -46,5 +46,8 @@
   "createNativeDeviceToken": "rust/api/src/native_device_tokens.rs:119",
   "deleteNativeDeviceToken": "rust/api/src/native_device_tokens.rs:222",
   "createPushSubscription": "rust/api/src/push_subscriptions.rs:152",
-  "deletePushSubscription": "rust/api/src/push_subscriptions.rs:247"
+  "deletePushSubscription": "rust/api/src/push_subscriptions.rs:247",
+  "getHouseholdAdminSettings": "rust/api/src/lib.rs:196",
+  "updateHouseholdAdminSettings": "rust/api/src/lib.rs:197",
+  "replaceHouseholdAdminSettings": "rust/api/src/lib.rs:198"
 }

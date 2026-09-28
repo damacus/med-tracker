@@ -183,7 +183,7 @@ function run_contract
         or return $status
         set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner-subnet.compose.yaml"
     end
-    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions browser-journey-rails browser-journey-rust web-reads-rails
+    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions openapi-admin-settings browser-journey-rails browser-journey-rust web-reads-rails
         set -gx CONTRACT_AUTH_SESSION_SECRET (rtk proxy openssl rand -hex 32)
         or return $status
         set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner.compose.yaml"
@@ -250,13 +250,15 @@ function run_contract
         return $status
     end
 
-    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions
+    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions openapi-admin-settings
         set -g contract_api_image true
         rtk task api:contract-up CONTRACT_PROJECT=$contract_project
         or return $status
         rtk task api:contract-ready CONTRACT_PROJECT=$contract_project
         or return $status
-        if test "$argv[2]" = openapi-locations
+        if test "$argv[2]" = openapi-admin-settings
+            rtk task api:contract-openapi-admin-settings-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = openapi-locations
             rtk task api:contract-openapi-locations-test CONTRACT_PROJECT=$contract_project
         else if test "$argv[2]" = openapi-dosages
             rtk task api:contract-openapi-dosages-test CONTRACT_PROJECT=$contract_project

@@ -1,3 +1,4 @@
+mod admin_settings;
 mod audit;
 mod audit_logs;
 mod auth_sessions;
@@ -7,6 +8,7 @@ mod entities;
 mod locations;
 mod medication_forecast;
 mod medication_management;
+mod mutation_idempotency;
 mod native_device_tokens;
 mod notification_preferences;
 mod oauth;
@@ -188,6 +190,12 @@ fn api_router(state: AppState) -> Router {
         .route(
             "/api/v1/households/{household_id}/admin/audit_logs",
             get(audit_logs::index),
+        )
+        .route(
+            "/api/v1/households/{household_id}/admin/settings",
+            get(admin_settings::show)
+                .patch(admin_settings::patch)
+                .put(admin_settings::put),
         )
         .route(
             "/api/v1/households/{household_id}/people",
