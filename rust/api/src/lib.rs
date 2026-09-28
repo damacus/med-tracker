@@ -25,6 +25,7 @@ mod push_subscriptions;
 mod rate_limit;
 mod read_entities;
 mod read_resources;
+mod reports;
 mod review_evidence;
 mod review_prompts;
 mod schedule_writes;
@@ -166,6 +167,7 @@ fn api_router(state: AppState) -> Router {
         .merge(oauth::api_routes())
         .merge(auth_sessions::routes())
         .merge(profile::routes())
+        .merge(reports::routes())
         .route(
             "/api/v1/households/{household_id}/medications",
             get(index).post(medication_management::create),

@@ -96,5 +96,9 @@
   "updateHouseholdProfileWithPut": "rust/api/src/profile.rs",
   "downloadCurrentAvatar": "rust/api/src/profile.rs",
   "uploadCurrentAvatar": "rust/api/src/profile.rs",
-  "deleteCurrentAvatar": "rust/api/src/profile.rs"
+  "deleteCurrentAvatar": "rust/api/src/profile.rs",
+  "getHealthHistoryReport": "rust/api/src/reports.rs",
+  "downloadHealthHistoryReport": "rust/api/src/reports.rs",
+  "getMedicationReviewReport": "rust/api/src/reports.rs",
+  "downloadMedicationReviewReport": "rust/api/src/reports.rs"
 }
