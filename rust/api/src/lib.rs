@@ -7,6 +7,8 @@ mod dosage_options;
 mod dose;
 mod dose_occurrences;
 mod entities;
+mod external_integrations;
+mod health_events;
 mod invitations;
 mod locations;
 mod medication_forecast;
@@ -20,6 +22,10 @@ mod pause_lifecycle;
 mod people;
 mod person_grants;
 mod person_medication_writes;
+mod portable_crypto;
+mod portable_exports;
+mod portable_imports;
+mod portable_projection;
 mod profile;
 mod push_subscriptions;
 mod rate_limit;
@@ -30,7 +36,9 @@ mod review_evidence;
 mod review_prompts;
 mod schedule_writes;
 mod stock_removals;
+mod sync_batch;
 mod sync_events;
+mod sync_reads;
 mod web_pages;
 
 use axum::extract::{rejection::QueryRejection, Path, Query, State};
@@ -166,8 +174,43 @@ fn api_router(state: AppState) -> Router {
     Router::new()
         .merge(oauth::api_routes())
         .merge(auth_sessions::routes())
+        .merge(health_events::routes())
         .merge(profile::routes())
         .merge(reports::routes())
+        .merge(portable_imports::routes())
+        .merge(sync_batch::routes())
+        .route(
+            "/api/v1/households/{household_id}/portable_export",
+            get(portable_exports::portable_export),
+        )
+        .route(
+            "/api/v1/households/{household_id}/mobile_snapshot",
+            get(portable_exports::mobile_snapshot),
+        )
+        .route(
+            "/api/v1/households/{household_id}/data_exports/{mode}",
+            get(portable_exports::data_export),
+        )
+        .route(
+            "/api/v1/households/{household_id}/sync/snapshot",
+            get(sync_reads::snapshot),
+        )
+        .route(
+            "/api/v1/households/{household_id}/sync/changes",
+            get(sync_reads::changes),
+        )
+        .route(
+            "/api/v1/households/{household_id}/medication_lookup",
+            get(external_integrations::medication_lookup),
+        )
+        .route(
+            "/api/v1/households/{household_id}/ai_medication_suggestions",
+            axum::routing::post(external_integrations::ai_medication_suggestions),
+        )
+        .route(
+            "/api/v1/households/{household_id}/push_subscription/test",
+            axum::routing::post(external_integrations::test_push_subscription),
+        )
         .route(
             "/api/v1/households/{household_id}/medications",
             get(index).post(medication_management::create),
@@ -702,15 +745,13 @@ async fn authenticate(
     {
         return Err(ApiError::unauthorized());
     }
-    if app.is_some() {
-        let home = household::Entity::find_by_id(membership.household_id)
-            .one(db)
-            .await
-            .map_err(database_error)?
-            .ok_or_else(ApiError::unauthorized)?;
-        if home.status != "active" || home.lifecycle_state != "active" {
-            return Err(ApiError::unauthorized());
-        }
+    let home = household::Entity::find_by_id(membership.household_id)
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or_else(ApiError::unauthorized)?;
+    if home.status != "active" || home.lifecycle_state != "active" {
+        return Err(ApiError::unauthorized());
     }
     let person = person::Entity::find()
         .filter(person::Column::AccountId.eq(account.id))
@@ -1175,7 +1216,7 @@ fn representation_etag(body: &Value) -> String {
     )
 }
 
-async fn serialize_many(
+pub(crate) async fn serialize_many(
     db: &DatabaseTransaction,
     records: Vec<medication::Model>,
 ) -> Result<Vec<Value>, ApiError> {

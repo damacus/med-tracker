@@ -54,10 +54,18 @@ fn bearer_lists_only_its_operational_household() {
     let body: Value = response.json().expect("JSON households");
     assert_eq!(body["account_id"], fixture.account_id);
     let households = body["data"].as_array().expect("household array");
-    assert_eq!(households.len(), 1);
-    assert_eq!(households[0]["id"], fixture.household_id);
-    assert_eq!(households[0]["name"], fixture.household_name);
-    assert_eq!(households[0]["role"], "owner");
+    assert_eq!(households.len(), 2);
+    let owned = households
+        .iter()
+        .find(|row| row["id"] == fixture.household_id)
+        .expect("primary household");
+    assert_eq!(owned["name"], fixture.household_name);
+    assert_eq!(owned["role"], "owner");
+    let secondary = households
+        .iter()
+        .find(|row| row["id"] == fixture.medication_read_household_id)
+        .expect("second active membership");
+    assert_eq!(secondary["role"], "member");
     assert!(!body.to_string().contains(&fixture.foreign_email));
 }
 
@@ -257,10 +265,14 @@ fn task_6n_role_change_invalidates_prior_session_and_app_token() {
     for token in [
         &fixture.auth_role_member_access_token,
         &fixture.auth_role_member_app_token,
-        &fixture.auth_role_member_oauth_token,
     ] {
         assert_eq!(target.get(&me_path, Some(token)).status().as_u16(), 200);
     }
+    assert_denial(
+        target.get(&me_path, Some(&fixture.auth_role_member_oauth_token)),
+        401,
+        "unauthorized",
+    );
     let path = format!(
         "/api/v1/households/{}/admin/memberships/{}",
         fixture.auth_role_household_id, fixture.auth_role_member_membership_id

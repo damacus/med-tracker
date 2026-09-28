@@ -6,6 +6,7 @@ use crate::medication_management::{
     error_response, finish, finish_with_request_id, request_context,
 };
 use crate::mutation_idempotency::{self, Lookup, StoredResponse};
+use crate::sync_batch::{SyncOperation, SyncResult};
 use crate::{database_error, granted_people, ApiError, AppState, AuthContext};
 use axum::extract::{
     rejection::{JsonRejection, QueryRejection},
@@ -1000,4 +1001,113 @@ pub(super) async fn put(
     payload: Result<Json<Value>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     update(state, household_id, id, headers, payload, "PUT").await
+}
+
+fn sync_error(status: StatusCode) -> ApiError {
+    let (code, message) = match status {
+        StatusCode::PRECONDITION_REQUIRED => (
+            "precondition_required",
+            "A current review version is required",
+        ),
+        StatusCode::CONFLICT => ("sync_conflict", "A current review version is required"),
+        StatusCode::NOT_FOUND => ("not_found", "Record not found"),
+        StatusCode::FORBIDDEN => (
+            "forbidden",
+            "You are not authorized to perform this action.",
+        ),
+        _ => ("unprocessable_content", "Review could not be saved"),
+    };
+    ApiError {
+        status,
+        code,
+        message,
+        preserve_activity: false,
+    }
+}
+
+pub(super) async fn apply_sync_operation(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    operation: &SyncOperation,
+    request_id: &str,
+) -> Result<SyncResult, ApiError> {
+    if operation.action != "update" || !actor_adult(db, context).await? {
+        return Err(sync_error(StatusCode::FORBIDDEN));
+    }
+    let id = operation
+        .id
+        .as_deref()
+        .ok_or_else(|| sync_error(StatusCode::NOT_FOUND))?;
+    let record = visible_prompt(db, context, id)
+        .await?
+        .ok_or_else(|| sync_error(StatusCode::NOT_FOUND))?;
+    if !person_access(db, context, record.person_id, true).await? {
+        return Err(sync_error(StatusCode::FORBIDDEN));
+    }
+    let expected = operation
+        .if_match
+        .as_deref()
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| sync_error(StatusCode::PRECONDITION_REQUIRED))?;
+    if expected != tag(&record) {
+        return Err(sync_error(StatusCode::CONFLICT));
+    }
+    let changes = Changes::parse(&json!({"medication_review_prompt": operation.attributes}))
+        .map_err(sync_error)?;
+    let active = changes
+        .apply(&record, context.membership.id)
+        .ok_or_else(|| sync_error(StatusCode::UNPROCESSABLE_ENTITY))?;
+    let updated = active.update(db).await.map_err(database_error)?;
+    let now = Utc::now().naive_utc();
+    security_audit_event::ActiveModel {
+        household_id: Set(context.membership.household_id),
+        actor_account_id: Set(Some(context.account_id)),
+        actor_membership_id: Set(Some(context.membership.id)),
+        event_type: Set("medication_review_prompt.updated".to_owned()),
+        request_id: Set(Some(request_id.to_owned())),
+        ip: Set(None),
+        audit_context: Set(json!({})),
+        metadata: Set(
+            json!({"prompt_id": updated.id, "person_id": updated.person_id,
+            "previous_status": record.status, "status": updated.status}),
+        ),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(db)
+    .await
+    .map_err(database_error)?;
+    Ok(SyncResult {
+        record_type: "MedicationReviewPrompt",
+        record_id: Some(updated.id),
+        record_portable_id: None,
+        etag: Some(tag(&updated)),
+        replayed: None,
+    })
+}
+
+pub(super) async fn authorize_sync_replay(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    operation: &SyncOperation,
+    saved: &Value,
+) -> Result<(), ApiError> {
+    if operation.action != "update"
+        || saved.get("action").and_then(Value::as_str) != Some("update")
+        || saved.get("record_type").and_then(Value::as_str) != Some("MedicationReviewPrompt")
+        || !actor_adult(db, context).await?
+    {
+        return Err(ApiError::forbidden());
+    }
+    let id = operation.id.as_deref().ok_or_else(ApiError::forbidden)?;
+    let record = visible_prompt(db, context, id)
+        .await?
+        .ok_or_else(ApiError::forbidden)?;
+    if saved.get("record_id").and_then(Value::as_str) != Some(record.id.to_string().as_str())
+        || !person_access(db, context, record.person_id, true).await?
+    {
+        return Err(ApiError::forbidden());
+    }
+    Ok(())
 }

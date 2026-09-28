@@ -263,6 +263,7 @@ async fn failure(
     message: &str,
     target_membership_id: Option<i64>,
     attempted_state: Option<Value>,
+    field_errors: Option<Value>,
 ) -> Result<Response, ApiError> {
     let request_id = Uuid::new_v4().to_string();
     if status == StatusCode::UNPROCESSABLE_ENTITY {
@@ -281,7 +282,7 @@ async fn failure(
     let body = if status == StatusCode::BAD_REQUEST {
         json!({"error": {"code": "bad_request", "message": message, "request_id": request_id}})
     } else {
-        json!({"error": {"code": "validation_failed", "message": message, "request_id": request_id, "errors": {"base": [message]}}})
+        json!({"error": {"code": "validation_failed", "message": message, "request_id": request_id, "errors": field_errors.unwrap_or_else(|| json!({"base": [message]}))}})
     };
     response(
         db,
@@ -463,6 +464,7 @@ pub(super) async fn create(
                 "person_access_grant is required or JSON is invalid",
                 None,
                 None,
+                None,
             )
             .await
         }
@@ -488,6 +490,10 @@ pub(super) async fn create(
                 "Person access grant is invalid",
                 None,
                 None,
+                body["person_access_grant"]["access_level"]
+                    .as_str()
+                    .filter(|value| !matches!(*value, "view" | "record" | "manage"))
+                    .map(|_| json!({"access_level": ["is invalid"]})),
             )
             .await
         }
@@ -515,6 +521,7 @@ pub(super) async fn create(
             "Grant records must belong to the household",
             Some(attrs.membership_id),
             Some(attrs.attempted_state()),
+            None,
         )
         .await;
     }
@@ -539,6 +546,7 @@ pub(super) async fn create(
             "Grant already exists for membership and person",
             Some(attrs.membership_id),
             Some(attrs.attempted_state()),
+            Some(json!({"household_membership_id": ["has already been taken"]})),
         )
         .await;
     }

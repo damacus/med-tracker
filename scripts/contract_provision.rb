@@ -397,6 +397,65 @@ fixture = ActiveRecord::Base.transaction do
   portable_conflict_payload[:records][:locations].first[:name] = portable_target_location.name
   portable_malformed_payload = portable_payload.deep_dup
   portable_malformed_payload[:records][:people] = 'invalid collection'
+  portable_auth_account, portable_auth_household, = create_household(nonce, 'portable-auth')
+  portable_auth_membership = portable_auth_account.household_memberships.find_by!(household: portable_auth_household)
+  _portable_auth_owner_session, portable_auth_owner_token, = ApiSession.issue_for(
+    account: portable_auth_account, household_membership: portable_auth_membership,
+    device_name: 'contract-portable-auth-owner'
+  )
+  portable_auth_delegate, portable_auth_delegate_token = create_admin_member(portable_auth_household, nonce,
+                                                                              'portable-auth-delegate')
+  portable_auth_person = portable_auth_household.people.create!(name: "Contract portable managed #{nonce}",
+                                                                 date_of_birth: '1990-01-01',
+                                                                 person_type: :adult, has_capacity: true)
+  PersonAccessGrant.create!(household: portable_auth_household, household_membership: portable_auth_delegate,
+                            person: portable_auth_person, access_level: :manage,
+                            relationship_type: :family_member, granted_by_membership: portable_auth_membership)
+  portable_auth_location = Location.create!(household: portable_auth_household,
+                                            name: "Contract portable auth shelf #{nonce}")
+  portable_auth_managed_medication = Medication.create!(household: portable_auth_household,
+                                                         location: portable_auth_location,
+                                                         name: "Contract portable managed medicine #{nonce}",
+                                                         dose_amount: '1', dose_unit: 'tablet')
+  portable_auth_assignment = PersonMedication.create!(household: portable_auth_household,
+                                                       person: portable_auth_person,
+                                                       medication: portable_auth_managed_medication,
+                                                       administration_kind: :as_needed,
+                                                       dose_amount: '1', dose_unit: 'tablet')
+  portable_auth_hidden_medication = Medication.create!(household: portable_auth_household,
+                                                        location: portable_auth_location,
+                                                        name: "Contract portable hidden medicine #{nonce}",
+                                                        current_supply: '10')
+  portable_auth_hidden_dosage = portable_auth_hidden_medication.dosage_records.create!(
+    amount: '1', unit: 'tablet', frequency: 'Daily', default_max_daily_doses: 2,
+    default_min_hours_between_doses: '4', default_dose_cycle: :daily
+  )
+  portable_auth_payload = PortableData::Exporter.new(household: portable_auth_household,
+                                                     membership: portable_auth_membership,
+                                                     passphrase: 'contract portable secret').household_payload
+  portable_auth_records = portable_auth_payload.fetch(:records)
+  portable_auth_person_row = portable_auth_records.fetch(:people).find do |row|
+    row[:portable_id] == portable_auth_person.portable_id
+  end
+  portable_auth_assignment_row = portable_auth_records.fetch(:person_medications).find do |row|
+    row[:portable_id] == portable_auth_assignment.portable_id
+  end
+  portable_auth_hidden_dosage_row = portable_auth_records.fetch(:dosage_options).find do |row|
+    row[:portable_id] == portable_auth_hidden_dosage.portable_id
+  end
+  portable_auth_base_payload = portable_auth_payload.deep_dup
+  portable_auth_base_payload[:records] = portable_auth_records.transform_values { [] }
+  portable_auth_base_payload[:records][:people] = [portable_auth_person_row]
+  portable_auth_reparent_payload = portable_auth_base_payload.deep_dup
+  portable_auth_reparent_payload[:records][:dosage_options] = [portable_auth_hidden_dosage_row.deep_dup]
+  portable_auth_reparent_payload[:records][:dosage_options].first[:medication_portable_id] =
+    portable_auth_managed_medication.portable_id
+  portable_auth_bootstrap_payload = portable_auth_base_payload.deep_dup
+  portable_auth_bootstrap_assignment = portable_auth_assignment_row.deep_dup
+  portable_auth_bootstrap_assignment[:portable_id] = SecureRandom.uuid
+  portable_auth_bootstrap_assignment[:medication_portable_id] = portable_auth_hidden_medication.portable_id
+  portable_auth_bootstrap_assignment[:source_dosage_option_portable_id] = nil
+  portable_auth_bootstrap_payload[:records][:person_medications] = [portable_auth_bootstrap_assignment]
   foreign_membership = foreign_account.household_memberships.find_by!(household: foreign_household)
   foreign_app_token, foreign_app_token_raw = ApiAppToken.issue_for(
     account: foreign_account, household_membership: foreign_membership, name: 'Contract foreign app token'
@@ -976,6 +1035,7 @@ fixture = ActiveRecord::Base.transaction do
     [token, grant]
   end
   medication_mobile_oauth_token, medication_mobile_oauth_record = medication_mobile_oauth_grant.call('valid', account)
+  manager_mobile_oauth_token, = medication_mobile_oauth_grant.call('manager', manager_membership.account)
   medication_mobile_revoked_view_member, = create_admin_member(household, nonce, 'medication-mobile-revoked-view')
   PersonAccessGrant.create!(household: household, household_membership: medication_mobile_revoked_view_member,
                             person: managed_person, access_level: :view, relationship_type: :carer,
@@ -1195,6 +1255,13 @@ fixture = ActiveRecord::Base.transaction do
                                                                passphrase: 'contract portable secret'),
     portable_malformed_bundle: PortableData::Encryptor.encrypt(portable_malformed_payload,
                                                                 passphrase: 'contract portable secret'),
+    portable_auth_household_id: portable_auth_household.id,
+    portable_auth_owner_token: portable_auth_owner_token,
+    portable_auth_delegate_token: portable_auth_delegate_token,
+    portable_auth_reparent_bundle: PortableData::Encryptor.encrypt(portable_auth_reparent_payload,
+                                                                   passphrase: 'contract portable secret'),
+    portable_auth_bootstrap_bundle: PortableData::Encryptor.encrypt(portable_auth_bootstrap_payload,
+                                                                    passphrase: 'contract portable secret'),
     access_token: access_token,
     account_id: account.id,
     platform_admin_email: platform_account.email,
@@ -1231,6 +1298,7 @@ fixture = ActiveRecord::Base.transaction do
     foreign_email: "contract-foreign-#{nonce}@example.test",
     manager_membership_id: manager_membership.id,
     manager_access_token: manager_access_token,
+    manager_mobile_oauth_token: manager_mobile_oauth_token,
     invitation_authority_membership_id: invitation_authority_membership.id,
     invitation_authority_access_token: invitation_authority_access_token,
     invitation_authority_id: invitation_authority.id,

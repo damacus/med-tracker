@@ -33,6 +33,13 @@ set -l mailpit_endpoint (string match -m 1 -r 'CONTRACT_MAILPIT_URL: http://mail
 set -l network_subnet (string match -r 'subnet: \$\{CONTRACT_TEST_SUBNET\}' < rust/contract-tests/runner-subnet.compose.yaml)
 test (count $api_url $shared_namespace $fixture_mount $mailpit_endpoint $network_subnet) -eq 5
 or begin; echo 'Compose runner lacks its internal network namespace or fixture bind' >&2; exit 1; end
+set -l apns_key_mappings (string match -a -r 'APNS_PRIVATE_KEY: \$\{CONTRACT_APNS_PRIVATE_KEY:\?[^}]+\}' < rust/contract-tests/runner.compose.yaml)
+test (count $apns_key_mappings) -eq 2
+or begin; echo 'Compose runner must require a disposable APNs key for both API configurations' >&2; exit 1; end
+if string match -rq -- '-----BEGIN PRIVATE KEY-----' < rust/contract-tests/runner.compose.yaml
+    echo 'Compose runner contains a committed private key' >&2
+    exit 1
+end
 set -l rails_read_namespace (string match -m 1 -r 'network_mode: service:web-test' < rust/contract-tests/runner.compose.yaml)
 set -l rails_read_database (string match -m 1 -r 'CONTRACT_AUDIT_DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract' < rust/contract-tests/runner.compose.yaml)
 set -l rails_read_service (string match -m 1 -r '  rails-web-read-tests:' < rust/contract-tests/runner.compose.yaml)
@@ -46,8 +53,16 @@ if test $run_status -ne 0
     echo "Medication Compose runner returned $run_status" >&2
     exit 1
 end
+if string match -rq -- '-----BEGIN PRIVATE KEY-----|CONTRACT_APNS_PRIVATE_KEY=' < $test_dir/output
+    echo 'Runner printed its disposable APNs key' >&2
+    exit 1
+end
+string match -rq 'Contract source SHA-256: [a-f0-9]{64}' < $test_dir/output
+or begin; echo 'Runner omitted the immutable source digest' >&2; exit 1; end
 
 set -l trace (cat $test_dir/trace)
+contains -- api:contract-source-snapshot $trace
+or begin; echo 'Runner did not freeze the Rust API build source' >&2; exit 1; end
 contains -- api:contract-up $trace
 or begin; echo 'Runner did not start the Compose API service' >&2; exit 1; end
 contains -- api:contract-subnet-check $trace
@@ -64,6 +79,40 @@ if contains -- api:contract-browser-test $trace
     echo 'Runner launched browser checks without opting in' >&2
     exit 1
 end
+
+set -lx CONTRACT_FAKE_FAIL_STEP api:contract-source-snapshot
+command rm -f $test_dir/trace
+fish --no-config rust/contract-tests/run.fish rails medication-read-api >$test_dir/output 2>&1
+set -l snapshot_status $status
+test $snapshot_status -eq 42
+or begin; cat $test_dir/output >&2; echo "Runner lost source snapshot failure status: $snapshot_status" >&2; exit 1; end
+set trace (cat $test_dir/trace)
+contains -- cleanup $trace
+or begin; echo 'Runner skipped cleanup after source snapshot failure' >&2; exit 1; end
+if contains -- api:contract-up $trace
+    echo 'Runner launched API before source snapshot succeeded' >&2
+    exit 1
+end
+set -e CONTRACT_FAKE_FAIL_STEP
+
+set -lx CONTRACT_FAKE_FAIL_STEP apns_key_generation
+command rm -f $test_dir/trace
+fish --no-config rust/contract-tests/run.fish rails medication-read-api >$test_dir/output 2>&1
+set -l key_generation_status $status
+test $key_generation_status -eq 42
+or begin; cat $test_dir/output >&2; echo "Runner lost APNs key generation failure status: $key_generation_status" >&2; exit 1; end
+set trace (cat $test_dir/trace)
+contains -- cleanup $trace
+or begin; echo 'Runner skipped cleanup after APNs key generation failure' >&2; exit 1; end
+if contains -- api:contract-up $trace
+    echo 'Runner launched API without a generated APNs key' >&2
+    exit 1
+end
+if string match -rq -- '-----BEGIN PRIVATE KEY-----|CONTRACT_APNS_PRIVATE_KEY=' < $test_dir/output
+    echo 'Runner printed an APNs key after generation failure' >&2
+    exit 1
+end
+set -e CONTRACT_FAKE_FAIL_STEP
 
 set -lx CONTRACT_BROWSER_TESTS true
 command rm -f $test_dir/trace
@@ -410,7 +459,7 @@ or begin; echo 'Admin settings runner skipped cleanup after failure' >&2; exit 1
 contains -- api:contract-image-remove $trace
 or begin; echo 'Admin settings runner skipped image cleanup after failure' >&2; exit 1; end
 
-for target in openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-invitations openapi-invitations-legacy openapi-profile openapi-profile-storage openapi-read-completion openapi-rate-limit openapi-reports openapi-medications openapi-medications-focused
+for target in openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-invitations openapi-invitations-legacy openapi-profile openapi-profile-storage openapi-read-completion openapi-rate-limit openapi-reports openapi-health-events openapi-exports openapi-sync-reads openapi-external-integrations openapi-portable-writes openapi-portability-legacy openapi-sync-batch-legacy openapi-sync-batch-replay-focus openapi-replay-legacy openapi-envelopes-legacy openapi-medications openapi-medications-focused api-legacy-auth api-legacy-admin api-legacy-care api-legacy-devices api-legacy-lookup
     set -e CONTRACT_FAKE_FAIL_STEP
     set -l selected_step (string join -- '' api:contract- $target -test)
     if test "$target" = openapi-invitations-legacy
@@ -426,6 +475,10 @@ for target in openapi-person-medication-writes openapi-schedule-writes openapi-p
     or begin; echo "$target runner skipped its selected OpenAPI tests" >&2; exit 1; end
     contains -- api:contract-up $trace
     or begin; echo "$target runner did not start the isolated API" >&2; exit 1; end
+    if test "$target" = openapi-external-integrations
+        contains -- api:contract-external-up $trace
+        or begin; echo 'External runner skipped provider API listeners' >&2; exit 1; end
+    end
     contains -- cleanup $trace
     or begin; echo "$target runner skipped cleanup" >&2; exit 1; end
 
@@ -441,5 +494,17 @@ for target in openapi-person-medication-writes openapi-schedule-writes openapi-p
     contains -- api:contract-image-remove $trace
     or begin; echo "$target runner skipped image cleanup after failure" >&2; exit 1; end
 end
+
+set -lx CONTRACT_FAKE_FAIL_STEP api:contract-external-up
+command rm -f $test_dir/trace
+fish --no-config rust/contract-tests/run.fish rails openapi-external-integrations >$test_dir/output 2>&1
+set failure_status $status
+test $failure_status -eq 42
+or begin; cat $test_dir/output >&2; echo "External runner lost provider startup failure status: $failure_status" >&2; exit 1; end
+set trace (cat $test_dir/trace)
+contains -- cleanup $trace
+or begin; echo 'External runner skipped cleanup after provider startup failure' >&2; exit 1; end
+contains -- api:contract-image-remove $trace
+or begin; echo 'External runner skipped image cleanup after provider startup failure' >&2; exit 1; end
 
 echo 'Medication, web reads, dosage, people, notification, native token, push subscription, admin settings, assignment, schedule, pause lifecycle and Rails browser runner sequences and failure cleanup passed'

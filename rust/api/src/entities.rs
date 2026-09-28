@@ -288,6 +288,31 @@ entity!(person, "people", {
     updated_at: DateTime,
 });
 
+entity!(health_event, "health_events", {
+    household_id: i64,
+    person_id: i64,
+    portable_id: String,
+    event_kind: i32,
+    severity: Option<i32>,
+    title: String,
+    notes: Option<String>,
+    started_on: Date,
+    ended_on: Option<Date>,
+    action_taken: Option<String>,
+    medical_help_sought: bool,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
+entity!(health_event_medication, "health_event_medications", {
+    household_id: i64,
+    health_event_id: i64,
+    medication_id: Option<i64>,
+    medication_name: String,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
 entity!(review_evidence, "medication_review_evidence_records", {
     active_ingredient: Option<String>,
     candidate_terms: Vec<String>,
@@ -512,6 +537,7 @@ entity!(api_tombstone, "api_tombstones", {
 entity!(location, "locations", {
     household_id: i64,
     portable_id: String,
+    name: String,
 });
 
 entity!(medication, "medications", {

@@ -179,7 +179,10 @@ fn value(row: &notification_preference::Model, owner: &person::Model) -> Value {
     })
 }
 
-fn representation(row: &notification_preference::Model, owner: &person::Model) -> (Value, String) {
+pub(super) fn representation(
+    row: &notification_preference::Model,
+    owner: &person::Model,
+) -> (Value, String) {
     let body = json!({"data": value(row, owner)});
     let etag = representation_etag(&body);
     (body, etag)

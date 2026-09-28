@@ -25,8 +25,13 @@ function cleanup_contract_run
         or return $status
         echo "Contract storage removed: $contract_run_dir/storage"
     end
-    rtk proxy rm -f "$contract_fixture_path" "$contract_run_dir/owner"
+    if test -d "$contract_run_dir/source"
+        rtk proxy rm -r "$contract_run_dir/source"
+        or return $status
+    end
+    rtk proxy rm -f "$contract_fixture_path" "$contract_run_dir/owner" "$contract_run_dir/source.sha256"
     or return $status
+    set -e CONTRACT_APNS_PRIVATE_KEY
     rtk proxy rmdir "$contract_run_dir"
 end
 
@@ -183,11 +188,35 @@ function run_contract
         or return $status
         set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner-subnet.compose.yaml"
     end
-    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions openapi-admin-settings openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-invitations openapi-invitations-legacy openapi-profile openapi-profile-storage openapi-read-completion openapi-rate-limit openapi-reports openapi-medications openapi-medications-focused browser-journey-rails browser-journey-rust web-reads-rails
+    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions openapi-admin-settings openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-invitations openapi-invitations-legacy openapi-profile openapi-profile-storage openapi-read-completion openapi-rate-limit openapi-reports openapi-health-events openapi-exports openapi-sync-reads openapi-external-integrations openapi-portable-writes openapi-portability-legacy openapi-sync-batch-legacy openapi-sync-batch-replay-focus openapi-replay-legacy openapi-envelopes-legacy openapi-medications openapi-medications-focused api-legacy-auth api-legacy-admin api-legacy-care api-legacy-devices api-legacy-lookup browser-journey-rails browser-journey-rust web-reads-rails
         set -gx CONTRACT_AUTH_SESSION_SECRET (rtk proxy openssl rand -hex 32)
         or return $status
+        set -gx CONTRACT_APNS_PRIVATE_KEY (rtk proxy openssl genpkey -algorithm EC -pkeyopt group:P-256 | string collect)
+        set -l apns_generation_status $pipestatus
+        if test $apns_generation_status[1] -ne 0
+            echo 'Disposable APNs key generation failed' >&2
+            return $apns_generation_status[1]
+        end
+        if test $apns_generation_status[2] -ne 0; or test (count $CONTRACT_APNS_PRIVATE_KEY) -ne 1
+            echo 'Disposable APNs key output was invalid' >&2
+            return 1
+        end
         set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner.compose.yaml"
         set -gx CONTRACT_FIXTURE_DIR (rtk proxy realpath "$contract_run_dir")
+        if not contains -- "$argv[2]" browser-journey-rails web-reads-rails
+            set -gx CONTRACT_API_BUILD_CONTEXT (pwd)/$contract_run_dir/source
+            rtk task api:contract-source-snapshot CONTRACT_SOURCE_DIR=$CONTRACT_API_BUILD_CONTEXT
+            or return $status
+            set -l source_digest (find "$CONTRACT_API_BUILD_CONTEXT" -type f -print0 | xargs -0 shasum -a 256 | string replace -a "$CONTRACT_API_BUILD_CONTEXT/" '' | LC_ALL=C sort | shasum -a 256)
+            set -l digest_parts (string split ' ' -- $source_digest)
+            if not string match -rq '^[0-9a-f]{64}$' -- "$digest_parts[1]"
+                echo 'Contract source digest could not be computed' >&2
+                return 1
+            end
+            echo "$digest_parts[1]" >"$contract_run_dir/source.sha256"
+            or return $status
+            echo "Contract source SHA-256: $digest_parts[1]"
+        end
     end
     if test "$argv[2]" = browser-journey-rust
         set -gx CONTRACT_RUST_BROWSER_SCREENSHOT_DIR ./docs/screenshots/journey-medication-rust
@@ -250,12 +279,16 @@ function run_contract
         return $status
     end
 
-    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions openapi-admin-settings openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-invitations openapi-invitations-legacy openapi-profile openapi-profile-storage openapi-read-completion openapi-rate-limit openapi-reports openapi-medications openapi-medications-focused
+    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions openapi-admin-settings openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-invitations openapi-invitations-legacy openapi-profile openapi-profile-storage openapi-read-completion openapi-rate-limit openapi-reports openapi-health-events openapi-exports openapi-sync-reads openapi-external-integrations openapi-portable-writes openapi-portability-legacy openapi-sync-batch-legacy openapi-sync-batch-replay-focus openapi-replay-legacy openapi-envelopes-legacy openapi-medications openapi-medications-focused api-legacy-auth api-legacy-admin api-legacy-care api-legacy-devices api-legacy-lookup
         set -g contract_api_image true
         rtk task api:contract-up CONTRACT_PROJECT=$contract_project
         or return $status
         rtk task api:contract-ready CONTRACT_PROJECT=$contract_project
         or return $status
+        if test "$argv[2]" = openapi-external-integrations
+            rtk task api:contract-external-up CONTRACT_PROJECT=$contract_project
+            or return $status
+        end
         if test "$argv[2]" = openapi-app-tokens
             rtk task api:contract-openapi-app-tokens-test CONTRACT_PROJECT=$contract_project
         else if test "$argv[2]" = openapi-memberships
@@ -276,6 +309,36 @@ function run_contract
             rtk task api:contract-openapi-rate-limit-test CONTRACT_PROJECT=$contract_project
         else if test "$argv[2]" = openapi-reports
             rtk task api:contract-openapi-reports-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = openapi-health-events
+            rtk task api:contract-openapi-health-events-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = openapi-exports
+            rtk task api:contract-openapi-exports-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = openapi-sync-reads
+            rtk task api:contract-openapi-sync-reads-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = openapi-external-integrations
+            rtk task api:contract-openapi-external-integrations-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = openapi-portable-writes
+            rtk task api:contract-openapi-portable-writes-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = openapi-portability-legacy
+            rtk task api:contract-openapi-portability-legacy-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = openapi-sync-batch-legacy
+            rtk task api:contract-openapi-sync-batch-legacy-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = openapi-sync-batch-replay-focus
+            rtk task api:contract-openapi-sync-batch-replay-focus-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = openapi-replay-legacy
+            rtk task api:contract-openapi-replay-legacy-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = openapi-envelopes-legacy
+            rtk task api:contract-openapi-envelopes-legacy-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = api-legacy-auth
+            rtk task api:contract-api-legacy-auth-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = api-legacy-admin
+            rtk task api:contract-api-legacy-admin-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = api-legacy-care
+            rtk task api:contract-api-legacy-care-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = api-legacy-devices
+            rtk task api:contract-api-legacy-devices-test CONTRACT_PROJECT=$contract_project
+        else if test "$argv[2]" = api-legacy-lookup
+            rtk task api:contract-api-legacy-lookup-test CONTRACT_PROJECT=$contract_project
         else if test "$argv[2]" = openapi-profile
             rtk task api:contract-openapi-profile-test CONTRACT_PROJECT=$contract_project
         else if test "$argv[2]" = openapi-profile-storage

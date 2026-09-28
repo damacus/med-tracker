@@ -100,5 +100,21 @@
   "getHealthHistoryReport": "rust/api/src/reports.rs",
   "downloadHealthHistoryReport": "rust/api/src/reports.rs",
   "getMedicationReviewReport": "rust/api/src/reports.rs",
-  "downloadMedicationReviewReport": "rust/api/src/reports.rs"
+  "downloadMedicationReviewReport": "rust/api/src/reports.rs",
+  "listHealthEvents": "rust/api/src/health_events.rs",
+  "createHealthEvent": "rust/api/src/health_events.rs",
+  "getHealthEvent": "rust/api/src/health_events.rs",
+  "updateHealthEvent": "rust/api/src/health_events.rs",
+  "replaceHealthEvent": "rust/api/src/health_events.rs",
+  "exportPortableHouseholdBundle": "rust/api/src/portable_exports.rs",
+  "getMobileSnapshot": "rust/api/src/portable_exports.rs",
+  "getDataExport": "rust/api/src/portable_exports.rs",
+  "dryRunPortableImport": "rust/api/src/portable_imports.rs",
+  "createPortableImport": "rust/api/src/portable_imports.rs",
+  "getSyncSnapshot": "rust/api/src/sync_reads.rs",
+  "getSyncChanges": "rust/api/src/sync_reads.rs",
+  "createSyncBatch": "rust/api/src/sync_batch.rs",
+  "searchMedicationLookup": "rust/api/src/external_integrations/lookup.rs",
+  "generateAiMedicationSuggestions": "rust/api/src/external_integrations/ai.rs",
+  "testPushSubscription": "rust/api/src/external_integrations/push.rs"
 }

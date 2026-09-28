@@ -2075,5 +2075,268 @@
       "invalid PDF filters rejected"
     ],
     "not_yet_tested": []
+  },
+  "createHealthEvent": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_health_events.rs: health_event_requests_enforce_schema_without_changing_existing_records; health_event_create_get_list_and_update_match_exact_resource_shape; all_five_health_event_operations_share_the_documented_rate_limit; rust/contract-tests/tests/dosage_health.rs: health_events_reject_invalid_cross_household_and_person_scope_changes; dosage_and_health_grants_distinguish_view_and_manage_access",
+    "statuses_tested": [
+      201,
+      400,
+      403,
+      404,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "create response has exact resource fields, portable identifier, medication links, and ETag",
+      "missing wrapper returns structured 400; unknown root or inner fields, nullable invalid notes, malformed date, and unsupported enum return 422 without changing existing records",
+      "one audit version and sync event are correlated with the create request",
+      "documented rate limit returns structured 429 with retry metadata",
+      "legacy tests reject invalid and foreign-person creates (422 and privacy-preserving 404), and deny view-only writes (403)"
+    ],
+    "not_yet_tested": []
+  },
+  "getHealthEvent": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_health_events.rs: health_event_create_get_list_and_update_match_exact_resource_shape; all_five_health_event_operations_share_the_documented_rate_limit; rust/contract-tests/tests/dosage_health.rs: health_events_cover_portable_relations_pagination_etags_and_retained_updates; health_events_reject_invalid_cross_household_and_person_scope_changes; dosage_and_health_grants_distinguish_view_and_manage_access",
+    "statuses_tested": [
+      200,
+      404,
+      429
+    ],
+    "behaviours_tested": [
+      "item response matches the exact health-event representation and created ETag",
+      "documented rate limit returns structured 429 with retry metadata",
+      "legacy tests verify item reads, ETags, foreign/hidden record privacy (404), and view-grant reads"
+    ],
+    "not_yet_tested": []
+  },
+  "listHealthEvents": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_health_events.rs: health_event_create_get_list_and_update_match_exact_resource_shape; all_five_health_event_operations_share_the_documented_rate_limit; rust/contract-tests/tests/dosage_health.rs: health_events_cover_portable_relations_pagination_etags_and_retained_updates; health_events_reject_invalid_cross_household_and_person_scope_changes",
+    "statuses_tested": [
+      200,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "collection has exact data and pagination metadata envelope; every row matches the documented representation",
+      "documented rate limit returns structured 429 with retry metadata",
+      "legacy tests verify pagination and updated_since filtering, include granted records, and exclude hidden or foreign people"
+    ],
+    "not_yet_tested": []
+  },
+  "updateHealthEvent": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_health_events.rs: health_event_requests_enforce_schema_without_changing_existing_records; health_event_create_get_list_and_update_match_exact_resource_shape; updating_event_with_same_medication_preserves_link_snapshot; all_five_health_event_operations_share_the_documented_rate_limit; rust/contract-tests/tests/dosage_health.rs: health_events_cover_portable_relations_pagination_etags_and_retained_updates; health_events_reject_invalid_cross_household_and_person_scope_changes; health_filters_replacements_and_medication_links_preserve_person; dosage_and_health_grants_distinguish_view_and_manage_access; health_event_person_reassignment_requires_manage_on_both_people",
+    "statuses_tested": [
+      200,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "PATCH updates fields, preserves omitted medication associations, returns exact response and a changed ETag",
+      "invalid update fields return structured 422 without changing representation or ETag",
+      "same-medication update preserves the medication-name snapshot and emits one version and sync event",
+      "documented rate limit returns structured 429 with retry metadata",
+      "legacy tests verify stale ETag conflict (409), hidden/foreign privacy (404), view-only denial (403), and preserve person/medication links on invalid updates",
+      "reassignment requires manage access to both original and destination people; denied targets do not mutate the event",
+      "old-only clients receive removal, current-visible clients retain the updated event, and removal metadata hides the destination",
+      "cached batch reassignment replay fails after original-person access is revoked"
+    ],
+    "not_yet_tested": []
+  },
+  "replaceHealthEvent": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_health_events.rs: health_event_requests_enforce_schema_without_changing_existing_records; health_event_create_get_list_and_update_match_exact_resource_shape; all_five_health_event_operations_share_the_documented_rate_limit; rust/contract-tests/tests/dosage_health.rs: health_events_cover_portable_relations_pagination_etags_and_retained_updates; health_events_reject_invalid_cross_household_and_person_scope_changes; health_filters_replacements_and_medication_links_preserve_person; health_event_invalid_replacement_preserves_links_and_etag; health_event_person_reassignment_requires_manage_on_both_people",
+    "statuses_tested": [
+      200,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "PUT accepts documented partial attributes through the shared health-event handler and preserves omitted medication associations",
+      "invalid PUT fields return structured 422 without changing representation or ETag",
+      "documented rate limit returns structured 429 with retry metadata",
+      "legacy tests verify stale ETag conflict (409), foreign-record privacy (404), and invalid replacement preserves medication/person links and ETag",
+      "reassignment requires manage access to both original and destination people; denied targets do not mutate the event",
+      "old-only clients receive removal, current-visible clients retain the updated event, and removal metadata hides the destination",
+      "cached batch reassignment replay fails after original-person access is revoked"
+    ],
+    "not_yet_tested": []
+  },
+  "exportPortableHouseholdBundle": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_exports.rs: portable_bundle_response_has_exact_encrypted_envelope_shape",
+    "statuses_tested": [
+      200,
+      422
+    ],
+    "behaviours_tested": [
+      "encrypted bundle uses the exact documented envelope, timestamp, and cryptographic metadata without exposing passphrase or person name",
+      "unsupported version and portable format return structured 422"
+    ],
+    "not_yet_tested": []
+  },
+  "getMobileSnapshot": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_exports.rs: mobile_snapshot_response_has_exact_snapshot_and_collection_shapes; rust/contract-tests/tests/portability.rs: portable_bundle_dry_run_apply_and_public_readback",
+    "statuses_tested": [
+      200
+    ],
+    "behaviours_tested": [
+      "snapshot envelope and collection names match the documented single-person portable v1 shape",
+      "sensitive pause, occurrence, session, and security audit collections are absent from the mobile snapshot"
+    ],
+    "not_yet_tested": []
+  },
+  "dryRunPortableImport": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_portable_writes.rs: portable_imports_validate_strict_shapes_dry_run_and_apply_encrypted_bundle; rust/contract-tests/tests/portability.rs: portable_bundle_dry_run_apply_and_public_readback; portable_endpoints_enforce_current_household_and_account_authority; portable_import_rejects_cross_person_existing_references_without_changes",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      422
+    ],
+    "behaviours_tested": [
+      "valid encrypted bundle returns an unapplied plan with counts, no conflicts or errors, and no record mutation",
+      "missing bundle returns 400; invalid wrapper, passphrase, malformed or numeric-ID bundles, and conflicts return structured validation failures",
+      "revoked or locked credentials are rejected; unauthorized household or cross-person references are denied without state or import-audit changes"
+    ],
+    "not_yet_tested": []
+  },
+  "createPortableImport": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_portable_writes.rs: portable_imports_validate_strict_shapes_dry_run_and_apply_encrypted_bundle; rust/contract-tests/tests/portability.rs: portable_bundle_dry_run_apply_and_public_readback; portable_endpoints_enforce_current_household_and_account_authority; portable_import_rejects_cross_person_existing_references_without_changes",
+    "statuses_tested": [
+      201,
+      400,
+      403,
+      422
+    ],
+    "behaviours_tested": [
+      "authorized encrypted import applies transactionally and public readback matches source portable records",
+      "missing bundle returns 400; invalid wrapper, passphrase, malformed or numeric-ID bundles, and conflicts are rejected without applying changes",
+      "unauthorized household and cross-person reference imports return 403 without changing snapshot, grants, or import audits"
+    ],
+    "not_yet_tested": []
+  },
+  "getDataExport": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_exports.rs: data_export_modes_match_the_documented_response_shapes_and_cache_policy; rust/contract-tests/tests/reports.rs: data_exports_cover_json_zip_encryption_and_errors",
+    "statuses_tested": [
+      200,
+      403,
+      422
+    ],
+    "behaviours_tested": [
+      "health JSON, backup ZIP, and encrypted migration bundle have their documented response shapes and no-store cache policy",
+      "encrypted mode returns the exact encrypted envelope without exposing passphrase",
+      "legacy report tests verify export authorization, invalid filters without download audit, and JSON/ZIP/encrypted output behavior"
+    ],
+    "not_yet_tested": []
+  },
+  "getSyncSnapshot": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_sync_reads.rs: snapshot_and_changes_match_the_closed_openapi_envelopes; sync_reads_return_structured_not_found_for_an_absent_household; rust/contract-tests/tests/sync.rs: sync_v2_uses_current_view_scope_and_exposes_portable_clinical_relations; snapshot_routes_require_authentication_and_reject_foreign_households; mobile_v1_uses_manage_scope_and_records_one_correlated_read_audit; delegated_mobile_export_contains_manageable_person_and_relations",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      404
+    ],
+    "behaviours_tested": [
+      "sync v2 snapshot envelope, cursor, scope, records, timestamps, and optional collection names match the closed OpenAPI shape",
+      "absent household returns structured 404",
+      "legacy tests verify unauthenticated 401, foreign-household 403, current view/manage grants, scoped clinical relations, and correlated read audit"
+    ],
+    "not_yet_tested": []
+  },
+  "getSyncChanges": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_sync_reads.rs: snapshot_and_changes_match_the_closed_openapi_envelopes; sync_reads_return_structured_not_found_for_an_absent_household; rust/contract-tests/tests/sync.rs: change_feed_retains_inclusive_ordered_writes_and_tombstone_metadata; change_feed_includes_events_and_tombstones_at_the_exact_cursor; change_feed_validates_cursor_and_current_household_access; change_feed_projects_the_current_saved_dose_outcome; change_feed_hides_ungranted_person_events_and_tombstones",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      422
+    ],
+    "behaviours_tested": [
+      "change feed and tombstones have exact closed response fields, identifiers, actions, timestamps, and metadata",
+      "absent household returns structured 404",
+      "legacy tests verify missing cursor 400, malformed timestamp 422, unauthenticated 401, foreign-household 403, inclusive ordering, exact-cursor event/tombstone handling, current grant filtering, tombstone metadata, and outcome ETag projection"
+    ],
+    "not_yet_tested": []
+  },
+  "createSyncBatch": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_portable_writes.rs; rust/contract-tests/tests/sync.rs; rust/contract-tests/tests/replay.rs",
+    "statuses_tested": [
+      201,
+      403,
+      404,
+      409,
+      422,
+      428
+    ],
+    "behaviours_tested": [
+      "all 34 action pairs across 11 resource types with public readback",
+      "atomic rollback of failed mixed batches while retaining the household idempotency lock",
+      "strict payload validation, stale ETags and current grant boundaries",
+      "saved success and validation error replay with matching fresh request IDs",
+      "concurrent identical requests apply once; changed request keys conflict",
+      "replay after update then deletion uses matching tombstone identity and current authority",
+      "hidden dose UUID collision validates the proposed source and returns no hidden record details"
+    ],
+    "not_yet_tested": []
+  },
+  "generateAiMedicationSuggestions": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_external_integrations.rs: paid_ai_suggestions_route_returns_a_draft_response; ai_providers_use_their_protocols_and_only_return_fetched_sources; ai_drops_invented_sources_and_reports_missing_or_redirected_evidence",
+    "statuses_tested": [
+      200
+    ],
+    "behaviours_tested": [
+      "paid route returns draft medication, dose, source, and error collections",
+      "provider-specific protocols are used, only fetched sources are returned, and invented or unavailable evidence is handled"
+    ],
+    "not_yet_tested": []
+  },
+  "searchMedicationLookup": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_external_integrations.rs: medication_lookup_route_returns_an_empty_response_for_an_empty_query; medication_lookup_uses_oauth_and_both_nhs_value_sets; lookup_matches_one_leading_zero_and_enriches_family_related_medicine_and_review_evidence; lookup_source_priority_selects_open_products_facts_before_or_after_curated_catalog; lookup_returns_open_food_facts_supplement_barcode_and_search_results",
+    "statuses_tested": [
+      200
+    ],
+    "behaviours_tested": [
+      "empty query returns an empty result set and permissions",
+      "OAuth-backed NHS, Open Products Facts, and Open Food Facts lookup responses are integrated and audited",
+      "barcode leading-zero handling, source priority, product families, and review evidence enrichment are verified"
+    ],
+    "not_yet_tested": []
+  },
+  "testPushSubscription": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_external_integrations.rs: push_test_route_accepts_a_bodyless_request_and_returns_no_content; push_test_sends_encrypted_web_push_and_prunes_only_expired_subscriptions; push_test_sends_fcm_and_apns_requests_and_prunes_only_permanent_failures; push_test_returns_a_structured_503_when_sender_configuration_is_missing",
+    "statuses_tested": [
+      204,
+      503
+    ],
+    "behaviours_tested": [
+      "bodyless test request returns empty 204 response",
+      "web push payload is encrypted; native FCM and APNS requests are sent; only expired or permanently failed destinations are pruned",
+      "missing sender configuration returns structured 503"
+    ],
+    "not_yet_tested": []
   }
 }

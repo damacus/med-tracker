@@ -9,6 +9,9 @@
 !rust/web/src/**
 !rust/contract-tests/
 !rust/contract-tests/**
+!config/
+!config/ai_medication_sources.yml
+!config/nhs_dmd_curated_products.yml
 !vendor/
 !vendor/fonts/
 !vendor/fonts/NotoSans-Regular.ttf

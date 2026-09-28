@@ -12,6 +12,8 @@ RUN cargo build --locked --manifest-path rust/api/Cargo.toml; and cargo test --l
 FROM dependencies AS runner
 COPY rust/api rust/api
 COPY rust/web/src rust/web/src
+COPY config/ai_medication_sources.yml config/ai_medication_sources.yml
+COPY config/nhs_dmd_curated_products.yml config/nhs_dmd_curated_products.yml
 COPY vendor/fonts vendor/fonts
 RUN find rust/api/src rust/web/src -type f -exec touch {} +; and cargo build --locked --manifest-path rust/api/Cargo.toml
 COPY rust/contract-tests rust/contract-tests

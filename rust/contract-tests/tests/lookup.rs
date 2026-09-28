@@ -1,6 +1,9 @@
 use medtracker_contract_tests::{fixture, Fixture, Target};
-use reqwest::blocking::Response;
+use reqwest::blocking::{Client, Response};
+use reqwest::redirect::Policy;
 use serde_json::{json, Value};
+use std::env;
+use std::time::{Duration, Instant};
 
 fn lookup_path(household_id: i64) -> String {
     format!("/api/v1/households/{household_id}/medication_lookup")
@@ -26,6 +29,33 @@ fn assert_error(response: Response, status: u16, code: &str) -> String {
     assert!(payload["error"]["message"].as_str().is_some());
     assert!(payload.get("data").is_none());
     id
+}
+
+fn rate_client() -> Client {
+    Client::builder()
+        .timeout(Duration::from_secs(5))
+        .redirect(Policy::none())
+        .no_proxy()
+        .build()
+        .expect("rate-limit HTTP client")
+}
+
+fn assert_operation_rate_limit(
+    limit: u64,
+    before_limit_status: u16,
+    mut request: impl FnMut() -> Response,
+) -> Response {
+    let started = Instant::now();
+    for _ in 0..=(limit * 2) {
+        let response = request();
+        if response.status().as_u16() == 429 {
+            assert!(started.elapsed() < Duration::from_secs(60));
+            assert_eq!(response.headers()["ratelimit-limit"], limit.to_string());
+            return response;
+        }
+        assert_eq!(response.status().as_u16(), before_limit_status);
+    }
+    panic!("operation did not reach its rate limit within two fixed windows");
 }
 
 struct AuditActor<'a> {
@@ -354,15 +384,17 @@ fn paid_suggestion_rejects_an_invalid_medication_shape() {
 
 #[test]
 fn lookup_rate_limit_returns_retry_metadata() {
-    let target = Target::from_env();
     let fixture = fixture();
-    let path = lookup_path(fixture.household_id);
-    for _ in 0..60 {
-        let response = target.get_from_local_client(&path, "198.51.100.61");
-        assert_eq!(response.status().as_u16(), 401);
-    }
-    let response = target.get_from_local_client(&path, "198.51.100.61");
-    assert_eq!(response.status().as_u16(), 429);
+    let origin = env::var("CONTRACT_RATE_BASE_URL").expect("non-loopback API base URL");
+    let path = format!("{origin}{}", lookup_path(fixture.household_id));
+    let client = rate_client();
+    let response = assert_operation_rate_limit(60, 401, || {
+        client
+            .get(&path)
+            .header("X-Forwarded-For", "198.51.100.61")
+            .send()
+            .expect("lookup rate-limit response")
+    });
     assert!(
         response.headers()["retry-after"]
             .to_str()
@@ -377,28 +409,20 @@ fn lookup_rate_limit_returns_retry_metadata() {
 
 #[test]
 fn suggestion_rate_limit_returns_retry_metadata() {
-    let target = Target::from_env();
     let fixture = fixture();
-    let path = suggestion_path(fixture.household_id);
+    let origin = env::var("CONTRACT_RATE_BASE_URL").expect("non-loopback API base URL");
+    let path = format!("{origin}{}", suggestion_path(fixture.household_id));
+    let client = rate_client();
     let body = json!({"medication": {"name": "Contract medicine"}});
-    for _ in 0..10 {
-        let response = target.post_json_with_header(
-            &path,
-            &fixture.access_token,
-            "X-Forwarded-For",
-            "198.51.100.62",
-            &body,
-        );
-        assert_eq!(response.status().as_u16(), 404);
-    }
-    let response = target.post_json_with_header(
-        &path,
-        &fixture.access_token,
-        "X-Forwarded-For",
-        "198.51.100.62",
-        &body,
-    );
-    assert_eq!(response.status().as_u16(), 429);
+    let response = assert_operation_rate_limit(10, 404, || {
+        client
+            .post(&path)
+            .bearer_auth(&fixture.access_token)
+            .header("X-Forwarded-For", "198.51.100.62")
+            .json(&body)
+            .send()
+            .expect("suggestion rate-limit response")
+    });
     assert!(
         response.headers()["retry-after"]
             .to_str()

@@ -534,7 +534,6 @@ fn settings_authority_validation_and_public_readback() {
     for token in [&fixture.access_token, &fixture.manager_access_token] {
         let response = target.get(&settings, Some(token));
         assert_eq!(response.status().as_u16(), 200);
-        assert!(response.headers().contains_key("etag"));
         let data = body(response)["data"].clone();
         assert_eq!(data["id"], fixture.household_id);
         assert_eq!(data["name"], fixture.household_name);

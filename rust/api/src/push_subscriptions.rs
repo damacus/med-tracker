@@ -60,10 +60,15 @@ impl Attributes {
     }
 }
 
-fn allowed_endpoint(endpoint: &str) -> bool {
-    if !endpoint.starts_with("https://")
-        || endpoint.trim() != endpoint
+pub(super) fn allowed_endpoint(endpoint: &str) -> bool {
+    let trusted = std::env::var("MEDTRACKER_TRUSTED_PUSH_ORIGIN").ok();
+    allowed_endpoint_with_trusted(endpoint, trusted.as_deref())
+}
+
+fn allowed_endpoint_with_trusted(endpoint: &str, trusted: Option<&str>) -> bool {
+    if endpoint.trim() != endpoint
         || endpoint.chars().any(char::is_whitespace)
+        || endpoint.contains('\\')
     {
         return false;
     }
@@ -74,12 +79,37 @@ fn allowed_endpoint(endpoint: &str) -> bool {
         .split(['/', '?', '#'])
         .next()
         .unwrap_or("");
-    if authority.contains(['@', '%', '\\']) || endpoint.contains('\\') {
+    if authority.contains(['@', '%', '\\']) {
         return false;
     }
     let Ok(url) = Url::parse(endpoint) else {
         return false;
     };
+    if let Some(trusted) = trusted {
+        if let Ok(origin) = Url::parse(trusted) {
+            if trusted.trim() == trusted
+                && !trusted.contains('\\')
+                && origin.scheme() == "http"
+                && origin.host_str() == Some("127.0.0.1")
+                && origin.port().is_some()
+                && origin.path() == "/"
+                && origin.query().is_none()
+                && origin.fragment().is_none()
+                && origin.username().is_empty()
+                && origin.password().is_none()
+                && url.origin() == origin.origin()
+                && url.scheme() == "http"
+                && url.host_str() == Some("127.0.0.1")
+                && url.username().is_empty()
+                && url.password().is_none()
+            {
+                return true;
+            }
+        }
+    }
+    if !endpoint.starts_with("https://") {
+        return false;
+    }
     if url.scheme() != "https" || !url.username().is_empty() || url.password().is_some() {
         return false;
     }
@@ -286,4 +316,38 @@ pub(super) async fn delete(
         .await
         .map_err(database_error)?;
     empty_success(db, &context, "DELETE", "destroy", StatusCode::NO_CONTENT).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::allowed_endpoint_with_trusted;
+
+    #[test]
+    fn trusted_push_origin_is_exact_and_loopback_only() {
+        let trusted = Some("http://127.0.0.1:39992");
+        assert!(allowed_endpoint_with_trusted(
+            "http://127.0.0.1:39992/push/test",
+            trusted
+        ));
+        for endpoint in [
+            "http://127.0.0.1:39993/push/test",
+            "http://localhost:39992/push/test",
+            "http://127.0.0.2:39992/push/test",
+            "http://user@127.0.0.1:39992/push/test",
+            "http://127.0.0.1%40evil.example:39992/push/test",
+        ] {
+            assert!(!allowed_endpoint_with_trusted(endpoint, trusted));
+        }
+        for trusted in [
+            "http://127.0.0.1:39992/extra",
+            "http://localhost:39992",
+            "http://127.0.0.1:39992?x=1",
+            "https://127.0.0.1:39992",
+        ] {
+            assert!(!allowed_endpoint_with_trusted(
+                "http://127.0.0.1:39992/push/test",
+                Some(trusted),
+            ));
+        }
+    }
 }

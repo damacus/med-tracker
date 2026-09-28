@@ -299,7 +299,14 @@ fn portable_bundle_dry_run_apply_and_public_readback() {
             fixture.portable_source_location_portable_id
         );
         assert!(take["taken_at"].is_string());
-        assert_eq!(take["dose_amount"], "2.0");
+        assert_eq!(
+            take["dose_amount"]
+                .as_str()
+                .unwrap()
+                .parse::<f64>()
+                .unwrap(),
+            2.0
+        );
     }
     assert_eq!(
         rows(&source_before, "notification_preferences")[0]["person_portable_id"],
@@ -666,4 +673,40 @@ fn portable_endpoints_enforce_current_household_and_account_authority() {
         )["records"],
         before["records"]
     );
+}
+
+#[test]
+fn portable_import_rejects_cross_person_existing_references_without_changes() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let household_id = fixture.portable_auth_household_id;
+    let owner_token = &fixture.portable_auth_owner_token;
+    let before = target_state(&target, household_id, owner_token);
+
+    for bundle in [
+        &fixture.portable_auth_reparent_bundle,
+        &fixture.portable_auth_bootstrap_bundle,
+    ] {
+        for action in ["portable_imports/dry_run", "portable_imports"] {
+            let response = import(
+                &target,
+                household_id,
+                &fixture.portable_auth_delegate_token,
+                action,
+                PASSPHRASE,
+                bundle,
+            );
+            let request_id = response.headers()["x-request-id"]
+                .to_str()
+                .expect("rejected import request ID")
+                .to_owned();
+            assert_failure(response, 403);
+            let after = target_state(&target, household_id, owner_token);
+            assert_eq!(after, before, "rejected import changed household state");
+            assert!(!after
+                .import_audits
+                .iter()
+                .any(|event| event["request_id"] == request_id));
+        }
+    }
 }
