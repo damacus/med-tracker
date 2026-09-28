@@ -179,6 +179,26 @@ entity!(household, "households", {
     lifecycle_state: String,
     slug: String,
     name: String,
+    timezone: String,
+    subscription_plan: String,
+    updated_at: DateTime,
+});
+
+entity!(api_idempotency_key, "api_idempotency_keys", {
+    household_id: i64,
+    account_id: i64,
+    api_session_id: Option<i64>,
+    api_app_token_id: Option<i64>,
+    key: String,
+    request_method: String,
+    request_path: String,
+    request_digest: String,
+    response_status: i32,
+    response_body: serde_json::Value,
+    response_headers: serde_json::Value,
+    expires_at: DateTime,
+    created_at: DateTime,
+    updated_at: DateTime,
 });
 
 entity!(membership, "household_memberships", {

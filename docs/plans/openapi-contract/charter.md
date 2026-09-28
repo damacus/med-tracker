@@ -17,6 +17,27 @@ criteria and must not be counted as specification coverage.
 
 ## Ownership and execution
 
+### Continuous completion: 28 September 2026
+
+The user approved completion of all 118 currently documented operations,
+including the 29 previously present but incompletely verified operations.
+Preserve the original 89-operation baseline separately. This instruction
+supersedes earlier batch stop limits and conflicting sole-writer paragraphs.
+Sol owns production, specification clarification and shared runner/router
+files; Luna owns tests in separate files. The orchestrator owns independent
+review, integration, the evidence ledger and publication. Reuse shared proof
+without weakening endpoint-specific acceptance. Escalate complex test work
+to Sol if repeated failures outweigh its saving.
+
+Start with household administration settings (GET/PATCH/PUT), including its
+shared idempotency prerequisite. Then proceed continuously through medication
+workflows, administration, personal records, data exchange/reports and external
+integrations. Verify already-present operations with each related family.
+Compile tests before isolated Compose builds, review before final acceptance,
+then publish each verified batch. Required final CI and full API acceptance
+must pass before completion. No UI work, deployment, merge or reset credits.
+Use adaptive model routing and recheck allowance at batch boundaries.
+
 ### Execution update: 26 September 2026
 
 The user approved separate, parallel test and production lanes to accelerate

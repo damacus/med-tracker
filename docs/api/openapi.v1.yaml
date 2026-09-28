@@ -3760,6 +3760,7 @@ paths:
         - Household administration
         - Household settings
       summary: Read household administration settings.
+      description: Only the household owner or an administrator can read these settings.
       parameters:
         - $ref: '#/components/parameters/household_id'
       responses:
@@ -3783,8 +3784,10 @@ paths:
         - Household administration
         - Household settings
       summary: Update household administration settings.
+      description: The owner or an administrator can merge the supplied attributes. Omitted fields and the household slug remain unchanged.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/idempotency_key'
       requestBody:
         required: true
         content:
@@ -3818,8 +3821,10 @@ paths:
         - Household administration
         - Household settings
       summary: Replace household administration settings.
+      description: The owner or an administrator can merge the supplied attributes. Omitted fields and the household slug remain unchanged.
       parameters:
         - $ref: '#/components/parameters/household_id'
+        - $ref: '#/components/parameters/idempotency_key'
       requestBody:
         required: true
         content:
@@ -4252,7 +4257,7 @@ components:
       required: false
       schema:
         type: string
-      description: Replays the committed response for a matching request; reuse with different content returns conflict.
+      description: A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit.
     household_id:
       name: household_id
       in: path

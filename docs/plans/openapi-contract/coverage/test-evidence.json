@@ -615,5 +615,70 @@
       "secret-free audit metadata, authentication/household denials and direct nonloopback 429"
     ],
     "not_yet_tested": []
+  },
+  "getHouseholdAdminSettings": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_admin_settings.rs",
+    "statuses_tested": [
+      200,
+      401,
+      403,
+      404,
+      429
+    ],
+    "behaviours_tested": [
+      "exact six-field data response with RFC3339 updated_at",
+      "owner and administrator access; ordinary member forbidden",
+      "missing and invalid authentication; cross-household and missing household boundaries",
+      "direct nonloopback rate-limit wiring; shared limiter response and window proofs"
+    ],
+    "not_yet_tested": []
+  },
+  "updateHouseholdAdminSettings": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_admin_settings.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "administrator updates allowed fields; omitted fields and slug survive rename",
+      "strict response, request-correlated successful-update domain audit",
+      "malformed JSON and missing wrapper 400; invalid, blank and unknown fields 422 without mutation",
+      "owner and administrator shared policy; ordinary member and foreign household denied; missing household 404",
+      "same-account replay through another valid credential; changed payload and account conflict",
+      "replay rechecks current membership role and adds no duplicate domain audit",
+      "concurrent identical keyed writes execute once; expired key can be reused",
+      "direct 401 and nonloopback 429 wiring; shared authentication and limiter proofs"
+    ],
+    "not_yet_tested": []
+  },
+  "replaceHouseholdAdminSettings": {
+    "state": "full_runtime_verified",
+    "source": "rust/contract-tests/tests/openapi_admin_settings.rs",
+    "statuses_tested": [
+      200,
+      400,
+      401,
+      403,
+      404,
+      409,
+      422,
+      429
+    ],
+    "behaviours_tested": [
+      "owner partial update preserves omitted fields and slug; exact response and correlated audit",
+      "malformed JSON and missing wrapper 400; strict invalid values and unknown fields 422 without mutation",
+      "missing and invalid authentication, ordinary member, foreign and missing household boundaries",
+      "same-account PUT replay and changed-payload conflict; shared PATCH/PUT transaction, expiry and concurrency implementation",
+      "direct nonloopback rate-limit wiring; shared limiter response and window proofs"
+    ],
+    "not_yet_tested": []
   }
 }
