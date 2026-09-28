@@ -1235,6 +1235,160 @@ fixture = ActiveRecord::Base.transaction do
                            taken_from_medication: dashboard_history_med,
                            taken_from_location: dashboard_history_location)
   end
+  dashboard_frequency_account, dashboard_frequency_household, = create_household(nonce, 'dashboard-frequency')
+  dashboard_frequency_location = Location.create!(household: dashboard_frequency_household,
+                                                  name: 'Frequency Test Cabinet')
+  dashboard_frequency_med = Medication.create!(household: dashboard_frequency_household,
+                                               location: dashboard_frequency_location,
+                                               name: 'Frequency Only Test Tablet', dose_amount: '1',
+                                               dose_unit: 'tablet', current_supply: '20')
+  dashboard_frequency_schedule = Schedule.create!(household: dashboard_frequency_household,
+                                                  person: dashboard_frequency_account.person,
+                                                  medication: dashboard_frequency_med,
+                                                  dose_amount: '1', dose_unit: 'tablet', frequency: 'As Needed',
+                                                  schedule_type: :daily, start_date: Date.new(2026, 1, 1),
+                                                  end_date: Date.new(2099, 12, 31))
+  dashboard_stock_account, dashboard_stock_household, = create_household(nonce, 'dashboard-stock')
+  dashboard_stock_source_location = Location.create!(household: dashboard_stock_household,
+                                                     name: 'Stock Source Test Cabinet')
+  dashboard_stock_alternate_location = Location.create!(household: dashboard_stock_household,
+                                                        name: 'Stock Alternate Test Cabinet')
+  dashboard_stock_source_med = Medication.create!(household: dashboard_stock_household,
+                                                  location: dashboard_stock_source_location,
+                                                  name: 'Equivalent Stock Test Tablet', dose_amount: '1',
+                                                  dose_unit: 'tablet', current_supply: '0')
+  dashboard_stock_equivalent_med = Medication.create!(household: dashboard_stock_household,
+                                                      location: dashboard_stock_alternate_location,
+                                                      name: 'Equivalent Stock Test Tablet', dose_amount: '1',
+                                                      dose_unit: 'tablet', current_supply: '20')
+  dashboard_stock_assignment = PersonMedication.create!(household: dashboard_stock_household,
+                                                        person: dashboard_stock_account.person,
+                                                        medication: dashboard_stock_source_med,
+                                                        administration_kind: :as_needed,
+                                                        dose_amount: '1', dose_unit: 'tablet')
+  dashboard_stock_member, = create_admin_member(dashboard_stock_household, nonce, 'dashboard-stock-member')
+  dashboard_stock_owner_membership = dashboard_stock_household.household_memberships.find_by!(account: dashboard_stock_account)
+  PersonAccessGrant.create!(household: dashboard_stock_household, household_membership: dashboard_stock_member,
+                            person: dashboard_stock_account.person, access_level: :view,
+                            relationship_type: :family_member, granted_by_membership: dashboard_stock_owner_membership)
+  PersonAccessGrant.create!(household: dashboard_stock_household, household_membership: dashboard_stock_member,
+                            person: dashboard_stock_member.person, access_level: :view,
+                            relationship_type: :family_member, granted_by_membership: dashboard_stock_owner_membership)
+  dashboard_stock_member_assignment = PersonMedication.create!(household: dashboard_stock_household,
+                                                               person: dashboard_stock_member.person,
+                                                               medication: dashboard_stock_source_med,
+                                                               administration_kind: :as_needed,
+                                                               dose_amount: '1', dose_unit: 'tablet')
+  dashboard_stock_inactive_member, = create_admin_member(dashboard_stock_household, nonce,
+                                                         'dashboard-stock-inactive-member')
+  PersonAccessGrant.create!(household: dashboard_stock_household,
+                            household_membership: dashboard_stock_inactive_member,
+                            person: dashboard_stock_inactive_member.person, access_level: :view,
+                            relationship_type: :family_member, granted_by_membership: dashboard_stock_owner_membership)
+  dashboard_stock_inactive_source = PersonMedication.create!(household: dashboard_stock_household,
+                                                             person: dashboard_stock_inactive_member.person,
+                                                             medication: dashboard_stock_source_med,
+                                                             administration_kind: :as_needed,
+                                                             dose_amount: '1', dose_unit: 'tablet')
+  dashboard_stock_inactive_equivalent = PersonMedication.create!(household: dashboard_stock_household,
+                                                                 person: dashboard_stock_inactive_member.person,
+                                                                 medication: dashboard_stock_equivalent_med,
+                                                                 administration_kind: :as_needed,
+                                                                 dose_amount: '1', dose_unit: 'tablet', active: false)
+  dashboard_active_account, dashboard_active_household, = create_household(nonce, 'dashboard-active')
+  dashboard_active_account.update!(preferences: { 'time_zone' => 'America/Los_Angeles' })
+  dashboard_active_location = Location.create!(household: dashboard_active_household,
+                                               name: 'Active Date Test Cabinet')
+  dashboard_active_med = Medication.create!(household: dashboard_active_household,
+                                            location: dashboard_active_location,
+                                            name: 'Future Local PRN Test Tablet', dose_amount: '1',
+                                            dose_unit: 'tablet', current_supply: '20')
+  dashboard_active_schedule = Schedule.create!(household: dashboard_active_household,
+                                               person: dashboard_active_account.person,
+                                               medication: dashboard_active_med,
+                                               dose_amount: '1', dose_unit: 'tablet', frequency: 'As needed',
+                                               schedule_type: :prn, start_date: Date.new(2026, 3, 29),
+                                               end_date: Date.new(2099, 12, 31))
+  dashboard_active_end_med = Medication.create!(household: dashboard_active_household,
+                                                location: dashboard_active_location,
+                                                name: 'Last Local Day PRN Test Tablet', dose_amount: '1',
+                                                dose_unit: 'tablet', current_supply: '20')
+  dashboard_active_end_schedule = Schedule.create!(household: dashboard_active_household,
+                                                   person: dashboard_active_account.person,
+                                                   medication: dashboard_active_end_med,
+                                                   dose_amount: '1', dose_unit: 'tablet', frequency: 'As needed',
+                                                   schedule_type: :prn, start_date: Date.new(2026, 1, 1),
+                                                   end_date: Date.new(2026, 3, 28))
+  dashboard_taper_account, dashboard_taper_household, = create_household(nonce, 'dashboard-taper')
+  dashboard_taper_account.update!(preferences: { 'time_zone' => 'Europe/London' })
+  dashboard_taper_location = Location.create!(household: dashboard_taper_household,
+                                              name: 'Taper Test Cabinet')
+  dashboard_taper_med = Medication.create!(household: dashboard_taper_household,
+                                           location: dashboard_taper_location,
+                                           name: 'Taper Step PRN Test Tablet', dose_amount: '1',
+                                           dose_unit: 'tablet', current_supply: '20')
+  dashboard_taper_schedule = Schedule.create!(household: dashboard_taper_household,
+                                              person: dashboard_taper_account.person,
+                                              medication: dashboard_taper_med,
+                                              dose_amount: '1', dose_unit: 'tablet', frequency: 'As needed',
+                                              schedule_type: :tapering, max_daily_doses: 3,
+                                              schedule_config: {
+                                                'as_needed' => true, 'max_daily_doses' => 3,
+                                                'taper_steps' => [
+                                                  { 'start_date' => '2026-03-29', 'end_date' => '2026-03-29',
+                                                    'max_daily_doses' => 1 }
+                                                ]
+                                              },
+                                              start_date: Date.new(2026, 1, 1), end_date: Date.new(2099, 12, 31))
+  dashboard_taper_take = MedicationTake.create!(household: dashboard_taper_household,
+                                                schedule: dashboard_taper_schedule,
+                                                taken_at: Time.iso8601('2026-03-29T00:10:00Z'),
+                                                dose_amount: '1', dose_unit: 'tablet',
+                                                taken_from_medication: dashboard_taper_med,
+                                                taken_from_location: dashboard_taper_location)
+  dashboard_taper_interval_med = Medication.create!(household: dashboard_taper_household,
+                                                    location: dashboard_taper_location,
+                                                    name: 'Taper Interval PRN Test Tablet', dose_amount: '1',
+                                                    dose_unit: 'tablet', current_supply: '20')
+  dashboard_taper_interval_schedule = Schedule.create!(household: dashboard_taper_household,
+                                                       person: dashboard_taper_account.person,
+                                                       medication: dashboard_taper_interval_med,
+                                                       dose_amount: '1', dose_unit: 'tablet', frequency: 'As needed',
+                                                       schedule_type: :tapering, min_hours_between_doses: 1,
+                                                       schedule_config: {
+                                                         'as_needed' => true, 'min_hours_between_doses' => 1,
+                                                         'taper_steps' => [
+                                                           { 'start_date' => '2026-03-29', 'end_date' => '2026-03-29',
+                                                             'min_hours_between_doses' => 3 }
+                                                         ]
+                                                       },
+                                                       start_date: Date.new(2026, 1, 1), end_date: Date.new(2099, 12, 31))
+  dashboard_taper_interval_take = MedicationTake.create!(household: dashboard_taper_household,
+                                                         schedule: dashboard_taper_interval_schedule,
+                                                         taken_at: Time.iso8601('2026-03-29T00:10:00Z'),
+                                                         dose_amount: '1', dose_unit: 'tablet',
+                                                         taken_from_medication: dashboard_taper_interval_med,
+                                                         taken_from_location: dashboard_taper_location)
+  dashboard_taper_gap_med = Medication.create!(household: dashboard_taper_household,
+                                               location: dashboard_taper_location,
+                                               name: 'Gap Day Taper PRN Test Tablet', dose_amount: '1',
+                                               dose_unit: 'tablet', current_supply: '20')
+  dashboard_taper_gap_schedule = Schedule.create!(household: dashboard_taper_household,
+                                                  person: dashboard_taper_account.person,
+                                                  medication: dashboard_taper_gap_med,
+                                                  dose_amount: '1', dose_unit: 'tablet', frequency: 'As needed',
+                                                  schedule_type: :tapering,
+                                                  schedule_config: {
+                                                    'as_needed' => true,
+                                                    'taper_steps' => [
+                                                      { 'start_date' => '2026-03-28', 'end_date' => '2026-03-28',
+                                                        'max_daily_doses' => 1 },
+                                                      { 'start_date' => '2026-03-30', 'end_date' => '2026-03-30',
+                                                        'max_daily_doses' => 1 }
+                                                    ]
+                                                  },
+                                                  start_date: Date.new(2026, 1, 1),
+                                                  end_date: Date.new(2099, 12, 31))
 
   {
     dashboard_household_id: dashboard_household.id,
@@ -1267,6 +1421,31 @@ fixture = ActiveRecord::Base.transaction do
     dashboard_history_person_id: dashboard_history_account.person.id,
     dashboard_history_medication_name: dashboard_history_med.name,
     dashboard_history_take_count: 501,
+    dashboard_frequency_email: dashboard_frequency_account.email,
+    dashboard_frequency_household_slug: dashboard_frequency_household.slug,
+    dashboard_frequency_medication_name: dashboard_frequency_med.name,
+    dashboard_stock_email: dashboard_stock_account.email,
+    dashboard_stock_household_id: dashboard_stock_household.id,
+    dashboard_stock_household_slug: dashboard_stock_household.slug,
+    dashboard_stock_person_id: dashboard_stock_account.person.id,
+    dashboard_stock_source_medication_id: dashboard_stock_source_med.id,
+    dashboard_stock_source_medication_name: dashboard_stock_source_med.name,
+    dashboard_stock_equivalent_medication_id: dashboard_stock_equivalent_med.id,
+    dashboard_stock_equivalent_medication_name: dashboard_stock_equivalent_med.name,
+    dashboard_stock_member_email: dashboard_stock_member.account.email,
+    dashboard_stock_member_person_id: dashboard_stock_member.person.id,
+    dashboard_stock_inactive_member_email: dashboard_stock_inactive_member.account.email,
+    dashboard_stock_inactive_member_person_id: dashboard_stock_inactive_member.person.id,
+    dashboard_active_email: dashboard_active_account.email,
+    dashboard_active_household_slug: dashboard_active_household.slug,
+    dashboard_active_medication_name: dashboard_active_med.name,
+    dashboard_active_end_medication_name: dashboard_active_end_med.name,
+    dashboard_taper_email: dashboard_taper_account.email,
+    dashboard_taper_household_slug: dashboard_taper_household.slug,
+    dashboard_taper_medication_name: dashboard_taper_med.name,
+    dashboard_taper_interval_medication_name: dashboard_taper_interval_med.name,
+    dashboard_taper_interval_next_local: '04:10',
+    dashboard_taper_gap_medication_name: dashboard_taper_gap_med.name,
     dashboard_person_ids: dashboard_visible.map(&:id),
     dashboard_person_names: dashboard_visible.map(&:name),
     dashboard_clock: '2026-03-29T00:30:00Z',

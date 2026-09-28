@@ -140,6 +140,29 @@ fn prn_cooldown_uses_the_last_take_before_now() {
 }
 
 #[test]
+fn prn_next_availability_is_the_later_of_cycle_reset_and_cooldown_expiry() {
+    let now = Utc.with_ymd_and_hms(2026, 3, 29, 6, 30, 0).unwrap();
+    let last_take = Utc.with_ymd_and_hms(2026, 3, 29, 6, 0, 0).unwrap();
+    let projection = calculate_prn(PrnInput {
+        now,
+        timezone: chrono_tz::America::Los_Angeles,
+        paused: false,
+        active: true,
+        stock_available: true,
+        max_doses: Some(1),
+        min_hours_between_doses: Some(4.0),
+        dose_cycle: "daily",
+        takes: &[last_take],
+    });
+
+    assert_eq!(projection.state, TaskState::MaxReached);
+    assert_eq!(
+        projection.next_available_at,
+        Some(Utc.with_ymd_and_hms(2026, 3, 29, 10, 0, 0).unwrap())
+    );
+}
+
+#[test]
 fn prn_pause_activity_and_stock_restrictions_precede_availability() {
     let now = Utc.with_ymd_and_hms(2026, 3, 29, 0, 30, 0).unwrap();
     let paused = calculate_prn(PrnInput {

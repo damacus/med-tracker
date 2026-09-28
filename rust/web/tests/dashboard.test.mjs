@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import vm from 'node:vm';
 import test from 'node:test';
 import { chromium } from 'playwright';
 
@@ -38,6 +39,13 @@ async function login(page, { email = accountEmail, slug = householdSlug } = {}) 
   await password.fill('password');
   await password.press('Enter');
   await page.waitForURL(url => url.pathname === `/households/${slug}/dashboard`);
+}
+
+async function openPrnTasks(page) {
+  const disclosure = page.getByTestId('dashboard-as-needed-person');
+  if (await disclosure.count()) {
+    if (!(await disclosure.evaluate(element => element.open))) await disclosure.locator('summary').click();
+  }
 }
 
 function watchServiceWorker(context, page) {
@@ -534,6 +542,356 @@ test('dashboard reads historical takes beyond the first 500 records', async () =
   } finally {
     await context.close();
   }
+});
+
+test('frequency-only as-needed schedules remain visible as available tasks', async () => {
+  const context = await browser.newContext();
+
+  try {
+    const page = await context.newPage();
+    await login(page, { email: fixture.dashboard_frequency_email, slug: fixture.dashboard_frequency_household_slug });
+    const url = new URL(`/households/${fixture.dashboard_frequency_household_slug}/dashboard`, baseUrl).toString();
+    assert.equal((await page.request.get(url)).status(), 200);
+    await page.goto(url);
+    await openPrnTasks(page);
+    const medication = page.getByTestId('dashboard-as-needed-task').filter({ hasText: fixture.dashboard_frequency_medication_name });
+    assert.equal(await medication.count(), 1, 'Frequency-only as-needed schedule must be projected as a PRN task');
+    assert.ok(await medication.getByText('Available', { exact: true }).isVisible());
+  } finally {
+    await context.close();
+  }
+});
+
+test('equivalent unassigned stock is eligible for owners but hidden from restricted members', async () => {
+  const ownerContext = await browser.newContext();
+  const memberContext = await browser.newContext();
+
+  try {
+    const ownerPage = await ownerContext.newPage();
+    await login(ownerPage, { email: fixture.dashboard_stock_email, slug: fixture.dashboard_stock_household_slug });
+    const inventoryPath = `/api/v1/households/${fixture.dashboard_stock_household_id}/medications?per_page=100`;
+    const ownerInventoryResponse = await ownerPage.request.get(new URL(inventoryPath, baseUrl).toString());
+    assert.equal(ownerInventoryResponse.status(), 200);
+    const ownerMedicationIds = (await ownerInventoryResponse.json()).data.map(medication => String(medication.id));
+    assert.ok(ownerMedicationIds.includes(String(fixture.dashboard_stock_source_medication_id)));
+    assert.ok(ownerMedicationIds.includes(String(fixture.dashboard_stock_equivalent_medication_id)));
+    const ownerMeResponse = await ownerPage.request.get(new URL(
+      `/api/v1/households/${fixture.dashboard_stock_household_id}/me`,
+      baseUrl,
+    ).toString());
+    assert.equal(ownerMeResponse.status(), 200);
+    const ownerMembershipRole = (await ownerMeResponse.json()).data.membership_role;
+    await ownerPage.goto(new URL(
+      `/households/${fixture.dashboard_stock_household_slug}/dashboard?dashboard_person_id=${fixture.dashboard_stock_person_id}`,
+      baseUrl,
+    ).toString());
+    await openPrnTasks(ownerPage);
+    const ownerTask = ownerPage.locator('.dashboard-task').filter({ hasText: fixture.dashboard_stock_source_medication_name });
+    const ownerTaskText = await ownerTask.count() ? await ownerTask.innerText() : '<absent>';
+    assert.ok(await ownerTask.getByText('Available', { exact: true }).isVisible(),
+      `owner role=${ownerMembershipRole}; source row=${ownerTaskText}`);
+
+    const memberPage = await memberContext.newPage();
+    await login(memberPage, { email: fixture.dashboard_stock_member_email, slug: fixture.dashboard_stock_household_slug });
+    const memberInventoryResponse = await memberPage.request.get(new URL(inventoryPath, baseUrl).toString());
+    assert.equal(memberInventoryResponse.status(), 200);
+    const memberMedicationIds = (await memberInventoryResponse.json()).data.map(medication => String(medication.id));
+    assert.ok(memberMedicationIds.includes(String(fixture.dashboard_stock_source_medication_id)));
+    assert.ok(!memberMedicationIds.includes(String(fixture.dashboard_stock_equivalent_medication_id)));
+    const memberMeResponse = await memberPage.request.get(new URL(
+      `/api/v1/households/${fixture.dashboard_stock_household_id}/me`,
+      baseUrl,
+    ).toString());
+    assert.equal(memberMeResponse.status(), 200);
+    const memberMembershipRole = (await memberMeResponse.json()).data.membership_role;
+    const memberDashboardUrl = new URL(
+      `/households/${fixture.dashboard_stock_household_slug}/dashboard?dashboard_person_id=${fixture.dashboard_stock_member_person_id}`,
+      baseUrl,
+    ).toString();
+    const memberDashboardResponse = await memberPage.request.get(memberDashboardUrl);
+    const memberDashboardStatus = memberDashboardResponse.status();
+    await memberPage.goto(memberDashboardUrl);
+    await openPrnTasks(memberPage);
+    const memberTask = memberPage.locator('.dashboard-task').filter({ hasText: fixture.dashboard_stock_source_medication_name });
+    const memberTaskText = await memberTask.count() ? await memberTask.innerText() : '<absent>';
+    assert.ok(await memberTask.getByText('Out of stock', { exact: true }).isVisible(),
+      `member role=${memberMembershipRole}; dashboard status=${memberDashboardStatus}; visible medication IDs=${memberMedicationIds.join(',')}; source row=${memberTaskText}`);
+  } finally {
+    await ownerContext.close();
+    await memberContext.close();
+  }
+});
+
+test('restricted members can use equivalent stock assigned through an inactive source', async () => {
+  const context = await browser.newContext();
+
+  try {
+    const page = await context.newPage();
+    await login(page, {
+      email: fixture.dashboard_stock_inactive_member_email,
+      slug: fixture.dashboard_stock_household_slug,
+    });
+    const inventoryPath = `/api/v1/households/${fixture.dashboard_stock_household_id}/medications?per_page=100`;
+    const inventoryResponse = await page.request.get(new URL(inventoryPath, baseUrl).toString());
+    assert.equal(inventoryResponse.status(), 200);
+    const medicationIds = (await inventoryResponse.json()).data.map(medication => String(medication.id));
+    assert.ok(medicationIds.includes(String(fixture.dashboard_stock_source_medication_id)));
+    assert.ok(medicationIds.includes(String(fixture.dashboard_stock_equivalent_medication_id)));
+
+    const url = new URL(
+      `/households/${fixture.dashboard_stock_household_slug}/dashboard?dashboard_person_id=${fixture.dashboard_stock_inactive_member_person_id}`,
+      baseUrl,
+    ).toString();
+    assert.equal((await page.request.get(url)).status(), 200);
+    await page.goto(url);
+    await openPrnTasks(page);
+    const sourceTask = page.getByTestId('dashboard-as-needed-task')
+      .filter({ hasText: fixture.dashboard_stock_source_medication_name });
+    assert.ok(await sourceTask.getByText('Available', { exact: true }).isVisible());
+    assert.equal(await page.getByTestId('dashboard-as-needed-task').count(), 1,
+      'The inactive equivalent source must not become a second actionable task');
+  } finally {
+    await context.close();
+  }
+});
+
+test('schedule starting today uses the selected profile local day', async () => {
+  const context = await browser.newContext();
+
+  try {
+    const page = await context.newPage();
+    await login(page, { email: fixture.dashboard_active_email, slug: fixture.dashboard_active_household_slug });
+    const url = new URL(`/households/${fixture.dashboard_active_household_slug}/dashboard`, baseUrl).toString();
+    assert.equal((await page.request.get(url)).status(), 200);
+    await page.goto(url);
+    const body = await page.locator('body').innerText();
+    assert.ok(!body.includes(fixture.dashboard_active_medication_name));
+  } finally {
+    await context.close();
+  }
+});
+
+test('schedule ending today remains active for the selected profile local day', async () => {
+  const context = await browser.newContext();
+
+  try {
+    const page = await context.newPage();
+    await login(page, { email: fixture.dashboard_active_email, slug: fixture.dashboard_active_household_slug });
+    const url = new URL(`/households/${fixture.dashboard_active_household_slug}/dashboard`, baseUrl).toString();
+    assert.equal((await page.request.get(url)).status(), 200);
+    await page.goto(url);
+    const body = await page.locator('body').innerText();
+    assert.ok(body.includes(fixture.dashboard_active_end_medication_name));
+    await openPrnTasks(page);
+    const task = page.locator('.dashboard-task').filter({ hasText: fixture.dashboard_active_end_medication_name });
+    assert.equal(await task.getByText('Available', { exact: true }).count(), 1);
+  } finally {
+    await context.close();
+  }
+});
+
+test('taper step max dose overrides the source PRN max dose', async () => {
+  const context = await browser.newContext();
+
+  try {
+    const page = await context.newPage();
+    await login(page, { email: fixture.dashboard_taper_email, slug: fixture.dashboard_taper_household_slug });
+    const url = new URL(`/households/${fixture.dashboard_taper_household_slug}/dashboard`, baseUrl).toString();
+    assert.equal((await page.request.get(url)).status(), 200);
+    await page.goto(url);
+    await openPrnTasks(page);
+    const task = page.locator('.dashboard-task').filter({ hasText: fixture.dashboard_taper_medication_name });
+    const rowCount = await task.count();
+    assert.equal(rowCount, 1, `expected taper PRN task; page=${await page.locator('body').innerText()}`);
+    assert.match(await task.locator('.dashboard-status').innerText(), /limit reached/i,
+      `unexpected taper PRN state; row=${await task.innerText()}`);
+  } finally {
+    await context.close();
+  }
+});
+
+test('taper step minimum interval overrides the source PRN interval', async () => {
+  const context = await browser.newContext();
+
+  try {
+    const page = await context.newPage();
+    await login(page, { email: fixture.dashboard_taper_email, slug: fixture.dashboard_taper_household_slug });
+    const url = new URL(`/households/${fixture.dashboard_taper_household_slug}/dashboard`, baseUrl).toString();
+    assert.equal((await page.request.get(url)).status(), 200);
+    await page.goto(url);
+    await openPrnTasks(page);
+    const task = page.locator('.dashboard-task').filter({ hasText: fixture.dashboard_taper_interval_medication_name });
+    assert.equal(await task.count(), 1, `expected taper interval PRN task; page=${await page.locator('body').innerText()}`);
+    assert.ok(await task.getByText('Wait', { exact: true }).isVisible());
+    assert.ok(await task.getByText(fixture.dashboard_taper_interval_next_local, { exact: true }).isVisible());
+  } finally {
+    await context.close();
+  }
+});
+
+test('taper gap day does not project a PRN task', async () => {
+  const context = await browser.newContext();
+
+  try {
+    const page = await context.newPage();
+    await login(page, { email: fixture.dashboard_taper_email, slug: fixture.dashboard_taper_household_slug });
+    const url = new URL(`/households/${fixture.dashboard_taper_household_slug}/dashboard`, baseUrl).toString();
+    assert.equal((await page.request.get(url)).status(), 200);
+    await page.goto(url);
+    await openPrnTasks(page);
+    assert.equal(
+      await page.getByTestId('dashboard-as-needed-task')
+        .filter({ hasText: fixture.dashboard_taper_gap_medication_name }).count(),
+      0,
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+test('PRN dose-limit status copy does not assume a daily cycle', async () => {
+  const context = await browser.newContext();
+
+  try {
+    const page = await context.newPage();
+    await login(page, { email: fixture.dashboard_taper_email, slug: fixture.dashboard_taper_household_slug });
+    const url = new URL(`/households/${fixture.dashboard_taper_household_slug}/dashboard`, baseUrl).toString();
+    assert.equal((await page.request.get(url)).status(), 200);
+    await page.goto(url);
+    await openPrnTasks(page);
+    const task = page.locator('.dashboard-task').filter({ hasText: fixture.dashboard_taper_medication_name });
+    assert.equal(await task.locator('.dashboard-status').innerText(), 'Dose limit reached');
+  } finally {
+    await context.close();
+  }
+});
+
+test('online public asset requests refresh cached CSS before offline fallback', async () => {
+  const browserContext = await browser.newContext();
+  let serviceWorkerSource;
+  try {
+    const page = await browserContext.newPage();
+    const workerResponse = await page.request.get(new URL('/sw.js', baseUrl).toString());
+    assert.equal(workerResponse.status(), 200);
+    serviceWorkerSource = await workerResponse.text();
+  } finally {
+    await browserContext.close();
+  }
+  const cssUrl = new URL('/dashboard.css', baseUrl).toString();
+  const otherUrl = new URL('/dashboard.js', baseUrl).toString();
+  const offlineUrl = new URL('/offline', baseUrl).toString();
+  const entries = new Map([
+    [cssUrl, new Response('old stylesheet', { status: 200 })],
+    [otherUrl, new Response('existing script', { status: 200 })],
+    [offlineUrl, new Response('<main>Offline. Reconnect to continue.</main>', { status: 200 })],
+  ]);
+  const cache = {
+    async match(request) {
+      const url = typeof request === 'string' ? new URL(request, baseUrl).toString() : new URL(request.url).toString();
+      return entries.get(url);
+    },
+    async put(request, response) { entries.set(new URL(request.url).toString(), response); },
+  };
+  const listeners = new Map();
+  let networkRequests = 0;
+  let responseMode = 'fresh';
+  let offline = false;
+  const responseWithUrl = (body, url, { contentType = 'text/css', redirected = false } = {}) => {
+    const response = new Response(body, { status: 200, headers: { 'content-type': contentType } });
+    Object.defineProperty(response, 'url', { value: url });
+    Object.defineProperty(response, 'redirected', { value: redirected });
+    return response;
+  };
+  const self = {
+    location: { origin: new URL(baseUrl).origin },
+    clients: { claim: async () => {} },
+    addEventListener: (name, listener) => listeners.set(name, listener),
+    skipWaiting: async () => {},
+  };
+  const vmContext = {
+    self,
+    caches: {
+      open: async name => { assert.match(name, /^medtracker-public-dashboard-/); return cache; },
+      match: async request => cache.match(request),
+    },
+    URL,
+    fetch: async request => {
+      networkRequests += 1;
+      if (offline) throw new Error('offline');
+      const requestUrl = new URL(request.url);
+      if (requestUrl.searchParams.has('dashboard_person_id')) {
+        return responseWithUrl('private query response', 'https://private.invalid/dashboard', {
+          contentType: 'text/html',
+          redirected: true,
+        });
+      }
+      if (responseMode === 'redirected') {
+        return responseWithUrl('private redirected response', 'https://private.invalid/dashboard', {
+          contentType: 'text/html',
+          redirected: true,
+        });
+      }
+      if (requestUrl.pathname !== '/dashboard.css') throw new Error('unexpected public path');
+      return responseWithUrl('current stylesheet', cssUrl);
+    },
+  };
+  vm.runInNewContext(serviceWorkerSource, vmContext, { filename: 'dashboard-sw.js' });
+
+  let responsePromise;
+  listeners.get('fetch')({
+    request: new Request(cssUrl, { method: 'GET' }),
+    respondWith(promise) { responsePromise = promise; },
+  });
+  const response = await responsePromise;
+
+  assert.equal(await response.text(), 'current stylesheet');
+  assert.equal(networkRequests, 1);
+  assert.equal(await (await entries.get(cssUrl).clone()).text(), 'current stylesheet');
+  assert.equal(await (await entries.get(otherUrl).clone()).text(), 'existing script');
+
+  const privacyFailures = [];
+  const queryUrl = new URL('/dashboard.css?dashboard_person_id=123', baseUrl).toString();
+  let queryResponsePromise;
+  listeners.get('fetch')({
+    request: new Request(queryUrl),
+    respondWith(promise) { queryResponsePromise = promise; },
+  });
+  if (queryResponsePromise) await queryResponsePromise;
+  if (entries.has(queryUrl)) privacyFailures.push(`cached query-bearing URL ${queryUrl}`);
+
+  responseMode = 'redirected';
+  let redirectedResponsePromise;
+  listeners.get('fetch')({
+    request: new Request(cssUrl),
+    respondWith(promise) { redirectedResponsePromise = promise; },
+  });
+  if (redirectedResponsePromise) await redirectedResponsePromise;
+  const cachedCss = await entries.get(cssUrl).clone().text();
+  if (cachedCss !== 'current stylesheet') privacyFailures.push(`cached redirected content ${cachedCss}`);
+
+  offline = true;
+  let offlineQueryPromise;
+  listeners.get('fetch')({
+    request: new Request(queryUrl),
+    respondWith(promise) { offlineQueryPromise = promise; },
+  });
+  const offlineQueryResponse = offlineQueryPromise ? await offlineQueryPromise : null;
+  const offlineQueryBody = offlineQueryResponse ? await offlineQueryResponse.text() : '';
+  if (/private query response|private redirected response/i.test(offlineQueryBody)) {
+    privacyFailures.push('offline query request received private content from Cache Storage');
+  }
+
+  let offlinePromise;
+  listeners.get('fetch')({
+    request: { mode: 'navigate', url: new URL('/households/private/dashboard', baseUrl).toString() },
+    respondWith(promise) { offlinePromise = promise; },
+  });
+  const offlineResponse = await offlinePromise;
+  const offlineBody = await offlineResponse.text();
+  assert.match(offlineBody, /offline|reconnect/i);
+  assert.ok(!offlineBody.includes(fixture.dashboard_person_name));
+  assert.deepEqual(privacyFailures, []);
+  assert.deepEqual([...entries.keys()].sort(), [cssUrl, otherUrl, offlineUrl].sort());
 });
 
 test('PWA manifest and service worker keep authenticated pages and APIs out of caches', async () => {

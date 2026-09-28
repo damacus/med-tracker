@@ -770,10 +770,48 @@ fn dashboard_dose(source: &Value) -> String {
     format!("{amount} {unit}").trim().to_owned()
 }
 
+fn schedule_in_local_range(source: &Value, today: chrono::NaiveDate) -> bool {
+    let start = chrono::NaiveDate::parse_from_str(field(source, "start_date"), "%Y-%m-%d").ok();
+    let end = chrono::NaiveDate::parse_from_str(field(source, "end_date"), "%Y-%m-%d").ok();
+    start
+        .zip(end)
+        .is_some_and(|(start, end)| (start..=end).contains(&today))
+}
+
+fn taper_step_on(source: &Value, today: chrono::NaiveDate) -> Option<&Value> {
+    source
+        .pointer("/schedule_config/taper_steps")
+        .and_then(Value::as_array)?
+        .iter()
+        .find(|step| {
+            let start =
+                chrono::NaiveDate::parse_from_str(field(step, "start_date"), "%Y-%m-%d").ok();
+            let end = chrono::NaiveDate::parse_from_str(field(step, "end_date"), "%Y-%m-%d").ok();
+            start
+                .zip(end)
+                .is_some_and(|(start, end)| (start..=end).contains(&today))
+        })
+}
+
+fn schedule_applies_on(source: &Value, today: chrono::NaiveDate) -> bool {
+    schedule_in_local_range(source, today)
+        && (field(source, "schedule_type") != "tapering" || taper_step_on(source, today).is_some())
+}
+
+fn source_active_on(kind: &str, source: &Value, today: chrono::NaiveDate) -> bool {
+    if kind == "schedules" {
+        source.get("paused").and_then(Value::as_bool) == Some(false)
+            && schedule_applies_on(source, today)
+    } else {
+        source.get("active").and_then(Value::as_bool) == Some(true)
+    }
+}
+
 fn dashboard_sources(
     schedules: Vec<Value>,
     assignments: Vec<Value>,
     visible: &[i64],
+    today: chrono::NaiveDate,
 ) -> Vec<(String, Value)> {
     schedules
         .into_iter()
@@ -784,11 +822,12 @@ fn dashboard_sources(
                 .map(|value| ("person_medications".to_owned(), value)),
         )
         .filter(|(_, source)| numeric(source, "person_id").is_some_and(|id| visible.contains(&id)))
-        .filter(|(_, source)| {
-            source.get("active").and_then(Value::as_bool) == Some(true)
-                || source
+        .filter(|(kind, source)| {
+            source_active_on(kind, source, today)
+                || (source
                     .get("current_pause_period")
                     .is_some_and(|value| !value.is_null())
+                    && (kind != "schedules" || schedule_applies_on(source, today)))
         })
         .collect()
 }
@@ -808,22 +847,18 @@ fn source_takes(takes: &[Value], kind: &str, id: i64) -> Vec<DateTime<Utc>> {
 
 fn stock_matches(
     source: &Value,
-    sources: &[(String, Value)],
+    permitted_medications: &HashMap<i64, std::collections::HashSet<i64>>,
     medications: &HashMap<i64, &Value>,
+    household_manager: bool,
 ) -> bool {
     let Some(source_medication) =
         numeric(source, "medication_id").and_then(|id| medications.get(&id).copied())
     else {
         return false;
     };
-    let source_person = numeric(source, "person_id");
-    let allowed_ids: std::collections::HashSet<i64> = sources
-        .iter()
-        .filter(|(_, row)| numeric(row, "person_id") == source_person)
-        .filter_map(|(_, row)| numeric(row, "medication_id"))
-        .collect();
+    let allowed_ids = numeric(source, "person_id").and_then(|id| permitted_medications.get(&id));
     medications.iter().any(|(id, row)| {
-        allowed_ids.contains(id)
+        (household_manager || allowed_ids.is_some_and(|ids| ids.contains(id)))
             && field(row, "name") == field(source_medication, "name")
             && field(row, "dose_amount") == field(source_medication, "dose_amount")
             && field(row, "dose_unit") == field(source_medication, "dose_unit")
@@ -831,23 +866,43 @@ fn stock_matches(
     })
 }
 
-fn source_limit(source: &Value, name: &str) -> Option<usize> {
-    source
-        .pointer(&format!("/schedule_config/{name}"))
-        .and_then(Value::as_u64)
-        .or_else(|| source.get(name).and_then(Value::as_u64))
-        .and_then(|value| usize::try_from(value).ok())
+fn source_config_on(source: &Value, today: chrono::NaiveDate) -> Option<&Value> {
+    let config = source.get("schedule_config")?;
+    if field(source, "schedule_type") != "tapering" {
+        return Some(config);
+    }
+    taper_step_on(source, today).or(Some(config))
 }
 
-fn source_interval(source: &Value) -> Option<f64> {
-    source
-        .pointer("/schedule_config/min_hours_between_doses")
-        .or_else(|| source.get("min_hours_between_doses"))
-        .and_then(|value| {
-            value
-                .as_f64()
-                .or_else(|| value.as_str().and_then(|text| text.parse().ok()))
+fn source_limit(source: &Value, today: chrono::NaiveDate) -> Option<usize> {
+    let count = |value: &Value| {
+        value
+            .as_u64()
+            .and_then(|value| usize::try_from(value).ok())
+            .or_else(|| value.as_str().and_then(|text| text.parse().ok()))
+    };
+    source_config_on(source, today)
+        .and_then(|config| {
+            ["max_daily_doses", "max_doses", "max"]
+                .iter()
+                .find_map(|name| config.get(*name).and_then(count))
         })
+        .or_else(|| source.get("max_daily_doses").and_then(count))
+}
+
+fn source_interval(source: &Value, today: chrono::NaiveDate) -> Option<f64> {
+    let hours = |value: &Value| {
+        value
+            .as_f64()
+            .or_else(|| value.as_str().and_then(|text| text.parse().ok()))
+    };
+    source_config_on(source, today)
+        .and_then(|config| {
+            ["min_hours_between_doses", "min_hours", "minimum_hours"]
+                .iter()
+                .find_map(|name| config.get(*name).and_then(hours))
+        })
+        .or_else(|| source.get("min_hours_between_doses").and_then(hours))
 }
 
 async fn dashboard(
@@ -883,6 +938,14 @@ async fn dashboard(
         Ok(value) => value,
         Err(_) => return dashboard_read_error(api.cookie),
     };
+    let me = match api.get(&format!("{base}/me")).await {
+        Ok(value) => value,
+        Err(_) => return dashboard_read_error(api.cookie),
+    };
+    let household_manager = matches!(
+        me.pointer("/data/membership_role").and_then(Value::as_str),
+        Some("owner" | "administrator")
+    );
     let account_person_id = profile
         .pointer("/data/person_id")
         .and_then(Value::as_str)
@@ -972,7 +1035,19 @@ async fn dashboard(
         .filter_map(|row| Some((numeric(row, "id")?, row)))
         .collect();
     let today = now.with_timezone(&timezone).date_naive();
-    let sources = dashboard_sources(schedules, assignments, &selected);
+    let mut permitted_medications: HashMap<i64, std::collections::HashSet<i64>> = HashMap::new();
+    for source in schedules.iter().chain(&assignments) {
+        if let (Some(person_id), Some(medication_id)) = (
+            numeric(source, "person_id"),
+            numeric(source, "medication_id"),
+        ) {
+            permitted_medications
+                .entry(person_id)
+                .or_default()
+                .insert(medication_id);
+        }
+    }
+    let sources = dashboard_sources(schedules, assignments, &selected, today);
     let mut people: Vec<DashboardPerson> = selectable_people
         .iter()
         .filter(|(id, _)| selected.contains(id))
@@ -1020,6 +1095,7 @@ async fn dashboard(
             .to_owned();
         let prn = field(source, "administration_kind") == "as_needed"
             || field(source, "schedule_type") == "prn"
+            || field(source, "frequency").eq_ignore_ascii_case("as needed")
             || source
                 .pointer("/schedule_config/as_needed")
                 .and_then(Value::as_bool)
@@ -1047,10 +1123,15 @@ async fn dashboard(
                 paused: source
                     .get("current_pause_period")
                     .is_some_and(|value| !value.is_null()),
-                active: source.get("active").and_then(Value::as_bool) == Some(true),
-                stock_available: stock_matches(source, &sources, &medications),
-                max_doses: source_limit(source, "max_daily_doses"),
-                min_hours_between_doses: source_interval(source),
+                active: source_active_on(kind, source, today),
+                stock_available: stock_matches(
+                    source,
+                    &permitted_medications,
+                    &medications,
+                    household_manager,
+                ),
+                max_doses: source_limit(source, today),
+                min_hours_between_doses: source_interval(source, today),
                 dose_cycle: field(source, "dose_cycle"),
                 takes: &source_takes,
             });

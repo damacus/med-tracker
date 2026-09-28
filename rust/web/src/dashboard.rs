@@ -124,6 +124,15 @@ pub fn calculate_prn(input: PrnInput<'_>) -> PrnProjection {
             }
         })
         .count();
+    let interval_next = input.min_hours_between_doses.and_then(|hours| {
+        input
+            .takes
+            .iter()
+            .filter(|taken| **taken <= input.now)
+            .max()
+            .map(|last| *last + Duration::seconds((hours * 3600.0).ceil() as i64))
+            .filter(|next| *next > input.now)
+    });
     if input.max_doses.is_some_and(|max| cycle_takes >= max) {
         let next_date = match input.dose_cycle {
             "weekly" => {
@@ -144,27 +153,20 @@ pub fn calculate_prn(input: PrnInput<'_>) -> PrnProjection {
             .timezone
             .from_local_datetime(&next_date.and_hms_opt(0, 0, 0).unwrap())
             .earliest()
-            .map(|time| time.with_timezone(&Utc));
+            .map(|time| time.with_timezone(&Utc))
+            .into_iter()
+            .chain(interval_next)
+            .max();
         return PrnProjection {
             state: TaskState::MaxReached,
             next_available_at: next,
         };
     }
-    if let (Some(hours), Some(last)) = (
-        input.min_hours_between_doses,
-        input
-            .takes
-            .iter()
-            .filter(|taken| **taken <= input.now)
-            .max(),
-    ) {
-        let next = *last + Duration::seconds((hours * 3600.0).ceil() as i64);
-        if next > input.now {
-            return PrnProjection {
-                state: TaskState::Cooldown,
-                next_available_at: Some(next),
-            };
-        }
+    if let Some(next) = interval_next {
+        return PrnProjection {
+            state: TaskState::Cooldown,
+            next_available_at: Some(next),
+        };
     }
     PrnProjection {
         state: TaskState::Available,
@@ -232,7 +234,7 @@ fn status_name(state: TaskState) -> &'static str {
         TaskState::NotTaken => "Not taken",
         TaskState::Cooldown => "Wait",
         TaskState::OutOfStock => "Out of stock",
-        TaskState::MaxReached => "Daily limit reached",
+        TaskState::MaxReached => "Dose limit reached",
         TaskState::Unknown => "Status unavailable",
     }
 }
