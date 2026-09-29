@@ -1,0 +1,340 @@
+# OpenAPI-first API checkpoint
+
+Specification: `docs/api/openapi.v1.yaml`, SHA-256 `fc406eb86bfcc2cf733bab766b060bc3dc43bb7c130a656cacaa6f90c2219e8d`. The operation map is `operations.jsonl`; `operation-filter.jq`, `route-sources.json`, and `test-evidence.json` are its inputs. Rebuild it with:
+
+```fish
+yq -o=json '.' docs/api/openapi.v1.yaml | jq -c --slurpfile routes docs/plans/openapi-contract/coverage/route-sources.json --slurpfile evidence docs/plans/openapi-contract/coverage/test-evidence.json -f docs/plans/openapi-contract/coverage/operation-filter.jq > docs/plans/openapi-contract/coverage/operations.jsonl
+```
+
+The specification has 118 operations across 77 paths, with 227 component schemas,
+12 component responses and 775 response cases. All 118 operations now have
+passing family-level HTTP evidence. The complete final regression has passed
+all 39 groups: 404 tests, zero remaining failures after two test-only repairs.
+`final-acceptance.tsv` records each group's project, source digest and result;
+`final-acceptance-initial.tsv` retains the two original failing rows.
+Publication and final-commit CI are recorded on PR #2302.
+The original 89-operation baseline has passing evidence for all 89 operations.
+Both baseline files are retained;
+the operation IDs, methods and paths still match the fixed 118-operation scope.
+Route presence and older Rails-derived tests alone receive no completion credit.
+
+## Final API families
+
+The final families add health events, portable exports/imports, sync snapshots,
+change feeds and all 34 batch action pairs, medication lookup, AI suggestions,
+and test-push delivery. `../final-families-review.md` records independent review
+findings and isolated acceptance projects. External success/failure evidence
+uses deterministic provider doubles; live-provider delivery is not claimed.
+
+The user approved health-event reassignment with manage access to both people.
+The final health gate passed 5 focused tests and 12 legacy tests in
+`mtcontract-3988dc0ca26940d7`. It covers denied reassignment without mutation,
+old/new sync visibility and cached replay after the original grant is revoked.
+
+The final regression runner, `task api:complete-acceptance`, runs 39 isolated
+groups in two independent lanes. Authentication-mutating suites receive fresh
+fixtures. Each project records its source digest and performs its own cleanup.
+UI/PWA work, memory benchmarking, deployment and merging remain separate.
+
+## Health-history and medication-review reports
+
+Four report operations passed 11/11 selected acceptance tests in
+`mtcontract-8bf50975aa5a4b99`: five OpenAPI scenarios and six existing report
+scenarios. The unrelated data-export scenario is explicitly assigned to the
+export family. The runner exited 0 and cleaned up. Tests cover strict JSON,
+person access, filters, no-store responses, correlated download audits and
+missing-font 503 failures without a successful download audit.
+
+Poppler extracted the selected health-event and medication-review content and
+rasterized each PDF's first page. Human visual inspection is not claimed. The
+test extractor changed because lopdf 0.40 rejects valid CMap metadata emitted by
+printpdf 0.12.8. Production rendering runs outside the async executor and includes
+the report's clinical fields, evidence provenance and existing explanatory text.
+The bundled font and its licence are included in the runner image.
+
+The exact staged snapshot passed formatting, Clippy, 20 unit tests and runner
+checks. Capabilities now advertise the verified JSON/PDF reports. Full API
+acceptance and CI on the final overall commit remain outstanding.
+
+## Read contracts and location lifecycle
+
+Twelve operations passed review and focused acceptance in
+`mtcontract-f3f5dd6e397d4c14`: 20/20 location-write tests and 3/3 read-contract
+tests, exit 0 with cleanup. Earlier eight location-read tests remain applicable;
+their handlers are unchanged. Shared credential and rate-limit proofs are reused
+with endpoint assertions. These twelve operations are outside the retained
+original remaining-89 baseline, whose count is unchanged.
+
+Capabilities now have the documented shape and leave unsupported features
+explicitly false or empty. App-token household listing is restricted to its
+issuing household; mobile OAuth retains account scope. People pagination rejects
+invalid queries. Location writes cover keyed success/error replay, fresh request
+IDs, validation, concurrency, retention and rollback. Cascaded deletion now
+records child versions and tombstones with the correct visibility metadata;
+association membership deletion does not create an unrelated Person sync event.
+
+The exact staged snapshot passed formatting, Clippy, 20 unit tests and runner
+lint/dispatch/failure-cleanup checks. No unfinished report, health-event or
+external-integration implementation is included in this checkpoint.
+
+## Invitations and household profile/avatar
+
+Eleven operations passed independent review and isolated acceptance. Final
+invitation acceptance passed 6/6 in `mtcontract-356be5db04ee44af`; older invitation
+scenarios passed 8/8 in `mtcontract-0031f0aadffc4146`. Direct list/create/delete
+rate probes passed in `mtcontract-573d934362884cfc`. Profile/avatar passed 10/10
+in `mtcontract-8e4627295ae3484d`, with the additional GET storage-failure probe
+passing in `mtcontract-8c4efbcfcbfb4649`. All projects cleaned up successfully.
+
+Invitation checks include strict secret-free responses, current manager and
+credential authority, identity-bound acceptance, linked grants, correlated
+audit/sync effects, delivery failure rollback, successful keyed replay, and
+validation-error replay with fresh matching request IDs. Profile checks include
+partial updates, unrelated preference preservation, current grants, date-change
+versions/sync, keyed writes, multipart MIME/size boundaries, exact avatar bytes,
+replacement failure nonmutation and removal audit. PATCH and PUT share the same
+reviewed validation implementation; generic response codes are not manufactured
+as unreachable per-method probes.
+
+SMTP acceptance and database commit are separate operations, so crash-safe
+exactly-once delivery is not claimed. Avatar storage supports the existing disk
+services and rejects unsupported providers at startup; failed physical cleanup
+can leave orphaned bytes. The exact staged production snapshot passed formatting,
+Clippy and 20 unit tests. Runner dispatch/cleanup checks passed. Full API
+acceptance and CI on the final overall commit remain outstanding goal gates.
+
+## Stock workflows
+
+Five existing stock operations passed the complete focused run in
+`mtcontract-8b4d47a3218f4f6e`: 3/3 OpenAPI workflow tests, 9/9 existing medication
+stock tests and 5/5 medication security tests. The runner exited 0 and cleaned
+up its project and storage. Strict wrappers, unknown fields, nullable/type rules,
+pagination, bodyless received requests, decimal history, tracked-dosage supply,
+concurrent removals, submission replay, fresh authority, audit/sync effects and
+all five rate-limit paths are covered. Order details are checked in storage;
+the response retains its documented medication fields.
+
+Initial valid-path RED exposed missing-wrapper 422 responses where 400 was
+required. Earlier quoted-URL failures were test fixture errors and receive no
+production evidence credit. The final existing security fixture supplies the
+three required dosage fields instead of relying on nonexistent database defaults.
+Independent review and relevant static checks passed. These five operations are
+outside the retained original 89-operation baseline, whose count is unchanged.
+
+## Memberships, app tokens, person grants and audit logs
+
+Eleven operations passed independent production and fixture review. The final
+combined grant and membership run passed 9/9 and 6/6 tests in
+`mtcontract-fb5bd356d0f140e6`; app tokens passed 5/5 new and 4/4 existing tests in
+`mtcontract-d1c31502b5e04884`; audit logs passed 2/2 in
+`mtcontract-54e9f47d2054466c`. All three runners exited 0 and cleaned up their
+isolated projects and storage. Exact summaries were observed in command-session
+output. API check, formatting, Clippy, 19 unit tests and runner lint passed;
+the runner success/failure/cleanup matrix also passed before the subsequent
+invitation-only additions, which are excluded from this checkpoint.
+
+Membership checks cover partial PATCH/PUT, no-op versions, current authority,
+credential invalidation, reactivation, two-owner concurrent revocation,
+structured identifiers, strict requests, audit outcomes, keyed replay and
+conflicts, and all four rate-limit paths. Grant checks cover tenant boundaries,
+relationship-owned revoke protection, past expiry, concurrent duplicate creation,
+version invalidation, stable repeated revocation, parsed rejected audit state,
+keyed replay and all three rate-limit paths. Audit checks include the strict
+seven-field response, manager access, tenant isolation and the shared limiter;
+the earlier medication regression proves the newest-hundred bound.
+
+App-token secrets are generated from OS randomness and stored as digests.
+Issuance responses are not cacheable. A keyed successful create stores only a
+receipt: retry returns `token_already_issued` without revealing or duplicating
+the secret. This deliberately corrects Rails caching the raw secret. Revocation
+immediately invalidates bearer access and returns an empty 204 response.
+
+OpenAPI changes are explicit: three missing 422 responses now describe existing
+schema validation for app-token creation, stock pagination and order details;
+app-token idempotency parameters and the one-time-secret exception are documented.
+The fixed 118 operation IDs, methods and paths remain unchanged. Next-family
+test preparation receives no additional completion credit here.
+
+## Dose occurrences and medication review prompts
+
+Eight occurrence operations passed 10/10 isolated HTTP tests in
+`mtcontract-0ce0f4bf373e4c8f`. Four review-prompt operations passed 10/10 in
+`mtcontract-14380f860c934074`. The existing medication regression run passed
+33/33 (9 read, 9 stock, 6 dose-write and 9 OpenAPI tests) in
+`mtcontract-d15159ddd61f4752`. All tasks exited 0 and all three projects and
+their storage were cleaned up. Exact summaries were observed in command-session
+output; RTK retained build-only traces `1790592886_task_api_65d42c.log`,
+`1790592886_task_api_ef73e2.log` and `1790592886_task_api_69b9f1.log`.
+
+Initial missing-route RED logs are `1790591117_task_api_6bc10e.log` for dose
+occurrences and `1790591434_task_api_d030d0.log` for review prompts. Tests cover
+strict schemas, source and household boundaries, record versus manage grants,
+ETags, concurrent transitions, stock nonduplication, audit and sync effects,
+fresh-authority replay, validation nonmutation and all twelve rate-limit paths.
+
+Occurrence projection retains existing unlinked takes and saved outcomes;
+reads do not create history. Keys use a stable configured signing secret and
+source identity. Clients must refetch opaque occurrence keys at cutover;
+Rails MessageVerifier transport compatibility is not claimed. Query bounds
+limit historical reads. A London daylight-saving regression proved the correct
+gap shift. Identical UUID replay now canonicalizes timestamp precision to
+PostgreSQL microseconds; a changed dose payload still conflicts.
+
+Review listing creates missing snapshots from stored curated and automatic
+ingredient/class evidence. Snapshots remain immutable after source updates.
+Terminology and aliases are bundled from the Rails repository. A deliberate
+Rails bug correction retains explicit warnings when another matching sentence
+says no adjustment is needed, while retaining the original evidence excerpt.
+No-action-only evidence remains excluded. No live-provider result is claimed.
+
+Independent production and fixture review passed. Formatting, Clippy, API check,
+19 unit tests, selected compilation, runner dispatch/cleanup checks and docs
+build passed. The fixed 118 operation IDs, methods and paths are unchanged.
+Next administration tests are prepared separately and receive no credit here.
+
+## Medication validation and pause history
+
+This batch verifies seven existing medication/take operations and adds eight
+pause-history, pause/resume and ordering operations. The combined medication
+Task returned exit 0 in `mtcontract-765d769dce6a4deb`: all four selected binaries
+completed (nine read, nine stock, six dose-write and nine OpenAPI tests).
+Pause acceptance returned exit 0 in `mtcontract-9e299c71c4af4a4f` with all ten
+defined tests selected. Both projects were cleaned up. The complete green test
+summaries were not retained in RTK tee files; successful task completion was
+observed. Medication build trace: `1790590703_task_api_1afb52.log`.
+
+Medication strict-request RED is retained in `1790589638_task_api_9b6f8c.log`.
+It exposed unknown take fields creating records, invalid scalar inputs changing
+resources and malformed JSON bypassing structured errors. Validation now
+rejects unknown fields, forbidden nulls, invalid identifiers and decimal forms;
+exactly representable trailing zeros remain valid. Invalid pagination returns
+422. Three older expectations were corrected to the fixed schema: required
+reorder threshold, invalid pagination and unknown source-type enum rejection.
+
+Pause missing-route RED is retained in `1790588499_task_api_89fa45.log`;
+bodyless-request RED is in `1790589365_task_api_1a8aec.log`. Tests cover current
+person grants even for owners, administrator success, history and actor fields,
+repeated and concurrent pauses, stale ETags, old-period resume safety, bodyless
+requests, ordering persistence and all eight rate-limit paths. Period history
+uses database pagination and batched actor loading. Period versions and source
+sync events remain distinct. Client timestamps and invalid reorder directions
+are explicitly rejected rather than silently ignored.
+
+Independent code and test review passed. API check, Clippy, formatting, 15 unit
+tests, selected compilation, runner dispatch/failure cleanup and documentation
+checks passed. No Rails application code, database schema or UI files changed.
+Occurrence work is prepared separately and receives no credit in this batch.
+
+## Assignment and schedule management
+
+The combined batch adds six write operations and verifies four existing reads.
+Assignment acceptance returned exit 0 in `mtcontract-23218744c10841cd` with all
+11 defined tests selected. Its exact test summary was truncated in the tool
+output and not retained; the successful task result and cleanup were observed.
+Schedule acceptance passed 10/10 in `mtcontract-2f0615fdd5a547ab`. Both isolated
+projects were removed. Build traces are `1790587777_task_api_760696.log` and
+`1790587973_task_api_ad2553.log` in the RTK tee directory; these are build logs,
+not retained test summaries. True no-op RED is retained in
+`1790587311_task_api_749080.log` and `1790587567_task_api_3794f0.log`.
+
+Independent review covered access grants, strict requests and responses,
+source dosage visibility and binding, transactional versions and sync events,
+idempotency, stale ETags and one-winner concurrent updates. Tests also cover
+unchanged updates, pagination, date-dependent schedule activity and direct
+rate-limit wiring. API formatting, Clippy, 15 unit tests, selected test
+compilation/formatting and runner dispatch/failure-cleanup checks passed.
+
+Documented corrections reject silent dose rounding, fractional integer-hour
+truncation, invalid recurrence values and reassignment of medical history to a
+different person. Unchanged writes preserve timestamps and avoid spurious
+version/sync events. Existing source dosage bindings remain intact. The shared
+idempotency helper now also covers these writes and authorised validation
+responses. The paused web consumer's use of undocumented stock/permission
+fields remains a separate UI integration dependency; UI parity is not claimed.
+
+## Household administration settings
+
+GET, PATCH and PUT passed ten isolated HTTP acceptance groups in project
+`mtcontract-01f29823c5dd4613`, which was cleaned up. Independent requirements
+and code review covered strict response/request fields, owner/administrator
+authority, partial updates, slug preservation, invalid-write nonmutation and
+successful-update audit records. Direct checks cover authentication, foreign
+and missing households, malformed JSON, validation, conflict and rate limits.
+
+The shared idempotency helper serialises household mutations, rechecks current
+authentication and role before replay, and scopes keys to household/account,
+method, path and request content for 24 hours. Tests prove replay through a
+second valid credential for the same account, denial after demotion, conflict
+on changed account or payload, one domain audit for concurrent identical
+requests, and reuse after expiry. PATCH and PUT have direct replay assertions.
+The helper is used by these settings operations; this does not claim that all
+other mutations use it or that stored Rails request digests are interchangeable.
+
+## Web push subscriptions
+
+The next two-operation tranche completed web push registration and revocation.
+All five HTTP groups passed in `mtcontract-48617928f63f4ae9`, log
+`1790424187_task_api_694219.log` in the tee directory below. Independent review
+and focused Rust/runner checks passed; see `push-subscriptions-batch.md`.
+Proof covers provider allowlist boundaries, account-owned replay, unique
+concurrent claims, encoded-query deletion, revocation of existing unsupported
+provider records, secret redaction and rate limits. No push delivery was added.
+
+## Notification preferences and native device tokens
+
+The budgeted follow-on completed five missing operations using separate Sol production and Luna test lanes. Notification preferences passed both HTTP groups in `mtcontract-26b8a402e0c5404a`, log `1790412885_task_api_624fdf.log`; native tokens passed all five groups in `mtcontract-0e56dfe2180546b4`, log `1790413923_task_api_08f7e1.log`. Logs are under `/Users/damacus/Library/Application Support/rtk/tee/`. Both isolated projects were cleaned up. Initial missing-route RED, review corrections, exact scope and intermediate test mistakes are recorded in `notification-preferences-batch.md` and `native-device-tokens-batch.md`.
+
+Preferences verify defaults, merged updates, nullable and strict time values, view/manage permissions, no-op stability and private person-scoped sync metadata. Native tokens verify account-owned replay updates, global uniqueness, one-winner concurrent claims, foreign-account nonmutation, idempotent deletion, empty success bodies and audit redaction. All five operations have direct nonloopback 429 assertions; common auth, audit and limiter helpers reuse existing proofs. Independent requirements/code review passed. Formatting, Clippy, 15 API unit tests, selected contract compilation and runner dispatch/cleanup checks passed. No dependencies, Rails application code or database schema changed in this batch.
+
+## Profile and person evidence
+
+The four operations in `people-batch.md` passed 17 isolated HTTP tests in project `mtcontract-eae843f4fe5d408a`, log `/Users/damacus/Library/Application Support/rtk/tee/1790410591_task_api_2302ff.log`; the project was cleaned up. The initial four-route run failed with HTTP 405. Subsequent runs exposed a portable-ID detail-read defect and unnecessary events on unchanged updates, both fixed, plus test fixture/cleanup mistakes that were corrected without weakening assertions.
+
+The final suite covers strict profile/person schemas, real cross-household own-profile identity and locations, creation permissions, email normalization and concurrent uniqueness, age/capacity/carer rules, Home assignment, linked and restored self grants, version increments, correlated domain audit/history/sync, merged PATCH/PUT updates, unchanged-update stability, invalid-write rollback, household/auth boundaries and rate-limit wiring. Production and test files had separate owners and independent orchestrator review. Review corrections included adult capacity validation, dependent grant linkage, source-compatible email validation and locked permission-version increments.
+
+Proof is reused where the implementation is shared: PATCH numeric IDs and PUT portable IDs exercise the same update helper; role-independent manage-grant checks are shared; administrator validation/race requests and successful owner writes exercise the shared owner/administrator create branch. This does not claim a separate administrator-201 case. Each route has a direct 429 assertion; error-body/header semantics reuse the existing limiter tests. These reviewed combinations close the bounded documented contracts without testing every redundant permutation.
+
+This run closed nine original-baseline operations in approximately 48 minutes to verified HTTP results: five dosage closures and this four-operation family. Luna completed dosage and deterministic evidence work; person fixture complexity warranted moving its test lane to Sol. The two Sol lanes then completed production and tests separately. OpenSpec housekeeping and additional API families remained deferred.
+
+## Account session evidence
+
+The three operations at [OpenAPI line 150](../../../api/openapi.v1.yaml) use the exact `AuthSession` and collection schemas and inherited bearer security for list and selected revoke. The Rust routes and SeaORM handlers are in `rust/api/src/auth_sessions.rs`. Source credential namespaces and list/logout semantics were documented in OpenAPI before contract tests. API sessions and app tokens manage their own account's API sessions; mobile OAuth manages its own account's mobile grants; integration OAuth is accepted for logout only. Nonrevoked API sessions remain listed after access or refresh expiry, while expired bearer credentials cannot authenticate a new list or selected revoke request.
+
+Eight contract tests in `rust/contract-tests/tests/openapi_auth_sessions.rs` verify exact response fields and timestamps, own-account list scope, foreign-account 404 and nonmutation, durable selected/current revocation, idempotent empty 204 responses, invalid and inactive credential denials, namespace isolation with colliding IDs, target-household audit records, malformed IDs, expired-login targets, configured 30-day mobile maximum age, concurrent revocation audit uniqueness, and nonloopback 429 for all three methods without revocation. A pure API unit test verifies calendar-month app-token cap at a leap-day boundary. The test helper uses disposable credentials and checks that active refresh lookup no longer finds a revoked session. The initial compiled RED failed six tests on absent routes before deeper assertions, log `/Users/damacus/Library/Application Support/rtk/tee/1790373634_task_api_442df8.log`. The first GREEN passed 7/7, log `/Users/damacus/Library/Application Support/rtk/tee/1790374341_task_api_442df8.log`. Final isolated GREEN passed 8/8 in project `mtcontract-580c08dfe7ae4d14`, log `/Users/damacus/Library/Application Support/rtk/tee/1790374763_task_api_442df8.log`; its project was removed. The API unit suite passed 15/15, and the selected-test compile Task and runner dispatch/failure-cleanup shim test passed. All three declared session operations are marked fully verified in `test-evidence.json`. Randomized fuzzing and every timing interleaving remain outside the bounded contract proof.
+
+## Dosage option evidence
+
+The five operations at [OpenAPI line 1688](../../../api/openapi.v1.yaml) use `DosageOption`, its collection/resource envelopes, create/update attributes, `PaginationMeta`, and inherited bearer security. Their role, visibility, validation and parent-sync rules are now documented from the existing Rails controller and model rules. Thirteen contract groups in `rust/contract-tests/tests/openapi_dosage_options.rs` prove owner and administrator writes, active member reads scoped to visible parent medications, hidden detail 404, denied member writes, exact valid resource shapes, decimal strings, both ID forms, filters and pagination, malformed and invalid requests, missing/invalid bearer, foreign-resource 404, ETags, optional If-Match, stale supplied If-Match 409, and a concurrent same-ETag write race. All five methods return the shared strict 429 response under nonloopback exhaustion.
+
+The earlier route and owner-path RED/GREEN evidence remains in the initial dosage review. This completion tranche first failed four real policy/parent/validation cases in isolated project `mtcontract-734187e1b2d54dc1` (log `1790375418_task_api_d3a3cd.log`). A preliminary GREEN passed 10/10 in project `mtcontract-92344c9e319541b7` (log `1790375869_task_api_d3a3cd.log`). Review then added two regressions: missing correlated parent Medication version and partial update of a legacy row with missing unit returning 500 rather than 422. They failed in project `mtcontract-971e9f9434634163` (log `1790376059_task_api_d3a3cd.log`). Final isolated acceptance passed 11/11 in project `mtcontract-1d35ec94c1de4bf9` (log `/Users/damacus/Library/Application Support/rtk/tee/1790376248_task_api_d3a3cd.log`); the project was removed.
+
+SeaORM updates lock household, parent medication and dosage in that order. A single aggregate query sums tracked option stock and reorder thresholds. Creation clears the parent's single-dose amount. Tracked inventory changes update parent stock, reorder threshold and last-restock high-water mark; resetting the final tracked option restores null stock and baseline with zero threshold. Parent and option changes, correlated sync events and PaperTrail-compatible versions commit atomically. Adult and child default conflicts, aggregate overflow and invalid values return 422 without data or event changes. Exact decimal parsing rejects unrepresentable storage precision instead of allowing PostgreSQL rounding. The database now rejects NULL for all six required dosage fields; Rust SeaORM fields use non-optional types. The earlier legacy-row repair case is retained only as historical RED evidence and is replaced by direct database rejection coverage.
+
+The shared Rust household authenticator now accepts account-bound app tokens after checking revocation, stored expiry, the calendar-month age cap, active account and user, lockout, membership status and permissions version, and an operational issuing household. Successful use refreshes `last_used_at` no more than once per five minutes. API request audits identify the credential as `api_app_token:<id>`. SMART integration grants remain outside ordinary household API authority. The dosage HTTP matrix verifies owner, administrator and member access, invalid token states, cross-household 403, missing household and foreign medication 404, and distinct audit identity. Initial RED included real app-token 401 failures in project `mtcontract-12b621a5edb84e30` (log `/Users/damacus/Library/Application Support/rtk/tee/1790387622_task_api_d3a3cd.log`). Final isolated dosage GREEN passed 13/13 in project `mtcontract-2407927431414afe` (log `/Users/damacus/Library/Application Support/rtk/tee/1790388342_task_api_d3a3cd.log`); session regression passed 8/8 in project `mtcontract-df1315fee61146cb` (log `/Users/damacus/Library/Application Support/rtk/tee/1790388083_task_api_442df8.log`). Both projects were removed.
+
+The user chose database enforcement over a special read-time error. Migration `20260926000000_enforce_required_dosage_fields.rb` and `db/schema.rb` now enforce NOT NULL for amount, unit, frequency, default_max_daily_doses, default_min_hours_between_doses and default_dose_cycle. The migration has no backfill or default and fails with a column-specific message when existing NULL values need repair. The Rails migration spec checks all six fields, PostgreSQL 23502 rejection, valid-row preservation and rollback of earlier constraints on failure. Rust dosage acceptance checks the same six 23502 failures through the isolated database. Apply the migration before deploying the Rust binary with non-optional entity fields; no production migration was run here.
+
+The final shared-auth gap closed on 26 September: the same valid app token gets 200 while its household is active, 401 while archived, then 200 after restoration. The guard restores exact household state even on assertion failure; the isolated runner uses one test thread. Combined with the existing five-method auth wiring assertions, the full 14/14 dosage run verifies all five operations. Project `mtcontract-63a3acc811174d13` completed and cleaned up; log `/Users/damacus/Library/Application Support/rtk/tee/1790408394_task_tes_d27969.log`. Independent test review passed. Closing this batch took approximately 13 minutes from assignment to verified result; two earlier runs exposed fixture-assumption mistakes, not production defects.
+
+## Location policy, retention and rate evidence
+
+The eight location operations start at [OpenAPI line 1012](../../../api/openapi.v1.yaml). Their request schemas are `LocationCreateRequest`, `LocationUpdateRequest` and `LocationMembershipRequest` (from line 5969); response schemas include `Location`, `LocationMembership`, their envelopes and `PaginationMeta` (line 4383). The routes are in `rust/api/src/lib.rs`; SeaORM reads and pagination validation are in `rust/api/src/read_resources.rs`; authorization, ETag checks and transactional cascade are in `rust/api/src/locations.rs`. Rate limits are in `rust/api/src/rate_limit.rs`. The three spec-derived test files are `openapi_locations.rs`, `openapi_location_writes.rs` and `openapi_rate_limit.rs` under `rust/contract-tests/tests`. `test-evidence.json` records exact statuses, behaviours and omissions for each operation.
+
+Reads verify strict response envelopes, field formats, active-member access, numeric and portable IDs, wrong-household 403, foreign-resource 404, pagination and timestamp filters. Writes verify owner and administrator permissions, current person manage grants, malformed bodies and IDs, strict request properties, nullable versus absent description, empty 204 bodies, If-Match 428/409 and an atomic same-ETag update race. Seven independent retained-history sources block deletion with 422. An unretained graph cascades the location, membership, medication, dosage, schedule and person assignment. A late foreign-key conflict rolls all deletes back. A concurrent take/delete test requires either retained history with 422 or a failed take insert with PostgreSQL 23503. A nonloopback HTTP test verifies 429 and the strict rate body and headers on the location list. Controlled-clock unit tests verify all five API operation limits, expiry, concurrent counters, capacity and trusted-proxy handling. These assertions do not establish every possible location status or schema combination.
+
+Initial write-route RED: seven compiled tests failed on absent POST/PATCH/PUT/DELETE methods, log `/Users/damacus/Library/Application Support/rtk/tee/1790365256_task_api_7d11fd.log`. Earlier read/write GREEN and malformed pagination RED/GREEN are in logs `1790365826`, `1790366008`, `1790366176` and `1790366360` under the same rtk tee directory. Policy RED: administrator create returned 403 instead of 201; no person grant returned 403 instead of 404, log `1790368751_task_api_7d11fd.log`. Retention/cascade/race RED reached the previous foreign-key-only deletion path and returned 409, log `1790369300_task_api_7d11fd.log`. The source-dosage graph then exposed deletion ordering 422 instead of 204; the separate HTTP rate test saw no 429 in 601 requests, log `1790369621_task_api_7d11fd.log`. Final isolated GREEN passed 18 write, eight read and one HTTP rate tests, including malformed DELETE ID, PUT stale version and membership household paths, log `/Users/damacus/Library/Application Support/rtk/tee/1790370643_task_api_7d11fd.log`. Its owned Compose project `mtcontract-2e1eae7a3e7e43cc` was removed.
+
+The limiter uses an atomic mutex over at most 65,536 live IP/rule buckets per process. An expiry heap reclaims old windows without scanning the map on each request; capacity saturation rejects new clients with 429. The socket peer is authoritative by default. `API_TRUSTED_PROXY_IPS` explicitly names trusted proxy IPs; forwarding headers from other peers are ignored. Direct loopback is exempt, while configured loopback proxies are counted even when forwarding headers are missing or malformed. The default deployment has no trusted proxy list. The limiter contains no test-only HTTP clock endpoint or raised production threshold.
+
+## Remaining completion gates
+
+All 118 fixed-scope operations have family-level runtime evidence and the final
+39-group regression is green. Publication and final-commit CI are recorded on
+PR #2302; runtime evidence alone does not establish remote CI success.
+Historical checkpoint sections above describe the evidence at their respective
+publication dates; they do not change the current operation counts.
+
+UI/PWA parity, memory benchmarking, deployment, merging and live-provider
+delivery remain outside this API goal. Rails-encrypted fixture imports are
+verified; an optional Rust-export-to-Rails-import runtime check remains blocked
+by automatic approval review pending user approval.

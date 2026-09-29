@@ -1,0 +1,310 @@
+x-contract-external-env: &contract-external-env
+  DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract
+  SESSION_MAX_AGE_DAYS: "30"
+  APP_URL: http://127.0.0.1:39998
+  ACTIVE_STORAGE_ROOT: /app/tmp/storage
+  ACTIVE_STORAGE_SERVICE_NAME: test
+  REPORT_PDF_FONT_PATH: /src/vendor/fonts/NotoSans-Regular.ttf
+  AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
+  MEDTRACKER_AI_MEDICATION_HELP_ENABLED: "true"
+  MEDTRACKER_AI_MEDICATION_HELP_API_BASE_URL: http://127.0.0.1:20091
+  MEDTRACKER_AI_MEDICATION_SOURCE_PROXY_ORIGIN: http://127.0.0.1:20089
+  MEDTRACKER_OPEN_PRODUCTS_FACTS_BASE_URL: http://127.0.0.1:20086/
+  MEDTRACKER_OPEN_FOOD_FACTS_BASE_URL: http://127.0.0.1:20085/
+  MEDTRACKER_FCM_BASE_URL: http://127.0.0.1:20097/
+  FCM_PROJECT_ID: contract-project
+  FCM_BEARER_TOKEN: contract-fcm-token
+  MEDTRACKER_APNS_BASE_URL: http://127.0.0.1:20088/
+  APNS_BUNDLE_ID: io.contract.app
+  APNS_TEAM_ID: CONTRACTTEAM
+  APNS_KEY_ID: CONTRACTKEY
+  APNS_PRIVATE_KEY: ${CONTRACT_APNS_PRIVATE_KEY:?Disposable APNs signing key required}
+
+x-contract-external-service: &contract-external-service
+  profiles: [test]
+  image: medtracker-contract-runner:${CONTRACT_PROJECT}
+  command: /src/rust/api/target/debug/medtracker-api
+  network_mode: service:rust-api
+  depends_on:
+    rust-api:
+      condition: service_healthy
+
+services:
+  rust-api:
+    profiles: [test]
+    build:
+      context: ${CONTRACT_API_BUILD_CONTEXT:-.}
+      dockerfile: rust/contract-tests/Dockerfile
+    image: medtracker-contract-runner:${CONTRACT_PROJECT}
+    command: /src/rust/api/target/debug/medtracker-api
+    networks: [test]
+    environment:
+      DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract
+      API_LISTEN_ADDR: 0.0.0.0:39998
+      SESSION_MAX_AGE_DAYS: "30"
+      PUBLIC_BASE_URL: http://127.0.0.1:39998
+      APP_URL: http://127.0.0.1:39998
+      SMTP_ADDRESS: mail-test
+      SMTP_PORT: "1025"
+      SMTP_STARTTLS: "false"
+      ACTIVE_STORAGE_ROOT: /app/tmp/storage
+      ACTIVE_STORAGE_SERVICE_NAME: test
+      REPORT_PDF_FONT_PATH: /src/vendor/fonts/NotoSans-Regular.ttf
+      NHS_DMD_CLIENT_ID: contract-nhs-id
+      NHS_DMD_CLIENT_SECRET: contract-nhs-secret
+      MEDTRACKER_NHS_DMD_BASE_URL: http://127.0.0.1:20090/production1/fhir
+      MEDTRACKER_NHS_DMD_TOKEN_URL: http://127.0.0.1:20090/authorisation/auth/realms/nhs-digital-terminology/protocol/openid-connect/token
+      MEDTRACKER_AI_MEDICATION_HELP_ENABLED: "true"
+      MEDTRACKER_AI_MEDICATION_HELP_PROVIDER: openai
+      MEDTRACKER_AI_MEDICATION_HELP_MODEL: gpt-4o-mini
+      MEDTRACKER_AI_MEDICATION_HELP_API_BASE_URL: http://127.0.0.1:20091/v1/
+      MEDTRACKER_AI_MEDICATION_SOURCE_PROXY_ORIGIN: http://127.0.0.1:20089
+      OPENAI_API_KEY: contract-provider-key
+      MEDTRACKER_OPEN_PRODUCTS_FACTS_BASE_URL: http://127.0.0.1:20086/
+      MEDTRACKER_OPEN_FOOD_FACTS_BASE_URL: http://127.0.0.1:20085/
+      MEDTRACKER_TRUSTED_PUSH_ORIGIN: http://127.0.0.1:20092
+      VAPID_PUBLIC_KEY: BGsX0fLhLEJH-Lzm5WOkQPJ3A32BLeszoPShOUXYmMKWT-NC4v4af5uO5-tKfA-eFivOM1drMV7Oy7ZAaDe_UfU
+      VAPID_PRIVATE_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE
+      VAPID_SUBJECT: mailto:contract@example.test
+      MEDTRACKER_FCM_BASE_URL: http://127.0.0.1:20097/
+      FCM_PROJECT_ID: contract-project
+      FCM_BEARER_TOKEN: contract-fcm-token
+      MEDTRACKER_APNS_BASE_URL: http://127.0.0.1:20088/
+      APNS_BUNDLE_ID: io.contract.app
+      APNS_TEAM_ID: CONTRACTTEAM
+      APNS_KEY_ID: CONTRACTKEY
+      APNS_PRIVATE_KEY: ${CONTRACT_APNS_PRIVATE_KEY:?Disposable APNs signing key required}
+      AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
+    depends_on:
+      db-test:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:39998/up]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  rust-api-tests:
+    profiles: [test]
+    image: medtracker-contract-runner:${CONTRACT_PROJECT}
+    network_mode: service:rust-api
+    volumes:
+      - type: bind
+        source: ${CONTRACT_FIXTURE_DIR}
+        target: /contract-run
+        read_only: true
+    environment:
+      CONTRACT_BASE_URL: http://127.0.0.1:39998
+      CONTRACT_RATE_BASE_URL: http://rust-api:39998
+      CONTRACT_MAILPIT_URL: http://mail-test:8025
+      CONTRACT_MAIL_FAILURE_BASE_URL: http://rust-api-mail-fail:39999
+      CONTRACT_AVATAR_FAILURE_BASE_URL: http://rust-api-storage-fail:39997
+      CONTRACT_REPORT_FAILURE_BASE_URL: http://rust-api-report-fail:39996
+      CONTRACT_AI_OPENAI_BASE_URL: http://127.0.0.1:39993
+      CONTRACT_AI_OPENROUTER_BASE_URL: http://127.0.0.1:39994
+      CONTRACT_AI_ANTHROPIC_BASE_URL: http://127.0.0.1:39995
+      CONTRACT_AI_GEMINI_BASE_URL: http://127.0.0.1:39996
+      CONTRACT_PUSH_FAILURE_BASE_URL: http://127.0.0.1:39993
+      CONTRACT_FIXTURE_PATH: /contract-run/fixture.json
+      CONTRACT_AUDIT_DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract
+
+  rust-api-ai-openai:
+    <<: *contract-external-service
+    environment:
+      <<: *contract-external-env
+      API_LISTEN_ADDR: 0.0.0.0:39993
+      PUBLIC_BASE_URL: http://127.0.0.1:39993
+      MEDTRACKER_AI_MEDICATION_HELP_PROVIDER: openai
+      MEDTRACKER_AI_MEDICATION_HELP_MODEL: gpt-4o-mini
+      MEDTRACKER_AI_MEDICATION_HELP_API_BASE_URL: http://127.0.0.1:20091/v1/
+      OPENAI_API_KEY: contract-provider-key
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:39993/up]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  rust-api-ai-openrouter:
+    <<: *contract-external-service
+    environment:
+      <<: *contract-external-env
+      API_LISTEN_ADDR: 0.0.0.0:39994
+      PUBLIC_BASE_URL: http://127.0.0.1:39994
+      MEDTRACKER_AI_MEDICATION_HELP_PROVIDER: openrouter
+      MEDTRACKER_AI_MEDICATION_HELP_MODEL: openai/gpt-4o-mini
+      MEDTRACKER_AI_MEDICATION_HELP_API_BASE_URL: http://127.0.0.1:20091/v1/
+      OPENROUTER_API_KEY: contract-provider-key
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:39994/up]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  rust-api-ai-anthropic:
+    <<: *contract-external-service
+    environment:
+      <<: *contract-external-env
+      API_LISTEN_ADDR: 0.0.0.0:39995
+      PUBLIC_BASE_URL: http://127.0.0.1:39995
+      MEDTRACKER_AI_MEDICATION_HELP_PROVIDER: anthropic
+      MEDTRACKER_AI_MEDICATION_HELP_MODEL: claude-sonnet-4-20250514
+      MEDTRACKER_AI_MEDICATION_HELP_API_BASE_URL: http://127.0.0.1:20091/v1/
+      ANTHROPIC_API_KEY: contract-provider-key
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:39995/up]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  rust-api-ai-gemini:
+    <<: *contract-external-service
+    environment:
+      <<: *contract-external-env
+      API_LISTEN_ADDR: 0.0.0.0:39996
+      PUBLIC_BASE_URL: http://127.0.0.1:39996
+      MEDTRACKER_AI_MEDICATION_HELP_PROVIDER: gemini
+      MEDTRACKER_AI_MEDICATION_HELP_MODEL: gemini-2.5-flash
+      MEDTRACKER_AI_MEDICATION_HELP_API_BASE_URL: http://127.0.0.1:20091/v1beta/
+      GEMINI_API_KEY: contract-provider-key
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:39996/up]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  rust-api-mail-fail:
+    profiles: [test]
+    image: medtracker-contract-runner:${CONTRACT_PROJECT}
+    command: /src/rust/api/target/debug/medtracker-api
+    networks: [test]
+    environment:
+      DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract
+      API_LISTEN_ADDR: 0.0.0.0:39999
+      SESSION_MAX_AGE_DAYS: "30"
+      PUBLIC_BASE_URL: http://127.0.0.1:39999
+      APP_URL: http://127.0.0.1:39998
+      SMTP_ADDRESS: 127.0.0.1
+      SMTP_PORT: "1"
+      SMTP_STARTTLS: "false"
+      ACTIVE_STORAGE_ROOT: /app/tmp/storage
+      ACTIVE_STORAGE_SERVICE_NAME: test
+      REPORT_PDF_FONT_PATH: /src/vendor/fonts/NotoSans-Regular.ttf
+      AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
+    depends_on:
+      db-test:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:39999/up]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  rust-api-storage-fail:
+    profiles: [test]
+    image: medtracker-contract-runner:${CONTRACT_PROJECT}
+    command: /src/rust/api/target/debug/medtracker-api
+    networks: [test]
+    environment:
+      DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract
+      API_LISTEN_ADDR: 0.0.0.0:39997
+      SESSION_MAX_AGE_DAYS: "30"
+      PUBLIC_BASE_URL: http://127.0.0.1:39997
+      APP_URL: http://127.0.0.1:39998
+      SMTP_ADDRESS: mail-test
+      SMTP_PORT: "1025"
+      SMTP_STARTTLS: "false"
+      ACTIVE_STORAGE_ROOT: /proc/medtracker-avatar-unwritable
+      ACTIVE_STORAGE_SERVICE_NAME: test
+      REPORT_PDF_FONT_PATH: /src/vendor/fonts/NotoSans-Regular.ttf
+      AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
+    depends_on:
+      db-test:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:39997/up]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  rust-api-report-fail:
+    profiles: [test]
+    image: medtracker-contract-runner:${CONTRACT_PROJECT}
+    command: /src/rust/api/target/debug/medtracker-api
+    networks: [test]
+    environment:
+      DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract
+      API_LISTEN_ADDR: 0.0.0.0:39996
+      SESSION_MAX_AGE_DAYS: "30"
+      PUBLIC_BASE_URL: http://127.0.0.1:39996
+      APP_URL: http://127.0.0.1:39998
+      SMTP_ADDRESS: mail-test
+      SMTP_PORT: "1025"
+      SMTP_STARTTLS: "false"
+      ACTIVE_STORAGE_ROOT: /app/tmp/storage
+      ACTIVE_STORAGE_SERVICE_NAME: test
+      REPORT_PDF_FONT_PATH: /nonexistent/font.ttf
+      AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
+    depends_on:
+      db-test:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:39996/up]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  rust-browser-tests:
+    profiles: [test]
+    image: medtracker-contract-browser:${CONTRACT_PROJECT}
+    build:
+      context: ./rust/web
+      dockerfile: Dockerfile.smoke
+    network_mode: service:rust-api
+    shm_size: 1gb
+    volumes:
+      - type: bind
+        source: ${CONTRACT_FIXTURE_DIR}
+        target: /contract-run
+        read_only: true
+      - type: bind
+        source: ${CONTRACT_RUST_BROWSER_SCREENSHOT_DIR:-./docs/screenshots/journey-auth}
+        target: /screenshots
+    environment:
+      BASE_URL: http://127.0.0.1:39998
+      CONTRACT_FIXTURE_PATH: /contract-run/fixture.json
+      SCREENSHOT_DIR: /screenshots
+
+  rails-browser-tests:
+    profiles: [test]
+    image: medtracker-contract-browser:${CONTRACT_PROJECT}
+    build:
+      context: ./rust/web
+      dockerfile: Dockerfile.smoke
+    network_mode: service:web-test
+    shm_size: 1gb
+    volumes:
+      - type: bind
+        source: ${CONTRACT_FIXTURE_DIR}
+        target: /contract-run
+        read_only: true
+      - type: bind
+        source: ./docs/screenshots/journey-medication-rails
+        target: /screenshots
+    environment:
+      BASE_URL: http://127.0.0.1:3000
+      CONTRACT_FIXTURE_PATH: /contract-run/fixture.json
+      SCREENSHOT_DIR: /screenshots
+
+  rails-web-read-tests:
+    profiles: [test]
+    image: medtracker-contract-runner:${CONTRACT_PROJECT}
+    network_mode: service:web-test
+    volumes:
+      - type: bind
+        source: ${CONTRACT_FIXTURE_DIR}
+        target: /contract-run
+        read_only: true
+    environment:
+      CONTRACT_BASE_URL: http://127.0.0.1:3000
+      CONTRACT_FIXTURE_PATH: /contract-run/fixture.json
+      CONTRACT_AUDIT_DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract

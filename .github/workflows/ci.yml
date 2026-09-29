@@ -22,6 +22,7 @@ jobs:
       app: ${{ steps.filter.outputs.rails }}
       rails: ${{ steps.filter.outputs.rails }}
       rust: ${{ steps.filter.outputs.rust }}
+      rust_port: ${{ steps.filter.outputs.rust_port }}
       docs: ${{ steps.filter.outputs.docs }}
       markdown: ${{ steps.filter.outputs.markdown }}
       android: ${{ steps.filter.outputs.android }}
@@ -178,6 +179,29 @@ jobs:
 
       - name: Test workspace
         run: cargo test --manifest-path client-tools/Cargo.toml --workspace
+
+  rust_port:
+    needs: changes
+    if: ${{ needs.changes.outputs.rust_port == 'true' }}
+    runs-on: ubuntu-latest
+    name: Rust API and Web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          workspaces: |
+            rust/api
+            rust/web
+            rust/contract-tests
+      - run: task ci:rust-port
 
   docs_check:
     needs: changes
@@ -603,6 +627,7 @@ jobs:
       - scan_js
       - lint
       - client_tools
+      - rust_port
       - docs_check
       - test_non_system
       - coverage

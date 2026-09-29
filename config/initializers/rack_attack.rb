@@ -7,7 +7,8 @@ module Rack
     AI_MEDICATION_SUGGESTIONS_PATH = %r{\A/households/[^/]+/ai-medication-suggestions\z}
     MCP_PATH = '/mcp'
 
-    throttle('req/ip', limit: 300, period: 5.minutes, &:ip)
+    throttle('req/ip', limit: (Rails.env.test? && ENV['CONTRACT_RATE_LIMITING'] == 'true' ? 3000 : 300),
+                       period: 5.minutes, &:ip)
 
     throttle('logins/ip', limit: 5, period: 20.seconds) do |req|
       req.ip if req.path == '/login' && req.post?
@@ -141,6 +142,6 @@ module Rack
   end
 end
 
-Rack::Attack.enabled = !Rails.env.test?
+Rack::Attack.enabled = !Rails.env.test? || ENV['CONTRACT_RATE_LIMITING'] == 'true'
 
 Rails.application.config.middleware.use Rack::Attack

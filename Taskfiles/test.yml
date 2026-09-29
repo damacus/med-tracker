@@ -77,6 +77,12 @@ tasks:
         vars: { ENVIRONMENT: test }
       - ./scripts/portless_oidc.fish test med-tracker-test
 
+  server:
+    desc: Start the isolated test web server on a Docker-assigned local port
+    cmds:
+      - task: :internal:up
+        vars: { ENVIRONMENT: test }
+
   seed:
     desc: Seed test database with fixtures
     summary: |

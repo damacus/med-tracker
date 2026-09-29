@@ -1,0 +1,856 @@
+use crate::entities::{dosage, medication, version};
+use crate::medication_management::{
+    error_response, finish, finish_with_request_id, household_manager, lock_medication,
+    medication_body, record_version, request_context, valid_stock_decimal, visible_medication,
+};
+use crate::mutation_idempotency;
+use crate::sync_events::{record_change, SyncRecord};
+use crate::{database_error, ApiError, AppState, AuthContext};
+use axum::extract::{
+    rejection::{JsonRejection, QueryRejection},
+    Path, Query, State,
+};
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::Response;
+use axum::Json;
+use chrono::Utc;
+use sea_orm::prelude::Decimal;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseTransaction, DbBackend, EntityTrait,
+    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, Set, Statement,
+};
+use serde::Deserialize;
+use serde_json::{json, Value};
+use std::str::FromStr;
+use uuid::Uuid;
+
+#[derive(Deserialize)]
+pub(super) struct Pagination {
+    page: Option<i64>,
+    per_page: Option<i64>,
+}
+
+fn history_query(household_id: i64, medication_id: i64) -> sea_orm::Select<version::Entity> {
+    version::Entity::find()
+        .filter(version::Column::HouseholdId.eq(household_id))
+        .filter(version::Column::ItemType.eq("MedicationStockRemoval"))
+        .filter(version::Column::ItemId.eq(medication_id))
+        .filter(version::Column::Event.eq("stock_removal"))
+}
+
+fn removal_row(event: &version::Model) -> Value {
+    let values: Value = event
+        .object
+        .as_deref()
+        .and_then(|value| serde_json::from_str(value).ok())
+        .unwrap_or(Value::Null);
+    json!({
+        "id": event.id.to_string(),
+        "medication_id": event.item_id.to_string(),
+        "dosage_id": values.get("dosage_id").and_then(Value::as_str).filter(|value| !value.is_empty()),
+        "quantity": values.get("quantity"),
+        "reason": values.get("reason"),
+        "note": values.get("note"),
+        "submission_id": values.get("submission_id"),
+        "previous_quantity": values.get("previous_quantity"),
+        "remaining_quantity": values.get("remaining_quantity"),
+        "unit": values.get("unit"),
+        "created_at": event.created_at.map(|value| value.format("%Y-%m-%dT%H:%M:%SZ").to_string()),
+        "actor_membership_id": event.actor_membership_id.map(|id| id.to_string())
+    })
+}
+
+async fn forbidden_or_missing(
+    db: DatabaseTransaction,
+    context: &AuthContext,
+    method: &str,
+    action: &str,
+    status: StatusCode,
+) -> Result<Response, ApiError> {
+    let (code, message) = if status == StatusCode::NOT_FOUND {
+        ("not_found", "Record not found")
+    } else {
+        (
+            "forbidden",
+            "You are not authorized to perform this action.",
+        )
+    };
+    error_response(
+        db,
+        context,
+        method,
+        "api/v1/stock_removals",
+        "MedicationPolicy",
+        action,
+        status,
+        code,
+        message,
+        None,
+    )
+    .await
+}
+
+async fn invalid(db: DatabaseTransaction, context: &AuthContext) -> Result<Response, ApiError> {
+    error_response(
+        db,
+        context,
+        "POST",
+        "api/v1/stock_removals",
+        "MedicationPolicy",
+        "create",
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "unprocessable_content",
+        "Stock removal could not be recorded",
+        None,
+    )
+    .await
+}
+
+async fn malformed(db: DatabaseTransaction, context: &AuthContext) -> Result<Response, ApiError> {
+    error_response(
+        db,
+        context,
+        "POST",
+        "api/v1/stock_removals",
+        "MedicationPolicy",
+        "create",
+        StatusCode::BAD_REQUEST,
+        "bad_request",
+        "Invalid request body",
+        None,
+    )
+    .await
+}
+
+pub(super) async fn index(
+    State(state): State<AppState>,
+    Path((household_id, id)): Path<(i64, String)>,
+    pagination: Result<Query<Pagination>, QueryRejection>,
+    headers: HeaderMap,
+) -> Result<Response, ApiError> {
+    let (db, context) = request_context(&state, &headers, household_id).await?;
+    let Some(medication) = visible_medication(&db, &context, &id).await? else {
+        return forbidden_or_missing(db, &context, "GET", "index", StatusCode::NOT_FOUND).await;
+    };
+    if !household_manager(&context) {
+        return forbidden_or_missing(db, &context, "GET", "index", StatusCode::FORBIDDEN).await;
+    }
+    let Query(pagination) = match pagination {
+        Ok(value) => value,
+        Err(_) => return page_invalid(db, &context).await,
+    };
+    let page = pagination.page.unwrap_or(1);
+    let per_page = pagination.per_page.unwrap_or(20);
+    if page < 1 || !(1..=100).contains(&per_page) {
+        return page_invalid(db, &context).await;
+    }
+    let query = history_query(household_id, medication.id);
+    let total_count = query.clone().count(&db).await.map_err(database_error)?;
+    let rows: Vec<Value> = query
+        .order_by_desc(version::Column::Id)
+        .limit(per_page as u64)
+        .offset(page.saturating_sub(1).saturating_mul(per_page) as u64)
+        .all(&db)
+        .await
+        .map_err(database_error)?
+        .iter()
+        .map(removal_row)
+        .collect();
+    finish(
+        db,
+        &context,
+        "GET",
+        "api/v1/stock_removals",
+        "MedicationPolicy",
+        "index",
+        StatusCode::OK,
+        true,
+        json!({"data": rows, "meta": {"page": page, "per_page": per_page, "total_count": total_count}}),
+        None,
+    )
+    .await
+}
+
+async fn page_invalid(
+    db: DatabaseTransaction,
+    context: &AuthContext,
+) -> Result<Response, ApiError> {
+    error_response(
+        db,
+        context,
+        "GET",
+        "api/v1/stock_removals",
+        "MedicationPolicy",
+        "index",
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "validation_failed",
+        "Invalid pagination",
+        None,
+    )
+    .await
+}
+
+fn parse_quantity(attributes: &Value) -> Option<Decimal> {
+    let raw = attributes.get("quantity")?.as_str()?;
+    let mut segments = raw.split('.');
+    let whole = segments.next()?;
+    if whole.is_empty() || !whole.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    if let Some(fraction) = segments.next() {
+        if fraction.is_empty()
+            || fraction.len() > 2
+            || !fraction.bytes().all(|byte| byte.is_ascii_digit())
+        {
+            return None;
+        }
+    }
+    if segments.next().is_some() {
+        return None;
+    }
+    Decimal::from_str(raw)
+        .ok()
+        .filter(|value| *value > Decimal::ZERO && valid_stock_decimal(*value))
+}
+
+fn format_quantity(value: Decimal) -> String {
+    let raw = value.normalize().to_string();
+    raw.trim_end_matches(".0").to_owned()
+}
+
+fn payload(attributes: &Value, quantity: Decimal) -> Option<Value> {
+    let reason = attributes.get("reason")?.as_str()?;
+    if ![
+        "dropped",
+        "damaged",
+        "expired",
+        "discarded",
+        "lost",
+        "transferred_out",
+        "other",
+    ]
+    .contains(&reason)
+    {
+        return None;
+    }
+    let note = match attributes.get("note") {
+        None => "",
+        Some(Value::String(value)) => value.as_str(),
+        Some(_) => return None,
+    }
+    .trim();
+    if note.chars().count() > 1000 {
+        return None;
+    }
+    let submission_id = attributes.get("submission_id")?.as_str()?;
+    if submission_id.len() != 36
+        || !submission_id.bytes().enumerate().all(|(index, byte)| {
+            if [8, 13, 18, 23].contains(&index) {
+                byte == b'-'
+            } else {
+                byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)
+            }
+        })
+        || Uuid::parse_str(submission_id).is_err()
+    {
+        return None;
+    }
+    let dosage_id = match attributes.get("dosage_id") {
+        None => "".to_owned(),
+        Some(Value::String(id))
+            if id
+                .as_bytes()
+                .first()
+                .is_some_and(|byte| (b'1'..=b'9').contains(byte))
+                && id.bytes().all(|byte| byte.is_ascii_digit())
+                && id.parse::<i64>().is_ok() =>
+        {
+            id.clone()
+        }
+        _ => return None,
+    };
+    Some(json!({
+        "quantity": format_quantity(quantity),
+        "reason": reason,
+        "note": note,
+        "submission_id": submission_id,
+        "dosage_id": dosage_id
+    }))
+}
+
+async fn lock_dosage(db: &DatabaseTransaction, dosage_id: i64) -> Result<(), ApiError> {
+    db.query_one_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "SELECT id FROM dosages WHERE id = $1 FOR UPDATE",
+        [dosage_id.into()],
+    ))
+    .await
+    .map_err(database_error)?
+    .ok_or_else(ApiError::not_found)?;
+    Ok(())
+}
+
+async fn replay_event(
+    db: &DatabaseTransaction,
+    household_id: i64,
+    medication_id: i64,
+    submission_id: &str,
+) -> Result<Option<version::Model>, ApiError> {
+    let row = db.query_one_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "SELECT id FROM versions WHERE household_id = $1 AND item_type = 'MedicationStockRemoval' AND item_id = $2 AND event = 'stock_removal' AND CASE WHEN item_type = 'MedicationStockRemoval' THEN object::jsonb ->> 'submission_id' END = $3 ORDER BY id DESC LIMIT 1",
+        [household_id.into(), medication_id.into(), submission_id.into()],
+    )).await.map_err(database_error)?;
+    let Some(row) = row else {
+        return Ok(None);
+    };
+    let id: i64 = row.try_get("", "id").map_err(|_| ApiError::internal())?;
+    version::Entity::find_by_id(id)
+        .one(db)
+        .await
+        .map_err(database_error)
+}
+
+pub(super) async fn create(
+    State(state): State<AppState>,
+    Path((household_id, id)): Path<(i64, String)>,
+    headers: HeaderMap,
+    body: Result<Json<Value>, JsonRejection>,
+) -> Result<Response, ApiError> {
+    let (db, _) = request_context(&state, &headers, household_id).await?;
+    let (_, context) = mutation_idempotency::lock_household_and_reauthenticate(
+        &state,
+        &db,
+        &headers,
+        household_id,
+    )
+    .await?;
+    let Some(found) = visible_medication(&db, &context, &id).await? else {
+        return forbidden_or_missing(db, &context, "POST", "create", StatusCode::NOT_FOUND).await;
+    };
+    if !household_manager(&context) {
+        return forbidden_or_missing(db, &context, "POST", "create", StatusCode::FORBIDDEN).await;
+    }
+    let Json(body) = match body {
+        Ok(value) => value,
+        Err(_) => return malformed(db, &context).await,
+    };
+    let Some(outer) = body.as_object() else {
+        return malformed(db, &context).await;
+    };
+    let Some(attributes) = outer.get("stock_removal").and_then(Value::as_object) else {
+        return malformed(db, &context).await;
+    };
+    if outer.len() != 1
+        || attributes.keys().any(|key| {
+            !matches!(
+                key.as_str(),
+                "quantity" | "reason" | "note" | "dosage_id" | "submission_id"
+            )
+        })
+    {
+        return invalid(db, &context).await;
+    }
+    let attributes = &body["stock_removal"];
+    let Some(quantity) = parse_quantity(attributes) else {
+        return invalid(db, &context).await;
+    };
+    let Some(payload) = payload(attributes, quantity) else {
+        return invalid(db, &context).await;
+    };
+    let dosage_id = payload["dosage_id"]
+        .as_str()
+        .and_then(|id| id.parse::<i64>().ok());
+    if let Some(dosage_id) = dosage_id {
+        let owned = dosage::Entity::find_by_id(dosage_id)
+            .one(&db)
+            .await
+            .map_err(database_error)?
+            .is_some_and(|dosage| {
+                dosage.medication_id == found.id && dosage.household_id == household_id
+            });
+        if !owned {
+            return invalid(db, &context).await;
+        }
+    }
+    lock_medication(&db, found.id).await?;
+    if let Some(dosage_id) = dosage_id {
+        lock_dosage(&db, dosage_id).await?;
+    }
+    let medication = visible_medication(&db, &context, &id)
+        .await?
+        .ok_or_else(ApiError::not_found)?;
+    let submission_id = payload["submission_id"].as_str().unwrap_or("");
+    if let Some(event) = replay_event(&db, household_id, medication.id, submission_id).await? {
+        let prior: Value = event
+            .object
+            .as_deref()
+            .and_then(|raw| serde_json::from_str(raw).ok())
+            .unwrap_or(Value::Null);
+        let same = ["quantity", "reason", "note", "submission_id", "dosage_id"]
+            .iter()
+            .all(|field| prior[*field] == payload[*field]);
+        if !same {
+            return invalid(db, &context).await;
+        }
+        return finish(
+            db,
+            &context,
+            "POST",
+            "api/v1/stock_removals",
+            "MedicationPolicy",
+            "create",
+            StatusCode::CREATED,
+            true,
+            json!({"data": removal_row(&event)}),
+            None,
+        )
+        .await;
+    }
+    let request_id = Uuid::new_v4().to_string();
+    let (previous, remaining, unit) = if let Some(dosage_id) = dosage_id {
+        let dosage = dosage::Entity::find_by_id(dosage_id)
+            .one(&db)
+            .await
+            .map_err(database_error)?
+            .ok_or_else(ApiError::not_found)?;
+        let Some(previous) = dosage.current_supply else {
+            return invalid(db, &context).await;
+        };
+        if previous < quantity {
+            return invalid(db, &context).await;
+        }
+        let remaining = previous - quantity;
+        let unit = dosage.unit.clone();
+        let dosage_portable_id = dosage.portable_id.clone();
+        let mut active: dosage::ActiveModel = dosage.into();
+        active.current_supply = Set(Some(remaining));
+        active.updated_at = Set(Utc::now().naive_utc());
+        active.update(&db).await.map_err(database_error)?;
+        record_version(
+            &db,
+            &context,
+            &request_id,
+            "MedicationDosageOption",
+            dosage_id,
+            "update",
+            Some(json!({"current_supply": format_quantity(previous)})),
+            Some(json!({"current_supply": format_quantity(remaining)})),
+        )
+        .await?;
+        record_change(
+            &db,
+            &context,
+            &request_id,
+            SyncRecord {
+                record_type: "MedicationDosageOption",
+                record_id: dosage_id,
+                portable_id: &dosage_portable_id,
+                action: "update",
+                person_portable_id: None,
+            },
+        )
+        .await?;
+        let tracked = dosage::Entity::find()
+            .filter(dosage::Column::MedicationId.eq(medication.id))
+            .filter(dosage::Column::CurrentSupply.is_not_null())
+            .all(&db)
+            .await
+            .map_err(database_error)?;
+        let total: Decimal = tracked.iter().filter_map(|row| row.current_supply).sum();
+        let threshold: Decimal = tracked.iter().filter_map(|row| row.reorder_threshold).sum();
+        let last_restock = medication
+            .supply_at_last_restock
+            .map_or(total, |previous| previous.max(total));
+        let mut active: medication::ActiveModel = medication.clone().into();
+        active.current_supply = Set(Some(total));
+        active.reorder_threshold = Set(threshold);
+        active.supply_at_last_restock = Set(Some(last_restock));
+        active.updated_at = Set(Utc::now().naive_utc());
+        active.update(&db).await.map_err(database_error)?;
+        record_version(
+            &db,
+            &context,
+            &request_id,
+            "Medication",
+            medication.id,
+            "update",
+            Some(json!({
+                "current_supply": medication.current_supply.map(format_quantity),
+                "reorder_threshold": format_quantity(medication.reorder_threshold),
+                "supply_at_last_restock": medication.supply_at_last_restock.map(format_quantity)
+            })),
+            Some(json!({
+                "current_supply": format_quantity(total),
+                "reorder_threshold": format_quantity(threshold),
+                "supply_at_last_restock": format_quantity(last_restock)
+            })),
+        )
+        .await?;
+        record_change(
+            &db,
+            &context,
+            &request_id,
+            SyncRecord {
+                record_type: "Medication",
+                record_id: medication.id,
+                portable_id: &medication.portable_id,
+                action: "update",
+                person_portable_id: None,
+            },
+        )
+        .await?;
+        (previous, remaining, unit)
+    } else {
+        let has_tracked = dosage::Entity::find()
+            .filter(dosage::Column::MedicationId.eq(medication.id))
+            .filter(dosage::Column::CurrentSupply.is_not_null())
+            .one(&db)
+            .await
+            .map_err(database_error)?
+            .is_some();
+        if has_tracked {
+            return invalid(db, &context).await;
+        }
+        let Some(previous) = medication.current_supply else {
+            return invalid(db, &context).await;
+        };
+        if previous < quantity {
+            return invalid(db, &context).await;
+        }
+        let remaining = previous - quantity;
+        let unit = medication.dose_unit.clone().unwrap_or_default();
+        let mut active: medication::ActiveModel = medication.clone().into();
+        active.current_supply = Set(Some(remaining));
+        active.updated_at = Set(Utc::now().naive_utc());
+        active.update(&db).await.map_err(database_error)?;
+        record_version(
+            &db,
+            &context,
+            &request_id,
+            "Medication",
+            medication.id,
+            "update",
+            Some(json!({"current_supply": format_quantity(previous)})),
+            Some(json!({"current_supply": format_quantity(remaining)})),
+        )
+        .await?;
+        record_change(
+            &db,
+            &context,
+            &request_id,
+            SyncRecord {
+                record_type: "Medication",
+                record_id: medication.id,
+                portable_id: &medication.portable_id,
+                action: "update",
+                person_portable_id: None,
+            },
+        )
+        .await?;
+        (previous, remaining, unit)
+    };
+    let unit = if [
+        "tablet", "capsule", "gummy", "sachet", "spray", "drop", "pad", "ml",
+    ]
+    .contains(&unit.as_str())
+    {
+        unit
+    } else {
+        "units".to_owned()
+    };
+    let mut object = payload;
+    object["previous_quantity"] = json!(format_quantity(previous));
+    object["remaining_quantity"] = json!(format_quantity(remaining));
+    object["unit"] = json!(unit);
+    let event = version::ActiveModel {
+        item_type: Set("MedicationStockRemoval".to_owned()),
+        item_id: Set(medication.id),
+        event: Set("stock_removal".to_owned()),
+        object: Set(Some(object.to_string())),
+        request_id: Set(Some(request_id.clone())),
+        household_id: Set(Some(household_id)),
+        actor_membership_id: Set(Some(context.membership.id)),
+        whodunnit: Set(Some(context.user_id.to_string())),
+        audit_context: Set(json!({"actor_account_id": context.account_id, "actor_user_id": context.user_id, "actor_membership_id": context.membership.id, "household_id": household_id})),
+        created_at: Set(Some(Utc::now().naive_utc())),
+        ..Default::default()
+    }
+    .insert(&db)
+    .await
+    .map_err(database_error)?;
+    finish_with_request_id(
+        db,
+        &context,
+        &request_id,
+        "POST",
+        "api/v1/stock_removals",
+        "MedicationPolicy",
+        "create",
+        StatusCode::CREATED,
+        true,
+        json!({"data": removal_row(&event)}),
+        None,
+    )
+    .await
+}
+
+fn sync_invalid() -> ApiError {
+    ApiError {
+        status: StatusCode::UNPROCESSABLE_ENTITY,
+        code: "unprocessable_content",
+        message: "Stock removal is invalid",
+        preserve_activity: false,
+    }
+}
+
+pub(super) async fn apply_sync_operation(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    operation: &crate::sync_batch::SyncOperation,
+    request_id: &str,
+) -> Result<crate::sync_batch::SyncResult, ApiError> {
+    if operation.action != "remove_stock" {
+        return Err(sync_invalid());
+    }
+    let id = operation.id.as_deref().ok_or_else(sync_invalid)?;
+    let household_id = context.membership.household_id;
+    let found = visible_medication(db, context, id)
+        .await?
+        .ok_or_else(ApiError::not_found)?;
+    if !household_manager(context) {
+        return Err(ApiError::forbidden());
+    }
+    if operation.attributes.keys().any(|key| {
+        !matches!(
+            key.as_str(),
+            "quantity" | "reason" | "note" | "dosage_id" | "submission_id"
+        )
+    }) {
+        return Err(sync_invalid());
+    }
+    let mut attributes = Value::Object(operation.attributes.clone());
+    if let Some(Value::String(dosage_id)) = attributes.get("dosage_id") {
+        if dosage_id.parse::<i64>().is_err() {
+            let dosage = dosage::Entity::find()
+                .filter(dosage::Column::HouseholdId.eq(household_id))
+                .filter(dosage::Column::PortableId.eq(dosage_id))
+                .one(db)
+                .await
+                .map_err(database_error)?
+                .ok_or_else(ApiError::not_found)?;
+            attributes["dosage_id"] = json!(dosage.id.to_string());
+        }
+    }
+    let quantity = parse_quantity(&attributes).ok_or_else(sync_invalid)?;
+    let payload = payload(&attributes, quantity).ok_or_else(sync_invalid)?;
+    let dosage_id = payload["dosage_id"]
+        .as_str()
+        .and_then(|id| id.parse::<i64>().ok());
+    if let Some(dosage_id) = dosage_id {
+        let owned = dosage::Entity::find_by_id(dosage_id)
+            .one(db)
+            .await
+            .map_err(database_error)?
+            .is_some_and(|dosage| {
+                dosage.medication_id == found.id && dosage.household_id == household_id
+            });
+        if !owned {
+            return Err(sync_invalid());
+        }
+    }
+    lock_medication(db, found.id).await?;
+    if let Some(dosage_id) = dosage_id {
+        lock_dosage(db, dosage_id).await?;
+    }
+    let medication = visible_medication(db, context, id)
+        .await?
+        .ok_or_else(ApiError::not_found)?;
+    let submission_id = payload["submission_id"].as_str().ok_or_else(sync_invalid)?;
+    let replayed = if let Some(event) =
+        replay_event(db, household_id, medication.id, submission_id).await?
+    {
+        let previous: Value = event
+            .object
+            .as_deref()
+            .and_then(|raw| serde_json::from_str(raw).ok())
+            .unwrap_or(Value::Null);
+        let same = ["quantity", "reason", "note", "submission_id", "dosage_id"]
+            .iter()
+            .all(|field| previous[*field] == payload[*field]);
+        if !same {
+            return Err(sync_invalid());
+        }
+        true
+    } else {
+        let (previous, remaining, unit) = if let Some(dosage_id) = dosage_id {
+            let dosage = dosage::Entity::find_by_id(dosage_id)
+                .one(db)
+                .await
+                .map_err(database_error)?
+                .ok_or_else(ApiError::not_found)?;
+            let previous = dosage.current_supply.ok_or_else(sync_invalid)?;
+            if previous < quantity {
+                return Err(sync_invalid());
+            }
+            let remaining = previous - quantity;
+            let unit = dosage.unit.clone();
+            let portable_id = dosage.portable_id.clone();
+            let mut active: dosage::ActiveModel = dosage.into();
+            active.current_supply = Set(Some(remaining));
+            active.updated_at = Set(Utc::now().naive_utc());
+            active.update(db).await.map_err(database_error)?;
+            record_version(
+                db,
+                context,
+                request_id,
+                "MedicationDosageOption",
+                dosage_id,
+                "update",
+                Some(json!({"current_supply": format_quantity(previous)})),
+                Some(json!({"current_supply": format_quantity(remaining)})),
+            )
+            .await?;
+            record_change(
+                db,
+                context,
+                request_id,
+                SyncRecord {
+                    record_type: "MedicationDosageOption",
+                    record_id: dosage_id,
+                    portable_id: &portable_id,
+                    action: "update",
+                    person_portable_id: None,
+                },
+            )
+            .await?;
+            let tracked = dosage::Entity::find()
+                .filter(dosage::Column::MedicationId.eq(medication.id))
+                .filter(dosage::Column::CurrentSupply.is_not_null())
+                .all(db)
+                .await
+                .map_err(database_error)?;
+            let total: Decimal = tracked.iter().filter_map(|row| row.current_supply).sum();
+            let threshold: Decimal = tracked.iter().filter_map(|row| row.reorder_threshold).sum();
+            let restock = medication
+                .supply_at_last_restock
+                .map_or(total, |old| old.max(total));
+            let mut active: medication::ActiveModel = medication.clone().into();
+            active.current_supply = Set(Some(total));
+            active.reorder_threshold = Set(threshold);
+            active.supply_at_last_restock = Set(Some(restock));
+            active.updated_at = Set(Utc::now().naive_utc());
+            active.update(db).await.map_err(database_error)?;
+            record_version(db, context, request_id, "Medication", medication.id, "update",
+                Some(json!({"current_supply": medication.current_supply.map(format_quantity),
+                    "reorder_threshold": format_quantity(medication.reorder_threshold),
+                    "supply_at_last_restock": medication.supply_at_last_restock.map(format_quantity)})),
+                Some(json!({"current_supply": format_quantity(total),
+                    "reorder_threshold": format_quantity(threshold),
+                    "supply_at_last_restock": format_quantity(restock)}))).await?;
+            record_change(
+                db,
+                context,
+                request_id,
+                SyncRecord {
+                    record_type: "Medication",
+                    record_id: medication.id,
+                    portable_id: &medication.portable_id,
+                    action: "update",
+                    person_portable_id: None,
+                },
+            )
+            .await?;
+            (previous, remaining, unit)
+        } else {
+            let tracked = dosage::Entity::find()
+                .filter(dosage::Column::MedicationId.eq(medication.id))
+                .filter(dosage::Column::CurrentSupply.is_not_null())
+                .one(db)
+                .await
+                .map_err(database_error)?
+                .is_some();
+            if tracked {
+                return Err(sync_invalid());
+            }
+            let previous = medication.current_supply.ok_or_else(sync_invalid)?;
+            if previous < quantity {
+                return Err(sync_invalid());
+            }
+            let remaining = previous - quantity;
+            let unit = medication.dose_unit.clone().unwrap_or_default();
+            let mut active: medication::ActiveModel = medication.clone().into();
+            active.current_supply = Set(Some(remaining));
+            active.updated_at = Set(Utc::now().naive_utc());
+            active.update(db).await.map_err(database_error)?;
+            record_version(
+                db,
+                context,
+                request_id,
+                "Medication",
+                medication.id,
+                "update",
+                Some(json!({"current_supply": format_quantity(previous)})),
+                Some(json!({"current_supply": format_quantity(remaining)})),
+            )
+            .await?;
+            record_change(
+                db,
+                context,
+                request_id,
+                SyncRecord {
+                    record_type: "Medication",
+                    record_id: medication.id,
+                    portable_id: &medication.portable_id,
+                    action: "update",
+                    person_portable_id: None,
+                },
+            )
+            .await?;
+            (previous, remaining, unit)
+        };
+        let unit = if [
+            "tablet", "capsule", "gummy", "sachet", "spray", "drop", "pad", "ml",
+        ]
+        .contains(&unit.as_str())
+        {
+            unit
+        } else {
+            "units".to_owned()
+        };
+        let mut object = payload;
+        object["previous_quantity"] = json!(format_quantity(previous));
+        object["remaining_quantity"] = json!(format_quantity(remaining));
+        object["unit"] = json!(unit);
+        version::ActiveModel {
+            item_type: Set("MedicationStockRemoval".to_owned()),
+            item_id: Set(medication.id),
+            event: Set("stock_removal".to_owned()),
+            object: Set(Some(object.to_string())),
+            request_id: Set(Some(request_id.to_owned())),
+            household_id: Set(Some(household_id)),
+            actor_membership_id: Set(Some(context.membership.id)),
+            whodunnit: Set(Some(context.user_id.to_string())),
+            audit_context: Set(json!({"actor_account_id": context.account_id,
+                "actor_user_id": context.user_id, "actor_membership_id": context.membership.id,
+                "household_id": household_id})),
+            created_at: Set(Some(Utc::now().naive_utc())),
+            ..Default::default()
+        }
+        .insert(db)
+        .await
+        .map_err(database_error)?;
+        false
+    };
+    let medication = visible_medication(db, context, id)
+        .await?
+        .ok_or_else(ApiError::not_found)?;
+    let (_, etag) = medication_body(db, medication.clone()).await?;
+    Ok(crate::sync_batch::SyncResult {
+        record_type: "Medication",
+        record_id: Some(medication.id),
+        record_portable_id: Some(medication.portable_id),
+        etag: Some(etag),
+        replayed: Some(replayed),
+    })
+}

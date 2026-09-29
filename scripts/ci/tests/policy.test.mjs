@@ -28,7 +28,20 @@ test('UI changes select Lighthouse while model changes select only Rails', () =>
   assert.equal(model.lighthouse, false);
 });
 
-for (const [suite, job] of [['lighthouse', 'lighthouse'], ['rails', 'test_non_system'], ['rails', 'coverage']]) {
+test('Rust port and contract infrastructure select their executable checks', () => {
+  for (const path of ['rust/api/src/lib.rs', 'rust/web/src/lib.rs', 'rust/contract-tests/tests/openapi_dosage_options.rs']) {
+    const selected = classify([path]).selected;
+    assert.equal(selected.rust_port, true, path);
+    assert.equal(selected.rails, false, path);
+  }
+  for (const path of ['Taskfiles/contract.yml', 'scripts/contract_provision.rb', 'scripts/compose_port.fish']) {
+    const selected = classify([path]).selected;
+    assert.equal(selected.rust_port, true, path);
+    assert.equal(selected.rails, true, path);
+  }
+});
+
+for (const [suite, job] of [['lighthouse', 'lighthouse'], ['rails', 'test_non_system'], ['rails', 'coverage'], ['rust_port', 'rust_port']]) {
   test(`${suite} succeeds when every selected job succeeds`, () => {
     assert.deepEqual(evaluate(needsFor(suite)), []);
   });

@@ -8,11 +8,12 @@
 version: "3"
 
 vars:
-  COMPOSE_PROJECT:
+  DEFAULT_COMPOSE_PROJECT:
     sh: |
       base=$(basename "$PWD")
       hash=$(pwd -P | git hash-object --stdin | cut -c1-8)
       printf '%s-%s\n' "$base" "$hash"
+  COMPOSE_PROJECT: '{{ .CONTRACT_PROJECT | default .DEFAULT_COMPOSE_PROJECT }}'
   GIT_COMMON_DIR:
     sh: git rev-parse --path-format=absolute --git-common-dir
   COMPOSE_CMD: MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .COMPOSE_PROJECT }}
@@ -124,8 +125,16 @@ tasks:
     vars:
       DB_SERVICE: "db-{{ .ENVIRONMENT }}"
     cmds:
-      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} up -d {{ .DB_SERVICE }}"
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} up -d {{ if .WAIT }}--wait{{ end }} {{ .DB_SERVICE }}"
       - echo "✓ {{ .ENVIRONMENT | title }} database started"
+
+  contract-down:
+    internal: true
+    run: always
+    requires:
+      vars: [CONTRACT_PROJECT]
+    cmds:
+      - "{{ .COMPOSE_CMD }} --profile test down --volumes --remove-orphans --rmi local"
 
   db-migrate:
     desc: Run Rails migrations
@@ -192,8 +201,10 @@ tasks:
       vars: [ENVIRONMENT]
     vars:
       WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
+    env:
+      MEDTRACKER_GIT_COMMON_DIR: '{{ .GIT_COMMON_DIR }}'
     cmds:
-      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} port {{ .WEB_SERVICE }} 3000 | sed -E 's/.*:([0-9]+)$/\\1/'"
+      - fish scripts/compose_port.fish '{{ .COMPOSE_PROJECT }}' '{{ .ENVIRONMENT }}' '{{ .SERVICE | default .WEB_SERVICE }}' '{{ .PORT | default "3000" }}'
 
   open-ui:
     desc: Open WebUI

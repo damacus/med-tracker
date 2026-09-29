@@ -159,8 +159,10 @@ RSpec.describe YAML do
                                   )
   end
 
-  it 'keeps development and test web host ports Docker-assigned for parallel worktrees' do
+  it 'publishes the test web server on a Docker-assigned loopback port' do
     expect(compose_config.dig('services', 'web-dev', 'ports')).to be_nil
-    expect(compose_config.dig('services', 'web-test', 'ports')).to be_nil
+    expect(compose_config.dig('services', 'web-test', 'ports')).to eq(
+      [{ 'target' => 3000, 'host_ip' => '127.0.0.1' }]
+    )
   end
 end

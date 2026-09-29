@@ -20,6 +20,11 @@ RSpec.describe 'API v1 rate limiting' do
 
   before { freeze_time }
 
+  it 'keeps the ordinary global limit and targeted data-export limit' do
+    expect(Rack::Attack.throttles.fetch('req/ip').limit).to eq(300)
+    expect(Rack::Attack.throttles.fetch('api/data_exports/ip').limit).to eq(10)
+  end
+
   it 'returns JSON retry metadata for throttled API routes' do
     10.times do
       get '/api/v1/households/1/data_exports/health_data', as: :json

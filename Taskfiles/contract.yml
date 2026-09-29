@@ -1,0 +1,928 @@
+---
+version: "3"
+
+tasks:
+  isolation:
+    desc: Verify per-run database and cleanup isolation
+    cmds:
+      - fish rust/contract-tests/cleanup_status_test.fish
+      - fish rust/contract-tests/runner_isolation_test.fish
+      - fish rust/contract-tests/runner_failure_test.fish
+      - fish rust/contract-tests/isolation_test.fish
+
+  cleanup:
+    run: always
+    requires:
+      vars: [CONTRACT_PROJECT, CONTRACT_RUN_DIR]
+    env:
+      CONTRACT_PROJECT: '{{ .CONTRACT_PROJECT }}'
+      CONTRACT_RUN_DIR: '{{ .CONTRACT_RUN_DIR }}'
+    cmds:
+      - fish rust/contract-tests/cleanup.fish
+      - task: :internal:contract-down
+        vars:
+          CONTRACT_PROJECT: { ref: .CONTRACT_PROJECT }
+
+  prepare-db:
+    desc: Create the disposable contract database in the isolated test PostgreSQL container
+    cmds:
+      - task: :internal:up-db
+        vars: { ENVIRONMENT: test, WAIT: true }
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: db-test
+          COMMAND: env PGPASSWORD=medtracker_password psql -v ON_ERROR_STOP=1 -h db-test -U medtracker -d medtracker -f /contract-db.sql
+
+  mail-port:
+    desc: Get the isolated test Mailpit HTTP port
+    cmds:
+      - task: :internal:port
+        vars: { ENVIRONMENT: test, SERVICE: mail-test, PORT: 8025 }
+
+  mail-clear:
+    desc: Clear the isolated test Mailpit before contract cases
+    requires:
+      vars: [MAILPIT_URL]
+    cmds:
+      - curl --fail --silent --show-error --output /dev/null --request DELETE '{{ .MAILPIT_URL }}/api/v1/messages'
+
+  restart-web:
+    requires:
+      vars: [CONTRACT_PROJECT, CONTRACT_RUN_DIR]
+    cmds:
+      - fish rust/contract-tests/restart_web.fish '{{ .CONTRACT_PROJECT }}' '{{ .CONTRACT_RUN_DIR }}'
+
+  run:
+    desc: Run API black-box cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH, MAILPIT_URL]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+      CONTRACT_MAILPIT_URL: '{{ .MAILPIT_URL }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml {{ if eq .TEST_TARGET "lib" }}--lib{{ else if .TEST_TARGET }}--test {{ .TEST_TARGET }}{{ else }}--lib --test auth --test admin --test invitations --test care --test medication_stock --test dosage_health --test schedules --test assignments --test doses --test reviews --test reports --test fhir --test smart_fhir --test platform --test lookup --test web_json_read --test portability --test retained --test web_json_actions --test profile --test web_profile --test sync --test replay --test oauth --test devices --test web_devices --test push_delivery --test mcp --test uploads --test envelopes{{ end }} --no-fail-fast -- --test-threads=1
+
+  run-medication-read-api:
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH, AUDIT_DATABASE_URL]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_AUDIT_DATABASE_URL: '{{ .AUDIT_DATABASE_URL }}'
+    cmds:
+      - fish rust/contract-tests/run_medication_api_tests.fish
+
+  run-platform:
+    desc: Run platform administration web-session contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test platform -- --test-threads=1
+
+  run-web-devices:
+    desc: Run web session device and notification preference contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test web_devices -- --test-threads=1
+
+  run-push-delivery:
+    desc: Run API and web push sender outcome contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test push_delivery -- --test-threads=1
+
+  run-auth-boundaries:
+    desc: Run API authentication and tenant-boundary contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test auth --test envelopes task_6n_ --no-fail-fast -- --test-threads=1
+
+  run-auth-session-boundary:
+    desc: Run cross-account session revocation contract case
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test auth other_account_session_revocation_preserves_both_bearers -- --test-threads=1
+
+  run-web-json-actions:
+    desc: Run web JSON action HTTP contracts
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test web_json_actions -- --test-threads=1
+
+  run-web-json-actions-disabled:
+    desc: Run disabled AI feature HTTP contract
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test web_json_actions -- --exact feature_disabled_hides_paid_ai_suggestion --ignored --test-threads=1
+
+  run-portability:
+    desc: Run portable household export and import contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test portability -- --test-threads=1
+
+  run-retained:
+    desc: Run retained public PWA and web offline HTTP contracts
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test retained -- --test-threads=1
+
+  run-uploads:
+    desc: Run Active Storage upload and signed download contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test uploads -- --test-threads=1
+
+  run-profile:
+    desc: Run profile and avatar contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test profile -- --test-threads=1
+
+  run-web-profile:
+    desc: Run web profile, avatar, and health contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test web_profile -- --test-threads=1
+
+  run-lookup:
+    desc: Run medication lookup and AI suggestion contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test lookup -- --test-threads=1
+
+  run-web-json-read:
+    desc: Run web JSON search, finder, and scan-restock read contracts
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test web_json_read -- --test-threads=1
+
+  run-mcp:
+    desc: Run MCP Streamable HTTP contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test mcp -- --test-threads=1
+
+  run-admin:
+    desc: Run household settings and membership contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test admin -- --test-threads=1
+
+  run-admin-tokens-audit:
+    desc: Run app token and audit listing contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test admin -- task_6a2_ --test-threads=1
+
+  run-invitations:
+    desc: Run household invitation contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH, MAILPIT_URL]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+      CONTRACT_MAILPIT_URL: '{{ .MAILPIT_URL }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test invitations -- --test-threads=1
+
+  run-devices:
+    desc: Run notification preference, native device and push subscription API cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test devices -- --test-threads=1
+
+  run-replay:
+    desc: Run offline medication take and response replay contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test replay -- --test-threads=1
+
+  run-sync:
+    desc: Run sync snapshot and change-feed contract cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test sync -- --test-threads=1
+
+  run-sync-privacy:
+    desc: Run hidden-person change-feed privacy contract against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test sync -- --exact change_feed_hides_ungranted_person_events_and_tombstones --test-threads=1
+
+  run-reviews:
+    desc: Run medication review prompt cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test reviews -- --test-threads=1
+
+  run-reports:
+    desc: Run clinical report and data export contract cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test reports -- --test-threads=1
+
+  run-fhir:
+    desc: Run FHIR R4 contract cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test fhir -- --test-threads=1
+
+  run-smart-fhir:
+    desc: Run SMART consent and FHIR token contract cases
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test smart_fhir -- --test-threads=1
+
+  run-care:
+    desc: Run people, grant, and location cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test care -- --test-threads=1
+
+  run-doses:
+    desc: Run dose outcome and medication take cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test doses -- --test-threads=1
+
+  run-dose-precision:
+    desc: Probe fractional medication-take timestamp precision against a checked target
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test doses -- --exact medication_take_preserves_fractional_second_timestamp --ignored --test-threads=1
+
+  run-assignments:
+    desc: Run direct-assignment and pause-period cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test assignments -- --test-threads=1
+
+  run-assignment-precision:
+    desc: Demonstrate the expected-failing Rails direct-assignment decimal precision case
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test assignments -- --ignored --exact assignment_preserves_three_decimal_dose_amount --test-threads=1
+
+  run-schedules:
+    desc: Run schedule cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test schedules -- --test-threads=1
+
+  run-schedule-precision:
+    desc: Run the expected-failing Rails schedule precision case against a checked target
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test schedules -- --ignored --exact schedule_preserves_fractional_min_hours_between_doses --test-threads=1
+
+  run-dosage-health:
+    desc: Run dosage-option and health-event cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test dosage_health -- --test-threads=1
+
+  run-dosage-health-privacy:
+    desc: Run the expected-failing dosage privacy case against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test dosage_health -- --ignored --exact dosage_option_collection_hides_ungranted_medication --test-threads=1
+
+  run-dosage-health-default-validation:
+    desc: Run the expected-failing duplicate adult dosage default validation case
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test dosage_health -- --ignored --exact dosage_option_duplicate_adult_default_returns_validation_error --test-threads=1
+
+  run-health-event-kind-validation:
+    desc: Run the expected-failing invalid health-event kind validation case
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test dosage_health -- --ignored --exact health_event_invalid_kind_returns_validation_error --test-threads=1
+
+  run-health-event-replacement-atomicity:
+    desc: Run the expected-failing invalid health-event replacement atomicity case
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test dosage_health -- --ignored --exact health_event_invalid_replacement_preserves_links_and_etag --test-threads=1
+
+  oauth:
+    desc: Run OAuth black-box cases against a checked target and fixture
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test oauth -- --test-threads=1
+
+  fmt:
+    desc: Format the black-box test crate
+    cmds:
+      - cargo fmt --manifest-path rust/contract-tests/Cargo.toml --all
+
+  clippy:
+    desc: Lint the black-box test crate
+    cmds:
+      - cargo clippy --manifest-path rust/contract-tests/Cargo.toml --all-targets -- -D warnings
+
+  rails:
+    desc: Provision disposable test fixtures and run API contract cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails
+
+  admin-rails:
+    desc: Run household settings and membership cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails admin
+
+  admin-tokens-audit-rails:
+    desc: Run app token and audit listing cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails admin-tokens-audit
+
+  oauth-rails:
+    desc: Run OAuth cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails oauth
+
+  auth-boundaries-rails:
+    desc: Run authentication and tenant-boundary cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails auth-boundaries
+
+  auth-session-boundary-rails:
+    desc: Run cross-account session revocation case against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails auth-session-boundary
+
+  invitations-rails:
+    desc: Run household invitation cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails invitations
+
+  devices-rails:
+    desc: Run notification preference, native device and push subscription cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails devices
+
+  devices-rust:
+    desc: Run notification preference, native device and push subscription cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust devices
+
+  dosage-health-rails:
+    desc: Run dosage-option and health-event cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails dosage-health
+
+  schedules-rails:
+    desc: Run schedule cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails schedules
+
+  assignments-rails:
+    desc: Run direct-assignment and pause-period cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails assignments
+
+  doses-rails:
+    desc: Run dose outcome and medication take cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails doses
+
+  reviews-rails:
+    desc: Run medication review prompt cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails reviews
+
+  reports-rails:
+    desc: Run clinical report and data export cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails reports
+
+  fhir-rails:
+    desc: Run FHIR R4 cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails fhir
+
+  smart-fhir-rails:
+    desc: Run SMART consent and FHIR token cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails smart-fhir
+
+  platform-rails:
+    desc: Run platform administration cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails platform
+
+  platform-rust:
+    desc: Run platform administration cases against the configured Rust target
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust platform
+
+  fhir-rust:
+    desc: Run FHIR R4 cases against the configured Rust target
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust fhir
+
+  smart-fhir-rust:
+    desc: Run SMART consent and FHIR token cases against the configured Rust target
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust smart-fhir
+
+  portability-rails:
+    desc: Run portable household export and import cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails portability
+
+  profile-rails:
+    desc: Run profile and avatar cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails profile
+
+  retained-rails:
+    desc: Run retained public PWA and web offline contracts against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails retained
+
+  web-json-actions-rails:
+    desc: Run web JSON action contracts against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails web-json-actions
+
+  web-json-actions-disabled-rails:
+    desc: Run disabled AI feature contract against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails web-json-actions-disabled
+
+  web-json-actions-rust:
+    desc: Run web JSON action contracts against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust web-json-actions
+
+  web-json-actions-disabled-rust:
+    desc: Run disabled AI feature contract against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust web-json-actions-disabled
+
+  retained-rust:
+    desc: Run retained public PWA and web offline contracts against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust retained
+
+  uploads-rails:
+    desc: Run Active Storage upload and signed download cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails uploads
+
+  uploads-rust:
+    desc: Run Active Storage upload and signed download cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust uploads
+
+  web-devices-rails:
+    desc: Run web device and notification preference cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails web-devices
+
+  push-delivery-rails:
+    desc: Run API and web push sender cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails push-delivery
+
+  web-devices-rust:
+    desc: Run web device and notification preference cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust web-devices
+
+  push-delivery-rust:
+    desc: Run API and web push sender cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust push-delivery
+  web-profile-rails:
+    desc: Run web profile, avatar, and health cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails web-profile
+
+  profile-web-profile-rails:
+    desc: Run profile then web profile contracts against one isolated Rails fixture
+    cmds:
+      - fish rust/contract-tests/run.fish rails profile-web-profile
+
+  lookup-rails:
+    desc: Run medication lookup and AI suggestion cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails lookup
+
+  web-json-read-rails:
+    desc: Run web JSON search, finder, and scan-restock reads against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails web_json_read
+
+  mcp-rails:
+    desc: Run MCP Streamable HTTP cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails mcp
+
+  care-rails:
+    desc: Run people, grant, and location cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails care
+
+  sync-rails:
+    desc: Run sync snapshot and change-feed contract cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails sync
+
+  replay-rails:
+    desc: Run offline medication take and response replay cases against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails replay
+
+  sync-privacy-rails:
+    desc: Run hidden-person feed privacy case against isolated Rails
+    cmds:
+      - fish rust/contract-tests/run.fish rails sync-privacy
+
+  dose-precision-rails:
+    desc: Demonstrate Rails medication-take timestamp precision
+    cmds:
+      - fish rust/contract-tests/run.fish rails dose-precision
+
+  assignment-precision-rails:
+    desc: Demonstrate Rails' current assignment decimal precision limit
+    cmds:
+      - fish rust/contract-tests/run.fish rails assignment-precision
+
+  schedule-precision-rails:
+    desc: Demonstrate Rails' current loss of fractional schedule minimum hours
+    cmds:
+      - fish rust/contract-tests/run.fish rails schedule-precision
+
+  dosage-health-privacy-rails:
+    desc: Demonstrate the currently failing Rails dosage privacy case
+    cmds:
+      - fish rust/contract-tests/run.fish rails dosage-health-privacy
+
+  dosage-health-default-validation-rails:
+    desc: Demonstrate the currently failing Rails duplicate adult dosage default validation case
+    cmds:
+      - fish rust/contract-tests/run.fish rails dosage-health-default-validation
+
+  health-event-kind-validation-rails:
+    desc: Demonstrate the currently failing Rails invalid health-event kind validation case
+    cmds:
+      - fish rust/contract-tests/run.fish rails health-event-kind-validation
+
+  health-event-replacement-atomicity-rails:
+    desc: Demonstrate the currently failing Rails invalid health-event replacement atomicity case
+    cmds:
+      - fish rust/contract-tests/run.fish rails health-event-replacement-atomicity
+
+  rust:
+    desc: Run API contract cases against a Rust URL after provisioning isolated Rails fixtures
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust
+
+  admin-rust:
+    desc: Run household settings and membership cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust admin
+
+  admin-tokens-audit-rust:
+    desc: Run app token and audit listing cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust admin-tokens-audit
+
+  oauth-rust:
+    desc: Run OAuth cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust oauth
+
+  auth-boundaries-rust:
+    desc: Run authentication and tenant-boundary cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust auth-boundaries
+
+  auth-session-boundary-rust:
+    desc: Run cross-account session revocation case against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust auth-session-boundary
+
+  invitations-rust:
+    desc: Run household invitation cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust invitations
+
+  portability-rust:
+    desc: Run portable household export and import cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust portability
+
+  profile-rust:
+    desc: Run profile and avatar cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust profile
+
+  web-profile-rust:
+    desc: Run web profile, avatar, and health cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust web-profile
+
+  lookup-rust:
+    desc: Run medication lookup and AI suggestion cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust lookup
+
+  web-json-read-rust:
+    desc: Run web JSON search, finder, and scan-restock reads against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust web_json_read
+
+  mcp-rust:
+    desc: Run MCP Streamable HTTP cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust mcp
+
+  sync-rust:
+    desc: Run sync cases against a Rust URL after provisioning isolated fixtures
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust sync
+
+  replay-rust:
+    desc: Run replay cases against a Rust URL after provisioning isolated fixtures
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust replay
+
+  reports-rust:
+    desc: Run clinical report and data export cases against a Rust URL
+    env:
+      CONTRACT_RUST_URL: '{{ .RUST_URL | default "http://127.0.0.1:39999" }}'
+      CONTRACT_RUST_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+    cmds:
+      - fish rust/contract-tests/run.fish rust reports

@@ -1,0 +1,159 @@
+:root {
+  color-scheme: light;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #14253a;
+  background: #f3f8fb;
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; }
+
+.auth-page {
+  min-height: 100vh;
+  padding: clamp(16px, 4vw, 44px);
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 0%, #e7f7fa, #f5f9fc 52%, #e9eff6);
+}
+
+.auth-shell {
+  width: min(100%, 1080px);
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid #d6e3e9;
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgb(30 65 83 / 12%);
+}
+
+.brand-panel {
+  position: relative;
+  min-width: 0;
+  min-height: 610px;
+  padding: clamp(28px, 4vw, 52px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  background: linear-gradient(155deg, #e6f8f5 0%, #d6edf2 55%, #dceaff 100%);
+}
+
+.brand-panel::before {
+  content: "";
+  position: absolute;
+  width: 380px;
+  height: 380px;
+  right: -170px;
+  bottom: -170px;
+  border: 54px solid rgb(28 144 151 / 12%);
+  border-radius: 50%;
+}
+
+.brand-name {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -.025em;
+}
+
+.brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  color: #fff;
+  background: linear-gradient(140deg, #12a39a, #2677ba);
+  font-size: 1.4rem;
+  box-shadow: 0 7px 17px rgb(0 101 117 / 18%);
+}
+
+.brand-intro { position: relative; max-width: 360px; }
+.eyebrow { margin: 0 0 12px; color: #087b79; font-size: .72rem; font-weight: 800; letter-spacing: .13em; }
+.brand-heading { margin: 0; font-size: clamp(2.1rem, 3.2vw, 3.35rem); font-weight: 800; line-height: 1.1; letter-spacing: -.045em; }
+.brand-description { margin: 20px 0 0; color: #48647b; font-size: 1rem; line-height: 1.6; }
+.brand-accent { position: relative; display: flex; gap: 8px; }
+.brand-accent span { width: 36px; height: 7px; border-radius: 8px; background: #159f9a; }
+.brand-accent span:nth-child(2) { width: 18px; background: #4aa7c6; }
+.brand-accent span:nth-child(3) { width: 9px; background: #9bcbd7; }
+
+.form-panel {
+  min-width: 0;
+  padding: clamp(28px, 5vw, 68px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.form-panel h1 { margin: 0; font-size: clamp(2rem, 3vw, 2.6rem); line-height: 1.15; letter-spacing: -.04em; }
+.form-intro { margin: 14px 0 30px; color: #52687c; line-height: 1.55; }
+.form-alert { padding: 13px 16px; margin: 0 0 22px; border: 1px solid #ebb7b4; border-radius: 10px; color: #932c2a; background: #fff3f1; line-height: 1.4; }
+.auth-form { display: grid; gap: 22px; }
+.form-field { display: grid; gap: 9px; min-width: 0; }
+.form-field label, .scope-list legend { color: #31495e; font-size: .9rem; font-weight: 700; }
+.field-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.field-heading a { color: #087b79; font-size: .85rem; font-weight: 700; text-decoration: none; }
+.field-heading a:hover { text-decoration: underline; }
+.form-field input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 52px;
+  padding: 0 15px;
+  border: 1px solid #adbfca;
+  border-radius: 10px;
+  color: #14253a;
+  background: #fff;
+  font: inherit;
+}
+
+.form-field input:hover { border-color: #5c969a; }
+.form-field input:focus-visible, .scope-row input:focus-visible, .primary-button:focus-visible, a:focus-visible {
+  outline: 3px solid #2a9a9d;
+  outline-offset: 3px;
+}
+
+.primary-button {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  background: #087f7b;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgb(5 103 104 / 16%);
+}
+
+.primary-button:hover { background: #076b69; }
+.scope-list { min-width: 0; margin: 0; padding: 0; display: grid; gap: 10px; border: 0; }
+.scope-list legend { margin-bottom: 12px; }
+.scope-row { min-height: 50px; display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid #d2e0e5; border-radius: 10px; background: #f7fbfb; overflow-wrap: anywhere; }
+.scope-row input { width: 20px; height: 20px; flex: none; accent-color: #087f7b; }
+.scope-copy { display: grid; gap: 3px; }
+.scope-copy strong { font-size: .92rem; }
+.scope-copy small { color: #52687c; font-size: .8rem; line-height: 1.45; }
+
+@media (max-width: 760px) {
+  .auth-page { padding: 16px; align-items: start; }
+  .auth-shell { grid-template-columns: 1fr; border-radius: 20px; }
+  .brand-panel { min-height: 170px; padding: 22px 24px; gap: 24px; }
+  .brand-intro { max-width: 100%; }
+  .brand-heading { font-size: 1.45rem; }
+  .brand-description, .brand-accent { display: none; }
+  .form-panel { padding: 30px 24px 36px; }
+  .form-intro { margin-bottom: 25px; }
+}
+
+@media (max-width: 360px) {
+  .auth-page { padding: 12px; }
+  .brand-panel, .form-panel { padding-left: 18px; padding-right: 18px; }
+}

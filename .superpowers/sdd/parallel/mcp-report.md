@@ -1,0 +1,34 @@
+# MCP HTTP contract report
+
+## Scope and status
+
+This branch adds target-independent black-box contracts for the retained `/mcp` mount. It changes Rust contract tests, their Task runner, and the parity matrix. It does not change Rails product code, schema, native clients, or OpenAPI. The seven focused cases run against disposable Rails/PostgreSQL 18 households; the absent Rust target remains expected red. The integration owner will run the combined corpus and resolve shared-file overlaps.
+
+## Rails source behavior inventoried
+
+- `/mcp` mounts `MedTrackerMcp::RackApp` with the MCP Ruby gem's stateless Streamable HTTP transport and JSON responses. Authenticated JSON-RPC POST requests support `initialize`, `tools/list`, `tools/call`, `resources/list`, `resources/read`, `prompts/list`, and `prompts/get`. `notifications/initialized` returns HTTP 202 without a body. Authenticated GET returns 405; authenticated DELETE returns 200. JSON-RPC batch arrays return HTTP 400.
+- The server advertises exactly five read-only tools: current user, household snapshot, today's schedule, inventory risks, and bounded health-history summary. It also advertises one household snapshot resource and one household review prompt. The tests call representative tools and both additional surfaces without making clinical writes.
+- `/mcp` accepts valid API session and API app-token bearer credentials bound to an active household membership. It rejects missing, revoked, locked, and expired credentials. Rails exposes no separate `/mcp` HTTP consent operation: the holder authorizes MCP access by issuing and presenting a household-scoped bearer. Client-side approval is outside the server HTTP contract.
+- The household snapshot tool uses the mobile snapshot's **manage** person scope. A member with only a view grant cannot see the managed patient in that snapshot; the owner with a manage grant can. The today-schedule and health-history tools use view policy scope, so the view-granted member can see the managed patient's records. Hidden and foreign fixture identities remain excluded. A foreign bearer reads its own household, not the primary fixture's household.
+- Protocol failures are structured: unknown method `-32601`, missing tool name and unknown resource `-32602`, bounded history error as a tool result with `isError: true`, missing/revoked/locked/expired bearer as HTTP 401 JSON, and cross-origin request as HTTP 403 JSON. Successful authenticated requests create request-correlated `mcp.request` audit events with actor membership, method, outcome, and status; the public audit event excludes the raw app token.
+
+## Red, green, and verification
+
+- Initial focused contract passed the protocol inventory test. The expanded suite was red because it assumed a view grant appeared in the mobile snapshot; the Rails behavior is manage-scoped. After correcting that assertion, six cases passed.
+- A transport probe was red on a guessed DELETE 405; Rails returned 200. The updated seven-case suite passed. A later exact error-code probe was red on a guessed unknown-resource `-32002`; Rails returned `-32602`. The final contract records Rails' output.
+- `rtk task contract:mcp-rails`: final run 7 passed, 0 failed. It provisions disposable PostgreSQL 18 households and removes its Docker project after the run.
+- `rtk task contract:mcp-rust`: expected red, 0 passed and 7 failed to connect to absent `127.0.0.1:39999/mcp`. This is not a Rails failure or an implemented Rust parity result.
+- `rtk task contract:fmt`, `rtk task contract:clippy`, `rtk proxy fish -n rust/contract-tests/run.fish`, and `rtk git diff --check`: passed.
+- `rtk task docs:build` could not download locked `zensical==0.0.63` because package-host DNS was unavailable in this isolated checkout; the other cached UV environment also lacked its wheel. Running the same installed Zensical build executable from the read-only active checkout, with this branch as working directory, returned `No issues found`. That fallback checked this branch's Markdown without changing the active checkout, but it does not count as a passing Task wrapper invocation.
+
+## Limits
+
+The contract checks HTTP-visible scope and audit data. It does not prove internal gem implementation, physical database rollback, or interactive consent UX. The app-token creation UX is outside this MCP HTTP slice. The full combined suite and Rust parity remain integration-owner work.
+
+## Scoped review fix
+
+- The disposable fixture now has visible, hidden and foreign low-stock medicines linked to the matching people. Inventory risks must include the visible medicine and exclude both forbidden medicines. It also has current-day takes, managed and forbidden side effects, and repeated managed, hidden and foreign illnesses so history patterns have a positive and negative privacy signal.
+- Both `resources/read` and the tool snapshot check all nine mobile snapshot record collections, including `health_events`. The view-only member must not receive managed or hidden person records; the owner must receive representative managed records; neither may receive foreign records. Today's taken groups must include the managed medicine and exclude hidden and foreign people. Health-history takes, side effects, illnesses and patterns each require managed clinical content and reject hidden or foreign content. Capability checks require exact resource and prompt list sizes; named invalid tools and prompts require structured `-32602` responses.
+- Test-first run: the first expanded Rails attempt exposed a fixture validation error because new as-needed assignments lacked dose fields. After adding valid dose fields, the focused contract passed 7/7. The subsequent all-collection assertion run passed 7/7. No Rails product, schema, native-client or OpenAPI files changed.
+- Final scoped gates: `rtk task contract:mcp-rails` passed 7/7. `rtk task contract:mcp-rust` compiled and remained the expected absent-server red, 0/7 connection failures. `rtk task contract:fmt`, `rtk task contract:clippy`, `rtk task rubocop` (1,886 files, no offenses), Fish syntax and `git diff --check` passed. The isolated checkout's `task docs:build` remained blocked by Python package-host DNS while fetching `tomli`; the installed read-only Zensical executable built this branch's docs with `No issues found`. The combined suite was not run in this parallel slice.
+- The second scoped review found that the mobile snapshot adds `health_events` as a ninth collection. The shared assertion now requires its managed event for the owner and excludes the managed event for a view-only member, plus hidden and foreign event IDs under the applicable scope. Both snapshot tool and resource-read tests call that assertion. The focused Rails run remained green at 7/7 after this test-only correction.
