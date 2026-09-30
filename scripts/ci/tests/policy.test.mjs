@@ -78,6 +78,14 @@ test('isolated browser runner matches the checkout owner and reports migration f
   assert.match(runner, /docker compose -p \$contract_project --profile test logs --no-color --tail=80 migrate-test/);
 });
 
+test('isolated Rails web server has a readiness healthcheck for Compose wait', () => {
+  const compose = readFileSync(new URL('../../../compose.yaml', import.meta.url), 'utf8');
+  const webTest = compose.match(/\n  web-test:\n(?<body>[\s\S]*?)(?=\n  [\w-]+:\n)/)?.groups?.body;
+  assert.ok(webTest, 'web-test service was not found');
+  assert.match(webTest, /healthcheck:\n\s+test: \["CMD-SHELL", "curl -f http:\/\/localhost:3000\/up \|\| exit 1"\]/);
+  assert.doesNotMatch(webTest, /healthcheck:\n\s+disable: true/);
+});
+
 test('classification failure cannot produce a successful gate', () => {
   const needs = needsFor('rails');
   needs.changes.result = 'failure';

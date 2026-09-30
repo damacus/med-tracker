@@ -201,7 +201,7 @@ services:
       - /app/tmp/cache:uid=1000,gid=1000
       - /app/public/assets:uid=1000,gid=1000
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/up || exit 1"]
 
   tools-test:
     extends:
