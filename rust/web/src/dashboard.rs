@@ -218,11 +218,64 @@ pub struct DashboardPage {
     pub date: String,
     pub selected_id: String,
     pub selected_name: String,
+    pub mobile_shortcuts: Vec<String>,
+    pub household_manager: bool,
     pub people: Vec<DashboardPerson>,
     pub selectable_people: Vec<(i64, String)>,
     pub metrics: DashboardMetrics,
     pub stock: Vec<DashboardStock>,
     pub history: Vec<DashboardHistory>,
+}
+
+fn shortcut(key: &str) -> Option<(&'static str, &'static str, bool)> {
+    match key {
+        "dashboard" => Some((
+            "Home",
+            "m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10",
+            false,
+        )),
+        "inventory" => Some((
+            "Inventory",
+            "M620-163 450-333l56-56 114 114 226-226 56 56-282 282Zm220-397h-80v-200h-80v120H280v-120h-80v560h240v80H200q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h167q11-35 43-57.5t70-22.5q40 0 71.5 22.5T594-840h166q33 0 56.5 23.5T840-760v200ZM480-760q17 0 28.5-11.5T520-800q0-17-11.5-28.5T480-840q-17 0-28.5 11.5T440-800q0 17 11.5 28.5T480-760Z",
+            true,
+        )),
+        "locations" => Some((
+            "Locations",
+            "m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10",
+            false,
+        )),
+        "people" => Some((
+            "People",
+            "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75",
+            false,
+        )),
+        "finder" => Some((
+            "Medicine Finder",
+            "m21 21-4.3-4.3 M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0",
+            false,
+        )),
+        "medicine_reviews" => Some((
+            "Medicine reviews",
+            "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z M14 2v4a2 2 0 0 0 2 2h4 M10 9H8 M16 13H8 M16 17H8",
+            false,
+        )),
+        "reports" => Some((
+            "Reports",
+            "M12 8v4 M12 16h.01 M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0",
+            false,
+        )),
+        "profile" => Some((
+            "Profile",
+            "M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10 M3 22a9 9 0 0 1 18 0",
+            false,
+        )),
+        "administration" => Some((
+            "Administration",
+            "M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0",
+            false,
+        )),
+        _ => None,
+    }
 }
 
 fn status_name(state: TaskState) -> &'static str {
@@ -288,8 +341,42 @@ fn dashboard_material_icon(path: &'static str) -> impl IntoView {
     view! { <svg class="dashboard-icon" aria-hidden="true" viewBox="0 -960 960 960" fill="currentColor" stroke="none"><path d=path/></svg> }
 }
 
+fn mobile_shortcut(key: String, prefix: String) -> impl IntoView {
+    let (label, icon, material) = shortcut(&key).expect("resolved shortcut");
+    let graphic = if material {
+        dashboard_material_icon(icon).into_any()
+    } else {
+        dashboard_icon(icon).into_any()
+    };
+    if key == "dashboard" {
+        view! { <a href=prefix aria-current="page"><span class="dashboard-rail-indicator">{graphic}</span><span class="dashboard-rail-label">{label}</span></a> }.into_any()
+    } else {
+        view! { <button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="This page is not available in this preview"><span class="dashboard-rail-indicator">{graphic}</span><span class="dashboard-rail-label">{label}</span></button> }.into_any()
+    }
+}
+
+fn person_initials(name: &str) -> String {
+    name.split_whitespace()
+        .take(2)
+        .filter_map(|part| part.chars().next())
+        .collect::<String>()
+        .to_uppercase()
+}
+
+fn person_option(id: String, name: String, prefix: String, selected: bool) -> impl IntoView {
+    let initials = person_initials(&name);
+    view! { <a data-testid="dashboard-person-option" href=format!("{prefix}?dashboard_person_id={id}") aria-current=selected.then_some("true")><span class="dashboard-avatar" aria-hidden="true">{initials}</span><span class="dashboard-option-name">{name}</span><span class="dashboard-option-check" aria-hidden="true">{dashboard_icon("m5 12 4 4L19 6")}</span></a> }
+}
+
 pub fn render_dashboard(page: DashboardPage) -> String {
     let prefix = format!("/households/{}/dashboard", page.slug);
+    let mobile_shortcuts: Vec<_> = page
+        .mobile_shortcuts
+        .iter()
+        .filter(|key| *key != "administration" || page.household_manager)
+        .filter(|key| shortcut(key).is_some())
+        .cloned()
+        .collect();
     let next_due = if page.metrics.due_now > 0 {
         "Now".to_owned()
     } else {
@@ -312,11 +399,12 @@ pub fn render_dashboard(page: DashboardPage) -> String {
             <dialog id="dashboard-navigation" class="dashboard-drawer" aria-label="Navigation menu"><header class="dashboard-drawer-header"><h2>"MedTracker"</h2><button type="button" aria-label="Close menu" autofocus>{dashboard_icon("M6 6l12 12 M18 6 6 18")}</button></header></dialog>
             <aside class="dashboard-sidebar"><div class="dashboard-brand"><span class="dashboard-brand-mark">"M"</span><strong>"MedTracker"</strong></div>
                 <button class="dashboard-search" type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Search is not available in this preview">{dashboard_icon("m21 21-4.3-4.3 M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0")}"Search"<kbd>"Ctrl K"</kbd></button>
-                <nav aria-label="Main navigation"><a aria-current="page" href=prefix.clone()>{dashboard_icon("m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10")}"Dashboard"</a>{[("Inventory", "M620-163 450-333l56-56 114 114 226-226 56 56-282 282Zm220-397h-80v-200h-80v120H280v-120h-80v560h240v80H200q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h167q11-35 43-57.5t70-22.5q40 0 71.5 22.5T594-840h166q33 0 56.5 23.5T840-760v200ZM480-760q17 0 28.5-11.5T520-800q0-17-11.5-28.5T480-840q-17 0-28.5 11.5T440-800q0 17 11.5 28.5T480-760Z"), ("Locations", "m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10"), ("People", "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75"), ("Medication Finder", "m21 21-4.3-4.3 M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0"), ("Medicine reviews", "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z M14 2v4a2 2 0 0 0 2 2h4 M10 9H8 M16 13H8 M16 17H8"), ("Reports", "M12 8v4 M12 16h.01 M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"), ("Administration", "M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0")].into_iter().map(|(label, path)| view! { <button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="This page is not available in this preview">{if label == "Inventory" { dashboard_material_icon(path).into_any() } else { dashboard_icon(path).into_any() }}{label}</button> }).collect_view()}</nav>
+                <nav aria-label="Main navigation"><a aria-current="page" href=prefix.clone()>{dashboard_icon("m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10")}"Dashboard"</a>{["inventory", "locations", "people", "finder", "medicine_reviews", "reports", "administration"].into_iter().filter(|key| *key != "administration" || page.household_manager).map(|key| { let (label, path, material) = shortcut(key).expect("known navigation key"); view! { <button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="This page is not available in this preview">{if material { dashboard_material_icon(path).into_any() } else { dashboard_icon(path).into_any() }}{label}</button> } }).collect_view()}</nav>
                 <div class="dashboard-sidebar-bottom"><span class="dashboard-identity"><span class="dashboard-avatar" aria-hidden="true">{selected_name.chars().next().unwrap_or('?').to_string()}</span><span><strong>{selected_name.clone()}</strong><small>"Household"</small></span></span><form action="/logout" method="post"><input type="hidden" name="authenticity_token" value=csrf/><button type="submit"><span class="dashboard-desktop-label">"Sign Out"</span><span class="dashboard-mobile-label">"Logout"</span></button></form></div>
             </aside>
+            <aside class="dashboard-mobile-rail" aria-label="Primary navigation" data-testid="dashboard-mobile-rail"><nav aria-label="Primary navigation">{mobile_shortcuts.into_iter().map(|key| mobile_shortcut(key, prefix.clone())).collect_view()}</nav></aside>
             <main class="dashboard-main"><header class="dashboard-top"><div><p class="dashboard-date">{page.date}</p><h1>{page.greeting}</h1></div><div class="dashboard-quick-actions"><button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Adding people is not available in this preview">"Add Person"</button><button type="button" aria-label="Add Medication" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Adding medicines is not available in this preview">"Add Medication"</button></div></header>
-                <details class="dashboard-selector" data-testid="dashboard-person-selector-disclosure"><summary data-testid="dashboard-person-selector-summary"><span class="dashboard-avatar" aria-hidden="true">{selected_name.chars().next().unwrap_or('?').to_string()}</span><strong>{selected_name}</strong><span class="dashboard-change">"Change person ⌄"</span></summary><nav aria-label="Select person" data-testid="dashboard-person-options"><a href=format!("{prefix}?dashboard_person_id=all") aria-current=(selected_id == "all").then_some("true")>"All Family"</a>{page.selectable_people.into_iter().map(|(id, name)| view! { <a data-testid="dashboard-person-option" href=format!("{prefix}?dashboard_person_id={id}") aria-current=(selected_id == id.to_string()).then_some("true")>{name}</a> }).collect_view()}</nav></details>
+                <details class="dashboard-selector" data-testid="dashboard-person-selector-disclosure"><summary data-testid="dashboard-person-selector-summary"><span class="dashboard-selector-identity"><span class="dashboard-avatar" aria-hidden="true">{person_initials(&selected_name)}</span><strong>{selected_name}</strong></span><span class="dashboard-change">"Change person" {dashboard_icon("m7 10 5 5 5-5 m-10-1 5-5 5 5")}</span></summary><nav aria-label="Select person" data-testid="dashboard-person-options">{person_option("all".into(), "All Family".into(), prefix.clone(), selected_id == "all")}{page.selectable_people.into_iter().map(|(id, name)| person_option(id.to_string(), name, prefix.clone(), selected_id == id.to_string())).collect_view()}</nav></details>
                 <section class="dashboard-metrics" data-testid="dashboard-metrics" aria-label="Today's summary"><div>{dashboard_icon("M12 6v6l4 2 M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0") }<span>"NEXT DUE"</span><strong>{next_due}</strong></div><div>{dashboard_material_icon("M200-640h560v-80H200v80Zm0 0v-80 80Zm0 560q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v227q-19-9-39-15t-41-9v-43H200v400h252q7 22 16.5 42T491-80H200Zm378.5-18.5Q520-157 520-240t58.5-141.5Q637-440 720-440t141.5 58.5Q920-323 920-240T861.5-98.5Q803-40 720-40T578.5-98.5ZM787-145l28-28-75-75v-112h-40v128l87 87Z") }<span>"DUE NOW"</span><strong>{page.metrics.due_now}</strong></div><div>{dashboard_icon("m9 12 2 2 4-4 M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0") }<span>"TASKS LEFT"</span><strong>{page.metrics.tasks_left}</strong></div></section>
                 <div class="dashboard-columns"><section class="dashboard-schedule"><h2>"Today's Schedule"</h2><div inner_html=if page.people.iter().all(|person| person.tasks.is_empty() && person.outcomes.is_empty()) { view! { <p class="dashboard-empty">"No medication tasks for this selection."</p> }.to_html() } else { page.people.into_iter().map(person_card).collect_view().to_html() }></div></section>
                     <section class="dashboard-stock"><h2>"Stock Inventory"</h2><div class="dashboard-stock-card"><div inner_html=if page.stock.is_empty() { view! { <p>"No stock for this selection."</p> }.to_html() } else { page.stock.into_iter().map(|stock| { let bar_class = if stock.out { "dashboard-stock-bar out" } else if stock.low { "dashboard-stock-bar low" } else { "dashboard-stock-bar" }; view! { <div class="dashboard-stock-item"><div><strong>{stock.name}</strong><span>{stock.amount}" "{stock.unit}" left"</span></div><div class=bar_class></div></div> } }).collect_view().to_html() }></div><button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Ordering refills is not available in this preview">"ORDER REFILLS"</button></div></section>

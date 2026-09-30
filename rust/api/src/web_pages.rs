@@ -970,6 +970,17 @@ async fn dashboard(
         me.pointer("/data/membership_role").and_then(Value::as_str),
         Some("owner" | "administrator")
     );
+    let mobile_shortcuts = profile
+        .pointer("/data/mobile_shortcuts")
+        .and_then(Value::as_array)
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_else(|| vec!["dashboard".into(), "inventory".into(), "finder".into()]);
     let account_person_id = profile
         .pointer("/data/person_id")
         .and_then(Value::as_str)
@@ -1297,6 +1308,8 @@ async fn dashboard(
                 .to_uppercase(),
             selected_id,
             selected_name,
+            mobile_shortcuts,
+            household_manager,
             people,
             selectable_people,
             metrics: calculate_metrics(&metric_tasks, now),

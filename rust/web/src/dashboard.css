@@ -108,3 +108,25 @@ a,button,summary{outline-offset:3px}
 .dashboard-task:is([data-state="Upcoming"],[data-state="Available now"]) .dashboard-status{background:var(--sage);color:white}
 .dashboard-task[data-state="Out of Stock"] .dashboard-status{background:var(--error);color:white}
 .dashboard-task:is([data-state="Wait"],[data-state="Dose limit reached"],[data-state="Paused"],[data-state="Not taken"],[data-state="Status unavailable"]) .dashboard-status{border:1px solid #8492a8;background:transparent;color:var(--sage)}
+
+.dashboard-mobile-rail{display:none}
+.dashboard-selector-identity{display:flex;align-items:center;gap:12px;min-width:0}
+.dashboard-selector-identity strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dashboard-change{display:flex;align-items:center;gap:8px;flex:none}
+.dashboard-change .dashboard-icon{width:16px;height:16px;opacity:.7;transition:transform .2s}
+.dashboard-selector[open] .dashboard-change .dashboard-icon{transform:rotate(180deg)}
+.dashboard-selector nav{grid-template-columns:minmax(0,1fr);gap:8px;padding:12px}
+.dashboard-selector nav a{min-width:0;min-height:48px;gap:12px;background:var(--surface);border-color:var(--outline);border-radius:12px;padding:8px 12px}
+.dashboard-selector nav a:hover{background:var(--surface-high)}
+.dashboard-selector nav a[aria-current="true"]{background:var(--secondary-container);border-color:var(--sage-dark)}
+.dashboard-option-name{min-width:0;flex:1;overflow-wrap:anywhere}
+.dashboard-option-check{display:none;margin-left:auto;color:var(--sage-dark)}
+.dashboard-selector nav a[aria-current="true"] .dashboard-option-check{display:flex}
+.dashboard-option-check .dashboard-icon{width:18px;height:18px}
+.dashboard-prn summary{display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none}
+.dashboard-prn summary::-webkit-details-marker{display:none}
+.dashboard-prn summary::after{content:"";width:8px;height:8px;flex:none;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .2s}
+.dashboard-prn[open] summary::after{transform:rotate(225deg)}
+@media(min-width:640px){.dashboard-selector nav{grid-template-columns:repeat(2,minmax(0,1fr));padding:16px}}
+@media(min-width:1024px){.dashboard-selector nav{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:767px){.dashboard-main{padding-bottom:calc(132px + env(safe-area-inset-bottom))}.dashboard-mobile-rail{display:flex;position:fixed;inset:auto 0 0;z-index:45;min-height:80px;padding:8px 8px max(8px,env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--surface-low)}.dashboard-mobile-rail nav{display:flex;align-items:stretch;justify-content:space-around;gap:4px;width:100%}.dashboard-mobile-rail a,.dashboard-mobile-rail button{display:flex;min-width:0;min-height:44px;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:4px;border:0;border-radius:16px;background:transparent;color:#17233b;text-align:center;text-decoration:none}.dashboard-mobile-rail button[aria-disabled="true"]{cursor:not-allowed}.dashboard-rail-indicator{display:grid;place-items:center;width:64px;max-width:100%;height:28px;border-radius:16px;color:var(--muted)}.dashboard-mobile-rail [aria-current="page"] .dashboard-rail-indicator{background:var(--secondary-container);color:var(--sage-dark)}.dashboard-rail-label{max-width:100%;overflow-wrap:anywhere;font-size:12px;font-weight:700;line-height:1.15}.dashboard-mobile-rail .dashboard-icon{width:24px;height:24px}}

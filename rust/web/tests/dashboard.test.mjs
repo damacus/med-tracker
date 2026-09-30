@@ -366,6 +366,68 @@ test('person selection follows the URL through keyboard navigation, refresh, and
   }
 });
 
+test('saved mobile shortcuts render in account order and preserve the read-only preview', async () => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  let originalShortcuts;
+  let page;
+  const profileUrl = new URL(`/api/v1/households/${fixture.profile_household_id}/profile`, baseUrl).toString();
+  const headers = { Authorization: `Bearer ${fixture.profile_access_token}` };
+  let dashboardUrl;
+  try {
+    page = await context.newPage();
+    await page.goto(new URL('/login', baseUrl).toString());
+    await page.getByRole('textbox', { name: 'Email address', exact: true }).fill(fixture.profile_email);
+    await page.getByLabel('Password', { exact: true }).fill('password');
+    await page.getByLabel('Password', { exact: true }).press('Enter');
+    await page.waitForURL(url => /\/households\/[^/]+\/dashboard$/.test(url.pathname));
+    dashboardUrl = page.url();
+    const profile = await page.request.get(profileUrl, { headers });
+    assert.equal(profile.status(), 200);
+    originalShortcuts = (await profile.json()).data.mobile_shortcuts;
+    const update = await page.request.patch(profileUrl, {
+      headers,
+      data: { profile: { mobile_shortcuts: ['finder', 'dashboard'] } },
+    });
+    assert.equal(update.status(), 200);
+    assert.deepEqual((await update.json()).data.mobile_shortcuts, ['finder', 'dashboard']);
+
+    await page.goto(dashboardUrl);
+    const rail = page.getByTestId('dashboard-mobile-rail');
+    assert.ok(await rail.isVisible());
+    assert.deepEqual(await rail.locator('a, button').allTextContents(), ['Medicine Finder', 'Home']);
+    const unavailable = rail.getByRole('button', { name: 'Medicine Finder' });
+    assert.equal(await unavailable.getAttribute('aria-disabled'), 'true');
+    assert.equal(await unavailable.getAttribute('aria-describedby'), 'dashboard-unavailable-help');
+    const before = page.url();
+    await unavailable.evaluate(element => element.click());
+    await unavailable.focus();
+    await page.keyboard.press('Enter');
+    assert.equal(page.url(), before);
+    assert.equal(await rail.getByRole('link', { name: 'Home' }).getAttribute('href'), new URL(dashboardUrl).pathname);
+    assert.equal(await rail.getByRole('link', { name: 'Home' }).getAttribute('aria-current'), 'page');
+
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 844 });
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      assert.ok(await rail.evaluate(element => getComputedStyle(element).position === 'fixed'));
+      assert.ok(await rail.locator('a, button').evaluateAll(elements => elements.every(element => element.getBoundingClientRect().height >= 44)));
+      await page.locator('.dashboard-main footer').scrollIntoViewIfNeeded();
+      assert.ok(await page.evaluate(() => document.querySelector('.dashboard-main footer').getBoundingClientRect().bottom <= document.querySelector('.dashboard-mobile-rail').getBoundingClientRect().top));
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+    assert.ok(!(await rail.isVisible()));
+  } finally {
+    if (originalShortcuts && page) {
+      const restore = await page.request.patch(profileUrl, {
+        headers,
+        data: { profile: { mobile_shortcuts: originalShortcuts } },
+      });
+      assert.equal(restore.status(), 200);
+    }
+    await context.close();
+  }
+});
+
 test('all-family selection excludes hidden and foreign people and counts only visible tasks', async () => {
   const context = await browser.newContext();
 
@@ -425,6 +487,8 @@ test('captures verified synthetic dashboard at desktop and mobile sizes', async 
       );
       assert.ok(await page.getByRole('heading', { name: "Today's Schedule", exact: true }).isVisible());
       await page.screenshot({ path: join(screenshotDirectory, viewport.filename), fullPage: true });
+      await page.getByTestId('dashboard-person-selector-summary').click();
+      await page.screenshot({ path: join(screenshotDirectory, `dashboard-selector-${viewport.name}-expanded.png`), fullPage: true });
       if (viewport.name === 'mobile') {
         await page.getByRole('button', { name: 'Open menu', exact: true }).click();
         await page.getByRole('dialog', { name: 'Navigation menu' }).evaluate(element => Promise.all(element.getAnimations().map(animation => animation.finished)));
