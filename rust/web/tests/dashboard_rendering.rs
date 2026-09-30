@@ -58,6 +58,28 @@ fn default_shortcuts_are_ordered_and_unavailable_destinations_are_inert() {
 }
 
 #[test]
+fn sidebar_keeps_its_medication_finder_label_separate_from_the_mobile_rail() {
+    let html = render_person(vec![]);
+    let sidebar = html
+        .split("class=\"dashboard-sidebar\"")
+        .nth(1)
+        .unwrap()
+        .split("</aside>")
+        .next()
+        .unwrap();
+    let rail = html
+        .split("data-testid=\"dashboard-mobile-rail\"")
+        .nth(1)
+        .unwrap()
+        .split("</aside>")
+        .next()
+        .unwrap();
+    assert!(sidebar.contains("Medication Finder"));
+    assert!(!sidebar.contains("Medicine Finder"));
+    assert!(rail.contains("Medicine Finder"));
+}
+
+#[test]
 fn saved_subset_and_household_role_filter_are_preserved() {
     let mut page = test_page();
     page.mobile_shortcuts = vec!["finder".into(), "dashboard".into()];
