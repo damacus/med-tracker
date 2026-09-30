@@ -330,8 +330,8 @@ fn status_name(state: TaskState) -> &'static str {
 
 fn dashboard_search_items(page: &DashboardPage) -> Vec<SearchItem> {
     let mut items = Vec::new();
-    for person in &page.people {
-        for row in person.tasks.iter().chain(&person.outcomes) {
+    for (person_index, person) in page.people.iter().enumerate() {
+        for (row_index, row) in person.tasks.iter().enumerate() {
             items.push(SearchItem {
                 label: row.medication_name.clone(),
                 detail: format!(
@@ -340,21 +340,33 @@ fn dashboard_search_items(page: &DashboardPage) -> Vec<SearchItem> {
                     row.dose,
                     status_name(row.state)
                 ),
-                target_id: "dashboard-schedule".into(),
+                target_id: format!("dashboard-task-{person_index}-{row_index}"),
+            });
+        }
+        for (row_index, row) in person.outcomes.iter().enumerate() {
+            items.push(SearchItem {
+                label: row.medication_name.clone(),
+                detail: format!(
+                    "{} · {} · {}",
+                    person.name,
+                    row.dose,
+                    status_name(row.state)
+                ),
+                target_id: format!("dashboard-outcome-{person_index}-{row_index}"),
             });
         }
     }
-    for stock in &page.stock {
+    for (row_index, stock) in page.stock.iter().enumerate() {
         items.push(SearchItem {
             label: stock.name.clone(),
             detail: format!("Stock · {} {} left", stock.amount, stock.unit),
-            target_id: "dashboard-stock".into(),
+            target_id: format!("dashboard-stock-row-{row_index}"),
         });
     }
     items
 }
 
-fn task_row(row: DashboardTaskRow) -> impl IntoView {
+fn task_row(id: String, row: DashboardTaskRow) -> impl IntoView {
     let test_id = if row.routine {
         "dashboard-routine-task"
     } else {
@@ -362,7 +374,7 @@ fn task_row(row: DashboardTaskRow) -> impl IntoView {
     };
     let status = status_name(row.state);
     view! {
-        <div class="dashboard-task" data-testid=test_id data-state=status>
+        <div id=id tabindex="-1" class="dashboard-task" data-testid=test_id data-state=status>
             <div class="dashboard-task-leading"><span class="dashboard-task-time">{row.time}</span>
             <span class="dashboard-task-copy"><strong>{row.medication_name}</strong><small>{row.dose}</small></span></div>
             <span class="dashboard-task-action"><button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Dose recording is not available in this preview">"Take"</button><Badge theme=BadgeTheme::Secondary class="dashboard-status">{status}</Badge></span>
@@ -370,18 +382,22 @@ fn task_row(row: DashboardTaskRow) -> impl IntoView {
     }
 }
 
-fn person_card(person: DashboardPerson) -> impl IntoView {
+fn person_card(person_index: usize, person: DashboardPerson) -> impl IntoView {
     let initial = person.name.chars().next().unwrap_or('?').to_string();
-    let routine: Vec<_> = person
+    let task_rows = person
         .tasks
+        .into_iter()
+        .enumerate()
+        .map(|(row_index, row)| (format!("dashboard-task-{person_index}-{row_index}"), row))
+        .collect::<Vec<_>>();
+    let routine: Vec<_> = task_rows
         .iter()
-        .filter(|row| row.routine)
+        .filter(|(_, row)| row.routine)
         .cloned()
         .collect();
-    let as_needed: Vec<_> = person
-        .tasks
+    let as_needed: Vec<_> = task_rows
         .iter()
-        .filter(|row| !row.routine)
+        .filter(|(_, row)| !row.routine)
         .cloned()
         .collect();
     let no_routine = routine.is_empty();
@@ -389,9 +405,9 @@ fn person_card(person: DashboardPerson) -> impl IntoView {
         <Card class="dashboard-person-card">
         <CardSection>
             <div class="dashboard-person-heading"><span class="dashboard-avatar" aria-hidden="true">{initial}</span><div><h3>{person.name}</h3><p>{if no_routine { "No routine tasks awaiting a dose" } else { "Today's medication tasks" }}</p></div><span class="dashboard-person-count">{routine.len().to_string()}</span></div>
-            <div class="dashboard-routine" inner_html=if no_routine { view! { <p class="dashboard-routine-empty">"No routine tasks awaiting a dose"</p> }.to_html() } else { routine.into_iter().map(task_row).collect_view().to_html() }></div>
-            {(!person.outcomes.is_empty()).then(|| view! { <div class="dashboard-outcomes" data-testid="dashboard-not-taken-outcome">{person.outcomes.into_iter().map(task_row).collect_view()}</div> })}
-            {(!as_needed.is_empty()).then(|| view! { <details class="dashboard-prn" data-testid="dashboard-as-needed-person"><summary>"AS NEEDED"</summary><div inner_html=as_needed.into_iter().map(task_row).collect_view().to_html()></div></details> })}
+            <div class="dashboard-routine" inner_html=if no_routine { view! { <p class="dashboard-routine-empty">"No routine tasks awaiting a dose"</p> }.to_html() } else { routine.into_iter().map(|(id, row)| task_row(id, row)).collect_view().to_html() }></div>
+            {(!person.outcomes.is_empty()).then(|| view! { <div class="dashboard-outcomes" data-testid="dashboard-not-taken-outcome">{person.outcomes.into_iter().enumerate().map(|(row_index, row)| task_row(format!("dashboard-outcome-{person_index}-{row_index}"), row)).collect_view()}</div> })}
+            {(!as_needed.is_empty()).then(|| view! { <details class="dashboard-prn" data-testid="dashboard-as-needed-person"><summary>"AS NEEDED"</summary><div inner_html=as_needed.into_iter().map(|(id, row)| task_row(id, row)).collect_view().to_html()></div></details> })}
         </CardSection>
         </Card>
     }
@@ -485,8 +501,8 @@ pub fn render_dashboard(page: DashboardPage) -> String {
             <main class="dashboard-main"><header class="dashboard-top"><div><p class="dashboard-date">{page.date}</p><h1>{page.greeting}</h1></div><div class="dashboard-quick-actions"><button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Adding people is not available in this preview">"Add Person"</button><button type="button" aria-label="Add Medication" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Adding medicines is not available in this preview">"Add Medication"</button></div></header>
                 <details class="dashboard-selector" data-testid="dashboard-person-selector-disclosure"><summary data-testid="dashboard-person-selector-summary"><span class="dashboard-selector-identity"><span class="dashboard-avatar" aria-hidden="true">{person_initials(&selected_name)}</span><strong>{selected_name}</strong></span><span class="dashboard-change">"Change person" {dashboard_icon("m7 10 5 5 5-5 m-10-1 5-5 5 5")}</span></summary><nav aria-label="Select person" data-testid="dashboard-person-options"><div class="dashboard-native-selector"><PersonSelector choices=person_choices selected_id=selected_id.clone()/></div>{person_option("all".into(), "All Family".into(), prefix.clone(), selected_id == "all")}{page.selectable_people.into_iter().map(|(id, name)| person_option(id.to_string(), name, prefix.clone(), selected_id == id.to_string())).collect_view()}</nav></details>
                 <section class="dashboard-metrics" data-testid="dashboard-metrics" aria-label="Today's summary"><div>{dashboard_icon("M12 6v6l4 2 M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0") }<span>"NEXT DUE"</span><strong>{next_due}</strong></div><div>{dashboard_material_icon("M200-640h560v-80H200v80Zm0 0v-80 80Zm0 560q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v227q-19-9-39-15t-41-9v-43H200v400h252q7 22 16.5 42T491-80H200Zm378.5-18.5Q520-157 520-240t58.5-141.5Q637-440 720-440t141.5 58.5Q920-323 920-240T861.5-98.5Q803-40 720-40T578.5-98.5ZM787-145l28-28-75-75v-112h-40v128l87 87Z") }<span>"DUE NOW"</span><strong>{page.metrics.due_now}</strong></div><div>{dashboard_icon("m9 12 2 2 4-4 M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0") }<span>"TASKS LEFT"</span><strong>{page.metrics.tasks_left}</strong></div></section>
-                <div class="dashboard-columns"><section class="dashboard-schedule" id="dashboard-schedule" tabindex="-1"><h2>"Today's Schedule"</h2><div inner_html=if page.people.iter().all(|person| person.tasks.is_empty() && person.outcomes.is_empty()) { view! { <p class="dashboard-empty">"No medication tasks for this selection."</p> }.to_html() } else { page.people.into_iter().map(person_card).collect_view().to_html() }></div></section>
-                    <section class="dashboard-stock" id="dashboard-stock" tabindex="-1"><h2>"Stock Inventory"</h2><div class="dashboard-stock-card"><div inner_html=if page.stock.is_empty() { view! { <p>"No stock for this selection."</p> }.to_html() } else { page.stock.into_iter().map(|stock| { let bar_class = if stock.out { "dashboard-stock-bar out" } else if stock.low { "dashboard-stock-bar low" } else { "dashboard-stock-bar" }; view! { <div class="dashboard-stock-item"><div><strong>{stock.name}</strong><span>{stock.amount}" "{stock.unit}" left"</span></div><div class=bar_class></div></div> } }).collect_view().to_html() }></div><button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Ordering refills is not available in this preview">"ORDER REFILLS"</button></div></section>
+                <div class="dashboard-columns"><section class="dashboard-schedule" id="dashboard-schedule" tabindex="-1"><h2>"Today's Schedule"</h2><div inner_html=if page.people.iter().all(|person| person.tasks.is_empty() && person.outcomes.is_empty()) { view! { <p class="dashboard-empty">"No medication tasks for this selection."</p> }.to_html() } else { page.people.into_iter().enumerate().map(|(person_index, person)| person_card(person_index, person)).collect_view().to_html() }></div></section>
+                    <section class="dashboard-stock" id="dashboard-stock" tabindex="-1"><h2>"Stock Inventory"</h2><div class="dashboard-stock-card"><div inner_html=if page.stock.is_empty() { view! { <p>"No stock for this selection."</p> }.to_html() } else { page.stock.into_iter().enumerate().map(|(row_index, stock)| { let bar_class = if stock.out { "dashboard-stock-bar out" } else if stock.low { "dashboard-stock-bar low" } else { "dashboard-stock-bar" }; view! { <div id=format!("dashboard-stock-row-{row_index}") tabindex="-1" class="dashboard-stock-item"><div><strong>{stock.name}</strong><span>{stock.amount}" "{stock.unit}" left"</span></div><div class=bar_class></div></div> } }).collect_view().to_html() }></div><button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Ordering refills is not available in this preview">"ORDER REFILLS"</button></div></section>
                     {(!page.history.is_empty()).then(|| view! { <section class="dashboard-history" data-testid="dashboard-today-dose-history"><h2>"Previous Doses Today"</h2>{page.history.into_iter().map(|row| view! { <div class="dashboard-history-row"><span><strong>{row.medication_name}</strong><small>{row.person_name}" · "{row.dose}</small></span><time>{row.time}</time></div> }).collect_view()}</section> })}
                     <section class="dashboard-insights"><h2>"Smart Insights"</h2><div><span class="dashboard-insights-icon" aria-hidden="true">"⌁"</span><h3>"Insights coming soon"</h3><p>"Your medication insights will appear here when this feature is available."</p><button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Reports are not available in this preview">"VIEW FULL REPORT"</button></div></section>
                 </div><footer>"v0.1.0"</footer>

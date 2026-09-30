@@ -78,6 +78,26 @@ pub fn SearchPalette(items: Vec<SearchItem>) -> impl IntoView {
     #[cfg(feature = "hydrate")]
     {
         use leptos_dom::helpers::window_event_listener;
+        Effect::new(move |_| {
+            let matches = results.get();
+            let index = selected.get();
+            let expanded = visible.get();
+            if let Some(input) = input_ref.get() {
+                let _ = input.set_attribute("role", "combobox");
+                let _ = input.set_attribute("aria-autocomplete", "list");
+                let _ = input.set_attribute("aria-controls", "dashboard-search-results");
+                let _ =
+                    input.set_attribute("aria-expanded", if expanded { "true" } else { "false" });
+                if let Some(item) = matches.get(index) {
+                    let _ = input.set_attribute(
+                        "aria-activedescendant",
+                        &format!("dashboard-search-option-{}", item.target_id),
+                    );
+                } else {
+                    let _ = input.remove_attribute("aria-activedescendant");
+                }
+            }
+        });
         let listener = window_event_listener(ev::keydown, move |event| {
             if (event.ctrl_key() || event.meta_key()) && event.key().eq_ignore_ascii_case("k") {
                 event.prevent_default();
@@ -151,9 +171,9 @@ pub fn SearchPalette(items: Vec<SearchItem>) -> impl IntoView {
                 <span data-testid="dashboard-search-trigger">"Search"</span><kbd>"Ctrl K"</kbd>
             </Button>
             <Modal id="dashboard-search-dialog" title="Search this dashboard" visible=visible footer=ModalFooterChildren { children: Box::new(|| view! { <span class="text-sm text-gray-500">"Visible medicines and stock only · Esc to close"</span> }.into_any()) }>
-                <TextInput label="Search this dashboard" name="dashboard-search" value=query input_ref=input_ref placeholder="Medicine or stock name"/>
-                <div role="listbox" aria-label="Search results" class="dashboard-search-results">
-                    {move || { let matches = results.get(); if matches.is_empty() { view! { <p class="dashboard-empty">"No matching items in this dashboard."</p> }.into_any() } else { matches.into_iter().enumerate().map(|(index, item)| { let target_id = item.target_id.clone(); view! { <Button class="dashboard-search-result" appearance=ButtonAppearance::Transparent on_click=move |_| { #[cfg(feature = "hydrate")] { forget_focus(); activate_result(&target_id); } #[cfg(not(feature = "hydrate"))] let _ = &target_id; visible.set(false); }><span role="option" aria-selected=move || selected.get() == index><strong>{item.label}" "</strong><small>{item.detail}</small></span></Button> } }).collect_view().into_any() } }}
+                <div on:input=move |_| selected.set(0)><TextInput label="Search this dashboard" name="dashboard-search" value=query input_ref=input_ref placeholder="Medicine or stock name"/></div>
+                <div id="dashboard-search-results" role="listbox" aria-label="Search results" class="dashboard-search-results">
+                    {move || { let matches = results.get(); if matches.is_empty() { view! { <p class="dashboard-empty">"No matching items in this dashboard."</p> }.into_any() } else { matches.into_iter().enumerate().map(|(index, item)| { let target_id = item.target_id.clone(); let option_id = format!("dashboard-search-option-{}", target_id); view! { <div id=option_id class="dashboard-search-result" role="option" aria-selected=move || if selected.get() == index { "true" } else { "false" } on:click=move |_| { #[cfg(feature = "hydrate")] { forget_focus(); visible.set(false); activate_result(&target_id); } #[cfg(not(feature = "hydrate"))] { let _ = &target_id; visible.set(false); } }><strong>{item.label}" "</strong><small>{item.detail}</small></div> } }).collect_view().into_any() } }}
                 </div>
             </Modal>
         </div>
@@ -202,6 +222,9 @@ fn activate_result(id: &str) {
         .unwrap()
         .get_element_by_id(id)
     {
+        if let Ok(Some(disclosure)) = element.closest("details") {
+            let _ = disclosure.set_attribute("open", "");
+        }
         element.scroll_into_view();
         if let Some(element) = element.dyn_ref::<web_sys::HtmlElement>() {
             let _ = element.focus();
