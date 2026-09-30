@@ -31,6 +31,10 @@ test('authenticated Leptodon dashboard hydrates search on desktop and mobile', a
     const personSelect = desktop.getByLabel('Switch person', { exact: true });
     assert.equal(await personSelect.evaluate(element => element.tagName), 'SELECT');
     assert.equal(await personSelect.locator('option').filter({ hasText: '-- none --' }).count(), 0);
+    await personSelect.selectOption('all');
+    await desktop.waitForURL(url => url.searchParams.get('dashboard_person_id') === 'all', { timeout: 3000 });
+    assert.match(await desktop.getByTestId('dashboard-person-selector-summary').innerText(), /All Family/);
+    assert.ok(await desktop.locator('.dashboard-task').count() > 0);
     await desktop.getByTestId('dashboard-person-selector-summary').click();
     await desktop.screenshot({ path: `${screenshots}/leptodon-dashboard-desktop.png`, fullPage: true });
     const prior = desktop.getByRole('button', { name: 'Add Person' });
@@ -49,7 +53,14 @@ test('authenticated Leptodon dashboard hydrates search on desktop and mobile', a
     await desktop.keyboard.press('Escape');
     await dialog.waitFor({ state: 'hidden' });
     assert.equal(await prior.evaluate(element => element === document.activeElement), true);
-    const trigger = desktop.getByTestId('dashboard-search-trigger');
+    const trigger = desktop.getByRole('button', { name: 'Search this dashboard' });
+    await trigger.click();
+    await dialog.waitFor({ state: 'visible' });
+    await desktop.waitForFunction(() => document.activeElement?.getAttribute('name') === 'dashboard-search');
+    await desktop.keyboard.press('Control+k');
+    await desktop.keyboard.press('Escape');
+    await dialog.waitFor({ state: 'hidden' });
+    assert.equal(await trigger.evaluate(element => element === document.activeElement), true);
     await trigger.click();
     await dialog.waitFor({ state: 'visible' });
     await desktop.waitForFunction(() => document.activeElement?.getAttribute('name') === 'dashboard-search');
@@ -95,6 +106,26 @@ test('authenticated Leptodon dashboard hydrates search on desktop and mobile', a
     await mobile.getByRole('button', { name: 'Search this dashboard' }).click();
     await mobile.getByRole('dialog', { name: 'Search this dashboard' }).waitFor({ state: 'visible' });
     await mobile.screenshot({ path: `${screenshots}/leptodon-dashboard-mobile.png`, fullPage: true });
+  } finally {
+    await browser.close();
+  }
+});
+
+test('repeated search shortcut restores focus to the original trigger', async () => {
+  assert.ok(accountEmail, 'Set LEPTODON_DASHBOARD_EMAIL to a provisioned fixture user');
+  const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await login(page);
+    const trigger = page.getByRole('button', { name: 'Search this dashboard' });
+    await trigger.click();
+    const dialog = page.getByRole('dialog', { name: 'Search this dashboard' });
+    await dialog.waitFor({ state: 'visible' });
+    await page.waitForFunction(() => document.activeElement?.getAttribute('name') === 'dashboard-search');
+    await page.keyboard.press('Control+k');
+    await page.keyboard.press('Escape');
+    await dialog.waitFor({ state: 'hidden' });
+    assert.equal(await trigger.evaluate(element => element === document.activeElement), true);
   } finally {
     await browser.close();
   }

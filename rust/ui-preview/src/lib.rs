@@ -101,6 +101,9 @@ pub fn SearchPalette(items: Vec<SearchItem>) -> impl IntoView {
         let listener = window_event_listener(ev::keydown, move |event| {
             if (event.ctrl_key() || event.meta_key()) && event.key().eq_ignore_ascii_case("k") {
                 event.prevent_default();
+                if visible.get_untracked() {
+                    return;
+                }
                 remember_focus();
                 visible.set(true);
                 query.set(String::new());

@@ -31,8 +31,7 @@ const mobileSearch = document.querySelector('#dashboard-mobile-search-trigger');
 mobileSearch?.addEventListener('click', () => searchIsland?.querySelector('button')?.click());
 document.querySelector('#dashboard-native-person-select')?.addEventListener('change', event => {
   const url = new URL(location.href);
-  if (event.target.value === 'all') url.searchParams.delete('dashboard_person_id');
-  else url.searchParams.set('dashboard_person_id', event.target.value);
+  url.searchParams.set('dashboard_person_id', event.target.value);
   location.assign(url);
 });
 if (navigation && menuTrigger && sidebar) {
