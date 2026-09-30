@@ -40,6 +40,8 @@ pub fn routes() -> Router<AppState> {
         .route("/icons/icon-192.png", get(dashboard_icon_192))
         .route("/icons/icon-512.png", get(dashboard_icon_512))
         .route("/fonts/inter-regular.woff2", get(inter_regular))
+        .route("/fonts/inter-500.woff2", get(inter_500))
+        .route("/fonts/inter-800.woff2", get(inter_800))
         .route("/fonts/inter-600.woff2", get(inter_600))
         .route("/fonts/inter-700.woff2", get(inter_700))
 }
@@ -139,6 +141,28 @@ async fn inter_regular() -> Response {
             (header::CACHE_CONTROL, "public, max-age=86400"),
         ],
         include_bytes!("../../web/src/assets/inter-v20-latin-regular.woff2").as_slice(),
+    )
+        .into_response()
+}
+
+async fn inter_500() -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "font/woff2"),
+            (header::CACHE_CONTROL, "public, max-age=86400"),
+        ],
+        include_bytes!("../../web/src/assets/inter-v20-latin-500.woff2").as_slice(),
+    )
+        .into_response()
+}
+
+async fn inter_800() -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "font/woff2"),
+            (header::CACHE_CONTROL, "public, max-age=86400"),
+        ],
+        include_bytes!("../../web/src/assets/inter-v20-latin-800.woff2").as_slice(),
     )
         .into_response()
 }

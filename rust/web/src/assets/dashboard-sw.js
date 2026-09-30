@@ -6,6 +6,8 @@ const PUBLIC_PATHS = [
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/fonts/inter-regular.woff2',
+  '/fonts/inter-500.woff2',
+  '/fonts/inter-800.woff2',
   '/fonts/inter-600.woff2',
   '/fonts/inter-700.woff2',
   '/offline'
@@ -17,6 +19,8 @@ const PUBLIC_TYPES = {
   '/icons/icon-192.png': 'image/png',
   '/icons/icon-512.png': 'image/png',
   '/fonts/inter-regular.woff2': 'font/woff2',
+  '/fonts/inter-500.woff2': 'font/woff2',
+  '/fonts/inter-800.woff2': 'font/woff2',
   '/fonts/inter-600.woff2': 'font/woff2',
   '/fonts/inter-700.woff2': 'font/woff2',
   '/offline': 'text/html'

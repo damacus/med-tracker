@@ -19,6 +19,8 @@ const dashboardPublicPaths = [
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/fonts/inter-regular.woff2',
+  '/fonts/inter-500.woff2',
+  '/fonts/inter-800.woff2',
   '/fonts/inter-600.woff2',
   '/fonts/inter-700.woff2',
   '/offline',
@@ -231,6 +233,106 @@ for (const viewport of [
   });
 }
 
+test('mobile navigation opens as a left drawer and restores keyboard focus', async () => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  try {
+    const page = await context.newPage();
+    await login(page);
+    const trigger = page.getByRole('button', { name: 'Open menu', exact: true });
+    assert.ok(await trigger.isVisible());
+    assert.equal(await trigger.getAttribute('aria-expanded'), 'false');
+    assert.ok(!(await page.getByRole('navigation', { name: 'Main navigation' }).isVisible()));
+    const top = await page.locator('.dashboard-mobile-topbar').boundingBox();
+    assert.equal(top.height, 64);
+    await trigger.focus();
+    await trigger.press('Enter');
+    const drawer = page.getByRole('dialog', { name: 'Navigation menu' });
+    assert.ok(await drawer.isVisible());
+    assert.equal(await trigger.getAttribute('aria-expanded'), 'true');
+    await drawer.evaluate(element => Promise.all(element.getAnimations().map(animation => animation.finished)));
+    const bounds = await drawer.boundingBox();
+    assert.equal(bounds.x, 0);
+    assert.ok(bounds.width <= 320 && bounds.width >= 300);
+    assert.equal(bounds.height, 844);
+    const close = drawer.getByRole('button', { name: 'Close menu', exact: true });
+    assert.ok(await close.evaluate(element => document.activeElement === element));
+    await close.press('Shift+Tab');
+    assert.ok(await drawer.evaluate(element => element.contains(document.activeElement)));
+    await page.keyboard.press('Tab');
+    assert.ok(await close.evaluate(element => document.activeElement === element));
+    await page.keyboard.press('Escape');
+    assert.ok(!(await drawer.isVisible()));
+    assert.ok(await trigger.evaluate(element => document.activeElement === element));
+    assert.equal(await trigger.getAttribute('aria-expanded'), 'false');
+    await trigger.click();
+    await close.click();
+    assert.ok(!(await drawer.isVisible()));
+    await trigger.click();
+    await page.mouse.click(380, 400);
+    assert.ok(!(await drawer.isVisible()));
+    await trigger.click();
+    await page.setViewportSize({ width: 1024, height: 900 });
+    assert.ok(!(await drawer.isVisible()));
+    await page.getByRole('navigation', { name: 'Main navigation' }).waitFor({ state: 'visible' });
+    assert.equal(await page.getByRole('navigation', { name: 'Main navigation' }).count(), 1);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForFunction(() => document.querySelector('.dashboard-sidebar').parentElement.id === 'dashboard-navigation');
+    await trigger.click();
+    const logout = drawer.getByRole('button', { name: 'Logout', exact: true });
+    assert.ok(await logout.isVisible());
+    await logout.click();
+    await page.waitForURL(url => url.pathname === '/login');
+  } finally {
+    await context.close();
+  }
+});
+
+test('dashboard uses the Rails sage tokens and component typography', async () => {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  try {
+    const page = await context.newPage();
+    await login(page);
+    await page.evaluate(() => document.fonts.ready);
+    const styles = await page.evaluate(() => {
+      const style = selector => getComputedStyle(document.querySelector(selector));
+      const expected = document.createElement('span');
+      document.body.append(expected);
+      expected.style.background = 'color-mix(in oklab, #7daa92 3%, white)';
+      const surface = getComputedStyle(expected).backgroundColor;
+      expected.style.background = 'color-mix(in oklab, #7daa92 11%, white)';
+      const selected = getComputedStyle(expected).backgroundColor;
+      expected.remove();
+      return {
+        sidebarWidth: style('.dashboard-sidebar').width,
+        sidebarSurface: style('.dashboard-sidebar').backgroundColor,
+        selectedSurface: style('.dashboard-sidebar [aria-current="page"]').backgroundColor,
+        expectedSurface: surface,
+        expectedSelected: selected,
+        navSize: style('.dashboard-sidebar nav button').fontSize,
+        navWeight: style('.dashboard-sidebar nav button').fontWeight,
+        headingSize: style('.dashboard-top h1').fontSize,
+        titleSize: style('.dashboard-schedule h2').fontSize,
+        cardRadius: style('.dashboard-person-card').borderRadius,
+        cardPadding: style('.dashboard-person-card').paddingTop,
+      };
+    });
+    assert.equal(styles.sidebarWidth, '256px');
+    assert.equal(styles.sidebarSurface, styles.expectedSurface);
+    assert.equal(styles.selectedSurface, styles.expectedSelected);
+    assert.equal(styles.navSize, '14px');
+    assert.equal(styles.navWeight, '600');
+    assert.equal(styles.headingSize, '36px');
+    assert.equal(styles.titleSize, '20px');
+    assert.equal(styles.cardRadius, '32px');
+    assert.equal(styles.cardPadding, '20px');
+    for (const weight of [500, 800]) {
+      assert.equal((await page.request.get(new URL(`/fonts/inter-${weight}.woff2`, baseUrl).toString())).status(), 200);
+    }
+  } finally {
+    await context.close();
+  }
+});
+
 test('person selection follows the URL through keyboard navigation, refresh, and history', async () => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
 
@@ -323,6 +425,11 @@ test('captures verified synthetic dashboard at desktop and mobile sizes', async 
       );
       assert.ok(await page.getByRole('heading', { name: "Today's Schedule", exact: true }).isVisible());
       await page.screenshot({ path: join(screenshotDirectory, viewport.filename), fullPage: true });
+      if (viewport.name === 'mobile') {
+        await page.getByRole('button', { name: 'Open menu', exact: true }).click();
+        await page.getByRole('dialog', { name: 'Navigation menu' }).evaluate(element => Promise.all(element.getAnimations().map(animation => animation.finished)));
+        await page.screenshot({ path: join(screenshotDirectory, 'dashboard-mobile-menu.png') });
+      }
     } finally {
       await context.close();
     }
@@ -395,7 +502,7 @@ test('empty person selection shows explicit empty states and zero action metrics
 
     assert.ok(await page.getByText('No medication tasks for this selection.', { exact: true }).isVisible());
     assert.ok(await page.getByText('No stock for this selection.', { exact: true }).isVisible());
-    assert.equal(await page.locator('[data-testid="dashboard-metrics"] strong').allTextContents().then(values => values.join(',')), 'None,0,0');
+    assert.equal(await page.locator('[data-testid="dashboard-metrics"] strong').allTextContents().then(values => values.join(',')), 'None today,0,0');
     assert.equal(await page.getByTestId('dashboard-today-dose-history').count(), 0);
   } finally {
     await context.close();
@@ -556,7 +663,7 @@ test('frequency-only as-needed schedules remain visible as available tasks', asy
     await openPrnTasks(page);
     const medication = page.getByTestId('dashboard-as-needed-task').filter({ hasText: fixture.dashboard_frequency_medication_name });
     assert.equal(await medication.count(), 1, 'Frequency-only as-needed schedule must be projected as a PRN task');
-    assert.ok(await medication.getByText('Available', { exact: true }).isVisible());
+    assert.ok(await medication.getByText('Available now', { exact: true }).isVisible());
   } finally {
     await context.close();
   }
@@ -588,7 +695,7 @@ test('equivalent unassigned stock is eligible for owners but hidden from restric
     await openPrnTasks(ownerPage);
     const ownerTask = ownerPage.locator('.dashboard-task').filter({ hasText: fixture.dashboard_stock_source_medication_name });
     const ownerTaskText = await ownerTask.count() ? await ownerTask.innerText() : '<absent>';
-    assert.ok(await ownerTask.getByText('Available', { exact: true }).isVisible(),
+    assert.ok(await ownerTask.getByText('Available now', { exact: true }).isVisible(),
       `owner role=${ownerMembershipRole}; source row=${ownerTaskText}`);
 
     const memberPage = await memberContext.newPage();
@@ -614,7 +721,7 @@ test('equivalent unassigned stock is eligible for owners but hidden from restric
     await openPrnTasks(memberPage);
     const memberTask = memberPage.locator('.dashboard-task').filter({ hasText: fixture.dashboard_stock_source_medication_name });
     const memberTaskText = await memberTask.count() ? await memberTask.innerText() : '<absent>';
-    assert.ok(await memberTask.getByText('Out of stock', { exact: true }).isVisible(),
+    assert.ok(await memberTask.getByText('Out of Stock', { exact: true }).isVisible(),
       `member role=${memberMembershipRole}; dashboard status=${memberDashboardStatus}; visible medication IDs=${memberMedicationIds.join(',')}; source row=${memberTaskText}`);
   } finally {
     await ownerContext.close();
@@ -647,7 +754,7 @@ test('restricted members can use equivalent stock assigned through an inactive s
     await openPrnTasks(page);
     const sourceTask = page.getByTestId('dashboard-as-needed-task')
       .filter({ hasText: fixture.dashboard_stock_source_medication_name });
-    assert.ok(await sourceTask.getByText('Available', { exact: true }).isVisible());
+    assert.ok(await sourceTask.getByText('Available now', { exact: true }).isVisible());
     assert.equal(await page.getByTestId('dashboard-as-needed-task').count(), 1,
       'The inactive equivalent source must not become a second actionable task');
   } finally {
@@ -664,7 +771,7 @@ test('schedule starting today uses the selected profile local day', async () => 
     const url = new URL(`/households/${fixture.dashboard_active_household_slug}/dashboard`, baseUrl).toString();
     assert.equal((await page.request.get(url)).status(), 200);
     await page.goto(url);
-    const body = await page.locator('body').innerText();
+    const body = await page.locator('body').textContent();
     assert.ok(!body.includes(fixture.dashboard_active_medication_name));
   } finally {
     await context.close();
@@ -680,11 +787,11 @@ test('schedule ending today remains active for the selected profile local day', 
     const url = new URL(`/households/${fixture.dashboard_active_household_slug}/dashboard`, baseUrl).toString();
     assert.equal((await page.request.get(url)).status(), 200);
     await page.goto(url);
-    const body = await page.locator('body').innerText();
+    const body = await page.locator('body').textContent();
     assert.ok(body.includes(fixture.dashboard_active_end_medication_name));
     await openPrnTasks(page);
     const task = page.locator('.dashboard-task').filter({ hasText: fixture.dashboard_active_end_medication_name });
-    assert.equal(await task.getByText('Available', { exact: true }).count(), 1);
+    assert.equal(await task.getByText('Available now', { exact: true }).count(), 1);
   } finally {
     await context.close();
   }
@@ -760,7 +867,7 @@ test('PRN dose-limit status copy does not assume a daily cycle', async () => {
     await page.goto(url);
     await openPrnTasks(page);
     const task = page.locator('.dashboard-task').filter({ hasText: fixture.dashboard_taper_medication_name });
-    assert.equal(await task.locator('.dashboard-status').innerText(), 'Dose limit reached');
+    assert.equal(await task.locator('.dashboard-status').textContent(), 'Dose limit reached');
   } finally {
     await context.close();
   }
