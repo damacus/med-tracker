@@ -275,7 +275,7 @@ fn person_card(person: DashboardPerson) -> impl IntoView {
             <div class="dashboard-person-heading"><span class="dashboard-avatar" aria-hidden="true">{initial}</span><div><h3>{person.name}</h3><p>{if no_routine { "No routine tasks awaiting a dose" } else { "Today's medication tasks" }}</p></div><span class="dashboard-person-count">{routine.len().to_string()}</span></div>
             <div class="dashboard-routine" inner_html=if no_routine { view! { <p class="dashboard-routine-empty">"No routine tasks awaiting a dose"</p> }.to_html() } else { routine.into_iter().map(task_row).collect_view().to_html() }></div>
             {(!person.outcomes.is_empty()).then(|| view! { <div class="dashboard-outcomes" data-testid="dashboard-not-taken-outcome">{person.outcomes.into_iter().map(task_row).collect_view()}</div> })}
-            <details class="dashboard-prn" data-testid="dashboard-as-needed-person"><summary>"AS NEEDED"</summary><div inner_html=if as_needed.is_empty() { view! { <p>"No as-needed medicines"</p> }.to_html() } else { as_needed.into_iter().map(task_row).collect_view().to_html() }></div></details>
+            {(!as_needed.is_empty()).then(|| view! { <details class="dashboard-prn" data-testid="dashboard-as-needed-person"><summary>"AS NEEDED"</summary><div inner_html=as_needed.into_iter().map(task_row).collect_view().to_html()></div></details> })}
         </article>
     }
 }

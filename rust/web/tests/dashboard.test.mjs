@@ -430,6 +430,9 @@ test('captures verified synthetic dashboard at desktop and mobile sizes', async 
         await page.getByRole('dialog', { name: 'Navigation menu' }).evaluate(element => Promise.all(element.getAnimations().map(animation => animation.finished)));
         await page.screenshot({ path: join(screenshotDirectory, 'dashboard-mobile-menu.png') });
       }
+      await page.goto(householdUrl(`/dashboard?dashboard_person_id=${fixture.dashboard_missed_only_person_id}`));
+      assert.equal(await page.getByTestId('dashboard-as-needed-person').count(), 0);
+      await page.screenshot({ path: join(screenshotDirectory, `dashboard-no-as-needed-${viewport.name}.png`), fullPage: true });
     } finally {
       await context.close();
     }
@@ -600,6 +603,7 @@ test('NotTaken-only person is not presented as having completed routine tasks', 
     const content = await page.locator('body').innerText();
     assert.ok(content.includes(fixture.dashboard_missed_only_medication_name));
     assert.ok(!content.includes('Routine tasks done today'));
+    assert.equal(await page.getByTestId('dashboard-as-needed-person').count(), 0);
   } finally {
     await context.close();
   }
