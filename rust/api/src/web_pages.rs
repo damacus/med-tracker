@@ -74,8 +74,20 @@ async fn leptodon_styles() -> Response {
 
 async fn dashboard_hydrate_script() -> Response {
     let script = include_str!("../../web/src/assets/dashboard-hydrate.js")
-        .replace("__PKG_VERSION__", &format!("{:016x}", medtracker_web::dashboard::DASHBOARD_HYDRATE_PKG_VERSION))
-        .replace("__WASM_VERSION__", &format!("{:016x}", *medtracker_web::dashboard::DASHBOARD_HYDRATE_WASM_VERSION));
+        .replace(
+            "__PKG_VERSION__",
+            &format!(
+                "{:016x}",
+                medtracker_web::dashboard::DASHBOARD_HYDRATE_PKG_VERSION
+            ),
+        )
+        .replace(
+            "__WASM_VERSION__",
+            &format!(
+                "{:016x}",
+                *medtracker_web::dashboard::DASHBOARD_HYDRATE_WASM_VERSION
+            ),
+        );
     (
         [
             (header::CONTENT_TYPE, "text/javascript; charset=utf-8"),
@@ -277,7 +289,7 @@ fn dashboard_page(body: String, cookie: Option<HeaderValue>) -> Response {
     let mut response = page(body, cookie);
     response.headers_mut().insert(
         header::CONTENT_SECURITY_POLICY,
-        HeaderValue::from_static("default-src 'none'; style-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; font-src 'self'; worker-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"),
+        HeaderValue::from_static("default-src 'none'; style-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; font-src 'self'; worker-src 'self'; manifest-src 'self'; img-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"),
     );
     response
 }

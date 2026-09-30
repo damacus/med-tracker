@@ -610,10 +610,16 @@ test('dashboard task outcomes, stock warnings, and unavailable actions are read 
     assert.ok(await page.getByText('Insights coming soon', { exact: true }).isVisible());
 
     const search = page.locator('.dashboard-search');
-    assert.equal(await search.getAttribute('aria-disabled'), 'true');
-    assert.ok(await search.getAttribute('title'));
-    await search.focus();
-    await page.keyboard.press('Enter');
+    await search.click();
+    const searchDialog = page.getByRole('dialog', { name: 'Search this dashboard' });
+    await searchDialog.waitFor({ state: 'visible' });
+    const searchInput = page.getByRole('combobox', { name: 'Search this dashboard' });
+    await searchInput.fill(fixture.dashboard_low_stock_medication_name);
+    assert.ok(await searchDialog.getByRole('option', { name: new RegExp(fixture.dashboard_low_stock_medication_name) }).count() > 0);
+    await searchInput.fill('no matching medicine 8675309');
+    assert.ok(await searchDialog.getByText('No matching items in this dashboard.').isVisible());
+    await searchDialog.getByRole('button', { name: 'Close search' }).click();
+    await searchDialog.waitFor({ state: 'hidden' });
     for (const label of ['Add Person', 'Add Medication', 'Take', 'ORDER REFILLS', 'VIEW FULL REPORT']) {
       const control = page.getByRole('button', { name: label, exact: true }).first();
       assert.equal(await control.getAttribute('aria-disabled'), 'true');
@@ -1136,13 +1142,21 @@ test('PWA manifest and service worker keep authenticated pages and APIs out of c
     ];
     const manifestUrl = await page.locator('link[rel="manifest"]').getAttribute('href');
     assert.ok(manifestUrl);
-    const manifestResponse = await page.request.get(new URL(manifestUrl, baseUrl).toString());
-    assert.equal(manifestResponse.status(), 200);
-    const manifest = await manifestResponse.json();
+    const cdp = await context.newCDPSession(page);
+    const appManifest = await cdp.send('Page.getAppManifest');
+    assert.equal(appManifest.url, new URL(manifestUrl, baseUrl).toString());
+    assert.deepEqual(appManifest.errors, []);
+    const manifest = JSON.parse(appManifest.data);
     assert.equal(manifest.display, 'standalone');
     assert.ok(manifest.name);
     assert.ok(manifest.icons.length > 0);
     assert.ok(new URL(manifest.start_url, baseUrl).origin === new URL(baseUrl).origin);
+    assert.equal(await page.evaluate(async icons => Promise.all(icons.map(icon => new Promise(resolve => {
+      const image = new Image();
+      image.onload = () => resolve(true);
+      image.onerror = () => resolve(false);
+      image.src = icon.src;
+    }))), manifest.icons).then(results => results.every(Boolean)), true);
 
     const cachedEntries = await readDashboardCache(page);
     assertPublicDashboardCache(cachedEntries, assetPaths);

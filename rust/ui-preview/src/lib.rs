@@ -109,26 +109,29 @@ pub fn SearchPalette(items: Vec<SearchItem>) -> impl IntoView {
                 query.set(String::new());
                 selected.set(0);
             } else if visible.get_untracked() {
+                let input_target = event.target().is_some_and(|target| {
+                    input_ref.get().is_some_and(|input| target == input.into())
+                });
                 match event.key().as_str() {
                     "Escape" => {
                         visible.set(false);
                         restore_focus();
                     }
-                    "ArrowDown" => {
+                    "ArrowDown" if input_target => {
                         event.prevent_default();
                         let count = results.get_untracked().len();
                         if count > 0 {
                             selected.update(|value| *value = (*value + 1) % count);
                         }
                     }
-                    "ArrowUp" => {
+                    "ArrowUp" if input_target => {
                         event.prevent_default();
                         let count = results.get_untracked().len();
                         if count > 0 {
                             selected.update(|value| *value = (*value + count - 1) % count);
                         }
                     }
-                    "Enter" => {
+                    "Enter" if input_target => {
                         event.prevent_default();
                         if let Some(item) = results.get_untracked().get(selected.get_untracked()) {
                             forget_focus();

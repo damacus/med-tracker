@@ -144,3 +144,42 @@ test('repeated search shortcut restores focus to the original trigger', async ()
     await browser.close();
   }
 });
+
+test('Enter on Close search closes the dialog with and without matching results', async () => {
+  assert.ok(accountEmail, 'Set LEPTODON_DASHBOARD_EMAIL to a provisioned fixture user');
+  const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH });
+  try {
+    const page = await browser.newPage();
+    await login(page);
+    const trigger = page.getByRole('button', { name: 'Search this dashboard' });
+    const dialog = page.getByRole('dialog', { name: 'Search this dashboard' });
+    for (const query of ['As Needed Test Tablet', 'no matching medicine 8675309']) {
+      await trigger.click();
+      await dialog.waitFor({ state: 'visible' });
+      await page.getByRole('combobox', { name: 'Search this dashboard' }).fill(query);
+      const close = dialog.getByRole('button', { name: 'Close search' });
+      await close.focus();
+      await page.keyboard.press('Enter');
+      await dialog.waitFor({ state: 'hidden', timeout: 3000 });
+      assert.equal(await trigger.evaluate(element => element === document.activeElement), true);
+    }
+  } finally {
+    await browser.close();
+  }
+});
+
+test('dashboard document loads its same-origin PWA manifest under CSP', async () => {
+  assert.ok(accountEmail, 'Set LEPTODON_DASHBOARD_EMAIL to a provisioned fixture user');
+  const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH });
+  try {
+    const page = await browser.newPage();
+    await login(page);
+    const cdp = await page.context().newCDPSession(page);
+    const manifest = await cdp.send('Page.getAppManifest');
+    assert.equal(new URL(manifest.url).pathname, '/manifest.webmanifest');
+    assert.deepEqual(manifest.errors, []);
+    assert.equal(JSON.parse(manifest.data).display, 'standalone');
+  } finally {
+    await browser.close();
+  }
+});
