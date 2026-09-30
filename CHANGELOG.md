@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.5.33](https://github.com/damacus/med-tracker/compare/v0.5.32...v0.5.33) (2026-09-30)
+
+
+### Features
+
+* **rust:** complete the documented MedTracker API ([#2302](https://github.com/damacus/med-tracker/issues/2302)) ([91d7f7e](https://github.com/damacus/med-tracker/commit/91d7f7e687ba71b3b65aea9ed9f9ca09be1d28ac))
+
+
+### Bug Fixes
+
+* **auth:** complete mobile sign-in consent ([#2287](https://github.com/damacus/med-tracker/issues/2287)) ([b6ebc98](https://github.com/damacus/med-tracker/commit/b6ebc9882896c5f5a31434aa8150496def41c79d))
+* **deps:** update dependency androidx.core:core-ktx to v1.19.1 ([#2291](https://github.com/damacus/med-tracker/issues/2291)) ([ef75b17](https://github.com/damacus/med-tracker/commit/ef75b17e616b19b8ec74b79960b656041f9416c9))
+* **deps:** update rust crate bcrypt to 0.19 ([#2317](https://github.com/damacus/med-tracker/issues/2317)) ([5f16cbf](https://github.com/damacus/med-tracker/commit/5f16cbf1d2c5e596536d7369ef1392877d814026))
+* **deps:** update rust crate getrandom to 0.4 ([#2318](https://github.com/damacus/med-tracker/issues/2318)) ([cfe6527](https://github.com/damacus/med-tracker/commit/cfe6527ac8d60c8869197006dce6a35201cb3fa2))
+* **deps:** update rust crate scraper to 0.27 ([#2322](https://github.com/damacus/med-tracker/issues/2322)) ([859d3d7](https://github.com/damacus/med-tracker/commit/859d3d7575301dbc3e4f11ef8db0955d7acba004))
+* **deps:** update rust crate zip to v8 ([#2324](https://github.com/damacus/med-tracker/issues/2324)) ([06844ec](https://github.com/damacus/med-tracker/commit/06844ecbf9106bb640fdbe0b334fadae14a58646))
+
 ## [0.5.32](https://github.com/damacus/med-tracker/compare/v0.5.31...v0.5.32) (2026-09-23)
 
 
