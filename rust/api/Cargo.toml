@@ -7,13 +7,13 @@ publish = false
 [dependencies]
 axum = { version = "0.8.6", features = ["multipart"] }
 base64 = "0.22"
-bcrypt = "0.17"
+bcrypt = "0.19"
 aes-gcm = "0.10"
 bytes = "1"
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
 crc32fast = "1"
-getrandom = "0.3"
+getrandom = "0.4"
 hmac = "0.12"
 jsonwebtoken = { version = "11", features = ["rust_crypto"] }
 lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "rustls-tls"] }
@@ -23,7 +23,7 @@ pbkdf2 = "0.12"
 printpdf = { version = "=0.12.8", default-features = false }
 regex = "1"
 reqwest = { version = "0.13", default-features = false, features = ["form", "http2", "json", "rustls"] }
-scraper = "0.23"
+scraper = "0.27"
 sea-orm = { version = "=2.0.3", default-features = false, features = ["macros", "runtime-tokio-rustls", "sqlx-postgres", "with-chrono", "with-json", "with-rust_decimal"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
