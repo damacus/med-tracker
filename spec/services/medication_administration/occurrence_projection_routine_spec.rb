@@ -68,10 +68,26 @@ RSpec.describe MedicationAdministration::OccurrenceProjection do
     expect(rows.first).not_to be_due
   end
 
-  it 'does not make a cycle due before the assignment was created' do
-    source.update!(dose_cycle: :monthly, created_at: (date + 1).in_time_zone)
-    expect(project.size).to eq(1)
-    expect(project.first).not_to be_due
+  context 'when a monthly assignment starts tomorrow' do
+    before { source.update!(dose_cycle: :monthly, created_at: (date + 1).in_time_zone) }
+
+    context 'when the current date is mid-month' do
+      let(:date) { Date.new(2026, 9, 15) }
+
+      it 'projects the current cycle without making it due' do
+        expect(project.size).to eq(1)
+        expect(project.first).not_to be_due
+      end
+    end
+
+    context 'when the current date is at month end' do
+      let(:date) { Date.new(2026, 9, 30) }
+
+      it 'excludes the earlier cycle and projects the assignment cycle' do
+        expect(project).to be_empty
+        expect(project(first: date + 1, last: date + 1).map(&:window_starts_on)).to eq([date + 1])
+      end
+    end
   end
 
   it 'loads a saved cycle outcome when the requested date is inside that cycle' do
