@@ -69,6 +69,15 @@ test('Rust CI builds the UI and runs both dashboard browser suites', () => {
   assert.match(workflow, /\n      - rust_dashboard_browser\n/);
 });
 
+test('isolated browser runner matches the checkout owner and reports migration failure', () => {
+  const workflow = readFileSync(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const compose = readFileSync(new URL('../../../compose.yaml', import.meta.url), 'utf8');
+  const runner = readFileSync(new URL('../../../rust/contract-tests/run.fish', import.meta.url), 'utf8');
+  assert.match(workflow, /TEST_IMAGE_UID=\$\(id -u\) task api:browser-dashboard-rust/);
+  assert.equal((compose.match(/UID: \$\{TEST_IMAGE_UID:-1000\}/g) ?? []).length, 2);
+  assert.match(runner, /docker compose -p \$contract_project --profile test logs --no-color --tail=80 migrate-test/);
+});
+
 test('classification failure cannot produce a successful gate', () => {
   const needs = needsFor('rails');
   needs.changes.result = 'failure';

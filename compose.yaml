@@ -133,6 +133,8 @@ services:
     networks: [test]
     build:
       target: test
+      args:
+        UID: ${TEST_IMAGE_UID:-1000}
     command: bin/rails db:prepare
     depends_on:
       db-test:
@@ -171,6 +173,8 @@ services:
     networks: [test]
     build:
       target: test
+      args:
+        UID: ${TEST_IMAGE_UID:-1000}
     depends_on:
       db-test:
         condition: service_healthy

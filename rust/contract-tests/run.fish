@@ -251,7 +251,11 @@ function run_contract
     rtk task contract:prepare-db CONTRACT_PROJECT=$contract_project
     or return $status
     rtk task test:server CONTRACT_PROJECT=$contract_project
-    or return $status
+    or begin
+        set -l server_status $status
+        rtk proxy docker compose -p $contract_project --profile test logs --no-color --tail=80 migrate-test
+        return $server_status
+    end
     set -l server_seconds (math (date +%s) - $startup_at)
     echo "Contract server ready after $server_seconds seconds"
 
