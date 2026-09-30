@@ -1,6 +1,11 @@
 use chrono::{DateTime, Datelike, Duration, NaiveDate, TimeZone, Utc};
 use chrono_tz::Tz;
+use leptodon::badge::{Badge, BadgeTheme};
+use leptodon::card::{Card, CardSection};
 use leptos::prelude::*;
+use leptos::reactive::owner::Owner;
+use medtracker_ui_preview::{PersonChoice, PersonSelector, SearchItem, SearchPalette};
+use std::sync::LazyLock;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TaskState {
@@ -242,6 +247,21 @@ pub const DASHBOARD_CSS_VERSION: u64 = asset_fingerprint(include_bytes!("dashboa
 pub const DASHBOARD_JS_VERSION: u64 =
     asset_fingerprint(include_bytes!("assets/dashboard-register.js"));
 pub const DASHBOARD_SW_VERSION: u64 = asset_fingerprint(include_bytes!("assets/dashboard-sw.js"));
+pub const DASHBOARD_HYDRATE_PKG_VERSION: u64 = asset_fingerprint(include_bytes!(
+    "../../ui-preview/public/pkg/medtracker_ui_preview.js"
+));
+pub static DASHBOARD_HYDRATE_WASM_VERSION: LazyLock<u64> = LazyLock::new(|| {
+    asset_fingerprint(include_bytes!(
+        "../../ui-preview/public/pkg/medtracker_ui_preview_bg.wasm"
+    ))
+});
+pub static DASHBOARD_HYDRATE_JS_VERSION: LazyLock<u64> = LazyLock::new(|| {
+    asset_fingerprint(include_bytes!("assets/dashboard-hydrate.js"))
+        ^ DASHBOARD_HYDRATE_PKG_VERSION
+        ^ *DASHBOARD_HYDRATE_WASM_VERSION
+});
+pub const LEPTODON_CSS_VERSION: u64 =
+    asset_fingerprint(include_bytes!("../../ui-preview/public/preview.css"));
 
 fn shortcut(key: &str) -> Option<(&'static str, &'static str, bool)> {
     match key {
@@ -308,6 +328,32 @@ fn status_name(state: TaskState) -> &'static str {
     }
 }
 
+fn dashboard_search_items(page: &DashboardPage) -> Vec<SearchItem> {
+    let mut items = Vec::new();
+    for person in &page.people {
+        for row in person.tasks.iter().chain(&person.outcomes) {
+            items.push(SearchItem {
+                label: row.medication_name.clone(),
+                detail: format!(
+                    "{} · {} · {}",
+                    person.name,
+                    row.dose,
+                    status_name(row.state)
+                ),
+                target_id: "dashboard-schedule".into(),
+            });
+        }
+    }
+    for stock in &page.stock {
+        items.push(SearchItem {
+            label: stock.name.clone(),
+            detail: format!("Stock · {} {} left", stock.amount, stock.unit),
+            target_id: "dashboard-stock".into(),
+        });
+    }
+    items
+}
+
 fn task_row(row: DashboardTaskRow) -> impl IntoView {
     let test_id = if row.routine {
         "dashboard-routine-task"
@@ -319,7 +365,7 @@ fn task_row(row: DashboardTaskRow) -> impl IntoView {
         <div class="dashboard-task" data-testid=test_id data-state=status>
             <div class="dashboard-task-leading"><span class="dashboard-task-time">{row.time}</span>
             <span class="dashboard-task-copy"><strong>{row.medication_name}</strong><small>{row.dose}</small></span></div>
-            <span class="dashboard-task-action"><button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Dose recording is not available in this preview">"Take"</button><span class="dashboard-status">{status}</span></span>
+            <span class="dashboard-task-action"><button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Dose recording is not available in this preview">"Take"</button><Badge theme=BadgeTheme::Secondary class="dashboard-status">{status}</Badge></span>
         </div>
     }
 }
@@ -340,12 +386,14 @@ fn person_card(person: DashboardPerson) -> impl IntoView {
         .collect();
     let no_routine = routine.is_empty();
     view! {
-        <article class="dashboard-person-card">
+        <Card class="dashboard-person-card">
+        <CardSection>
             <div class="dashboard-person-heading"><span class="dashboard-avatar" aria-hidden="true">{initial}</span><div><h3>{person.name}</h3><p>{if no_routine { "No routine tasks awaiting a dose" } else { "Today's medication tasks" }}</p></div><span class="dashboard-person-count">{routine.len().to_string()}</span></div>
             <div class="dashboard-routine" inner_html=if no_routine { view! { <p class="dashboard-routine-empty">"No routine tasks awaiting a dose"</p> }.to_html() } else { routine.into_iter().map(task_row).collect_view().to_html() }></div>
             {(!person.outcomes.is_empty()).then(|| view! { <div class="dashboard-outcomes" data-testid="dashboard-not-taken-outcome">{person.outcomes.into_iter().map(task_row).collect_view()}</div> })}
             {(!as_needed.is_empty()).then(|| view! { <details class="dashboard-prn" data-testid="dashboard-as-needed-person"><summary>"AS NEEDED"</summary><div inner_html=as_needed.into_iter().map(task_row).collect_view().to_html()></div></details> })}
-        </article>
+        </CardSection>
+        </Card>
     }
 }
 
@@ -407,31 +455,46 @@ pub fn render_dashboard(page: DashboardPage) -> String {
     };
     let selected_name = page.selected_name.clone();
     let selected_id = page.selected_id.clone();
+    let person_choices = std::iter::once(PersonChoice {
+        id: "all".into(),
+        name: "All Family".into(),
+    })
+    .chain(
+        page.selectable_people
+            .iter()
+            .map(|(id, name)| PersonChoice {
+                id: id.to_string(),
+                name: name.clone(),
+            }),
+    )
+    .collect::<Vec<_>>();
     let csrf = page.csrf.clone();
-    let body = view! {
+    let search_items = dashboard_search_items(&page);
+    let hydrate_version = *DASHBOARD_HYDRATE_JS_VERSION;
+    let body = Owner::new().with(|| view! {
         <div class="dashboard-shell" data-testid="dashboard">
-            <p id="dashboard-unavailable-help" class="dashboard-unavailable-help">"Read-only preview: search, navigation, medication changes, dose recording, refills, and reports are unavailable here."</p>
-            <header class="dashboard-mobile-topbar"><button id="dashboard-menu-trigger" type="button" aria-label="Open menu" aria-controls="dashboard-navigation" aria-expanded="false">{dashboard_icon("M4 6h16 M4 12h16 M4 18h16")}</button><a href=prefix.clone()>"MedTracker"</a><button type="button" aria-label="Search" aria-disabled="true" aria-describedby="dashboard-unavailable-help">{dashboard_icon("m21 21-4.3-4.3 M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0")}</button></header>
+            <p id="dashboard-unavailable-help" class="dashboard-unavailable-help">"Read-only dashboard: medicine changes, dose recording, refills, reports, and unavailable navigation destinations cannot be used here. Search covers only the medicines and stock already shown on this page."</p>
+            <header class="dashboard-mobile-topbar"><button id="dashboard-menu-trigger" type="button" aria-label="Open menu" aria-controls="dashboard-navigation" aria-expanded="false">{dashboard_icon("M4 6h16 M4 12h16 M4 18h16")}</button><a href=prefix.clone()>"MedTracker"</a><button id="dashboard-mobile-search-trigger" type="button" aria-label="Search this dashboard">{dashboard_icon("m21 21-4.3-4.3 M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0")}</button></header>
             <dialog id="dashboard-navigation" class="dashboard-drawer" aria-label="Navigation menu"><header class="dashboard-drawer-header"><h2>"MedTracker"</h2><button type="button" aria-label="Close menu" autofocus>{dashboard_icon("M6 6l12 12 M18 6 6 18")}</button></header></dialog>
             <aside class="dashboard-sidebar"><div class="dashboard-brand"><span class="dashboard-brand-mark">"M"</span><strong>"MedTracker"</strong></div>
-                <button class="dashboard-search" type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Search is not available in this preview">{dashboard_icon("m21 21-4.3-4.3 M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0")}"Search"<kbd>"Ctrl K"</kbd></button>
+                <div id="dashboard-search-island"><SearchPalette items=search_items/></div>
                 <nav aria-label="Main navigation"><a aria-current="page" href=prefix.clone()>{dashboard_icon("m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10")}"Dashboard"</a>{["inventory", "locations", "people", "finder", "medicine_reviews", "reports", "administration"].into_iter().filter(|key| *key != "administration" || page.household_manager).map(|key| { let (label, path, material) = shortcut(key).expect("known navigation key"); let label = if key == "finder" { "Medication Finder" } else { label }; view! { <button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="This page is not available in this preview">{if material { dashboard_material_icon(path).into_any() } else { dashboard_icon(path).into_any() }}{label}</button> } }).collect_view()}</nav>
                 <div class="dashboard-sidebar-bottom"><span class="dashboard-identity"><span class="dashboard-avatar" aria-hidden="true">{selected_name.chars().next().unwrap_or('?').to_string()}</span><span><strong>{selected_name.clone()}</strong><small>"Household"</small></span></span><form action="/logout" method="post"><input type="hidden" name="authenticity_token" value=csrf/><button type="submit"><span class="dashboard-desktop-label">"Sign Out"</span><span class="dashboard-mobile-label">"Logout"</span></button></form></div>
             </aside>
             <aside class="dashboard-mobile-rail" aria-label="Primary navigation" data-testid="dashboard-mobile-rail"><nav aria-label="Primary navigation">{mobile_shortcuts.into_iter().map(|key| mobile_shortcut(key, prefix.clone())).collect_view()}</nav></aside>
             <main class="dashboard-main"><header class="dashboard-top"><div><p class="dashboard-date">{page.date}</p><h1>{page.greeting}</h1></div><div class="dashboard-quick-actions"><button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Adding people is not available in this preview">"Add Person"</button><button type="button" aria-label="Add Medication" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Adding medicines is not available in this preview">"Add Medication"</button></div></header>
-                <details class="dashboard-selector" data-testid="dashboard-person-selector-disclosure"><summary data-testid="dashboard-person-selector-summary"><span class="dashboard-selector-identity"><span class="dashboard-avatar" aria-hidden="true">{person_initials(&selected_name)}</span><strong>{selected_name}</strong></span><span class="dashboard-change">"Change person" {dashboard_icon("m7 10 5 5 5-5 m-10-1 5-5 5 5")}</span></summary><nav aria-label="Select person" data-testid="dashboard-person-options">{person_option("all".into(), "All Family".into(), prefix.clone(), selected_id == "all")}{page.selectable_people.into_iter().map(|(id, name)| person_option(id.to_string(), name, prefix.clone(), selected_id == id.to_string())).collect_view()}</nav></details>
+                <details class="dashboard-selector" data-testid="dashboard-person-selector-disclosure"><summary data-testid="dashboard-person-selector-summary"><span class="dashboard-selector-identity"><span class="dashboard-avatar" aria-hidden="true">{person_initials(&selected_name)}</span><strong>{selected_name}</strong></span><span class="dashboard-change">"Change person" {dashboard_icon("m7 10 5 5 5-5 m-10-1 5-5 5 5")}</span></summary><nav aria-label="Select person" data-testid="dashboard-person-options"><div class="dashboard-native-selector"><PersonSelector choices=person_choices selected_id=selected_id.clone()/></div>{person_option("all".into(), "All Family".into(), prefix.clone(), selected_id == "all")}{page.selectable_people.into_iter().map(|(id, name)| person_option(id.to_string(), name, prefix.clone(), selected_id == id.to_string())).collect_view()}</nav></details>
                 <section class="dashboard-metrics" data-testid="dashboard-metrics" aria-label="Today's summary"><div>{dashboard_icon("M12 6v6l4 2 M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0") }<span>"NEXT DUE"</span><strong>{next_due}</strong></div><div>{dashboard_material_icon("M200-640h560v-80H200v80Zm0 0v-80 80Zm0 560q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v227q-19-9-39-15t-41-9v-43H200v400h252q7 22 16.5 42T491-80H200Zm378.5-18.5Q520-157 520-240t58.5-141.5Q637-440 720-440t141.5 58.5Q920-323 920-240T861.5-98.5Q803-40 720-40T578.5-98.5ZM787-145l28-28-75-75v-112h-40v128l87 87Z") }<span>"DUE NOW"</span><strong>{page.metrics.due_now}</strong></div><div>{dashboard_icon("m9 12 2 2 4-4 M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0") }<span>"TASKS LEFT"</span><strong>{page.metrics.tasks_left}</strong></div></section>
-                <div class="dashboard-columns"><section class="dashboard-schedule"><h2>"Today's Schedule"</h2><div inner_html=if page.people.iter().all(|person| person.tasks.is_empty() && person.outcomes.is_empty()) { view! { <p class="dashboard-empty">"No medication tasks for this selection."</p> }.to_html() } else { page.people.into_iter().map(person_card).collect_view().to_html() }></div></section>
-                    <section class="dashboard-stock"><h2>"Stock Inventory"</h2><div class="dashboard-stock-card"><div inner_html=if page.stock.is_empty() { view! { <p>"No stock for this selection."</p> }.to_html() } else { page.stock.into_iter().map(|stock| { let bar_class = if stock.out { "dashboard-stock-bar out" } else if stock.low { "dashboard-stock-bar low" } else { "dashboard-stock-bar" }; view! { <div class="dashboard-stock-item"><div><strong>{stock.name}</strong><span>{stock.amount}" "{stock.unit}" left"</span></div><div class=bar_class></div></div> } }).collect_view().to_html() }></div><button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Ordering refills is not available in this preview">"ORDER REFILLS"</button></div></section>
+                <div class="dashboard-columns"><section class="dashboard-schedule" id="dashboard-schedule" tabindex="-1"><h2>"Today's Schedule"</h2><div inner_html=if page.people.iter().all(|person| person.tasks.is_empty() && person.outcomes.is_empty()) { view! { <p class="dashboard-empty">"No medication tasks for this selection."</p> }.to_html() } else { page.people.into_iter().map(person_card).collect_view().to_html() }></div></section>
+                    <section class="dashboard-stock" id="dashboard-stock" tabindex="-1"><h2>"Stock Inventory"</h2><div class="dashboard-stock-card"><div inner_html=if page.stock.is_empty() { view! { <p>"No stock for this selection."</p> }.to_html() } else { page.stock.into_iter().map(|stock| { let bar_class = if stock.out { "dashboard-stock-bar out" } else if stock.low { "dashboard-stock-bar low" } else { "dashboard-stock-bar" }; view! { <div class="dashboard-stock-item"><div><strong>{stock.name}</strong><span>{stock.amount}" "{stock.unit}" left"</span></div><div class=bar_class></div></div> } }).collect_view().to_html() }></div><button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Ordering refills is not available in this preview">"ORDER REFILLS"</button></div></section>
                     {(!page.history.is_empty()).then(|| view! { <section class="dashboard-history" data-testid="dashboard-today-dose-history"><h2>"Previous Doses Today"</h2>{page.history.into_iter().map(|row| view! { <div class="dashboard-history-row"><span><strong>{row.medication_name}</strong><small>{row.person_name}" · "{row.dose}</small></span><time>{row.time}</time></div> }).collect_view()}</section> })}
                     <section class="dashboard-insights"><h2>"Smart Insights"</h2><div><span class="dashboard-insights-icon" aria-hidden="true">"⌁"</span><h3>"Insights coming soon"</h3><p>"Your medication insights will appear here when this feature is available."</p><button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="Reports are not available in this preview">"VIEW FULL REPORT"</button></div></section>
                 </div><footer>"v0.1.0"</footer>
             </main>
         </div>
-    }.to_html();
+    }.to_html());
     format!(
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"theme-color\" content=\"#7daa92\"><meta name=\"csrf-token\" content=\"{}\"><link rel=\"stylesheet\" href=\"/dashboard.css?v={DASHBOARD_CSS_VERSION:016x}\"><link rel=\"manifest\" href=\"/manifest.webmanifest\"><script defer src=\"/dashboard.js?v={DASHBOARD_JS_VERSION:016x}\"></script><title>Dashboard | MedTracker</title></head><body>{body}</body></html>",
+        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"theme-color\" content=\"#7daa92\"><meta name=\"csrf-token\" content=\"{}\"><link rel=\"stylesheet\" href=\"/leptodon.css?v={LEPTODON_CSS_VERSION:016x}\"><link rel=\"stylesheet\" href=\"/dashboard.css?v={DASHBOARD_CSS_VERSION:016x}\"><link rel=\"manifest\" href=\"/manifest.webmanifest\"><script defer src=\"/dashboard.js?v={DASHBOARD_JS_VERSION:016x}\"></script><script type=\"module\" src=\"/dashboard-hydrate.js?v={hydrate_version:016x}\"></script><title>Dashboard | MedTracker</title></head><body>{body}</body></html>",
         page.csrf,
     )
 }

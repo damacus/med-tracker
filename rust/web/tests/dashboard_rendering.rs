@@ -148,6 +148,15 @@ fn dashboard_public_css_and_script_have_content_versioned_urls() {
     assert!(!html.contains("src=\"/dashboard.js\""));
 }
 
+#[test]
+fn authenticated_dashboard_renders_native_search_controls_for_permitted_tasks() {
+    let html = render_person(vec![medication(true)]);
+    assert!(html.contains("data-testid=\"dashboard-search-trigger\""));
+    assert!(html.contains("Search this dashboard"));
+    assert!(html.contains("src=\"/dashboard-hydrate.js?v="));
+    assert!(html.contains("Test medicine"));
+}
+
 fn medication(routine: bool) -> DashboardTaskRow {
     DashboardTaskRow {
         medication_name: "Test medicine".into(),

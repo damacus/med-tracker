@@ -33,6 +33,10 @@ pub fn routes() -> Router<AppState> {
         .route("/medication.js", get(script))
         .route("/dashboard.css", get(dashboard_styles))
         .route("/dashboard.js", get(dashboard_script))
+        .route("/leptodon.css", get(leptodon_styles))
+        .route("/dashboard-hydrate.js", get(dashboard_hydrate_script))
+        .route("/dashboard-hydrate-pkg.js", get(dashboard_hydrate_package))
+        .route("/dashboard-hydrate.wasm", get(dashboard_hydrate_wasm))
         .route("/sw.js", get(dashboard_worker))
         .route("/manifest.webmanifest", get(dashboard_manifest))
         .route("/offline", get(dashboard_offline))
@@ -53,6 +57,53 @@ async fn dashboard_styles() -> Response {
             (header::CACHE_CONTROL, "public, max-age=3600"),
         ],
         include_str!("../../web/src/dashboard.css"),
+    )
+        .into_response()
+}
+
+async fn leptodon_styles() -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "text/css; charset=utf-8"),
+            (header::CACHE_CONTROL, "public, max-age=3600"),
+        ],
+        include_str!("../../ui-preview/public/preview.css"),
+    )
+        .into_response()
+}
+
+async fn dashboard_hydrate_script() -> Response {
+    let script = include_str!("../../web/src/assets/dashboard-hydrate.js")
+        .replace("__PKG_VERSION__", &format!("{:016x}", medtracker_web::dashboard::DASHBOARD_HYDRATE_PKG_VERSION))
+        .replace("__WASM_VERSION__", &format!("{:016x}", *medtracker_web::dashboard::DASHBOARD_HYDRATE_WASM_VERSION));
+    (
+        [
+            (header::CONTENT_TYPE, "text/javascript; charset=utf-8"),
+            (header::CACHE_CONTROL, "public, max-age=3600"),
+        ],
+        script,
+    )
+        .into_response()
+}
+
+async fn dashboard_hydrate_package() -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "text/javascript; charset=utf-8"),
+            (header::CACHE_CONTROL, "no-cache"),
+        ],
+        include_str!("../../ui-preview/public/pkg/medtracker_ui_preview.js"),
+    )
+        .into_response()
+}
+
+async fn dashboard_hydrate_wasm() -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "application/wasm"),
+            (header::CACHE_CONTROL, "no-cache"),
+        ],
+        include_bytes!("../../ui-preview/public/pkg/medtracker_ui_preview_bg.wasm").as_slice(),
     )
         .into_response()
 }
@@ -220,6 +271,15 @@ async fn script() -> Response {
 
 fn page(body: String, cookie: Option<HeaderValue>) -> Response {
     page_status(body, cookie, StatusCode::OK)
+}
+
+fn dashboard_page(body: String, cookie: Option<HeaderValue>) -> Response {
+    let mut response = page(body, cookie);
+    response.headers_mut().insert(
+        header::CONTENT_SECURITY_POLICY,
+        HeaderValue::from_static("default-src 'none'; style-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; font-src 'self'; worker-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"),
+    );
+    response
 }
 
 fn page_status(body: String, cookie: Option<HeaderValue>, status: StatusCode) -> Response {
@@ -1307,7 +1367,7 @@ async fn dashboard(
         },
         account_name.split_whitespace().next().unwrap_or("there")
     );
-    page(
+    dashboard_page(
         medtracker_web::dashboard::render_dashboard(DashboardPage {
             household_name,
             slug,

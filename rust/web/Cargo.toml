@@ -8,4 +8,6 @@ axum = "0.8.4"
 chrono = "0.4"
 chrono-tz = "0.10"
 leptos = { version = "0.8.14", features = ["ssr"] }
+leptodon = { git = "https://github.com/openanalytics/leptodon.git", rev = "195c8fd78b13718004b1e26b2aad8aee5b451585", features = ["ssr"] }
+medtracker-ui-preview = { path = "../ui-preview" }
 tokio = { version = "1", features = ["macros", "net", "rt-multi-thread"] }
