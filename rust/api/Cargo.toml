@@ -7,7 +7,7 @@ publish = false
 [dependencies]
 axum = { version = "0.8.6", features = ["multipart"] }
 base64 = "0.22"
-bcrypt = "0.17"
+bcrypt = "0.19"
 aes-gcm = "0.10"
 bytes = "1"
 chrono = { version = "0.4", features = ["serde"] }
