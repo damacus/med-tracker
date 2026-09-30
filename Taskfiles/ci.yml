@@ -2,8 +2,12 @@ version: "3"
 
 tasks:
   rust-port:
-    desc: Check Rust API, web and contract-test compilation
+    desc: Check Rust dashboard UI, API, web and contract-test compilation
     cmds:
+      - task -d rust/ui-preview fmt
+      - task -d rust/ui-preview test
+      - task -d rust/ui-preview lint
+      - task -d rust/ui-preview build
       - task: :api:fmt
       - task: :api:clippy
       - task: :api:test

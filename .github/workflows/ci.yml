@@ -184,13 +184,17 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.rust_port == 'true' }}
     runs-on: ubuntu-latest
-    name: Rust API and Web
+    name: Rust Dashboard UI, API and Web
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
         with:
           toolchain: stable
           components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
       - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
         with:
           version: 3.52.0
@@ -200,8 +204,41 @@ jobs:
           workspaces: |
             rust/api
             rust/web
+            rust/ui-preview
             rust/contract-tests
       - run: task ci:rust-port
+
+  rust_dashboard_browser:
+    needs: changes
+    if: ${{ needs.changes.outputs.rust_port == 'true' }}
+    runs-on: ubuntu-latest
+    name: Rust Dashboard Browser
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          workspaces: |
+            rust/api
+            rust/ui-preview
+      - name: Install contract runner prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fish rsync uuid-runtime jq openssl
+          cargo install --git https://github.com/rtk-ai/rtk --tag v0.50.0 --locked rtk
+          rtk gain
+      - run: task api:browser-dashboard-rust
 
   docs_check:
     needs: changes
@@ -628,6 +665,7 @@ jobs:
       - lint
       - client_tools
       - rust_port
+      - rust_dashboard_browser
       - docs_check
       - test_non_system
       - coverage

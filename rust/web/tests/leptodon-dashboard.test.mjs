@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { chromium } from 'playwright';
 
-const baseUrl = process.env.LEPTODON_DASHBOARD_URL ?? 'http://127.0.0.1:39998';
-const accountEmail = process.env.LEPTODON_DASHBOARD_EMAIL;
-const screenshots = process.env.LEPTODON_SCREENSHOT_DIR ?? 'docs/screenshots';
+const fixture = process.env.CONTRACT_FIXTURE_PATH
+  ? JSON.parse(await readFile(process.env.CONTRACT_FIXTURE_PATH, 'utf8'))
+  : null;
+const baseUrl = process.env.LEPTODON_DASHBOARD_URL ?? process.env.BASE_URL ?? 'http://127.0.0.1:39998';
+const accountEmail = process.env.LEPTODON_DASHBOARD_EMAIL ?? fixture?.dashboard_email ?? fixture?.primary_email;
+const screenshots = process.env.LEPTODON_SCREENSHOT_DIR ?? process.env.SCREENSHOT_DIR ?? 'docs/screenshots';
 
 async function assertSearchLabelSpacing(input) {
   const spacing = await input.evaluate(element => {

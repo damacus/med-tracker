@@ -892,7 +892,7 @@ tasks:
     cmds:
       - mkdir -p docs/screenshots/dashboard-rust
       - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test build rust-browser-tests
-      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-browser-tests node --test tests/dashboard.test.mjs
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-browser-tests node --test tests/dashboard.test.mjs tests/leptodon-dashboard.test.mjs
 
   contract-subnet-check:
     requires:
