@@ -69,12 +69,25 @@ async fn dashboard_script() -> Response {
 }
 
 async fn dashboard_worker() -> Response {
+    let worker = include_str!("../../web/src/assets/dashboard-sw.js")
+        .replace(
+            "__CSS_VERSION__",
+            &format!("{:016x}", medtracker_web::dashboard::DASHBOARD_CSS_VERSION),
+        )
+        .replace(
+            "__JS_VERSION__",
+            &format!("{:016x}", medtracker_web::dashboard::DASHBOARD_JS_VERSION),
+        )
+        .replace(
+            "__SW_VERSION__",
+            &format!("{:016x}", medtracker_web::dashboard::DASHBOARD_SW_VERSION),
+        );
     (
         [
             (header::CONTENT_TYPE, "text/javascript; charset=utf-8"),
             (header::CACHE_CONTROL, "no-cache"),
         ],
-        include_str!("../../web/src/assets/dashboard-sw.js"),
+        worker,
     )
         .into_response()
 }
@@ -761,7 +774,7 @@ struct DashboardQuery {
 }
 
 fn dashboard_read_error(cookie: Option<HeaderValue>) -> Response {
-    page_status("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><link rel=\"stylesheet\" href=\"/dashboard.css\"><title>Dashboard unavailable | MedTracker</title></head><body><main class=\"dashboard-error\"><h1>Dashboard unavailable</h1><p>We could not load your dashboard. Please reconnect and try again.</p><a href=\"/reconnect\">Try again</a></main></body></html>".to_owned(), cookie, StatusCode::SERVICE_UNAVAILABLE)
+    page_status(format!("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><link rel=\"stylesheet\" href=\"/dashboard.css?v={:016x}\"><title>Dashboard unavailable | MedTracker</title></head><body><main class=\"dashboard-error\"><h1>Dashboard unavailable</h1><p>We could not load your dashboard. Please reconnect and try again.</p><a href=\"/reconnect\">Try again</a></main></body></html>", medtracker_web::dashboard::DASHBOARD_CSS_VERSION), cookie, StatusCode::SERVICE_UNAVAILABLE)
 }
 
 pub(crate) fn dashboard_now() -> DateTime<Utc> {

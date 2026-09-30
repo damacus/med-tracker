@@ -227,6 +227,22 @@ pub struct DashboardPage {
     pub history: Vec<DashboardHistory>,
 }
 
+const fn asset_fingerprint(bytes: &[u8]) -> u64 {
+    let mut hash = 0xcbf29ce484222325_u64;
+    let mut index = 0;
+    while index < bytes.len() {
+        hash ^= bytes[index] as u64;
+        hash = hash.wrapping_mul(0x100000001b3);
+        index += 1;
+    }
+    hash
+}
+
+pub const DASHBOARD_CSS_VERSION: u64 = asset_fingerprint(include_bytes!("dashboard.css"));
+pub const DASHBOARD_JS_VERSION: u64 =
+    asset_fingerprint(include_bytes!("assets/dashboard-register.js"));
+pub const DASHBOARD_SW_VERSION: u64 = asset_fingerprint(include_bytes!("assets/dashboard-sw.js"));
+
 fn shortcut(key: &str) -> Option<(&'static str, &'static str, bool)> {
     match key {
         "dashboard" => Some((
@@ -415,7 +431,7 @@ pub fn render_dashboard(page: DashboardPage) -> String {
         </div>
     }.to_html();
     format!(
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"theme-color\" content=\"#7daa92\"><meta name=\"csrf-token\" content=\"{}\"><link rel=\"stylesheet\" href=\"/dashboard.css\"><link rel=\"manifest\" href=\"/manifest.webmanifest\"><script defer src=\"/dashboard.js\"></script><title>Dashboard | MedTracker</title></head><body>{body}</body></html>",
-        page.csrf
+        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"theme-color\" content=\"#7daa92\"><meta name=\"csrf-token\" content=\"{}\"><link rel=\"stylesheet\" href=\"/dashboard.css?v={DASHBOARD_CSS_VERSION:016x}\"><link rel=\"manifest\" href=\"/manifest.webmanifest\"><script defer src=\"/dashboard.js?v={DASHBOARD_JS_VERSION:016x}\"></script><title>Dashboard | MedTracker</title></head><body>{body}</body></html>",
+        page.csrf,
     )
 }

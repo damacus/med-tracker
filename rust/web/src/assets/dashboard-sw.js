@@ -1,7 +1,7 @@
-const CACHE_NAME = 'medtracker-public-dashboard-v2';
+const CACHE_NAME = 'medtracker-public-dashboard-v3-__CSS_VERSION__-__JS_VERSION__-__SW_VERSION__';
 const PUBLIC_PATHS = [
-  '/dashboard.css',
-  '/dashboard.js',
+  '/dashboard.css?v=__CSS_VERSION__',
+  '/dashboard.js?v=__JS_VERSION__',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
@@ -13,8 +13,8 @@ const PUBLIC_PATHS = [
   '/offline'
 ];
 const PUBLIC_TYPES = {
-  '/dashboard.css': 'text/css',
-  '/dashboard.js': 'text/javascript',
+  '/dashboard.css?v=__CSS_VERSION__': 'text/css',
+  '/dashboard.js?v=__JS_VERSION__': 'text/javascript',
   '/manifest.webmanifest': 'application/manifest+json',
   '/icons/icon-192.png': 'image/png',
   '/icons/icon-512.png': 'image/png',
@@ -44,13 +44,14 @@ self.addEventListener('fetch', event => {
     return;
   }
   const url = new URL(request.url);
-  if (request.method === 'GET' && url.origin === self.location.origin && !url.search && !url.hash && PUBLIC_PATHS.includes(url.pathname)) {
+  const publicPath = url.pathname + url.search;
+  if (request.method === 'GET' && url.origin === self.location.origin && !url.hash && PUBLIC_PATHS.includes(publicPath)) {
     event.respondWith((async () => {
       try {
         const response = await fetch(request);
         const responseUrl = response.url ? new URL(response.url) : null;
         const responseType = response.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase();
-        if (response.ok && !response.redirected && responseUrl?.href === url.href && responseType === PUBLIC_TYPES[url.pathname]) {
+        if (response.ok && !response.redirected && responseUrl?.href === url.href && responseType === PUBLIC_TYPES[publicPath]) {
           try {
             const cache = await caches.open(CACHE_NAME);
             await cache.put(request, response.clone());

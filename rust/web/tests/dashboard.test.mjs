@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import { join } from 'node:path';
 import vm from 'node:vm';
 import test from 'node:test';
@@ -13,8 +14,6 @@ const fixture = JSON.parse(await readFile(fixturePath, 'utf8'));
 const householdSlug = fixture.dashboard_household_slug ?? fixture.household_slug;
 const accountEmail = fixture.dashboard_email ?? fixture.primary_email;
 const dashboardPublicPaths = [
-  '/dashboard.css',
-  '/dashboard.js',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
@@ -136,8 +135,8 @@ async function readDashboardCache(page) {
   });
 }
 
-function assertPublicDashboardCache(entries) {
-  const expectedUrls = dashboardPublicPaths.map(path => new URL(path, baseUrl).toString()).sort();
+function assertPublicDashboardCache(entries, assetPaths) {
+  const expectedUrls = [...assetPaths, ...dashboardPublicPaths].map(path => new URL(path, baseUrl).toString()).sort();
   const actualUrls = entries.map(entry => entry.url).sort();
   assert.deepEqual(actualUrls, expectedUrls, `Unexpected Cache Storage entries: ${JSON.stringify(entries)}`);
   assert.ok(entries.every(entry => entry.status === 200), `Non-200 public cache entries: ${JSON.stringify(entries)}`);
@@ -941,6 +940,56 @@ test('PRN dose-limit status copy does not assume a daily cycle', async () => {
   }
 });
 
+test('ordinary reload loads changed public CSS and script after an asset upgrade', async () => {
+  const appContext = await browser.newContext();
+  let probeContext;
+  let server;
+  try {
+    const appPage = await appContext.newPage();
+    await login(appPage);
+    const cssPath = await appPage.locator('link[rel="stylesheet"][href^="/dashboard.css"]').getAttribute('href');
+    const scriptPath = await appPage.locator('script[src^="/dashboard.js"]').getAttribute('src');
+    let generation = 'old';
+    server = createServer((request, response) => {
+      const path = new URL(request.url, 'http://127.0.0.1').pathname;
+      if (path === '/upgrade') {
+        response.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'private, no-store' });
+        response.end(`<link rel="stylesheet" href="${generation === 'old' ? '/dashboard.css' : cssPath}"><script defer src="${generation === 'old' ? '/dashboard.js' : scriptPath}"></script><main>Public asset upgrade</main>`);
+      } else if (path === '/dashboard.css') {
+        response.writeHead(200, { 'Content-Type': 'text/css', 'Cache-Control': 'public, max-age=3600' });
+        response.end(`body{background-color:${generation === 'old' ? 'red' : 'green'}}`);
+      } else if (path === '/dashboard.js') {
+        response.writeHead(200, { 'Content-Type': 'text/javascript', 'Cache-Control': 'public, max-age=3600' });
+        response.end(`window.__assetGeneration='${generation}'`);
+      } else {
+        response.writeHead(404);
+        response.end();
+      }
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    probeContext = await browser.newContext({ serviceWorkers: 'block' });
+    const probePage = await probeContext.newPage();
+    const probeUrl = `http://127.0.0.1:${server.address().port}/upgrade`;
+    await probePage.goto(probeUrl);
+    assert.equal(await probePage.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgb(255, 0, 0)');
+    assert.equal(await probePage.evaluate(() => window.__assetGeneration), 'old');
+
+    generation = 'new';
+    await probePage.reload();
+    assert.match(cssPath, /^\/dashboard\.css\?v=[0-9a-f]+$/);
+    assert.match(scriptPath, /^\/dashboard\.js\?v=[0-9a-f]+$/);
+    assert.equal(await probePage.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgb(0, 128, 0)');
+    assert.equal(await probePage.evaluate(() => window.__assetGeneration), 'new');
+  } finally {
+    await probeContext?.close();
+    if (server) {
+      server.closeAllConnections();
+      await new Promise(resolve => server.close(resolve));
+    }
+    await appContext.close();
+  }
+});
+
 test('online public asset requests refresh cached CSS before offline fallback', async () => {
   const browserContext = await browser.newContext();
   let serviceWorkerSource;
@@ -952,8 +1001,11 @@ test('online public asset requests refresh cached CSS before offline fallback', 
   } finally {
     await browserContext.close();
   }
-  const cssUrl = new URL('/dashboard.css', baseUrl).toString();
-  const otherUrl = new URL('/dashboard.js', baseUrl).toString();
+  const cssPath = serviceWorkerSource.match(/'\/dashboard\.css\?v=[0-9a-f]+'/)?.[0].slice(1, -1);
+  const scriptPath = serviceWorkerSource.match(/'\/dashboard\.js\?v=[0-9a-f]+'/)?.[0].slice(1, -1);
+  assert.ok(cssPath && scriptPath);
+  const cssUrl = new URL(cssPath, baseUrl).toString();
+  const otherUrl = new URL(scriptPath, baseUrl).toString();
   const offlineUrl = new URL('/offline', baseUrl).toString();
   const entries = new Map([
     [cssUrl, new Response('old stylesheet', { status: 200 })],
@@ -1025,7 +1077,7 @@ test('online public asset requests refresh cached CSS before offline fallback', 
   assert.equal(await (await entries.get(otherUrl).clone()).text(), 'existing script');
 
   const privacyFailures = [];
-  const queryUrl = new URL('/dashboard.css?dashboard_person_id=123', baseUrl).toString();
+  const queryUrl = new URL(`${cssPath}&dashboard_person_id=123`, baseUrl).toString();
   let queryResponsePromise;
   listeners.get('fetch')({
     request: new Request(queryUrl),
@@ -1078,6 +1130,10 @@ test('PWA manifest and service worker keep authenticated pages and APIs out of c
     await login(page);
     await page.goto(householdUrl('/dashboard'));
     await waitForControl();
+    const assetPaths = [
+      await page.locator('link[rel="stylesheet"][href^="/dashboard.css"]').getAttribute('href'),
+      await page.locator('script[src^="/dashboard.js"]').getAttribute('src'),
+    ];
     const manifestUrl = await page.locator('link[rel="manifest"]').getAttribute('href');
     assert.ok(manifestUrl);
     const manifestResponse = await page.request.get(new URL(manifestUrl, baseUrl).toString());
@@ -1089,7 +1145,7 @@ test('PWA manifest and service worker keep authenticated pages and APIs out of c
     assert.ok(new URL(manifest.start_url, baseUrl).origin === new URL(baseUrl).origin);
 
     const cachedEntries = await readDashboardCache(page);
-    assertPublicDashboardCache(cachedEntries);
+    assertPublicDashboardCache(cachedEntries, assetPaths);
 
     const signOut = page.getByRole('button', { name: 'Sign Out', exact: true });
     const signOutInViewport = await signOut.evaluate(element => {
@@ -1100,7 +1156,7 @@ test('PWA manifest and service worker keep authenticated pages and APIs out of c
     await signOut.click();
     await page.waitForURL(url => url.pathname === '/login');
     const signedOutCache = await readDashboardCache(page);
-    assertPublicDashboardCache(signedOutCache);
+    assertPublicDashboardCache(signedOutCache, assetPaths);
     await page.goto(householdUrl('/dashboard'));
     await page.waitForURL(url => url.pathname === '/login');
     assert.ok(!(await page.locator('body').innerText()).includes(fixture.dashboard_person_name));
@@ -1112,7 +1168,7 @@ test('PWA manifest and service worker keep authenticated pages and APIs out of c
     await page.waitForURL(url => url.pathname === '/login');
     assert.ok(!(await page.locator('body').innerText()).includes(fixture.dashboard_person_name));
     const expiredSessionCache = await readDashboardCache(page);
-    assertPublicDashboardCache(expiredSessionCache);
+    assertPublicDashboardCache(expiredSessionCache, assetPaths);
   } finally {
     await context.close();
   }

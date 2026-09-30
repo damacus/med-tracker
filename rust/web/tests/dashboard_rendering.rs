@@ -139,6 +139,15 @@ fn unknown_shortcuts_are_ignored_without_a_fallback_link() {
     assert_eq!(rail.matches("<button ").count(), 0);
 }
 
+#[test]
+fn dashboard_public_css_and_script_have_content_versioned_urls() {
+    let html = render_person(vec![]);
+    assert!(html.contains("href=\"/dashboard.css?v="));
+    assert!(html.contains("src=\"/dashboard.js?v="));
+    assert!(!html.contains("href=\"/dashboard.css\""));
+    assert!(!html.contains("src=\"/dashboard.js\""));
+}
+
 fn medication(routine: bool) -> DashboardTaskRow {
     DashboardTaskRow {
         medication_name: "Test medicine".into(),
