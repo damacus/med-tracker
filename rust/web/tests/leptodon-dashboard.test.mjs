@@ -7,6 +7,15 @@ const baseUrl = process.env.LEPTODON_DASHBOARD_URL ?? 'http://127.0.0.1:39998';
 const accountEmail = process.env.LEPTODON_DASHBOARD_EMAIL;
 const screenshots = process.env.LEPTODON_SCREENSHOT_DIR ?? 'docs/screenshots';
 
+async function assertSearchLabelSpacing(input) {
+  const spacing = await input.evaluate(element => {
+    const label = element.closest('label');
+    const text = label?.querySelector('div');
+    return text ? element.getBoundingClientRect().top - text.getBoundingClientRect().bottom : null;
+  });
+  assert.ok(spacing >= 8, `Expected at least 8px between search label and input, got ${spacing}px`);
+}
+
 async function login(page) {
   await page.goto(`${baseUrl}/login`);
   await page.getByRole('textbox', { name: 'Email address' }).fill(accountEmail);
@@ -46,6 +55,8 @@ test('authenticated Leptodon dashboard hydrates search on desktop and mobile', a
     const input = desktop.getByRole('combobox', { name: 'Search this dashboard' });
     await desktop.waitForFunction(() => document.activeElement?.getAttribute('name') === 'dashboard-search');
     assert.equal(await input.evaluate(element => element === document.activeElement), true);
+    await assertSearchLabelSpacing(input);
+    await desktop.screenshot({ path: `${screenshots}/leptodon-search-desktop.png` });
     assert.ok(await dialog.locator('[role="option"]').count() > 0);
     await input.focus();
     await desktop.keyboard.press('Tab');
@@ -105,7 +116,10 @@ test('authenticated Leptodon dashboard hydrates search on desktop and mobile', a
     await mobile.keyboard.press('Escape');
     await mobile.getByRole('button', { name: 'Search this dashboard' }).click();
     await mobile.getByRole('dialog', { name: 'Search this dashboard' }).waitFor({ state: 'visible' });
-    await mobile.screenshot({ path: `${screenshots}/leptodon-dashboard-mobile.png`, fullPage: true });
+    const mobileInput = mobile.getByRole('combobox', { name: 'Search this dashboard' });
+    await mobile.waitForFunction(() => document.activeElement?.getAttribute('name') === 'dashboard-search');
+    await assertSearchLabelSpacing(mobileInput);
+    await mobile.screenshot({ path: `${screenshots}/leptodon-search-mobile.png` });
   } finally {
     await browser.close();
   }
