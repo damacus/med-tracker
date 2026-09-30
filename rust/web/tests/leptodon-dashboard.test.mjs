@@ -157,6 +157,12 @@ test('Enter on Close search closes the dialog with and without matching results'
       await trigger.click();
       await dialog.waitFor({ state: 'visible' });
       await page.getByRole('combobox', { name: 'Search this dashboard' }).fill(query);
+      if (query === 'As Needed Test Tablet') {
+        await dialog.getByRole('option').first().waitFor({ state: 'visible' });
+      } else {
+        await dialog.getByText('No matching items in this dashboard.').waitFor({ state: 'visible' });
+        assert.equal(await dialog.getByRole('option').count(), 0);
+      }
       const close = dialog.getByRole('button', { name: 'Close search' });
       await close.focus();
       await page.keyboard.press('Enter');
