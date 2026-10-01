@@ -16,7 +16,7 @@ these must be fixed before main. Stock has actual route, link, audit-reason and
 boundary RED evidence and is being implemented, but is not accepted. Assignments,
 all seven schedule editors and final parity remain pending. Published Rust source
 CI is green; browser CI is still running. The separate Rails notice failure is
-#2354, with its cause unverified.
+[issue #2354](https://github.com/damacus/med-tracker/issues/2354), with its cause unverified.
 
 Stable ownership worked: the same Sol writer fixes product/tests, the Luna
 verifier owns runtime, and the independent Sol reviewer checks contracts/security.
