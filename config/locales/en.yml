@@ -141,6 +141,7 @@ en:
       greater_than_or_equal_to: must be greater than or equal to %{count}
       inclusion: is not included in the list
       invalid: is invalid
+      form_invalid: This value could not be saved.
       not_a_number: is not a number
       required: must exist
       taken: has already been taken

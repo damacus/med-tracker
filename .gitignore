@@ -79,3 +79,4 @@ vendor/**/*
 /mobile/android/.idea/
 /mobile/android/*.iml
 /rust/api/target/
+/docs/plans/axum-leptos-port/next-slices/evidence/

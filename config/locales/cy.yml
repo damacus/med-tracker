@@ -83,6 +83,7 @@ cy:
       greater_than_or_equal_to: rhaid bod yn fwy na neu'n hafal i %{count}
       inclusion: nid yw wedi'i gynnwys yn y rhestr
       invalid: yn annilys
+      form_invalid: Ni ellid cadw'r gwerth hwn.
       not_a_number: nid yw'n rhif
       required: rhaid iddo fodoli
       taken: eisoes wedi'i gymryd

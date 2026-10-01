@@ -259,7 +259,7 @@ services:
     profiles: [test]
     image: medtracker-contract-browser:${CONTRACT_PROJECT}
     build:
-      context: ./rust/web
+      context: ${CONTRACT_BROWSER_BUILD_CONTEXT:-./rust/web}
       dockerfile: Dockerfile.smoke
     network_mode: service:rust-api
     shm_size: 1gb

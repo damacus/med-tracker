@@ -89,3 +89,23 @@ evidence, and next action before releasing ownership.
 Record preparation, build/fixture, implementation, review-fix and resource-wait
 time where available. Consolidate checks at a stable slice boundary; repeat a
 check only when a changed input or unresolved risk makes its result obsolete.
+
+## Household completion run — 1 October 2026
+
+The [completion packet](next-slices-20261001.md) refines the current run. Sol 6.1
+product owners write disjoint localisation/forms, medication safety and dashboard
+modules; a separate Sol test writer owns named new tests. The independent Sol
+reviewer remains read-only. A bounded Sol scout prepares later dosage/stock/
+assignment slices and retires when its report is useful.
+
+Dan explicitly selects one persistent Luna Medium build/verification owner. That
+owner alone executes dependency installs, shared UI builds, Cargo gates, Docker,
+fixture/bootstrap, HTTP/browser acceptance and owned resource cleanup. Coordinator
+and all other seats submit jobs; they do not run a second build. The visible
+[queue](next-slices/build-queue.md) records exact source/fixture identities, Tasks,
+RED/GREEN, times, disk and evidence. Coordinator alone owns shared wiring, Git and
+acceptance. Source results certify approved immutable snapshots.
+
+Preserve the parallel disjoint writer boundary and same-owner review fixes. Stop
+new feature dispatch at the native two-hour assessment, finish verification and
+cleanup, and report accepted work separately from the unfinished programme.

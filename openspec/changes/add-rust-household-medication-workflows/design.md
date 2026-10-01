@@ -23,3 +23,13 @@ Non-goals: new identity provider, domain-rule duplication, production activation
 ## Risks / Trade-offs
 
 SSR values, API affordances, schedule round-trips and locale/hydration parity need focused red tests. The two-hour run does not promise all journeys; accepted and unaccepted work are recorded separately. Authentication compatibility may exceed this run and must not block independent household UI work.
+
+## Completion execution packet (1 October 2026)
+
+Continue with the [next-slice packet](../../../docs/plans/axum-leptos-port/next-slices-20261001.md). Parallel disjoint A localisation, B stale-form safety and C limited-member dashboard owners precede ordered D dosage options, E stock, F direct/seven-type scheduled assignments and G final parity.
+
+One persistent Luna Medium owner exclusively executes all compiled/runtime tasks, shared builds, fixture/bootstrap and Docker operations. Sol 6.1 owners retain product diagnosis, separate test writing, independent review and coordinator integration. The visible queue records frozen manifests/digests, fixture identities, exact commands, RED/GREEN and resource waits. Results certify immutable inputs only.
+
+Known validation text is translated through exact catalogue mappings; unknown messages receive a useful translated generic form error without exposing raw API text or inventing clinical advice. Browser dashboard profile preferences are optional only for 403/404 after mandatory authenticated identity; other read failures stay explicit failures and authorised clinical collections remain mandatory. Medication edit preconditions are rechecked after option discovery, but final mutation always receives the original submitted If-Match; conflicts retain scalar drafts and never silently adopt the current version.
+
+The initial accepted slice remains 12/20 tasks. Each subsequent box requires real persistence/UI/locale evidence and independent requirements plus quality review. The two-hour assessment stops new dispatch then finishes in-flight verification/cleanup. Existing baseline audit failures remain RED under #2347. Rails, merge/deployment and authentication/scanner boundaries remain unchanged.

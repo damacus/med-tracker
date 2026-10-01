@@ -91,8 +91,8 @@ pub fn render_location_form(page: LocationFormPage) -> Result<String, Translatio
     let back = text.get("locations.show.all_locations", &[])?;
     let name_placeholder = text.get("forms.locations.name_placeholder", &[])?;
     let description_placeholder = text.get("forms.locations.description_placeholder", &[])?;
-    let name_errors = translated_errors(text, page.errors.get("name"));
-    let description_errors = translated_errors(text, page.errors.get("description"));
+    let name_errors = translated_errors(text, page.errors.get("name"))?;
+    let description_errors = translated_errors(text, page.errors.get("description"))?;
     let mut other_errors: Vec<_> = page
         .errors
         .iter()
@@ -101,8 +101,9 @@ pub fn render_location_form(page: LocationFormPage) -> Result<String, Translatio
     other_errors.sort_by_key(|(field, _)| *field);
     let other_errors: Vec<_> = other_errors
         .into_iter()
-        .flat_map(|(_, errors)| translated_errors(text, Some(errors)))
-        .collect();
+        .flat_map(|(_, errors)| errors)
+        .map(|message| text.form_error(message))
+        .collect::<Result<Vec<_>, TranslationError>>()?;
     let invalid_name = !name_errors.is_empty();
     let invalid_description = !description_errors.is_empty();
     let description = page
@@ -193,10 +194,13 @@ pub fn render_location_detail(page: LocationDetailPage) -> Result<String, Transl
     ))
 }
 
-fn translated_errors(text: Text, errors: Option<&Vec<String>>) -> Vec<String> {
+fn translated_errors(
+    text: Text,
+    errors: Option<&Vec<String>>,
+) -> Result<Vec<String>, TranslationError> {
     errors
         .into_iter()
         .flatten()
-        .map(|message| text.api_error(message).unwrap_or_else(|| message.clone()))
+        .map(|message| text.form_error(message))
         .collect()
 }

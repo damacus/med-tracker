@@ -125,6 +125,26 @@ impl Text {
         self.get(key, arguments).ok()
     }
 
+    pub fn form_error(self, message: &str) -> Result<String, TranslationError> {
+        if let Some(translated) = self.api_error(message) {
+            return Ok(translated);
+        }
+        for known in [
+            "can't be blank",
+            "is invalid",
+            "has already been taken",
+            "is not a number",
+            "is not included in the list",
+            "must be greater than 0",
+            "must be greater than or equal to 0",
+        ] {
+            if self.api_error(known).as_deref() == Some(message) {
+                return Ok(message.to_owned());
+            }
+        }
+        self.get("errors.messages.form_invalid", &[])
+    }
+
     pub fn get(self, key: &str, arguments: &[(&str, &str)]) -> Result<String, TranslationError> {
         let (value, _) = self.value(key)?;
         let template = value

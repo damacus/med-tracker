@@ -121,8 +121,8 @@ pub fn render_person_form(
     let text = Text::new(locale);
     let errors = errors
         .into_iter()
-        .map(|(field, message)| (field, text.api_error(&message).unwrap_or(message)))
-        .collect::<Vec<_>>();
+        .map(|(field, message)| text.form_error(&message).map(|message| (field, message)))
+        .collect::<Result<Vec<_>, TranslationError>>()?;
     let title = text.get(
         if person_id.is_some() {
             "people.form.edit_heading"

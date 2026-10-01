@@ -11,7 +11,7 @@ The Rust browser app exposes medication viewing and dose recording but lacks eve
 - Deliver assignments and all seven schedule types, including multi-step taper editing and pause/resume.
 - Share accessible native forms, household navigation, API-derived action affordances and five-language rendering.
 - Preserve existing API/session, audit, idempotency, private-cache and medication safety boundaries.
-- Execute a two-hour assessed run with parallel module owners, separate tests and independent review.
+- Execute bounded two-hour assessed runs with parallel module owners, separate tests, independent review and one exclusive build/verification owner.
 
 Non-goals: production cutover, deployments, merges, Rails retirement, Finder, reports, reviews, general administration, location deletion/membership administration and new offline capabilities. Authentication parity is a separate linked change.
 

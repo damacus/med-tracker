@@ -83,3 +83,18 @@ The application SHALL keep tenant/person authorisation authoritative, provide ke
 - **GIVEN** previous authenticated medication browsing
 - **WHEN** connectivity is lost or the member signs out
 - **THEN** caches contain no authenticated HTML, API records or medical drafts.
+
+#### Scenario: Unknown validation text
+- **GIVEN** a rejected form with an unmapped API validation message
+- **WHEN** it is rendered in any supported locale
+- **THEN** a useful translated generic error is associated with the affected field or summary, submitted values remain intact and raw unknown API text is not exposed.
+
+#### Scenario: Concurrent first dosage option
+- **GIVEN** a scalar medication edit and first dosage-option insertion before or between its record/options reads
+- **WHEN** the stale form is submitted
+- **THEN** 409 preserves every submitted scalar draft value without writing, and the final API mutation retains the original submitted If-Match rather than the newly observed version.
+
+#### Scenario: Limited-member dashboard without personal profile access
+- **GIVEN** an active authenticated member with a valid grant to another person and no own-person profile grant
+- **WHEN** the dashboard receives 403/404 for optional personal preferences
+- **THEN** the dashboard uses safe defaults and only authorised clinical data, without granting profile access or exposing mutation controls to a view-only member.

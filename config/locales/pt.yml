@@ -83,6 +83,7 @@ pt:
       greater_than_or_equal_to: deve ser maior ou igual a %{count}
       inclusion: não está incluído na lista
       invalid: não é válido
+      form_invalid: Não foi possível guardar este valor.
       not_a_number: não é um número
       required: deve existir
       taken: já está em uso

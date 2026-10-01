@@ -83,6 +83,7 @@ ga:
       greater_than_or_equal_to: ní mór a bheith níos mó ná nó cothrom le %{count}
       inclusion: níl sé san áireamh sa liosta
       invalid: neamhbhailí
+      form_invalid: Níorbh fhéidir an luach seo a shábháil.
       not_a_number: ní uimhir é
       required: caithfidh sé a bheith ann
       taken: in úsáid cheana féin
