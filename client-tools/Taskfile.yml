@@ -1,0 +1,26 @@
+version: "3"
+
+tasks:
+  fmt:
+    dir: "{{.TASKFILE_DIR}}"
+    desc: Format Rust client tools
+    cmds:
+      - cargo fmt --manifest-path Cargo.toml --all
+
+  check:
+    dir: "{{.TASKFILE_DIR}}"
+    desc: Check Rust client tools
+    cmds:
+      - cargo check --manifest-path Cargo.toml --workspace --all-targets
+
+  clippy:
+    dir: "{{.TASKFILE_DIR}}"
+    desc: Lint Rust client tools
+    cmds:
+      - cargo clippy --manifest-path Cargo.toml --workspace --all-targets -- -D warnings
+
+  test:
+    dir: "{{.TASKFILE_DIR}}"
+    desc: Test Rust client tools
+    cmds:
+      - cargo test --manifest-path Cargo.toml --workspace

@@ -34,7 +34,7 @@ test('Rust port and contract infrastructure select their executable checks', () 
     assert.equal(selected.rust_port, true, path);
     assert.equal(selected.rails, false, path);
   }
-  for (const path of ['Taskfiles/contract.yml', 'scripts/contract_provision.rb', 'scripts/compose_port.fish']) {
+  for (const path of ['rust/contract-tests/Taskfile.yml', 'scripts/contract_provision.rb', 'scripts/compose_port.fish']) {
     const selected = classify([path]).selected;
     assert.equal(selected.rust_port, true, path);
     assert.equal(selected.rails, true, path);

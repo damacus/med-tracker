@@ -2,29 +2,38 @@ version: '3'
 
 tasks:
   deps:
+    dir: "{{.TASKFILE_DIR}}"
     cmds:
       - npm ci --offline
   fmt:
+    dir: "{{.TASKFILE_DIR}}"
     cmds:
       - cargo fmt --check
   format:
+    dir: "{{.TASKFILE_DIR}}"
     cmds:
       - cargo fmt
   lint:
+    dir: "{{.TASKFILE_DIR}}"
     cmds:
       - cargo clippy --all-targets -- -D warnings
   test:
+    dir: "{{.TASKFILE_DIR}}"
     cmds:
       - cargo test
   test:dashboard:
+    dir: "{{.TASKFILE_DIR}}"
     cmds:
       - cargo test --test dashboard_rendering
   test:browser-dashboard:
+    dir: "{{.TASKFILE_DIR}}"
     cmds:
       - LEPTODON_SCREENSHOT_DIR=../../docs/screenshots node --test tests/leptodon-dashboard.test.mjs
   smoke:
+    dir: "{{.TASKFILE_DIR}}"
     cmds:
       - npm run smoke
   serve:
+    dir: "{{.TASKFILE_DIR}}"
     cmds:
       - cargo run

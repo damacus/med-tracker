@@ -3,6 +3,7 @@ version: "3"
 
 tasks:
   serve:
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Serve documentation locally with live reload
     summary: |
       Build and serve documentation locally for preview.
@@ -12,6 +13,7 @@ tasks:
       - uv run zensical serve
 
   build:
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Build static documentation site
     summary: |
       Build documentation into the site output directory.
