@@ -63,10 +63,16 @@ tasks:
       - fish rust/contract-tests/run.fish rails browser-journey-rails
 
   browser-rust:
-    env:
-      BROWSER_TEST_FILES: '{{ .BROWSER_TEST_FILES | default "tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs" }}'
     cmds:
-      - fish rust/contract-tests/run.fish rails browser-journey-rust
+      - >-
+        env
+        HOUSEHOLD_ACCEPTANCE={{ .HOUSEHOLD_ACCEPTANCE | default "" | shellQuote }}
+        HOUSEHOLD_COMPLETION_ACCEPTANCE={{ .HOUSEHOLD_COMPLETION_ACCEPTANCE | default "" | shellQuote }}
+        HOUSEHOLD_STOCK_ACCEPTANCE={{ .HOUSEHOLD_STOCK_ACCEPTANCE | default "" | shellQuote }}
+        HOUSEHOLD_TEST_FILE={{ .HOUSEHOLD_TEST_FILE | default "" | shellQuote }}
+        HOUSEHOLD_TEST_FILTER={{ .HOUSEHOLD_TEST_FILTER | default "" | shellQuote }}
+        BROWSER_TEST_FILES={{ .BROWSER_TEST_FILES | default "tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs" | shellQuote }}
+        fish rust/contract-tests/run.fish rails browser-journey-rust
 
   browser-dashboard-rust:
     cmds:
@@ -105,6 +111,7 @@ tasks:
       - fish --no-config -n rust/contract-tests/runner_compose_test.fish
       - fish --no-config -n rust/contract-tests/browser_context_test.fish
       - fish --no-config -n rust/contract-tests/household_selector_test.fish
+      - fish --no-config -n rust/contract-tests/fixtures/household_wrapper_probe.fish
       - fish --no-config -n rust/contract-tests/test_support/rtk
 
   contract-harness-fmt:
