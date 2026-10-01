@@ -35,7 +35,7 @@
 
 - [x] 6.1 Run applicable Rust checks and prior browser/API regressions on stable input.
 - [x] 6.2 Obtain broad independent review and resolve material findings.
-- [ ] 6.3 Publish accepted work and record unfinished scope at two-hour assessment.
+- [x] 6.3 Publish accepted work and record unfinished scope at two-hour assessment.
 
 ## Current evidence
 
@@ -48,3 +48,8 @@ gap. Combined acceptance passed 15 HTTP cases and all 21 browser cases on the
 final frozen input, including dose permissions, stock effects, history, replay
 protection and mobile page width. The broader journey requirements above remain
 open where localisation or planned editors are incomplete.
+
+The original two-hour assessment was delivered at 10:27 UTC. Recovery acceptance
+finished at 11:52 UTC. The accepted bounded slice is published in PR #2346;
+remaining scope is tracked in issue #2345. No merge, deployment or Rails cutover
+has been performed.
