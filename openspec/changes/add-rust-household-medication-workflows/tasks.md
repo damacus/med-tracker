@@ -36,6 +36,7 @@
 - [x] 6.1 Run applicable Rust checks and prior browser/API regressions on stable input.
 - [x] 6.2 Obtain broad independent review and resolve material findings.
 - [x] 6.3 Publish accepted work and record unfinished scope at two-hour assessment.
+- [x] 6.4 Address personal review: split mixed-purpose Rust files, preserve behaviour and independently verify before main.
 
 ## Current evidence
 

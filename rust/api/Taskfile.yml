@@ -97,6 +97,18 @@ tasks:
       - fish --no-config -n rust/contract-tests/runner_compose_test.fish
       - fish --no-config -n rust/contract-tests/test_support/rtk
 
+  contract-harness-fmt:
+    cmds:
+      - rustfmt --edition 2021 --check rust/contract-tests/src/lib.rs
+
+  contract-harness-fmt:write:
+    cmds:
+      - rustfmt --edition 2021 rust/contract-tests/src/lib.rs
+
+  contract-harness-test:
+    cmds:
+      - cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --lib
+
   complete-acceptance:
     cmds:
       - fish --no-config rust/contract-tests/run_complete_api.fish

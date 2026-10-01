@@ -51,3 +51,17 @@ commit. Independent review confirmed test-only inputs and pure derivation,
 without deployed credentials. Issue #2345 records the exact incidents and the
 required authorised GitGuardian false-positive disposition. No scanner bypass,
 test weakening or history rewrite was performed.
+
+## Personal maintainability review
+
+Eight mixed-purpose Rust files were split into private modules with explicit
+existing entry points. `read_resources.rs` is now 13 lines, down from 1390.
+Independent source and runtime review accepted the refactor. The full Rust gate,
+four harness safety tests, People/Locations contracts and final 15 HTTP/21 browser
+household checks passed. Fresh screenshots were retained.
+
+Broader audits reproduced identical pre-refactor failures in three sets (56/16,
+7/2 and 21/2); [issue #2347](https://github.com/damacus/med-tracker/issues/2347)
+tracks these existing gaps. See the [refactor record](refactor-20261001.md) for
+source boundaries, final snapshot and independent evidence. PR #2346 remains
+unmerged; the external GitGuardian disposition remains outstanding.
