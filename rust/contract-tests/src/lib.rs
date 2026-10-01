@@ -529,6 +529,17 @@ impl Target {
             .expect("target must respond")
     }
 
+    pub fn post_browser_form(&self, path: &str, fields: &[(String, String)]) -> Response {
+        self.require_local_write();
+        self.client
+            .post(self.url(path))
+            .header("Accept", "text/html")
+            .header("Origin", self.origin.origin().ascii_serialization())
+            .form(fields)
+            .send()
+            .expect("target must respond")
+    }
+
     pub fn patch_html_form(&self, path: &str, fields: &[(String, String)]) -> Response {
         self.require_local_write();
         self.client

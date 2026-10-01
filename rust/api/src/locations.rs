@@ -22,7 +22,7 @@ use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
-fn manager(context: &AuthContext) -> bool {
+pub(super) fn manager(context: &AuthContext) -> bool {
     matches!(context.membership.role.as_str(), "owner" | "administrator")
 }
 

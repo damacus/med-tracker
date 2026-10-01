@@ -30,6 +30,7 @@ serde_json = "1"
 serde_yaml = "0.9"
 sha2 = "0.10"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
+totp-rs = { version = "=6.0.0", features = ["otpauth"] }
 tower = "0.5"
 url = "2"
 uuid = { version = "1", features = ["v4"] }

@@ -194,7 +194,10 @@ async fn validation_response(
     .await
 }
 
-async fn may_create(db: &DatabaseTransaction, context: &AuthContext) -> Result<bool, ApiError> {
+pub(super) async fn may_create(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+) -> Result<bool, ApiError> {
     if household_manager(context) {
         return Ok(true);
     }

@@ -10,6 +10,7 @@ use medtracker_web::dashboard::{
     calculate_metrics, calculate_prn, is_same_local_day, DashboardHistory, DashboardPage,
     DashboardPerson, DashboardStock, DashboardTask, DashboardTaskRow, PrnInput, TaskState,
 };
+use medtracker_web::household_i18n::Locale;
 use medtracker_web::{DoseFormState, DoseSource, MedicationCard, MedicationDetail};
 use sea_orm::TransactionTrait;
 use serde::Deserialize;
@@ -20,8 +21,16 @@ use tower::ServiceExt;
 const BODY_LIMIT: usize = 1_048_576;
 const COLLECTION_LIMIT: usize = 500;
 
+mod locations;
+mod medications;
+mod people;
+
 pub fn routes() -> Router<AppState> {
     Router::new()
+        .merge(people::routes())
+        .merge(locations::routes())
+        .merge(medications::routes())
+        .route("/household.css", get(household_styles))
         .route("/households/{slug}/dashboard", get(dashboard))
         .route("/households/{slug}/medications", get(medications))
         .route("/households/{slug}/medications/{id}", get(medication))
@@ -48,6 +57,32 @@ pub fn routes() -> Router<AppState> {
         .route("/fonts/inter-800.woff2", get(inter_800))
         .route("/fonts/inter-600.woff2", get(inter_600))
         .route("/fonts/inter-700.woff2", get(inter_700))
+}
+
+async fn household_styles() -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "text/css; charset=utf-8"),
+            (header::CACHE_CONTROL, "public, max-age=3600"),
+        ],
+        include_str!("../../web/src/household.css"),
+    )
+        .into_response()
+}
+
+fn redirect(location: impl AsRef<str>, cookie: Option<HeaderValue>) -> Response {
+    let mut response = (
+        StatusCode::SEE_OTHER,
+        [
+            (header::LOCATION, location.as_ref().to_owned()),
+            (header::CACHE_CONTROL, "no-store".to_owned()),
+        ],
+    )
+        .into_response();
+    if let Some(cookie) = cookie {
+        response.headers_mut().append(header::SET_COOKIE, cookie);
+    }
+    response
 }
 
 async fn dashboard_styles() -> Response {
@@ -349,6 +384,7 @@ fn html_cookie_only(headers: &HeaderMap) -> bool {
 struct ApiReply {
     status: StatusCode,
     value: Value,
+    etag: Option<String>,
 }
 
 struct WebApi {
@@ -356,6 +392,7 @@ struct WebApi {
     headers: HeaderMap,
     csrf: String,
     cookie: Option<HeaderValue>,
+    locale: Locale,
 }
 
 impl WebApi {
@@ -378,11 +415,26 @@ impl WebApi {
         db.commit()
             .await
             .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))?;
+        let locale_cookie = headers
+            .get(header::COOKIE)
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| {
+                value
+                    .split(';')
+                    .find_map(|entry| entry.trim().strip_prefix("medtracker_locale="))
+            });
+        let locale = Locale::resolve(
+            locale_cookie,
+            headers
+                .get(header::ACCEPT_LANGUAGE)
+                .and_then(|value| value.to_str().ok()),
+        );
         Ok(Self {
             state,
             headers,
             csrf: session.csrf,
             cookie: None,
+            locale,
         })
     }
 
@@ -393,7 +445,27 @@ impl WebApi {
         body: Option<Value>,
         csrf: Option<&str>,
     ) -> Result<ApiReply, PageError> {
+        self.call_with_headers(method, path, body, csrf, &HeaderMap::new())
+            .await
+    }
+
+    async fn call_with_headers(
+        &mut self,
+        method: Method,
+        path: &str,
+        body: Option<Value>,
+        csrf: Option<&str>,
+        extra: &HeaderMap,
+    ) -> Result<ApiReply, PageError> {
         let mut request = Request::builder().method(method).uri(path);
+        for name in [
+            header::IF_MATCH,
+            header::HeaderName::from_static("idempotency-key"),
+        ] {
+            if let Some(value) = extra.get(&name) {
+                request = request.header(name, value);
+            }
+        }
         for name in [
             header::COOKIE,
             header::AUTHORIZATION,
@@ -424,14 +496,34 @@ impl WebApi {
             self.cookie = Some(cookie.clone());
         }
         let status = response.status();
+        let etag = response
+            .headers()
+            .get(header::ETAG)
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
         let bytes = to_bytes(response.into_body(), BODY_LIMIT)
             .await
             .map_err(|_| error(StatusCode::BAD_GATEWAY))?;
         let value = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
-        Ok(ApiReply { status, value })
+        Ok(ApiReply {
+            status,
+            value,
+            etag,
+        })
     }
 
     async fn get(&mut self, path: &str) -> Result<Value, PageError> {
+        Ok(self.get_reply(path).await?.value)
+    }
+
+    async fn capabilities(&mut self, household_id: i64) -> Result<Value, PageError> {
+        self.get(&format!(
+            "/api/v1/households/{household_id}/ui_capabilities"
+        ))
+        .await
+    }
+
+    async fn get_reply(&mut self, path: &str) -> Result<ApiReply, PageError> {
         let reply = self.call(Method::GET, path, None, None).await?;
         if reply.status == StatusCode::UNAUTHORIZED {
             return Err(PageError::Login);
@@ -439,7 +531,7 @@ impl WebApi {
         if !reply.status.is_success() {
             return Err(error(reply.status));
         }
-        Ok(reply.value)
+        Ok(reply)
     }
 
     async fn collection(&mut self, base: &str) -> Result<Vec<Value>, PageError> {
@@ -587,12 +679,25 @@ async fn medications(
         Ok(value) => value,
         Err(response) => return response.response(),
     };
+    let capabilities = match api.capabilities(household_id).await {
+        Ok(value) => value,
+        Err(response) => return response.response(),
+    };
+    let can_create = match capabilities
+        .pointer("/data/medications/create")
+        .and_then(Value::as_bool)
+    {
+        Some(value) => value,
+        None => return failure(StatusCode::BAD_GATEWAY),
+    };
     page(
-        medtracker_web::render_medication_list(
+        medtracker_web::render_medication_list_with_management(
             &household_name,
             &slug,
             &api.csrf,
             records.iter().filter_map(card).collect(),
+            can_create,
+            api.locale,
         ),
         api.cookie,
     )
@@ -822,18 +927,33 @@ async fn render_detail(
     let uuid = outcome
         .client_uuid
         .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    let capabilities = match api.capabilities(household_id).await {
+        Ok(value) => value,
+        Err(response) => return response.response(),
+    };
+    let can_edit = match capabilities
+        .pointer("/data/medications/update")
+        .and_then(Value::as_bool)
+    {
+        Some(value) => value,
+        None => return failure(StatusCode::BAD_GATEWAY),
+    };
     page_status(
-        medtracker_web::render_medication_detail(medtracker_web::MedicationDetailRender {
-            household_name: &household_name,
-            slug: &slug,
-            csrf: &api.csrf,
-            medication,
-            stock_options: options,
-            taken_at: &now_local(),
-            client_uuid: &uuid,
-            notice: notice.as_deref(),
-            form_state,
-        }),
+        medtracker_web::render_medication_detail_with_management(
+            medtracker_web::MedicationDetailRender {
+                household_name: &household_name,
+                slug: &slug,
+                csrf: &api.csrf,
+                medication,
+                stock_options: options,
+                taken_at: &now_local(),
+                client_uuid: &uuid,
+                notice: notice.as_deref(),
+                form_state,
+            },
+            can_edit,
+            api.locale,
+        ),
         api.cookie,
         outcome.status,
     )

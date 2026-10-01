@@ -1025,6 +1025,7 @@ es:
       edit_subtitle: Actualizar detalles de %{name}.
     index:
       your_inventory: Su Inventario
+      stock_remaining: "%{amount} %{unit} restantes"
       add_for_person: Añadir medicación para alguien
       title: Medicamentos
       add_medication: Añadir Medicamento
@@ -1868,6 +1869,7 @@ es:
       save: Guardar registro de revisión
   forms:
     locations:
+      new_title: Nueva ubicación
       name_placeholder: p. ej. Casa, Escuela, Casa de la Abuela
       description_placeholder: Describe esta ubicación...
     people:
@@ -1875,6 +1877,7 @@ es:
       email_placeholder: e.g., jane@example.com
     medications:
       inventory_management: Gestión de Inventario
+      dosage_options_read_only: Este medicamento utiliza opciones de dosis. Permanecen sin cambios al guardar estos detalles.
       name: Nombre
       name_placeholder: p. ej., Paracetamol
       friendly_name: Nombre para mostrar

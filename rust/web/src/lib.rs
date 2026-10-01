@@ -1,5 +1,10 @@
 use axum::{Router, http::header, response::Html, routing::get};
 use leptos::prelude::*;
+pub mod household;
+pub mod household_i18n;
+pub mod locations;
+pub mod medication_management;
+pub mod people;
 
 pub mod dashboard;
 
@@ -226,23 +231,65 @@ pub fn render_medication_list(
     csrf: &str,
     medications: Vec<MedicationCard>,
 ) -> String {
-    let prefix = format!("/households/{slug}");
+    render_medication_list_with_management(
+        household_name,
+        slug,
+        csrf,
+        medications,
+        false,
+        household_i18n::Locale::En,
+    )
+}
+
+pub fn render_medication_list_with_management(
+    household_name: &str,
+    slug: &str,
+    csrf: &str,
+    medications: Vec<MedicationCard>,
+    can_create: bool,
+    locale: household_i18n::Locale,
+) -> String {
+    let prefix = format!("/households/{}", household::path_segment(slug));
+    let text = household_i18n::Text::new(locale);
+    let title = text
+        .get("medications.index.title", &[])
+        .expect("catalogue key");
+    let dashboard_label = text
+        .get("layouts.sidebar.dashboard", &[])
+        .expect("catalogue key");
+    let inventory_label = text
+        .get("layouts.sidebar.inventory", &[])
+        .expect("catalogue key");
+    let view_label = text
+        .get("medications.index.view", &[])
+        .expect("catalogue key");
+    let people_label = text
+        .get("layouts.sidebar.people", &[])
+        .expect("catalogue key");
+    let locations_label = text
+        .get("layouts.sidebar.locations", &[])
+        .expect("catalogue key");
+    let add_label = text
+        .get("medications.index.add_medication", &[])
+        .expect("catalogue key");
     let body = view! {
         <main class="med-app">
             <header class="med-topbar"><a class="med-brand" href=format!("{prefix}/dashboard")>"MedTracker"</a><span>{household_name.to_owned()}</span></header>
             <div class="med-layout">
-                <nav class="med-sidebar" aria-label="Household"><a href=format!("{prefix}/dashboard")>"Dashboard"</a><a aria-current="page" href=format!("{prefix}/medications")>"Inventory"</a></nav>
+                <nav class="med-sidebar" aria-label=household_name.to_owned()><a href=format!("{prefix}/dashboard")>{dashboard_label}</a><a aria-current="page" href=format!("{prefix}/medications")>{inventory_label.clone()}</a><a href=format!("{prefix}/people")>{people_label}</a><a href=format!("{prefix}/locations")>{locations_label}</a></nav>
                 <section class="med-content">
-                    <p class="med-eyebrow">"HOUSEHOLD INVENTORY"</p>
-                    <h1>"Medications"</h1>
+                    <p class="med-eyebrow">{inventory_label}</p>
+                    <h1>{title.clone()}</h1>
+                    {can_create.then(|| view! { <a class="med-button" href=format!("{prefix}/medications/new")>{add_label}</a> })}
                     <div class="med-grid">
                         {medications.into_iter().map(|medication| {
                             let href = format!("{prefix}/medications/{}", medication.id);
+                            let stock = text.get("medications.index.stock_remaining", &[("amount", &medication.supply), ("unit", &medication.unit)]).expect("catalogue key");
                             view! {
                                 <article class="med-card">
                                     <h2>{medication.name.clone()}</h2>
-                                    <p>{medication.supply}" "{medication.unit}" remaining"</p>
-                                    <a href=href>"View medication"</a>
+                                    <p>{stock}</p>
+                                    <a href=href>{view_label.clone()}</a>
                                 </article>
                             }
                         }).collect_view()}
@@ -251,7 +298,11 @@ pub fn render_medication_list(
             </div>
         </main>
     }.to_html();
-    medication_document("Medications", csrf, body)
+    medication_document(&title, csrf, body).replacen(
+        "lang=\"en\"",
+        &format!("lang=\"{}\"", locale.as_str()),
+        1,
+    )
 }
 
 pub struct MedicationDetailRender<'a> {
@@ -267,6 +318,14 @@ pub struct MedicationDetailRender<'a> {
 }
 
 pub fn render_medication_detail(input: MedicationDetailRender<'_>) -> String {
+    render_medication_detail_with_management(input, false, household_i18n::Locale::En)
+}
+
+pub fn render_medication_detail_with_management(
+    input: MedicationDetailRender<'_>,
+    can_edit: bool,
+    locale: household_i18n::Locale,
+) -> String {
     let MedicationDetailRender {
         household_name,
         slug,
@@ -278,7 +337,32 @@ pub fn render_medication_detail(input: MedicationDetailRender<'_>) -> String {
         notice,
         form_state,
     } = input;
-    let prefix = format!("/households/{slug}");
+    let prefix = format!("/households/{}", household::path_segment(slug));
+    let text = household_i18n::Text::new(locale);
+    let people_label = text
+        .get("layouts.sidebar.people", &[])
+        .expect("catalogue key");
+    let locations_label = text
+        .get("layouts.sidebar.locations", &[])
+        .expect("catalogue key");
+    let edit_label = text
+        .get("medications.form.edit_title", &[])
+        .expect("catalogue key");
+    let dashboard_label = text
+        .get("layouts.sidebar.dashboard", &[])
+        .expect("catalogue key");
+    let inventory_label = text
+        .get("layouts.sidebar.inventory", &[])
+        .expect("catalogue key");
+    let profile_label = text
+        .get("medications.show.profile", &[])
+        .expect("catalogue key");
+    let overview_label = text
+        .get("medications.show.overview", &[])
+        .expect("catalogue key");
+    let stock_label = text
+        .get("medications.show.inventory_status", &[])
+        .expect("catalogue key");
     let dose_action = format!("{prefix}/medications/{}/doses", medication.id);
     let first = if let Some(form) = form_state.as_ref() {
         medication
@@ -333,15 +417,16 @@ pub fn render_medication_detail(input: MedicationDetailRender<'_>) -> String {
         <main class="med-app">
             <header class="med-topbar"><a class="med-brand" href=format!("{prefix}/dashboard")>"MedTracker"</a><span>{household_name.to_owned()}</span></header>
             <div class="med-layout">
-                <nav class="med-sidebar" aria-label="Household"><a href=format!("{prefix}/dashboard")>"Dashboard"</a><a href=format!("{prefix}/medications")>"Inventory"</a></nav>
+                <nav class="med-sidebar" aria-label=household_name.to_owned()><a href=format!("{prefix}/dashboard")>{dashboard_label}</a><a href=format!("{prefix}/medications")>{inventory_label}</a><a href=format!("{prefix}/people")>{people_label}</a><a href=format!("{prefix}/locations")>{locations_label}</a></nav>
                 <section class="med-content">
-                    <p class="med-eyebrow">"MEDICATION PROFILE"</p>
+                    <p class="med-eyebrow">{profile_label}</p>
                     <h1>{medication.name.clone()}</h1>
+                    {can_edit.then(|| view! { <a class="med-button" href=format!("{prefix}/medications/{}/edit", medication.id)>{edit_label}</a> })}
                     <p class="med-location">{medication.location.clone()}</p>
                     {form_state.is_none().then_some(notice).flatten().map(|text| view! { <p class="med-alert" role="alert">{text.to_owned()}</p> })}
                     <div class="med-detail-grid">
-                        {(!medication.description.is_empty()).then(|| view! { <section class="med-card"><h2>"Overview"</h2><p>{medication.description.clone()}</p></section> })}
-                        <section class="med-card med-stock"><h2>"Inventory Status"</h2><div class="med-stock-number"><strong>{medication.supply.clone()}</strong><span>{medication.unit.clone()}" remaining"</span></div><p>"Stock source: "{medication.location.clone()}</p></section>
+                        {(!medication.description.is_empty()).then(|| view! { <section class="med-card"><h2>{overview_label}</h2><p>{medication.description.clone()}</p></section> })}
+                        <section class="med-card med-stock"><h2>{stock_label}</h2><div class="med-stock-number"><strong>{medication.supply.clone()}</strong><span>{medication.unit.clone()}" remaining"</span></div><p>"Stock source: "{medication.location.clone()}</p></section>
                     </div>
                     {has_recordable_source.then(|| view! { <a class="med-button med-log-link" href="#administration" data-open-administration>"Log"</a> })}
                 </section>
@@ -384,7 +469,11 @@ pub fn render_medication_detail(input: MedicationDetailRender<'_>) -> String {
             </dialog>
         </main>
     }.to_html();
-    medication_document(&medication.name, csrf, body)
+    medication_document(&medication.name, csrf, body).replacen(
+        "lang=\"en\"",
+        &format!("lang=\"{}\"", locale.as_str()),
+        1,
+    )
 }
 
 pub fn render_journey_dashboard(

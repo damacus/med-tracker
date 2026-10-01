@@ -1035,6 +1035,7 @@ en:
       edit_subtitle: Update %{name}'s details.
     index:
       your_inventory: Your Inventory
+      stock_remaining: "%{amount} %{unit} remaining"
       add_for_person: Add medication for someone
       title: Medications
       add_medication: Add Medication
@@ -2212,6 +2213,7 @@ en:
         description: Manage people and their schedules, track medication schedules
   forms:
     locations:
+      new_title: New Location
       name_placeholder: e.g. Home, School, Grandma's House
       description_placeholder: Describe this location...
     people:
@@ -2219,6 +2221,7 @@ en:
       email_placeholder: e.g., jane@example.com
     medications:
       inventory_management: Inventory Management
+      dosage_options_read_only: This medication uses dosage options. They remain unchanged when you save these details.
       name: Name
       name_placeholder: e.g., Paracetamol
       friendly_name: Display name

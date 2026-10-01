@@ -200,7 +200,7 @@ fn name_errors(body: &Value, create: bool) -> Option<Value> {
     }
 }
 
-async fn may_create(
+pub(super) async fn may_create(
     db: &DatabaseTransaction,
     member: &membership::Model,
 ) -> Result<bool, ApiError> {
@@ -228,10 +228,18 @@ async fn manageable(
     context: &AuthContext,
     person_id: i64,
 ) -> Result<bool, ApiError> {
-    let active = grant::Entity::find()
+    let active = manageable_scope(context)
+        .filter(grant::Column::PersonId.eq(person_id))
+        .one(db)
+        .await
+        .map_err(database_error)?;
+    Ok(active.is_some())
+}
+
+fn manageable_scope(context: &AuthContext) -> sea_orm::Select<grant::Entity> {
+    grant::Entity::find()
         .filter(grant::Column::HouseholdId.eq(context.membership.household_id))
         .filter(grant::Column::HouseholdMembershipId.eq(context.membership.id))
-        .filter(grant::Column::PersonId.eq(person_id))
         .filter(grant::Column::AccessLevel.eq("manage"))
         .filter(grant::Column::RevokedAt.is_null())
         .filter(
@@ -239,10 +247,19 @@ async fn manageable(
                 .add(grant::Column::ExpiresAt.is_null())
                 .add(grant::Column::ExpiresAt.gt(Utc::now().naive_utc())),
         )
-        .one(db)
+}
+
+pub(super) async fn manageable_ids(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+) -> Result<Vec<i64>, ApiError> {
+    manageable_scope(context)
+        .select_only()
+        .column(grant::Column::PersonId)
+        .into_tuple::<i64>()
+        .all(db)
         .await
-        .map_err(database_error)?;
-    Ok(active.is_some())
+        .map_err(database_error)
 }
 
 fn person_valid(record: &person::Model, has_carer: bool) -> bool {

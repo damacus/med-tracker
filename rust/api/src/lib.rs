@@ -2,6 +2,7 @@ mod admin_settings;
 mod app_tokens;
 mod audit;
 mod audit_logs;
+pub mod auth_compatibility;
 mod auth_sessions;
 mod dosage_options;
 mod dose;
@@ -39,6 +40,7 @@ mod stock_removals;
 mod sync_batch;
 mod sync_events;
 mod sync_reads;
+mod ui_capabilities;
 mod web_pages;
 
 use axum::extract::{rejection::QueryRejection, Path, Query, State};
@@ -172,6 +174,10 @@ async fn rate_middleware(State(state): State<AppState>, request: Request, next: 
 fn api_router(state: AppState) -> Router {
     let csrf_state = state.clone();
     Router::new()
+        .route(
+            "/api/v1/households/{household_id}/ui_capabilities",
+            get(ui_capabilities::show),
+        )
         .merge(oauth::api_routes())
         .merge(auth_sessions::routes())
         .merge(health_events::routes())
@@ -1255,6 +1261,9 @@ pub(crate) async fn serialize_many(
             "id": record.id,
             "portable_id": record.portable_id,
             "name": record.name,
+            "friendly_name": record.friendly_name,
+            "barcode": record.barcode,
+            "warnings": record.warnings,
             "display_name": display_name,
             "category": record.category,
             "description": record.description,
@@ -1265,13 +1274,19 @@ pub(crate) async fn serialize_many(
             "reorder_status": record.reorder_status.map(|value| if value == 1 { "ordered" } else { "received" }),
             "location_id": record.location_id,
             "location_portable_id": locations.get(&record.location_id),
-            "updated_at": record.updated_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+            "updated_at": medication_timestamp(record.updated_at),
             "low_stock": low_stock,
             "out_of_stock": out_of_stock,
             "days_until_low_stock": forecast.days_until_low_stock,
             "days_until_out_of_stock": forecast.days_until_out_of_stock
         })
     }).collect())
+}
+
+fn medication_timestamp(value: chrono::NaiveDateTime) -> String {
+    value
+        .and_utc()
+        .to_rfc3339_opts(chrono::SecondsFormat::Micros, true)
 }
 
 fn decimal_string(value: String) -> String {
@@ -1291,6 +1306,20 @@ fn decimal_string(value: String) -> String {
 mod tests {
     use super::{decimal_string, representation_etag};
     use serde_json::json;
+
+    #[test]
+    fn medication_versions_distinguish_writes_within_one_second() {
+        let before = chrono::NaiveDateTime::parse_from_str(
+            "2026-10-01T09:00:00.123456",
+            "%Y-%m-%dT%H:%M:%S%.f",
+        )
+        .unwrap();
+        let after = before + chrono::Duration::microseconds(1);
+        let initial = json!({"data": {"updated_at": super::medication_timestamp(before)}});
+        let changed = json!({"data": {"updated_at": super::medication_timestamp(after)}});
+        assert_ne!(representation_etag(&initial), representation_etag(&changed));
+        assert_eq!(initial["data"]["updated_at"], "2026-10-01T09:00:00.123456Z");
+    }
 
     #[test]
     fn etag_changes_with_forecast_and_location_in_the_response() {
