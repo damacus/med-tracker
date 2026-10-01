@@ -15,7 +15,7 @@ use base64::{
     Engine as _,
 };
 use chrono::{Duration, Utc};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseTransaction, DbBackend, EntityTrait,
     QueryFilter, QueryOrder, Set, Statement, TransactionTrait,

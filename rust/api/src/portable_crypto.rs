@@ -63,7 +63,7 @@ pub(super) fn encrypt(payload: &Value, passphrase: &str) -> Result<Value, Portab
         STANDARD.encode(iv),
         STANDARD.encode(&encrypted[tag_start..]),
     );
-    let checksum = format!("{:x}", Sha256::digest(plaintext.as_bytes()));
+    let checksum = hex::encode(Sha256::digest(plaintext.as_bytes()));
     Ok(json!({
         "format": "medtracker.portable.encrypted.v1",
         "encrypted_at": Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
@@ -148,7 +148,7 @@ pub(super) fn decrypt(envelope: &Value, passphrase: &str) -> Result<Value, Porta
     let plaintext: String =
         serde_json::from_slice(&serialized).map_err(|_| PortableCryptoError::InvalidEnvelope)?;
     if plaintext.len() > MAX_PLAINTEXT_BYTES
-        || format!("{:x}", Sha256::digest(plaintext.as_bytes())) != checksum.to_ascii_lowercase()
+        || hex::encode(Sha256::digest(plaintext.as_bytes())) != checksum.to_ascii_lowercase()
     {
         return Err(PortableCryptoError::InvalidEnvelope);
     }

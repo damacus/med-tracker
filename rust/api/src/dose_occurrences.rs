@@ -20,7 +20,7 @@ use axum::response::Response;
 use axum::Json;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use chrono::{Datelike, Duration, NaiveDate, NaiveDateTime, TimeZone, Utc};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, DatabaseTransaction, EntityTrait, QueryFilter,
     QueryOrder, QuerySelect, QueryTrait, Set,

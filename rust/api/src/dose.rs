@@ -384,7 +384,7 @@ pub(super) fn take_etag(take: &medication_take::Model) -> String {
         take.id,
         take.updated_at.and_utc().timestamp_micros()
     );
-    format!("\"{:x}\"", Sha256::digest(input.as_bytes()))
+    format!("\"{}\"", hex::encode(Sha256::digest(input.as_bytes())))
 }
 
 pub(super) async fn authorize_sync_replay(

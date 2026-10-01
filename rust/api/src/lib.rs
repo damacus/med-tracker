@@ -681,7 +681,7 @@ async fn authenticate(
         .and_then(|value| value.strip_prefix("Bearer "))
         .filter(|value| !value.is_empty())
         .ok_or_else(ApiError::unauthorized)?;
-    let digest = format!("{:x}", Sha256::digest(token.as_bytes()));
+    let digest = hex::encode(Sha256::digest(token.as_bytes()));
     let session = api_session::Entity::find()
         .filter(api_session::Column::AccessTokenDigest.eq(&digest))
         .one(db)
@@ -1221,8 +1221,10 @@ fn if_none_match_matches(headers: &HeaderMap, etag: &str) -> bool {
 
 fn representation_etag(body: &Value) -> String {
     format!(
-        "\"{:x}\"",
-        Sha256::digest(serde_json::to_vec(body).expect("JSON value must serialize"))
+        "\"{}\"",
+        hex::encode(Sha256::digest(
+            serde_json::to_vec(body).expect("JSON value must serialize")
+        ))
     )
 }
 

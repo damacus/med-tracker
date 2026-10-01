@@ -444,7 +444,7 @@ pub(super) async fn create(
     let mut bytes = [0u8; 48];
     getrandom::fill(&mut bytes).map_err(|_| ApiError::internal())?;
     let raw = format!("mt_app_{}", URL_SAFE_NO_PAD.encode(bytes));
-    let digest = format!("{:x}", Sha256::digest(raw.as_bytes()));
+    let digest = hex::encode(Sha256::digest(raw.as_bytes()));
     let row = api_app_token::ActiveModel {
         account_id: Set(context.account_id),
         household_membership_id: Set(context.membership.id),

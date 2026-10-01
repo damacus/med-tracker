@@ -5,32 +5,33 @@ edition = "2021"
 publish = false
 
 [dependencies]
-axum = { version = "0.8.6", features = ["multipart"] }
-base64 = "0.23"
-bcrypt = "0.19"
-aes-gcm = "0.11"
-bytes = "1"
-chrono = { version = "0.4", features = ["serde"] }
-chrono-tz = "0.10"
-crc32fast = "1"
-getrandom = "0.4"
-hmac = "0.12"
-jsonwebtoken = { version = "11", features = ["rust_crypto"] }
-lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "rustls-tls"] }
-md-5 = "0.11"
+axum = { version = "0.8.9", features = ["multipart"] }
+base64 = "0.23.1"
+bcrypt = "0.19.3"
+aes-gcm = "0.11.1"
+bytes = "1.12.1"
+chrono = { version = "0.4.45", features = ["serde"] }
+chrono-tz = "0.10.4"
+crc32fast = "1.5.2"
+getrandom = "0.4.3"
+hex = "0.4.3"
+hmac = "0.13.0"
+jsonwebtoken = { version = "11.1.0", features = ["rust_crypto"] }
+lettre = { version = "0.11.23", default-features = false, features = ["builder", "smtp-transport", "rustls-tls"] }
+md-5 = "0.11.0"
 medtracker-web = { path = "../web" }
-pbkdf2 = "0.12"
+pbkdf2 = "0.13.0"
 printpdf = { version = "=0.12.8", default-features = false }
-regex = "1"
-reqwest = { version = "0.13", default-features = false, features = ["form", "http2", "json", "rustls"] }
-scraper = "0.27"
+regex = "1.13.1"
+reqwest = { version = "0.13.5", default-features = false, features = ["form", "http2", "json", "rustls"] }
+scraper = "0.27.0"
 sea-orm = { version = "=2.0.4", default-features = false, features = ["macros", "runtime-tokio-rustls", "sqlx-postgres", "with-chrono", "with-json", "with-rust_decimal"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-serde_yaml = "0.9"
-sha2 = "0.10"
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
-tower = "0.5"
-url = "2"
-uuid = { version = "1", features = ["v4"] }
-web-push = { version = "0.11", default-features = false }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+serde_yaml = "0.9.34"
+sha2 = "0.11.0"
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread", "net"] }
+tower = "0.5.3"
+url = "2.5.8"
+uuid = { version = "1.26.1", features = ["v4"] }
+web-push = { version = "0.11.0", default-features = false }

@@ -12,23 +12,23 @@ license = "Apache-2.0"
 repository = "https://github.com/damacus/med-tracker"
 
 [workspace.dependencies]
-anyhow = "1"
-assert_cmd = "2"
-clap = { version = "4", features = ["derive", "env"] }
-comfy-table = "8"
-directories = "6"
-insta = { version = "1", features = ["json"] }
-keyring = "4"
-predicates = "3"
-reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
-rmcp = { version = "3.0", features = ["server", "macros", "transport-io"] }
-schemars = "1"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-tempfile = "3"
-thiserror = "2"
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
-url = "2"
-wiremock = "0.6"
+anyhow = "1.0.104"
+assert_cmd = "2.2.2"
+clap = { version = "4.6.7", features = ["derive", "env"] }
+comfy-table = "8.0.1"
+directories = "6.0.0"
+insta = { version = "1.48.0", features = ["json"] }
+keyring = "4.2.0"
+predicates = "3.1.4"
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls"] }
+rmcp = { version = "3.5.0", features = ["server", "macros", "transport-io"] }
+schemars = "1.2.2"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tempfile = "3.27.0"
+thiserror = "2.0.21"
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread", "fs"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }
+url = "2.5.8"
+wiremock = "0.6.5"

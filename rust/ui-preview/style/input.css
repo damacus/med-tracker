@@ -1,6 +1,10 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.cjs";
+@source "../.tailwind";
+
+@layer base {
+  *, ::before, ::after, ::backdrop, ::file-selector-button { border-color: var(--color-gray-200, currentColor); }
+}
 
 @layer base {
   html { scroll-behavior: smooth; }

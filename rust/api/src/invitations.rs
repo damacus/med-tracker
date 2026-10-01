@@ -310,7 +310,7 @@ fn new_token() -> Result<(String, String), ApiError> {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect::<String>();
-    let digest = format!("{:x}", Sha256::digest(token.as_bytes()));
+    let digest = hex::encode(Sha256::digest(token.as_bytes()));
     Ok((token, digest))
 }
 
@@ -1551,7 +1551,7 @@ async fn accept_inner(
             "Invalid request body",
         ));
     }
-    let digest = format!("{:x}", Sha256::digest(token.as_bytes()));
+    let digest = hex::encode(Sha256::digest(token.as_bytes()));
     let request_id = Uuid::new_v4().to_string();
     db.query_one_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
