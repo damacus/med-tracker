@@ -207,8 +207,14 @@ empty list when no extra arguments exist; the initial reviewer concern about
 that slice was withdrawn after checking the documented example.
 
 One verified setup blocker at first handoff: the copied executable probe has
-#!/bin/fish, while this host resolves fish to /opt/homebrew/bin/fish and has no
-executable /bin/fish. The generated shim must use the resolved real interpreter,
+this shell header:
+
+```fish
+#!/bin/fish
+```
+
+This host resolves fish to /opt/homebrew/bin/fish and has no executable
+/bin/fish. The generated shim must use the resolved real interpreter,
 without recursive /usr/bin/env fish resolution through its own PATH entry.
 The exact setup repair passes static review: command -s fish resolves the real
 interpreter before PATH replacement; a generated header uses that absolute path
@@ -791,7 +797,7 @@ has limited fine-detail legibility. The actual two passing cases retain all
 strict date, timezone, taper and availability assertions. This is projection
 and display evidence; the dashboard clock does not change recording time.
 
-#2361 remains open before F acceptance. The private
+Issue #2361 remains open before F acceptance. The private
 /private/tmp/household-f-20261001/taper-times-draft.test.mjs setup passes static
 review, provided its isolated job uses dashboard clock 2026-03-29T00:30:00Z.
 I requested an explicit test precondition for that value. London 07:30 and
@@ -967,7 +973,7 @@ the reviewed and runtime-tested candidate. Independent requirements verdict
 PASS and independent code quality/security verdict PASS are separate findings;
 neither certifies the remaining G work or an unexecuted Rails suite.
 
-#2359 forwarding, #2360 current taper amount display and #2361 shared taper
+The #2359 forwarding, #2360 current taper amount display and #2361 shared taper
 time controls are fixed and verified locally. Publication/issue closure is the
 coordinator's responsibility. Remaining G work is the authorised 501-option
 pagination fix (#2353), all-untracked fallback stock-loss choice (#2358), the
