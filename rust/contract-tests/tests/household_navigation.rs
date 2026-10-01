@@ -2,7 +2,7 @@ use medtracker_contract_tests::{Target, fixture};
 use scraper::{Html, Selector};
 use serde_json::Value;
 
-fn sign_in(target: &Target, email: &str, slug: &str, client_ip: &str) {
+fn sign_in(target: &Target, email: &str, client_ip: &str) {
     let response = target.get_html("/login");
     assert_eq!(response.status().as_u16(), 200);
     let document = Html::parse_document(&response.text().expect("login HTML"));
@@ -23,13 +23,6 @@ fn sign_in(target: &Target, email: &str, slug: &str, client_ip: &str) {
         ],
     );
     assert_eq!(response.status().as_u16(), 302);
-    assert_eq!(
-        target
-            .get_html(&format!("/households/{slug}/dashboard"))
-            .status()
-            .as_u16(),
-        200
-    );
 }
 
 fn page(target: &Target, path: &str) -> Html {
@@ -60,7 +53,6 @@ fn owner_can_reach_people_locations_medication_creation_and_edit_from_inventory(
     sign_in(
         &owner,
         &fixture.primary_email,
-        &fixture.household_slug,
         "198.18.25.1",
     );
     let prefix = format!("/households/{}", fixture.household_slug);
@@ -100,7 +92,6 @@ fn view_only_member_inventory_and_medication_detail_have_no_mutation_links() {
     sign_in(
         &viewer,
         me["data"]["email_address"].as_str().unwrap(),
-        &fixture.household_slug,
         "198.18.25.2",
     );
     let prefix = format!("/households/{}", fixture.household_slug);

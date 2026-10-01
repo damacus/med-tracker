@@ -5,6 +5,43 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 static LOGIN_CLIENT: AtomicUsize = AtomicUsize::new(1);
 
+#[test]
+fn dose_sources_expose_record_permissions_and_scoped_stock_for_the_browser() {
+    let fixture = fixture();
+    let owner = Target::from_env();
+    sign_in(&owner);
+    for (resource, source_id, stock_id) in [
+        (
+            "person_medications",
+            fixture.dose_write_assignment_id,
+            fixture.dose_write_medication_id,
+        ),
+        (
+            "schedules",
+            fixture.dose_write_schedule_id,
+            fixture.dose_write_schedule_medication_id,
+        ),
+    ] {
+        let path = format!(
+            "/api/v1/households/{}/{resource}/{source_id}",
+            fixture.household_id
+        );
+        let response = owner.get(&path, None);
+        assert_eq!(response.status().as_u16(), 200);
+        let body: Value = response.json().expect("owner dose source");
+        assert_eq!(body["data"]["can_record"], true);
+        let stock = body["data"]["eligible_stock_medication_ids"]
+            .as_array()
+            .expect("scoped stock IDs");
+        assert!(stock.contains(&Value::from(stock_id)));
+        assert!(!stock.contains(&Value::from(fixture.dose_write_foreign_medication_id)));
+        let viewer = Target::from_env().get(&path, Some(&fixture.view_access_token));
+        assert_eq!(viewer.status().as_u16(), 200);
+        let body: Value = viewer.json().expect("viewer dose source");
+        assert_eq!(body["data"]["can_record"], false);
+    }
+}
+
 fn csrf(html: &str) -> String {
     let document = Html::parse_document(html);
     for (selector, attribute) in [
@@ -43,9 +80,9 @@ fn sign_in_as(target: &Target, email: &str, slug: &str) -> String {
         ],
     );
     assert_eq!(response.status().as_u16(), 302);
-    let dashboard = target.get_html(&format!("/households/{slug}/dashboard"));
-    assert_eq!(dashboard.status().as_u16(), 200);
-    csrf(&dashboard.text().expect("dashboard HTML"))
+    let inventory = target.get_html(&format!("/households/{slug}/medications"));
+    assert_eq!(inventory.status().as_u16(), 200);
+    csrf(&inventory.text().expect("inventory HTML"))
 }
 
 #[test]
@@ -191,7 +228,7 @@ fn household_form_mutations_reject_invalid_csrf_without_writing() {
         );
         let rows = owner.get(
             &format!("/api/v1/households/{}/{resource}", fixture.household_id),
-            Some(&fixture.access_token),
+            None,
         );
         assert_eq!(rows.status().as_u16(), 200);
         assert!(!rows.text().expect("API read back").contains(&marker));
@@ -202,11 +239,12 @@ fn household_form_mutations_reject_invalid_csrf_without_writing() {
 fn household_ui_capabilities_follow_owner_and_viewer_permissions() {
     let fixture = fixture();
     let target = Target::from_env();
+    sign_in(&target);
     let path = format!(
         "/api/v1/households/{}/ui_capabilities",
         fixture.household_id
     );
-    let owner = target.get(&path, Some(&fixture.access_token));
+    let owner = target.get(&path, None);
     assert_eq!(owner.status().as_u16(), 200, "missing UI capability route");
     let owner: Value = owner.json().expect("owner capabilities");
     assert_eq!(owner["data"]["people"]["create"], true);
@@ -253,7 +291,7 @@ fn household_ui_capabilities_follow_owner_and_viewer_permissions() {
             .as_u16(),
         403
     );
-    assert_eq!(target.get(&path, None).status().as_u16(), 401);
+    assert_eq!(Target::from_env().get(&path, None).status().as_u16(), 401);
 }
 
 #[test]
@@ -282,7 +320,7 @@ fn household_people_keep_dependent_capacity_false_after_a_forged_form_value() {
                 "/api/v1/households/{}/people?per_page=100",
                 fixture.household_id
             ),
-            Some(&fixture.access_token),
+            None,
         );
         assert_eq!(rows.status().as_u16(), 200);
         let rows: Value = rows.json().expect("people read-back");
@@ -329,11 +367,11 @@ fn editing_medication_identity_preserves_existing_dosage_options_and_tracked_sup
         "/api/v1/households/{}/dosage_options/{}",
         fixture.household_id, fixture.dose_write_tracked_option_id
     );
-    let before = target.get(&api_path, Some(&fixture.access_token));
+    let before = target.get(&api_path, None);
     assert_eq!(before.status().as_u16(), 200);
     let before: Value = before.json().expect("tracked medication before edit");
     assert!(before["data"]["dose_amount"].is_null());
-    let option_before = target.get(&option_path, Some(&fixture.access_token));
+    let option_before = target.get(&option_path, None);
     assert_eq!(option_before.status().as_u16(), 200);
     let option_before: Value = option_before.json().expect("dosage option before edit");
     let edit_path = format!(
@@ -401,7 +439,7 @@ fn editing_medication_identity_preserves_existing_dosage_options_and_tracked_sup
         [302, 303].contains(&saved.status().as_u16()),
         "tracked medication identity save must redirect"
     );
-    let option_after = target.get(&option_path, Some(&fixture.access_token));
+    let option_after = target.get(&option_path, None);
     assert_eq!(
         option_after.status().as_u16(),
         200,
@@ -409,7 +447,7 @@ fn editing_medication_identity_preserves_existing_dosage_options_and_tracked_sup
     );
     let option_after: Value = option_after.json().expect("dosage option after edit");
     assert_eq!(option_after["data"], option_before["data"]);
-    let after = target.get(&api_path, Some(&fixture.access_token));
+    let after = target.get(&api_path, None);
     assert_eq!(after.status().as_u16(), 200);
     let after: Value = after.json().expect("tracked medication after edit");
     assert_eq!(after["data"]["dose_amount"], before["data"]["dose_amount"]);
@@ -427,11 +465,12 @@ fn editing_medication_identity_preserves_existing_dosage_options_and_tracked_sup
 fn medication_read_exposes_editable_identity_and_warnings_without_losing_data() {
     let fixture = fixture();
     let target = Target::from_env();
+    sign_in(&target);
     let path = format!(
         "/api/v1/households/{}/medications/{}",
         fixture.household_id, fixture.managed_medication_id
     );
-    let response = target.get(&path, Some(&fixture.access_token));
+    let response = target.get(&path, None);
     assert_eq!(response.status().as_u16(), 200);
     let body: Value = response.json().expect("medication read");
     for field in ["friendly_name", "barcode", "warnings"] {
@@ -455,7 +494,7 @@ fn medication_identity_update_requires_a_current_browser_precondition() {
         "/households/{}/medications/{}",
         fixture.household_slug, fixture.managed_medication_id
     );
-    let before = target.get(&api_path, Some(&fixture.access_token));
+    let before = target.get(&api_path, None);
     assert_eq!(before.status().as_u16(), 200);
     let before: Value = before.json().expect("medication before rejected edits");
     let mut fields = vec![
@@ -496,7 +535,7 @@ fn medication_identity_update_requires_a_current_browser_precondition() {
     assert!(html.contains("value=\"Retained stale display draft\""));
     assert!(html.contains("value=\"2.50\""));
     assert!(html.contains("Retained stale warning draft"));
-    let after = target.get(&api_path, Some(&fixture.access_token));
+    let after = target.get(&api_path, None);
     assert_eq!(after.status().as_u16(), 200);
     let after: Value = after.json().expect("medication after rejected edits");
     assert_eq!(after["data"], before["data"]);

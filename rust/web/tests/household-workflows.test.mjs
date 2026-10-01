@@ -45,9 +45,7 @@ async function submit(page, name) {
 async function apiRows(page, resource) {
   const rows = [];
   for (let number = 1; number <= 10; number += 1) {
-    const response = await page.request.get(new URL(`/api/v1/households/${fixture.household_id}/${resource}?page=${number}&per_page=100`, baseUrl).toString(), {
-      headers: { Authorization: `Bearer ${fixture.access_token}` },
-    });
+    const response = await page.request.get(new URL(`/api/v1/households/${fixture.household_id}/${resource}?page=${number}&per_page=100`, baseUrl).toString());
     assert.equal(response.status(), 200);
     const body = await response.json();
     assert.ok(Array.isArray(body.data), `${resource} API must return collection data`);

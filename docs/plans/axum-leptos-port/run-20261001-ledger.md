@@ -12,14 +12,30 @@
 | 10:09 | Coordinator | Recovery resumed | 220 GiB free; Docker responds. Old Rust/Postgres images and build cache absent; unrelated user Rust skill remains untracked and preserved | Rebuild isolated acceptance |
 | 10:19 | Coordinator | Recovery source frozen | Optional-dose decision and stale-edit precedence each recorded a failing assertion before fixes. Medication versions retain microseconds. Inventory/detail navigation tests pass in all five locales | Run final quality gates and preserve live acceptance limits |
 | 10:25 | Coordinator | Quality gate passed | task ci:rust-port passed after correcting test-module ordering. Independent source review records one remaining between-read draft-retention race. No new Stock/Assignments dispatch | Publish reviewable source and assess live acceptance at original deadline |
+| 10:27 | Coordinator | Assessment delivered | Runtime still rebuilding after disk recovery; no completed journey claimed. Two-hour timer paused | Finish current verification without starting new journeys |
+| 10:33 | Runner | Recovery runtime RED | Both medication lifecycle cases and owner navigation passed. Viewer dashboard setup returned 503 before inventory assertions; remaining API/browser targets did not run | Record dashboard failure and correct inventory test setup |
+| 10:43 | Coordinator/runner | Inventory acceptance rerun | Independent review accepted direct inventory/detail starting pages with unchanged login and permission assertions. Final Rust quality gate passed after rebase onto current main | Complete isolated HTTP/browser run |
+| 10:55 | Runner | Household HTTP GREEN | All 14 household HTTP cases passed after correcting stale fixture credentials and inventory CSRF setup | Finish browser regressions |
+| 10:58 | Runner | Household workflows GREEN; dose regressions RED | New People, Locations and scalar medication workflows passed on desktop/mobile. Six existing dose cases could not find Log; fresh household screenshots inspected | Repair the existing API dose-source projection mismatch |
+| 11:04 | Coordinator/implementer | Regression repair | Existing serializers omit record permission and eligible stock IDs consumed by the dose UI. Isolated ownership and failing projection tests precede the repair; renderer permission gate stays intact | Independently review, run Rust gate and repeat affected acceptance |
+| 11:13 | Runner/reviewer | Dose projection GREEN; history selectors RED | All 15 HTTP cases passed. Log controls, dose writes, stock updates and Escape focus passed; four history assertions incorrectly expected a separate dose text node | Preserve row/stock/replay assertions and correct scoped history selectors |
+| 11:18 | Runner | Setup interruption | Concurrent runner self-test and acceptance rebuilt shared UI dependencies; acceptance stopped before assertions on a missing npm module | Serialise remaining builds |
+| 11:28 | Coordinator/runner | Runner self-test GREEN | All runner sequences and failure cleanup checks passed. Full Rust gate is green; source review accepted exact history dose assertions | Run final combined acceptance alone |
+| 11:47 | Runner/reviewer | Mobile layout RED | Viewport 390px, document width 471px; grid sections expand to 455px. History text wrapping alone is insufficient | Constrain the mobile grid track and item minimum widths |
+| 11:52 | Runner/reviewer | Combined acceptance GREEN | Frozen source 453d76d198e59dd96a22373c8953a0555feeda615951f87e33a11e2f0d5e96dc; all 15 HTTP and 21 browser cases passed, including strict mobile page width. Fresh desktop/mobile screenshots retained; owned runtime cleanup passed | Publish bounded slice and preserve follow-up scope |
 
 ## Recovery scope
 
-People, Locations and scalar medication forms are implemented, but no complete
-journey is accepted until the recovered HTTP/browser run passes. The latest
-product snapshot is 76655c4da501d5d2bcb934942323cf31c84078de477684c560528f2aaaf21bb4.
-Moving a test module to the end of its file after that snapshot changes no
-production behaviour; final Rust checks use the formatted worktree source.
+People, Locations and scalar medication forms passed the recovered household HTTP
+and desktop/mobile browser checks. Combined acceptance passed all 15 HTTP and 21
+browser cases against frozen product snapshot
+453d76d198e59dd96a22373c8953a0555feeda615951f87e33a11e2f0d5e96dc.
+Dose recording, stock effects, exact history values, CSRF/replay protection and
+the strict mobile page-width check all passed. Fresh desktop/mobile screenshots
+were retained. Final Rust checks passed on the formatted source rebased onto
+current main before the CSS-only mobile correction; the final browser build and
+runtime checks cover that correction. Runner self-tests and documentation build
+also passed. Independent review accepts publication of this bounded slice.
 
 The remaining medication race is documented in the independent review: an
 option inserted between reading a medication and its options can discard a

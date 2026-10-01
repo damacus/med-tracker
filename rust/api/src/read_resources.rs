@@ -739,6 +739,8 @@ struct SourceContext {
     people: HashMap<i64, String>,
     medications: HashMap<i64, String>,
     manageable_people: HashSet<i64>,
+    recordable_people: HashSet<i64>,
+    eligible_stock: HashMap<i64, Vec<i64>>,
     pauses: HashMap<i64, Value>,
 }
 
@@ -758,6 +760,8 @@ async fn source_context(
             people: HashMap::new(),
             medications: HashMap::new(),
             manageable_people: HashSet::new(),
+            recordable_people: HashSet::new(),
+            eligible_stock: HashMap::new(),
             pauses: HashMap::new(),
         });
     }
@@ -771,13 +775,13 @@ async fn source_context(
         .into_iter()
         .map(|person| (person.id, person.portable_id))
         .collect();
-    let medications = medication::Entity::find()
+    let source_medications: HashMap<i64, medication::Model> = medication::Entity::find()
         .filter(medication::Column::Id.is_in(medication_ids))
         .all(db)
         .await
         .map_err(database_error)?
         .into_iter()
-        .map(|medication| (medication.id, medication.portable_id))
+        .map(|medication| (medication.id, medication))
         .collect();
     let permission_grants = crate::entities::grant::Entity::find()
         .filter(crate::entities::grant::Column::HouseholdId.eq(context.membership.household_id))
@@ -793,10 +797,18 @@ async fn source_context(
         .all(db)
         .await
         .map_err(database_error)?;
-    let manageable_people: HashSet<i64> = permission_grants
-        .iter()
-        .filter(|grant| grant.access_level == "manage")
-        .map(|grant| grant.person_id)
+    let (recordable_people, manageable_people) = source_permissions(&permission_grants);
+    let eligible_stock = source_stock(
+        db,
+        context,
+        sources,
+        &source_medications,
+        &recordable_people,
+    )
+    .await?;
+    let medications = source_medications
+        .into_iter()
+        .map(|(id, medication)| (id, medication.portable_id))
         .collect();
     let source_ids: Vec<i64> = sources.iter().map(|source| source.id).collect();
     let pauses = match kind {
@@ -902,8 +914,134 @@ async fn source_context(
         people,
         medications,
         manageable_people,
+        recordable_people,
+        eligible_stock,
         pauses,
     })
+}
+
+fn source_permissions(grants: &[crate::entities::grant::Model]) -> (HashSet<i64>, HashSet<i64>) {
+    let recordable = grants
+        .iter()
+        .filter(|grant| matches!(grant.access_level.as_str(), "record" | "manage"))
+        .map(|grant| grant.person_id)
+        .collect();
+    let manageable = grants
+        .iter()
+        .filter(|grant| grant.access_level == "manage")
+        .map(|grant| grant.person_id)
+        .collect();
+    (recordable, manageable)
+}
+
+async fn source_stock(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    sources: &[SourceRef],
+    medications: &HashMap<i64, medication::Model>,
+    recordable_people: &HashSet<i64>,
+) -> Result<HashMap<i64, Vec<i64>>, ApiError> {
+    let recordable_sources: Vec<&SourceRef> = sources
+        .iter()
+        .filter(|source| recordable_people.contains(&source.person_id))
+        .collect();
+    if recordable_sources.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let household_id = context.membership.household_id;
+    let all_stock = matches!(context.membership.role.as_str(), "owner" | "administrator");
+    let mut linked_stock: HashMap<i64, HashSet<i64>> = HashMap::new();
+    if !all_stock {
+        let person_ids: Vec<i64> = recordable_sources
+            .iter()
+            .map(|source| source.person_id)
+            .collect();
+        let assignments: Vec<(i64, i64)> = person_medication::Entity::find()
+            .select_only()
+            .columns([
+                person_medication::Column::PersonId,
+                person_medication::Column::MedicationId,
+            ])
+            .filter(person_medication::Column::HouseholdId.eq(household_id))
+            .filter(person_medication::Column::PersonId.is_in(person_ids.clone()))
+            .into_tuple()
+            .all(db)
+            .await
+            .map_err(database_error)?;
+        let schedules: Vec<(i64, i64)> = schedule::Entity::find()
+            .select_only()
+            .columns([schedule::Column::PersonId, schedule::Column::MedicationId])
+            .filter(schedule::Column::HouseholdId.eq(household_id))
+            .filter(schedule::Column::PersonId.is_in(person_ids))
+            .into_tuple()
+            .all(db)
+            .await
+            .map_err(database_error)?;
+        for (person_id, medication_id) in assignments.into_iter().chain(schedules) {
+            linked_stock
+                .entry(person_id)
+                .or_default()
+                .insert(medication_id);
+        }
+    }
+    let mut names = Condition::any();
+    for source in &recordable_sources {
+        if let Some(original) = medications.get(&source.medication_id) {
+            names = names.add(match &original.name {
+                Some(name) => medication::Column::Name.eq(name),
+                None => medication::Column::Name.is_null(),
+            });
+        }
+    }
+    let mut query = crate::scope(household_id, &context.membership).filter(names);
+    if !all_stock {
+        let candidate_ids: HashSet<i64> = linked_stock
+            .values()
+            .flat_map(|ids| ids.iter().copied())
+            .chain(recordable_sources.iter().map(|source| source.medication_id))
+            .collect();
+        query = query.filter(medication::Column::Id.is_in(candidate_ids));
+    }
+    let candidates = query.all(db).await.map_err(database_error)?;
+    Ok(recordable_sources
+        .into_iter()
+        .filter_map(|source| {
+            let original = medications.get(&source.medication_id)?;
+            let ids = eligible_stock_ids(
+                household_id,
+                all_stock,
+                original,
+                &candidates,
+                linked_stock.get(&source.person_id),
+            );
+            Some((source.id, ids))
+        })
+        .collect())
+}
+
+fn eligible_stock_ids(
+    household_id: i64,
+    all_stock: bool,
+    original: &medication::Model,
+    candidates: &[medication::Model],
+    linked_stock: Option<&HashSet<i64>>,
+) -> Vec<i64> {
+    let mut ids: Vec<i64> = candidates
+        .iter()
+        .filter(|candidate| {
+            candidate.household_id == household_id
+                && (all_stock
+                    || candidate.id == original.id
+                    || linked_stock.is_some_and(|ids| ids.contains(&candidate.id)))
+                && crate::dose::same_stock_signature(candidate, original)
+                && candidate
+                    .current_supply
+                    .is_none_or(|supply| supply > sea_orm::prelude::Decimal::ZERO)
+        })
+        .map(|candidate| candidate.id)
+        .collect();
+    ids.sort_unstable();
+    ids
 }
 
 fn dose_cycle(value: Option<i32>) -> Option<&'static str> {
@@ -949,36 +1087,46 @@ pub(super) async fn serialize_schedules(
     let associations = source_context(db, context, &sources, SourceKind::Schedule).await?;
     Ok(records
         .into_iter()
-        .map(|record| {
-            let active = record.active
-                && record.start_date.is_some_and(|start| start <= reference_date)
-                && record.end_date.is_some_and(|end| end >= reference_date);
-            json!({
-                "id": record.id,
-                "portable_id": record.portable_id,
-                "person_id": record.person_id,
-                "person_portable_id": associations.people.get(&record.person_id),
-                "medication_id": record.medication_id,
-                "medication_portable_id": associations.medications.get(&record.medication_id),
-                "dose_amount": record.dose_amount.map(|value| decimal_string(value.to_string())),
-                "dose_unit": record.dose_unit,
-                "frequency": record.frequency,
-                "dose_cycle": dose_cycle(record.dose_cycle),
-                "start_date": record.start_date.map(|date| date.to_string()),
-                "end_date": record.end_date.map(|date| date.to_string()),
-                "active": active,
-                "paused": !record.active,
-                "can_manage": associations.manageable_people.contains(&record.person_id),
-                "notes": record.notes,
-                "updated_at": timestamp(record.updated_at),
-                "schedule_type": schedule_type(record.schedule_type),
-                "schedule_config": record.schedule_config,
-                "max_daily_doses": record.max_daily_doses,
-                "min_hours_between_doses": record.min_hours_between_doses.map(|value| decimal_string(value.to_string())),
-                "current_pause_period": associations.pauses.get(&record.id)
-            })
-        })
+        .map(|record| schedule_row(record, &associations, reference_date))
         .collect())
+}
+
+fn schedule_row(
+    record: schedule::Model,
+    associations: &SourceContext,
+    reference_date: NaiveDate,
+) -> Value {
+    let active = record.active
+        && record
+            .start_date
+            .is_some_and(|start| start <= reference_date)
+        && record.end_date.is_some_and(|end| end >= reference_date);
+    json!({
+        "id": record.id,
+        "portable_id": record.portable_id,
+        "person_id": record.person_id,
+        "person_portable_id": associations.people.get(&record.person_id),
+        "medication_id": record.medication_id,
+        "medication_portable_id": associations.medications.get(&record.medication_id),
+        "dose_amount": record.dose_amount.map(|value| decimal_string(value.to_string())),
+        "dose_unit": record.dose_unit,
+        "frequency": record.frequency,
+        "dose_cycle": dose_cycle(record.dose_cycle),
+        "start_date": record.start_date.map(|date| date.to_string()),
+        "end_date": record.end_date.map(|date| date.to_string()),
+        "active": active,
+        "paused": !record.active,
+        "can_manage": associations.manageable_people.contains(&record.person_id),
+        "can_record": associations.recordable_people.contains(&record.person_id),
+        "eligible_stock_medication_ids": associations.eligible_stock.get(&record.id).cloned().unwrap_or_default(),
+        "notes": record.notes,
+        "updated_at": timestamp(record.updated_at),
+        "schedule_type": schedule_type(record.schedule_type),
+        "schedule_config": record.schedule_config,
+        "max_daily_doses": record.max_daily_doses,
+        "min_hours_between_doses": record.min_hours_between_doses.map(|value| decimal_string(value.to_string())),
+        "current_pause_period": associations.pauses.get(&record.id)
+    })
 }
 
 pub(super) async fn serialize_assignments(
@@ -998,28 +1146,245 @@ pub(super) async fn serialize_assignments(
     let associations = source_context(db, context, &sources, SourceKind::Assignment).await?;
     Ok(records
         .into_iter()
-        .map(|record| {
-            json!({
-                "id": record.id,
-                "portable_id": record.portable_id,
-                "person_id": record.person_id,
-                "person_portable_id": associations.people.get(&record.person_id),
-                "medication_id": record.medication_id,
-                "medication_portable_id": associations.medications.get(&record.medication_id),
-                "dose_amount": record.dose_amount.map(|value| decimal_string(value.to_string())),
-                "dose_unit": record.dose_unit,
-                "active": record.active,
-                "paused": !record.active,
-                "can_manage": associations.manageable_people.contains(&record.person_id),
-                "dose_cycle": dose_cycle(record.dose_cycle),
-                "administration_kind": if record.administration_kind == 0 { "routine" } else { "as_needed" },
-                "notes": record.notes,
-                "position": record.position,
-                "updated_at": timestamp(record.updated_at),
-                "max_daily_doses": record.max_daily_doses,
-                "min_hours_between_doses": record.min_hours_between_doses.map(|value| decimal_string(value.to_string())),
-                "current_pause_period": associations.pauses.get(&record.id)
-            })
-        })
+        .map(|record| assignment_row(record, &associations))
         .collect())
+}
+
+fn assignment_row(record: person_medication::Model, associations: &SourceContext) -> Value {
+    json!({
+        "id": record.id,
+        "portable_id": record.portable_id,
+        "person_id": record.person_id,
+        "person_portable_id": associations.people.get(&record.person_id),
+        "medication_id": record.medication_id,
+        "medication_portable_id": associations.medications.get(&record.medication_id),
+        "dose_amount": record.dose_amount.map(|value| decimal_string(value.to_string())),
+        "dose_unit": record.dose_unit,
+        "active": record.active,
+        "paused": !record.active,
+        "can_manage": associations.manageable_people.contains(&record.person_id),
+        "can_record": associations.recordable_people.contains(&record.person_id),
+        "eligible_stock_medication_ids": associations.eligible_stock.get(&record.id).cloned().unwrap_or_default(),
+        "dose_cycle": dose_cycle(record.dose_cycle),
+        "administration_kind": if record.administration_kind == 0 { "routine" } else { "as_needed" },
+        "notes": record.notes,
+        "position": record.position,
+        "updated_at": timestamp(record.updated_at),
+        "max_daily_doses": record.max_daily_doses,
+        "min_hours_between_doses": record.min_hours_between_doses.map(|value| decimal_string(value.to_string())),
+        "current_pause_period": associations.pauses.get(&record.id)
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sea_orm::prelude::Decimal;
+
+    fn assignment() -> person_medication::Model {
+        person_medication::Model {
+            id: 1,
+            household_id: 2,
+            portable_id: "assignment".into(),
+            person_id: 3,
+            medication_id: 10,
+            source_dosage_option_id: None,
+            dose_amount: Some(Decimal::ONE),
+            dose_unit: Some("tablet".into()),
+            active: true,
+            notes: None,
+            updated_at: Utc::now().naive_utc(),
+            dose_cycle: Some(0),
+            administration_kind: 0,
+            position: 0,
+            max_daily_doses: None,
+            min_hours_between_doses: None,
+            retired_at: None,
+        }
+    }
+
+    fn scheduled() -> schedule::Model {
+        schedule::Model {
+            id: 1,
+            household_id: 2,
+            portable_id: "schedule".into(),
+            person_id: 3,
+            medication_id: 10,
+            source_dosage_option_id: None,
+            dose_amount: Some(Decimal::ONE),
+            dose_unit: Some("tablet".into()),
+            frequency: Some("daily".into()),
+            dose_cycle: Some(0),
+            start_date: Some(today()),
+            end_date: Some(today()),
+            active: true,
+            notes: None,
+            updated_at: Utc::now().naive_utc(),
+            schedule_type: 0,
+            schedule_config: json!({}),
+            max_daily_doses: None,
+            min_hours_between_doses: None,
+            retired_at: None,
+        }
+    }
+
+    fn associations() -> SourceContext {
+        SourceContext {
+            people: HashMap::from([(3, "person".into())]),
+            medications: HashMap::from([(10, "medication".into())]),
+            manageable_people: HashSet::from([3]),
+            pauses: HashMap::new(),
+            recordable_people: HashSet::from([3]),
+            eligible_stock: HashMap::from([(1, vec![10])]),
+        }
+    }
+
+    #[test]
+    fn assignment_projection_supplies_dose_recording_permission() {
+        let row = assignment_row(assignment(), &associations());
+        assert_eq!(row["can_record"], true);
+    }
+
+    #[test]
+    fn schedule_projection_supplies_dose_recording_permission() {
+        let row = schedule_row(scheduled(), &associations(), today());
+        assert_eq!(row["can_record"], true);
+    }
+
+    #[test]
+    fn source_projections_supply_eligible_stock_inventory() {
+        let associations = associations();
+        for row in [
+            assignment_row(assignment(), &associations),
+            schedule_row(scheduled(), &associations, today()),
+        ] {
+            assert_eq!(row["eligible_stock_medication_ids"], json!([10]));
+        }
+    }
+
+    fn grant(person_id: i64, access_level: &str) -> crate::entities::grant::Model {
+        crate::entities::grant::Model {
+            id: person_id,
+            household_id: 2,
+            household_membership_id: 4,
+            person_id,
+            access_level: access_level.into(),
+            expires_at: None,
+            revoked_at: None,
+            relationship_type: "carer".into(),
+            granted_by_membership_id: None,
+            carer_relationship_id: None,
+            created_at: Utc::now().naive_utc(),
+            updated_at: Utc::now().naive_utc(),
+        }
+    }
+
+    #[test]
+    fn source_permissions_keep_record_only_manage_and_view_grants_distinct() {
+        let (recordable, manageable) =
+            source_permissions(&[grant(3, "record"), grant(5, "manage"), grant(6, "view")]);
+        assert_eq!(recordable, HashSet::from([3, 5]));
+        assert_eq!(manageable, HashSet::from([5]));
+        for (person_id, can_record, can_manage) in [
+            (3, true, false),
+            (5, true, true),
+            (6, false, false),
+            (7, false, false),
+        ] {
+            let mut associations = associations();
+            associations.recordable_people = recordable.clone();
+            associations.manageable_people = manageable.clone();
+            let mut assignment = assignment();
+            assignment.person_id = person_id;
+            let mut schedule = scheduled();
+            schedule.person_id = person_id;
+            for row in [
+                assignment_row(assignment, &associations),
+                schedule_row(schedule, &associations, today()),
+            ] {
+                assert_eq!(row["can_record"], can_record);
+                assert_eq!(row["can_manage"], can_manage);
+            }
+        }
+    }
+
+    fn medication(id: i64) -> medication::Model {
+        medication::Model {
+            id,
+            household_id: 2,
+            created_at: Utc::now().naive_utc(),
+            created_by_membership_id: Some(4),
+            portable_id: format!("medication-{id}"),
+            name: Some("Paracetamol".into()),
+            friendly_name: None,
+            category: None,
+            description: None,
+            barcode: None,
+            dmd_code: None,
+            dmd_system: None,
+            dmd_concept_class: None,
+            dose_amount: Some(500.0),
+            dose_unit: Some("mg".into()),
+            current_supply: Some(Decimal::ONE),
+            supply_at_last_restock: None,
+            reorder_threshold: Decimal::ZERO,
+            reorder_status: None,
+            order_supplier: None,
+            order_quantity: None,
+            expected_arrival_on: None,
+            ordered_at: None,
+            reordered_at: None,
+            warnings: None,
+            default_schedule_type: 0,
+            location_id: 8,
+            updated_at: Utc::now().naive_utc(),
+        }
+    }
+
+    fn stock_candidates() -> Vec<medication::Model> {
+        let mut candidates: Vec<_> = (10..=19).map(medication).collect();
+        candidates[2].household_id = 9;
+        candidates[3].name = Some("Ibuprofen".into());
+        candidates[4].dose_amount = Some(250.0);
+        candidates[5].dose_unit = Some("ml".into());
+        candidates[6].current_supply = Some(Decimal::ZERO);
+        candidates[7].current_supply = Some(-Decimal::ONE);
+        candidates[8].current_supply = None;
+        candidates
+    }
+
+    #[test]
+    fn owner_stock_excludes_foreign_mismatched_and_exhausted_inventory() {
+        let candidates = stock_candidates();
+        assert_eq!(
+            eligible_stock_ids(2, true, &candidates[0], &candidates, None),
+            vec![10, 11, 18, 19]
+        );
+    }
+
+    #[test]
+    fn delegated_stock_uses_only_source_person_links_and_original_inventory() {
+        let candidates = stock_candidates();
+        let links = HashSet::from([11, 12, 13, 14, 15, 16, 17, 18]);
+        assert_eq!(
+            eligible_stock_ids(2, false, &candidates[0], &candidates, Some(&links)),
+            vec![10, 11, 18]
+        );
+        assert_eq!(
+            eligible_stock_ids(2, false, &candidates[0], &candidates, None),
+            vec![10]
+        );
+    }
+
+    #[test]
+    fn missing_stock_projection_serializes_an_empty_inventory_list() {
+        let mut associations = associations();
+        associations.eligible_stock.clear();
+        for row in [
+            assignment_row(assignment(), &associations),
+            schedule_row(scheduled(), &associations, today()),
+        ] {
+            assert_eq!(row["eligible_stock_medication_ids"], json!([]));
+        }
+    }
 }

@@ -7108,6 +7108,16 @@ components:
           type: boolean
         can_manage:
           type: boolean
+        can_record:
+          type: boolean
+          readOnly: true
+          description: Optional Rust browser projection of the current member's dose-recording permission. Dose submission checks permission again.
+        eligible_stock_medication_ids:
+          type: array
+          readOnly: true
+          description: Optional Rust browser projection of scoped, matching stock sources with untracked or positive supply. Dose submission checks stock again.
+          items:
+            type: integer
         notes:
           type: string
           nullable: true
@@ -7494,6 +7504,16 @@ components:
           type: boolean
         can_manage:
           type: boolean
+        can_record:
+          type: boolean
+          readOnly: true
+          description: Optional Rust browser projection of the current member's dose-recording permission. Dose submission checks permission again.
+        eligible_stock_medication_ids:
+          type: array
+          readOnly: true
+          description: Optional Rust browser projection of scoped, matching stock sources with untracked or positive supply. Dose submission checks stock again.
+          items:
+            type: integer
         dose_cycle:
           type: string
           nullable: true
