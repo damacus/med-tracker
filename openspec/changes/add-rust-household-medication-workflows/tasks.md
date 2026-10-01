@@ -22,7 +22,7 @@
 
 - [ ] 4.1 Record failing medication creation/edit and stock browser cases.
 - [x] 4.2 Implement medication forms and verified inventory return.
-- [ ] 4.3 Independently accept medication before expanding to stock actions.
+- [x] 4.3 Independently accept medication before expanding to stock actions.
 - [ ] 4.4 Implement and accept adjustment/order/receipt with audit, concurrency and replay evidence.
 
 ## 5. Assignments and schedules
@@ -71,4 +71,6 @@ outside this acceptance.
 
 The [completion packet](../../../docs/plans/axum-leptos-port/next-slices-20261001.md) keeps the original 20-task denominator (14 accepted). Slice A completed 2.3/3.3; B/C close safety/usability gaps before 4.3. D completes dosage-option management before 4.3 acceptance; E targets 4.4; F targets 5.1–5.3 only after all seven actual schedule types pass. G re-evaluates the full requirements. No new completion box is checked merely because dispatch, source edits or a build finished.
 
-One Luna Medium owner records all compiled/runtime jobs in the [build queue](../../../docs/plans/axum-leptos-port/next-slices/build-queue.md); named Sol owners write disjoint product/tests and independent review. The two-hour assessment was delivered at 16:44 Europe/London on 1 October 2026. New feature dispatch stopped; verification and publication continue as closure work.
+The previous bounded run stopped new feature dispatch at its 16:44 Europe/London assessment. The user subsequently authorised autonomous D/E/F/G completion with a new retrospective checkpoint. The [delivery packet](../../../docs/plans/axum-leptos-port/household-delivery-20261001/plan.md) now records one persistent Sol writer, one exclusive Luna verifier and one independent Sol reviewer.
+
+D medication/dosage management is independently accepted, bringing the original denominator to 15/20. Four browser HTTP cases and an isolated ordinary-member permission case passed. Twenty browser cases passed across all five languages at desktop/mobile, including immediate dose use, exact option/parent stock decrement and dose replay. The corrected pagination helper retained all assertions; prior household browser regressions passed on unchanged product source. The full `ci:rust-port` gate passed on final frozen inputs. Stock, all seven schedule editors and final whole-programme acceptance remain pending.

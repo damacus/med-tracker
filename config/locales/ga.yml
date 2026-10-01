@@ -895,6 +895,31 @@ ga:
         new_password_label: Focal Faire Nua
         confirm_password_label: Deimhnigh Focal Faire Nua
   medications:
+    dose_dialog:
+      administration_title: 'Taifead tabhairt cógais do %{name}'
+      choose_person_source: 'Roghnaigh an duine agus an fhoinse.'
+      close: 'Dún'
+      source: 'FOINSE CÓGAIS'
+      calculated: 'Ríomh don am roghnaithe'
+      dose_calculated: 'Dáileog ríofa don am roghnaithe'
+      log: 'Taifead'
+      view_only: 'Amharc amháin'
+      no_stock: 'Níl stoc incháilithe ann'
+      record: 'Taifead dáileog'
+      confirm: 'Deimhnigh an duine, an cógas, an t-am agus foinse an stoic.'
+      review: 'Athbhreithnigh an dáileog seo.'
+      unavailable: 'Níl an fhoinse seo ar fáil. Roghnaigh foinse eile sula seolann tú.'
+      choose_source: 'Roghnaigh foinse'
+      person: 'DUINE'
+      medication: 'CÓGAS'
+      dose: 'DÁILEOG'
+      taken_at: 'Tógtha ag'
+      stock_source: 'Foinse stoic'
+      remaining: 'fágtha'
+      invalid_time: 'Tá an t-am tógála neamhbhailí.'
+      foreign_source: 'Ní bhaineann an fhoinse seo leis an gcógas seo.'
+      forbidden: 'Ní féidir leat an dáileog seo a thaifeadadh.'
+      conflict: 'Tá an t-iarratas dáileoige seo ag teacht salach ar thaifead roimhe seo.'
     finder:
       nhs_directory: Eolaire NHS
       title: Aimsitheoir Leigheas
@@ -2415,6 +2440,16 @@ ga:
       unavailable: Níor aimsíodh aon cheamara. Úsáid iontráil láimhe thíos.
       error: Earráid leis an scanóir. Úsáid iontráil láimhe thíos.
   dosages:
+    management:
+      daily: 'Laethúil'
+      weekly: 'Seachtainiúil'
+      monthly: 'Míosúil'
+      untracked: 'Gan rianú'
+      stock_hint: 'Fág an stoc bán do sholáthar gan rianú; ciallaíonn nialas go bhfuil an stoc rianaithe folamh. Fanann tairseach bhán gan socrú.'
+      confirm_mode: 'Tuigim go nglanann an chéad rogha dáileog aonair an chógais. Má rianaíonn an rogha seo stoc, cuirtear a méideanna in ionad iomláin stoic an chógais.'
+      confirm_required: 'Deimhnigh an t-athrú go roghanna dáileoige sula sábhálann tú.'
+      conflict: 'Tá an dáileog seo athraithe. Athlódáil a foirm eagarthóireachta agus athbhreithnigh do chuid athruithe sula sábhálann tú arís.'
+      retry_hint: 'Tar éis teip sábhála, seiceáil an liosta dáileog sula ndéanann tú iarracht eile. D’fhéadfadh rogha eile a chruthú má athdhéantar iarratas breisithe.'
     created: Cuireadh an dáileog leis go rathúil.
     updated: Nuashonraíodh an dáileog go rathúil.
     deleted: Baineadh an dáileog go rathúil.

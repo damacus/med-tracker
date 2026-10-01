@@ -15,6 +15,7 @@ mod api_client;
 mod assets;
 mod dashboard;
 mod dashboard_projection;
+mod dosage_options;
 mod doses;
 mod inventory;
 mod locations;
@@ -31,6 +32,7 @@ pub fn routes() -> Router<AppState> {
         .merge(people::routes())
         .merge(locations::routes())
         .merge(medications::routes())
+        .merge(dosage_options::routes())
         .route("/household.css", get(assets::household_styles))
         .route("/households/{slug}/dashboard", get(dashboard::dashboard))
         .route(

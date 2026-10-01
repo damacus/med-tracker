@@ -205,6 +205,7 @@ fn allowed(key: &str) -> bool {
         "schedules.",
         "forms.medications.",
         "medications.",
+        "dosages.",
         "person_medications.",
         "medication_pauses.",
         "dose_outcomes.",

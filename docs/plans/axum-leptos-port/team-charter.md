@@ -109,3 +109,18 @@ acceptance. Source results certify approved immutable snapshots.
 Preserve the parallel disjoint writer boundary and same-owner review fixes. Stop
 new feature dispatch at the native two-hour assessment, finish verification and
 cleanup, and report accepted work separately from the unfinished programme.
+
+## Autonomous continuation — 1 October 2026, 17:09 BST
+
+Dan authorised continuing to completion while AFK, with a two-hour retrospective
+that feeds back into execution immediately. The [delivery plan](household-delivery-20261001/plan.md)
+supersedes the previous run's parallel writer allocation and stop-dispatch timer
+for this new run. One persistent Sol 6.1 writer owns product, tests and fixes,
+sequentially across dosage management, stock and assignments. Shared Rust routing
+and Task selector changes are explicitly delegated to that writer when required,
+with notice before editing. The coordinator retains Git and acceptance rulings.
+One persistent Luna Medium verifier remains the exclusive runtime owner; one
+independent Sol reviewer remains read-only for production and tests. Completed
+agents retain context without additional writing seats. The two-hour timer is a
+retro checkpoint, not a stop-work deadline. Each fully accepted journey remains
+a review waypoint before the next begins. Rails and cutover boundaries persist.

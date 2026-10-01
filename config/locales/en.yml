@@ -848,6 +848,31 @@ en:
       success: "%{name} removed from %{location}"
       failure: Failed to remove member
   medications:
+    dose_dialog:
+      administration_title: 'Log administration for %{name}'
+      choose_person_source: 'Choose the person and source.'
+      close: 'Close'
+      source: 'MEDICATION SOURCE'
+      calculated: 'Calculated for selected time'
+      dose_calculated: 'Dose calculated for selected time'
+      log: 'Log'
+      view_only: 'View only'
+      no_stock: 'No eligible stock'
+      record: 'Record dose'
+      confirm: 'Confirm the person, medication, time, and inventory source.'
+      review: 'Please review this dose.'
+      unavailable: 'This source is unavailable. Choose another source before submitting.'
+      choose_source: 'Choose source'
+      person: 'PERSON'
+      medication: 'MEDICATION'
+      dose: 'DOSE'
+      taken_at: 'Taken at'
+      stock_source: 'Stock source'
+      remaining: 'remaining'
+      invalid_time: 'Taken at is invalid.'
+      foreign_source: 'This source does not belong to this medication.'
+      forbidden: 'You cannot record this dose.'
+      conflict: 'This dose request conflicts with a previous record.'
     finder:
       nhs_directory: NHS Directory
       title: Medication Finder
@@ -1304,6 +1329,16 @@ en:
       active_dates: Active dates
       not_set: Not set
   dosages:
+    management:
+      daily: 'Daily'
+      weekly: 'Weekly'
+      monthly: 'Monthly'
+      untracked: 'Not tracked'
+      stock_hint: 'Leave stock blank for untracked supply; zero means tracked stock is empty. A blank threshold remains unset.'
+      confirm_mode: 'I understand that adding the first option clears the medication’s single dose. If this option tracks stock, its quantities replace the medication’s stock totals.'
+      confirm_required: 'Confirm the change to dosage options before saving.'
+      conflict: 'This dosage has changed. Reload its edit form and review your changes before saving again.'
+      retry_hint: 'After a failed save, check the dosage list before trying again. Repeating an add request can create another option.'
     created: Dosage was successfully added.
     updated: Dosage was successfully updated.
     deleted: Dosage was successfully removed.

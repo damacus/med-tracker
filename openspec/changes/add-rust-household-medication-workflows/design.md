@@ -33,3 +33,13 @@ One persistent Luna Medium owner exclusively executes all compiled/runtime tasks
 Known validation text is translated through exact catalogue mappings; unknown messages receive a useful translated generic form error without exposing raw API text or inventing clinical advice. Browser dashboard profile preferences are optional only for 403/404 after mandatory authenticated identity; other read failures stay explicit failures and authorised clinical collections remain mandatory. Medication edit preconditions are rechecked after option discovery, but final mutation always receives the original submitted If-Match; conflicts retain scalar drafts and never silently adopt the current version.
 
 The initial accepted slice remains 12/20 tasks. Each subsequent box requires real persistence/UI/locale evidence and independent requirements plus quality review. The two-hour assessment stops new dispatch then finishes in-flight verification/cleanup. Existing baseline audit failures remain RED under #2347. Rails, merge/deployment and authentication/scanner boundaries remain unchanged.
+
+## Autonomous delivery continuation
+
+After publishing the bounded continuation at 14/20 accepted tasks, Dan authorised
+completion while AFK. Follow the [delivery plan](../../../docs/plans/axum-leptos-port/household-delivery-20261001/plan.md):
+one persistent Sol 6.1 product/test writer, the existing exclusive Luna Medium
+verifier and independent Sol review. The new two-hour retrospective feeds local
+process improvements into the run immediately; it does not stop feature work.
+Complete dosage management before stock, then all seven assignment/schedule
+journeys before final parity acceptance. Preserve the existing cutover gates.

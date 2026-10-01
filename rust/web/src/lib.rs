@@ -6,6 +6,7 @@ mod document;
 mod medication;
 
 pub mod dashboard;
+pub mod dosage_options;
 pub mod household;
 pub mod household_i18n;
 pub mod locations;

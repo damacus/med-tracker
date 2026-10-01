@@ -898,6 +898,31 @@ pt:
       success: "%{name} removido de %{location}"
       failure: Falha ao remover membro
   medications:
+    dose_dialog:
+      administration_title: 'Registar administração para %{name}'
+      choose_person_source: 'Escolha a pessoa e a origem.'
+      close: 'Fechar'
+      source: 'ORIGEM DO MEDICAMENTO'
+      calculated: 'Calculada para a hora selecionada'
+      dose_calculated: 'Dose calculada para a hora selecionada'
+      log: 'Registar'
+      view_only: 'Apenas leitura'
+      no_stock: 'Sem stock elegível'
+      record: 'Registar dose'
+      confirm: 'Confirme a pessoa, o medicamento, a hora e a origem do stock.'
+      review: 'Reveja esta dose.'
+      unavailable: 'Esta origem não está disponível. Escolha outra antes de enviar.'
+      choose_source: 'Escolher origem'
+      person: 'PESSOA'
+      medication: 'MEDICAMENTO'
+      dose: 'DOSE'
+      taken_at: 'Tomada às'
+      stock_source: 'Origem do stock'
+      remaining: 'restantes'
+      invalid_time: 'A hora da toma é inválida.'
+      foreign_source: 'Esta origem não pertence a este medicamento.'
+      forbidden: 'Não pode registar esta dose.'
+      conflict: 'Este pedido de dose entra em conflito com um registo anterior.'
     finder:
       nhs_directory: Diretório NHS
       title: Pesquisador de Medicamentos
@@ -2217,6 +2242,16 @@ pt:
         description: Gira pessoas e os respetivos horários, acompanhe os horários
           de medicação
   dosages:
+    management:
+      daily: 'Diário'
+      weekly: 'Semanal'
+      monthly: 'Mensal'
+      untracked: 'Sem controlo'
+      stock_hint: 'Deixe o stock em branco para um fornecimento sem controlo; zero significa que o stock controlado está vazio. Um limite em branco permanece por definir.'
+      confirm_mode: 'Compreendo que adicionar a primeira opção apaga a dose única do medicamento. Se esta opção controlar stock, as suas quantidades substituem os totais de stock do medicamento.'
+      confirm_required: 'Confirme a alteração para opções de dosagem antes de guardar.'
+      conflict: 'Esta dose foi alterada. Recarregue o formulário e reveja as alterações antes de voltar a guardar.'
+      retry_hint: 'Se não conseguir guardar, verifique a lista de doses antes de tentar novamente. Repetir um pedido de adição pode criar outra opção.'
     created: Dose adicionada com sucesso.
     updated: Dose atualizada com sucesso.
     deleted: Dose removida com sucesso.

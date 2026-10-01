@@ -891,6 +891,31 @@ cy:
       success: Tynnwyd %{name} o %{location}
       failure: Methwyd â thynnu aelod
   medications:
+    dose_dialog:
+      administration_title: 'Cofnodi rhoi meddyginiaeth i %{name}'
+      choose_person_source: 'Dewiswch y person a’r ffynhonnell.'
+      close: 'Cau'
+      source: 'FFYNHONNELL MEDDYGINIAETH'
+      calculated: 'Wedi’i gyfrifo ar gyfer yr amser a ddewiswyd'
+      dose_calculated: 'Dos wedi’i gyfrifo ar gyfer yr amser a ddewiswyd'
+      log: 'Cofnodi'
+      view_only: 'Gweld yn unig'
+      no_stock: 'Dim stoc gymwys'
+      record: 'Cofnodi dos'
+      confirm: 'Cadarnhewch y person, y feddyginiaeth, yr amser a ffynhonnell y stoc.'
+      review: 'Adolygwch y dos hwn.'
+      unavailable: 'Nid yw’r ffynhonnell hon ar gael. Dewiswch ffynhonnell arall cyn cyflwyno.'
+      choose_source: 'Dewis ffynhonnell'
+      person: 'PERSON'
+      medication: 'MEDDYGINIAETH'
+      dose: 'DOS'
+      taken_at: 'Cymerwyd am'
+      stock_source: 'Ffynhonnell stoc'
+      remaining: 'yn weddill'
+      invalid_time: 'Mae’r amser cymryd yn annilys.'
+      foreign_source: 'Nid yw’r ffynhonnell hon yn perthyn i’r feddyginiaeth hon.'
+      forbidden: 'Ni allwch gofnodi’r dos hwn.'
+      conflict: 'Mae’r cais dos hwn yn gwrthdaro â chofnod blaenorol.'
     finder:
       nhs_directory: Cyfeiriadur GIG
       title: Darganfyddwr Meddyginiaethau
@@ -1352,6 +1377,16 @@ cy:
       active_dates: Dyddiadau gweithredol
       not_set: Heb ei osod
   dosages:
+    management:
+      daily: 'Dyddiol'
+      weekly: 'Wythnosol'
+      monthly: 'Misol'
+      untracked: 'Heb ei olrhain'
+      stock_hint: 'Gadewch y stoc yn wag ar gyfer cyflenwad heb ei olrhain; mae sero yn golygu bod y stoc a olrheinir yn wag. Mae trothwy gwag yn aros heb ei osod.'
+      confirm_mode: 'Rwy’n deall bod ychwanegu’r opsiwn cyntaf yn clirio dos sengl y feddyginiaeth. Os yw’r opsiwn hwn yn olrhain stoc, mae ei feintiau yn disodli cyfansymiau stoc y feddyginiaeth.'
+      confirm_required: 'Cadarnhewch y newid i opsiynau dos cyn cadw.'
+      conflict: 'Mae’r dos hwn wedi newid. Ail-lwythwch ei ffurflen olygu ac adolygwch eich newidiadau cyn cadw eto.'
+      retry_hint: 'Ar ôl methu cadw, gwiriwch y rhestr dosau cyn rhoi cynnig arall. Gall ailadrodd cais ychwanegu greu opsiwn arall.'
     created: Ychwanegwyd y dos yn llwyddiannus.
     updated: Diweddarwyd y dos yn llwyddiannus.
     deleted: Tynnwyd y dos yn llwyddiannus.
