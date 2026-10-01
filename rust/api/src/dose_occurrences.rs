@@ -192,7 +192,21 @@ fn timestamp(value: NaiveDateTime) -> String {
         .to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
 }
 
+tokio::task_local! {
+    static DASHBOARD_TIMEZONE: chrono_tz::Tz;
+}
+
+pub(crate) async fn with_dashboard_timezone<F: std::future::Future>(
+    timezone: chrono_tz::Tz,
+    future: F,
+) -> F::Output {
+    DASHBOARD_TIMEZONE.scope(timezone, future).await
+}
+
 fn zone() -> chrono_tz::Tz {
+    if let Ok(timezone) = DASHBOARD_TIMEZONE.try_with(|timezone| *timezone) {
+        return timezone;
+    }
     std::env::var("TZ")
         .ok()
         .and_then(|value| value.parse().ok())
@@ -754,8 +768,8 @@ fn row_value(secret: &Arc<[u8]>, source: &Source, row: &Occurrence) -> Value {
     let due_time = row
         .scheduled_at
         .unwrap_or_else(|| local_midnight(row.window_start));
-    let due = due_time <= Utc::now().naive_utc()
-        && (source.kind() == Kind::Schedule || source.created_at() <= Utc::now().naive_utc());
+    let now = crate::web_pages::dashboard_now().naive_utc();
+    let due = due_time <= now && (source.kind() == Kind::Schedule || source.created_at() <= now);
     json!({
         "key": key(secret, source, row.window_start, row.position),
         "source_type": source.kind().name(),

@@ -188,10 +188,10 @@ function run_contract
         or return $status
         set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner-subnet.compose.yaml"
     end
-    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions openapi-admin-settings openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-invitations openapi-invitations-legacy openapi-profile openapi-profile-storage openapi-read-completion openapi-rate-limit openapi-reports openapi-health-events openapi-exports openapi-sync-reads openapi-external-integrations openapi-portable-writes openapi-portability-legacy openapi-sync-batch-legacy openapi-sync-batch-replay-focus openapi-replay-legacy openapi-envelopes-legacy openapi-medications openapi-medications-focused api-legacy-auth api-legacy-admin api-legacy-care api-legacy-devices api-legacy-lookup browser-journey-rails browser-journey-rust web-reads-rails
+    if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions openapi-admin-settings openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-invitations openapi-invitations-legacy openapi-profile openapi-profile-storage openapi-read-completion openapi-rate-limit openapi-reports openapi-health-events openapi-exports openapi-sync-reads openapi-external-integrations openapi-portable-writes openapi-portability-legacy openapi-sync-batch-legacy openapi-sync-batch-replay-focus openapi-replay-legacy openapi-envelopes-legacy openapi-medications openapi-medications-focused api-legacy-auth api-legacy-admin api-legacy-care api-legacy-devices api-legacy-lookup browser-journey-rails browser-journey-rust browser-dashboard-rust web-reads-rails
         set -gx CONTRACT_AUTH_SESSION_SECRET (rtk proxy openssl rand -hex 32)
         or return $status
-        set -gx CONTRACT_APNS_PRIVATE_KEY (rtk proxy openssl genpkey -algorithm EC -pkeyopt group:P-256 | string collect)
+        set -gx CONTRACT_APNS_PRIVATE_KEY (rtk proxy openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:prime256v1 | string collect)
         set -l apns_generation_status $pipestatus
         if test $apns_generation_status[1] -ne 0
             echo 'Disposable APNs key generation failed' >&2
@@ -218,7 +218,10 @@ function run_contract
             echo "Contract source SHA-256: $digest_parts[1]"
         end
     end
-    if test "$argv[2]" = browser-journey-rust
+    if test "$argv[2]" = browser-dashboard-rust
+        set -gx CONTRACT_DASHBOARD_NOW 2026-03-29T00:30:00Z
+        set -gx CONTRACT_RUST_BROWSER_SCREENSHOT_DIR ./docs/screenshots/dashboard-rust
+    else if test "$argv[2]" = browser-journey-rust
         set -gx CONTRACT_RUST_BROWSER_SCREENSHOT_DIR ./docs/screenshots/journey-medication-rust
     end
     set -lx CONTRACT_PROJECT $contract_project
@@ -248,7 +251,11 @@ function run_contract
     rtk task contract:prepare-db CONTRACT_PROJECT=$contract_project
     or return $status
     rtk task test:server CONTRACT_PROJECT=$contract_project
-    or return $status
+    or begin
+        set -l server_status $status
+        rtk proxy docker compose -p $contract_project --profile test logs --no-color --tail=80 migrate-test
+        return $server_status
+    end
     set -l server_seconds (math (date +%s) - $startup_at)
     echo "Contract server ready after $server_seconds seconds"
 
@@ -270,6 +277,16 @@ function run_contract
         rtk task api:contract-ready CONTRACT_PROJECT=$contract_project
         or return $status
         rtk task api:contract-browser-rust CONTRACT_PROJECT=$contract_project
+        return $status
+    end
+
+    if test "$argv[2]" = browser-dashboard-rust
+        set -g contract_api_image true
+        rtk task api:contract-up CONTRACT_PROJECT=$contract_project
+        or return $status
+        rtk task api:contract-ready CONTRACT_PROJECT=$contract_project
+        or return $status
+        rtk task api:contract-browser-dashboard-rust CONTRACT_PROJECT=$contract_project
         return $status
     end
 

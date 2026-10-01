@@ -29,7 +29,7 @@ test('UI changes select Lighthouse while model changes select only Rails', () =>
 });
 
 test('Rust port and contract infrastructure select their executable checks', () => {
-  for (const path of ['rust/api/src/lib.rs', 'rust/web/src/lib.rs', 'rust/contract-tests/tests/openapi_dosage_options.rs']) {
+  for (const path of ['rust/api/src/lib.rs', 'rust/web/src/lib.rs', 'rust/ui-preview/src/lib.rs', 'rust/contract-tests/tests/openapi_dosage_options.rs']) {
     const selected = classify([path]).selected;
     assert.equal(selected.rust_port, true, path);
     assert.equal(selected.rails, false, path);
@@ -41,7 +41,7 @@ test('Rust port and contract infrastructure select their executable checks', () 
   }
 });
 
-for (const [suite, job] of [['lighthouse', 'lighthouse'], ['rails', 'test_non_system'], ['rails', 'coverage'], ['rust_port', 'rust_port']]) {
+for (const [suite, job] of [['lighthouse', 'lighthouse'], ['rails', 'test_non_system'], ['rails', 'coverage'], ['rust_port', 'rust_port'], ['rust_port', 'rust_dashboard_browser']]) {
   test(`${suite} succeeds when every selected job succeeds`, () => {
     assert.deepEqual(evaluate(needsFor(suite)), []);
   });
@@ -55,6 +55,36 @@ for (const [suite, job] of [['lighthouse', 'lighthouse'], ['rails', 'test_non_sy
     });
   }
 }
+
+test('Rust CI builds the UI and runs both dashboard browser suites', () => {
+  const workflow = readFileSync(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const taskfile = readFileSync(new URL('../../../Taskfiles/ci.yml', import.meta.url), 'utf8');
+  const browserTask = readFileSync(new URL('../../../rust/api/Taskfile.yml', import.meta.url), 'utf8');
+  for (const command of ['fmt', 'test', 'lint', 'build']) {
+    assert.ok(taskfile.includes(`task -d rust/ui-preview ${command}`), command);
+  }
+  assert.match(browserTask, /node --test tests\/dashboard\.test\.mjs tests\/leptodon-dashboard\.test\.mjs/);
+  assert.match(workflow, /\n  rust_dashboard_browser:\n/);
+  assert.match(workflow, /task api:browser-dashboard-rust/);
+  assert.match(workflow, /\n      - rust_dashboard_browser\n/);
+});
+
+test('isolated browser runner matches the checkout owner and reports migration failure', () => {
+  const workflow = readFileSync(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const compose = readFileSync(new URL('../../../compose.yaml', import.meta.url), 'utf8');
+  const runner = readFileSync(new URL('../../../rust/contract-tests/run.fish', import.meta.url), 'utf8');
+  assert.match(workflow, /TEST_IMAGE_UID=\$\(id -u\) task api:browser-dashboard-rust/);
+  assert.equal((compose.match(/UID: \$\{TEST_IMAGE_UID:-1000\}/g) ?? []).length, 2);
+  assert.match(runner, /docker compose -p \$contract_project --profile test logs --no-color --tail=80 migrate-test/);
+});
+
+test('isolated Rails web server has a readiness healthcheck for Compose wait', () => {
+  const compose = readFileSync(new URL('../../../compose.yaml', import.meta.url), 'utf8');
+  const webTest = compose.match(/\n  web-test:\n(?<body>[\s\S]*?)(?=\n  [\w-]+:\n)/)?.groups?.body;
+  assert.ok(webTest, 'web-test service was not found');
+  assert.match(webTest, /healthcheck:\n\s+test: \["CMD-SHELL", "curl -f http:\/\/localhost:3000\/up \|\| exit 1"\]/);
+  assert.doesNotMatch(webTest, /healthcheck:\n\s+disable: true/);
+});
 
 test('classification failure cannot produce a successful gate', () => {
   const needs = needsFor('rails');

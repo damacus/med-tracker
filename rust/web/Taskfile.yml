@@ -7,12 +7,21 @@ tasks:
   fmt:
     cmds:
       - cargo fmt --check
+  format:
+    cmds:
+      - cargo fmt
   lint:
     cmds:
       - cargo clippy --all-targets -- -D warnings
   test:
     cmds:
       - cargo test
+  test:dashboard:
+    cmds:
+      - cargo test --test dashboard_rendering
+  test:browser-dashboard:
+    cmds:
+      - LEPTODON_SCREENSHOT_DIR=../../docs/screenshots node --test tests/leptodon-dashboard.test.mjs
   smoke:
     cmds:
       - npm run smoke

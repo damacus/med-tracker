@@ -2,7 +2,7 @@
   "jobs": {
     "rails": ["scan_ruby", "scan_js", "lint", "test_non_system", "coverage", "test_system", "production_image_medication_search"],
     "rust": ["client_tools"],
-    "rust_port": ["rust_port"],
+    "rust_port": ["rust_port", "rust_dashboard_browser"],
     "docs": ["docs_check"],
     "markdown": ["markdown_check"],
     "api_clients": ["api_clients"],

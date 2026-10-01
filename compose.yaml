@@ -133,6 +133,8 @@ services:
     networks: [test]
     build:
       target: test
+      args:
+        UID: ${TEST_IMAGE_UID:-1000}
     command: bin/rails db:prepare
     depends_on:
       db-test:
@@ -171,6 +173,8 @@ services:
     networks: [test]
     build:
       target: test
+      args:
+        UID: ${TEST_IMAGE_UID:-1000}
     depends_on:
       db-test:
         condition: service_healthy
@@ -197,7 +201,7 @@ services:
       - /app/tmp/cache:uid=1000,gid=1000
       - /app/public/assets:uid=1000,gid=1000
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/up || exit 1"]
 
   tools-test:
     extends:

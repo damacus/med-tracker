@@ -433,7 +433,17 @@ fn api_router(state: AppState) -> Router {
         )
         .merge(review_prompts::routes())
         .layer(middleware::from_fn_with_state(csrf_state, cookie_api_csrf))
+        .layer(middleware::from_fn(private_api_cache))
         .with_state(state)
+}
+
+async fn private_api_cache(request: Request, next: Next) -> Response {
+    let mut response = next.run(request).await;
+    response.headers_mut().insert(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static("private, no-store"),
+    );
+    response
 }
 
 async fn cookie_api_csrf(State(state): State<AppState>, request: Request, next: Next) -> Response {

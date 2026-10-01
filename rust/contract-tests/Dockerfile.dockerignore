@@ -7,6 +7,16 @@
 !rust/web/Cargo.lock
 !rust/web/src/
 !rust/web/src/**
+!rust/ui-preview/
+!rust/ui-preview/Cargo.toml
+!rust/ui-preview/build.rs
+!rust/ui-preview/src/
+!rust/ui-preview/src/**
+!rust/ui-preview/public/
+!rust/ui-preview/public/preview.css
+!rust/ui-preview/public/pkg/
+!rust/ui-preview/public/pkg/medtracker_ui_preview.js
+!rust/ui-preview/public/pkg/medtracker_ui_preview_bg.wasm
 !rust/contract-tests/
 !rust/contract-tests/**
 !config/
@@ -17,3 +27,4 @@
 !vendor/fonts/NotoSans-Regular.ttf
 !vendor/fonts/OFL-1.1.txt
 **/target/
+**/node_modules/

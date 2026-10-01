@@ -1,6 +1,8 @@
 use axum::{Router, http::header, response::Html, routing::get};
 use leptos::prelude::*;
 
+pub mod dashboard;
+
 #[component]
 fn BrandPanel() -> impl IntoView {
     view! {
@@ -252,17 +254,30 @@ pub fn render_medication_list(
     medication_document("Medications", csrf, body)
 }
 
-pub fn render_medication_detail(
-    household_name: &str,
-    slug: &str,
-    csrf: &str,
-    medication: MedicationDetail,
-    stock_options: Vec<MedicationCard>,
-    taken_at: &str,
-    client_uuid: &str,
-    notice: Option<&str>,
-    form_state: Option<DoseFormState>,
-) -> String {
+pub struct MedicationDetailRender<'a> {
+    pub household_name: &'a str,
+    pub slug: &'a str,
+    pub csrf: &'a str,
+    pub medication: MedicationDetail,
+    pub stock_options: Vec<MedicationCard>,
+    pub taken_at: &'a str,
+    pub client_uuid: &'a str,
+    pub notice: Option<&'a str>,
+    pub form_state: Option<DoseFormState>,
+}
+
+pub fn render_medication_detail(input: MedicationDetailRender<'_>) -> String {
+    let MedicationDetailRender {
+        household_name,
+        slug,
+        csrf,
+        medication,
+        stock_options,
+        taken_at,
+        client_uuid,
+        notice,
+        form_state,
+    } = input;
     let prefix = format!("/households/{slug}");
     let dose_action = format!("{prefix}/medications/{}/doses", medication.id);
     let first = if let Some(form) = form_state.as_ref() {
@@ -323,7 +338,7 @@ pub fn render_medication_detail(
                     <p class="med-eyebrow">"MEDICATION PROFILE"</p>
                     <h1>{medication.name.clone()}</h1>
                     <p class="med-location">{medication.location.clone()}</p>
-                    {form_state.is_none().then(|| notice).flatten().map(|text| view! { <p class="med-alert" role="alert">{text.to_owned()}</p> })}
+                    {form_state.is_none().then_some(notice).flatten().map(|text| view! { <p class="med-alert" role="alert">{text.to_owned()}</p> })}
                     <div class="med-detail-grid">
                         {(!medication.description.is_empty()).then(|| view! { <section class="med-card"><h2>"Overview"</h2><p>{medication.description.clone()}</p></section> })}
                         <section class="med-card med-stock"><h2>"Inventory Status"</h2><div class="med-stock-number"><strong>{medication.supply.clone()}</strong><span>{medication.unit.clone()}" remaining"</span></div><p>"Stock source: "{medication.location.clone()}</p></section>
@@ -441,8 +456,8 @@ pub fn app() -> Router {
 #[cfg(test)]
 mod tests {
     use super::{
-        DoseFormState, DoseSource, MedicationCard, MedicationDetail, render_login,
-        render_medication_detail,
+        DoseFormState, DoseSource, MedicationCard, MedicationDetail, MedicationDetailRender,
+        render_login, render_medication_detail,
     };
 
     #[test]
@@ -457,11 +472,11 @@ mod tests {
 
     #[test]
     fn rejected_dose_preserves_form_snapshot_and_reopens_dialog() {
-        let html = render_medication_detail(
-            "Home",
-            "home",
-            "csrf",
-            MedicationDetail {
+        let html = render_medication_detail(MedicationDetailRender {
+            household_name: "Home",
+            slug: "home",
+            csrf: "csrf",
+            medication: MedicationDetail {
                 id: 1,
                 name: "Example".to_owned(),
                 description: String::new(),
@@ -479,16 +494,16 @@ mod tests {
                     eligible_stock_ids: vec![1],
                 }],
             },
-            vec![MedicationCard {
+            stock_options: vec![MedicationCard {
                 id: 1,
                 name: "Example".to_owned(),
                 supply: "20".to_owned(),
                 unit: "ml".to_owned(),
             }],
-            "2026-03-30T08:00",
-            "retry-uuid",
-            Some("Invalid dose configured"),
-            Some(DoseFormState {
+            taken_at: "2026-03-30T08:00",
+            client_uuid: "retry-uuid",
+            notice: Some("Invalid dose configured"),
+            form_state: Some(DoseFormState {
                 source_type: "person_medication".to_owned(),
                 source_id: "source-2".to_owned(),
                 dose_amount: "invalid".to_owned(),
@@ -496,7 +511,7 @@ mod tests {
                 taken_at: "2026-03-30T09:00".to_owned(),
                 stock_id: "1".to_owned(),
             }),
-        );
+        });
         assert!(html.contains("data-reopen>"));
         assert!(html.contains("name=\"client_uuid\" value=\"retry-uuid\""));
         assert!(html.contains("name=\"dose_amount\" value=\"invalid\""));

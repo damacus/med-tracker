@@ -2,7 +2,12 @@
 version: "3"
 
 tasks:
+  dashboard-ui-build:
+    cmds:
+      - task -d rust/ui-preview build
+
   build:
+    deps: [dashboard-ui-build]
     cmds:
       - cargo build --manifest-path rust/api/Cargo.toml
 
@@ -37,6 +42,10 @@ tasks:
   browser-rust:
     cmds:
       - fish rust/contract-tests/run.fish rails browser-journey-rust
+
+  browser-dashboard-rust:
+    cmds:
+      - fish rust/contract-tests/run.fish rails browser-dashboard-rust
 
   web-session-acceptance:
     cmds:
@@ -79,6 +88,7 @@ tasks:
       - docker build --target dependencies -f rust/web/Dockerfile.smoke rust/web
 
   contract-up:
+    deps: [dashboard-ui-build]
     requires:
       vars: [CONTRACT_PROJECT]
     vars:
@@ -88,12 +98,14 @@ tasks:
       - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test up -d --wait --build rust-api
 
   contract-source-snapshot:
+    deps: [dashboard-ui-build]
     requires:
       vars: [CONTRACT_SOURCE_DIR]
     cmds:
-      - mkdir -p '{{ .CONTRACT_SOURCE_DIR }}/rust/api' '{{ .CONTRACT_SOURCE_DIR }}/rust/web' '{{ .CONTRACT_SOURCE_DIR }}/rust/contract-tests' '{{ .CONTRACT_SOURCE_DIR }}/config' '{{ .CONTRACT_SOURCE_DIR }}/vendor/fonts'
+      - mkdir -p '{{ .CONTRACT_SOURCE_DIR }}/rust/api' '{{ .CONTRACT_SOURCE_DIR }}/rust/web' '{{ .CONTRACT_SOURCE_DIR }}/rust/ui-preview' '{{ .CONTRACT_SOURCE_DIR }}/rust/contract-tests' '{{ .CONTRACT_SOURCE_DIR }}/config' '{{ .CONTRACT_SOURCE_DIR }}/vendor/fonts'
       - rsync -a --exclude target/ rust/api/ '{{ .CONTRACT_SOURCE_DIR }}/rust/api/'
       - rsync -a --exclude target/ rust/web/ '{{ .CONTRACT_SOURCE_DIR }}/rust/web/'
+      - rsync -a --exclude target/ --exclude node_modules/ rust/ui-preview/ '{{ .CONTRACT_SOURCE_DIR }}/rust/ui-preview/'
       - rsync -a --exclude target/ rust/contract-tests/ '{{ .CONTRACT_SOURCE_DIR }}/rust/contract-tests/'
       - cp config/ai_medication_sources.yml config/nhs_dmd_curated_products.yml '{{ .CONTRACT_SOURCE_DIR }}/config/'
       - cp vendor/fonts/NotoSans-Regular.ttf vendor/fonts/OFL-1.1.txt '{{ .CONTRACT_SOURCE_DIR }}/vendor/fonts/'
@@ -870,6 +882,17 @@ tasks:
       - mkdir -p docs/screenshots/journey-medication-rust
       - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test build rust-browser-tests
       - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-browser-tests node --test tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs
+
+  contract-browser-dashboard-rust:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - mkdir -p docs/screenshots/dashboard-rust
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test build rust-browser-tests
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-browser-tests node --test tests/dashboard.test.mjs tests/leptodon-dashboard.test.mjs
 
   contract-subnet-check:
     requires:
