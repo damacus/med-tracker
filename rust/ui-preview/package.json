@@ -4,6 +4,6 @@
     "css": "tailwindcss -i style/input.css -o public/preview.css --minify"
   },
   "devDependencies": {
-    "tailwindcss": "3.4.17"
+    "tailwindcss": "3.4.19"
   }
 }
