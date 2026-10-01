@@ -27,9 +27,9 @@
 
 ## 5. Assignments and schedules
 
-- [ ] 5.1 Record failing assignment and seven-type schedule round-trip tests.
-- [ ] 5.2 Implement direct/scheduled assignment, all schedule editors and pause/resume.
-- [ ] 5.3 Verify taper boundaries, permissions, history and browser acceptance.
+- [x] 5.1 Record failing assignment and seven-type schedule round-trip tests.
+- [x] 5.2 Implement direct/scheduled assignment, all schedule editors and pause/resume.
+- [x] 5.3 Verify taper boundaries, permissions, history and browser acceptance.
 
 ## 6. Combined acceptance and publication
 
@@ -58,7 +58,7 @@ has been performed.
 ## Continuation ownership and evidence
 
 The continuation recorded actual failing tests for unknown validation messages,
-missing-token draft retention, a deterministic first-option insertion race and
+missing-token draft retention, a dosage option added while a medication form is open, and
 limited-view dashboard access. All four bounded fixes are implemented and have
 independent source-review passes. All 28 continuation HTTP cases passed on a
 stable captured source. The separate browser run passed all 35 cases on the
@@ -69,9 +69,9 @@ journeys. Independent requirements, quality/security and visual review accepted
 code quality/security review passed; broader parity and planned editors remain
 outside this acceptance.
 
-The [completion packet](../../../docs/plans/axum-leptos-port/next-slices-20261001.md) keeps the original 20-task denominator (14 accepted). Slice A completed 2.3/3.3; B/C close safety/usability gaps before 4.3. D completes dosage-option management before 4.3 acceptance; E targets 4.4; F targets 5.1–5.3 only after all seven actual schedule types pass. G re-evaluates the full requirements. No new completion box is checked merely because dispatch, source edits or a build finished.
+The [continuation plan](../../../docs/plans/axum-leptos-port/next-slices-20261001.md) keeps the original 20 tasks. People and Locations completed 2.3/3.3. Medication and dosage management complete 4.3; stock management completes 4.4. Assignments complete 5.1–5.3 only after all seven schedule types pass their checks. Final review checks the whole programme. A task is complete when its required behaviour is verified and accepted.
 
-The previous bounded run stopped new feature dispatch at its 16:44 Europe/London assessment. The user subsequently authorised autonomous D/E/F/G completion with a new retrospective checkpoint. The [delivery packet](../../../docs/plans/axum-leptos-port/household-delivery-20261001/plan.md) now records one persistent Sol writer, one exclusive Luna verifier and one independent Sol reviewer.
+The previous run paused new features at its 16:44 Europe/London assessment. The user subsequently authorised completion of dosage, stock, assignments and final checks, with another retrospective. The [delivery plan](../../../docs/plans/axum-leptos-port/household-delivery-20261001/plan.md) records responsibility for implementation, testing and independent review.
 
 D medication/dosage management is independently accepted, bringing the original denominator to 15/20. Four browser HTTP cases and an isolated ordinary-member permission case passed. Twenty browser cases passed across all five languages at desktop/mobile, including immediate dose use, exact option/parent stock decrement and dose replay. The corrected pagination helper retained all assertions; prior household browser regressions passed on unchanged product source. The full `ci:rust-port` gate passed on final frozen inputs. Stock, all seven schedule editors and final whole-programme acceptance remain pending.
 
@@ -86,3 +86,15 @@ The final Rust gate passed after four behaviour-preserving lint/type repairs,
 which the reviewer checked against the runtime-tested source. Requirements and
 quality/security review passed. Assignments, schedules and final combined work
 remain pending; no merge, deployment or Rails cutover is authorised.
+
+Assignments and schedules meet the original journey requirements, completing
+the original 20 tasks. The final candidate passed 37 HTTP tests and 12 browser
+journeys, plus separate revoked-access, date and taper-time checks. Five-language
+desktop/mobile evidence and independent requirements review passed. The full
+Rust gate passed on the unchanged source. Documentation checks and publication
+follow before moving to the final planned compatibility work.
+
+The remaining stock bugs, broader API compatibility, five additional large-file
+refactors and runtime CI promotion are still tracked in the delivery plan and
+issue #2345. Completing the original task list does not complete those follow-ups
+or authorise merging, deployment or Rails cutover.

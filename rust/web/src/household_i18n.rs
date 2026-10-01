@@ -224,6 +224,7 @@ fn allowed(key: &str) -> bool {
         "medications.",
         "dosages.",
         "person_medications.",
+        "treatments.",
         "medication_pauses.",
         "dose_outcomes.",
         "stock_removals.",

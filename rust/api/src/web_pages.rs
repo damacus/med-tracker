@@ -24,6 +24,7 @@ mod people;
 mod response;
 mod stock;
 mod time;
+mod treatments;
 
 #[cfg(test)]
 mod tests;
@@ -35,6 +36,7 @@ pub fn routes() -> Router<AppState> {
         .merge(medications::routes())
         .merge(dosage_options::routes())
         .merge(stock::routes())
+        .merge(treatments::routes())
         .route("/household.css", get(assets::household_styles))
         .route("/households/{slug}/dashboard", get(dashboard::dashboard))
         .route(

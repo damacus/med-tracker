@@ -87,3 +87,19 @@ medications, read completion and affected broad suites; preserve tests for the
 real contract. Promote new accepted browser/HTTP tests into actual CI selectors
 so publication is reproducible. Final review certifies fulfilled OpenSpec
 requirements; authentication/import/scanner cutover gates remain separate.
+
+Include the confirmed browser stock-loss repair in
+[issue #2358](https://github.com/damacus/med-tracker/issues/2358). When every
+dosage option has blank stock, offer finite medication stock as the loss source.
+If any option tracks stock, including zero, require that specific option. Preserve
+the existing API permissions, locks, replay and insufficient-stock rejection.
+Verify actual stock changes and translated desktop/mobile forms.
+
+Repair the Task wrapper's household test selector forwarding in
+[issue #2359](https://github.com/damacus/med-tracker/issues/2359). The initial F run
+accepted `HOUSEHOLD_ACCEPTANCE` and `HOUSEHOLD_TEST_FILE` as Task variables but
+did not export them to the runner, so no HTTP tests ran. Its ten browser failures
+are valid evidence; they are not evidence of nine HTTP passes. Until the wrapper
+is fixed, use explicit Fish exports before the Task command and verify the
+selected Cargo target and case count in the raw output. Add meaningful runner
+coverage for the forwarding fix before promoting the suites into CI.

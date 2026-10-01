@@ -61,6 +61,17 @@ pub fn render_person(
     locale: Locale,
     person: PersonRow,
 ) -> Result<String, TranslationError> {
+    render_person_with_treatments(household_name, slug, _csrf, locale, person, Vec::new())
+}
+
+pub fn render_person_with_treatments(
+    household_name: &str,
+    slug: &str,
+    _csrf: &str,
+    locale: Locale,
+    person: PersonRow,
+    treatments: Vec<crate::treatments::TreatmentRow>,
+) -> Result<String, TranslationError> {
     let raw_slug = slug;
     let slug = path_segment(slug);
     let text = Text::new(locale);
@@ -87,6 +98,13 @@ pub fn render_person(
     let edit = text.get("people.show.edit_person", &[])?;
     let back = text.get("people.show.back", &[])?;
     let title = person.name.clone();
+    let treatment_html = crate::treatments::render_treatment_overview(
+        raw_slug,
+        person.id,
+        locale,
+        person.can_edit,
+        treatments,
+    )?;
     let body = view! {
         <div class="household-heading"><h1>{person.name.clone()}</h1>
             {person.can_edit.then(|| view! { <a class="med-button" href=format!("/households/{slug}/people/{}/edit", person.id)>{edit}</a> })}
@@ -96,6 +114,7 @@ pub fn render_person(
             <dt>{dob}</dt><dd>{person.date_of_birth}</dd><dt>{kind}</dt><dd>{person_type}</dd>
             <dt>{capacity}</dt><dd>{capacity_value}</dd>
         </dl></section>
+        <div inner_html=treatment_html></div>
         <a class="med-text-button" href=format!("/households/{slug}/people")>{back}</a>
     }.to_html();
     Ok(household_document(

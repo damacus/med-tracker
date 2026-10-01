@@ -13,6 +13,7 @@ pub mod locations;
 pub mod medication_management;
 pub mod people;
 pub mod stock;
+pub mod treatments;
 
 use auth::BrandPanel;
 use document::{authenticated_document, medication_document};

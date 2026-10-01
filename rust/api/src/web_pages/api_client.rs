@@ -14,6 +14,11 @@ use tower::ServiceExt;
 const BODY_LIMIT: usize = 1_048_576;
 const COLLECTION_LIMIT: usize = 500;
 
+enum BrowserWriteIntent {
+    Scalar(crate::medication_management::ScalarAdjustment),
+    Pause(crate::pause_lifecycle::BrowserSourceGuard),
+}
+
 pub(super) fn html_cookie_only(headers: &HeaderMap) -> bool {
     !headers.contains_key(header::AUTHORIZATION)
 }
@@ -113,7 +118,28 @@ impl WebApi {
             Some(body),
             Some(csrf),
             &HeaderMap::new(),
-            Some(crate::medication_management::ScalarAdjustment { original_etag }),
+            Some(BrowserWriteIntent::Scalar(
+                crate::medication_management::ScalarAdjustment { original_etag },
+            )),
+        )
+        .await
+    }
+
+    pub(super) async fn pause_with_original_source(
+        &mut self,
+        path: &str,
+        body: Value,
+        extra: &HeaderMap,
+        guard: crate::pause_lifecycle::BrowserSourceGuard,
+    ) -> Result<ApiReply, PageError> {
+        let csrf = self.csrf.clone();
+        self.call_inner(
+            Method::POST,
+            path,
+            Some(body),
+            Some(&csrf),
+            extra,
+            Some(BrowserWriteIntent::Pause(guard)),
         )
         .await
     }
@@ -125,7 +151,7 @@ impl WebApi {
         body: Option<Value>,
         csrf: Option<&str>,
         extra: &HeaderMap,
-        scalar: Option<crate::medication_management::ScalarAdjustment>,
+        intent: Option<BrowserWriteIntent>,
     ) -> Result<ApiReply, PageError> {
         let mut request = Request::builder().method(method).uri(path);
         for name in [
@@ -158,8 +184,14 @@ impl WebApi {
         let mut request = request
             .body(Body::from(encoded))
             .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))?;
-        if let Some(scalar) = scalar {
-            request.extensions_mut().insert(scalar);
+        match intent {
+            Some(BrowserWriteIntent::Scalar(scalar)) => {
+                request.extensions_mut().insert(scalar);
+            }
+            Some(BrowserWriteIntent::Pause(guard)) => {
+                request.extensions_mut().insert(guard);
+            }
+            None => {}
         }
         let response = api_router(self.state.clone())
             .oneshot(request)

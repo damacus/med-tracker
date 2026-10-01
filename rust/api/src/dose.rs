@@ -141,11 +141,11 @@ fn local_date_in_zone(time: NaiveDateTime, zone: chrono_tz::Tz) -> NaiveDate {
         .date_naive()
 }
 
-fn config_value<'a>(config: &'a Value, names: &[&str]) -> Option<&'a Value> {
+pub(crate) fn config_value<'a>(config: &'a Value, names: &[&str]) -> Option<&'a Value> {
     names.iter().find_map(|name| config.get(*name))
 }
 
-fn config_decimal(config: &Value, names: &[&str]) -> Option<Decimal> {
+pub(crate) fn config_decimal(config: &Value, names: &[&str]) -> Option<Decimal> {
     config_value(config, names)
         .and_then(|value| {
             value

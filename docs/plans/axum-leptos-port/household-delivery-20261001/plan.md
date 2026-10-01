@@ -7,10 +7,27 @@ tasks and published commit `5a7c984a354fc7cd3ad07a21e2d3c0cf320fb17e`.
 ## Current progress
 
 People, locations, medication forms and dosage management are published.
-Dosage management has passed CI. Stock management has passed its checks and
-independent review; publication is next. Assignments, schedules and the final
-combined checks follow it.
+Dosage and stock management have passed CI. Stock management is published in
+[PR #2357](https://github.com/damacus/med-tracker/pull/2357) after its checks and
+independent review. Assignments and schedules are underway;
+the final combined checks follow them.
 Rails stays operational throughout this work.
+
+The assignment checks passed 37 HTTP tests and 12 browser journeys, covering
+editing all seven schedule types, pause/resume, rejected conflicts and actual
+dose recording. Revoked-access checks and seven existing medication browser
+tests also passed. Date tests found two taper problems: the dashboard displayed
+the base dose, and the form's time fields did not set dose times. Both fixes now
+pass their focused checks, and the final combined run passed 37 HTTP tests and
+12 browser journeys again. Requirements review and the full Rust gate passed.
+Final documentation checks and publication follow. The original journey list is
+20/20; the final compatibility and refactor work below remains unfinished.
+
+Two stock follow-ups must be fixed before final acceptance: households with more
+than 500 dosage options cannot open some medication pages, and stock losses are
+blocked when every option leaves stock blank but the medication still has stock.
+They are tracked in issues [#2353](https://github.com/damacus/med-tracker/issues/2353)
+and [#2358](https://github.com/damacus/med-tracker/issues/2358).
 
 ## Stable path and ownership
 
@@ -41,15 +58,14 @@ and test mechanics in the evidence queue rather than the progress headline.
    [remaining module review](remaining-module-review.md) records the concrete
    boundaries; these are behaviour-preserving refactors, not new features.
 
-Each journey is a stop-and-assess waypoint: requirements review, quality review,
-matching-source verification, then publish accepted work and advance. A failed
-assertion goes back to the same writer; two failed evidence-based fixes require
-a diagnosis ruling, not another blind rerun. Never weaken requirements.
+After each journey, check that it meets the requirements, review the code, test
+the final changes and publish the accepted work. Investigate failed checks before
+retrying. If two attempted fixes fail, reassess the cause before changing more code.
 
-The two-hour retrospective automation `rust-delivery-two-hour-retrospective`
-was created at 17:07:45 BST (verified native creation timestamp); the checkpoint
-is 19:07:45 BST / 18:07:45 UTC. It applies local process improvements
-immediately and continues work. It is not a deadline or feature-dispatch stop.
+The requested two-hour retrospective ran at 19:07:57 BST. Its improvements now
+guide the work: check test data and commands before expensive runs, keep one
+person responsible for running them, and repeat only the checks affected by a fix.
+The completed timer was deleted. Work continues through the remaining journeys.
 No routine AFK questions, global skill/memory edits, merge, deployment, Rails
 retirement or security-scanner bypass are authorised.
 

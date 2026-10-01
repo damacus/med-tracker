@@ -393,6 +393,8 @@ fn assert_assignment(data: &Value) {
         );
     }
     let allowed = [
+        "can_record",
+        "eligible_stock_medication_ids",
         "current_pause_period",
         "id",
         "portable_id",
@@ -414,6 +416,14 @@ fn assert_assignment(data: &Value) {
         "min_hours_between_doses",
     ];
     assert!(object.keys().all(|key| allowed.contains(&key.as_str())));
+    if let Some(value) = object.get("can_record") {
+        assert!(value.is_boolean());
+    }
+    if let Some(value) = object.get("eligible_stock_medication_ids") {
+        assert!(value
+            .as_array()
+            .is_some_and(|ids| ids.iter().all(|id| id.as_i64().is_some())));
+    }
     assert!(data["id"].as_i64().is_some_and(|id| id > 0));
     assert_uuid(data["portable_id"].as_str().expect("portable ID"));
     assert!(data["person_id"].as_i64().is_some_and(|id| id > 0));
