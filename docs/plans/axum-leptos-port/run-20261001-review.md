@@ -654,3 +654,32 @@ draft-retention P2 remains recorded with those follow-ups under issue #2345.
 This disposition does not mark the broader tranche requirements complete. The
 reviewer changed only this report and performed no Git publication or product/
 test mutations.
+
+## Published PR GitGuardian finding disposition
+
+At PR #2346 head `d5a3dd59ddfc0ccaa7ab6cfeab82faddc9b71bc6`, GitGuardian
+Security Checks run `110357918541` completed with FAILURE and title
+“3 secrets uncovered!”. Its output lists three Generic High Entropy Secret
+incidents: `37785603`, `37785604` and `37785602`. The finding links point to
+commit `80b9fb66aaaf1eb66ad8748f96a6ba5939bba360`,
+`rust/api/tests/auth_compatibility.rs` lines 14, 21 and 15 respectively.
+This is a completed scanner finding, not a scanner-availability failure.
+
+Independent source inspection confirms the flagged literals are expected outputs
+in `legacy_hmac_derivation_matches_locked_rodauth_vectors`. Both HMAC input
+constants explicitly contain synthetic labels; the fixed 16/32-character seed
+inputs and these constants are confined to the test file. The test compares
+fixed derived outputs from the pure compatibility helper against the recorded
+locked Rodauth oracle. No deployment configuration, account credential or live
+provider key is used by these vectors. Classification: synthetic test-vector
+false positives. No flagged value is reproduced in this report or tool output.
+
+No tracked GitGuardian, ggshield or gitleaks ignore/configuration was found. The
+repository's recorded prior GitGuardian response regenerated a disposable APNs
+fixture key rather than adding scanner suppression. No authenticated GitGuardian
+incident-disposition capability is available in this session. The check therefore
+remains externally failed, with no suppression, test-vector change, history
+rewrite or scanner bypass performed. An authorised GitGuardian account owner
+must classify these exact incidents as false positives and have the integration
+re-evaluate the check. Keep the PR unmerged while that external check remains
+failed; the local/source acceptance above does not claim remote CI completion.

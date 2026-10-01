@@ -44,3 +44,10 @@ scalar draft with 400 instead of retaining it with 409. Existing API row locks
 and supplied If-Match still protect writes. Full dosage-option editing, stock,
 assignments/schedules, full authentication parity and dose-modal localisation
 remain open. No production deployment or Rails retirement is authorised here.
+
+Publication remains unmerged. GitGuardian check 110357918541 reports three generic
+high-entropy findings in synthetic OTP compatibility vectors from the first
+commit. Independent review confirmed test-only inputs and pure derivation,
+without deployed credentials. Issue #2345 records the exact incidents and the
+required authorised GitGuardian false-positive disposition. No scanner bypass,
+test weakening or history rewrite was performed.
