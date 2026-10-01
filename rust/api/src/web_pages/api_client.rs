@@ -97,6 +97,36 @@ impl WebApi {
         csrf: Option<&str>,
         extra: &HeaderMap,
     ) -> Result<ApiReply, PageError> {
+        self.call_inner(method, path, body, csrf, extra, None).await
+    }
+
+    pub(super) async fn adjust_scalar_stock(
+        &mut self,
+        path: &str,
+        body: Value,
+        csrf: &str,
+        original_etag: String,
+    ) -> Result<ApiReply, PageError> {
+        self.call_inner(
+            Method::PATCH,
+            path,
+            Some(body),
+            Some(csrf),
+            &HeaderMap::new(),
+            Some(crate::medication_management::ScalarAdjustment { original_etag }),
+        )
+        .await
+    }
+
+    async fn call_inner(
+        &mut self,
+        method: Method,
+        path: &str,
+        body: Option<Value>,
+        csrf: Option<&str>,
+        extra: &HeaderMap,
+        scalar: Option<crate::medication_management::ScalarAdjustment>,
+    ) -> Result<ApiReply, PageError> {
         let mut request = Request::builder().method(method).uri(path);
         for name in [
             header::IF_MATCH,
@@ -125,9 +155,12 @@ impl WebApi {
         } else {
             Vec::new()
         };
-        let request = request
+        let mut request = request
             .body(Body::from(encoded))
             .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))?;
+        if let Some(scalar) = scalar {
+            request.extensions_mut().insert(scalar);
+        }
         let response = api_router(self.state.clone())
             .oneshot(request)
             .await

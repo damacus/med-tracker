@@ -231,7 +231,7 @@ pub fn render_dosage_form(page: DosageFormPage) -> Result<String, TranslationErr
                 <input type="hidden" name="authenticity_token" value=page.csrf/>
                 <input type="hidden" name="etag" value=page.draft.etag/>
                 <div class="household-fields" inner_html=fields></div>
-                <div class="household-actions"><a href=base>{cancel}</a><button type="submit">{title.clone()}</button></div>
+                <div class="household-actions"><a href=base>{cancel}</a><button class="med-primary" type="submit">{title.clone()}</button></div>
             </form>
         </section>
     }.to_html();

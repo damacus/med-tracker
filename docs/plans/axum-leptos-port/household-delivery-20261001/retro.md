@@ -1,4 +1,58 @@
-# Early process review — actual two-hour retro pending
+# Household delivery retrospectives
+
+## Actual two-hour checkpoint
+
+Started at 18:07:57 UTC / 19:07:57 BST on 1 October 2026, verified with the live
+clock against the original 18:07:45 UTC checkpoint. This section supersedes the
+earlier status below. The completed native timer was deleted. The user authorised
+immediate local process improvements while AFK; implementation continues.
+
+Dosage management is accepted and published in #2351 at `fb276edc`: four HTTP
+cases, one isolated permission case, twenty five-language desktop/mobile browser
+cases, independent review and the final Rust source gate. The large dosage API
+is split into nine private modules. Acceptance is 15/20. Subsequent review found
+stock presentation/edit defects in #2352 and a collection limit in #2353;
+these must be fixed before main. Stock has actual route, link, audit-reason and
+boundary RED evidence and is being implemented, but is not accepted. Assignments,
+all seven schedule editors and final parity remain pending. Published Rust source
+CI is green; browser CI is still running. The separate Rails notice failure is
+#2354, with its cause unverified.
+
+Stable ownership worked: the same Sol writer fixes product/tests, the Luna
+verifier owns runtime, and the independent Sol reviewer checks contracts/security.
+Existing API/native-form components avoided another dependency or policy layer.
+Immutable copies, actual assertion logs and screenshot checksums preserved useful
+evidence. Review distinguished compatible null-option fallback from an unsupported
+API reset, and persistent Rails notice rendering from a speculative timeout cause.
+
+Friction was concrete: the dosage helper assumed one page; stock tests initially
+missed shared imports and required frequency, and needed canonical decimal
+response strings. Static review caught some but not all setup gaps. Serial copy
+holds also blocked unrelated implementation, and coordinator metadata traffic
+still cost time. Apply immediately to E and subsequent F/G handoffs:
+
+1. Compare fixture payloads with successful existing helpers before runtime:
+   required fields, canonical decimals, grants/current tokens, pagination,
+   exact routes and selectors. Targeted compile precedes fixture launch.
+   Setup failure never counts as application RED.
+2. Freeze actual captured inputs, not the whole writer for a full batch.
+   Verifier releases product paths once required immutable copies are validated;
+   tests stay frozen only while needed for capture. Certify captured source and
+   disclose subsequent live drift.
+3. Recorded route RED already supports implementing that route. Avoid duplicate
+   runs solely to repeat it; new stock semantics still need meaningful failures.
+   Retry changed helpers narrowly, then run the final relevant regression gate.
+4. Pull only the affected stock timestamp-contract repair from #2347 into E.
+   Preserve RFC3339 microseconds and ETags; wider parity and the 501 query fix
+   remain G. Do not change the API to fit an obsolete test expectation.
+5. Update the ledger at handoff, diagnosis, acceptance and publication. Keep the
+   same seats; use idle review for bounded CI diagnosis instead of another writer.
+
+These are local delivery-process changes, not global skill or memory edits.
+Continue E/F/G to completion with Rails operational and the separate authentication
+and security-scanner cutover gates preserved.
+
+## Earlier process review (historical snapshot)
 
 Scope: this autonomous continuation and the immediately preceding A/B/C run,
 using current conversation/checkpoint, ledger, verifier receipts and independent

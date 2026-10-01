@@ -14,6 +14,7 @@ pub(super) use context::{
 };
 pub(super) use create::create;
 pub(super) use inventory::adjust_inventory;
+pub(crate) use inventory::ScalarAdjustment;
 pub(super) use persistence::{medication_snapshot, record_version};
 pub(super) use reorder::{mark_as_ordered, mark_as_received};
 pub(super) use responses::{error_response, finish, finish_with_request_id, medication_body};

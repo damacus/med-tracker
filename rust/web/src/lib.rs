@@ -12,6 +12,7 @@ pub mod household_i18n;
 pub mod locations;
 pub mod medication_management;
 pub mod people;
+pub mod stock;
 
 use auth::BrandPanel;
 use document::{authenticated_document, medication_document};
@@ -19,8 +20,10 @@ use document::{authenticated_document, medication_document};
 pub use auth::{render_consent, render_login, render_reset_unavailable};
 pub use medication::{
     DoseFormState, DoseSource, MedicationCard, MedicationDetail, MedicationDetailRender,
-    render_medication_detail, render_medication_detail_with_management, render_medication_list,
-    render_medication_list_with_management,
+    render_medication_detail, render_medication_detail_with_management,
+    render_medication_detail_with_stock, render_medication_detail_with_stock_inventory,
+    render_medication_list, render_medication_list_with_management,
+    render_medication_list_with_stock,
 };
 
 pub fn render_dashboard(household_name: &str, csrf: &str, empty: bool) -> String {

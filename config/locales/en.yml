@@ -848,6 +848,24 @@ en:
       success: "%{name} removed from %{location}"
       failure: Failed to remove member
   medications:
+    stock:
+      title: "Manage stock"
+      adjust: "Adjust stock"
+      new_quantity: "New stock quantity"
+      order: "Record order"
+      receive: "Mark received"
+      ordered: "Ordered"
+      received: "Received"
+      not_ordered: "No order recorded"
+      edit_option: "Edit option stock"
+      option_total: "Each option has its own stock and unit. Change quantities using the option editor."
+      scalar_fallback: "All options are untracked. Doses can still use the parent medicine stock shown here; set stock on an option to track it separately."
+      receipt_hint: "Receiving an order records its status only. Adjust stock separately when you count the delivery."
+      date_hint: "Enter the expected date as YYYY-MM-DD."
+      original_token: "Reopen the edit form to load its original version, then review and submit your changes."
+      option_readonly: "Option stock and reorder thresholds are managed through the option editor."
+      invalid_quantity: "Enter a nonnegative quantity with at most two decimal places."
+      household_inventory: "Household inventory"
     dose_dialog:
       administration_title: 'Log administration for %{name}'
       choose_person_source: 'Choose the person and source.'

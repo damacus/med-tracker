@@ -10,16 +10,21 @@ ignored evidence; no secrets in durable records. Write compact receipts here.
 Use separate grant-mutating token lifetimes and fixed-clock dashboard fixtures.
 All runtime actions preserve Rails, isolate fixtures and clean only owned files.
 
-Current state (2026-10-01): both dosage API baselines passed 14/14; the
-original route and locale regressions produced expected REDs. Final formatting,
-API check, selected contract compile and all 51 web tests pass. D-CORE-GREEN-001
+Current state (2026-10-01 18:48 UTC): D is published in PR #2351. E's stock
+baseline is classified as an existing timestamp precision failure; the four
+new E HTTP cases and ten browser cases reached expected RED assertions. The
+new four-case boundary suite and focused option-editor assertion also reached
+expected REDs. No E runtime acceptance GREEN has run. The #2350 audit-description fix is part of
+the captured option-job source, but has no GREEN evidence yet. Earlier dosage
+API baselines passed 14/14; the original route and locale regressions produced expected REDs. Final formatting, API check,
+selected contract compile and all 51 web tests passed. D-CORE-GREEN-001
 passed all four HTTP tests and existing household route/workflow regressions,
 but only 26/34 browser tests passed: eight non-English immediate-administration
 cases failed. The writer made a reviewed test-only pagination correction.
 D-CORE-BROWSER-002 then passed all 20 dosage browser cases on a fresh isolated
 fixture. D-PERMISSION-003 passed the isolated grant-mutating permission case
 and a fresh 20-case browser suite. The full `ci:rust-port` gate passed on
-unchanged frozen authored inputs. No runtime job is active. Fixed-clock
+unchanged frozen authored inputs. No D runtime job is active. Fixed-clock
 dashboard tests remain separate.
 
 Baseline receipt: `api:openapi-dosages-acceptance` exited 0 on the Rust API
@@ -214,7 +219,239 @@ removed only after the destination copies verified; original tracked workflow
 screenshots remain restored and checksum-verified. The reviewer and root own
 the final D acceptance verdict and following documentation gate.
 
+E initial RED packet is writer-frozen and the first runtime checks are underway.
+The focused stock baseline `api:openapi-stock-workflows-acceptance` ran against
+the Rust API. `openapi_stock_workflows` passed 3/3; `medication_stock` passed
+2/9 and failed seven existing cases at `assert_utc_second_timestamp`
+(`medication_stock.rs:57`), which requires length 20 while the response has
+length 27. The overall baseline exited 201; this is the known #2347 precision
+mismatch, not an E feature RED. The later `medication_management_security_api`
+target did not run after Cargo stopped at `medication_stock`. Project
+`mtcontract-8fbdfa63e36349b3`; fixture SHA-256
+`a76957679f6c6776d33ece696ebff68f272e48a68cd412e976361c7b8c35ce57`; runner
+source digest `88e6f970dcd741c85cffe9ee0a6d1ebcbfaf0d3cbe7613838568702cbf21c151`.
+Full wrapper raw log: `/private/tmp/household-e-20261001/E-BASELINE-001.raw.log`;
+full contract test output:
+`/private/tmp/household-e-20261001/E-BASELINE-001-contract-tests.raw.log`.
+The source copy was cleaned before a full copy manifest could be retained, so
+the runner digest and fixture are recorded without claiming copy-to-premanifest
+equality.
+
+E HTTP RED ran the four frozen `household_stock` cases on the Rust API. It
+reached all four intended assertions: the two stock action pages returned 404
+instead of 200; tracked option creation returned 422 instead of 201; and the
+scalar adjustment audit description was `adjust inventory` instead of
+`adjust inventory (qty: 15.12, reason: Counted after delivery)`. No browser case
+ran in that wrapper. Project `mtcontract-ba9b39c18b9e43ff`; fixture SHA-256
+`cfa0a74d6706c9915b6f2e8f4cb4bf49e2f48b34e1fa397aa6e58e86f6fdc571`; runner
+source digest `88e6f970dcd741c85cffe9ee0a6d1ebcbfaf0d3cbe7613838568702cbf21c151`.
+Full wrapper raw assertions:
+`/private/tmp/household-e-20261001/E-HTTP-RED-001.raw.log`. The actual 318-file
+runtime copy manifest and live-after comparison match each other at
+`3bc791262631f94eef302f1becaa1276ac36a698743d2d183bda50758793d48c`; the E
+Rust/JS test hashes match the captured premanifest. The initial 338-path
+premanifest omitted five runtime-copy inputs; the 318-path copy manifest and
+live comparison preserve the actual snapshot evidence.
+
+E browser-only RED ran all ten locale/viewport cases and all ten failed at
+`household-stock.test.mjs:57`: the medications page exposed zero stock-action
+links where the test expected one. This is an actual UI RED, not a setup
+failure. Project `mtcontract-cdf19f456e884d4f`; fixture SHA-256
+`3d08d4da6706c9915b6f2e8f4cb4bf49e2f48b34e1fa397aa6e58e86f6fdc571`; runner
+source digest `88e6f970dcd741c85cffe9ee0a6d1ebcbfaf0d3cbe7613838568702cbf21c151`.
+Full wrapper log: `/private/tmp/household-e-20261001/E-BROWSER-RED-001.raw.log`;
+actual Node browser output:
+`/private/tmp/household-e-20261001/E-BROWSER-RED-001-browser.raw.log`. The
+318-path runtime copy manifest matched the captured source paths and hashes;
+copy/live manifest file SHA-256
+`3bc791262631f94eef302f1becaa1276ac36a698743d2d183bda50758793d48c`, with
+premanifest SHA-256
+`0cf0ab3d5197330f4cac87fa0d81a59d9dae7ccbbd352d51b3454e98e998e31f`. No
+screenshots were produced because each case failed before its screenshot step.
+The test writer may now resume edits to the initial E HTTP/browser inputs.
+Both initial RED test inputs are now released for writer updates. The boundary
+and focused-option test sources were captured and kept frozen through their
+respective runtime copies; product-only implementation is now released.
+
+E-BOUNDARY-RED-001 ran the approved four-case `household_stock_boundaries`
+selector. All four assertions failed on the missing stock UI/contract
+behaviour: option mode submitted the parent threshold (`:60`); mixed-unit
+individual option inventory failed (`:91`); scalar fallback returned 404
+instead of 200 (`:116`); removal returned 404 instead of 200 (`:128`). Project
+`mtcontract-7d1c315eb959473f`; fixture SHA-256
+`3df4c3f6b823bd6b2a335c255ea82d93d1742d4f307194dcbb8aba001401d6b7`; runner
+source SHA-256 `09dd89bad788f6d887686fb4d83f529180642aec2ec48ac0c353285a0c49c5b9`.
+Full wrapper and test assertions: `/private/tmp/household-e-20261001/E-BOUNDARY-RED-001/outer.raw.log`.
+The captured runtime source directory was `tmp/contract-tests/run.D1QeWo/source`.
+All 319 copied source paths match the premanifest; premanifest file SHA-256
+`1a58f5501d0de7f2c7fc4a897b962a3d5b92193cc8c68692a0d0027e88015eb4`, copy
+manifest file SHA-256
+`321ed0dbb0c66bf40749c45eeb73113bd73cf71dc624f711b76430afcc13e983`.
+
+E-OPTION-RED-001 ran the focused
+`option_stock_uses_real_option_editor_and_rejects_parent_adjustment` filter;
+it failed with stock-action form status 404 instead of 200 (0 passed, 1
+failed, 3 filtered). Project `mtcontract-2eb52237c5e54563`; fixture SHA-256
+`134f475bdbc3bd9d8beb2f971ba49a3b055d7489038451c08e8a734530031703`; runner
+source SHA-256 `09dd89bad788f6d887686fb4d83f529180642aec2ec48ac0c353285a0c49c5b9`.
+Full wrapper and assertion output:
+`/private/tmp/household-e-20261001/E-OPTION-RED-001/outer.raw.log`. The captured
+source is `tmp/contract-tests/run.U7oX8x/source`; all 319 copied source paths
+match their prehashes. Pre-manifest file SHA-256
+`a51204fbb1866cba3ea559d0518b08a1fe583074eb256402ee0eb1aa35322eb0`; copy
+manifest file SHA-256
+`da5869ead7225515f2a6d2981f2f5f164996dd55348e59eca97cc4283cf84319`. The root
+Taskfile hash also matched before launch at
+`6211a8d6623ff9bcf6c1c8f2e530a514c095bd2989c7693a2623525a75c91c5a`. Both
+wrappers stopped before browser execution when the HTTP selector failed; the
+separate ten-case browser-only RED above remains the browser evidence.
+
+The first bounded E implementation fast checks passed. `api:fmt:write` and
+`task -d rust/web format` exited 0, `api:check` exited 0, the
+`household_stock_boundaries` contract target compiled with `--no-run`, and the
+full Rust web unit/integration task passed 60 tests (3, 8, 9, 1, 2, 11, 8, 9,
+9; zero doc tests). Raw logs are in
+`/private/tmp/household-e-20261001/E-FAST-GREEN-001/`. The 320-path
+post-format and post-test manifests match exactly; manifest-file SHA-256
+`4a2e25676a373934e39b7cfd8d37a91ca94d2f6a5c78a46e7c2e22103b6e52d1`. Source
+was released for final acceptance-test additions. No final E acceptance GREEN
+has run yet.
+
+E race RED packet then reached all four frozen HTTP assertions. The missing,
+blank and whitespace token test returned 422 instead of 428 (`:305`); the stale
+original-token test returned 422 instead of 409 (`:337`). The two deterministic
+interleaving cases returned 303 instead of 409 (`:258`). These status
+assertions failed before the later read-back/no-write assertions, so those
+state outcomes are not yet evidence. The wrapper exited 201 before browser
+tests. Project `mtcontract-40111b65b9be44f6`; fixture SHA-256
+`874ab10f859a6f07ad7ef241e3fa444d9e57c96e11d9cd8bc6d48669deeee93f`; runner
+source SHA-256 `f2309c8202fbddb52f4dcbf46bae2adf8ca3407ef2cd82ce35b4068af27d27e5`.
+Full test output: `/private/tmp/household-e-20261001/E-RACE-RED-001/runtime.raw.log`.
+Its 323-path runtime copy matched captured hashes; premanifest SHA-256
+`99cff1fb10c76883ea3f4052142cf983ffd1bb964fd242cda537b946160b6591`, copy
+manifest SHA-256
+`35a8ede616d98509a5639b4e5456314f0f498e631b45e1863b31060e513d48ac`.
+
+The fast compile prerequisite passed for `household_stock_concurrency`.
+The focused web target compiled and reached a genuine RED in
+`stock_locale`: `untracked_parent_is_distinct_from_zero_scalar_fallback_in_every_locale`
+failed in English because a null parent did not render the explicit untracked
+stock message. Full log:
+`/private/tmp/household-e-20261001/E-RACE-RED-001/stock-locale.raw.log`.
+The 324-path pre/post fast-check manifests match at SHA-256
+`99cff1fb10c76883ea3f4052142cf983ffd1bb964fd242cda537b946160b6591`.
+
+Final frozen-source fast checks now pass: API and web formatting, `api:check`,
+no-run compilation for `household_stock`, `household_stock_boundaries`,
+`household_stock_concurrency`, `household_stock_permissions` and
+`medication_stock`, plus the complete `rust/web` test suite (52 passed, zero
+failed; zero doc tests). Dry Task rendering confirms that
+`HOUSEHOLD_STOCK_ACCEPTANCE=true` selects exactly the three core stock targets
+in one command and does not add the completion dashboard target. With stock
+flags unset, the existing default still selects its original three household
+targets. Raw receipts are in
+`/private/tmp/household-e-20261001/E-FINAL-FAST-001/`.
+
+The first stock-selector compile attempt failed before runtime because of a
+mismatched delimiter at `rust/web/src/stock.rs:41:30`; it is retained as a
+setup failure, not a RED. The writer corrected the rendering and the focused
+`api:check` passed on the corrected source (raw log
+`/private/tmp/household-e-20261001/E-STOCK-SELECTOR-RED-002/api-check.raw.log`).
+
+The corrected selector-only browser job reached its assertion and produced a
+real UI RED: the selected medication option displayed the combined scalar
+`15.75 ml remaining` rather than its separate `12.25 tablet` and `3.5 capsule`
+balances. One test ran, zero passed, one failed at
+`tests/household-stock-selector.test.mjs:57`. Project
+`mtcontract-6a21b5385b7240a7`; fixture SHA-256
+`889d2b442401e1f19405227a1927a5d48a870747408a2122c91079cd527c788b`; runner
+source SHA-256 `031035fc4d386a13756b9962eaff0a05cb64abeb2c4ce5fe57439ee10ff9c7ee`.
+Full wrapper log:
+`/private/tmp/household-e-20261001/E-STOCK-SELECTOR-RED-002/browser.raw.log`;
+actual browser output:
+`/private/tmp/household-e-20261001/E-STOCK-SELECTOR-RED-002/browser-node.raw.log`.
+The immutable copy is `tmp/contract-tests/run.wb8u3n/source`; all 325 copied
+application inputs matched the premanifest. Copy manifest SHA-256
+`e315d2d1a9fc8fb91e9bd54c49bde41e4190928ea29e479b4038103858510304`. Root
+Taskfile was separately captured and matched at
+`6211a8d6623ff9bcf6c1c8f2e530a514c095bd2989c7693a2623525a75c91c5a`. The 326
+live inputs also matched pre/post; manifest SHA-256
+`ebaab7691e21e6492658662dee317e7fbcb9a3e06da69a7a190caa928ef1cdf3`. Fixture
+SHA was recorded before runner cleanup. This selector job wrote no screenshots.
+
+The repaired existing stock baseline now passes all 17 cases:
+`openapi_stock_workflows` 3/3, `medication_stock` 9/9 and
+`medication_management_security_api` 5/5. Project
+`mtcontract-27b5d66921894e7b`; fixture SHA-256
+`4e59ed6d4be45ec84a36c0af944a652858d298d0006b180ead7b74935651b468`; runner
+source SHA-256 `be624f6f75863fcb591d8741796e3745231f32e36d9490418c08240a059bb02a`.
+Full wrapper/test output is
+`/private/tmp/household-e-20261001/E-FINAL-BASELINE-001/runner.raw.log`;
+the separate RTK task tee is a build-only log at
+`/private/tmp/household-e-20261001/E-FINAL-BASELINE-001/rtk-task-full.raw.log`.
+The immutable source copy at `tmp/contract-tests/run.09O0Ry/source` matched all
+325 copied application paths; copy manifest SHA-256
+`cc22f8c2ad6cb397ea80ebe613daffa2b2683d6a65965fffa00bbb405bb32b5d`. The root
+Taskfile matched separately. Captured pre/post source manifests are identical
+at SHA-256
+`b30a159ef70105c4ee903954fbfee1ad97aa6b2f8d3a311888c4138ab52134a4`.
+
+The first combined stock HTTP/browser GREEN attempt reached `household_stock`
+and stopped on a test convention mismatch: 3/4 cases passed, while
+`scalar_adjustment_records_reason_quantity_and_request_linkage` expected audit
+quantity strings `["20", "15.12"]` but the actual persisted event returned
+`["20.00", "15.12"]` (`household_stock.rs:113`). No boundary or concurrency
+target or browser test ran in this wrapper, so none of those are GREEN evidence.
+The writer classified this as a test convention error: persisted audit values
+use `Decimal.to_string()` and preserve the database's initial `20.00` scale;
+the API's independent read-back formatting remains `20.0`. No product change
+is required; the test expectation is being corrected.
+Project `mtcontract-e7e42adfa0484880`; fixture SHA-256
+`a1cb362097272d041e0824547ff05e4f1d85ea1d5f81eda064a71ff0457b0724`; runner
+source SHA-256 `be624f6f75863fcb591d8741796e3745231f32e36d9490418c08240a059bb02a`.
+Full output:
+`/private/tmp/household-e-20261001/E-CORE-GREEN-001/runner.raw.log`. The
+immutable copy at `tmp/contract-tests/run.gkWfOI/source` matched all 325 copied
+inputs; copy manifest SHA-256
+`68e17f2e3efcc531f60380987f012c95050cbe62cebd5d4d4f753fd55f2ad390`. The 326
+pre/post live manifests match at SHA-256
+`b30a159ef70105c4ee903954fbfee1ad97aa6b2f8d3a311888c4138ab52134a4`. The
+existing 16 root-level screenshot files were archived with checksum manifest
+`f8e82044573d2aba8b904a39c24d44175a23426dafbb38ee6ca8204bf4ab760a`; this
+wrapper stopped before browser tests and did not write screenshots.
+
+The selector UI RED is with the writer for the bounded presentation fix. The
+writer is correcting the audit assertion to the existing persisted-decimal
+convention. Once the writer sends a corrected READY/FROZEN packet, rerun the approved core stock
+HTTP and browser batch on a fresh validated copy, then run the permission-
+mutating case in its own fresh fixture last. If those pass, run the authorised
+full `ci:rust-port` gate. The first combined wrapper is cleaned; no E runtime
+process is active.
+The #2354 Rails system CI failure remains a separate
+focused investigation. `task test:ps` showed no Rails test containers. The
+preflight task would run `npm ci` because the host dependency marker is absent;
+that dependency refresh is outside this queue. No Rails runtime job is active.
+
+E target mapping was checked against the current runner. The stock baseline's
+historical `rails` selector dispatches into the Rust API lane; the generic
+`contract:run-dosage-health` task remains Rails reference evidence only.
+`api:openapi-dosages-acceptance` is a separate existing Rust dosage baseline.
+Root approved the bounded E baseline/RED/fast-GREEN/HTTP/browser/full Rust gate
+sequence after writer source freeze.
+
 After each journey: focused HTTP plus browser acceptance, all affected locales,
 desktop/mobile screenshots with prior baseline capture, and relevant regressions.
 After G: full Rust gate and docs build on final stable input. Root alone commits
 and publishes. Do not edit product source; return failures to the writer.
+
+## E runtime receipts (2026-10-01)
+
+The isolated stock permission test passed: one contract case and one selected browser case. Project `mtcontract-a25d1ffd38b24d02`; source digest `4ae39a39e47bb6d62ef8cae99345d81ddaebf135fbe4eaea1c9472050dacae57`; all 325 copied application inputs matched. Runner-emitted fixture SHA-256 (before cleanup) was `0c6011584a753f2994e358150c3ca9e1ebda233399418ae92adef2368ec461e2`; an independent rehash after cleanup was unavailable. Full output is `/private/tmp/household-e-20261001/E-PERMISSION-GREEN-001/runner.raw.log`.
+
+The separate existing medication browser regression passed 7/7 cases, with no HTTP target or default browser cases invoked. Project `mtcontract-d44b4cae07e6425b`; fixture SHA-256 `cd70356dc42fd0a6993526c5d3dc1a8b74d4aaefdbcbe63fe3b2684317dcd33e`; source digest `4ae39a39e47bb6d62ef8cae99345d81ddaebf135fbe4eaea1c9472050dacae57`. Its 326-input pre/post manifests match at SHA-256 `9c141b93fb0b0e7d47f35c7665544afcf6c575cc460179607babb36aa31d5adf`; all 325 copied application paths matched. The root Taskfile was separately verified at `6211a8d6623ff9bcf6c1c8f2e530a514c095bd2989c7693a2623525a75c91c5a`. Full runner output is `/private/tmp/household-e-20261001/E-JOURNEY-REGRESSION-001/runner.raw.log`; actual Node test output is RTK tee `/Users/damacus/Library/Application Support/rtk/tee/1790882747_task_api_a9e8c9.log`. The six generated journey screenshots are preserved in `docs/screenshots/journey-medication-rust/e-20261001/regressions/` with checksum manifest SHA-256 `333e90f2bc50d3e2c0454e9d5df836ec83c15465b4eb756961683b11a1f55e11`. The 16 root-level prior screenshots were restored byte-for-byte; their restored manifest SHA-256 is `f8e82044573d2aba8b904a39c24d44175a23426dafbb38ee6ca8204bf4ab760a`.
+
+The first authorised full `ci:rust-port` run passed formatting and initial Rust tests, then stopped in `api:clippy` with three `-D warnings` in `rust/api/src/web_pages/stock.rs`: `clippy::obfuscated_if_else` at line 175, `clippy::unwrap_or_default` at line 194, and `clippy::needless_borrows_for_generic_args` at line 358. These are product-source lint findings, not infrastructure failures. The writer owns the three minimal fixes. Gate raw output: `/private/tmp/household-e-20261001/E-RUST-GATE-001/runner.raw.log`; the 326-input pre/post manifests are identical at SHA-256 `9c141b93fb0b0e7d47f35c7665544afcf6c575cc460179607babb36aa31d5adf`. Once the writer sends stable notice, rerun the authorised full Rust gate on freshly captured inputs. No E acceptance reruns are otherwise planned.
+
+The writer applied the three lint-only fixes and an explicit error-map type. `api:fmt:write` left the 326 captured inputs unchanged. The first focused Clippy attempt exposed an E0282 type-inference issue at `stock.rs:193`; the writer added the explicit `BTreeMap<String, Vec<String>>` annotation. Final `api:clippy` passed with stable 326-input manifest SHA-256 `6ac0208380cd549bf697d7ad6111384880a87f86d2992e2c63c6927c5c705c8e`; raw output is `/private/tmp/household-e-20261001/E-API-CLIPPY-003/runner.raw.log`.
+
+The final full `ci:rust-port` gate passed. Formatting, Rust tests, Clippy, SSR/hydrate builds, and contract-test check completed without errors. Raw output is `/private/tmp/household-e-20261001/E-RUST-GATE-002/runner.raw.log` (SHA-256 `cd2a0ada9da3d78bc36fc250c71fd6e54b2681e95fd7ec788df3f78967d1b893`). Its 326-input pre/post manifests match at SHA-256 `6ac0208380cd549bf697d7ad6111384880a87f86d2992e2c63c6927c5c705c8e`; `git diff --check` passed. The earlier gate attempt remains classified as Clippy failure on the three newly added style findings, not a pass.

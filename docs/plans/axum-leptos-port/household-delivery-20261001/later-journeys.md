@@ -59,8 +59,13 @@ openapi_schedule_writes and schedules; inspect their actual runner targets.
 
 ## G: existing baseline acceptance gaps
 
-Complete the final large-module candidate in #2348, portable_imports.rs, after
-the household journeys. Keep this a behaviour-preserving extraction: separate
+Complete the remaining mixed-purpose files in #2348 after the household journeys.
+The [independent module review](remaining-module-review.md) additionally covers
+dose_occurrences.rs, dose.rs, invitations.rs and oauth.rs. Preserve their existing
+transaction entry points, dose/stock rules, delivery ordering and authentication
+checks. Do not introduce policy changes or new authentication features.
+
+For portable_imports.rs, keep this a behaviour-preserving extraction: separate
 dry-run/apply orchestration, field contracts, row validation, identity resolution
 and persistence using actual cohesive boundaries. Establish its existing
 observable baseline, preserve comments and public exports, test its import

@@ -78,11 +78,11 @@
 
 | Journey | State | Evidence |
 | --- | --- | --- |
-| D dosage management | Accepted; publication in progress | Writer report, independent review and verification queue |
-| E stock | Waiting for D | Plan |
+| D dosage management | Published in #2351; CI passed | Writer report, independent review and verification queue |
+| E stock | Accepted; publication is next | Stock ruling, stock review and verification queue |
 | F assignments and schedules | Waiting for E | Plan |
 | G parity and final acceptance | Waiting for F | Plan |
-| Two-hour retro | Scheduled | Native heartbeat |
+| Two-hour retro | Completed; local improvements applied | retro.md; native timer deleted |
 
 - 18:26 BST: D core HTTP passed 4/4. Browser retry passed 20/20 after a
   test-only pagination repair; all assertions were retained. A separate fresh
@@ -95,3 +95,34 @@
   Publish this completed journey before starting E. Two presentation findings
   remain explicitly queued for E/shared integration. The actual two-hour retro
   remains at 19:07:45 BST; it has not occurred yet.
+- D published as ready [PR #2351](https://github.com/damacus/med-tracker/pull/2351),
+  commit `fb276edc0ad5b45ccfe14a093b95dbc9c08b7180`, above #2349. Documentation
+  build and diff checks passed with unchanged Markdown. Signing used the approved
+  single-command fallback after the 1Password agent failed. Branch synchronised;
+  no merge or deployment. E now owns `codex/rust-household-stock-20261001`.
+- 18:37 BST: E test-only packet frozen: four HTTP cases, including the actual
+  dropped audit-reason regression, plus ten five-locale desktop/mobile stock
+  workflows. Existing Rust baseline and actual RED jobs are queued with the
+  sole verifier; reviewer checks setup and contracts independently. Product
+  implementation waits relevant observed failures. Acceptance remains 15/20.
+- 19:07:57 BST: actual two-hour retrospective started, verified with the live
+  clock. D is published; E has relevant RED and is being implemented. Fixture
+  prechecks, narrower capture holds and focused reruns now govern remaining work.
+  The timer was deleted after the checkpoint. Continue E/F/G; no deadline stop.
+- Stock runtime checks passed: 17 existing API tests, 13 new API checks, 41
+  selected browser cases, the separate permission case and selector check, and
+  seven prior medication browser regressions. Independent review confirmed the
+  state checks and reviewed desktop/mobile screenshots in all five languages.
+  The full Rust gate found three lint errors in the new stock adapter; the same
+  writer is fixing them. Stock remains unaccepted and unpublished until the
+  final gate and review pass. The original denominator remains 15/20.
+- D CI passed on its published source. One Rails system job passed on its single
+  reproduction; the original intermittent failure remains tracked as ruby/bug
+  in #2354. No Ruby product change or production action was made.
+- The user’s plain-language feedback is applied to progress updates and report
+  openings. The four additional mixed-purpose file findings are recorded in
+  remaining-module-review.md and #2348 for the final refactor stage.
+- 20:33 BST: the final Rust gate passed after four behaviour-preserving lint/type
+  repairs. Independent requirements and quality/security review passed. Stock
+  management is accepted, completing 4.1 and 4.4: 17/20 original tasks. Check
+  the final documentation, publish this journey, then hand off assignments.

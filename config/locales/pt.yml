@@ -898,6 +898,24 @@ pt:
       success: "%{name} removido de %{location}"
       failure: Falha ao remover membro
   medications:
+    stock:
+      title: "Gerir stock"
+      adjust: "Ajustar stock"
+      new_quantity: "Nova quantidade de stock"
+      order: "Registar encomenda"
+      receive: "Marcar como recebido"
+      ordered: "Encomendado"
+      received: "Recebido"
+      not_ordered: "Nenhuma encomenda registada"
+      edit_option: "Editar stock da opção"
+      option_total: "Cada opção tem o seu próprio stock e unidade. Altere as quantidades no editor da opção."
+      scalar_fallback: "Todas as opções têm stock sem controlo. As doses ainda podem usar o stock do medicamento principal apresentado aqui; defina stock numa opção para o controlar separadamente."
+      receipt_hint: "Receber uma encomenda regista apenas o seu estado. Ajuste o stock separadamente ao contar a entrega."
+      date_hint: "Introduza a data prevista como YYYY-MM-DD."
+      original_token: "Abra novamente o formulário de edição para carregar a versão original, reveja e envie as alterações."
+      option_readonly: "O stock e os limites de reposição das opções são geridos no editor da opção."
+      invalid_quantity: "Introduza uma quantidade não negativa com até duas casas decimais."
+      household_inventory: "Inventário do agregado"
     dose_dialog:
       administration_title: 'Registar administração para %{name}'
       choose_person_source: 'Escolha a pessoa e a origem.'

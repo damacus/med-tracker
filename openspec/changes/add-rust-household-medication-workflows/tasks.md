@@ -20,10 +20,10 @@
 
 ## 4. Medication and stock
 
-- [ ] 4.1 Record failing medication creation/edit and stock browser cases.
+- [x] 4.1 Record failing medication creation/edit and stock browser cases.
 - [x] 4.2 Implement medication forms and verified inventory return.
 - [x] 4.3 Independently accept medication before expanding to stock actions.
-- [ ] 4.4 Implement and accept adjustment/order/receipt with audit, concurrency and replay evidence.
+- [x] 4.4 Implement and accept adjustment/order/receipt with audit, concurrency and replay evidence.
 
 ## 5. Assignments and schedules
 
@@ -74,3 +74,15 @@ The [completion packet](../../../docs/plans/axum-leptos-port/next-slices-2026100
 The previous bounded run stopped new feature dispatch at its 16:44 Europe/London assessment. The user subsequently authorised autonomous D/E/F/G completion with a new retrospective checkpoint. The [delivery packet](../../../docs/plans/axum-leptos-port/household-delivery-20261001/plan.md) now records one persistent Sol writer, one exclusive Luna verifier and one independent Sol reviewer.
 
 D medication/dosage management is independently accepted, bringing the original denominator to 15/20. Four browser HTTP cases and an isolated ordinary-member permission case passed. Twenty browser cases passed across all five languages at desktop/mobile, including immediate dose use, exact option/parent stock decrement and dose replay. The corrected pagination helper retained all assertions; prior household browser regressions passed on unchanged product source. The full `ci:rust-port` gate passed on final frozen inputs. Stock, all seven schedule editors and final whole-programme acceptance remain pending.
+
+Stock management is independently accepted, bringing the original denominator
+to 17/20. Existing stock API tests passed 17/17; the new stock checks passed
+13/13. Browser acceptance passed 41 selected cases across all five languages at
+desktop/mobile. A separate permission fixture passed its HTTP case and selector
+check, and seven prior medication browser regressions passed. These checks cover
+saved stock/status, correct dosage units, rejected conflicts with retained forms,
+removal replay, revoked access and unchanged records after rejected writes.
+The final Rust gate passed after four behaviour-preserving lint/type repairs,
+which the reviewer checked against the runtime-tested source. Requirements and
+quality/security review passed. Assignments, schedules and final combined work
+remain pending; no merge, deployment or Rails cutover is authorised.

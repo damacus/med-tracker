@@ -891,6 +891,24 @@ cy:
       success: Tynnwyd %{name} o %{location}
       failure: Methwyd â thynnu aelod
   medications:
+    stock:
+      title: "Rheoli stoc"
+      adjust: "Addasu stoc"
+      new_quantity: "Maint stoc newydd"
+      order: "Cofnodi archeb"
+      receive: "Marcio wedi derbyn"
+      ordered: "Wedi archebu"
+      received: "Wedi derbyn"
+      not_ordered: "Dim archeb wedi ei chofnodi"
+      edit_option: "Golygu stoc yr opsiwn"
+      option_total: "Mae gan bob opsiwn ei stoc a’i uned ei hun. Newidiwch feintiau drwy olygydd yr opsiwn."
+      scalar_fallback: "Nid yw stoc yr opsiynau yn cael ei olrhain. Gall dosau ddefnyddio stoc y feddyginiaeth riant a ddangosir yma; gosodwch stoc ar opsiwn i’w olrhain ar wahân."
+      receipt_hint: "Mae derbyn archeb yn cofnodi ei statws yn unig. Addaswch y stoc ar wahân wrth gyfrif y danfoniad."
+      date_hint: "Rhowch y dyddiad disgwyliedig fel YYYY-MM-DD."
+      original_token: "Agorwch y ffurflen olygu eto i lwytho ei fersiwn wreiddiol, yna adolygwch a chyflwynwch eich newidiadau."
+      option_readonly: "Rheolir stoc opsiynau a throthwyon ail-archebu drwy olygydd yr opsiwn."
+      invalid_quantity: "Rhowch faint nad yw’n negatif gyda hyd at ddau le degol."
+      household_inventory: "Stoc y cartref"
     dose_dialog:
       administration_title: 'Cofnodi rhoi meddyginiaeth i %{name}'
       choose_person_source: 'Dewiswch y person a’r ffynhonnell.'

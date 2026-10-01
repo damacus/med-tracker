@@ -129,6 +129,23 @@ impl Text {
         if let Some(translated) = self.api_error(message) {
             return Ok(translated);
         }
+        for key in [
+            "stock_removals.errors.invalid_quantity",
+            "stock_removals.errors.invalid_reason",
+            "stock_removals.errors.invalid_note",
+            "stock_removals.errors.invalid_submission",
+            "stock_removals.errors.invalid_source",
+            "stock_removals.errors.untracked",
+            "stock_removals.errors.insufficient_stock",
+            "stock_removals.errors.changed_submission",
+            "medications.stock.original_token",
+            "medications.stock.option_readonly",
+            "medications.stock.invalid_quantity",
+        ] {
+            if self.get(key, &[]).as_deref() == Ok(message) {
+                return Ok(message.to_owned());
+            }
+        }
         for known in [
             "can't be blank",
             "is invalid",

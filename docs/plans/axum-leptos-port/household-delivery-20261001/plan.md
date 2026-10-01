@@ -4,6 +4,14 @@ User authorised autonomous completion on 1 October 2026 while AFK. Continue
 OpenSpec `add-rust-household-medication-workflows`, starting at 14/20 accepted
 tasks and published commit `5a7c984a354fc7cd3ad07a21e2d3c0cf320fb17e`.
 
+## Current progress
+
+People, locations, medication forms and dosage management are published.
+Dosage management has passed CI. Stock management has passed its checks and
+independent review; publication is next. Assignments, schedules and the final
+combined checks follow it.
+Rails stays operational throughout this work.
+
 ## Stable path and ownership
 
 One persistent Sol 6.1 writer owns product changes, regression tests and fixes.
@@ -13,17 +21,25 @@ and evidence. The coordinator owns Git, acceptance rulings and these records.
 No overlapping writers or repeated broad inventories. Existing completed agents
 are retained for context; only these three seats are active.
 
-1. D: split dosage API responsibilities and complete dosage-option management.
-   Require authorised create/edit, original preconditions, rejected drafts,
-   tracked/untracked stock, defaults, all locales, desktop/mobile and review.
-2. E: stock adjustment, order and receipt, with authorised persisted read-back,
-   audit/replay/concurrency checks and truthful tracked-option behaviour.
-3. F: split assignment/schedule/pause modules as needed; complete direct and all
-   seven scheduled assignments, edits and pause/resume. Verify taper boundaries,
-   effective dates, timezone, permissions and history.
-4. G: rerun relevant baseline failures from #2347, record Rails/OpenAPI rulings,
-   finish the remaining portable-import responsibility split from #2348,
-   promote accepted tests into CI and complete combined acceptance/publication.
+Progress and project reports must be clear to someone passing by. Lead with the
+user problem, what changed and what still needs checking. Explain stock conflicts
+and form behaviour in ordinary language. Keep commands, hashes, database details
+and test mechanics in the evidence queue rather than the progress headline.
+
+1. D — Dosage management: add and edit dosage options, show their stock correctly,
+   and keep form entries when a save fails. Split the large API file into smaller
+   modules. Check permissions, translations, desktop and mobile use. Accepted.
+2. E — Stock management: adjust quantities, record losses, mark orders and receipts.
+   Check that the saved changes are correct and conflicting saves cannot overwrite
+   stock. Show each dosage option with its own quantity and unit.
+3. F — Assignments and schedules: assign medication to a person, edit all seven
+   schedule types, and pause or resume treatment. Check dose changes, dates,
+   timezones, permissions and history. Split the large files before extending them.
+4. G — Final checks: resolve the recorded compatibility failures, split the large
+   import, dose, occurrence, invitation and OAuth files, and include the new tests
+   in CI. Review the combined result and publish the remaining work. The
+   [remaining module review](remaining-module-review.md) records the concrete
+   boundaries; these are behaviour-preserving refactors, not new features.
 
 Each journey is a stop-and-assess waypoint: requirements review, quality review,
 matching-source verification, then publish accepted work and advance. A failed
@@ -72,11 +88,12 @@ without writes. Preserve malformed-query and unrelated-resource policies.
 These are implementation rulings, not runtime acceptance; the verifier must
 exercise their existing and additional no-write assertions on final source.
 
-The [early process review](retro.md) now governs execution handoffs: one explicit
+The [two-hour retrospective and earlier review](retro.md) govern handoffs: one explicit
 writer READY/FROZEN notice, helper pagination/selector/token checks before
 runtime, one validated copy, focused retries after test-only repairs, and fewer
-coordinator metadata updates. The actual two-hour retro remains at 19:07:45 BST;
-native automation is `rust-delivery-scheduled-retrospective`. Continue D/E/F/G
+coordinator metadata updates. The actual two-hour retro began at 19:07:57 BST,
+verified with the live clock. Its fixture-precheck and capture-release improvements
+apply immediately; the completed native timer was deleted. Continue D/E/F/G
 to completion; the checkpoint does not stop work.
 
 E follows [stock-ruling.md](stock-ruling.md): parent absolute adjustment is scalar

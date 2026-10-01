@@ -35,7 +35,11 @@ pub(crate) fn messages(text: Text, errors: &[String]) -> String {
         .map(|message| {
             let key = match message.as_str() {
                 "Record has changed since it was last read" => Some("dosages.management.conflict"),
-                "missing_browser_precondition" => Some("stock_removals.errors.invalid_submission"),
+                "missing_browser_precondition" => Some("medications.stock.original_token"),
+                "option_stock_readonly" => Some("medications.stock.option_readonly"),
+                "Quantity must be a valid nonnegative number" => {
+                    Some("medications.stock.invalid_quantity")
+                }
                 "confirm_option_mode" => Some("dosages.management.confirm_required"),
                 _ => None,
             };
@@ -210,7 +214,7 @@ pub fn render_medication_form_with_options(
             true,
         ),
     ] {
-        if options_mode && matches!(name, "dose_amount" | "current_supply") {
+        if options_mode && matches!(name, "dose_amount" | "current_supply" | "reorder_threshold") {
             continue;
         }
         fields.push_str(&input_field(

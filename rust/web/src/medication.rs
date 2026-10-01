@@ -1,6 +1,7 @@
 use crate::document::medication_document;
 use crate::{household, household_i18n};
 use leptos::prelude::*;
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct MedicationCard {
@@ -65,6 +66,26 @@ pub fn render_medication_list_with_management(
     can_create: bool,
     locale: household_i18n::Locale,
 ) -> String {
+    render_medication_list_with_stock(
+        household_name,
+        slug,
+        csrf,
+        medications,
+        can_create,
+        locale,
+        &std::collections::HashMap::new(),
+    )
+}
+
+pub fn render_medication_list_with_stock(
+    household_name: &str,
+    slug: &str,
+    csrf: &str,
+    medications: Vec<MedicationCard>,
+    can_create: bool,
+    locale: household_i18n::Locale,
+    option_stock: &std::collections::HashMap<i64, Vec<crate::stock::OptionStock>>,
+) -> String {
     let prefix = format!("/households/{}", household::path_segment(slug));
     let text = household_i18n::Text::new(locale);
     let title = text
@@ -100,12 +121,21 @@ pub fn render_medication_list_with_management(
                     <div class="med-grid">
                         {medications.into_iter().map(|medication| {
                             let href = format!("{prefix}/medications/{}", medication.id);
-                            let stock = text.get("medications.index.stock_remaining", &[("amount", &medication.supply), ("unit", &medication.unit)]).expect("catalogue key");
+                            let rows = option_stock.get(&medication.id).map(Vec::as_slice).unwrap_or(&[]);
+                            let stock = if rows.is_empty() {
+                                let remaining = text.get("medications.index.stock_remaining", &[("amount", &medication.supply), ("unit", &medication.unit)]).expect("catalogue key");
+                                view! { <p>{remaining}</p> }.to_html()
+                            } else {
+                                crate::stock::inventory_quantities(rows, &medication.supply, &medication.unit, locale)
+                            };
+                            let stock_path = format!("{href}/stock");
+                            let stock_label = text.get("medications.stock.title", &[]).expect("catalogue key");
                             view! {
                                 <article class="med-card">
                                     <h2>{medication.name.clone()}</h2>
-                                    <p>{stock}</p>
+                                    <div inner_html=stock></div>
                                     <a href=href>{view_label.clone()}</a>
+                                    <a href=stock_path>{stock_label}</a>
                                 </article>
                             }
                         }).collect_view()}
@@ -142,6 +172,25 @@ pub fn render_medication_detail_with_management(
     can_edit: bool,
     locale: household_i18n::Locale,
 ) -> String {
+    render_medication_detail_with_stock(input, can_edit, locale, &[])
+}
+
+pub fn render_medication_detail_with_stock(
+    input: MedicationDetailRender<'_>,
+    can_edit: bool,
+    locale: household_i18n::Locale,
+    option_stock: &[crate::stock::OptionStock],
+) -> String {
+    let stock = HashMap::from([(input.medication.id, option_stock.to_vec())]);
+    render_medication_detail_with_stock_inventory(input, can_edit, locale, &stock)
+}
+
+pub fn render_medication_detail_with_stock_inventory(
+    input: MedicationDetailRender<'_>,
+    can_edit: bool,
+    locale: household_i18n::Locale,
+    stock_inventory: &HashMap<i64, Vec<crate::stock::OptionStock>>,
+) -> String {
     let MedicationDetailRender {
         household_name,
         slug,
@@ -153,6 +202,10 @@ pub fn render_medication_detail_with_management(
         notice,
         form_state,
     } = input;
+    let option_stock = stock_inventory
+        .get(&medication.id)
+        .map(Vec::as_slice)
+        .unwrap_or(&[]);
     let prefix = format!("/households/{}", household::path_segment(slug));
     let text = household_i18n::Text::new(locale);
     let people_label = text
@@ -180,6 +233,23 @@ pub fn render_medication_detail_with_management(
         .get("medications.show.inventory_status", &[])
         .expect("catalogue key");
     let dose_action = format!("{prefix}/medications/{}/doses", medication.id);
+    let stock_path = format!("{prefix}/medications/{}/stock", medication.id);
+    let stock_action_label = text
+        .get("medications.stock.title", &[])
+        .expect("catalogue key");
+    let stock_html = if option_stock.is_empty() {
+        let remaining = text
+            .get("medications.dose_dialog.remaining", &[])
+            .expect("catalogue key");
+        view! { <div class="med-stock-number"><strong>{medication.supply.clone()}</strong><span>{medication.unit.clone()}" "{remaining}</span></div> }.to_html()
+    } else {
+        crate::stock::inventory_quantities(
+            option_stock,
+            &medication.supply,
+            &medication.unit,
+            locale,
+        )
+    };
     let label = |key: &str| {
         text.get(&format!("medications.dose_dialog.{key}"), &[])
             .expect("catalogue key")
@@ -264,12 +334,13 @@ pub fn render_medication_detail_with_management(
                     <p class="med-eyebrow">{profile_label}</p>
                     <h1>{medication.name.clone()}</h1>
                     <a href=format!("{prefix}/medications/{}/dosage_options", medication.id)>{dosage_label}</a>
+                    <a class="med-button" href=stock_path>{stock_action_label}</a>
                     {can_edit.then(|| view! { <a class="med-button" href=format!("{prefix}/medications/{}/edit", medication.id)>{edit_label}</a> })}
                     <p class="med-location">{medication.location.clone()}</p>
                     {form_state.is_none().then_some(notice).flatten().map(|text| view! { <p class="med-alert" role="alert">{text.to_owned()}</p> })}
                     <div class="med-detail-grid">
                         {(!medication.description.is_empty()).then(|| view! { <section class="med-card"><h2>{overview_label}</h2><p>{medication.description.clone()}</p></section> })}
-                        <section class="med-card med-stock"><h2>{stock_label}</h2><div class="med-stock-number"><strong>{medication.supply.clone()}</strong><span>{medication.unit.clone()}" "{label("remaining")}</span></div><p>{label("stock_source")}": "{medication.location.clone()}</p></section>
+                        <section class="med-card med-stock"><h2>{stock_label}</h2><div inner_html=stock_html></div><p>{label("stock_source")}": "{medication.location.clone()}</p></section>
                     </div>
                     {has_recordable_source.then(|| view! { <a class="med-button med-log-link" href="#administration" data-open-administration>{label("log")}</a> })}
                 </section>
@@ -305,7 +376,7 @@ pub fn render_medication_detail_with_management(
                     <label for="taken-at">{label("taken_at")}</label><input id="taken-at" name="taken_at" type="datetime-local" value=taken_at required/>
                     <label for="stock-source">{label("stock_source")}</label>
                     <select id="stock-source" name="taken_from_medication_id">
-                        {stock_options.into_iter().map(|option| { let selected = selected_stock.as_ref().is_some_and(|stock| stock == &option.id.to_string()) || selected_stock.is_none() && first_stock_id == Some(option.id); let available = initial_stock_ids.contains(&option.id); view! { <option value=option.id selected=selected hidden=!available disabled=!available>{option.name}" — "{option.supply}" "{option.unit}" "{label("remaining")}</option> } }).collect_view()}
+                        {stock_options.into_iter().map(|option| { let selected = selected_stock.as_ref().is_some_and(|stock| stock == &option.id.to_string()) || selected_stock.is_none() && first_stock_id == Some(option.id); let available = initial_stock_ids.contains(&option.id); let rows = stock_inventory.get(&option.id).map(Vec::as_slice).unwrap_or(&[]); let contents = crate::stock::selector_quantities(rows, &option.supply, &option.unit, locale); view! { <option value=option.id selected=selected hidden=!available disabled=!available>{option.name}" — "{contents}" "{label("remaining")}</option> } }).collect_view()}
                     </select>
                     <div class="med-dialog-actions"><button class="med-button" type="submit" disabled=source_unavailable>{label("log")}</button></div>
                 </form>

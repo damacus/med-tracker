@@ -1,6 +1,5 @@
 use super::*;
 use medtracker_web::household::path_segment;
-use medtracker_web::household_i18n::Text;
 use medtracker_web::medication_management::{
     render_medication_form_with_options, MedicationDraft, MedicationFormPage,
 };
@@ -123,11 +122,11 @@ fn payload(draft: &MedicationDraft, options_mode: bool) -> Option<Value> {
         attributes.insert(name.to_owned(), Value::String(value.clone()));
     }
     attributes.insert("location_id".to_owned(), json!(location_id));
-    attributes.insert(
-        "reorder_threshold".to_owned(),
-        json!(draft.reorder_threshold),
-    );
     if !options_mode {
+        attributes.insert(
+            "reorder_threshold".to_owned(),
+            json!(draft.reorder_threshold),
+        );
         attributes.insert("dose_unit".to_owned(), json!(draft.dose_unit));
         for (name, value) in [
             ("dose_amount", &draft.dose_amount),
@@ -398,11 +397,7 @@ async fn save(
                 StatusCode::CONFLICT | StatusCode::PRECONDITION_REQUIRED
             ) {
                 let message = if status == StatusCode::PRECONDITION_REQUIRED {
-                    match Text::new(api.locale).get("stock_removals.errors.invalid_submission", &[])
-                    {
-                        Ok(message) => message,
-                        Err(_) => return failure(StatusCode::INTERNAL_SERVER_ERROR),
-                    }
+                    "missing_browser_precondition".to_owned()
                 } else {
                     "Record has changed since it was last read".to_owned()
                 };
@@ -423,6 +418,25 @@ async fn save(
             }
             return failure(status);
         }
+    }
+    if options_mode && fields.contains_key("reorder_threshold") {
+        return render_form(
+            api,
+            FormState {
+                slug,
+                household_id,
+                household_name,
+                medication_id: id,
+                draft: draft_from_fields(&fields),
+                errors: BTreeMap::from([(
+                    "medication".into(),
+                    vec!["option_stock_readonly".into()],
+                )]),
+                options_mode,
+                status: StatusCode::UNPROCESSABLE_ENTITY,
+            },
+        )
+        .await;
     }
     let draft = draft_from_fields(&fields);
     let Some(body) = payload(&draft, options_mode) else {

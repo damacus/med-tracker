@@ -897,6 +897,24 @@ es:
       success: "%{name} eliminado de %{location}"
       failure: Error al eliminar miembro
   medications:
+    stock:
+      title: "Gestionar existencias"
+      adjust: "Ajustar existencias"
+      new_quantity: "Nueva cantidad de existencias"
+      order: "Registrar pedido"
+      receive: "Marcar recibido"
+      ordered: "Pedido"
+      received: "Recibido"
+      not_ordered: "No hay pedido registrado"
+      edit_option: "Editar existencias de la opción"
+      option_total: "Cada opción tiene sus propias existencias y unidad. Cambie las cantidades en el editor de la opción."
+      scalar_fallback: "Todas las opciones tienen existencias sin seguimiento. Las dosis aún pueden usar las existencias del medicamento principal que se muestran aquí; establezca existencias en una opción para seguirlas por separado."
+      receipt_hint: "Recibir un pedido solo registra su estado. Ajuste las existencias por separado al contar la entrega."
+      date_hint: "Introduzca la fecha prevista como YYYY-MM-DD."
+      original_token: "Abra de nuevo el formulario de edición para cargar su versión original, revise y envíe los cambios."
+      option_readonly: "Las existencias y los umbrales de las opciones se gestionan en el editor de la opción."
+      invalid_quantity: "Introduzca una cantidad no negativa con un máximo de dos decimales."
+      household_inventory: "Inventario del hogar"
     dose_dialog:
       administration_title: 'Registrar administración para %{name}'
       choose_person_source: 'Elija la persona y la fuente.'

@@ -895,6 +895,24 @@ ga:
         new_password_label: Focal Faire Nua
         confirm_password_label: Deimhnigh Focal Faire Nua
   medications:
+    stock:
+      title: "Bainistigh stoc"
+      adjust: "Coigeartaigh stoc"
+      new_quantity: "Cainníocht nua stoic"
+      order: "Taifead ordú"
+      receive: "Marcáil faighte"
+      ordered: "Ordaithe"
+      received: "Faighte"
+      not_ordered: "Níl ordú taifeadta"
+      edit_option: "Cuir stoc na rogha in eagar"
+      option_total: "Tá a stoc agus a aonad féin ag gach rogha. Athraigh cainníochtaí trí eagarthóir na rogha."
+      scalar_fallback: "Ní rianaítear stoc na roghanna. Is féidir le dáileoga stoc na máthairchógais a úsáid anseo; socraigh stoc ar rogha chun é a rianú ar leithligh."
+      receipt_hint: "Ní thaifeadann glacadh ordaithe ach a stádas. Coigeartaigh an stoc ar leithligh nuair a chomhaireann tú an seachadadh."
+      date_hint: "Cuir an dáta ionchais isteach mar YYYY-MM-DD."
+      original_token: "Oscail an fhoirm eagarthóireachta arís chun a bunleagan a lódáil, ansin athbhreithnigh agus seol do chuid athruithe."
+      option_readonly: "Bainistítear stoc roghanna agus tairseacha athordaithe trí eagarthóir na rogha."
+      invalid_quantity: "Cuir isteach cainníocht neamh-dhiúltach le dhá ionad de dheachúlacha ar a mhéad."
+      household_inventory: "Fardal an teaghlaigh"
     dose_dialog:
       administration_title: 'Taifead tabhairt cógais do %{name}'
       choose_person_source: 'Roghnaigh an duine agus an fhoinse.'
