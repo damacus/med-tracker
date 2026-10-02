@@ -5,6 +5,7 @@ mod auth;
 mod document;
 mod medication;
 
+pub mod admin;
 pub mod dashboard;
 pub mod dosage_options;
 pub mod household;

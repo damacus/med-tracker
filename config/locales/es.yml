@@ -135,6 +135,7 @@ es:
       inclusion: no está incluido en la lista
       invalid: no es válido
       form_invalid: No se pudo guardar este valor.
+      forbidden: "No tienes autorización para realizar esta acción."
       not_a_number: no es un número
       required: debe existir
       taken: ya está en uso

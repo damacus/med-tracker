@@ -2,7 +2,7 @@ use crate::api_request_guards::{cookie_api_csrf, private_api_cache};
 use crate::{
     admin_settings, app_tokens, audit_logs, auth_sessions, dosage_options, dose, dose_occurrences,
     external_integrations, health_events, invitations, locations, medication_management,
-    medication_reads, memberships, native_device_tokens, notification_preferences, oauth,
+    medication_reads, memberships, native_device_tokens, nhs_dmd, notification_preferences, oauth,
     pause_lifecycle, people, person_grants, person_medication_writes, portable_exports,
     portable_imports, profile, push_subscriptions, read_resources, reports, review_prompts,
     schedule_writes, stock_removals, sync_batch, sync_reads, ui_capabilities, AppState,
@@ -147,6 +147,7 @@ pub(super) fn api_router(state: AppState) -> Router {
             "/api/v1/invitations/accept",
             axum::routing::post(invitations::accept),
         )
+        .merge(nhs_dmd::routes())
         .route(
             "/api/v1/households/{household_id}/people",
             get(read_resources::people_index).post(people::create),
