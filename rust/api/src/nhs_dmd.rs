@@ -201,6 +201,11 @@ async fn create(
     headers: HeaderMap,
     multipart: Multipart,
 ) -> Result<Response, ApiError> {
+    let (db, context) = request_context(&state, &headers, household_id).await?;
+    if !platform_admin(&db, context.account_id).await? {
+        return Err(ApiError::forbidden());
+    }
+    db.commit().await.map_err(database_error)?;
     let (path, filename, _) = match stage_upload(multipart).await {
         Ok(upload) => upload,
         Err(status) => {

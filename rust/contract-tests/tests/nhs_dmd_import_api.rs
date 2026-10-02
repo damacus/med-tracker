@@ -185,6 +185,12 @@ fn nhs_dmd_import_invalid_archive_fails() {
 fn nhs_dmd_import_missing_file_rejected() {
     let target = Target::from_env();
     let fixture = fixture();
+    let denied = target.post_multipart(
+        &base(&fixture),
+        &fixture.access_token,
+        multipart::Form::new().text("note", "no file here"),
+    );
+    assert_eq!(denied.status().as_u16(), 403);
     let form = multipart::Form::new().text("note", "no file here");
     let response = target.post_multipart(&base(&fixture), &fixture.platform_access_token, form);
     assert_eq!(response.status().as_u16(), 422);
