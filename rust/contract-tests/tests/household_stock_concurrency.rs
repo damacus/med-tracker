@@ -198,6 +198,7 @@ fn interleaved_option(synthetic_version_restore: bool) {
         )
         .unwrap()
         .get(0);
+    assert_eq!(db.query_one("SELECT count(*) FROM dosages WHERE household_id = $1 AND medication_id = $2", &[&fixture.household_id, &id]).unwrap().get::<_, i64>(0), 0, "the gated scalar read precedes the first dosage option");
     let mut gate = ReadGate::new(&fixture, id);
     let submitted = fields.clone();
     let submitting = Arc::clone(&target);
@@ -218,6 +219,7 @@ fn interleaved_option(synthetic_version_restore: bool) {
             "default_max_daily_doses": 4, "default_min_hours_between_doses": "0", "default_dose_cycle": "daily"}}));
     assert_eq!(response.status().as_u16(), 201);
     let option = response.json::<Value>().unwrap()["data"].clone();
+    assert_eq!(db.query_one("SELECT count(*) FROM dosages WHERE household_id = $1 AND medication_id = $2", &[&fixture.household_id, &id]).unwrap().get::<_, i64>(0), 1, "the real concurrent create inserts the first dosage option");
     if synthetic_version_restore {
         assert_eq!(
             db.execute(
@@ -264,11 +266,15 @@ fn interleaved_option(synthetic_version_restore: bool) {
     assert_eq!(input(&rejected, "new_quantity"), "90.25");
     assert_eq!(input(&rejected, "reason"), "Original scalar draft");
     assert_eq!(input(&rejected, "etag"), original_etag);
-    assert_eq!(read(&owner, &fixture, id), parent_before);
+    let parent_after = read(&owner, &fixture, id);
+    assert_eq!(parent_after["current_supply"], parent_before["current_supply"], "rejected scalar draft must not change stock established by the option create");
+    assert_eq!(parent_after, parent_before);
     assert_eq!(counts(id), evidence);
     let stored = owner.get(&option_api, Some(&fixture.access_token));
     assert_eq!(stored.status().as_u16(), 200);
-    assert_eq!(stored.json::<Value>().unwrap()["data"], option);
+    let option_after = stored.json::<Value>().unwrap()["data"].clone();
+    assert_eq!(option_after["current_supply"], option["current_supply"], "rejected scalar draft must not change the new option stock");
+    assert_eq!(option_after, option);
     assert_eq!(db.query_one("SELECT count(*) FROM versions WHERE item_type = 'MedicationDosageOption' AND item_id = $1", &[&option_id]).unwrap().get::<_, i64>(0), option_evidence.0);
     assert_eq!(db.query_one("SELECT count(*) FROM api_change_events WHERE record_type = 'MedicationDosageOption' AND record_id = $1", &[&option_id]).unwrap().get::<_, i64>(0), option_evidence.1);
 }

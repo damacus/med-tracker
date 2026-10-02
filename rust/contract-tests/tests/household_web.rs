@@ -1,4 +1,4 @@
-use medtracker_contract_tests::{Target, fixture};
+use medtracker_contract_tests::{fixture, Target};
 use scraper::{Html, Selector};
 use serde_json::Value;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -143,18 +143,14 @@ fn authorised_people_locations_and_medication_forms_are_private_html() {
             200,
             "missing authorised route {suffix}"
         );
-        assert!(
-            response.headers()["cache-control"]
-                .to_str()
-                .unwrap()
-                .contains("no-store")
-        );
-        assert!(
-            response.headers()["content-type"]
-                .to_str()
-                .unwrap()
-                .starts_with("text/html")
-        );
+        assert!(response.headers()["cache-control"]
+            .to_str()
+            .unwrap()
+            .contains("no-store"));
+        assert!(response.headers()["content-type"]
+            .to_str()
+            .unwrap()
+            .starts_with("text/html"));
         let html = response.text().expect("household HTML");
         let document = Html::parse_document(&html);
         assert_eq!(document.select(&Selector::parse("h1").unwrap()).count(), 1);
@@ -248,12 +244,10 @@ fn household_ui_capabilities_follow_owner_and_viewer_permissions() {
     assert_eq!(owner.status().as_u16(), 200, "missing UI capability route");
     let owner: Value = owner.json().expect("owner capabilities");
     assert_eq!(owner["data"]["people"]["create"], true);
-    assert!(
-        owner["data"]["people"]["manage_ids"]
-            .as_array()
-            .expect("manageable people")
-            .contains(&Value::from(fixture.managed_person_id))
-    );
+    assert!(owner["data"]["people"]["manage_ids"]
+        .as_array()
+        .expect("manageable people")
+        .contains(&Value::from(fixture.managed_person_id)));
     for resource in ["locations", "medications"] {
         assert_eq!(owner["data"][resource]["create"], true);
         assert_eq!(owner["data"][resource]["update"], true);
@@ -263,12 +257,10 @@ fn household_ui_capabilities_follow_owner_and_viewer_permissions() {
     assert_eq!(viewer.status().as_u16(), 200);
     let viewer: Value = viewer.json().expect("viewer capabilities");
     assert_eq!(viewer["data"]["people"]["create"], false);
-    assert!(
-        viewer["data"]["people"]["manage_ids"]
-            .as_array()
-            .expect("viewer manageable people")
-            .is_empty()
-    );
+    assert!(viewer["data"]["people"]["manage_ids"]
+        .as_array()
+        .expect("viewer manageable people")
+        .is_empty());
     for resource in ["locations", "medications"] {
         assert_eq!(viewer["data"][resource]["create"], false);
         assert_eq!(viewer["data"][resource]["update"], false);
@@ -345,12 +337,10 @@ fn household_people_hide_foreign_record_details_on_detail_and_edit_routes() {
             fixture.household_slug, fixture.foreign_person_id
         ));
         assert_eq!(response.status().as_u16(), 404);
-        assert!(
-            !response
-                .text()
-                .expect("foreign person denial")
-                .contains(&fixture.foreign_person_name)
-        );
+        assert!(!response
+            .text()
+            .expect("foreign person denial")
+            .contains(&fixture.foreign_person_name));
     }
 }
 
@@ -426,18 +416,12 @@ fn editing_medication_identity_preserves_existing_dosage_options_and_tracked_sup
                     .map(str::to_owned)
                     .unwrap_or_else(|| before["data"]["location_id"].to_string()),
             ),
-            (
-                "reorder_threshold".into(),
-                before["data"]["reorder_threshold"]
-                    .as_str()
-                    .map(str::to_owned)
-                    .unwrap_or_else(|| before["data"]["reorder_threshold"].to_string()),
-            ),
         ],
     );
+    let saved_status = saved.status().as_u16();
     assert!(
-        [302, 303].contains(&saved.status().as_u16()),
-        "tracked medication identity save must redirect"
+        [302, 303].contains(&saved_status),
+        "tracked medication identity save must redirect, got {saved_status}"
     );
     let option_after = target.get(&option_path, None);
     assert_eq!(

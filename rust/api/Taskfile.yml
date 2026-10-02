@@ -102,6 +102,10 @@ tasks:
     cmds:
       - fish --no-config rust/contract-tests/household_selector_test.fish
 
+  contract-minor-wrapper-test:
+    cmds:
+      - fish --no-config rust/contract-tests/browser_minor_wrapper_test.fish
+
   contract-runner-lint:
     cmds:
       - fish --no-config -n rust/contract-tests/run.fish
@@ -112,6 +116,10 @@ tasks:
       - fish --no-config -n rust/contract-tests/browser_context_test.fish
       - fish --no-config -n rust/contract-tests/household_selector_test.fish
       - fish --no-config -n rust/contract-tests/fixtures/household_wrapper_probe.fish
+      - fish --no-config -n rust/contract-tests/browser_minor_wrapper.fish
+      - fish --no-config -n rust/contract-tests/browser_minor_wrapper_test.fish
+      - fish --no-config -n rust/contract-tests/fixtures/browser_minor_fake_task.fish
+      - fish --no-config -n rust/contract-tests/fixtures/browser_minor_legacy.fish
       - fish --no-config -n rust/contract-tests/test_support/rtk
 
   contract-harness-fmt:
@@ -962,7 +970,51 @@ tasks:
     cmds:
       - mkdir -p docs/screenshots/journey-medication-rust
       - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test build rust-browser-tests
+      - >-
+        fish {{ printf "%s/rust/contract-tests/browser_minor_wrapper.fish" (.CONTRACT_API_BUILD_CONTEXT | default ".") | shellQuote }}
+        {{ .CONTRACT_PROJECT | shellQuote }}
+        {{ .BROWSER_TEST_FILES | default "tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs" | shellQuote }}
+        {{ printf "%s/fixture.json" (.CONTRACT_FIXTURE_DIR | default "") | shellQuote }}
+
+  contract-browser-node:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
       - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-browser-tests node --test {{ .BROWSER_TEST_FILES | default "tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs" }}
+
+  contract-minor-viewer-sql:
+    requires:
+      vars: [CONTRACT_PROJECT, PHASE, FIXTURE_PATH]
+    preconditions:
+      - sh: >-
+          fish --no-config -c 'string match -qr "^mtcontract-[0-9a-f]{16}\$" -- $argv[1]; and contains -- $argv[2] prepare restore'
+          -- {{ .CONTRACT_PROJECT | shellQuote }} {{ .PHASE | shellQuote }}
+        msg: Minor browser setup requires an owned disposable contract project and a valid phase
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+      HOUSEHOLD_ID:
+        sh: jq -er '.household_id | numbers' {{ .FIXTURE_PATH | shellQuote }}
+      VIEW_MEMBERSHIP_ID:
+        sh: jq -er '.view_membership_id | numbers' {{ .FIXTURE_PATH | shellQuote }}
+      VIEW_ACCOUNT_ID:
+        sh: jq -er '.view_account_id | numbers' {{ .FIXTURE_PATH | shellQuote }}
+      WEB_VIEW_EMAIL:
+        sh: jq -er '.web_view_email | strings' {{ .FIXTURE_PATH | shellQuote }}
+      SQL_PATH: '{{ .CONTRACT_API_BUILD_CONTEXT | default "." }}/rust/contract-tests/fixtures/minor-viewer-{{ .PHASE }}.sql'
+    cmds:
+      - >-
+        MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT | shellQuote }}
+        --profile test exec -T db-test env PGPASSWORD=medtracker_password
+        psql -X -1 -v ON_ERROR_STOP=1 -h db-test -U medtracker -d medtracker_contract
+        -v household_id={{ .HOUSEHOLD_ID | shellQuote }}
+        -v view_membership_id={{ .VIEW_MEMBERSHIP_ID | shellQuote }}
+        -v view_account_id={{ .VIEW_ACCOUNT_ID | shellQuote }}
+        -v web_view_email={{ .WEB_VIEW_EMAIL | shellQuote }}
+        -f - < {{ .SQL_PATH | shellQuote }}
 
   contract-browser-dashboard-rust:
     requires:

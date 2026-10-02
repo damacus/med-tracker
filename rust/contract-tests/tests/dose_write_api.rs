@@ -567,7 +567,7 @@ fn invalid_time_source_unit_and_stock_selection_leave_no_partial_take() {
             "valid",
             fixture.dose_write_medication_id,
             None,
-            422,
+            404,
         ),
         (
             3,

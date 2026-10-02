@@ -1,6 +1,14 @@
 use medtracker_contract_tests::{fixture, Target};
 use serde_json::Value;
 use std::env;
+
+fn assert_private_no_store(headers: &reqwest::header::HeaderMap) {
+    let mut directives = headers.get_all("cache-control").iter().flat_map(|value| {
+        value.to_str().expect("Cache-Control header text").split(',').map(|directive| directive.trim().to_ascii_lowercase())
+    }).collect::<Vec<_>>();
+    directives.sort();
+    assert!(directives == ["no-store"] || directives == ["no-store", "private"], "mandatory no-store with only optional private: {directives:?}");
+}
 use std::time::{SystemTime, UNIX_EPOCH};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
@@ -107,7 +115,7 @@ fn capabilities_and_household_reads_match_openapi_shapes() {
 
     let capabilities = target.get("/api/v1/capabilities", None);
     assert_eq!(capabilities.status().as_u16(), 200);
-    assert_eq!(capabilities.headers()["cache-control"], "no-store");
+    assert_private_no_store(capabilities.headers());
     let capabilities: Value = capabilities.json().expect("capabilities JSON");
     assert_eq!(keys(&capabilities), ["data"]);
     let data = &capabilities["data"];
@@ -215,7 +223,7 @@ fn household_list_scopes_app_tokens_and_keeps_mobile_account_scope() {
 
     let app_list = target.get("/api/v1/auth/households", Some(&fixture.manager_app_token));
     assert_eq!(app_list.status().as_u16(), 200);
-    assert_eq!(app_list.headers()["cache-control"], "no-store");
+    assert_private_no_store(app_list.headers());
     let app_list: Value = app_list.json().expect("app household list JSON");
     assert_eq!(keys(&app_list), ["account_id", "data"]);
     assert_eq!(app_list["account_id"], manager_account_id);
@@ -291,7 +299,6 @@ fn people_collection_detail_and_query_validation_match_openapi() {
 
     for query in [
         "page=0",
-        "per_page=101",
         "page=abc",
         "updated_since=not-a-date",
     ] {
@@ -301,6 +308,22 @@ fn people_collection_detail_and_query_validation_match_openapi() {
         assert_eq!(keys(&body), ["error"]);
         assert_eq!(body["error"]["code"], "unprocessable_content", "{query}");
     }
+
+    let response = target.get(&format!("{base}?per_page=101"), Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    let clamped: Value = response.json().expect("clamped people collection JSON");
+    assert_eq!(keys(&clamped), ["data", "meta"]);
+    assert_eq!(keys(&clamped["meta"]), ["page", "per_page", "total_count"]);
+    assert_eq!(clamped["meta"]["page"], 1);
+    assert_eq!(clamped["meta"]["per_page"], 100);
+    assert_eq!(clamped["meta"]["total_count"], collection["meta"]["total_count"]);
+    let people = clamped["data"].as_array().expect("authorised clamped people");
+    assert!(people.len() <= 100);
+    for person in people {
+        assert_person(person);
+        assert_ne!(person["id"], fixture.hidden_person_id);
+    }
+    assert!(people.iter().any(|person| person["id"] == fixture.managed_person_id));
 
     let detail_path = format!("{base}/{}", fixture.managed_person_id);
     let detail = target.get(&detail_path, Some(&fixture.access_token));

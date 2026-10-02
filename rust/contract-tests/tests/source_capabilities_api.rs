@@ -1,6 +1,6 @@
 use medtracker_contract_tests::{fixture, Fixture, Target};
 use reqwest::blocking::Response;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::env;
 
 struct TemporaryGrantLevel {
@@ -230,6 +230,32 @@ fn location_id(portable_id: &str) -> i64 {
         .get(0)
 }
 
+fn dose_write_state(fixture: &Fixture, assignment_id: i64, medication_id: i64) -> Value {
+    let text: String = database().query_one(
+        "SELECT json_build_object('medications', (SELECT COALESCE(json_agg(m ORDER BY m.id), '[]'::json) FROM medications m WHERE m.household_id=$1 AND (m.id=$3 OR m.id=(SELECT medication_id FROM person_medications WHERE household_id=$1 AND id=$2))), 'assignment', (SELECT row_to_json(p) FROM person_medications p WHERE p.household_id=$1 AND p.id=$2), 'dosages', (SELECT COALESCE(json_agg(d ORDER BY d.id), '[]'::json) FROM dosages d WHERE d.household_id=$1 AND (d.medication_id=$3 OR d.medication_id=(SELECT medication_id FROM person_medications WHERE household_id=$1 AND id=$2))), 'takes', (SELECT count(*) FROM medication_takes WHERE household_id=$1), 'versions', (SELECT count(*) FROM versions WHERE household_id=$1), 'sync', (SELECT count(*) FROM api_change_events WHERE household_id=$1))::text",
+        &[&fixture.household_id, &assignment_id, &medication_id],
+    ).expect("source stock and domain write snapshot").get(0);
+    serde_json::from_str(&text).unwrap()
+}
+
+fn insufficient_dose_is_rejected(target: &Target, fixture: &Fixture, source: &Value, medication_id: i64, uuid: &str) {
+    let source_id = source["id"].as_i64().unwrap();
+    let before = dose_write_state(fixture, source_id, medication_id);
+    let response = target.post_json_authorized(
+        &collection(fixture, "medication_takes"), &fixture.access_token,
+        &json!({"medication_take": {"client_uuid": uuid, "source_type": "person_medication",
+            "source_id": source["portable_id"], "taken_from_medication_id": medication_id,
+            "taken_at": time::OffsetDateTime::now_utc().format(&time::format_description::well_known::Rfc3339).unwrap()}}),
+    );
+    let status = response.status().as_u16();
+    let rejected = response.json::<Value>().unwrap();
+    assert_eq!(status, 422, "insufficient-dose rejection: {rejected}");
+    assert_eq!(rejected["error"]["code"], "unprocessable_content");
+    assert_eq!(rejected["error"]["message"], "Cannot take medication: out of stock");
+    assert_eq!(dose_write_state(fixture, source_id, medication_id), before);
+    assert_eq!(self::source(target, fixture, "person_medications", source_id, &fixture.access_token), *source);
+}
+
 #[test]
 fn source_list_and_detail_separate_record_from_manage_permission() {
     let fixture = fixture();
@@ -290,7 +316,26 @@ fn source_list_and_detail_separate_record_from_manage_permission() {
     );
     assert_eq!(paused["paused"], true);
     assert_eq!(paused["can_record"], true);
-    assert!(eligible_ids(&paused).is_empty());
+    let medication_id = paused["medication_id"].as_i64().unwrap();
+    assert_eq!(eligible_ids(&paused), vec![medication_id]);
+    let before = dose_write_state(&fixture, paused_id, medication_id);
+    let response = target.post_json_authorized(
+        &collection(&fixture, "medication_takes"),
+        &fixture.access_token,
+        &json!({"medication_take": {
+            "client_uuid": "99999999-0000-4000-8000-000000000234",
+            "source_type": "person_medication", "source_id": paused["portable_id"],
+            "taken_at": time::OffsetDateTime::now_utc().format(&time::format_description::well_known::Rfc3339).unwrap(),
+            "taken_from_medication_id": medication_id,
+        }}),
+    );
+    let status = response.status().as_u16();
+    let rejected = response.json::<Value>().unwrap();
+    assert_eq!(status, 422, "paused dose rejection: {rejected}");
+    assert_eq!(rejected["error"]["code"], "unprocessable_content");
+    assert_eq!(rejected["error"]["message"], "Cannot take medication: paused");
+    assert_eq!(dose_write_state(&fixture, paused_id, medication_id), before);
+    assert_eq!(source(&target, &fixture, "person_medications", paused_id, &fixture.access_token), paused);
 }
 
 #[test]
@@ -427,8 +472,9 @@ fn eligible_stock_uses_source_signature_current_supply_and_selected_tracked_dosa
     );
     assert_eq!(
         eligible_ids(&insufficient),
-        vec![fixture.dose_write_medication_id]
+        vec![fixture.dose_write_medication_id, fixture.dose_write_other_medication_id]
     );
+    insufficient_dose_is_rejected(&target, &fixture, &insufficient, fixture.dose_write_other_medication_id, "99999999-0000-4000-8000-000000000235");
 
     let tracked_assignment_id = assignment_id(&fixture.dose_write_tracked_assignment_portable_id);
     let tracked = source(
@@ -454,5 +500,6 @@ fn eligible_stock_uses_source_signature_current_supply_and_selected_tracked_dosa
         tracked_assignment_id,
         &fixture.access_token,
     );
-    assert!(eligible_ids(&insufficient_tracked).is_empty());
+    assert_eq!(eligible_ids(&insufficient_tracked), vec![fixture.dose_write_tracked_medication_id]);
+    insufficient_dose_is_rejected(&target, &fixture, &insufficient_tracked, fixture.dose_write_tracked_medication_id, "99999999-0000-4000-8000-000000000236");
 }

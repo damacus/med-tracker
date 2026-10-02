@@ -58,6 +58,22 @@ fn default_shortcuts_are_ordered_and_unavailable_destinations_are_inert() {
 }
 
 #[test]
+fn person_selector_summary_uses_full_height_chevrons_up_down_icon() {
+    let html = render_person(vec![]);
+    let summary = html
+        .split("data-testid=\"dashboard-person-selector-summary\"")
+        .nth(1)
+        .unwrap()
+        .split("</summary>")
+        .next()
+        .unwrap();
+    assert!(
+        summary.contains("d=\"m7 15 5 5 5-5 m-10-6 5-5 5 5\""),
+        "change-person chevron should span the full icon viewport"
+    );
+}
+
+#[test]
 fn sidebar_keeps_its_medication_finder_label_separate_from_the_mobile_rail() {
     let html = render_person(vec![]);
     let sidebar = html
