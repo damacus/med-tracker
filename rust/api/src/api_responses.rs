@@ -109,8 +109,10 @@ pub(super) fn if_none_match_matches(headers: &HeaderMap, etag: &str) -> bool {
 
 pub(super) fn representation_etag(body: &Value) -> String {
     format!(
-        "\"{:x}\"",
-        Sha256::digest(serde_json::to_vec(body).expect("JSON value must serialize"))
+        "\"{}\"",
+        hex::encode(Sha256::digest(
+            serde_json::to_vec(body).expect("JSON value must serialize")
+        ))
     )
 }
 

@@ -583,10 +583,9 @@ async fn record_suggestion(
     identity: &Value,
     draft: &Value,
 ) -> Result<(), ApiError> {
-    let identity_hash = format!(
-        "{:x}",
-        Sha256::digest(identity.to_string().trim().to_ascii_lowercase().as_bytes())
-    );
+    let identity_hash = hex::encode(Sha256::digest(
+        identity.to_string().trim().to_ascii_lowercase().as_bytes(),
+    ));
     let source_count = draft
         .get("sources")
         .and_then(Value::as_array)
