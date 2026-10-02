@@ -1,14 +1,4 @@
 services:
-  rust-api:
-    volumes:
-      - type: bind
-        source: ${CONTRACT_STORAGE_ROOT}
-        target: /app/tmp/storage
-  rust-api-mail-fail:
-    volumes:
-      - type: bind
-        source: ${CONTRACT_STORAGE_ROOT}
-        target: /app/tmp/storage
   web-test:
     volumes:
       - type: bind
