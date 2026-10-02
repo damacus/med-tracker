@@ -60,9 +60,7 @@ async fn record_lookup_events(
     if events.is_empty() {
         return Ok(());
     }
-    let query_hash = hex::encode(Sha256::digest(
-        query.trim().to_ascii_lowercase().as_bytes(),
-    ));
+    let query_hash = hex::encode(Sha256::digest(query.trim().to_ascii_lowercase().as_bytes()));
     let now = chrono::Utc::now().naive_utc();
     let records = events.into_iter().map(|event| version::ActiveModel {
         item_type: Set("ExternalMedicineLookup".to_owned()),
