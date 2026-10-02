@@ -14,7 +14,7 @@ chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
 crc32fast = "1"
 getrandom = "0.4"
-hmac = "0.12"
+hmac = "0.13"
 jsonwebtoken = { version = "11", features = ["rust_crypto"] }
 lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "rustls-tls"] }
 md-5 = "0.11"
