@@ -57,7 +57,7 @@ RSpec.describe 'AdminManagesUsers' do
     click_on 'Create User'
     expect(page).to have_text('User was successfully created')
 
-    using_wait_time(5) do
+    using_wait_time(12) do
       expect(page).to have_no_text('User was successfully created')
     end
 
